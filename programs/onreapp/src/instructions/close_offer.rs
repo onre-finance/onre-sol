@@ -127,6 +127,7 @@ pub fn close_offer_one(ctx: Context<CloseOfferOne>) -> Result<()> {
         num_buy_tokens: 1,
     });
 
+
     close_token_account(
         ctx.accounts.offer_sell_token_account.clone(),
         ctx.accounts.offer_token_authority.clone(),
