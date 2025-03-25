@@ -6,49 +6,81 @@ import type { OnreApp } from '../target/types/onre_app';
 import { BN } from 'bn.js';
 
 import idl from "../target/idl/onre_app.json" assert {type: "json"};
+import {
+    createAssociatedTokenAccountInstruction,
+    getAssociatedTokenAddressSync,
+    TOKEN_PROGRAM_ID
+} from "@solana/spl-token";
+import bs58 from "bs58";
 
 const PROGRAM_ID = new PublicKey('J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2');
 
-async function fetchOffer(offerId: BN) {
+const BOSS = new PublicKey('7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC');
+
+const SELL_TOKEN_MINT = new PublicKey("qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWeQu");
+
+const BUY_TOKEN_MINT = new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C")
+
+async function closeOffer() {
+    const offerId = new BN(3);
     const connection = new anchor.web3.Connection('https://api.mainnet-beta.solana.com');
     const wallet = new anchor.Wallet(anchor.web3.Keypair.generate());
     const provider = new AnchorProvider(connection, wallet);
     const program = new Program(idl as OnreApp, provider);
     anchor.setProvider(provider);
 
-    const [offerPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('offer'), offerId.toArrayLike(Buffer, 'le', 8)],
+    const [offerAuthority] = PublicKey.findProgramAddressSync([Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)], program.programId);
+
+    // Derive the state PDA
+    const [statePda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('state')],
         PROGRAM_ID
     );
 
+    const [offerPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('offer'),
+            offerId.toArrayLike(Buffer, 'le', 8)], PROGRAM_ID
+    )
+
     try {
-        // Fetch the offer account data
-        const offerAccount = await program.account.offer.fetch(offerPda);
+        let tx = await program.methods
+            .closeOfferOne()
+            .accountsPartial({
+                offer: offerPda,
+                offerSellTokenAccount: getAssociatedTokenAddressSync(SELL_TOKEN_MINT, offerAuthority, true),
+                offerBuy1TokenAccount: getAssociatedTokenAddressSync(BUY_TOKEN_MINT, offerAuthority, true),
+                bossBuy1TokenAccount: getAssociatedTokenAddressSync(BUY_TOKEN_MINT, BOSS, true),
+                bossSellTokenAccount: getAssociatedTokenAddressSync(SELL_TOKEN_MINT, BOSS, true),
+                state: statePda,
+                offerTokenAuthority: offerAuthority,
+                boss: BOSS,
+            })
+            .transaction();
 
-        // Log the offer details
-        console.log('Offer Account Data:');
-        console.log('  Offer ID:', offerAccount.offerId.toString());
-        console.log('  Sell Token Mint:', offerAccount.sellTokenMint.toString());
-        console.log('  Buy Token Mint 1:', offerAccount.buyTokenMint1.toString());
-        console.log('  Buy Token Mint 2:', offerAccount.buyTokenMint2.toString());
-        console.log('  Buy Token 1 Total Amount:', offerAccount.buyToken1TotalAmount.toString());
-        console.log('  Buy Token 2 Total Amount:', offerAccount.buyToken2TotalAmount.toString());
-        console.log('  Sell Token Total Amount:', offerAccount.sellTokenTotalAmount.toString());
-        console.log('  Authority Bump:', offerAccount.authorityBump);
+        tx.feePayer = BOSS;
+        tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
 
-        return offerAccount;
+        const serializedTx = tx.serialize({
+            requireAllSignatures: false,
+            verifySignatures: false,
+        });
+
+        const base58Tx = bs58.encode(serializedTx);
+        console.log('Close Offer Transaction (Base58):');
+        console.log(base58Tx);
+
+        return base58Tx;
     } catch (error) {
-        console.error('Error fetching offer:', error);
+        console.error('Error closing offer:', error);
         throw error;
     }
 }
 
 async function main() {
     try {
-        const offerId = new BN(1); // Replace with the desired offer ID
-        await fetchOffer(offerId);
+        await closeOffer();
     } catch (error) {
-        console.error('Failed to fetch offer:', error);
+        console.error('Failed to close offer:', error);
     }
 }
 

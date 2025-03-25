@@ -4,21 +4,18 @@ import { AnchorProvider, Program } from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
 import type { OnreApp } from '../target/types/onre_app';
 import { BN } from 'bn.js';
-import idl from '../target/idl/onre_app.json' assert { type: 'json' };
+
+import idl from "../target/idl/onre_app.json" assert {type: "json"};
 
 const PROGRAM_ID = new PublicKey('J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2');
 
 async function fetchOffer(offerId: BN) {
     const connection = new anchor.web3.Connection('https://api.mainnet-beta.solana.com');
-    const wallet = new anchor.Wallet(anchor.web3.Keypair.generate()); // Dummy wallet for provider
-    const provider = new AnchorProvider(connection, wallet, {
-        commitment: 'confirmed',
-    });
+    const wallet = new anchor.Wallet(anchor.web3.Keypair.generate());
+    const provider = new AnchorProvider(connection, wallet);
+    const program = new Program(idl as OnreApp, provider);
     anchor.setProvider(provider);
 
-    const program = new Program(idl as any, PROGRAM_ID, provider) as Program<OnreApp>;
-
-    // Derive the offer PDA
     const [offerPda] = PublicKey.findProgramAddressSync(
         [Buffer.from('offer'), offerId.toArrayLike(Buffer, 'le', 8)],
         PROGRAM_ID
@@ -48,7 +45,7 @@ async function fetchOffer(offerId: BN) {
 
 async function main() {
     try {
-        const offerId = new BN(1);
+        const offerId = new BN(3); // Replace with the desired offer ID
         await fetchOffer(offerId);
     } catch (error) {
         console.error('Failed to fetch offer:', error);

@@ -22,7 +22,7 @@ const BUY_TOKEN_MINT = new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r
 
 
 async function createMakeOfferOneTransaction() {
-    const offerId = new BN(2);
+    const offerId = new BN(3);
     const buyTokenAmount = new BN(100e9);
     const sellTokenAmount = new BN(100e9);
     const connection = new anchor.web3.Connection('https://api.mainnet-beta.solana.com');
