@@ -21,8 +21,6 @@ const SELL_TOKEN_MINT = new PublicKey("qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWe
 const BUY_TOKEN_MINT = new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C")
 
 
-
-
 async function createMakeOfferOneTransaction() {
     const offerId = new BN(2);
     const buyTokenAmount = new BN(100e9);

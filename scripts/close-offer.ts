@@ -21,8 +21,6 @@ const SELL_TOKEN_MINT = new PublicKey("qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWe
 const BUY_TOKEN_MINT = new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C")
 
 
-
-
 async function createCloseOfferOneTransaction() {
     const offerId = new BN(1);
     const connection = new anchor.web3.Connection('https://api.mainnet-beta.solana.com');

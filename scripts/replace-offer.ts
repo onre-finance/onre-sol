@@ -21,7 +21,6 @@ const SELL_TOKEN_MINT = new PublicKey("qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWe
 const BUY_TOKEN_MINT = new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C")
 
 
-
 async function createMakeOfferOneTransaction() {
     const oldOfferId = new BN(1);
     const offerId = new BN(2);
@@ -104,7 +103,7 @@ async function createMakeOfferOneTransaction() {
         });
 
         const base58Tx = bs58.encode(serializedTx);
-        console.log('Make Offer Transaction (Base58):');
+        console.log('Replace Offer Transaction (Base58):');
         console.log(base58Tx);
 
         return base58Tx;
@@ -118,7 +117,7 @@ async function main() {
     try {
         await createMakeOfferOneTransaction();
     } catch (error) {
-        console.error('Failed to create make offer transaction:', error);
+        console.error('Failed to create replace offer transaction:', error);
     }
 }
 
