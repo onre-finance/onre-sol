@@ -1,6 +1,14 @@
 use crate::state::State;
 use anchor_lang::prelude::*; // Includes `emit!` and `#[event]`
 use anchor_lang::Accounts;
+use anchor_lang::system_program;
+
+/// Error codes for the set_boss instruction.
+#[error_code]
+pub enum SetBossErrorCode {
+    /// Error when attempting to set the boss to the system program address.
+    InvalidBossAddress,
+}
 
 /// Event emitted when the boss is updated in the program state.
 #[event]
@@ -45,9 +53,17 @@ pub struct SetBoss<'info> {
 /// - `ctx`: Context containing the accounts for the state update.
 /// - `new_boss`: The new public key to set as the boss.
 ///
+/// # Errors
+/// - [`SetBossErrorCode::InvalidBossAddress`] if the new boss is the system program address.
+///
 /// # Returns
 /// A `Result` indicating success or failure.
 pub fn set_boss(ctx: Context<SetBoss>, new_boss: Pubkey) -> Result<()> {
+    require!(
+        new_boss != Pubkey::default(),
+        SetBossErrorCode::InvalidBossAddress
+    );
+
     let state = &mut ctx.accounts.state;
     let old_boss = ctx.accounts.boss.key(); // Capture old boss before update
     state.boss = new_boss;

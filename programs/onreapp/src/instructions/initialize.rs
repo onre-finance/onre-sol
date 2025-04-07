@@ -2,6 +2,13 @@ use crate::state::State;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 
+/// Error codes for the initialize instruction.
+#[error_code]
+pub enum InitializeErrorCode {
+    /// Error when attempting to initialize when boss is already set.
+    BossAlreadySet,
+}
+
 /// Account structure for initializing the program state.
 ///
 /// This struct defines the accounts required to set up the program’s global state,
@@ -45,8 +52,9 @@ pub struct Initialize<'info> {
 /// A `Result` indicating success or failure.
 pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
     let state = &mut ctx.accounts.state;
-    if state.boss == Pubkey::default() {
-        state.boss = ctx.accounts.boss.key();
+    if state.boss != Pubkey::default() {
+        return err!(InitializeErrorCode::BossAlreadySet);
     }
+    state.boss = ctx.accounts.boss.key();
     Ok(())
 }

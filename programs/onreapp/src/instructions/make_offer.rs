@@ -258,6 +258,18 @@ pub fn make_offer_two(
     sell_token_total_amount: u64,
 ) -> Result<()> {
     require!(
+        buy_token_1_total_amount > 0,
+        MakeOfferErrorCode::InvalidAmount
+    );
+    require!(
+        buy_token_2_total_amount > 0,
+        MakeOfferErrorCode::InvalidAmount
+    );
+    require!(
+        sell_token_total_amount > 0,
+        MakeOfferErrorCode::InvalidAmount
+    );
+    require!(
         ctx.accounts.boss_buy_token_1_account.amount >= buy_token_1_total_amount,
         MakeOfferErrorCode::InsufficientBalance
     );
@@ -321,6 +333,14 @@ pub fn make_offer_one(
     buy_token_1_total_amount: u64,
     sell_token_total_amount: u64,
 ) -> Result<()> {
+    require!(
+        buy_token_1_total_amount > 0,
+        MakeOfferErrorCode::InvalidAmount
+    );
+    require!(
+        sell_token_total_amount > 0,
+        MakeOfferErrorCode::InvalidAmount
+    );
     require!(
         ctx.accounts.boss_buy_token_1_account.amount >= buy_token_1_total_amount,
         MakeOfferErrorCode::InsufficientBalance

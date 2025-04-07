@@ -1,44 +1,40 @@
 import * as anchor from '@coral-xyz/anchor';
-import {AnchorProvider, Program} from '@coral-xyz/anchor';
-import {PublicKey, SystemProgram} from '@solana/web3.js';
-import type {OnreApp} from '../target/types/onre_app';
+import { PublicKey } from '@solana/web3.js';
 import {
     createAssociatedTokenAccountInstruction,
     getAssociatedTokenAddressSync,
-    TOKEN_PROGRAM_ID
-} from '@solana/spl-token'
+    TOKEN_PROGRAM_ID,
+} from '@solana/spl-token';
 import bs58 from 'bs58';
-import {BN} from 'bn.js'
+import { BN } from 'bn.js';
 
-import idl from "../target/idl/onre_app.json" assert {type: "json"};
+import { getBossAccount, initProgram, PROGRAM_ID } from './script-commons';
 
-const PROGRAM_ID = new PublicKey('J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2');
-
-const BOSS = new PublicKey('7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC');
-
-const SELL_TOKEN_MINT = new PublicKey("qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWeQu");
-
-const BUY_TOKEN_MINT = new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C")
-
+const SELL_TOKEN_MINT = new PublicKey('qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWeQu');
+const BUY_TOKEN_MINT = new PublicKey('5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C');
 
 async function createMakeOfferOneTransaction() {
-    const offerId = new BN(3);
+    const program = await initProgram();
+    const connection = new anchor.web3.Connection(process.env.SOL_MAINNET_RPC_URL || '');
+
+    const offerId = new BN(4);
     const buyTokenAmount = new BN(100e9);
     const sellTokenAmount = new BN(100e9);
-    const connection = new anchor.web3.Connection('https://api.mainnet-beta.solana.com');
-    const wallet = new anchor.Wallet(anchor.web3.Keypair.generate());
-    const provider = new AnchorProvider(connection, wallet);
-    const program = new Program(idl as OnreApp, provider);
-    anchor.setProvider(provider);
 
-    const [offerAuthority] = PublicKey.findProgramAddressSync([Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)], program.programId);
+    const [offerAuthority] = PublicKey.findProgramAddressSync(
+        [Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)],
+        program.programId,
+    );
 
+    const BOSS = await getBossAccount(program);
+
+    // TODO: check if boss sell token account exists, create if it doesn't
     const offerSellTokenAccountInstruction = createAssociatedTokenAccountInstruction(
         BOSS,
         getAssociatedTokenAddressSync(SELL_TOKEN_MINT, offerAuthority, true),
         offerAuthority,
         SELL_TOKEN_MINT,
-        TOKEN_PROGRAM_ID
+        TOKEN_PROGRAM_ID,
     );
     const offerBuyTokenAccountInstruction = createAssociatedTokenAccountInstruction(
         BOSS,
@@ -47,15 +43,12 @@ async function createMakeOfferOneTransaction() {
         BUY_TOKEN_MINT,
     );
     // Derive the state PDA
-    const [statePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('state')],
-        PROGRAM_ID
-    );
+    const [statePda] = PublicKey.findProgramAddressSync([Buffer.from('state')], PROGRAM_ID);
 
     const [offerPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('offer'),
-            offerId.toArrayLike(Buffer, 'le', 8)], PROGRAM_ID
-    )
+        [Buffer.from('offer'), offerId.toArrayLike(Buffer, 'le', 8)],
+        PROGRAM_ID,
+    );
     try {
         const tx = await program.methods
             .makeOfferOne(offerId, buyTokenAmount, sellTokenAmount)
@@ -68,7 +61,7 @@ async function createMakeOfferOneTransaction() {
                 sellTokenMint: SELL_TOKEN_MINT,
                 buyToken1Mint: BUY_TOKEN_MINT,
                 state: statePda,
-                boss: BOSS
+                boss: BOSS,
             })
             .preInstructions([offerBuyTokenAccountInstruction, offerSellTokenAccountInstruction])
             .transaction();
@@ -100,4 +93,4 @@ async function main() {
     }
 }
 
-main();
+await main();

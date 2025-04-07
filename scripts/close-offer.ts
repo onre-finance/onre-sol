@@ -1,56 +1,43 @@
 // scripts/fetchOffer.ts
 import * as anchor from '@coral-xyz/anchor';
-import { AnchorProvider, Program } from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
-import type { OnreApp } from '../target/types/onre_app';
 import { BN } from 'bn.js';
 
-import idl from "../target/idl/onre_app.json" assert {type: "json"};
-import {
-    createAssociatedTokenAccountInstruction,
-    getAssociatedTokenAddressSync,
-    TOKEN_PROGRAM_ID
-} from "@solana/spl-token";
-import bs58 from "bs58";
-
-const PROGRAM_ID = new PublicKey('J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2');
-
-const BOSS = new PublicKey('7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC');
-
-const SELL_TOKEN_MINT = new PublicKey("qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWeQu");
-
-const BUY_TOKEN_MINT = new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C")
+import { getAssociatedTokenAddressSync } from '@solana/spl-token';
+import bs58 from 'bs58';
+import { getBossAccount, getOffer, initProgram, PROGRAM_ID } from './script-commons';
 
 async function closeOffer() {
-    const offerId = new BN(3);
-    const connection = new anchor.web3.Connection('https://api.mainnet-beta.solana.com');
-    const wallet = new anchor.Wallet(anchor.web3.Keypair.generate());
-    const provider = new AnchorProvider(connection, wallet);
-    const program = new Program(idl as OnreApp, provider);
-    anchor.setProvider(provider);
+    const offerId = new BN(1);
+    const connection = new anchor.web3.Connection(process.env.SOL_MAINNET_RPC_URL || '');
 
-    const [offerAuthority] = PublicKey.findProgramAddressSync([Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)], program.programId);
+    const program = await initProgram();
+    const BOSS = await getBossAccount(program);
 
-    // Derive the state PDA
-    const [statePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('state')],
-        PROGRAM_ID
+    const offer = await getOffer(offerId, program);
+
+    const [offerAuthority] = PublicKey.findProgramAddressSync(
+        [Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)],
+        program.programId,
     );
 
+    // Derive the state PDA
+    const [statePda] = PublicKey.findProgramAddressSync([Buffer.from('state')], PROGRAM_ID);
+
     const [offerPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('offer'),
-            offerId.toArrayLike(Buffer, 'le', 8)], PROGRAM_ID
-    )
+        [Buffer.from('offer'), offerId.toArrayLike(Buffer, 'le', 8)],
+        PROGRAM_ID,
+    );
 
     try {
         let tx = await program.methods
             .closeOfferOne()
             .accountsPartial({
                 offer: offerPda,
-                offerSellTokenAccount: getAssociatedTokenAddressSync(SELL_TOKEN_MINT, offerAuthority, true),
-                offerBuy1TokenAccount: getAssociatedTokenAddressSync(BUY_TOKEN_MINT, offerAuthority, true),
-                bossBuy1TokenAccount: getAssociatedTokenAddressSync(BUY_TOKEN_MINT, BOSS, true),
-                bossSellTokenAccount: getAssociatedTokenAddressSync(SELL_TOKEN_MINT, BOSS, true),
+                offerSellTokenAccount: getAssociatedTokenAddressSync(offer.sellTokenMint, offerAuthority, true),
+                offerBuy1TokenAccount: getAssociatedTokenAddressSync(offer.buyTokenMint1, offerAuthority, true),
+                bossBuy1TokenAccount: getAssociatedTokenAddressSync(offer.buyTokenMint1, BOSS, true),
+                bossSellTokenAccount: getAssociatedTokenAddressSync(offer.sellTokenMint, BOSS, true),
                 state: statePda,
                 offerTokenAuthority: offerAuthority,
                 boss: BOSS,
@@ -66,6 +53,7 @@ async function closeOffer() {
         });
 
         const base58Tx = bs58.encode(serializedTx);
+
         console.log('Close Offer Transaction (Base58):');
         console.log(base58Tx);
 
@@ -84,4 +72,4 @@ async function main() {
     }
 }
 
-main();
+await main();

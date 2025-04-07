@@ -1,43 +1,31 @@
 // setBoss.ts
 import * as anchor from '@coral-xyz/anchor';
-import {AnchorProvider, Program} from '@coral-xyz/anchor';
-import {PublicKey, SystemProgram} from '@solana/web3.js';
-import type {OnreApp} from '../target/types/onre_app';
+import { PublicKey, SystemProgram } from '@solana/web3.js';
 import bs58 from 'bs58';
 
-import idl from "../target/idl/onre_app.json" assert { type: "json" };
+import { getBossAccount, initProgram, PROGRAM_ID } from './script-commons';
 
-const PROGRAM_ID = new PublicKey('J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2');
-
-const CURRENT_BOSS = new PublicKey('7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC');
-
-const NEW_BOSS = new PublicKey('9tTUg7r9ftofzoPXKeUPB35oN4Lm8KkrVDVQbbM7Xzxx'); // Replace this
+const NEW_BOSS = new PublicKey('9tTUg7r9ftofzoPXKeUPB35oN4Lm8KkrVDVQbbM7Xzxx'); // Replace with this
 
 async function createSetBossTransaction() {
-    const connection = new anchor.web3.Connection('https://api.mainnet-beta.solana.com');
-    const wallet = new anchor.Wallet(anchor.web3.Keypair.generate());
-    const provider = new AnchorProvider(connection, wallet);
-    const program = new Program(idl as OnreApp, provider);
-    anchor.setProvider(provider);
+    const program = await initProgram();
+    const connection = new anchor.web3.Connection(process.env.SOL_MAINNET_RPC_URL || '');
 
+    const BOSS = await getBossAccount(program);
 
-    // Derive the state PDA
-    const [statePda, _bump] = PublicKey.findProgramAddressSync(
-        [Buffer.from('state')],
-        PROGRAM_ID
-    );
+    const [statePda, _bump] = PublicKey.findProgramAddressSync([Buffer.from('state')], PROGRAM_ID);
 
     try {
         const tx = await program.methods
             .setBoss(NEW_BOSS)
             .accountsPartial({
                 state: statePda,
-                boss: CURRENT_BOSS,
+                boss: BOSS,
                 systemProgram: SystemProgram.programId,
             })
             .transaction();
 
-        tx.feePayer = CURRENT_BOSS;
+        tx.feePayer = BOSS;
         tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
 
         const serializedTx = tx.serialize({
@@ -64,4 +52,4 @@ async function main() {
     }
 }
 
-main();
+await main();

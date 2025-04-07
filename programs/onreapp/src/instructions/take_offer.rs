@@ -10,6 +10,7 @@ pub struct OfferTakenOne {
     pub user: Pubkey,
     pub sell_token_amount: u64,
     pub buy_token_1_amount: u64,
+    pub remaining_sell_token_amount: u64,
 }
 
 /// Event emitted when an offer with two buy tokens is taken.
@@ -20,6 +21,7 @@ pub struct OfferTakenTwo {
     pub sell_token_amount: u64,
     pub buy_token_1_amount: u64,
     pub buy_token_2_amount: u64,
+    pub remaining_sell_token_amount: u64,
 }
 
 /// Account structure for taking an offer with one buy token.
@@ -114,7 +116,11 @@ pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Res
     let offer = &ctx.accounts.offer;
 
     require!(
-        ctx.accounts.offer_sell_token_account.amount + sell_token_amount
+        ctx.accounts
+            .offer_sell_token_account
+            .amount
+            .checked_add(sell_token_amount)
+            .unwrap()
             <= offer.sell_token_total_amount,
         TakeOfferErrorCode::OfferExceedsSellLimit
     );
@@ -166,6 +172,10 @@ pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Res
         user: ctx.accounts.user.key(),
         sell_token_amount,
         buy_token_1_amount,
+        remaining_sell_token_amount: offer
+            .sell_token_total_amount
+            .checked_sub(ctx.accounts.offer_sell_token_account.amount)
+            .unwrap(),
     });
 
     Ok(())
@@ -183,6 +193,9 @@ pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Res
 #[derive(Accounts)]
 pub struct TakeOfferTwo<'info> {
     /// The offer account being taken, providing offer details.
+    #[account(
+        constraint = offer.buy_token_mint_2 != system_program::ID @ TakeOfferErrorCode::InvalidTakeOffer
+    )]
     pub offer: Account<'info, Offer>,
 
     /// Offer's sell token ATA, receives the user’s sell tokens.
@@ -277,7 +290,11 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
     let offer = &ctx.accounts.offer;
 
     require!(
-        ctx.accounts.offer_sell_token_account.amount + sell_token_amount
+        ctx.accounts
+            .offer_sell_token_account
+            .amount
+            .checked_add(sell_token_amount)
+            .unwrap()
             <= offer.sell_token_total_amount,
         TakeOfferErrorCode::OfferExceedsSellLimit
     );
@@ -351,6 +368,10 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
         sell_token_amount,
         buy_token_1_amount,
         buy_token_2_amount,
+        remaining_sell_token_amount: offer
+            .sell_token_total_amount
+            .checked_sub(ctx.accounts.offer_sell_token_account.amount)
+            .unwrap(),
     });
 
     Ok(())
@@ -369,6 +390,7 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
 /// # Errors
 /// - [`TakeOfferErrorCode::InvalidSellTokenMint`] if `sell_token_total_amount` is zero.
 /// - [`TakeOfferErrorCode::CalculationOverflow`] if multiplication or division overflows.
+/// - [`TakeOfferErrorCode::ZeroBuyTokenAmount`] if the result is zero.
 fn calculate_buy_amount(
     sell_token_amount: u64,
     buy_token_total_amount: u64,
@@ -384,6 +406,9 @@ fn calculate_buy_amount(
         .ok_or(TakeOfferErrorCode::CalculationOverflow)?;
     if result > u64::MAX as u128 {
         return Err(error!(TakeOfferErrorCode::CalculationOverflow));
+    }
+    if result == 0 {
+        return Err(error!(TakeOfferErrorCode::ZeroBuyTokenAmount));
     }
     Ok(result as u64)
 }
@@ -414,4 +439,8 @@ pub enum TakeOfferErrorCode {
     /// Triggered when buy amount calculations overflow or are invalid.
     #[msg("Calculation overflowed or invalid.")]
     CalculationOverflow,
+
+    /// Triggered when the calculated buy token amount is zero.
+    #[msg("Zero buy token amount.")]
+    ZeroBuyTokenAmount,
 }

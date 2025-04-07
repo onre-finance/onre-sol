@@ -1,77 +1,71 @@
 import * as anchor from '@coral-xyz/anchor';
-import {AnchorProvider, Program} from '@coral-xyz/anchor';
-import {PublicKey, SystemProgram} from '@solana/web3.js';
-import type {OnreApp} from '../target/types/onre_app';
 import {
     createAssociatedTokenAccountInstruction,
     getAssociatedTokenAddressSync,
-    TOKEN_PROGRAM_ID
-} from '@solana/spl-token'
+    TOKEN_PROGRAM_ID,
+} from '@solana/spl-token';
 import bs58 from 'bs58';
-import {BN} from 'bn.js'
+import { BN } from 'bn.js';
 
-import idl from "../target/idl/onre_app.json" assert {type: "json"};
-
-const PROGRAM_ID = new PublicKey('J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2');
-
-const BOSS = new PublicKey('7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC');
-
-const SELL_TOKEN_MINT = new PublicKey("qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWeQu");
-
-const BUY_TOKEN_MINT = new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C")
-
+import { getBossAccount, getOffer, initProgram, PROGRAM_ID } from './script-commons';
+import { PublicKey } from '@solana/web3.js';
 
 async function createMakeOfferOneTransaction() {
     const oldOfferId = new BN(1);
-    const offerId = new BN(2);
-    const buyTokenAmount = new BN(100e9);
-    const sellTokenAmount = new BN(100e9);
-    const connection = new anchor.web3.Connection('https://api.mainnet-beta.solana.com');
-    const wallet = new anchor.Wallet(anchor.web3.Keypair.generate());
-    const provider = new AnchorProvider(connection, wallet);
-    const program = new Program(idl as OnreApp, provider);
-    anchor.setProvider(provider);
+    const offerId = new BN(1);
 
-    const [oldOfferAuthority] = PublicKey.findProgramAddressSync([Buffer.from('offer_authority'), oldOfferId.toArrayLike(Buffer, 'le', 8)], program.programId);
-    const [offerAuthority] = PublicKey.findProgramAddressSync([Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)], program.programId);
+    const buyTokenAmount = new BN(150e9);
+    const sellTokenAmount = new BN(150e9);
+
+    const program = await initProgram();
+    const connection = new anchor.web3.Connection(process.env.SOL_MAINNET_RPC_URL || '');
+
+    const BOSS = await getBossAccount(program);
+    const offer = await getOffer(oldOfferId, program);
+
+    const [oldOfferAuthority] = PublicKey.findProgramAddressSync(
+        [Buffer.from('offer_authority'), oldOfferId.toArrayLike(Buffer, 'le', 8)],
+        program.programId,
+    );
+    const [offerAuthority] = PublicKey.findProgramAddressSync(
+        [Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)],
+        program.programId,
+    );
 
     const offerSellTokenAccountInstruction = createAssociatedTokenAccountInstruction(
         BOSS,
-        getAssociatedTokenAddressSync(SELL_TOKEN_MINT, offerAuthority, true),
+        getAssociatedTokenAddressSync(offer.sellTokenMint, offerAuthority, true),
         offerAuthority,
-        SELL_TOKEN_MINT,
-        TOKEN_PROGRAM_ID
+        offer.sellTokenMint,
+        TOKEN_PROGRAM_ID,
     );
     const offerBuyTokenAccountInstruction = createAssociatedTokenAccountInstruction(
         BOSS,
-        getAssociatedTokenAddressSync(BUY_TOKEN_MINT, offerAuthority, true),
+        getAssociatedTokenAddressSync(offer.buyTokenMint1, offerAuthority, true),
         offerAuthority,
-        BUY_TOKEN_MINT,
+        offer.buyTokenMint1,
     );
     // Derive the state PDA
-    const [statePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('state')],
-        PROGRAM_ID
-    );
+    const [statePda] = PublicKey.findProgramAddressSync([Buffer.from('state')], PROGRAM_ID);
 
     const [offerPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('offer'),
-            offerId.toArrayLike(Buffer, 'le', 8)], PROGRAM_ID
-    )
+        [Buffer.from('offer'), offerId.toArrayLike(Buffer, 'le', 8)],
+        PROGRAM_ID,
+    );
 
     const [oldOfferPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('offer'),
-            oldOfferId.toArrayLike(Buffer, 'le', 8)], PROGRAM_ID
-    )
+        [Buffer.from('offer'), oldOfferId.toArrayLike(Buffer, 'le', 8)],
+        PROGRAM_ID,
+    );
     try {
         let closeInstruction = await program.methods
             .closeOfferOne()
             .accountsPartial({
                 offer: oldOfferPda,
-                offerSellTokenAccount: getAssociatedTokenAddressSync(SELL_TOKEN_MINT, oldOfferAuthority, true),
-                offerBuy1TokenAccount: getAssociatedTokenAddressSync(BUY_TOKEN_MINT, oldOfferAuthority, true),
-                bossBuy1TokenAccount: getAssociatedTokenAddressSync(BUY_TOKEN_MINT, BOSS, true),
-                bossSellTokenAccount: getAssociatedTokenAddressSync(SELL_TOKEN_MINT, BOSS, true),
+                offerSellTokenAccount: getAssociatedTokenAddressSync(offer.sellTokenMint, oldOfferAuthority, true),
+                offerBuy1TokenAccount: getAssociatedTokenAddressSync(offer.buyTokenMint1, oldOfferAuthority, true),
+                bossBuy1TokenAccount: getAssociatedTokenAddressSync(offer.buyTokenMint1, BOSS, true),
+                bossSellTokenAccount: getAssociatedTokenAddressSync(offer.sellTokenMint, BOSS, true),
                 state: statePda,
                 offerTokenAuthority: oldOfferAuthority,
                 boss: BOSS,
@@ -82,16 +76,16 @@ async function createMakeOfferOneTransaction() {
             .makeOfferOne(offerId, buyTokenAmount, sellTokenAmount)
             .accountsPartial({
                 offer: offerPda,
-                offerSellTokenAccount: getAssociatedTokenAddressSync(SELL_TOKEN_MINT, offerAuthority, true),
-                offerBuyToken1Account: getAssociatedTokenAddressSync(BUY_TOKEN_MINT, offerAuthority, true),
+                offerSellTokenAccount: getAssociatedTokenAddressSync(offer.sellTokenMint, offerAuthority, true),
+                offerBuyToken1Account: getAssociatedTokenAddressSync(offer.buyTokenMint1, offerAuthority, true),
                 offerTokenAuthority: offerAuthority,
-                bossBuyToken1Account: getAssociatedTokenAddressSync(BUY_TOKEN_MINT, BOSS, true),
-                sellTokenMint: SELL_TOKEN_MINT,
-                buyToken1Mint: BUY_TOKEN_MINT,
+                bossBuyToken1Account: getAssociatedTokenAddressSync(offer.buyTokenMint1, BOSS, true),
+                sellTokenMint: offer.sellTokenMint,
+                buyToken1Mint: offer.buyTokenMint1,
                 state: statePda,
-                boss: BOSS
+                boss: BOSS,
             })
-            .preInstructions([offerBuyTokenAccountInstruction, offerSellTokenAccountInstruction, closeInstruction])
+            .preInstructions([closeInstruction, offerBuyTokenAccountInstruction, offerSellTokenAccountInstruction])
             .transaction();
 
         tx.feePayer = BOSS;
@@ -121,4 +115,4 @@ async function main() {
     }
 }
 
-main();
+await main();
