@@ -4,11 +4,9 @@ import bs58 from "bs58";
 
 import { initProgram } from "./script-commons";
 
-const PROGRAM_ID = new PublicKey(
-  "J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2",
-);
+const PROGRAM_ID = new PublicKey("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
 
-const BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC");
+const BOSS = new PublicKey("45YnzauhsBM8CpUz96Djf8UG5vqq2Dua62wuW9H3jaJ5"); // WARN: SQUAD MAIN ACCOUNT!!!
 
 async function createMakeOfferOneTransaction() {
   const connection = new anchor.web3.Connection(

@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/onre_app.json`.
  */
 export type OnreApp = {
-  "address": "J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2",
+  "address": "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe",
   "metadata": {
     "name": "onreApp",
     "version": "0.1.0",
@@ -3576,7 +3576,38 @@ export type OnreApp = {
   "errors": [
     {
       "code": 6000,
-      "name": "invalidBossAddress"
+      "name": "insufficientOfferBalance",
+      "msg": "Insufficient tokens remaining in the offer."
+    },
+    {
+      "code": 6001,
+      "name": "invalidSellTokenMint",
+      "msg": "The sell token mint does not match the offer."
+    },
+    {
+      "code": 6002,
+      "name": "invalidBuyTokenMint",
+      "msg": "The buy token mint does not match the offer."
+    },
+    {
+      "code": 6003,
+      "name": "offerExceedsSellLimit",
+      "msg": "The offer would exceed its total sell token limit."
+    },
+    {
+      "code": 6004,
+      "name": "invalidTakeOffer",
+      "msg": "The offer is of 2 buy token type."
+    },
+    {
+      "code": 6005,
+      "name": "calculationOverflow",
+      "msg": "Calculation overflowed or invalid."
+    },
+    {
+      "code": 6006,
+      "name": "zeroBuyTokenAmount",
+      "msg": "Zero buy token amount."
     }
   ],
   "types": [

@@ -10,8 +10,8 @@ import { BN } from 'bn.js';
 
 import { getBossAccount, initProgram, PROGRAM_ID } from './script-commons';
 
-const SELL_TOKEN_MINT = new PublicKey('qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWeQu');
-const BUY_TOKEN_MINT = new PublicKey('5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C');
+const SELL_TOKEN_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'); // USDC Mint Address
+const BUY_TOKEN_MINT = new PublicKey('5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5');  // ONe Mint Address
 
 async function createMakeOfferOneTransaction() {
     const program = await initProgram();
@@ -19,7 +19,7 @@ async function createMakeOfferOneTransaction() {
 
     const offerId = new BN(4);
     const buyTokenAmount = new BN(100e9);
-    const sellTokenAmount = new BN(100e9);
+    const sellTokenAmount = new BN(100e6); // 6 decimals for USDC
 
     const [offerAuthority] = PublicKey.findProgramAddressSync(
         [Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)],

@@ -1,0 +1,28 @@
+
+{
+  "overrides": [
+    {
+      "files": ".prettierrc",
+      "options": {
+        "parser": "json"
+      }
+    },
+    {
+      "files": "*.js",
+      "options": {
+        "parser": "flow",
+        "printWidth": 180,
+        "tabWidth": 4,
+        "useTabs": false,
+        "singleQuote": false,
+        "bracketSpacing": true
+      }
+    },
+    {
+      "files": "*.cjs",
+      "options": {
+        "printWidth": 180
+      }
+    }
+  ]
+}

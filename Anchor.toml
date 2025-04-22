@@ -6,14 +6,14 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-onreapp = "J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2"
+onreapp = "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
 cluster = "Localnet"
-wallet = "~/.config/solana/id.json"
+wallet = "/Users/aleksandar/git/onre/onre-sol/onREP1E8Yk7p83fRFeApZSTN1vCzdfZKzS46dWErsre.json"
 
 [scripts]
 test = "./node_modules/.bin/jest --preset ts-jest"
