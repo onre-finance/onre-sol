@@ -9,7 +9,7 @@ The program integrates blockchain technology to provide **transparency, liquidit
 ## Directory Structure
 The program's source code is organized as follows:
 ```plaintext
-anchor/programs/onreapp/src/ 
+programs/onreapp/src/ 
 ├── contexts/ 
 │ ├── mod.rs 
 │ └── offer_context.rs 
