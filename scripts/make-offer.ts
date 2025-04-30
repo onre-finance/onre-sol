@@ -17,8 +17,8 @@ async function createMakeOfferOneTransaction() {
     const program = await initProgram();
     const connection = new anchor.web3.Connection(process.env.SOL_MAINNET_RPC_URL || '');
 
-    const offerId = new BN(4);
-    const buyTokenAmount = new BN(100e9);
+    const offerId = new BN(1);
+    const buyTokenAmount = new BN(100e9);  // 9 decimals for ONe
     const sellTokenAmount = new BN(100e6); // 6 decimals for USDC
 
     const [offerAuthority] = PublicKey.findProgramAddressSync(

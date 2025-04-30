@@ -138,3 +138,14 @@ Use a client application or the Anchor CLI to call the program's instructions.
 The OnreApp Solana Program is a pioneering implementation of tokenized (re)insurance pools on the blockchain. By combining the transparency and efficiency of Solana with the institutional-grade compliance of Bermuda’s regulatory framework, it provides investors with a novel way to access stable, yield-generating assets.
 
 This program represents the convergence of blockchain technology and traditional financial instruments, setting a new standard for digital investment products.
+
+## Update Solana Program ID
+
+Drop in the program key into `target/deploy/onreapp-keypair.json` and then:
+
+```zsh
+anchor keys sync
+anchor build
+```
+
+That is going to update the program ID in `anchor.toml` and in the program `lib.rs`.

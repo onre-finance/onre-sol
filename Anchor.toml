@@ -13,7 +13,7 @@ url = "https://api.apr.dev"
 
 [provider]
 cluster = "Localnet"
-wallet = "/Users/aleksandar/git/onre/onre-sol/onREP1E8Yk7p83fRFeApZSTN1vCzdfZKzS46dWErsre.json"
+wallet = "~/.config/solana/id.json" # used only for test deployment
 
 [scripts]
 test = "./node_modules/.bin/jest --preset ts-jest"
