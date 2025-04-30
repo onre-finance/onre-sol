@@ -2,6 +2,7 @@
 import { BN } from 'bn.js';
 import { getOffer, initProgram } from './script-commons';
 
+// @ts-ignore
 async function fetchOffer(offerId: BN) {
     const program = await initProgram();
 
