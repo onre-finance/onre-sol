@@ -1,7 +1,6 @@
 use crate::state::State;
 use anchor_lang::prelude::*; // Includes `emit!` and `#[event]`
 use anchor_lang::Accounts;
-use anchor_lang::system_program;
 
 /// Error codes for the set_boss instruction.
 #[error_code]
