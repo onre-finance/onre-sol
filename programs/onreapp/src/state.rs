@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::program_option::COption;
 
 /// Represents an offer in the Onre App program.
 ///
@@ -18,13 +19,18 @@ use anchor_lang::prelude::*;
 #[derive(InitSpace)]
 pub struct Offer {
     pub offer_id: u64,
+    pub sell_token_start_amount: u64,
+    pub sell_token_end_amount: u64,
     pub sell_token_mint: Pubkey,
-    pub buy_token_mint_1: Pubkey,
-    pub buy_token_mint_2: Pubkey,
-    pub buy_token_1_total_amount: u64,
-    pub buy_token_2_total_amount: u64,
-    pub sell_token_total_amount: u64,
+    pub buy_token_1: OfferToken,
+    pub buy_token_2: OfferToken,
     pub authority_bump: u8,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
+pub struct OfferToken {
+    pub mint: Pubkey,
+    pub amount: u64,
 }
 
 /// Represents the program state in the Onre App program.
