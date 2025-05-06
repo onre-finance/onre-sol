@@ -16,7 +16,7 @@
     "set-program:prod": "cp ~/.config/solana/onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe.json target/deploy/onreapp-keypair.json && anchor keys sync && anchor build"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "^0.30.1",
+    "@coral-xyz/anchor": "^0.31.1",
     "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
     "@solana/spl-token": "0.4.12",
     "@solana/wallet-adapter-base": "^0.9.24",
