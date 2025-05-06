@@ -38,7 +38,7 @@ pub struct TakeOfferOne<'info> {
     /// The offer account being taken, providing offer details.
     /// Ensures this is a single buy token offer by checking `buy_token_mint_2`.
     #[account(
-        constraint = offer.buy_token_mint_2 == system_program::ID @ TakeOfferErrorCode::InvalidTakeOffer
+        constraint = offer.buy_token_2.mint == system_program::ID @ TakeOfferErrorCode::InvalidTakeOffer
     )]
     pub offer: Account<'info, Offer>,
 
@@ -53,7 +53,7 @@ pub struct TakeOfferOne<'info> {
     /// Offer's buy token 1 ATA, sends buy tokens to the user.
     #[account(
         mut,
-        associated_token::mint = offer.buy_token_mint_1,
+        associated_token::mint = offer.buy_token_1.mint,
         associated_token::authority = offer_token_authority,
     )]
     pub offer_buy_token_1_account: Account<'info, TokenAccount>,
@@ -72,9 +72,9 @@ pub struct TakeOfferOne<'info> {
     /// Ensures mint matches the offer’s buy token 1 mint.
     #[account(
         mut,
-        associated_token::mint = offer.buy_token_mint_1,
+        associated_token::mint = offer.buy_token_1.mint,
         associated_token::authority = user,
-        constraint = offer.buy_token_mint_1 == user_buy_token_1_account.mint @ TakeOfferErrorCode::InvalidBuyTokenMint
+        constraint = offer.buy_token_1.mint == user_buy_token_1_account.mint @ TakeOfferErrorCode::InvalidBuyTokenMint
     )]
     pub user_buy_token_1_account: Account<'info, TokenAccount>,
 
@@ -121,14 +121,14 @@ pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Res
             .amount
             .checked_add(sell_token_amount)
             .unwrap()
-            <= offer.sell_token_total_amount,
+            <= offer.sell_token_end_amount,
         TakeOfferErrorCode::OfferExceedsSellLimit
     );
 
     let buy_token_1_amount = calculate_buy_amount(
         sell_token_amount,
-        offer.buy_token_1_total_amount,
-        offer.sell_token_total_amount,
+        offer.buy_token_1.amount,
+        offer.sell_token_end_amount,
     )?;
     require!(
         ctx.accounts.offer_buy_token_1_account.amount >= buy_token_1_amount,
@@ -238,7 +238,7 @@ pub struct TakeOfferTwo<'info> {
         mut,
         associated_token::mint = offer.buy_token_mint_1,
         associated_token::authority = user,
-        constraint = offer.buy_token_mint_1 == user_buy_token_1_account.mint @ TakeOfferErrorCode::InvalidBuyTokenMint
+        constraint = offer.buy_token_1.mint == user_buy_token_1_account.mint @ TakeOfferErrorCode::InvalidBuyTokenMint
   )]
     pub user_buy_token_1_account: Account<'info, TokenAccount>,
 
@@ -248,7 +248,7 @@ pub struct TakeOfferTwo<'info> {
         mut,
         associated_token::mint = offer.buy_token_mint_2,
         associated_token::authority = user,
-        constraint = offer.buy_token_mint_2 == user_buy_token_2_account.mint @ TakeOfferErrorCode::InvalidBuyTokenMint
+        constraint = offer.buy_token_2.mint == user_buy_token_2_account.mint @ TakeOfferErrorCode::InvalidBuyTokenMint
   )]
     pub user_buy_token_2_account: Account<'info, TokenAccount>,
 

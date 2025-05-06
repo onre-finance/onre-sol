@@ -6,13 +6,13 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-onreapp = "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe"
+onreapp = "GtEuAcT5exrM9fKwGo53FiH9MVEDPPiCB1r5Xp68vJ8F"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

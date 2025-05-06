@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/onre_app.json`.
  */
 export type OnreApp = {
-  "address": "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe",
+  "address": "GtEuAcT5exrM9fKwGo53FiH9MVEDPPiCB1r5Xp68vJ8F",
   "metadata": {
     "name": "onreApp",
     "version": "0.1.0",
@@ -196,7 +196,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -290,7 +290,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -670,7 +670,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -764,7 +764,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_2",
+                "path": "offer.buy_token_2.mint",
                 "account": "offer"
               }
             ],
@@ -858,7 +858,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -952,7 +952,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_2",
+                "path": "offer.buy_token_2.mint",
                 "account": "offer"
               }
             ],
@@ -1636,11 +1636,23 @@ export type OnreApp = {
           "type": "u64"
         },
         {
-          "name": "buyToken1TotalAmount",
+          "name": "buyTokenTotalAmount",
           "type": "u64"
         },
         {
-          "name": "sellTokenTotalAmount",
+          "name": "sellTokenOfferStartAmount",
+          "type": "u64"
+        },
+        {
+          "name": "sellTokenOfferEndAmount",
+          "type": "u64"
+        },
+        {
+          "name": "sellTokenStartTime",
+          "type": "u64"
+        },
+        {
+          "name": "sellTokenEndTime",
           "type": "u64"
         }
       ]
@@ -2259,7 +2271,19 @@ export type OnreApp = {
           "type": "u64"
         },
         {
-          "name": "sellTokenTotalAmount",
+          "name": "sellTokenOfferStartAmount",
+          "type": "u64"
+        },
+        {
+          "name": "sellTokenOfferEndAmount",
+          "type": "u64"
+        },
+        {
+          "name": "sellTokenStartTime",
+          "type": "u64"
+        },
+        {
+          "name": "sellTokenEndTime",
           "type": "u64"
         }
       ]
@@ -2490,7 +2514,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -2680,7 +2704,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -2961,7 +2985,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -3055,7 +3079,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_2",
+                "path": "offer.buy_token_2.mint",
                 "account": "offer"
               }
             ],
@@ -3245,7 +3269,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -3340,7 +3364,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_2",
+                "path": "offer.buy_token_2.mint",
                 "account": "offer"
               }
             ],
@@ -3662,28 +3686,32 @@ export type OnreApp = {
             "type": "u64"
           },
           {
+            "name": "sellTokenStartAmount",
+            "type": "u64"
+          },
+          {
+            "name": "sellTokenEndAmount",
+            "type": "u64"
+          },
+          {
             "name": "sellTokenMint",
             "type": "pubkey"
           },
           {
-            "name": "buyTokenMint1",
-            "type": "pubkey"
+            "name": "buyToken1",
+            "type": {
+              "defined": {
+                "name": "offerToken"
+              }
+            }
           },
           {
-            "name": "buyTokenMint2",
-            "type": "pubkey"
-          },
-          {
-            "name": "buyToken1TotalAmount",
-            "type": "u64"
-          },
-          {
-            "name": "buyToken2TotalAmount",
-            "type": "u64"
-          },
-          {
-            "name": "sellTokenTotalAmount",
-            "type": "u64"
+            "name": "buyToken2",
+            "type": {
+              "defined": {
+                "name": "offerToken"
+              }
+            }
           },
           {
             "name": "authorityBump",
@@ -3732,11 +3760,23 @@ export type OnreApp = {
             "type": "pubkey"
           },
           {
-            "name": "buyToken1TotalAmount",
+            "name": "buyTokenTotalAmount",
             "type": "u64"
           },
           {
-            "name": "sellTokenTotalAmount",
+            "name": "sellTokenStartAmount",
+            "type": "u64"
+          },
+          {
+            "name": "sellTokenEndAmount",
+            "type": "u64"
+          },
+          {
+            "name": "offerStartTime",
+            "type": "u64"
+          },
+          {
+            "name": "offerEndTime",
             "type": "u64"
           }
         ]
@@ -3767,7 +3807,19 @@ export type OnreApp = {
             "type": "u64"
           },
           {
-            "name": "sellTokenTotalAmount",
+            "name": "sellTokenStartAmount",
+            "type": "u64"
+          },
+          {
+            "name": "sellTokenEndAmount",
+            "type": "u64"
+          },
+          {
+            "name": "offerStartTime",
+            "type": "u64"
+          },
+          {
+            "name": "offerEndTime",
             "type": "u64"
           }
         ]
@@ -3834,6 +3886,22 @@ export type OnreApp = {
           },
           {
             "name": "remainingSellTokenAmount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "offerToken",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
             "type": "u64"
           }
         ]

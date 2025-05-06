@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use instructions::*;
 
 // Program ID declaration
-declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
+declare_id!("GtEuAcT5exrM9fKwGo53FiH9MVEDPPiCB1r5Xp68vJ8F");
 
 pub mod contexts;
 pub mod instructions;
@@ -29,14 +29,20 @@ pub mod onre_app {
     pub fn make_offer_one(
         ctx: Context<MakeOfferOne>,
         offer_id: u64,
-        buy_token_1_total_amount: u64,
-        sell_token_total_amount: u64,
+        buy_token_total_amount: u64,
+        sell_token_offer_start_amount: u64,
+        sell_token_offer_end_amount: u64,
+        sell_token_start_time: u64,
+        sell_token_end_time: u64,
     ) -> Result<()> {
         make_offer::make_offer_one(
             ctx,
             offer_id,
-            buy_token_1_total_amount,
-            sell_token_total_amount,
+            buy_token_total_amount,
+            sell_token_offer_start_amount,
+            sell_token_offer_end_amount,
+            sell_token_start_time,
+            sell_token_end_time,
         )
     }
 
@@ -49,14 +55,20 @@ pub mod onre_app {
         offer_id: u64,
         buy_token_1_total_amount: u64,
         buy_token_2_total_amount: u64,
-        sell_token_total_amount: u64,
+        sell_token_offer_start_amount: u64,
+        sell_token_offer_end_amount: u64,
+        sell_token_start_time: u64,
+        sell_token_end_time: u64,
     ) -> Result<()> {
         make_offer::make_offer_two(
             ctx,
             offer_id,
             buy_token_1_total_amount,
             buy_token_2_total_amount,
-            sell_token_total_amount,
+            sell_token_offer_start_amount,
+            sell_token_offer_end_amount,
+            sell_token_start_time,
+            sell_token_end_time,
         )
     }
 

@@ -1,5 +1,5 @@
 {
-  "address": "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe",
+  "address": "GtEuAcT5exrM9fKwGo53FiH9MVEDPPiCB1r5Xp68vJ8F",
   "metadata": {
     "name": "onre_app",
     "version": "0.1.0",
@@ -190,7 +190,7 @@
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "Offer"
               }
             ],
@@ -284,7 +284,7 @@
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "Offer"
               }
             ],
@@ -664,7 +664,7 @@
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "Offer"
               }
             ],
@@ -758,7 +758,7 @@
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_2",
+                "path": "offer.buy_token_2.mint",
                 "account": "Offer"
               }
             ],
@@ -852,7 +852,7 @@
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "Offer"
               }
             ],
@@ -946,7 +946,7 @@
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_2",
+                "path": "offer.buy_token_2.mint",
                 "account": "Offer"
               }
             ],
@@ -1630,11 +1630,23 @@
           "type": "u64"
         },
         {
-          "name": "buy_token_1_total_amount",
+          "name": "buy_token_total_amount",
           "type": "u64"
         },
         {
-          "name": "sell_token_total_amount",
+          "name": "sell_token_offer_start_amount",
+          "type": "u64"
+        },
+        {
+          "name": "sell_token_offer_end_amount",
+          "type": "u64"
+        },
+        {
+          "name": "sell_token_start_time",
+          "type": "u64"
+        },
+        {
+          "name": "sell_token_end_time",
           "type": "u64"
         }
       ]
@@ -2253,7 +2265,19 @@
           "type": "u64"
         },
         {
-          "name": "sell_token_total_amount",
+          "name": "sell_token_offer_start_amount",
+          "type": "u64"
+        },
+        {
+          "name": "sell_token_offer_end_amount",
+          "type": "u64"
+        },
+        {
+          "name": "sell_token_start_time",
+          "type": "u64"
+        },
+        {
+          "name": "sell_token_end_time",
           "type": "u64"
         }
       ]
@@ -2484,7 +2508,7 @@
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "Offer"
               }
             ],
@@ -2674,7 +2698,7 @@
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "Offer"
               }
             ],
@@ -2955,7 +2979,7 @@
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "Offer"
               }
             ],
@@ -3049,7 +3073,7 @@
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_2",
+                "path": "offer.buy_token_2.mint",
                 "account": "Offer"
               }
             ],
@@ -3239,7 +3263,7 @@
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "Offer"
               }
             ],
@@ -3334,7 +3358,7 @@
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_2",
+                "path": "offer.buy_token_2.mint",
                 "account": "Offer"
               }
             ],
@@ -3656,28 +3680,32 @@
             "type": "u64"
           },
           {
+            "name": "sell_token_start_amount",
+            "type": "u64"
+          },
+          {
+            "name": "sell_token_end_amount",
+            "type": "u64"
+          },
+          {
             "name": "sell_token_mint",
             "type": "pubkey"
           },
           {
-            "name": "buy_token_mint_1",
-            "type": "pubkey"
+            "name": "buy_token_1",
+            "type": {
+              "defined": {
+                "name": "OfferToken"
+              }
+            }
           },
           {
-            "name": "buy_token_mint_2",
-            "type": "pubkey"
-          },
-          {
-            "name": "buy_token_1_total_amount",
-            "type": "u64"
-          },
-          {
-            "name": "buy_token_2_total_amount",
-            "type": "u64"
-          },
-          {
-            "name": "sell_token_total_amount",
-            "type": "u64"
+            "name": "buy_token_2",
+            "type": {
+              "defined": {
+                "name": "OfferToken"
+              }
+            }
           },
           {
             "name": "authority_bump",
@@ -3726,11 +3754,23 @@
             "type": "pubkey"
           },
           {
-            "name": "buy_token_1_total_amount",
+            "name": "buy_token_total_amount",
             "type": "u64"
           },
           {
-            "name": "sell_token_total_amount",
+            "name": "sell_token_start_amount",
+            "type": "u64"
+          },
+          {
+            "name": "sell_token_end_amount",
+            "type": "u64"
+          },
+          {
+            "name": "offer_start_time",
+            "type": "u64"
+          },
+          {
+            "name": "offer_end_time",
             "type": "u64"
           }
         ]
@@ -3761,7 +3801,19 @@
             "type": "u64"
           },
           {
-            "name": "sell_token_total_amount",
+            "name": "sell_token_start_amount",
+            "type": "u64"
+          },
+          {
+            "name": "sell_token_end_amount",
+            "type": "u64"
+          },
+          {
+            "name": "offer_start_time",
+            "type": "u64"
+          },
+          {
+            "name": "offer_end_time",
             "type": "u64"
           }
         ]
@@ -3828,6 +3880,22 @@
           },
           {
             "name": "remaining_sell_token_amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OfferToken",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
             "type": "u64"
           }
         ]
