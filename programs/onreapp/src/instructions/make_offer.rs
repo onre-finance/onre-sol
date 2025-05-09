@@ -14,6 +14,7 @@ pub struct OfferMadeOne {
     pub sell_token_end_amount: u64,
     pub offer_start_time: u64,
     pub offer_end_time: u64,
+    pub price_fix_duration: u64,
 }
 
 /// Event emitted when an offer with two buy tokens is created.
@@ -27,6 +28,7 @@ pub struct OfferMadeTwo {
     pub sell_token_end_amount: u64,
     pub offer_start_time: u64,
     pub offer_end_time: u64,
+    pub price_fix_duration: u64,
 }
 
 /// Account structure for creating an offer with one buy token.
@@ -74,6 +76,7 @@ pub struct MakeOfferOne<'info> {
     /// Derived PDA for token authority, does not store data.
     ///
     /// # Note
+    /// This account is marked with `CHECK` as it's validated by the seed derivation.
     #[account(
         seeds = [b"offer_authority", offer_id.to_le_bytes().as_ref()],
         bump
@@ -324,6 +327,7 @@ pub fn make_offer_one(
         sell_token_end_amount,
         offer_start_time,
         offer_end_time,
+        price_fix_duration,
     });
 
     Ok(())
@@ -431,6 +435,7 @@ pub fn make_offer_two(
         sell_token_end_amount,
         offer_start_time,
         offer_end_time,
+        price_fix_duration,
     });
 
     Ok(())
