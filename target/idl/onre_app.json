@@ -1,5 +1,5 @@
 {
-  "address": "GtEuAcT5exrM9fKwGo53FiH9MVEDPPiCB1r5Xp68vJ8F",
+  "address": "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe",
   "metadata": {
     "name": "onre_app",
     "version": "0.1.0",
@@ -3797,6 +3797,10 @@
           {
             "name": "offer_end_time",
             "type": "u64"
+          },
+          {
+            "name": "price_fix_duration",
+            "type": "u64"
           }
         ]
       }
@@ -3839,6 +3843,10 @@
           },
           {
             "name": "offer_end_time",
+            "type": "u64"
+          },
+          {
+            "name": "price_fix_duration",
             "type": "u64"
           }
         ]
