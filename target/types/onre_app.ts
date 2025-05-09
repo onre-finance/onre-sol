@@ -1462,7 +1462,7 @@ export type OnreApp = {
             "Derived PDA for token authority, does not store data.",
             "",
             "# Note",
-            "This account is marked with `CHECK` as it’s validated by the seed derivation."
+            "This account is marked with `CHECK` as it's validated by the seed derivation."
           ],
           "pda": {
             "seeds": [
@@ -1640,19 +1640,23 @@ export type OnreApp = {
           "type": "u64"
         },
         {
-          "name": "sellTokenOfferStartAmount",
+          "name": "sellTokenStartAmount",
           "type": "u64"
         },
         {
-          "name": "sellTokenOfferEndAmount",
+          "name": "sellTokenEndAmount",
           "type": "u64"
         },
         {
-          "name": "sellTokenStartTime",
+          "name": "offerStartTime",
           "type": "u64"
         },
         {
-          "name": "sellTokenEndTime",
+          "name": "offerEndTime",
+          "type": "u64"
+        },
+        {
+          "name": "priceFixDuration",
           "type": "u64"
         }
       ]
@@ -1990,7 +1994,7 @@ export type OnreApp = {
             "Derived PDA for token authority, does not store data.",
             "",
             "# Note",
-            "This account is marked with `CHECK` as it’s validated by the seed derivation."
+            "This account is marked with `CHECK` as it's validated by the seed derivation."
           ],
           "pda": {
             "seeds": [
@@ -2271,19 +2275,23 @@ export type OnreApp = {
           "type": "u64"
         },
         {
-          "name": "sellTokenOfferStartAmount",
+          "name": "sellTokenStartAmount",
           "type": "u64"
         },
         {
-          "name": "sellTokenOfferEndAmount",
+          "name": "sellTokenEndAmount",
           "type": "u64"
         },
         {
-          "name": "sellTokenStartTime",
+          "name": "offerStartTime",
           "type": "u64"
         },
         {
-          "name": "sellTokenEndTime",
+          "name": "offerEndTime",
+          "type": "u64"
+        },
+        {
+          "name": "priceFixDuration",
           "type": "u64"
         }
       ]
@@ -2372,7 +2380,7 @@ export type OnreApp = {
         {
           "name": "offerSellTokenAccount",
           "docs": [
-            "Offer's sell token ATA, receives the user’s sell tokens."
+            "Offer's sell token ATA, receives the user's sell tokens."
           ],
           "writable": true,
           "pda": {
@@ -2560,8 +2568,8 @@ export type OnreApp = {
         {
           "name": "userSellTokenAccount",
           "docs": [
-            "User’s sell token ATA, sends sell tokens to the offer.",
-            "Ensures mint matches the offer’s sell token mint."
+            "User's sell token ATA, sends sell tokens to the offer.",
+            "Ensures mint matches the offer's sell token mint."
           ],
           "writable": true,
           "pda": {
@@ -2655,8 +2663,8 @@ export type OnreApp = {
         {
           "name": "userBuyToken1Account",
           "docs": [
-            "User’s buy token 1 ATA, receives buy tokens from the offer.",
-            "Ensures mint matches the offer’s buy token 1 mint."
+            "User's buy token 1 ATA, receives buy tokens from the offer.",
+            "Ensures mint matches the offer's buy token 1 mint."
           ],
           "writable": true,
           "pda": {
@@ -2753,7 +2761,7 @@ export type OnreApp = {
             "Derived PDA for token authority, controls offer token accounts.",
             "",
             "# Note",
-            "This account is marked with `CHECK` as it’s validated by the seed derivation."
+            "This account is marked with `CHECK` as it's validated by the seed derivation."
           ],
           "pda": {
             "seeds": [
@@ -2843,7 +2851,7 @@ export type OnreApp = {
         {
           "name": "offerSellTokenAccount",
           "docs": [
-            "Offer's sell token ATA, receives the user’s sell tokens."
+            "Offer's sell token ATA, receives the user's sell tokens."
           ],
           "writable": true,
           "pda": {
@@ -3125,8 +3133,8 @@ export type OnreApp = {
         {
           "name": "userSellTokenAccount",
           "docs": [
-            "User’s sell token account, sends sell tokens to the offer.",
-            "Ensures mint matches the offer’s sell token mint."
+            "User's sell token account, sends sell tokens to the offer.",
+            "Ensures mint matches the offer's sell token mint."
           ],
           "writable": true,
           "pda": {
@@ -3220,8 +3228,8 @@ export type OnreApp = {
         {
           "name": "userBuyToken1Account",
           "docs": [
-            "User’s buy token 1 ATA, receives buy token 1 from the offer.",
-            "Ensures mint matches the offer’s buy token 1 mint."
+            "User's buy token 1 ATA, receives buy token 1 from the offer.",
+            "Ensures mint matches the offer's buy token 1 mint."
           ],
           "writable": true,
           "pda": {
@@ -3315,8 +3323,8 @@ export type OnreApp = {
         {
           "name": "userBuyToken2Account",
           "docs": [
-            "User’s buy token 2 ATA, receives buy token 2 from the offer.",
-            "Ensures mint matches the offer’s buy token 2 mint."
+            "User's buy token 2 ATA, receives buy token 2 from the offer.",
+            "Ensures mint matches the offer's buy token 2 mint."
           ],
           "writable": true,
           "pda": {
@@ -3413,7 +3421,7 @@ export type OnreApp = {
             "Derived PDA for token authority, controls offer token accounts.",
             "",
             "# Note",
-            "This account is marked with `CHECK` as it’s validated by the seed derivation."
+            "This account is marked with `CHECK` as it's validated by the seed derivation."
           ],
           "pda": {
             "seeds": [
@@ -3632,6 +3640,11 @@ export type OnreApp = {
       "code": 6006,
       "name": "zeroBuyTokenAmount",
       "msg": "Zero buy token amount."
+    },
+    {
+      "code": 6007,
+      "name": "invalidCurrentTime",
+      "msg": "Current time must be within the offer's start and end time range"
     }
   ],
   "types": [
@@ -3676,7 +3689,7 @@ export type OnreApp = {
         "- `buy_token_1_total_amount`: Total amount of the first buy token offered.",
         "- `buy_token_2_total_amount`: Total amount of the second buy token offered (0 if unused).",
         "- `sell_token_total_amount`: Total amount of sell tokens expected.",
-        "- `authority_bump`: Bump seed for the offer’s token authority PDA."
+        "- `authority_bump`: Bump seed for the offer's token authority PDA."
       ],
       "type": {
         "kind": "struct",
@@ -3716,6 +3729,18 @@ export type OnreApp = {
           {
             "name": "authorityBump",
             "type": "u8"
+          },
+          {
+            "name": "priceFixDuration",
+            "type": "u64"
+          },
+          {
+            "name": "offerStartTime",
+            "type": "u64"
+          },
+          {
+            "name": "offerEndTime",
+            "type": "u64"
           }
         ]
       }
@@ -3912,7 +3937,7 @@ export type OnreApp = {
       "docs": [
         "Represents the program state in the Onre App program.",
         "",
-        "Stores the current boss’s public key, used for authorization across instructions.",
+        "Stores the current boss's public key, used for authorization across instructions.",
         "",
         "# Fields",
         "- `boss`: Public key of the current boss, set via `initialize` and updated via `set_boss`."

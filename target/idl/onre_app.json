@@ -1456,7 +1456,7 @@
             "Derived PDA for token authority, does not store data.",
             "",
             "# Note",
-            "This account is marked with `CHECK` as it’s validated by the seed derivation."
+            "This account is marked with `CHECK` as it's validated by the seed derivation."
           ],
           "pda": {
             "seeds": [
@@ -1634,19 +1634,23 @@
           "type": "u64"
         },
         {
-          "name": "sell_token_offer_start_amount",
+          "name": "sell_token_start_amount",
           "type": "u64"
         },
         {
-          "name": "sell_token_offer_end_amount",
+          "name": "sell_token_end_amount",
           "type": "u64"
         },
         {
-          "name": "sell_token_start_time",
+          "name": "offer_start_time",
           "type": "u64"
         },
         {
-          "name": "sell_token_end_time",
+          "name": "offer_end_time",
+          "type": "u64"
+        },
+        {
+          "name": "price_fix_duration",
           "type": "u64"
         }
       ]
@@ -1984,7 +1988,7 @@
             "Derived PDA for token authority, does not store data.",
             "",
             "# Note",
-            "This account is marked with `CHECK` as it’s validated by the seed derivation."
+            "This account is marked with `CHECK` as it's validated by the seed derivation."
           ],
           "pda": {
             "seeds": [
@@ -2265,19 +2269,23 @@
           "type": "u64"
         },
         {
-          "name": "sell_token_offer_start_amount",
+          "name": "sell_token_start_amount",
           "type": "u64"
         },
         {
-          "name": "sell_token_offer_end_amount",
+          "name": "sell_token_end_amount",
           "type": "u64"
         },
         {
-          "name": "sell_token_start_time",
+          "name": "offer_start_time",
           "type": "u64"
         },
         {
-          "name": "sell_token_end_time",
+          "name": "offer_end_time",
+          "type": "u64"
+        },
+        {
+          "name": "price_fix_duration",
           "type": "u64"
         }
       ]
@@ -2366,7 +2374,7 @@
         {
           "name": "offer_sell_token_account",
           "docs": [
-            "Offer's sell token ATA, receives the user’s sell tokens."
+            "Offer's sell token ATA, receives the user's sell tokens."
           ],
           "writable": true,
           "pda": {
@@ -2554,8 +2562,8 @@
         {
           "name": "user_sell_token_account",
           "docs": [
-            "User’s sell token ATA, sends sell tokens to the offer.",
-            "Ensures mint matches the offer’s sell token mint."
+            "User's sell token ATA, sends sell tokens to the offer.",
+            "Ensures mint matches the offer's sell token mint."
           ],
           "writable": true,
           "pda": {
@@ -2649,8 +2657,8 @@
         {
           "name": "user_buy_token_1_account",
           "docs": [
-            "User’s buy token 1 ATA, receives buy tokens from the offer.",
-            "Ensures mint matches the offer’s buy token 1 mint."
+            "User's buy token 1 ATA, receives buy tokens from the offer.",
+            "Ensures mint matches the offer's buy token 1 mint."
           ],
           "writable": true,
           "pda": {
@@ -2747,7 +2755,7 @@
             "Derived PDA for token authority, controls offer token accounts.",
             "",
             "# Note",
-            "This account is marked with `CHECK` as it’s validated by the seed derivation."
+            "This account is marked with `CHECK` as it's validated by the seed derivation."
           ],
           "pda": {
             "seeds": [
@@ -2837,7 +2845,7 @@
         {
           "name": "offer_sell_token_account",
           "docs": [
-            "Offer's sell token ATA, receives the user’s sell tokens."
+            "Offer's sell token ATA, receives the user's sell tokens."
           ],
           "writable": true,
           "pda": {
@@ -3119,8 +3127,8 @@
         {
           "name": "user_sell_token_account",
           "docs": [
-            "User’s sell token account, sends sell tokens to the offer.",
-            "Ensures mint matches the offer’s sell token mint."
+            "User's sell token account, sends sell tokens to the offer.",
+            "Ensures mint matches the offer's sell token mint."
           ],
           "writable": true,
           "pda": {
@@ -3214,8 +3222,8 @@
         {
           "name": "user_buy_token_1_account",
           "docs": [
-            "User’s buy token 1 ATA, receives buy token 1 from the offer.",
-            "Ensures mint matches the offer’s buy token 1 mint."
+            "User's buy token 1 ATA, receives buy token 1 from the offer.",
+            "Ensures mint matches the offer's buy token 1 mint."
           ],
           "writable": true,
           "pda": {
@@ -3309,8 +3317,8 @@
         {
           "name": "user_buy_token_2_account",
           "docs": [
-            "User’s buy token 2 ATA, receives buy token 2 from the offer.",
-            "Ensures mint matches the offer’s buy token 2 mint."
+            "User's buy token 2 ATA, receives buy token 2 from the offer.",
+            "Ensures mint matches the offer's buy token 2 mint."
           ],
           "writable": true,
           "pda": {
@@ -3407,7 +3415,7 @@
             "Derived PDA for token authority, controls offer token accounts.",
             "",
             "# Note",
-            "This account is marked with `CHECK` as it’s validated by the seed derivation."
+            "This account is marked with `CHECK` as it's validated by the seed derivation."
           ],
           "pda": {
             "seeds": [
@@ -3626,6 +3634,11 @@
       "code": 6006,
       "name": "ZeroBuyTokenAmount",
       "msg": "Zero buy token amount."
+    },
+    {
+      "code": 6007,
+      "name": "InvalidCurrentTime",
+      "msg": "Current time must be within the offer's start and end time range"
     }
   ],
   "types": [
@@ -3670,7 +3683,7 @@
         "- `buy_token_1_total_amount`: Total amount of the first buy token offered.",
         "- `buy_token_2_total_amount`: Total amount of the second buy token offered (0 if unused).",
         "- `sell_token_total_amount`: Total amount of sell tokens expected.",
-        "- `authority_bump`: Bump seed for the offer’s token authority PDA."
+        "- `authority_bump`: Bump seed for the offer's token authority PDA."
       ],
       "type": {
         "kind": "struct",
@@ -3710,6 +3723,18 @@
           {
             "name": "authority_bump",
             "type": "u8"
+          },
+          {
+            "name": "price_fix_duration",
+            "type": "u64"
+          },
+          {
+            "name": "offer_start_time",
+            "type": "u64"
+          },
+          {
+            "name": "offer_end_time",
+            "type": "u64"
           }
         ]
       }
@@ -3906,7 +3931,7 @@
       "docs": [
         "Represents the program state in the Onre App program.",
         "",
-        "Stores the current boss’s public key, used for authorization across instructions.",
+        "Stores the current boss's public key, used for authorization across instructions.",
         "",
         "# Fields",
         "- `boss`: Public key of the current boss, set via `initialize` and updated via `set_boss`."

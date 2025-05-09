@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::program_option::COption;
 
 /// Represents an offer in the Onre App program.
 ///
@@ -14,7 +13,7 @@ use anchor_lang::solana_program::program_option::COption;
 /// - `buy_token_1_total_amount`: Total amount of the first buy token offered.
 /// - `buy_token_2_total_amount`: Total amount of the second buy token offered (0 if unused).
 /// - `sell_token_total_amount`: Total amount of sell tokens expected.
-/// - `authority_bump`: Bump seed for the offer’s token authority PDA.
+/// - `authority_bump`: Bump seed for the offer's token authority PDA.
 #[account]
 #[derive(InitSpace)]
 pub struct Offer {
@@ -25,6 +24,9 @@ pub struct Offer {
     pub buy_token_1: OfferToken,
     pub buy_token_2: OfferToken,
     pub authority_bump: u8,
+    pub price_fix_duration: u64,
+    pub offer_start_time: u64,
+    pub offer_end_time: u64,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
@@ -35,7 +37,7 @@ pub struct OfferToken {
 
 /// Represents the program state in the Onre App program.
 ///
-/// Stores the current boss’s public key, used for authorization across instructions.
+/// Stores the current boss's public key, used for authorization across instructions.
 ///
 /// # Fields
 /// - `boss`: Public key of the current boss, set via `initialize` and updated via `set_boss`.

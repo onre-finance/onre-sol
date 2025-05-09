@@ -42,7 +42,7 @@ pub struct TakeOfferOne<'info> {
     )]
     pub offer: Account<'info, Offer>,
 
-    /// Offer's sell token ATA, receives the user’s sell tokens.
+    /// Offer's sell token ATA, receives the user's sell tokens.
     #[account(
         mut,
         associated_token::mint = offer.sell_token_mint,
@@ -58,8 +58,8 @@ pub struct TakeOfferOne<'info> {
     )]
     pub offer_buy_token_1_account: Account<'info, TokenAccount>,
 
-    /// User’s sell token ATA, sends sell tokens to the offer.
-    /// Ensures mint matches the offer’s sell token mint.
+    /// User's sell token ATA, sends sell tokens to the offer.
+    /// Ensures mint matches the offer's sell token mint.
     #[account(
         mut,
         associated_token::mint = offer.sell_token_mint,
@@ -68,8 +68,8 @@ pub struct TakeOfferOne<'info> {
     )]
     pub user_sell_token_account: Account<'info, TokenAccount>,
 
-    /// User’s buy token 1 ATA, receives buy tokens from the offer.
-    /// Ensures mint matches the offer’s buy token 1 mint.
+    /// User's buy token 1 ATA, receives buy tokens from the offer.
+    /// Ensures mint matches the offer's buy token 1 mint.
     #[account(
         mut,
         associated_token::mint = offer.buy_token_1.mint,
@@ -81,7 +81,7 @@ pub struct TakeOfferOne<'info> {
     /// Derived PDA for token authority, controls offer token accounts.
     ///
     /// # Note
-    /// This account is marked with `CHECK` as it’s validated by the seed derivation.
+    /// This account is marked with `CHECK` as it's validated by the seed derivation.
     #[account(
         seeds = [b"offer_authority", offer.offer_id.to_le_bytes().as_ref()],
         bump
@@ -99,6 +99,49 @@ pub struct TakeOfferOne<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Calculates the received buy token amount based on time sectors and user's sell token amount.
+///
+/// # Arguments
+/// - `current_time`: Current timestamp
+/// - `offer_start_time`: Start time of the offer
+/// - `offer_end_time`: End time of the offer
+/// - `price_fix_duration`: Duration of each price fix period in seconds
+/// - `sell_token_start_amount`: Initial sell token amount
+/// - `sell_token_end_amount`: Final sell token amount
+/// - `user_sell_token_amount`: Amount of tokens the user wants to exchange
+///
+/// # Returns
+/// The calculated sell token amount for the current time
+fn calculate_current_sell_amount(
+    offer: &Offer
+) -> Result<u64> {
+    let current_time = Clock::get()?.unix_timestamp as u64;
+    require!(
+        current_time >= offer.offer_start_time && current_time <= offer.offer_end_time,
+        TakeOfferErrorCode::InvalidCurrentTime
+    );
+
+    let total_duration = offer.offer_end_time.checked_sub(offer.offer_start_time).unwrap();
+    let number_of_intervals = total_duration.checked_div(offer.price_fix_duration).unwrap();
+    let current_sector = current_time
+        .checked_sub(offer.offer_start_time)
+        .unwrap()
+        .checked_div(offer.price_fix_duration)
+        .unwrap();
+
+    let amount_per_sector = offer.sell_token_end_amount
+        .checked_sub(offer.sell_token_start_amount)
+        .unwrap()
+        .checked_div(number_of_intervals)
+        .unwrap();
+
+    let sell_token_current_amount = offer.sell_token_start_amount
+        .checked_add(amount_per_sector.checked_mul(current_sector).unwrap())
+        .unwrap();
+
+    Ok(sell_token_current_amount)
+}
+
 /// Takes an offer with one buy token.
 ///
 /// Allows a user to exchange sell tokens for one buy token from the offer, transferring
@@ -109,7 +152,7 @@ pub struct TakeOfferOne<'info> {
 /// - `sell_token_amount`: Amount of sell tokens the user provides.
 ///
 /// # Errors
-/// - [`TakeOfferErrorCode::OfferExceedsSellLimit`] if the sell amount exceeds the offer’s limit.
+/// - [`TakeOfferErrorCode::OfferExceedsSellLimit`] if the sell amount exceeds the offer's limit.
 /// - [`TakeOfferErrorCode::InsufficientOfferBalance`] if the offer lacks sufficient buy tokens.
 /// - [`TakeOfferErrorCode::CalculationOverflow`] if amount calculations overflow.
 pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Result<()> {
@@ -125,10 +168,12 @@ pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Res
         TakeOfferErrorCode::OfferExceedsSellLimit
     );
 
+    let current_sell_token_amount = calculate_current_sell_amount(&offer).unwrap();
+
     let buy_token_1_amount = calculate_buy_amount(
         sell_token_amount,
         offer.buy_token_1.amount,
-        offer.sell_token_end_amount,
+        current_sell_token_amount,
     )?;
     require!(
         ctx.accounts.offer_buy_token_1_account.amount >= buy_token_1_amount,
@@ -173,7 +218,7 @@ pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Res
         sell_token_amount,
         buy_token_1_amount,
         remaining_sell_token_amount: offer
-            .sell_token_total_amount
+            .sell_token_end_amount
             .checked_sub(ctx.accounts.offer_sell_token_account.amount)
             .unwrap(),
     });
@@ -194,11 +239,11 @@ pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Res
 pub struct TakeOfferTwo<'info> {
     /// The offer account being taken, providing offer details.
     #[account(
-        constraint = offer.buy_token_mint_2 != system_program::ID @ TakeOfferErrorCode::InvalidTakeOffer
+        constraint = offer.buy_token_2.mint != system_program::ID @ TakeOfferErrorCode::InvalidTakeOffer
     )]
     pub offer: Account<'info, Offer>,
 
-    /// Offer's sell token ATA, receives the user’s sell tokens.
+    /// Offer's sell token ATA, receives the user's sell tokens.
     #[account(
         mut,
         associated_token::mint = offer.sell_token_mint,
@@ -209,7 +254,7 @@ pub struct TakeOfferTwo<'info> {
     /// Offer's buy token 1 ATA, sends buy token 1 to the user.
     #[account(
         mut,
-        associated_token::mint = offer.buy_token_mint_1,
+        associated_token::mint = offer.buy_token_1.mint,
         associated_token::authority = offer_token_authority,
   )]
     pub offer_buy_token_1_account: Account<'info, TokenAccount>,
@@ -217,13 +262,13 @@ pub struct TakeOfferTwo<'info> {
     /// Offer's buy token 2 ATA, sends buy token 2 to the user.
     #[account(
         mut,
-        associated_token::mint = offer.buy_token_mint_2,
+        associated_token::mint = offer.buy_token_2.mint,
         associated_token::authority = offer_token_authority,
   )]
     pub offer_buy_token_2_account: Account<'info, TokenAccount>,
 
-    /// User’s sell token account, sends sell tokens to the offer.
-    /// Ensures mint matches the offer’s sell token mint.
+    /// User's sell token account, sends sell tokens to the offer.
+    /// Ensures mint matches the offer's sell token mint.
     #[account(
         mut,
         associated_token::mint = offer.sell_token_mint,
@@ -232,21 +277,21 @@ pub struct TakeOfferTwo<'info> {
   )]
     pub user_sell_token_account: Account<'info, TokenAccount>,
 
-    /// User’s buy token 1 ATA, receives buy token 1 from the offer.
-    /// Ensures mint matches the offer’s buy token 1 mint.
+    /// User's buy token 1 ATA, receives buy token 1 from the offer.
+    /// Ensures mint matches the offer's buy token 1 mint.
     #[account(
         mut,
-        associated_token::mint = offer.buy_token_mint_1,
+        associated_token::mint = offer.buy_token_1.mint,
         associated_token::authority = user,
         constraint = offer.buy_token_1.mint == user_buy_token_1_account.mint @ TakeOfferErrorCode::InvalidBuyTokenMint
   )]
     pub user_buy_token_1_account: Account<'info, TokenAccount>,
 
-    /// User’s buy token 2 ATA, receives buy token 2 from the offer.
-    /// Ensures mint matches the offer’s buy token 2 mint.
+    /// User's buy token 2 ATA, receives buy token 2 from the offer.
+    /// Ensures mint matches the offer's buy token 2 mint.
     #[account(
         mut,
-        associated_token::mint = offer.buy_token_mint_2,
+        associated_token::mint = offer.buy_token_2.mint,
         associated_token::authority = user,
         constraint = offer.buy_token_2.mint == user_buy_token_2_account.mint @ TakeOfferErrorCode::InvalidBuyTokenMint
   )]
@@ -255,7 +300,7 @@ pub struct TakeOfferTwo<'info> {
     /// Derived PDA for token authority, controls offer token accounts.
     ///
     /// # Note
-    /// This account is marked with `CHECK` as it’s validated by the seed derivation.
+    /// This account is marked with `CHECK` as it's validated by the seed derivation.
     #[account(
         seeds = [b"offer_authority", offer.offer_id.to_le_bytes().as_ref()],
         bump
@@ -283,7 +328,7 @@ pub struct TakeOfferTwo<'info> {
 /// - `sell_token_amount`: Amount of sell tokens the user provides.
 ///
 /// # Errors
-/// - [`TakeOfferErrorCode::OfferExceedsSellLimit`] if the sell amount exceeds the offer’s limit.
+/// - [`TakeOfferErrorCode::OfferExceedsSellLimit`] if the sell amount exceeds the offer's limit.
 /// - [`TakeOfferErrorCode::InsufficientOfferBalance`] if the offer lacks sufficient buy tokens.
 /// - [`TakeOfferErrorCode::CalculationOverflow`] if amount calculations overflow.
 pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Result<()> {
@@ -295,19 +340,21 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
             .amount
             .checked_add(sell_token_amount)
             .unwrap()
-            <= offer.sell_token_total_amount,
+            <= offer.sell_token_end_amount,
         TakeOfferErrorCode::OfferExceedsSellLimit
     );
 
+    let current_sell_token_amount = calculate_current_sell_amount(&offer).unwrap();
+
     let buy_token_1_amount = calculate_buy_amount(
         sell_token_amount,
-        offer.buy_token_1_total_amount,
-        offer.sell_token_total_amount,
+        offer.buy_token_1.amount,
+        current_sell_token_amount,
     )?;
     let buy_token_2_amount = calculate_buy_amount(
         sell_token_amount,
-        offer.buy_token_2_total_amount,
-        offer.sell_token_total_amount,
+        offer.buy_token_2.amount,
+        current_sell_token_amount,
     )?;
     require!(
         ctx.accounts.offer_buy_token_1_account.amount >= buy_token_1_amount,
@@ -330,7 +377,7 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
         sell_token_amount,
     )?;
 
-    let offer_id_bytes = &ctx.accounts.offer.offer_id.to_le_bytes();
+    let offer_id_bytes = &offer.offer_id.to_le_bytes();
     let seeds = &[
         b"offer_authority".as_ref(),
         offer_id_bytes,
@@ -369,7 +416,7 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
         buy_token_1_amount,
         buy_token_2_amount,
         remaining_sell_token_amount: offer
-            .sell_token_total_amount
+            .sell_token_end_amount
             .checked_sub(ctx.accounts.offer_sell_token_account.amount)
             .unwrap(),
     });
@@ -381,8 +428,8 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
 ///
 /// # Arguments
 /// - `sell_token_amount`: Amount of sell tokens provided by the user.
-/// - `buy_token_total_amount`: Total amount of buy tokens in the offer.
-/// - `sell_token_total_amount`: Total amount of sell tokens expected by the offer.
+/// - `offer_buy_token_amount`: Amount of buy tokens in the offer, used for price calculation.
+/// - `offer_sell_token_amount`: Current amount of sell tokens in the offer, used for price calculation.
 ///
 /// # Returns
 /// The calculated amount of buy tokens to transfer, or an error if calculations fail.
@@ -392,17 +439,17 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
 /// - [`TakeOfferErrorCode::CalculationOverflow`] if multiplication or division overflows.
 /// - [`TakeOfferErrorCode::ZeroBuyTokenAmount`] if the result is zero.
 fn calculate_buy_amount(
-    sell_token_amount: u64,
-    buy_token_total_amount: u64,
-    sell_token_total_amount: u64,
+    user_sell_token_amount: u64,
+    offer_buy_token_amount: u64,
+    offer_sell_token_amount: u64,
 ) -> Result<u64> {
-    if sell_token_total_amount == 0 {
+    if offer_sell_token_amount == 0 {
         return Err(error!(TakeOfferErrorCode::InvalidSellTokenMint).into());
     }
-    let result = (sell_token_amount as u128)
-        .checked_mul(buy_token_total_amount as u128)
+    let result = (user_sell_token_amount as u128)
+        .checked_mul(offer_buy_token_amount as u128)
         .ok_or(TakeOfferErrorCode::CalculationOverflow)?
-        .checked_div(sell_token_total_amount as u128)
+        .checked_div(offer_sell_token_amount as u128)
         .ok_or(TakeOfferErrorCode::CalculationOverflow)?;
     if result > u64::MAX as u128 {
         return Err(error!(TakeOfferErrorCode::CalculationOverflow));
@@ -420,15 +467,15 @@ pub enum TakeOfferErrorCode {
     #[msg("Insufficient tokens remaining in the offer.")]
     InsufficientOfferBalance,
 
-    /// Triggered when the user’s sell token mint doesn’t match the offer’s.
+    /// Triggered when the user's sell token mint doesn't match the offer's.
     #[msg("The sell token mint does not match the offer.")]
     InvalidSellTokenMint,
 
-    /// Triggered when the user’s buy token mint doesn’t match the offer’s.
+    /// Triggered when the user's buy token mint doesn't match the offer's.
     #[msg("The buy token mint does not match the offer.")]
     InvalidBuyTokenMint,
 
-    /// Triggered when the sell amount exceeds the offer’s total sell limit.
+    /// Triggered when the sell amount exceeds the offer's total sell limit.
     #[msg("The offer would exceed its total sell token limit.")]
     OfferExceedsSellLimit,
 
@@ -443,4 +490,8 @@ pub enum TakeOfferErrorCode {
     /// Triggered when the calculated buy token amount is zero.
     #[msg("Zero buy token amount.")]
     ZeroBuyTokenAmount,
+
+    /// Triggered when the current time is outside the offer's time range.
+    #[msg("Current time must be within the offer's start and end time range")]
+    InvalidCurrentTime,
 }
