@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/onre_app.json`.
  */
 export type OnreApp = {
-  "address": "GtEuAcT5exrM9fKwGo53FiH9MVEDPPiCB1r5Xp68vJ8F",
+  "address": "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe",
   "metadata": {
     "name": "onreApp",
     "version": "0.1.0",
@@ -3803,6 +3803,10 @@ export type OnreApp = {
           {
             "name": "offerEndTime",
             "type": "u64"
+          },
+          {
+            "name": "priceFixDuration",
+            "type": "u64"
           }
         ]
       }
@@ -3845,6 +3849,10 @@ export type OnreApp = {
           },
           {
             "name": "offerEndTime",
+            "type": "u64"
+          },
+          {
+            "name": "priceFixDuration",
             "type": "u64"
           }
         ]
