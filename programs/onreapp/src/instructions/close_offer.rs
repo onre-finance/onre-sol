@@ -180,7 +180,7 @@ pub struct CloseOfferTwo<'info> {
     /// Offer's buy token 2 ATA, must exist prior to execution, controlled by `offer_token_authority`.
     #[account(
         mut,
-        associated_token::mint = offer.buy_token_mint_2,
+        associated_token::mint = offer.buy_token_2.mint,
         associated_token::authority = offer_token_authority,
   )]
     pub offer_buy_2_token_account: Account<'info, TokenAccount>,
@@ -188,7 +188,7 @@ pub struct CloseOfferTwo<'info> {
     /// Boss's buy token 1 ATA, must exist prior to execution, owned by `boss`.
     #[account(
         mut,
-        associated_token::mint = offer.buy_token_mint_1,
+        associated_token::mint = offer.buy_token_1.mint,
         associated_token::authority = boss,
   )]
     pub boss_buy_1_token_account: Account<'info, TokenAccount>,
@@ -196,7 +196,7 @@ pub struct CloseOfferTwo<'info> {
     /// Boss's buy token 2 ATA, must exist prior to execution, owned by `boss`.
     #[account(
         mut,
-        associated_token::mint = offer.buy_token_mint_2,
+        associated_token::mint = offer.buy_token_2.mint,
         associated_token::authority = boss,
   )]
     pub boss_buy_2_token_account: Account<'info, TokenAccount>,
