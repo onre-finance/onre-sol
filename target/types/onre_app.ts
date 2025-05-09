@@ -196,7 +196,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -290,7 +290,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -670,7 +670,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -764,7 +764,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_2",
+                "path": "offer.buy_token_2.mint",
                 "account": "offer"
               }
             ],
@@ -858,7 +858,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -952,7 +952,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_2",
+                "path": "offer.buy_token_2.mint",
                 "account": "offer"
               }
             ],
@@ -1462,7 +1462,7 @@ export type OnreApp = {
             "Derived PDA for token authority, does not store data.",
             "",
             "# Note",
-            "This account is marked with `CHECK` as it’s validated by the seed derivation."
+            "This account is marked with `CHECK` as it's validated by the seed derivation."
           ],
           "pda": {
             "seeds": [
@@ -1636,11 +1636,27 @@ export type OnreApp = {
           "type": "u64"
         },
         {
-          "name": "buyToken1TotalAmount",
+          "name": "buyTokenTotalAmount",
           "type": "u64"
         },
         {
-          "name": "sellTokenTotalAmount",
+          "name": "sellTokenStartAmount",
+          "type": "u64"
+        },
+        {
+          "name": "sellTokenEndAmount",
+          "type": "u64"
+        },
+        {
+          "name": "offerStartTime",
+          "type": "u64"
+        },
+        {
+          "name": "offerEndTime",
+          "type": "u64"
+        },
+        {
+          "name": "priceFixDuration",
           "type": "u64"
         }
       ]
@@ -1978,7 +1994,7 @@ export type OnreApp = {
             "Derived PDA for token authority, does not store data.",
             "",
             "# Note",
-            "This account is marked with `CHECK` as it’s validated by the seed derivation."
+            "This account is marked with `CHECK` as it's validated by the seed derivation."
           ],
           "pda": {
             "seeds": [
@@ -2259,7 +2275,23 @@ export type OnreApp = {
           "type": "u64"
         },
         {
-          "name": "sellTokenTotalAmount",
+          "name": "sellTokenStartAmount",
+          "type": "u64"
+        },
+        {
+          "name": "sellTokenEndAmount",
+          "type": "u64"
+        },
+        {
+          "name": "offerStartTime",
+          "type": "u64"
+        },
+        {
+          "name": "offerEndTime",
+          "type": "u64"
+        },
+        {
+          "name": "priceFixDuration",
           "type": "u64"
         }
       ]
@@ -2348,7 +2380,7 @@ export type OnreApp = {
         {
           "name": "offerSellTokenAccount",
           "docs": [
-            "Offer's sell token ATA, receives the user’s sell tokens."
+            "Offer's sell token ATA, receives the user's sell tokens."
           ],
           "writable": true,
           "pda": {
@@ -2490,7 +2522,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -2536,8 +2568,8 @@ export type OnreApp = {
         {
           "name": "userSellTokenAccount",
           "docs": [
-            "User’s sell token ATA, sends sell tokens to the offer.",
-            "Ensures mint matches the offer’s sell token mint."
+            "User's sell token ATA, sends sell tokens to the offer.",
+            "Ensures mint matches the offer's sell token mint."
           ],
           "writable": true,
           "pda": {
@@ -2631,8 +2663,8 @@ export type OnreApp = {
         {
           "name": "userBuyToken1Account",
           "docs": [
-            "User’s buy token 1 ATA, receives buy tokens from the offer.",
-            "Ensures mint matches the offer’s buy token 1 mint."
+            "User's buy token 1 ATA, receives buy tokens from the offer.",
+            "Ensures mint matches the offer's buy token 1 mint."
           ],
           "writable": true,
           "pda": {
@@ -2680,7 +2712,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -2729,7 +2761,7 @@ export type OnreApp = {
             "Derived PDA for token authority, controls offer token accounts.",
             "",
             "# Note",
-            "This account is marked with `CHECK` as it’s validated by the seed derivation."
+            "This account is marked with `CHECK` as it's validated by the seed derivation."
           ],
           "pda": {
             "seeds": [
@@ -2819,7 +2851,7 @@ export type OnreApp = {
         {
           "name": "offerSellTokenAccount",
           "docs": [
-            "Offer's sell token ATA, receives the user’s sell tokens."
+            "Offer's sell token ATA, receives the user's sell tokens."
           ],
           "writable": true,
           "pda": {
@@ -2961,7 +2993,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -3055,7 +3087,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_2",
+                "path": "offer.buy_token_2.mint",
                 "account": "offer"
               }
             ],
@@ -3101,8 +3133,8 @@ export type OnreApp = {
         {
           "name": "userSellTokenAccount",
           "docs": [
-            "User’s sell token account, sends sell tokens to the offer.",
-            "Ensures mint matches the offer’s sell token mint."
+            "User's sell token account, sends sell tokens to the offer.",
+            "Ensures mint matches the offer's sell token mint."
           ],
           "writable": true,
           "pda": {
@@ -3196,8 +3228,8 @@ export type OnreApp = {
         {
           "name": "userBuyToken1Account",
           "docs": [
-            "User’s buy token 1 ATA, receives buy token 1 from the offer.",
-            "Ensures mint matches the offer’s buy token 1 mint."
+            "User's buy token 1 ATA, receives buy token 1 from the offer.",
+            "Ensures mint matches the offer's buy token 1 mint."
           ],
           "writable": true,
           "pda": {
@@ -3245,7 +3277,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -3291,8 +3323,8 @@ export type OnreApp = {
         {
           "name": "userBuyToken2Account",
           "docs": [
-            "User’s buy token 2 ATA, receives buy token 2 from the offer.",
-            "Ensures mint matches the offer’s buy token 2 mint."
+            "User's buy token 2 ATA, receives buy token 2 from the offer.",
+            "Ensures mint matches the offer's buy token 2 mint."
           ],
           "writable": true,
           "pda": {
@@ -3340,7 +3372,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_2",
+                "path": "offer.buy_token_2.mint",
                 "account": "offer"
               }
             ],
@@ -3389,7 +3421,7 @@ export type OnreApp = {
             "Derived PDA for token authority, controls offer token accounts.",
             "",
             "# Note",
-            "This account is marked with `CHECK` as it’s validated by the seed derivation."
+            "This account is marked with `CHECK` as it's validated by the seed derivation."
           ],
           "pda": {
             "seeds": [
@@ -3576,7 +3608,43 @@ export type OnreApp = {
   "errors": [
     {
       "code": 6000,
-      "name": "invalidBossAddress"
+      "name": "insufficientOfferBalance",
+      "msg": "Insufficient tokens remaining in the offer."
+    },
+    {
+      "code": 6001,
+      "name": "invalidSellTokenMint",
+      "msg": "The sell token mint does not match the offer."
+    },
+    {
+      "code": 6002,
+      "name": "invalidBuyTokenMint",
+      "msg": "The buy token mint does not match the offer."
+    },
+    {
+      "code": 6003,
+      "name": "offerExceedsSellLimit",
+      "msg": "The offer would exceed its total sell token limit."
+    },
+    {
+      "code": 6004,
+      "name": "invalidTakeOffer",
+      "msg": "The offer is of 2 buy token type."
+    },
+    {
+      "code": 6005,
+      "name": "calculationOverflow",
+      "msg": "Calculation overflowed or invalid."
+    },
+    {
+      "code": 6006,
+      "name": "zeroBuyTokenAmount",
+      "msg": "Zero buy token amount."
+    },
+    {
+      "code": 6007,
+      "name": "invalidCurrentTime",
+      "msg": "Current time must be within the offer's start and end time range"
     }
   ],
   "types": [
@@ -3621,7 +3689,7 @@ export type OnreApp = {
         "- `buy_token_1_total_amount`: Total amount of the first buy token offered.",
         "- `buy_token_2_total_amount`: Total amount of the second buy token offered (0 if unused).",
         "- `sell_token_total_amount`: Total amount of sell tokens expected.",
-        "- `authority_bump`: Bump seed for the offer’s token authority PDA."
+        "- `authority_bump`: Bump seed for the offer's token authority PDA."
       ],
       "type": {
         "kind": "struct",
@@ -3631,32 +3699,48 @@ export type OnreApp = {
             "type": "u64"
           },
           {
+            "name": "sellTokenStartAmount",
+            "type": "u64"
+          },
+          {
+            "name": "sellTokenEndAmount",
+            "type": "u64"
+          },
+          {
             "name": "sellTokenMint",
             "type": "pubkey"
           },
           {
-            "name": "buyTokenMint1",
-            "type": "pubkey"
+            "name": "buyToken1",
+            "type": {
+              "defined": {
+                "name": "offerToken"
+              }
+            }
           },
           {
-            "name": "buyTokenMint2",
-            "type": "pubkey"
-          },
-          {
-            "name": "buyToken1TotalAmount",
-            "type": "u64"
-          },
-          {
-            "name": "buyToken2TotalAmount",
-            "type": "u64"
-          },
-          {
-            "name": "sellTokenTotalAmount",
-            "type": "u64"
+            "name": "buyToken2",
+            "type": {
+              "defined": {
+                "name": "offerToken"
+              }
+            }
           },
           {
             "name": "authorityBump",
             "type": "u8"
+          },
+          {
+            "name": "priceFixDuration",
+            "type": "u64"
+          },
+          {
+            "name": "offerStartTime",
+            "type": "u64"
+          },
+          {
+            "name": "offerEndTime",
+            "type": "u64"
           }
         ]
       }
@@ -3701,11 +3785,27 @@ export type OnreApp = {
             "type": "pubkey"
           },
           {
-            "name": "buyToken1TotalAmount",
+            "name": "buyTokenTotalAmount",
             "type": "u64"
           },
           {
-            "name": "sellTokenTotalAmount",
+            "name": "sellTokenStartAmount",
+            "type": "u64"
+          },
+          {
+            "name": "sellTokenEndAmount",
+            "type": "u64"
+          },
+          {
+            "name": "offerStartTime",
+            "type": "u64"
+          },
+          {
+            "name": "offerEndTime",
+            "type": "u64"
+          },
+          {
+            "name": "priceFixDuration",
             "type": "u64"
           }
         ]
@@ -3736,7 +3836,23 @@ export type OnreApp = {
             "type": "u64"
           },
           {
-            "name": "sellTokenTotalAmount",
+            "name": "sellTokenStartAmount",
+            "type": "u64"
+          },
+          {
+            "name": "sellTokenEndAmount",
+            "type": "u64"
+          },
+          {
+            "name": "offerStartTime",
+            "type": "u64"
+          },
+          {
+            "name": "offerEndTime",
+            "type": "u64"
+          },
+          {
+            "name": "priceFixDuration",
             "type": "u64"
           }
         ]
@@ -3809,11 +3925,27 @@ export type OnreApp = {
       }
     },
     {
+      "name": "offerToken",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "state",
       "docs": [
         "Represents the program state in the Onre App program.",
         "",
-        "Stores the current boss’s public key, used for authorization across instructions.",
+        "Stores the current boss's public key, used for authorization across instructions.",
         "",
         "# Fields",
         "- `boss`: Public key of the current boss, set via `initialize` and updated via `set_boss`."
