@@ -102,7 +102,7 @@ describe("make offer", () => {
         expect(offerSellTokenAccountData.amount).toBe(BigInt(0));
     });
 
-    test("Make offer fails when price_fix_duration higher than offer duration", async () => {
+    test("Make offer fails when price_fix_duration is higher than offer duration", async () => {
         // given
         const offerId = new anchor.BN(PublicKey.unique().toBytes());
         const [offerAuthority] = PublicKey.findProgramAddressSync([Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)], ONREAPP_PROGRAM_ID);
@@ -122,7 +122,7 @@ describe("make offer", () => {
                 .accounts({ sellTokenMint, buyToken1Mint, state: statePda })
                 .rpc()
         // then
-        ).rejects.toThrow();
+        ).rejects.toThrow(new RegExp(".*InvalidPriceFixDuration.*"));
     });
 
     test("Make an offer with same sell_token_start_amount and sell_token_end_amount", async () => {        
