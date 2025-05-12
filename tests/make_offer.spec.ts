@@ -52,7 +52,7 @@ describe("make offer", () => {
         await program.methods.initialize().accounts({ boss }).rpc();
     });
 
-    test("Make an offer", async () => {
+    test("Make an offer with one buy token", async () => {
         // given
         const offerId = new anchor.BN(PublicKey.unique().toBytes());
         const [offerAuthority] = PublicKey.findProgramAddressSync([Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)], ONREAPP_PROGRAM_ID);
@@ -148,5 +148,65 @@ describe("make offer", () => {
         const offerAccount = await program.account.offer.fetch(offerPda);
         expect(offerAccount.sellTokenStartAmount.eq(new anchor.BN(200e9))).toBe(true);
         expect(offerAccount.sellTokenEndAmount.eq(new anchor.BN(200e9))).toBe(true);
-    })
+    });
+
+    test("Make an offer with two buy tokens", async () => {
+        // given
+        const offerId = new anchor.BN(PublicKey.unique().toBytes());
+        const [offerAuthority] = PublicKey.findProgramAddressSync([Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)], ONREAPP_PROGRAM_ID);
+        const [offerPda] = PublicKey.findProgramAddressSync([Buffer.from('offer'), offerId.toArrayLike(Buffer, 'le', 8)], ONREAPP_PROGRAM_ID);
+        const offerSellTokenPda = createTokenAccount(context, sellTokenMint, offerAuthority, BigInt(0), true);
+        const offerBuyToken1Pda = createTokenAccount(context, buyToken1Mint, offerAuthority, BigInt(0), true);
+        const offerBuyToken2Pda = createTokenAccount(context, buyToken2Mint, offerAuthority, BigInt(0), true);
+        const offerStartTime = Date.now() / 1000;
+        const offerEndTime = offerStartTime + 7200;
+        const bossBuyTokenAccount1 = createTokenAccount(context, buyToken1Mint, boss, BigInt(600e9));
+        const bossBuyTokenAccount2 = createTokenAccount(context, buyToken2Mint, boss, BigInt(600e9));
+
+        // when
+        await program.methods
+            .makeOfferTwo(
+                offerId, new anchor.BN(500e9), new anchor.BN(300e9),
+                new anchor.BN(200e9), new anchor.BN(400e9), 
+                new anchor.BN(offerStartTime), new anchor.BN(offerEndTime), new anchor.BN(3600))
+            .accounts({ sellTokenMint, buyToken1Mint, buyToken2Mint, state: statePda })
+            .rpc();
+
+        // then
+        const offerAccount = await program.account.offer.fetch(offerPda);
+        expect(offerAccount.offerId.eq(offerId)).toBe(true);
+        // sell token
+        expect(offerAccount.sellTokenStartAmount.eq(new anchor.BN(200e9))).toBe(true);
+        expect(offerAccount.sellTokenEndAmount.eq(new anchor.BN(400e9))).toBe(true);
+        expect(offerAccount.sellTokenMint.toBase58()).toEqual(sellTokenMint.toBase58());
+        // buy token
+        expect(offerAccount.buyToken1.amount.eq(new anchor.BN(500e9))).toBe(true);
+        expect(offerAccount.buyToken1.mint.toBase58()).toEqual(buyToken1Mint.toBase58());
+        expect(offerAccount.buyToken2.amount.eq(new anchor.BN(300e9))).toBe(true);
+        expect(offerAccount.buyToken2.mint.toBase58()).toEqual(buyToken2Mint.toBase58());
+        // offer
+        expect(offerAccount.priceFixDuration.eq(new anchor.BN(3600))).toBe(true);
+        expect(offerAccount.offerStartTime.eq(new anchor.BN(offerStartTime))).toBe(true);
+        expect(offerAccount.offerEndTime.eq(new anchor.BN(offerEndTime))).toBe(true);
+        
+        // 500 tokens substracted from boss buy token account 1
+        const bossBuyTokenAccountData = AccountLayout.decode((await client.getAccount(bossBuyTokenAccount1)).data)
+        expect(bossBuyTokenAccountData.amount).toBe(BigInt(100e9));
+
+        // 300 tokens substracted from boss buy token account 2
+        const bossBuyTokenAccountData2 = AccountLayout.decode((await client.getAccount(bossBuyTokenAccount2)).data)
+        expect(bossBuyTokenAccountData2.amount).toBe(BigInt(300e9));
+
+        // 500 tokens added to offer buy token account 1
+        const offerBuyTokenAccountData = AccountLayout.decode((await client.getAccount(offerBuyToken1Pda)).data)
+        expect(offerBuyTokenAccountData.amount).toBe(BigInt(500e9));
+
+        // 300 tokens added to offer buy token account 2
+        const offerBuyTokenAccountData2 = AccountLayout.decode((await client.getAccount(offerBuyToken2Pda)).data)
+        expect(offerBuyTokenAccountData2.amount).toBe(BigInt(300e9));
+
+        // offerSellTokenPda stays empty
+        const offerSellTokenAccountData = AccountLayout.decode((await client.getAccount(offerSellTokenPda)).data)
+        expect(offerSellTokenAccountData.amount).toBe(BigInt(0));
+    }, 10000);
 });

@@ -1810,6 +1810,7 @@ export type OnreApp = {
           "docs": [
             "Offer's buy token 1 ATA, must exist prior to execution, controlled by `offer_token_authority`."
           ],
+          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -1902,6 +1903,7 @@ export type OnreApp = {
           "docs": [
             "Offer's buy token 2 ATA, must exist prior to execution, controlled by `offer_token_authority`."
           ],
+          "writable": true,
           "pda": {
             "seeds": [
               {
