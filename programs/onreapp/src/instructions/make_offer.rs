@@ -68,6 +68,7 @@ pub struct MakeOfferOne<'info> {
 
     /// Offer's buy token 1 ATA, must exist prior to execution, controlled by `offer_token_authority`.
     #[account(
+        mut,
         associated_token::mint = buy_token_1_mint,
         associated_token::authority = offer_token_authority,
   )]

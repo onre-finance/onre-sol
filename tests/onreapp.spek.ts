@@ -133,7 +133,7 @@ describe('onreapp', () => {
     );
 
     await program.methods
-      .makeOfferOne(offerId, new anchor.BN(500e9), new anchor.BN(200e9), new anchor.BN(400e9), new anchor.BN(Date.now()), new anchor.BN(Date.now() + 1), new anchor.BN(3600))
+      .makeOfferOne(offerId, new anchor.BN(500e9), new anchor.BN(200e9), new anchor.BN(400e9), new anchor.BN(Date.now()), new anchor.BN(Date.now() + 7200), new anchor.BN(3600))
       .accounts({ sellTokenMint, buyToken1Mint, state: statePda })
       .preInstructions([buyToken1AccountInstruction, offerSellTokenAccountInstruction])
       .rpc();
@@ -206,7 +206,7 @@ describe('onreapp', () => {
       buyToken1Mint,
     );
     const makeOfferInstruction = await program.methods
-      .makeOfferOne(newOfferId, new anchor.BN(500e9), new anchor.BN(200e9), new anchor.BN(400e9), new anchor.BN(Date.now()), new anchor.BN(Date.now() + 1), new anchor.BN(3600))
+      .makeOfferOne(newOfferId, new anchor.BN(500e9), new anchor.BN(200e9), new anchor.BN(400e9), new anchor.BN(Date.now()), new anchor.BN(Date.now() + 7200), new anchor.BN(3600))
       .accounts({ sellTokenMint, buyToken1Mint, state: statePda })
       .instruction();
 
@@ -520,7 +520,7 @@ describe('onreapp', () => {
     );
 
     await program.methods
-      .makeOfferTwo(offerId, new anchor.BN(100e9), new anchor.BN(200e9), new anchor.BN(200e9), new anchor.BN(400e9), new anchor.BN(Date.now()), new anchor.BN(Date.now() + 1), new anchor.BN(3600))
+      .makeOfferTwo(offerId, new anchor.BN(100e9), new anchor.BN(200e9), new anchor.BN(200e9), new anchor.BN(400e9), new anchor.BN(Date.now()), new anchor.BN(Date.now() + 7200), new anchor.BN(3600))
       .accounts({
         sellTokenMint: sellTokenMint,
         buyToken1Mint: buyToken1Mint,
@@ -594,7 +594,7 @@ describe('onreapp', () => {
     );
 
     await program.methods
-      .makeOfferOne(offerId, new anchor.BN(50e9), new anchor.BN(200e9), new anchor.BN(400e9), new anchor.BN(Date.now()), new anchor.BN(Date.now() + 1), new anchor.BN(3600))
+      .makeOfferOne(offerId, new anchor.BN(50e9), new anchor.BN(200e9), new anchor.BN(400e9), new anchor.BN(Date.now()), new anchor.BN(Date.now() + 7200), new anchor.BN(3600))
       .accounts({
         sellTokenMint: sellTokenMint,
         buyToken1Mint: buyToken1Mint,

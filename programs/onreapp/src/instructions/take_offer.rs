@@ -123,20 +123,20 @@ fn calculate_current_sell_amount(
 
     let total_duration = offer.offer_end_time.checked_sub(offer.offer_start_time).unwrap();
     let number_of_intervals = total_duration.checked_div(offer.price_fix_duration).unwrap();
-    let current_sector = current_time
+    let current_interval = current_time
         .checked_sub(offer.offer_start_time)
         .unwrap()
         .checked_div(offer.price_fix_duration)
         .unwrap();
 
-    let amount_per_sector = offer.sell_token_end_amount
+    let sell_token_amount_per_interval = offer.sell_token_end_amount
         .checked_sub(offer.sell_token_start_amount)
         .unwrap()
         .checked_div(number_of_intervals)
         .unwrap();
 
     let sell_token_current_amount = offer.sell_token_start_amount
-        .checked_add(amount_per_sector.checked_mul(current_sector).unwrap())
+        .checked_add(sell_token_amount_per_interval.checked_mul(current_interval + 1).unwrap()) // TODO: Check if bucket shift is required
         .unwrap();
 
     Ok(sell_token_current_amount)
