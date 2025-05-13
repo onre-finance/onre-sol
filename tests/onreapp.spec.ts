@@ -3,7 +3,6 @@ import { Program } from '@coral-xyz/anchor';
 import { Keypair, PublicKey, TransactionMessage, VersionedTransaction } from '@solana/web3.js';
 import { OnreApp } from '../target/types/onre_app';
 import {
-  ASSOCIATED_TOKEN_PROGRAM_ID,
   createAssociatedTokenAccount,
   createAssociatedTokenAccountInstruction,
   createMint,
@@ -14,21 +13,21 @@ import {
 } from '@solana/spl-token';
 
 
-async function airdropLamports(provider, publicKey, amount) {
+async function airdropLamports(provider: anchor.AnchorProvider, publicKey: anchor.web3.PublicKey, amount: number) {
   const signature = await provider.connection.requestAirdrop(publicKey, amount);
   await provider.connection.confirmTransaction({ signature, ...(await provider.connection.getLatestBlockhash()) });
   return signature;
 }
 
-async function mintToAddress(provider, payer, mint, destination, authority, amount) {
+async function mintToAddress(provider: anchor.AnchorProvider, payer: anchor.web3.Signer | anchor.web3.Keypair, mint: anchor.web3.PublicKey, destination: anchor.web3.PublicKey, authority: anchor.web3.PublicKey | anchor.web3.Signer, amount: number | bigint) {
   await mintTo(provider.connection, payer, mint, destination, authority, amount);
 }
 
-async function createATA(provider, payer, mint, owner) {
+async function createATA(provider: anchor.AnchorProvider, payer: anchor.web3.Signer | anchor.web3.Keypair, mint: anchor.web3.PublicKey, owner: anchor.web3.PublicKey) {
   return await createAssociatedTokenAccount(provider.connection, payer, mint, owner);
 }
 
-async function createAndSendTransaction(provider, payer, instructions) {
+async function createAndSendTransaction(provider: anchor.AnchorProvider, payer: anchor.Wallet, instructions: anchor.web3.TransactionInstruction[]) {
   const tx = new VersionedTransaction(
     new TransactionMessage({
       payerKey: payer.publicKey,
@@ -59,9 +58,7 @@ describe('onreapp', () => {
   let bossBuyTokenAccount1: PublicKey;
   let bossBuyTokenAccount2: PublicKey;
   let offerPda: PublicKey;
-  let offerSellTokenPda: PublicKey;
   let offerBuyToken1Pda: PublicKey;
-  let offerBuyToken2Pda: PublicKey;
   let offerId = new anchor.BN(123123123);
   let statePda: PublicKey;
   let offerAuthority: PublicKey;
@@ -84,9 +81,9 @@ describe('onreapp', () => {
     [offerPda] = PublicKey.findProgramAddressSync([Buffer.from('offer'), offerId.toArrayLike(Buffer, 'le', 8)], program.programId);
     [statePda] = PublicKey.findProgramAddressSync([Buffer.from('state')], program.programId);
     [offerAuthority] = PublicKey.findProgramAddressSync([Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)], program.programId);
-    offerSellTokenPda = await getAssociatedTokenAddress(sellTokenMint, offerAuthority, true);
+    await getAssociatedTokenAddress(sellTokenMint, offerAuthority, true);
     offerBuyToken1Pda = await getAssociatedTokenAddress(buyToken1Mint, offerAuthority, true);
-    offerBuyToken2Pda = await getAssociatedTokenAddress(buyToken2Mint, offerAuthority, true);
+    await getAssociatedTokenAddress(buyToken2Mint, offerAuthority, true);
   });
 
   it('Initialize onre with right boss account', async () => {
