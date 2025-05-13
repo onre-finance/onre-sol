@@ -116,6 +116,7 @@ fn calculate_current_sell_amount(
     offer: &Offer
 ) -> Result<u64> {
     let current_time = Clock::get()?.unix_timestamp as u64;
+    
     require!(
         current_time >= offer.offer_start_time && current_time <= offer.offer_end_time,
         TakeOfferErrorCode::InvalidCurrentTime
@@ -345,17 +346,20 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
     );
 
     let current_sell_token_amount = calculate_current_sell_amount(&offer).unwrap();
+    msg!("current_sell_token_amount: {}", current_sell_token_amount);
 
     let buy_token_1_amount = calculate_buy_amount(
         sell_token_amount,
         offer.buy_token_1.amount,
         current_sell_token_amount,
     )?;
+    msg!("buy_token_1_amount: {}", buy_token_1_amount);
     let buy_token_2_amount = calculate_buy_amount(
         sell_token_amount,
         offer.buy_token_2.amount,
         current_sell_token_amount,
     )?;
+    msg!("buy_token_2_amount: {}", buy_token_2_amount);
     require!(
         ctx.accounts.offer_buy_token_1_account.amount >= buy_token_1_amount,
         TakeOfferErrorCode::InsufficientOfferBalance

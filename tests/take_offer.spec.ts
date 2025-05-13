@@ -69,14 +69,14 @@ describe("take offer", () => {
         const offerSellTokenPda = createTokenAccount(context, sellTokenMint, offerAuthority, BigInt(0), true);
         const offerBuyTokenPda = createTokenAccount(context, buyToken1Mint, offerAuthority, BigInt(0), true);
         const bossBuyTokenAccount1 = createTokenAccount(context, buyToken1Mint, boss, BigInt(600e9));
-        const offerStartTime = Date.now() / 1000;
+        const offerStartTime = Number((await client.getClock()).unixTimestamp);
         const offerEndTime = offerStartTime + 7200;
 
         // make offer
         await program.methods
             .makeOfferOne(
                 offerId, new anchor.BN(100e9), 
-                new anchor.BN(100e9), new anchor.BN(200e9), 
+                new anchor.BN(100e9), new anchor.BN(200e9),
                 new anchor.BN(offerStartTime), new anchor.BN(offerEndTime), new anchor.BN(3600))
             .accounts({ sellTokenMint, buyToken1Mint, state: statePda })
             .rpc();
@@ -115,7 +115,7 @@ describe("take offer", () => {
         const offerSellTokenPda = createTokenAccount(context, sellTokenMint, offerAuthority, BigInt(0), true);
         const offerBuyTokenPda = createTokenAccount(context, buyToken1Mint, offerAuthority, BigInt(0), true);
         const bossBuyTokenAccount1 = createTokenAccount(context, buyToken1Mint, boss, BigInt(600e9));
-        const offerStartTime = Date.now() / 1000;
+        const offerStartTime = Number((await client.getClock()).unixTimestamp);
         const offerEndTime = offerStartTime + 7200;
 
         // make offer
@@ -176,7 +176,7 @@ describe("take offer", () => {
         const offerBuyToken2Pda = createTokenAccount(context, buyToken2Mint, offerAuthority, BigInt(0), true);
         const bossBuyTokenAccount1 = createTokenAccount(context, buyToken1Mint, boss, BigInt(600e9));
         const bossBuyTokenAccount2 = createTokenAccount(context, buyToken2Mint, boss, BigInt(6000e9));
-        const offerStartTime = Date.now() / 1000;
+        const offerStartTime = Number((await client.getClock()).unixTimestamp);
         const offerEndTime = offerStartTime + 259200; // 3 days
 
         // make offer
@@ -216,6 +216,85 @@ describe("take offer", () => {
         expectTokenAccountAmountToBe(offerBuyToken2Pda, BigInt(500e9));
     });
 
+    test("Taking an offer doesn't change the price", async () => {
+        // given
+        // create user
+        const user = Keypair.generate();
+        context.setAccount(user.publicKey, {
+            executable: false,
+            data: new Uint8Array([]),
+            lamports: INITIAL_LAMPORTS,
+            owner: SystemProgram.programId,
+        });
+        const onreTokenMint = sellTokenMint;
+        const usdcTokenMint = buyToken1Mint;
+
+        const userOnreTokenAccount = createTokenAccount(context, onreTokenMint, user.publicKey, BigInt(100e9), true);
+        const userUsdcTokenAccount = createTokenAccount(context, usdcTokenMint, user.publicKey, BigInt(0), true);
+
+        // create offer accounts
+        const offerId = new anchor.BN(PublicKey.unique().toBytes());
+        const [offerAuthority] = PublicKey.findProgramAddressSync([Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)], ONREAPP_PROGRAM_ID);
+        const [offerPda] = PublicKey.findProgramAddressSync([Buffer.from('offer'), offerId.toArrayLike(Buffer, 'le', 8)], ONREAPP_PROGRAM_ID);
+        const offerOnreTokenPda = createTokenAccount(context, onreTokenMint, offerAuthority, BigInt(0), true);
+        const offerUsdcTokenPda = createTokenAccount(context, usdcTokenMint, offerAuthority, BigInt(0), true);
+        const bossUsdcTokenAccount = createTokenAccount(context, buyToken1Mint, boss, BigInt(200e9));
+        const bossOnreTokenAccount = createTokenAccount(context, onreTokenMint, boss, BigInt(100e9));
+
+        const offerStartTime = Number((await client.getClock()).unixTimestamp);
+        const offerEndTime = offerStartTime + 10800; // 3 hours
+        const priceFixDuration = 3600; // 1 hour
+
+        // make offer
+        await program.methods
+            .makeOfferTwo(
+                offerId, 
+                new anchor.BN(100e9), // buy usdc token amount
+                new anchor.BN(100e9), // buy onre token amount
+                new anchor.BN(150e9), // sell onre token amount start
+                new anchor.BN(300e9), // sell onre token amount end
+                new anchor.BN(offerStartTime), 
+                new anchor.BN(offerEndTime), 
+                new anchor.BN(priceFixDuration))
+            .accounts({ 
+                sellTokenMint: onreTokenMint, 
+                buyToken1Mint: usdcTokenMint, 
+                buyToken2Mint: onreTokenMint, 
+                state: statePda })
+            .rpc();
+
+        const offerAccountBefore = await program.account.offer.fetch(offerPda);
+        expect(offerAccountBefore.buyToken1.amount.eq(new anchor.BN(100e9))).toBe(true);
+        expect(offerAccountBefore.buyToken2.amount.eq(new anchor.BN(100e9))).toBe(true);
+        expect(offerAccountBefore.sellTokenStartAmount.eq(new anchor.BN(150e9))).toBe(true);
+        expect(offerAccountBefore.sellTokenEndAmount.eq(new anchor.BN(300e9))).toBe(true);
+
+        // when
+        await program.methods
+            .takeOfferTwo(new anchor.BN(50e9))
+            .accounts({ offer: offerPda, user: user.publicKey })
+            .signers([user])
+            .rpc();
+
+        // time travel to last interval
+        const currentClock = await client.getClock();
+        context.setClock(
+            new Clock(
+                currentClock.slot,
+                currentClock.epochStartTimestamp,
+                currentClock.epoch,
+                currentClock.leaderScheduleEpoch,
+                currentClock.unixTimestamp + BigInt(priceFixDuration * 1.5),
+            )
+        )
+
+        const offerAccountAfter = await program.account.offer.fetch(offerPda);
+        expect(offerAccountAfter.buyToken1.amount.eq(new anchor.BN(100e9))).toBe(true);
+        expect(offerAccountAfter.buyToken2.amount.eq(new anchor.BN(100e9))).toBe(true);
+        expect(offerAccountAfter.sellTokenStartAmount.eq(new anchor.BN(150e9))).toBe(true);
+        expect(offerAccountAfter.sellTokenEndAmount.eq(new anchor.BN(300e9))).toBe(true);
+    })
+
     test("Take offer after offer end time should fail", async () => {
         // given
         // create user
@@ -236,7 +315,7 @@ describe("take offer", () => {
         const offerSellTokenPda = createTokenAccount(context, sellTokenMint, offerAuthority, BigInt(0), true);
         const offerBuyTokenPda = createTokenAccount(context, buyToken1Mint, offerAuthority, BigInt(0), true);
         const bossBuyTokenAccount1 = createTokenAccount(context, buyToken1Mint, boss, BigInt(600e9));
-        const offerStartTime = Date.now() / 1000;
+        const offerStartTime = Number((await client.getClock()).unixTimestamp);
         const offerEndTime = offerStartTime + 7200;
 
         // make offer
@@ -275,7 +354,7 @@ describe("take offer", () => {
     })
 
     test("Take offer before offer start time should fail", async () => {
-                // given
+        // given
         // create user
         const user = Keypair.generate();
         context.setAccount(user.publicKey, {
@@ -294,7 +373,7 @@ describe("take offer", () => {
         const offerSellTokenPda = createTokenAccount(context, sellTokenMint, offerAuthority, BigInt(0), true);
         const offerBuyTokenPda = createTokenAccount(context, buyToken1Mint, offerAuthority, BigInt(0), true);
         const bossBuyTokenAccount1 = createTokenAccount(context, buyToken1Mint, boss, BigInt(600e9));
-        const offerStartTime = (Date.now() / 1000) + 1000;
+        const offerStartTime = (Number((await client.getClock()).unixTimestamp)) + 1000;
         const offerEndTime = offerStartTime + 7200;
 
         // make offer
@@ -320,10 +399,100 @@ describe("take offer", () => {
         expectTokenAccountAmountToBe(offerBuyTokenPda, BigInt(100e9));
     });
 
-    function expectTokenAccountAmountToBe(tokenAccount: PublicKey, amount: bigint) {
-        client.getAccount(tokenAccount).then(account => {
-            const tokenAccountData = AccountLayout.decode(account.data)
-            return expect(tokenAccountData.amount).toBe(amount)
-        })
+    test("Take offer with two buy tokens should keep the same price for second token", async () => {
+        // given
+        // create user
+        const user = Keypair.generate();
+        context.setAccount(user.publicKey, {
+            executable: false,
+            data: new Uint8Array([]),
+            lamports: INITIAL_LAMPORTS,
+            owner: SystemProgram.programId,
+        });
+        const onreTokenMint = sellTokenMint;
+        const usdcTokenMint = buyToken1Mint;
+
+        const userOnreTokenAccount = createTokenAccount(context, onreTokenMint, user.publicKey, BigInt(100e9), true);
+        const userUsdcTokenAccount = createTokenAccount(context, usdcTokenMint, user.publicKey, BigInt(0), true);
+
+        // create offer accounts
+        const offerId = new anchor.BN(PublicKey.unique().toBytes());
+        const [offerAuthority] = PublicKey.findProgramAddressSync([Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)], ONREAPP_PROGRAM_ID);
+        const [offerPda] = PublicKey.findProgramAddressSync([Buffer.from('offer'), offerId.toArrayLike(Buffer, 'le', 8)], ONREAPP_PROGRAM_ID);
+        const offerOnreTokenPda = createTokenAccount(context, onreTokenMint, offerAuthority, BigInt(0), true);
+        const offerUsdcTokenPda = createTokenAccount(context, usdcTokenMint, offerAuthority, BigInt(0), true);
+        const bossUsdcTokenAccount = createTokenAccount(context, buyToken1Mint, boss, BigInt(200e9));
+        const bossOnreTokenAccount = createTokenAccount(context, onreTokenMint, boss, BigInt(100e9));
+
+        const offerStartTime = Number((await client.getClock()).unixTimestamp);
+        const offerEndTime = offerStartTime + 25200; // 7 hours
+        const priceFixDuration = 3600; // 1 hour
+
+        // make offer
+        await program.methods
+            .makeOfferTwo(
+                offerId, 
+                new anchor.BN(100e9), // buy usdc token amount
+                new anchor.BN(100e9), // buy onre token amount
+                new anchor.BN(150e9), // sell onre token amount start
+                new anchor.BN(500e9), // sell onre token amount end
+                new anchor.BN(offerStartTime), 
+                new anchor.BN(offerEndTime), 
+                new anchor.BN(priceFixDuration))
+            .accounts({ 
+                sellTokenMint: onreTokenMint, 
+                buyToken1Mint: usdcTokenMint, 
+                buyToken2Mint: onreTokenMint, 
+                state: statePda })
+            .rpc();
+
+        // when
+        // first interval: 
+        // sell token amount: 200e9
+        // users can exchange 1 ONRE = 0.5 USDC + 0.5 ONRE 
+        await program.methods
+            .takeOfferTwo(new anchor.BN(10e9))
+            .accounts({ offer: offerPda, user: user.publicKey })
+            .signers([user])
+            .rpc();
+
+        // then
+        await expectTokenAccountAmountToBe(userOnreTokenAccount, BigInt(95e9)); // 100 - 10 + 5
+        await expectTokenAccountAmountToBe(userUsdcTokenAccount, BigInt(5e9)); // 0 + 5
+        await expectTokenAccountAmountToBe(offerOnreTokenPda, BigInt(105e9)); // 100 + 10 - 5
+        await expectTokenAccountAmountToBe(offerUsdcTokenPda, BigInt(95e9)); // 100 - 5
+
+        // time travel to last interval
+        const currentClock = await client.getClock();
+        context.setClock(
+            new Clock(
+                currentClock.slot,
+                currentClock.epochStartTimestamp,
+                currentClock.epoch,
+                currentClock.leaderScheduleEpoch,
+                currentClock.unixTimestamp + BigInt(priceFixDuration * 6.5),
+            )
+        )
+
+        // last interval: 
+        // sell token amount: 500e9
+        // users can exchange 1 ONRE = 0.2 USDC + 0.2 ONRE
+        await program.methods
+            .takeOfferTwo(new anchor.BN(10e9))
+            .accounts({ offer: offerPda, user: user.publicKey })
+            .signers([user])
+            .rpc();
+
+        // then
+        expectTokenAccountAmountToBe(userOnreTokenAccount, BigInt(87e9)); // 95 - 10 + 2
+        expectTokenAccountAmountToBe(userUsdcTokenAccount, BigInt(7e9)); // 5 + 2
+        expectTokenAccountAmountToBe(offerOnreTokenPda, BigInt(113e9)); // 105 + 10 - 2
+        expectTokenAccountAmountToBe(offerUsdcTokenPda, BigInt(93e9)); // 95 - 2
+    })
+
+    async function expectTokenAccountAmountToBe(tokenAccount: PublicKey, amount: bigint) {
+        const account = await client.getAccount(tokenAccount);
+        const tokenAccountData = AccountLayout.decode(account.data)
+        expect(tokenAccountData.amount).toBe(amount)
     }
 })

@@ -47,7 +47,8 @@
     "globals": "^15.9.0",
     "jest": "^29.7.0",
     "prettier": "^3.5.2",
-    "solana-bankrun": "^0.5.0",
+    "solana-bankrun": "^0.4.0",
+    "anchor-bankrun": "^0.5.0",
     "ts-jest": "^29.2.6",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.3",
@@ -60,6 +61,9 @@
   "overrides": {
     "react-helmet-async": {
       "react": "^19.0.0"
+    },
+    "anchor-bankrun": {
+      "@coral-xyz/anchor": "^0.31.1"
     }
   }
 }
