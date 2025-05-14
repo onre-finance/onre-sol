@@ -23,7 +23,7 @@ describe("make offer", () => {
             name: "onreapp",
         };
 
-        const context = await startAnchor(".", [programInfo], []);
+        const context = await startAnchor("", [programInfo], []);
 
         const provider = new BankrunProvider(context);
         const program = new Program<OnreApp>(
@@ -85,13 +85,13 @@ describe("make offer", () => {
         expect(offerAccount.offerEndTime.eq(new BN(offerEndTime))).toBe(true);
         
         // 500 tokens substracted from boss buy token account
-        testHelper.expectTokenAccountAmountToBe(bossBuyTokenAccount, BigInt(100e9));
+        await testHelper.expectTokenAccountAmountToBe(bossBuyTokenAccount, BigInt(100e9));
 
         // 500 tokens added to offer buy token account
-        testHelper.expectTokenAccountAmountToBe(offerBuyTokenPda, BigInt(500e9));
+        await testHelper.expectTokenAccountAmountToBe(offerBuyTokenPda, BigInt(500e9));
 
         // offerSellTokenPda stays empty
-        testHelper.expectTokenAccountAmountToBe(offerSellTokenPda, BigInt(0));
+        await testHelper.expectTokenAccountAmountToBe(offerSellTokenPda, BigInt(0));
     });
 
     test("Make offer with one buy token with invalid price fix duration should fail", async () => {
@@ -196,18 +196,18 @@ describe("make offer", () => {
         expect(offerAccount.offerEndTime.eq(new BN(offerEndTime))).toBe(true);
         
         // 500 tokens substracted from boss buy token account 1
-        testHelper.expectTokenAccountAmountToBe(bossBuyTokenAccount1, BigInt(100e9));
+        await testHelper.expectTokenAccountAmountToBe(bossBuyTokenAccount1, BigInt(100e9));
 
         // 300 tokens substracted from boss buy token account 2
-        testHelper.expectTokenAccountAmountToBe(bossBuyTokenAccount2, BigInt(300e9));
+        await testHelper.expectTokenAccountAmountToBe(bossBuyTokenAccount2, BigInt(300e9));
 
         // 500 tokens added to offer buy token account 1
-        testHelper.expectTokenAccountAmountToBe(offerBuyToken1Pda, BigInt(500e9));
+        await testHelper.expectTokenAccountAmountToBe(offerBuyToken1Pda, BigInt(500e9));
 
         // 300 tokens added to offer buy token account 2
-        testHelper.expectTokenAccountAmountToBe(offerBuyToken2Pda, BigInt(300e9));
+        await testHelper.expectTokenAccountAmountToBe(offerBuyToken2Pda, BigInt(300e9));
 
         // offerSellTokenPda stays empty
-        testHelper.expectTokenAccountAmountToBe(offerSellTokenPda, BigInt(0));
+        await testHelper.expectTokenAccountAmountToBe(offerSellTokenPda, BigInt(0));
     });
 });

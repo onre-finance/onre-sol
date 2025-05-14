@@ -9,5 +9,7 @@ export default {
   },
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.json$': '$1'
-  }
+  },
+  testTimeout: 30000,
+  forceExit: true,
 };

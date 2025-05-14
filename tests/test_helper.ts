@@ -142,8 +142,8 @@ export class TestHelper {
 
     async expectTokenAccountAmountToBe(tokenAccount: PublicKey, amount: bigint) {
         const account = await this.context.banksClient.getAccount(tokenAccount);
-        const tokenAccountData = AccountLayout.decode(account!.data)
-        expect(tokenAccountData.amount).toBe(amount)
+        const tokenAccountData = AccountLayout.decode(account!.data);
+        expect(tokenAccountData.amount).toBe(amount);
     }
 
     async makeOfferOne(
