@@ -336,6 +336,12 @@ pub fn make_offer_one(
         buy_token_total_amount,
     )?;
     msg!("Transferring {} buy tokens 1 from boss to offer", buy_token_total_amount);
+    msg!("Offer created with buy_token_total_amount: {}, sell_token_start_amount: {}, sell_token_end_amount: {} and price_fix_duration: {}", 
+        buy_token_total_amount, 
+        sell_token_start_amount, 
+        sell_token_end_amount, 
+        price_fix_duration
+    );
 
     emit!(OfferMadeOne {
         offer_id,
@@ -458,6 +464,13 @@ pub fn make_offer_two(
         buy_token_2_total_amount,
     )?;
     msg!("Transferring {} buy tokens 2 from boss to offer", buy_token_2_total_amount);
+    msg!("Offer created with buy_token_1_total_amount: {}, buy_token_2_total_amount: {}, sell_token_start_amount: {}, sell_token_end_amount: {} and price_fix_duration: {}", 
+        buy_token_1_total_amount, 
+        buy_token_2_total_amount, 
+        sell_token_start_amount, 
+        sell_token_end_amount, 
+        price_fix_duration
+    );
 
     emit!(OfferMadeTwo {
         offer_id,
