@@ -361,6 +361,7 @@ fn transfer_remaining_tokens<'info, T: CloseOfferContext<'info> + anchor_lang::B
         );
 
         token::transfer(cpi_transfer, balance)?;
+        msg!("Transferred {} tokens from {} to {}", balance, from_token_account.key(), to_token_account.key());
 
         emit!(TokensTransferred {
             offer_id: ctx.accounts.offer().offer_id,
