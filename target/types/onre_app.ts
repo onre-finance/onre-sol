@@ -3663,38 +3663,7 @@ export type OnreApp = {
   "errors": [
     {
       "code": 6000,
-      "name": "insufficientOfferBalance",
-      "msg": "Insufficient tokens remaining in the offer."
-    },
-    {
-      "code": 6001,
-      "name": "invalidSellTokenMint",
-      "msg": "The sell token mint does not match the offer."
-    },
-    {
-      "code": 6002,
-      "name": "invalidBuyTokenMint",
-      "msg": "The buy token mint does not match the offer."
-    },
-    {
-      "code": 6003,
-      "name": "invalidTakeOffer",
-      "msg": "The offer is of 2 buy token type."
-    },
-    {
-      "code": 6004,
-      "name": "calculationOverflow",
-      "msg": "Calculation overflowed or invalid."
-    },
-    {
-      "code": 6005,
-      "name": "zeroBuyTokenAmount",
-      "msg": "Zero buy token amount."
-    },
-    {
-      "code": 6006,
-      "name": "invalidCurrentTime",
-      "msg": "Current time must be within the offer's start and end time range."
+      "name": "invalidBossAddress"
     }
   ],
   "types": [

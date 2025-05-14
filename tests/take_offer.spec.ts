@@ -116,7 +116,7 @@ describe("take offer", () => {
         })
 
         // time travel to next interval
-        testHelper.advanceClockBy(3600);
+        await testHelper.advanceClockBy(3600);
 
         // when
         await testHelper.takeOfferOne({
@@ -249,6 +249,7 @@ describe("take offer", () => {
             usdcTokenMint, BigInt(0), 
             boss, BigInt(200e9)
         );
+        console.log("offerId", offerId);
         const offerUsdcTokenPda = offerBuyTokenPda;
         const offerOnreTokenPda = offerSellTokenPda;
 
@@ -270,7 +271,7 @@ describe("take offer", () => {
         })
 
         // time travel to last interval
-        testHelper.advanceClockBy(priceFixDuration * 2.5);
+        await testHelper.advanceClockBy((priceFixDuration * 3) - 1);
 
         // when
         await testHelper.takeOfferOne({
@@ -373,7 +374,7 @@ describe("take offer", () => {
         })
 
         // time travel to last interval
-        testHelper.advanceClockBy(priceFixDuration * 2.5);
+        await testHelper.advanceClockBy(priceFixDuration * 2.5);
 
         // when
         await testHelper.takeOfferOne({
@@ -468,7 +469,7 @@ describe("take offer", () => {
         })
 
         // time travel to next interval
-        testHelper.advanceClockBy(90000);
+        await testHelper.advanceClockBy(90000);
 
         // when
         await testHelper.takeOfferTwo({
@@ -537,7 +538,7 @@ describe("take offer", () => {
         })
 
         // time travel to last interval
-        testHelper.advanceClockBy(priceFixDuration * 1.5);
+        await testHelper.advanceClockBy(priceFixDuration * 1.5);
 
         const offerAccountAfter = await testHelper.getOfferAccount(offerPda);
         expect(offerAccountAfter.buyToken1.amount.eq(new BN(100e9))).toBe(true);
@@ -577,7 +578,7 @@ describe("take offer", () => {
         })
 
         // time travel to after offer end time
-        testHelper.advanceClockBy(7500);
+        await testHelper.advanceClockBy(7201);
 
         // when
         await expect(testHelper.takeOfferOne({
@@ -607,7 +608,7 @@ describe("take offer", () => {
             boss, BigInt(600e9)
         );
 
-        const offerStartTime = await testHelper.getCurrentClockTime() + 1000;
+        const offerStartTime = await testHelper.getCurrentClockTime() + 1;
         const offerEndTime = offerStartTime + 7200;
 
         // make offer
@@ -693,7 +694,7 @@ describe("take offer", () => {
         await testHelper.expectTokenAccountAmountToBe(offerUsdcTokenPda, BigInt(95e9)); // 100 - 5
 
         // time travel to last interval
-        testHelper.advanceClockBy(priceFixDuration * 6.5);
+        await testHelper.advanceClockBy(priceFixDuration * 6.5);
 
         // last interval: 
         // sell token amount: 500e9
