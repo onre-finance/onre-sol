@@ -3,7 +3,6 @@ import { Program } from '@coral-xyz/anchor';
 import { Keypair, PublicKey, TransactionMessage, VersionedTransaction } from '@solana/web3.js';
 import { OnreApp } from '../target/types/onre_app';
 import {
-  ASSOCIATED_TOKEN_PROGRAM_ID,
   createAssociatedTokenAccount,
   createAssociatedTokenAccountInstruction,
   createMint,
@@ -14,21 +13,21 @@ import {
 } from '@solana/spl-token';
 
 
-async function airdropLamports(provider, publicKey, amount) {
+async function airdropLamports(provider: anchor.AnchorProvider, publicKey: anchor.web3.PublicKey, amount: number) {
   const signature = await provider.connection.requestAirdrop(publicKey, amount);
   await provider.connection.confirmTransaction({ signature, ...(await provider.connection.getLatestBlockhash()) });
   return signature;
 }
 
-async function mintToAddress(provider, payer, mint, destination, authority, amount) {
+async function mintToAddress(provider: anchor.AnchorProvider, payer: anchor.web3.Signer | anchor.web3.Keypair, mint: anchor.web3.PublicKey, destination: anchor.web3.PublicKey, authority: anchor.web3.PublicKey | anchor.web3.Signer, amount: number | bigint) {
   await mintTo(provider.connection, payer, mint, destination, authority, amount);
 }
 
-async function createATA(provider, payer, mint, owner) {
+async function createATA(provider: anchor.AnchorProvider, payer: anchor.web3.Signer | anchor.web3.Keypair, mint: anchor.web3.PublicKey, owner: anchor.web3.PublicKey) {
   return await createAssociatedTokenAccount(provider.connection, payer, mint, owner);
 }
 
-async function createAndSendTransaction(provider, payer, instructions) {
+async function createAndSendTransaction(provider: anchor.AnchorProvider, payer: anchor.Wallet, instructions: anchor.web3.TransactionInstruction[]) {
   const tx = new VersionedTransaction(
     new TransactionMessage({
       payerKey: payer.publicKey,
@@ -59,9 +58,7 @@ describe('onreapp', () => {
   let bossBuyTokenAccount1: PublicKey;
   let bossBuyTokenAccount2: PublicKey;
   let offerPda: PublicKey;
-  let offerSellTokenPda: PublicKey;
   let offerBuyToken1Pda: PublicKey;
-  let offerBuyToken2Pda: PublicKey;
   let offerId = new anchor.BN(123123123);
   let statePda: PublicKey;
   let offerAuthority: PublicKey;
@@ -84,9 +81,9 @@ describe('onreapp', () => {
     [offerPda] = PublicKey.findProgramAddressSync([Buffer.from('offer'), offerId.toArrayLike(Buffer, 'le', 8)], program.programId);
     [statePda] = PublicKey.findProgramAddressSync([Buffer.from('state')], program.programId);
     [offerAuthority] = PublicKey.findProgramAddressSync([Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)], program.programId);
-    offerSellTokenPda = await getAssociatedTokenAddress(sellTokenMint, offerAuthority, true);
+    await getAssociatedTokenAddress(sellTokenMint, offerAuthority, true);
     offerBuyToken1Pda = await getAssociatedTokenAddress(buyToken1Mint, offerAuthority, true);
-    offerBuyToken2Pda = await getAssociatedTokenAddress(buyToken2Mint, offerAuthority, true);
+    await getAssociatedTokenAddress(buyToken2Mint, offerAuthority, true);
   });
 
   it('Initialize onre with right boss account', async () => {
@@ -133,7 +130,7 @@ describe('onreapp', () => {
     );
 
     await program.methods
-      .makeOfferOne(offerId, new anchor.BN(500e9), new anchor.BN(500e9))
+      .makeOfferOne(offerId, new anchor.BN(500e9), new anchor.BN(200e9), new anchor.BN(400e9), new anchor.BN(Date.now()), new anchor.BN(Date.now() + 7200), new anchor.BN(3600))
       .accounts({ sellTokenMint, buyToken1Mint, state: statePda })
       .preInstructions([buyToken1AccountInstruction, offerSellTokenAccountInstruction])
       .rpc();
@@ -141,9 +138,9 @@ describe('onreapp', () => {
     const offerAccount = await program.account.offer.fetch(offerPda);
     expect(offerAccount.offerId.eq(offerId)).toBe(true);
     expect(offerAccount.sellTokenMint.toBase58()).toEqual(sellTokenMint.toBase58());
-    expect(offerAccount.buyTokenMint1.toBase58()).toEqual(buyToken1Mint.toBase58());
-    expect(offerAccount.sellTokenTotalAmount.eq(new anchor.BN(500e9))).toBe(true);
-    expect(offerAccount.buyToken1TotalAmount.eq(new anchor.BN(500e9))).toBe(true);
+    expect(offerAccount.buyToken1.mint.toBase58()).toEqual(buyToken1Mint.toBase58());
+    expect(offerAccount.sellTokenEndAmount.eq(new anchor.BN(400e9))).toBe(true);
+    expect(offerAccount.buyToken1.amount.eq(new anchor.BN(500e9))).toBe(true);
 
     const bossBuyTokenAccountInfo = await provider.connection.getTokenAccountBalance(bossBuyTokenAccount1);
     expect(+bossBuyTokenAccountInfo.value.amount).toEqual(9500e9);
@@ -157,7 +154,7 @@ describe('onreapp', () => {
     await airdropLamports(provider, newBoss.publicKey, anchor.web3.LAMPORTS_PER_SOL * 20);
     await expect(
       program.methods
-        .makeOfferOne(offerId, new anchor.BN(500e9), new anchor.BN(500e9))
+        .makeOfferOne(offerId, new anchor.BN(500e9), new anchor.BN(200e9), new anchor.BN(400e9), new anchor.BN(Date.now()), new anchor.BN(Date.now() + 1), new anchor.BN(3600))
         .accountsPartial({ bossBuyToken1Account: bossBuyTokenAccount1, sellTokenMint, buyToken1Mint, state: statePda })
         .signers([newBoss.payer])
         .rpc(),
@@ -168,7 +165,7 @@ describe('onreapp', () => {
     const newBoss = new anchor.Wallet(Keypair.generate());
     await expect(
       program.methods
-        .makeOfferOne(offerId, new anchor.BN(500e9), new anchor.BN(500e9))
+        .makeOfferOne(offerId, new anchor.BN(500e9), new anchor.BN(200e9), new anchor.BN(400e9), new anchor.BN(Date.now()), new anchor.BN(Date.now() + 1), new anchor.BN(3600))
         .accountsPartial({ bossBuyToken1Account: bossBuyTokenAccount1, sellTokenMint, buyToken1Mint, state: statePda, boss: newBoss.publicKey })
         .signers([initialBoss.payer])
         .rpc(),
@@ -179,7 +176,7 @@ describe('onreapp', () => {
     const newBoss = new anchor.Wallet(Keypair.generate());
     await expect(
       program.methods
-        .makeOfferOne(offerId, new anchor.BN(500e9), new anchor.BN(500e9))
+        .makeOfferOne(offerId, new anchor.BN(500e9), new anchor.BN(200e9), new anchor.BN(400e9), new anchor.BN(Date.now()), new anchor.BN(Date.now() + 1), new anchor.BN(3600))
         .accountsPartial({ bossBuyToken1Account: bossBuyTokenAccount1, sellTokenMint, buyToken1Mint, state: statePda, boss: newBoss.publicKey })
         .signers([newBoss.payer])
         .rpc(),
@@ -206,7 +203,7 @@ describe('onreapp', () => {
       buyToken1Mint,
     );
     const makeOfferInstruction = await program.methods
-      .makeOfferOne(newOfferId, new anchor.BN(500e9), new anchor.BN(500e9))
+      .makeOfferOne(newOfferId, new anchor.BN(500e9), new anchor.BN(200e9), new anchor.BN(400e9), new anchor.BN(Date.now()), new anchor.BN(Date.now() + 7200), new anchor.BN(3600))
       .accounts({ sellTokenMint, buyToken1Mint, state: statePda })
       .instruction();
 
@@ -216,9 +213,10 @@ describe('onreapp', () => {
     const offerAccount = await program.account.offer.fetch(newOfferPda);
     expect(offerAccount.offerId.eq(newOfferId)).toBe(true);
     expect(offerAccount.sellTokenMint.toBase58()).toEqual(sellTokenMint.toBase58());
-    expect(offerAccount.buyTokenMint1.toBase58()).toEqual(buyToken1Mint.toBase58());
-    expect(offerAccount.sellTokenTotalAmount.eq(new anchor.BN(500e9))).toBe(true);
-    expect(offerAccount.buyToken1TotalAmount.eq(new anchor.BN(500e9))).toBe(true);
+    expect(offerAccount.buyToken1.mint.toBase58()).toEqual(buyToken1Mint.toBase58());
+    expect(offerAccount.sellTokenStartAmount.eq(new anchor.BN(200e9))).toBe(true);
+    expect(offerAccount.sellTokenEndAmount.eq(new anchor.BN(400e9))).toBe(true);
+    expect(offerAccount.buyToken1.amount.eq(new anchor.BN(500e9))).toBe(true);
 
     const bossSellTokenAccountInfo = await provider.connection.getTokenAccountBalance(bossSellTokenAccount);
     const offerSellTokenAccountInfo = await provider.connection.getTokenAccountBalance(newOfferSellTokenPda);
@@ -255,8 +253,18 @@ describe('onreapp', () => {
       buyToken2Mint,
     );
 
+    const currentTime = Date.now() / 1000;
+
     await program.methods
-      .makeOfferTwo(offerId, new anchor.BN(100e9), new anchor.BN(20e9), new anchor.BN(240e9))
+      .makeOfferTwo(offerId, 
+        new anchor.BN(100e9), // buy token 1
+        new anchor.BN(20e9), // buy token 2
+        new anchor.BN(240e9), // sell token start
+        new anchor.BN(240e9), // sell token end
+        new anchor.BN(currentTime), // offer start 
+        new anchor.BN(currentTime + 7200), // offer end
+        new anchor.BN(3600) // offer interval
+      )
       .accounts({ sellTokenMint, buyToken1Mint, buyToken2Mint, state: statePda })
       .preInstructions([offerSellTokenAccountInstruction, offerBuyToken1AccountInstruction, offerBuyToken2AccountInstruction])
       .rpc();
@@ -344,8 +352,17 @@ describe('onreapp', () => {
       buyToken1Mint,
     );
 
+    const currentTime = Date.now() / 1000;
+
     await program.methods
-      .makeOfferOne(offerId, new anchor.BN(100e9), new anchor.BN(200e9))
+      .makeOfferOne(offerId, 
+        new anchor.BN(100e9), // buy token 1 amount
+        new anchor.BN(200e9), // sell token start
+        new anchor.BN(200e9), // sell token end
+        new anchor.BN(currentTime), // offer start
+        new anchor.BN(currentTime + 7200), // offer end
+        new anchor.BN(3600), // offer interval
+      )
       .accounts({ sellTokenMint, buyToken1Mint, state: statePda })
       .preInstructions([offerSellTokenAccountInstruction, offerBuyToken1AccountInstruction])
       .rpc();
@@ -393,8 +410,17 @@ describe('onreapp', () => {
     const offerSellTokenPda = await getAssociatedTokenAddress(sellTokenMint, offerAuthority, true);
     const offerBuyToken1Pda = await getAssociatedTokenAddress(buyToken1Mint, offerAuthority, true);
 
+    const currentTime = Date.now() / 1000;
+
     await program.methods
-      .makeOfferOne(offerId, new anchor.BN(100e9), new anchor.BN(50e9))
+      .makeOfferOne(offerId, 
+        new anchor.BN(100e9), // buy token 1 amount
+        new anchor.BN(50e9), // sell token start
+        new anchor.BN(50e9), // sell token end
+        new anchor.BN(currentTime), // offer start
+        new anchor.BN(currentTime + 7200), // offer end
+        new anchor.BN(3600), // offer interval
+      )
       .accounts({ sellTokenMint, buyToken1Mint, state: statePda })
       .preInstructions([
         createAssociatedTokenAccountInstruction(initialBoss.payer.publicKey, offerSellTokenPda, offerAuthority, sellTokenMint),
@@ -438,7 +464,7 @@ describe('onreapp', () => {
     const versionedTransaction = await user.signTransaction(tx);
     const signedTransactionBytes = versionedTransaction.serialize();
 
-    await expect(provider.connection.sendRawTransaction(signedTransactionBytes)).rejects.toThrow(/The offer would exceed its total sell token limit/);
+    await expect(provider.connection.sendRawTransaction(signedTransactionBytes)).rejects.toThrow(RegExp('.*InsufficientOfferBalance.*'));
   });
 
   it('Fails to take offer with one buy token due to invalid buy token mint', async () => {
@@ -448,8 +474,17 @@ describe('onreapp', () => {
     const offerSellTokenPda = await getAssociatedTokenAddress(sellTokenMint, offerAuthority, true);
     const offerBuyToken1Pda = await getAssociatedTokenAddress(buyToken1Mint, offerAuthority, true);
 
+    const currentTime = Date.now() / 1000;
+
     await program.methods
-      .makeOfferOne(offerId, new anchor.BN(100e9), new anchor.BN(200e9))
+      .makeOfferOne(offerId, 
+        new anchor.BN(100e9), // buy token 1 amount
+        new anchor.BN(200e9), // sell token start
+        new anchor.BN(300e9), // sell token end
+        new anchor.BN(currentTime), // offer start
+        new anchor.BN(currentTime + 7200), // offer end
+        new anchor.BN(3600), // offer interval
+      )
       .accounts({ sellTokenMint, buyToken1Mint, state: statePda })
       .preInstructions([
         createAssociatedTokenAccountInstruction(initialBoss.payer.publicKey, offerSellTokenPda, offerAuthority, sellTokenMint),
@@ -518,8 +553,18 @@ describe('onreapp', () => {
       buyToken2Mint,
     );
 
+    const currentTime = Date.now() / 1000;
+
     await program.methods
-      .makeOfferTwo(offerId, new anchor.BN(100e9), new anchor.BN(200e9), new anchor.BN(300e9))
+      .makeOfferTwo(offerId, 
+        new anchor.BN(100e9), // buy token 1 amount
+        new anchor.BN(200e9), // buy token 2 amount
+        new anchor.BN(200e9), // sell token start
+        new anchor.BN(400e9), // sell token end
+        new anchor.BN(currentTime), // offer start
+        new anchor.BN(currentTime + 7200), // offer end
+        new anchor.BN(3600) // offer interval
+      )
       .accounts({
         sellTokenMint: sellTokenMint,
         buyToken1Mint: buyToken1Mint,
@@ -533,11 +578,12 @@ describe('onreapp', () => {
     const offerAccount = await program.account.offer.fetch(offerPda);
     expect(offerAccount.offerId.eq(offerId)).toBe(true);
     expect(offerAccount.sellTokenMint.toBase58()).toEqual(sellTokenMint.toBase58());
-    expect(offerAccount.buyTokenMint1.toBase58()).toEqual(buyToken1Mint.toBase58());
-    expect(offerAccount.buyTokenMint2.toBase58()).toEqual(buyToken2Mint.toBase58());
-    expect(offerAccount.sellTokenTotalAmount.eq(new anchor.BN(300e9))).toBe(true);
-    expect(offerAccount.buyToken1TotalAmount.eq(new anchor.BN(100e9))).toBe(true);
-    expect(offerAccount.buyToken2TotalAmount.eq(new anchor.BN(200e9))).toBe(true);
+    expect(offerAccount.buyToken1.mint.toBase58()).toEqual(buyToken1Mint.toBase58());
+    expect(offerAccount.buyToken2.mint.toBase58()).toEqual(buyToken2Mint.toBase58());
+    expect(offerAccount.sellTokenStartAmount.eq(new anchor.BN(200e9))).toBe(true);
+    expect(offerAccount.sellTokenEndAmount.eq(new anchor.BN(400e9))).toBe(true);
+    expect(offerAccount.buyToken1.amount.eq(new anchor.BN(100e9))).toBe(true);
+    expect(offerAccount.buyToken2.amount.eq(new anchor.BN(200e9))).toBe(true);
 
     // Check token balances before closing
     const bossBuyToken1BalanceBefore = await provider.connection.getTokenAccountBalance(bossBuyTokenAccount1);
@@ -591,8 +637,16 @@ describe('onreapp', () => {
       buyToken1Mint,
     );
 
+    const currentTime = Date.now() / 1000;
+
     await program.methods
-      .makeOfferOne(offerId, new anchor.BN(50e9), new anchor.BN(100e9))
+      .makeOfferOne(offerId, new anchor.BN(50e9), // buy token 1 amount
+        new anchor.BN(200e9), // sell token start
+        new anchor.BN(400e9), // sell token end
+        new anchor.BN(currentTime), // offer start
+        new anchor.BN(currentTime + 7200), // offer end
+        new anchor.BN(3600) // offer interval
+      )
       .accounts({
         sellTokenMint: sellTokenMint,
         buyToken1Mint: buyToken1Mint,
@@ -609,9 +663,8 @@ describe('onreapp', () => {
       offerAuthority,
       buyToken2Mint,
     );
-
     // Create the token account for buy token 2
-    await program.provider.sendAndConfirm(
+    await provider.sendAndConfirm(
       new anchor.web3.Transaction().add(offerBuyToken2AccountInstruction),
       [initialBoss.payer]
     );
@@ -663,10 +716,20 @@ describe('onreapp', () => {
       buyToken2Mint,
     );
 
+    const currentTime = Date.now() / 1000;
+
     // Try to make an offer with zero buy token 1 amount
     await expect(
       program.methods
-        .makeOfferTwo(offerId, new anchor.BN(0), new anchor.BN(100e9), new anchor.BN(100e9))
+        .makeOfferTwo(offerId, 
+          new anchor.BN(0), // buy token 1 amount
+          new anchor.BN(100e9), // buy token 2 amount
+          new anchor.BN(200e9), // sell token start
+          new anchor.BN(400e9), // sell token end
+          new anchor.BN(currentTime), // offer start
+          new anchor.BN(currentTime + 7200), // offer end
+          new anchor.BN(3600) // offer interval
+        )
         .accounts({
           sellTokenMint: sellTokenMint,
           buyToken1Mint: buyToken1Mint,
@@ -680,7 +743,15 @@ describe('onreapp', () => {
     // Try to make an offer with zero buy token 2 amount
     await expect(
       program.methods
-        .makeOfferTwo(offerId, new anchor.BN(100e9), new anchor.BN(0), new anchor.BN(100e9))
+        .makeOfferTwo(offerId, 
+          new anchor.BN(100e9), // buy token 1 amount
+          new anchor.BN(0), // buy token 2 amount
+          new anchor.BN(200e9), // sell token start
+          new anchor.BN(400e9), // sell token end
+          new anchor.BN(currentTime), // offer start
+          new anchor.BN(currentTime + 7200), // offer end
+          new anchor.BN(3600) // offer interval
+        )
         .accounts({
           sellTokenMint: sellTokenMint,
           buyToken1Mint: buyToken1Mint,
@@ -694,7 +765,15 @@ describe('onreapp', () => {
     // Try to make an offer with zero sell token amount
     await expect(
       program.methods
-        .makeOfferTwo(offerId, new anchor.BN(100e9), new anchor.BN(100e9), new anchor.BN(0))
+        .makeOfferTwo(offerId, 
+          new anchor.BN(100e9), // buy token 1 amount
+          new anchor.BN(100e9), // buy token 2 amount
+          new anchor.BN(0), // sell token start
+          new anchor.BN(0), // sell token end
+          new anchor.BN(currentTime), // offer start
+          new anchor.BN(currentTime + 7200), // offer end
+          new anchor.BN(3600) // offer interval
+        )
         .accounts({
           sellTokenMint: sellTokenMint,
           buyToken1Mint: buyToken1Mint,
@@ -725,10 +804,18 @@ describe('onreapp', () => {
       buyToken1Mint,
     );
 
+    const currentTime = Date.now() / 1000;
     // Try to make an offer with zero buy token amount
     await expect(
       program.methods
-        .makeOfferOne(offerId, new anchor.BN(0), new anchor.BN(100e9))
+        .makeOfferOne(offerId, 
+          new anchor.BN(0), // buy token 1 amount
+          new anchor.BN(200e9), // sell token start
+          new anchor.BN(400e9), // sell token end
+          new anchor.BN(currentTime), // offer start
+          new anchor.BN(currentTime + 7200), // offer end
+          new anchor.BN(3600) // offer interval
+        )
         .accounts({
           sellTokenMint: sellTokenMint,
           buyToken1Mint: buyToken1Mint,
@@ -741,7 +828,14 @@ describe('onreapp', () => {
     // Try to make an offer with zero sell token amount
     await expect(
       program.methods
-        .makeOfferOne(offerId, new anchor.BN(100e9), new anchor.BN(0))
+        .makeOfferOne(offerId, 
+          new anchor.BN(100e9), // buy token 1 amount
+          new anchor.BN(0), // sell token start
+          new anchor.BN(0), // sell token end
+          new anchor.BN(currentTime), // offer start
+          new anchor.BN(currentTime + 7200), // offer end
+          new anchor.BN(3600) // offer interval
+        )
         .accounts({
           sellTokenMint: sellTokenMint,
           buyToken1Mint: buyToken1Mint,
@@ -780,8 +874,18 @@ describe('onreapp', () => {
       buyToken2Mint,
     );
 
+    const currentTime = Date.now() / 1000;
+
     await program.methods
-      .makeOfferTwo(offerId, new anchor.BN(50e9), new anchor.BN(50e9), new anchor.BN(100e9))
+      .makeOfferTwo(offerId, 
+        new anchor.BN(50e9), // buy token 1 amount
+        new anchor.BN(50e9), // buy token 2 amount
+        new anchor.BN(100e9), // sell token start
+        new anchor.BN(200e9), // sell token end
+        new anchor.BN(currentTime), // offer start
+        new anchor.BN(currentTime + 7200), // offer end
+        new anchor.BN(3600) // offer interval
+      )
       .accounts({
         sellTokenMint: sellTokenMint,
         buyToken1Mint: buyToken1Mint,
@@ -872,8 +976,18 @@ describe('onreapp', () => {
       buyToken2Mint,
     );
 
+    const currentTime = Date.now() / 1000;
+
     await program.methods
-      .makeOfferTwo(offerId, new anchor.BN(50e9), new anchor.BN(50e9), new anchor.BN(100e9))
+      .makeOfferTwo(offerId, 
+        new anchor.BN(50e9), // buy token 1 amount
+        new anchor.BN(50e9), // buy token 2 amount
+        new anchor.BN(100e9), // sell token start
+        new anchor.BN(100e9), // sell token end
+        new anchor.BN(currentTime), // offer start
+        new anchor.BN(currentTime + 7200), // offer end
+        new anchor.BN(3600) // offer interval
+      )
       .accounts({
         sellTokenMint: sellTokenMint,
         buyToken1Mint: buyToken1Mint,
@@ -929,7 +1043,7 @@ describe('onreapp', () => {
     const versionedTransaction = await user.signTransaction(tx);
     const signedTransactionBytes = versionedTransaction.serialize();
 
-    await expect(provider.connection.sendRawTransaction(signedTransactionBytes)).rejects.toThrow(/The offer would exceed its total sell token limit/);
+    await expect(provider.connection.sendRawTransaction(signedTransactionBytes)).rejects.toThrow(RegExp('.*InsufficientOfferBalance.*'));
 
     // Clean up - close the offer
     await program.methods
@@ -1004,9 +1118,17 @@ describe('onreapp', () => {
     // 10 units of buy token for 100 units of sell token
     const buyTokenAmount = 10; // Very small amount
     const sellTokenAmount = 100; // Very small amount
+    const currentTime = Date.now() / 1000;
 
     await program.methods
-      .makeOfferOne(offerId, new anchor.BN(buyTokenAmount), new anchor.BN(sellTokenAmount))
+      .makeOfferOne(offerId, 
+        new anchor.BN(buyTokenAmount), // buy token 1 amount
+        new anchor.BN(sellTokenAmount), // sell token start
+        new anchor.BN(sellTokenAmount), // sell token end
+        new anchor.BN(currentTime), // offer start
+        new anchor.BN(currentTime + 7200), // offer end
+        new anchor.BN(3600) // offer interval
+      )
       .accounts({
         sellTokenMint: sellTokenMint,
         buyToken1Mint: buyToken1Mint,
@@ -1018,8 +1140,9 @@ describe('onreapp', () => {
     // Verify the offer was created correctly
     const offerAccount = await program.account.offer.fetch(offerPda);
     expect(offerAccount.offerId.eq(offerId)).toBe(true);
-    expect(offerAccount.buyToken1TotalAmount.toNumber()).toEqual(buyTokenAmount);
-    expect(offerAccount.sellTokenTotalAmount.toNumber()).toEqual(sellTokenAmount);
+    expect(offerAccount.buyToken1.amount.toNumber()).toEqual(buyTokenAmount);
+    expect(offerAccount.sellTokenStartAmount.toNumber()).toEqual(sellTokenAmount);
+    expect(offerAccount.sellTokenEndAmount.toNumber()).toEqual(sellTokenAmount);
 
     // Create a user to take a small portion of the offer
     const user = new anchor.Wallet(Keypair.generate());
@@ -1087,9 +1210,18 @@ describe('onreapp', () => {
       buyToken1Mint,
     );
 
+    const currentTime = Date.now() / 1000;
+
     // Make an offer with 100e9 buy tokens for 100e9 sell tokens
     await program.methods
-      .makeOfferOne(offerId, new anchor.BN(100e9), new anchor.BN(100e9))
+      .makeOfferOne(offerId, 
+        new anchor.BN(100e9), // buy token 1 amount
+        new anchor.BN(100e9), // sell token start
+        new anchor.BN(100e9), // sell token end
+        new anchor.BN(currentTime), // offer start
+        new anchor.BN(currentTime + 7200), // offer end
+        new anchor.BN(3600) // offer interval
+      )
       .accounts({ sellTokenMint, buyToken1Mint, state: statePda })
       .preInstructions([offerSellTokenAccountInstruction, offerBuyToken1AccountInstruction])
       .rpc();
@@ -1098,9 +1230,10 @@ describe('onreapp', () => {
     const offerAccount = await program.account.offer.fetch(offerPda);
     expect(offerAccount.offerId.eq(offerId)).toBe(true);
     expect(offerAccount.sellTokenMint.toBase58()).toEqual(sellTokenMint.toBase58());
-    expect(offerAccount.buyTokenMint1.toBase58()).toEqual(buyToken1Mint.toBase58());
-    expect(offerAccount.sellTokenTotalAmount.eq(new anchor.BN(100e9))).toBe(true);
-    expect(offerAccount.buyToken1TotalAmount.eq(new anchor.BN(100e9))).toBe(true);
+    expect(offerAccount.buyToken1.mint.toBase58()).toEqual(buyToken1Mint.toBase58());
+    expect(offerAccount.buyToken1.amount.eq(new anchor.BN(100e9))).toBe(true);
+    expect(offerAccount.sellTokenStartAmount.eq(new anchor.BN(100e9))).toBe(true);
+    expect(offerAccount.sellTokenEndAmount.eq(new anchor.BN(100e9))).toBe(true);
 
     // Create first user and have them take 60% of the offer
     const user1 = new anchor.Wallet(Keypair.generate());

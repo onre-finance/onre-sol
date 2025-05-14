@@ -1,7 +1,7 @@
 use crate::contexts::CloseOfferContext;
 use crate::state::{Offer, State};
 use anchor_lang::prelude::*;
-use anchor_lang::{system_program, Accounts};
+use anchor_lang::Accounts;
 use anchor_spl::token;
 use anchor_spl::token::{CloseAccount, Token, TokenAccount, Transfer};
 
@@ -48,7 +48,7 @@ pub struct CloseOfferOne<'info> {
     /// Offer's buy token 1 ATA, must exist prior to execution, controlled by `offer_token_authority`.
     #[account(
         mut,
-        associated_token::mint = offer.buy_token_mint_1,
+        associated_token::mint = offer.buy_token_1.mint,
         associated_token::authority = offer_token_authority,
     )]
     pub offer_buy_1_token_account: Account<'info, TokenAccount>,
@@ -56,7 +56,7 @@ pub struct CloseOfferOne<'info> {
     /// Boss's buy token 1 ATA, must exist prior to execution, owned by `boss`.
     #[account(
         mut,
-        associated_token::mint = offer.buy_token_mint_1,
+        associated_token::mint = offer.buy_token_1.mint,
         associated_token::authority = boss,
     )]
     pub boss_buy_1_token_account: Account<'info, TokenAccount>,
@@ -101,7 +101,7 @@ pub struct CloseOfferOne<'info> {
 /// - [`CloseOfferErrorCode::InvalidMint`] if token account mints mismatch during transfers.
 pub fn close_offer_one(ctx: Context<CloseOfferOne>) -> Result<()> {
     require!(
-        ctx.accounts.offer.buy_token_mint_2 == system_program::ID,
+        ctx.accounts.offer.buy_token_2.mint == Pubkey::default(),
         CloseOfferErrorCode::InvalidCloseOffer
     );
 
@@ -172,7 +172,7 @@ pub struct CloseOfferTwo<'info> {
     /// Offer's buy token 1 ATA, must exist prior to execution, controlled by `offer_token_authority`.
     #[account(
         mut,
-        associated_token::mint = offer.buy_token_mint_1,
+        associated_token::mint = offer.buy_token_1.mint,
         associated_token::authority = offer_token_authority,
   )]
     pub offer_buy_1_token_account: Account<'info, TokenAccount>,
@@ -180,7 +180,7 @@ pub struct CloseOfferTwo<'info> {
     /// Offer's buy token 2 ATA, must exist prior to execution, controlled by `offer_token_authority`.
     #[account(
         mut,
-        associated_token::mint = offer.buy_token_mint_2,
+        associated_token::mint = offer.buy_token_2.mint,
         associated_token::authority = offer_token_authority,
   )]
     pub offer_buy_2_token_account: Account<'info, TokenAccount>,
@@ -188,7 +188,7 @@ pub struct CloseOfferTwo<'info> {
     /// Boss's buy token 1 ATA, must exist prior to execution, owned by `boss`.
     #[account(
         mut,
-        associated_token::mint = offer.buy_token_mint_1,
+        associated_token::mint = offer.buy_token_1.mint,
         associated_token::authority = boss,
   )]
     pub boss_buy_1_token_account: Account<'info, TokenAccount>,
@@ -196,7 +196,7 @@ pub struct CloseOfferTwo<'info> {
     /// Boss's buy token 2 ATA, must exist prior to execution, owned by `boss`.
     #[account(
         mut,
-        associated_token::mint = offer.buy_token_mint_2,
+        associated_token::mint = offer.buy_token_2.mint,
         associated_token::authority = boss,
   )]
     pub boss_buy_2_token_account: Account<'info, TokenAccount>,
@@ -361,6 +361,7 @@ fn transfer_remaining_tokens<'info, T: CloseOfferContext<'info> + anchor_lang::B
         );
 
         token::transfer(cpi_transfer, balance)?;
+        msg!("Transferred {} tokens from {} to {}", balance, from_token_account.key(), to_token_account.key());
 
         emit!(TokensTransferred {
             offer_id: ctx.accounts.offer().offer_id,

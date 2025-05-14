@@ -15,14 +15,29 @@ export type OnreApp = {
   "docs": [
     "The main program module for the Onre App.",
     "",
-    "This module defines the entry points for all program instructions, delegating to specific",
-    "instruction modules for execution. It manages offers where a boss provides buy tokens",
-    "in exchange for sell tokens, with functionality for making, taking, and closing offers,",
-    "as well as managing the program state.",
+    "This module defines the entry points for all program instructions. It facilitates the creation",
+    "and management of offers where a \"boss\" provides one or two types of buy tokens in exchange for",
+    "sell tokens. A key feature is the dynamic pricing model for offers, where the amount of",
+    "sell token required can change over the offer's duration based on predefined parameters.",
+    "",
+    "Core functionalities include:",
+    "- Making offers with dynamic pricing (`make_offer_one`, `make_offer_two`).",
+    "- Taking offers, respecting the current price (`take_offer_one`, `take_offer_two`).",
+    "- Closing offers (`close_offer_one`, `close_offer_two`).",
+    "- Program state initialization and boss management (`initialize`, `set_boss`).",
+    "",
+    "# Dynamic Pricing Model",
+    "The price (amount of sell tokens per buy token) is determined by:",
+    "- `sell_token_start_amount`: Sell token amount at the beginning of the offer.",
+    "- `sell_token_end_amount`: Sell token amount at the end of the offer.",
+    "- `offer_start_time`, `offer_end_time`: Defines the offer's active duration.",
+    "- `price_fix_duration`: The duration of each discrete pricing interval within the offer period.",
+    "The price interpolates linearly across these intervals.",
     "",
     "# Security",
-    "- Instructions are secured by constraints like `has_one = boss` and PDA derivation.",
-    "- Events are emitted in instruction modules for state changes (e.g., offer creation, closure)."
+    "- Access controls are enforced, for example, ensuring only the `boss` can create offers or update critical state.",
+    "- PDA (Program Derived Address) accounts are used for offer and token authorities, ensuring ownership.",
+    "- Events are emitted for significant actions (e.g., `OfferMadeOne`, `OfferTakenTwo`) for off-chain traceability."
   ],
   "instructions": [
     {
@@ -196,7 +211,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -290,7 +305,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -670,7 +685,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -764,7 +779,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_2",
+                "path": "offer.buy_token_2.mint",
                 "account": "offer"
               }
             ],
@@ -858,7 +873,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -952,7 +967,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_2",
+                "path": "offer.buy_token_2.mint",
                 "account": "offer"
               }
             ],
@@ -1226,8 +1241,20 @@ export type OnreApp = {
       "docs": [
         "Creates an offer with one buy token.",
         "",
-        "Delegates to `make_offer::make_offer_one` to initialize an offer with a single buy token.",
-        "Emits an `OfferMadeOne` event upon success."
+        "Delegates to `make_offer::make_offer_one`.",
+        "The price of the sell token changes over time based on `sell_token_start_amount`,",
+        "`sell_token_end_amount`, and `price_fix_duration` within the offer's active time window.",
+        "Emits an `OfferMadeOne` event upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `MakeOfferOne`.",
+        "- `offer_id`: Unique ID for the offer.",
+        "- `buy_token_total_amount`: Total amount of the buy token offered.",
+        "- `sell_token_start_amount`: Sell token amount at the start of the offer.",
+        "- `sell_token_end_amount`: Sell token amount at the end of the offer.",
+        "- `offer_start_time`: Offer activation timestamp.",
+        "- `offer_end_time`: Offer expiration timestamp.",
+        "- `price_fix_duration`: Duration of each price interval."
       ],
       "discriminator": [
         252,
@@ -1369,6 +1396,7 @@ export type OnreApp = {
           "docs": [
             "Offer's buy token 1 ATA, must exist prior to execution, controlled by `offer_token_authority`."
           ],
+          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -1462,7 +1490,7 @@ export type OnreApp = {
             "Derived PDA for token authority, does not store data.",
             "",
             "# Note",
-            "This account is marked with `CHECK` as it’s validated by the seed derivation."
+            "This account is marked with `CHECK` as it's validated by the seed derivation."
           ],
           "pda": {
             "seeds": [
@@ -1636,11 +1664,27 @@ export type OnreApp = {
           "type": "u64"
         },
         {
-          "name": "buyToken1TotalAmount",
+          "name": "buyTokenTotalAmount",
           "type": "u64"
         },
         {
-          "name": "sellTokenTotalAmount",
+          "name": "sellTokenStartAmount",
+          "type": "u64"
+        },
+        {
+          "name": "sellTokenEndAmount",
+          "type": "u64"
+        },
+        {
+          "name": "offerStartTime",
+          "type": "u64"
+        },
+        {
+          "name": "offerEndTime",
+          "type": "u64"
+        },
+        {
+          "name": "priceFixDuration",
           "type": "u64"
         }
       ]
@@ -1650,8 +1694,21 @@ export type OnreApp = {
       "docs": [
         "Creates an offer with two buy tokens.",
         "",
-        "Delegates to `make_offer::make_offer_two` to initialize an offer with two buy tokens.",
-        "Emits an `OfferMadeTwo` event upon success."
+        "Delegates to `make_offer::make_offer_two`.",
+        "The price of the sell token changes over time based on `sell_token_start_amount`,",
+        "`sell_token_end_amount`, and `price_fix_duration` within the offer's active time window.",
+        "Emits an `OfferMadeTwo` event upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `MakeOfferTwo`.",
+        "- `offer_id`: Unique ID for the offer.",
+        "- `buy_token_1_total_amount`: Total amount of the first buy token offered.",
+        "- `buy_token_2_total_amount`: Total amount of the second buy token offered.",
+        "- `sell_token_start_amount`: Sell token amount at the start of the offer.",
+        "- `sell_token_end_amount`: Sell token amount at the end of the offer.",
+        "- `offer_start_time`: Offer activation timestamp.",
+        "- `offer_end_time`: Offer expiration timestamp.",
+        "- `price_fix_duration`: Duration of each price interval."
       ],
       "discriminator": [
         213,
@@ -1793,6 +1850,7 @@ export type OnreApp = {
           "docs": [
             "Offer's buy token 1 ATA, must exist prior to execution, controlled by `offer_token_authority`."
           ],
+          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -1885,6 +1943,7 @@ export type OnreApp = {
           "docs": [
             "Offer's buy token 2 ATA, must exist prior to execution, controlled by `offer_token_authority`."
           ],
+          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -1978,7 +2037,7 @@ export type OnreApp = {
             "Derived PDA for token authority, does not store data.",
             "",
             "# Note",
-            "This account is marked with `CHECK` as it’s validated by the seed derivation."
+            "This account is marked with `CHECK` as it's validated by the seed derivation."
           ],
           "pda": {
             "seeds": [
@@ -2259,7 +2318,23 @@ export type OnreApp = {
           "type": "u64"
         },
         {
-          "name": "sellTokenTotalAmount",
+          "name": "sellTokenStartAmount",
+          "type": "u64"
+        },
+        {
+          "name": "sellTokenEndAmount",
+          "type": "u64"
+        },
+        {
+          "name": "offerStartTime",
+          "type": "u64"
+        },
+        {
+          "name": "offerEndTime",
+          "type": "u64"
+        },
+        {
+          "name": "priceFixDuration",
           "type": "u64"
         }
       ]
@@ -2322,10 +2397,16 @@ export type OnreApp = {
     {
       "name": "takeOfferOne",
       "docs": [
-        "Takes an offer with one buy token.",
+        "Takes an offer with one buy token, respecting the current dynamic price.",
         "",
-        "Delegates to `take_offer::take_offer_one` to exchange sell tokens for one buy token.",
-        "Emits an `OfferTakenOne` event."
+        "Delegates to `take_offer::take_offer_one`.",
+        "The amount of buy token received is calculated based on the current price derived from the",
+        "offer's dynamic pricing parameters.",
+        "Emits an `OfferTakenOne` event.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `TakeOfferOne`.",
+        "- `sell_token_amount`: Amount of sell tokens the user provides."
       ],
       "discriminator": [
         158,
@@ -2348,7 +2429,7 @@ export type OnreApp = {
         {
           "name": "offerSellTokenAccount",
           "docs": [
-            "Offer's sell token ATA, receives the user’s sell tokens."
+            "Offer's sell token ATA, receives the user's sell tokens."
           ],
           "writable": true,
           "pda": {
@@ -2490,7 +2571,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -2536,8 +2617,8 @@ export type OnreApp = {
         {
           "name": "userSellTokenAccount",
           "docs": [
-            "User’s sell token ATA, sends sell tokens to the offer.",
-            "Ensures mint matches the offer’s sell token mint."
+            "User's sell token ATA, sends sell tokens to the offer.",
+            "Ensures mint matches the offer's sell token mint."
           ],
           "writable": true,
           "pda": {
@@ -2631,8 +2712,8 @@ export type OnreApp = {
         {
           "name": "userBuyToken1Account",
           "docs": [
-            "User’s buy token 1 ATA, receives buy tokens from the offer.",
-            "Ensures mint matches the offer’s buy token 1 mint."
+            "User's buy token 1 ATA, receives buy tokens from the offer.",
+            "Ensures mint matches the offer's buy token 1 mint."
           ],
           "writable": true,
           "pda": {
@@ -2680,7 +2761,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -2729,7 +2810,7 @@ export type OnreApp = {
             "Derived PDA for token authority, controls offer token accounts.",
             "",
             "# Note",
-            "This account is marked with `CHECK` as it’s validated by the seed derivation."
+            "This account is marked with `CHECK` as it's validated by the seed derivation."
           ],
           "pda": {
             "seeds": [
@@ -2794,10 +2875,16 @@ export type OnreApp = {
     {
       "name": "takeOfferTwo",
       "docs": [
-        "Takes an offer with two buy tokens.",
+        "Takes an offer with two buy tokens, respecting the current dynamic price.",
         "",
-        "Delegates to `take_offer::take_offer_two` to exchange sell tokens for two buy tokens.",
-        "Emits an `OfferTakenTwo` event."
+        "Delegates to `take_offer::take_offer_two`.",
+        "The amount of each buy token received is calculated based on the current price derived from the",
+        "offer's dynamic pricing parameters.",
+        "Emits an `OfferTakenTwo` event.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `TakeOfferTwo`.",
+        "- `sell_token_amount`: Amount of sell tokens the user provides."
       ],
       "discriminator": [
         108,
@@ -2819,7 +2906,7 @@ export type OnreApp = {
         {
           "name": "offerSellTokenAccount",
           "docs": [
-            "Offer's sell token ATA, receives the user’s sell tokens."
+            "Offer's sell token ATA, receives the user's sell tokens."
           ],
           "writable": true,
           "pda": {
@@ -2961,7 +3048,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -3055,7 +3142,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_2",
+                "path": "offer.buy_token_2.mint",
                 "account": "offer"
               }
             ],
@@ -3101,8 +3188,8 @@ export type OnreApp = {
         {
           "name": "userSellTokenAccount",
           "docs": [
-            "User’s sell token account, sends sell tokens to the offer.",
-            "Ensures mint matches the offer’s sell token mint."
+            "User's sell token account, sends sell tokens to the offer.",
+            "Ensures mint matches the offer's sell token mint."
           ],
           "writable": true,
           "pda": {
@@ -3196,8 +3283,8 @@ export type OnreApp = {
         {
           "name": "userBuyToken1Account",
           "docs": [
-            "User’s buy token 1 ATA, receives buy token 1 from the offer.",
-            "Ensures mint matches the offer’s buy token 1 mint."
+            "User's buy token 1 ATA, receives buy token 1 from the offer.",
+            "Ensures mint matches the offer's buy token 1 mint."
           ],
           "writable": true,
           "pda": {
@@ -3245,7 +3332,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_1",
+                "path": "offer.buy_token_1.mint",
                 "account": "offer"
               }
             ],
@@ -3291,8 +3378,8 @@ export type OnreApp = {
         {
           "name": "userBuyToken2Account",
           "docs": [
-            "User’s buy token 2 ATA, receives buy token 2 from the offer.",
-            "Ensures mint matches the offer’s buy token 2 mint."
+            "User's buy token 2 ATA, receives buy token 2 from the offer.",
+            "Ensures mint matches the offer's buy token 2 mint."
           ],
           "writable": true,
           "pda": {
@@ -3340,7 +3427,7 @@ export type OnreApp = {
               },
               {
                 "kind": "account",
-                "path": "offer.buy_token_mint_2",
+                "path": "offer.buy_token_2.mint",
                 "account": "offer"
               }
             ],
@@ -3389,7 +3476,7 @@ export type OnreApp = {
             "Derived PDA for token authority, controls offer token accounts.",
             "",
             "# Note",
-            "This account is marked with `CHECK` as it’s validated by the seed derivation."
+            "This account is marked with `CHECK` as it's validated by the seed derivation."
           ],
           "pda": {
             "seeds": [
@@ -3591,23 +3678,23 @@ export type OnreApp = {
     },
     {
       "code": 6003,
-      "name": "offerExceedsSellLimit",
-      "msg": "The offer would exceed its total sell token limit."
-    },
-    {
-      "code": 6004,
       "name": "invalidTakeOffer",
       "msg": "The offer is of 2 buy token type."
     },
     {
-      "code": 6005,
+      "code": 6004,
       "name": "calculationOverflow",
       "msg": "Calculation overflowed or invalid."
     },
     {
-      "code": 6006,
+      "code": 6005,
       "name": "zeroBuyTokenAmount",
       "msg": "Zero buy token amount."
+    },
+    {
+      "code": 6006,
+      "name": "invalidCurrentTime",
+      "msg": "Current time must be within the offer's start and end time range."
     }
   ],
   "types": [
@@ -3652,7 +3739,7 @@ export type OnreApp = {
         "- `buy_token_1_total_amount`: Total amount of the first buy token offered.",
         "- `buy_token_2_total_amount`: Total amount of the second buy token offered (0 if unused).",
         "- `sell_token_total_amount`: Total amount of sell tokens expected.",
-        "- `authority_bump`: Bump seed for the offer’s token authority PDA."
+        "- `authority_bump`: Bump seed for the offer's token authority PDA."
       ],
       "type": {
         "kind": "struct",
@@ -3662,32 +3749,48 @@ export type OnreApp = {
             "type": "u64"
           },
           {
+            "name": "sellTokenStartAmount",
+            "type": "u64"
+          },
+          {
+            "name": "sellTokenEndAmount",
+            "type": "u64"
+          },
+          {
             "name": "sellTokenMint",
             "type": "pubkey"
           },
           {
-            "name": "buyTokenMint1",
-            "type": "pubkey"
+            "name": "buyToken1",
+            "type": {
+              "defined": {
+                "name": "offerToken"
+              }
+            }
           },
           {
-            "name": "buyTokenMint2",
-            "type": "pubkey"
-          },
-          {
-            "name": "buyToken1TotalAmount",
-            "type": "u64"
-          },
-          {
-            "name": "buyToken2TotalAmount",
-            "type": "u64"
-          },
-          {
-            "name": "sellTokenTotalAmount",
-            "type": "u64"
+            "name": "buyToken2",
+            "type": {
+              "defined": {
+                "name": "offerToken"
+              }
+            }
           },
           {
             "name": "authorityBump",
             "type": "u8"
+          },
+          {
+            "name": "priceFixDuration",
+            "type": "u64"
+          },
+          {
+            "name": "offerStartTime",
+            "type": "u64"
+          },
+          {
+            "name": "offerEndTime",
+            "type": "u64"
           }
         ]
       }
@@ -3732,11 +3835,27 @@ export type OnreApp = {
             "type": "pubkey"
           },
           {
-            "name": "buyToken1TotalAmount",
+            "name": "buyTokenTotalAmount",
             "type": "u64"
           },
           {
-            "name": "sellTokenTotalAmount",
+            "name": "sellTokenStartAmount",
+            "type": "u64"
+          },
+          {
+            "name": "sellTokenEndAmount",
+            "type": "u64"
+          },
+          {
+            "name": "offerStartTime",
+            "type": "u64"
+          },
+          {
+            "name": "offerEndTime",
+            "type": "u64"
+          },
+          {
+            "name": "priceFixDuration",
             "type": "u64"
           }
         ]
@@ -3767,7 +3886,23 @@ export type OnreApp = {
             "type": "u64"
           },
           {
-            "name": "sellTokenTotalAmount",
+            "name": "sellTokenStartAmount",
+            "type": "u64"
+          },
+          {
+            "name": "sellTokenEndAmount",
+            "type": "u64"
+          },
+          {
+            "name": "offerStartTime",
+            "type": "u64"
+          },
+          {
+            "name": "offerEndTime",
+            "type": "u64"
+          },
+          {
+            "name": "priceFixDuration",
             "type": "u64"
           }
         ]
@@ -3840,11 +3975,27 @@ export type OnreApp = {
       }
     },
     {
+      "name": "offerToken",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "state",
       "docs": [
         "Represents the program state in the Onre App program.",
         "",
-        "Stores the current boss’s public key, used for authorization across instructions.",
+        "Stores the current boss's public key, used for authorization across instructions.",
         "",
         "# Fields",
         "- `boss`: Public key of the current boss, set via `initialize` and updated via `set_boss`."

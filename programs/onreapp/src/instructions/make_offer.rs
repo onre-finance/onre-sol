@@ -1,7 +1,6 @@
 use crate::contexts::MakeOfferContext;
-use crate::state::{Offer, State};
-use anchor_lang::prelude::*; // Includes `emit!` and `#[event]`
-use anchor_lang::solana_program::system_program;
+use crate::state::{Offer, OfferToken, State};
+use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
 /// Event emitted when an offer with one buy token is created.
@@ -9,8 +8,12 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 pub struct OfferMadeOne {
     pub offer_id: u64,
     pub boss: Pubkey,
-    pub buy_token_1_total_amount: u64,
-    pub sell_token_total_amount: u64,
+    pub buy_token_total_amount: u64,
+    pub sell_token_start_amount: u64,
+    pub sell_token_end_amount: u64,
+    pub offer_start_time: u64,
+    pub offer_end_time: u64,
+    pub price_fix_duration: u64,
 }
 
 /// Event emitted when an offer with two buy tokens is created.
@@ -20,13 +23,18 @@ pub struct OfferMadeTwo {
     pub boss: Pubkey,
     pub buy_token_1_total_amount: u64,
     pub buy_token_2_total_amount: u64,
-    pub sell_token_total_amount: u64,
+    pub sell_token_start_amount: u64,
+    pub sell_token_end_amount: u64,
+    pub offer_start_time: u64,
+    pub offer_end_time: u64,
+    pub price_fix_duration: u64,
 }
 
 /// Account structure for creating an offer with one buy token.
 ///
 /// This struct defines the accounts required to initialize an offer where the boss provides
-/// a single buy token in exchange for a sell token.
+/// a single buy token in exchange for a sell token. The price of the sell token can change
+/// dynamically over the offer's duration.
 ///
 /// # Preconditions
 /// - All Associated Token Accounts (ATAs) must be initialized prior to execution.
@@ -60,6 +68,7 @@ pub struct MakeOfferOne<'info> {
 
     /// Offer's buy token 1 ATA, must exist prior to execution, controlled by `offer_token_authority`.
     #[account(
+        mut,
         associated_token::mint = buy_token_1_mint,
         associated_token::authority = offer_token_authority,
   )]
@@ -68,7 +77,7 @@ pub struct MakeOfferOne<'info> {
     /// Derived PDA for token authority, does not store data.
     ///
     /// # Note
-    /// This account is marked with `CHECK` as it’s validated by the seed derivation.
+    /// This account is marked with `CHECK` as it's validated by the seed derivation.
     #[account(
         seeds = [b"offer_authority", offer_id.to_le_bytes().as_ref()],
         bump
@@ -137,7 +146,8 @@ impl<'info> MakeOfferContext<'info> for MakeOfferTwo<'info> {
 /// Account structure for creating an offer with two buy tokens.
 ///
 /// This struct defines the accounts required to initialize an offer where the boss provides
-/// two buy tokens in exchange for a sell token.
+/// two buy tokens in exchange for a sell token. The price of the sell token can change
+/// dynamically over the offer's duration.
 ///
 /// # Preconditions
 /// - All Associated Token Accounts (ATAs) must be initialized prior to execution.
@@ -172,6 +182,7 @@ pub struct MakeOfferTwo<'info> {
 
     /// Offer's buy token 1 ATA, must exist prior to execution, controlled by `offer_token_authority`.
     #[account(
+        mut,
         associated_token::mint = buy_token_1_mint,
         associated_token::authority = offer_token_authority,
   )]
@@ -179,6 +190,7 @@ pub struct MakeOfferTwo<'info> {
 
     /// Offer's buy token 2 ATA, must exist prior to execution, controlled by `offer_token_authority`.
     #[account(
+        mut,
         associated_token::mint = buy_token_2_mint,
         associated_token::authority = offer_token_authority,
   )]
@@ -187,7 +199,7 @@ pub struct MakeOfferTwo<'info> {
     /// Derived PDA for token authority, does not store data.
     ///
     /// # Note
-    /// This account is marked with `CHECK` as it’s validated by the seed derivation.
+    /// This account is marked with `CHECK` as it's validated by the seed derivation.
     #[account(
         seeds = [b"offer_authority", offer_id.to_le_bytes().as_ref()],
         bump
@@ -234,28 +246,155 @@ pub struct MakeOfferTwo<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Creates an offer with two buy tokens.
+/// Creates an offer with one buy token.
 ///
-/// Initializes an offer where the boss provides two buy tokens in exchange for a sell token.
-/// Transfers the specified amounts of buy tokens from the boss to the offer’s accounts and emits
-/// an `OfferMadeTwo` event for traceability.
+/// Initializes an offer where the boss provides one buy token. The amount of sell token
+/// required in exchange varies over time, determined by `sell_token_start_amount`,
+/// `sell_token_end_amount`, `offer_start_time`, `offer_end_time`, and `price_fix_duration`.
+/// Transfers the specified `buy_token_total_amount` from the boss to the offer's account
+/// and emits an `OfferMadeOne` event.
 ///
 /// # Arguments
 /// - `ctx`: Context containing the accounts for the offer.
 /// - `offer_id`: Unique identifier for the offer, used in PDA derivation.
-/// - `buy_token_1_total_amount`: Total amount of buy token 1 to be offered.
-/// - `buy_token_2_total_amount`: Total amount of buy token 2 to be offered.
-/// - `sell_token_total_amount`: Total amount of sell token expected in exchange.
+/// - `buy_token_total_amount`: Total amount of the buy token to be offered.
+/// - `sell_token_start_amount`: The amount of sell token expected in exchange at the beginning of the offer.
+/// - `sell_token_end_amount`: The amount of sell token expected in exchange at the end of the offer.
+/// - `offer_start_time`: Unix timestamp for when the offer becomes active.
+/// - `offer_end_time`: Unix timestamp for when the offer expires.
+/// - `price_fix_duration`: Duration in seconds for each price interval, in which the price of the buy token is fixed. The amount of sell tokens
+///   used to calculate the current price of the buy token interpolates linearly between `sell_token_start_amount` and `sell_token_end_amount` over
+///   the total number of intervals.
 ///
 /// # Errors
-/// - [`MakeOfferErrorCode::InsufficientBalance`] if the boss lacks sufficient buy token amounts.
-/// - [`MakeOfferErrorCode::InvalidAmount`] if any transfer amount is zero.
+/// - [`MakeOfferErrorCode::InsufficientBalance`] if the boss lacks sufficient `buy_token_total_amount`.
+/// - [`MakeOfferErrorCode::InvalidAmount`] if `buy_token_total_amount`, `sell_token_start_amount`,
+///   or `sell_token_end_amount` is zero. Also if `sell_token_start_amount` > `sell_token_end_amount`.
+/// - [`MakeOfferErrorCode::InvalidOfferTime`] if `offer_start_time` is not less than `offer_end_time`.
+/// - [`MakeOfferErrorCode::InvalidPriceFixDuration`] if `price_fix_duration` is zero or if the total
+///   offer duration is less than `price_fix_duration`.
+pub fn make_offer_one(
+    ctx: Context<MakeOfferOne>,
+    offer_id: u64,
+    buy_token_total_amount: u64,
+    sell_token_start_amount: u64,
+    sell_token_end_amount: u64,
+    offer_start_time: u64,
+    offer_end_time: u64,
+    price_fix_duration: u64,
+) -> Result<()> {
+    require!(
+        buy_token_total_amount > 0,
+        MakeOfferErrorCode::InvalidAmount
+    );
+    require!(
+        sell_token_start_amount > 0,
+        MakeOfferErrorCode::InvalidAmount
+    );
+    require!(
+        sell_token_end_amount > 0,
+        MakeOfferErrorCode::InvalidAmount
+    );
+    require!(
+        sell_token_start_amount <= sell_token_end_amount,
+        MakeOfferErrorCode::InvalidAmount
+    );
+    require!(
+        offer_start_time < offer_end_time,
+        MakeOfferErrorCode::InvalidOfferTime
+    );
+    require!(
+        price_fix_duration > 0,
+        MakeOfferErrorCode::InvalidPriceFixDuration
+    );
+    require!(
+        (offer_end_time - offer_start_time) >= price_fix_duration,
+        MakeOfferErrorCode::InvalidPriceFixDuration
+    );
+    require!(
+        ctx.accounts.boss_buy_token_1_account.amount >= buy_token_total_amount,
+        MakeOfferErrorCode::InsufficientBalance
+    );
+    let offer = &mut ctx.accounts.offer;
+    offer.offer_id = offer_id;
+    offer.sell_token_mint = ctx.accounts.sell_token_mint.key();
+    offer.sell_token_start_amount = sell_token_start_amount;
+    offer.sell_token_end_amount = sell_token_end_amount;
+    offer.price_fix_duration = price_fix_duration;
+    offer.offer_start_time = offer_start_time;
+    offer.offer_end_time = offer_end_time;
+
+    offer.buy_token_1 = OfferToken { mint: ctx.accounts.buy_token_1_mint.key(), amount: buy_token_total_amount };
+    offer.buy_token_2 = OfferToken { mint: Pubkey::default(), amount: 0 };
+    offer.authority_bump = ctx.bumps.offer_token_authority;
+
+    transfer_token(
+        &ctx,
+        &ctx.accounts.boss_buy_token_1_account,
+        &ctx.accounts.offer_buy_token_1_account,
+        buy_token_total_amount,
+    )?;
+    msg!("Transferring {} buy tokens 1 from boss to offer", buy_token_total_amount);
+    msg!("Offer created with buy_token_total_amount: {}, sell_token_start_amount: {}, sell_token_end_amount: {} and price_fix_duration: {}", 
+        buy_token_total_amount, 
+        sell_token_start_amount, 
+        sell_token_end_amount, 
+        price_fix_duration
+    );
+
+    emit!(OfferMadeOne {
+        offer_id,
+        boss: ctx.accounts.boss.key(),
+        buy_token_total_amount,
+        sell_token_start_amount,
+        sell_token_end_amount,
+        offer_start_time,
+        offer_end_time,
+        price_fix_duration,
+    });
+
+    Ok(())
+}
+
+/// Creates an offer with two buy tokens.
+///
+/// Initializes an offer where the boss provides two buy tokens in exchange for a sell token. The amount of sell token
+/// required in exchange varies over time, determined by `sell_token_start_amount`,
+/// `sell_token_end_amount`, `offer_start_time`, `offer_end_time`, and `price_fix_duration`.
+/// Transfers the specified amounts of buy tokens from the boss to the offer's accounts
+/// and emits an `OfferMadeTwo` event.
+///
+/// # Arguments
+/// - `ctx`: Context containing the accounts for the offer.
+/// - `offer_id`: Unique identifier for the offer, used in PDA derivation.
+/// - `buy_token_1_total_amount`: Total amount of the first buy token to be offered.
+/// - `buy_token_2_total_amount`: Total amount of the second buy token to be offered.
+/// - `sell_token_start_amount`: The amount of sell token expected in exchange at the beginning of the offer.
+/// - `sell_token_end_amount`: The amount of sell token expected in exchange at the end of the offer.
+/// - `offer_start_time`: Unix timestamp for when the offer becomes active.
+/// - `offer_end_time`: Unix timestamp for when the offer expires.
+/// - `price_fix_duration`: Duration in seconds for each price interval, in which the prices of the buy tokens 
+///   are fixed. The amount of sell tokens expected in exchange interpolates linearly between `sell_token_start_amount` 
+///   and `sell_token_end_amount` over the total number of intervals.
+///
+/// # Errors
+/// - [`MakeOfferErrorCode::InsufficientBalance`] if the boss lacks sufficient amounts for
+///   `buy_token_1_total_amount` or `buy_token_2_total_amount`.
+/// - [`MakeOfferErrorCode::InvalidAmount`] if any buy token amount, `sell_token_start_amount`,
+///   or `sell_token_end_amount` is zero. Also if `sell_token_start_amount` > `sell_token_end_amount`.
+/// - [`MakeOfferErrorCode::InvalidOfferTime`] if `offer_start_time` is not less than `offer_end_time`.
+/// - [`MakeOfferErrorCode::InvalidPriceFixDuration`] if `price_fix_duration` is zero or if the total
+///   offer duration is less than `price_fix_duration`.
 pub fn make_offer_two(
     ctx: Context<MakeOfferTwo>,
     offer_id: u64,
     buy_token_1_total_amount: u64,
     buy_token_2_total_amount: u64,
-    sell_token_total_amount: u64,
+    sell_token_start_amount: u64,
+    sell_token_end_amount: u64,
+    offer_start_time: u64,
+    offer_end_time: u64,
+    price_fix_duration: u64,
 ) -> Result<()> {
     require!(
         buy_token_1_total_amount > 0,
@@ -266,8 +405,28 @@ pub fn make_offer_two(
         MakeOfferErrorCode::InvalidAmount
     );
     require!(
-        sell_token_total_amount > 0,
+        sell_token_start_amount > 0,
         MakeOfferErrorCode::InvalidAmount
+    );
+    require!(
+        sell_token_end_amount > 0,
+        MakeOfferErrorCode::InvalidAmount
+    );
+    require!(
+        sell_token_start_amount <= sell_token_end_amount,
+        MakeOfferErrorCode::InvalidAmount
+    );
+    require!(
+        offer_start_time < offer_end_time,
+        MakeOfferErrorCode::InvalidOfferTime
+    );
+    require!(
+        price_fix_duration > 0,
+        MakeOfferErrorCode::InvalidPriceFixDuration
+    );
+    require!(
+        (offer_end_time - offer_start_time) >= price_fix_duration,
+        MakeOfferErrorCode::InvalidPriceFixDuration
     );
     require!(
         ctx.accounts.boss_buy_token_1_account.amount >= buy_token_1_total_amount,
@@ -280,11 +439,13 @@ pub fn make_offer_two(
     let offer = &mut ctx.accounts.offer;
     offer.offer_id = offer_id;
     offer.sell_token_mint = ctx.accounts.sell_token_mint.key();
-    offer.buy_token_mint_1 = ctx.accounts.buy_token_1_mint.key();
-    offer.buy_token_mint_2 = ctx.accounts.buy_token_2_mint.key();
-    offer.buy_token_1_total_amount = buy_token_1_total_amount;
-    offer.buy_token_2_total_amount = buy_token_2_total_amount;
-    offer.sell_token_total_amount = sell_token_total_amount;
+    offer.buy_token_1 = OfferToken { mint: ctx.accounts.buy_token_1_mint.key(), amount: buy_token_1_total_amount };
+    offer.buy_token_2 = OfferToken { mint: ctx.accounts.buy_token_2_mint.key(), amount: buy_token_2_total_amount };
+    offer.sell_token_start_amount = sell_token_start_amount;
+    offer.sell_token_end_amount = sell_token_end_amount;
+    offer.price_fix_duration = price_fix_duration;
+    offer.offer_start_time = offer_start_time;
+    offer.offer_end_time = offer_end_time;
     offer.authority_bump = ctx.bumps.offer_token_authority;
 
     transfer_token(
@@ -293,6 +454,7 @@ pub fn make_offer_two(
         &ctx.accounts.offer_buy_token_1_account,
         buy_token_1_total_amount,
     )?;
+    msg!("Transferring {} buy tokens 1 from boss to offer", buy_token_1_total_amount);
 
     transfer_token(
         &ctx,
@@ -300,73 +462,25 @@ pub fn make_offer_two(
         &ctx.accounts.offer_buy_token_2_account,
         buy_token_2_total_amount,
     )?;
+    msg!("Transferring {} buy tokens 2 from boss to offer", buy_token_2_total_amount);
+    msg!("Offer created with buy_token_1_total_amount: {}, buy_token_2_total_amount: {}, sell_token_start_amount: {}, sell_token_end_amount: {} and price_fix_duration: {}", 
+        buy_token_1_total_amount, 
+        buy_token_2_total_amount, 
+        sell_token_start_amount, 
+        sell_token_end_amount, 
+        price_fix_duration
+    );
 
     emit!(OfferMadeTwo {
         offer_id,
         boss: ctx.accounts.boss.key(),
         buy_token_1_total_amount,
         buy_token_2_total_amount,
-        sell_token_total_amount,
-    });
-
-    Ok(())
-}
-
-/// Creates an offer with one buy token.
-///
-/// Initializes an offer where the boss provides one buy token in exchange for a sell token.
-/// Transfers the specified amount of the buy token from the boss to the offer’s account and emits
-/// an `OfferMadeOne` event for traceability.
-///
-/// # Arguments
-/// - `ctx`: Context containing the accounts for the offer.
-/// - `offer_id`: Unique identifier for the offer, used in PDA derivation.
-/// - `buy_token_1_total_amount`: Total amount of buy token 1 to be offered.
-/// - `sell_token_total_amount`: Total amount of sell token expected in exchange.
-///
-/// # Errors
-/// - [`MakeOfferErrorCode::InsufficientBalance`] if the boss lacks sufficient buy token amount.
-/// - [`MakeOfferErrorCode::InvalidAmount`] if the transfer amount is zero.
-pub fn make_offer_one(
-    ctx: Context<MakeOfferOne>,
-    offer_id: u64,
-    buy_token_1_total_amount: u64,
-    sell_token_total_amount: u64,
-) -> Result<()> {
-    require!(
-        buy_token_1_total_amount > 0,
-        MakeOfferErrorCode::InvalidAmount
-    );
-    require!(
-        sell_token_total_amount > 0,
-        MakeOfferErrorCode::InvalidAmount
-    );
-    require!(
-        ctx.accounts.boss_buy_token_1_account.amount >= buy_token_1_total_amount,
-        MakeOfferErrorCode::InsufficientBalance
-    );
-    let offer = &mut ctx.accounts.offer;
-    offer.offer_id = offer_id;
-    offer.sell_token_mint = ctx.accounts.sell_token_mint.key();
-    offer.buy_token_mint_1 = ctx.accounts.buy_token_1_mint.key();
-    offer.buy_token_1_total_amount = buy_token_1_total_amount;
-    offer.sell_token_total_amount = sell_token_total_amount;
-    offer.authority_bump = ctx.bumps.offer_token_authority;
-    offer.buy_token_mint_2 = system_program::ID;
-    offer.buy_token_2_total_amount = 0;
-
-    transfer_token(
-        &ctx,
-        &ctx.accounts.boss_buy_token_1_account,
-        &ctx.accounts.offer_buy_token_1_account,
-        buy_token_1_total_amount,
-    )?;
-
-    emit!(OfferMadeOne {
-        offer_id,
-        boss: ctx.accounts.boss.key(),
-        buy_token_1_total_amount,
-        sell_token_total_amount,
+        sell_token_start_amount,
+        sell_token_end_amount,
+        offer_start_time,
+        offer_end_time,
+        price_fix_duration,
     });
 
     Ok(())
@@ -381,7 +495,7 @@ pub fn make_offer_one(
 /// - `amount`: Amount of tokens to transfer.
 ///
 /// # Errors
-/// - [`MakeOfferErrorCode::InvalidAmount`] if the amount is zero.
+/// - [`MakeOfferErrorCode::InvalidAmount`] if the amount is zero, or sell token amounts are invalid.
 /// - Fails if the boss lacks sufficient authority or balance (handled by SPL Token program).
 fn transfer_token<'info, T: MakeOfferContext<'info> + anchor_lang::Bumps>(
     ctx: &Context<T>,
@@ -405,11 +519,22 @@ fn transfer_token<'info, T: MakeOfferContext<'info> + anchor_lang::Bumps>(
 /// Error codes for offer creation operations.
 #[error_code]
 pub enum MakeOfferErrorCode {
-    /// Triggered when the boss’s token account doesn’t have sufficient balance for the transfer.
+    /// Triggered when the boss's token account doesn't have sufficient balance for the transfer.
     #[msg("Insufficient token balance in boss account")]
     InsufficientBalance,
 
-    /// Triggered when the token transfer amount is zero.
-    #[msg("Token transfer amount must be greater than zero")]
+    /// Triggered when the token transfer amount is zero, or sell token amounts are invalid.
+    #[msg("Token transfer amount must be greater than zero. Sell token start amount must be > 0, end amount must be > 0, and start <= end.")]
     InvalidAmount,
+
+    #[msg("Token offer end time must be greater than start time")]
+    InvalidOfferTime,
+
+    /// Triggered when the price fix duration is invalid.
+    #[msg("Price fix duration must be greater than zero and less than or equal to the total offer duration")]
+    InvalidPriceFixDuration,
+
+    /// Triggered when the current time is outside the offer's time range.
+    #[msg("Current time must be within the offer's start and end time range")]
+    InvalidCurrentTime,
 }
