@@ -249,7 +249,6 @@ describe("take offer", () => {
             usdcTokenMint, BigInt(0), 
             boss, BigInt(200e9)
         );
-        console.log("offerId", offerId);
         const offerUsdcTokenPda = offerBuyTokenPda;
         const offerOnreTokenPda = offerSellTokenPda;
 
@@ -710,5 +709,82 @@ describe("take offer", () => {
         await testHelper.expectTokenAccountAmountToBe(userUsdcTokenAccount, BigInt(7e9)); // 5 + 2
         await testHelper.expectTokenAccountAmountToBe(offerOnreTokenPda, BigInt(113e9)); // 105 + 10 - 2
         await testHelper.expectTokenAccountAmountToBe(offerUsdcTokenPda, BigInt(93e9)); // 95 - 2
+    });
+
+    it("should allow taking offer until empty", async () => {
+        // given
+
+        const onreTokenMint = sellTokenMint;
+        const usdcTokenMint = buyToken1Mint;
+
+        const user1 = testHelper.createUserAccount();
+        const user1OnreTokenAccount = testHelper.createTokenAccount(onreTokenMint, user1.publicKey, BigInt(100e9), true);
+        const user1UsdcTokenAccount = testHelper.createTokenAccount(usdcTokenMint, user1.publicKey, BigInt(0), true);
+
+        const user2 = testHelper.createUserAccount();
+        const user2OnreTokenAccount = testHelper.createTokenAccount(sellTokenMint, user2.publicKey, BigInt(100e9), true);
+        const user2UsdcTokenAccount = testHelper.createTokenAccount(buyToken1Mint, user2.publicKey, BigInt(0), true);
+
+        const { offerId, offerPda, offerSellTokenPda, offerBuyTokenPda } = testHelper.createOneTokenOfferAccounts(
+            onreTokenMint, BigInt(0),
+            usdcTokenMint, BigInt(0),
+            boss, BigInt(1000e9)
+        );
+
+        const offerUsdcTokenPda = offerBuyTokenPda;
+        const offerOnreTokenPda = offerSellTokenPda;
+
+        const offerStartTime = await testHelper.getCurrentClockTime();
+        const priceFixDuration = 3600; // 1 hour
+        const offerEndTime = offerStartTime + (13 * priceFixDuration);
+
+        // make offer
+        await testHelper.makeOfferOne({
+            offerId,
+            buyTokenTotalAmount: 120e9,
+            sellTokenStartAmount: 50e9,
+            sellTokenEndAmount: 180e9,
+            offerStartTime,
+            offerEndTime,
+            priceFixDuration,
+            sellTokenMint: onreTokenMint,
+            buyTokenMint: usdcTokenMint,
+        })
+
+        // when
+        // first interval:
+        // sell token amount: 60e9
+        // user1 gives sell tokens: 60e9 
+        // user1 receives buy tokens: 30e9
+        await testHelper.takeOfferOne({
+            sellTokenAmount: 30e9,
+            offerPda,
+            user: user1,
+        })
+
+        // then
+        await testHelper.expectTokenAccountAmountToBe(user1OnreTokenAccount, BigInt(70e9));
+        await testHelper.expectTokenAccountAmountToBe(user1UsdcTokenAccount, BigInt(60e9));
+        await testHelper.expectTokenAccountAmountToBe(offerOnreTokenPda, BigInt(30e9));
+        await testHelper.expectTokenAccountAmountToBe(offerUsdcTokenPda, BigInt(60e9));
+
+        // time travel to last interval
+        await testHelper.advanceClockBy(priceFixDuration * 12.5);
+
+        // last interval:
+        // sell token amount: 180e9
+        // user2 gives sell tokens: 120e9
+        // user2 receives buy tokens: 60e9
+        await testHelper.takeOfferOne({
+            sellTokenAmount: 90e9,
+            offerPda,
+            user: user2,
+        })
+
+        // then
+        await testHelper.expectTokenAccountAmountToBe(user2OnreTokenAccount, BigInt(10e9));
+        await testHelper.expectTokenAccountAmountToBe(user2UsdcTokenAccount, BigInt(60e9));
+        await testHelper.expectTokenAccountAmountToBe(offerOnreTokenPda, BigInt(120e9));
+        await testHelper.expectTokenAccountAmountToBe(offerUsdcTokenPda, BigInt(0));
     });
 })

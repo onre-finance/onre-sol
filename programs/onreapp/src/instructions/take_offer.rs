@@ -1,6 +1,5 @@
 use crate::state::Offer;
 use anchor_lang::prelude::*;
-use anchor_lang::system_program;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 /// Event emitted when an offer with one buy token is taken.

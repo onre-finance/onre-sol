@@ -1,7 +1,7 @@
 use crate::contexts::CloseOfferContext;
 use crate::state::{Offer, State};
 use anchor_lang::prelude::*;
-use anchor_lang::{system_program, Accounts};
+use anchor_lang::Accounts;
 use anchor_spl::token;
 use anchor_spl::token::{CloseAccount, Token, TokenAccount, Transfer};
 

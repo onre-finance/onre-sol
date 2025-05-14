@@ -1,7 +1,6 @@
 use crate::contexts::MakeOfferContext;
 use crate::state::{Offer, OfferToken, State};
-use anchor_lang::prelude::*; // Includes `emit!` and `#[event]`
-use anchor_lang::solana_program::system_program;
+use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
 /// Event emitted when an offer with one buy token is created.
