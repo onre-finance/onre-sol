@@ -170,12 +170,15 @@ pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Res
     );
 
     let current_sell_token_amount = calculate_current_sell_amount(&offer).unwrap();
+    msg!("Calculated current sell token amount: {}", current_sell_token_amount);
 
     let buy_token_1_amount = calculate_buy_amount(
         sell_token_amount,
         offer.buy_token_1.amount,
         current_sell_token_amount,
     )?;
+    
+    msg!("Calculated buy token 1 amount: {}", buy_token_1_amount);
     require!(
         ctx.accounts.offer_buy_token_1_account.amount >= buy_token_1_amount,
         TakeOfferErrorCode::InsufficientOfferBalance
@@ -192,6 +195,7 @@ pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Res
         ),
         sell_token_amount,
     )?;
+    msg!("Transferring {} sell tokens from user to offer", sell_token_amount);
 
     let offer_id_bytes = &offer.offer_id.to_le_bytes();
     let seeds = &[
@@ -212,7 +216,7 @@ pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Res
         ),
         buy_token_1_amount,
     )?;
-
+    msg!("Transferring {} buy tokens 1 from offer to user", buy_token_1_amount);
     emit!(OfferTakenOne {
         offer_id: offer.offer_id,
         user: ctx.accounts.user.key(),
@@ -346,24 +350,25 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
     );
 
     let current_sell_token_amount = calculate_current_sell_amount(&offer).unwrap();
-    msg!("current_sell_token_amount: {}", current_sell_token_amount);
+    msg!("Calculated current sell token amount: {}", current_sell_token_amount);
 
     let buy_token_1_amount = calculate_buy_amount(
         sell_token_amount,
         offer.buy_token_1.amount,
         current_sell_token_amount,
     )?;
-    msg!("buy_token_1_amount: {}", buy_token_1_amount);
+    msg!("Calculated buy token 1 amount: {}", buy_token_1_amount);
+    require!(
+        ctx.accounts.offer_buy_token_1_account.amount >= buy_token_1_amount,
+        TakeOfferErrorCode::InsufficientOfferBalance
+    );
+
     let buy_token_2_amount = calculate_buy_amount(
         sell_token_amount,
         offer.buy_token_2.amount,
         current_sell_token_amount,
     )?;
-    msg!("buy_token_2_amount: {}", buy_token_2_amount);
-    require!(
-        ctx.accounts.offer_buy_token_1_account.amount >= buy_token_1_amount,
-        TakeOfferErrorCode::InsufficientOfferBalance
-    );
+    msg!("Calculated buy token 2 amount: {}", buy_token_2_amount);
     require!(
         ctx.accounts.offer_buy_token_2_account.amount >= buy_token_2_amount,
         TakeOfferErrorCode::InsufficientOfferBalance
@@ -380,6 +385,7 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
         ),
         sell_token_amount,
     )?;
+    msg!("Transferring {} sell tokens from user to offer", sell_token_amount);
 
     let offer_id_bytes = &offer.offer_id.to_le_bytes();
     let seeds = &[
@@ -400,6 +406,7 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
         ),
         buy_token_1_amount,
     )?;
+    msg!("Transferring {} buy tokens 1 from offer to user", buy_token_1_amount);
     token::transfer(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
@@ -412,6 +419,7 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
         ),
         buy_token_2_amount,
     )?;
+    msg!("Transferring {} buy tokens 2 from offer to user", buy_token_2_amount);
 
     emit!(OfferTakenTwo {
         offer_id: offer.offer_id,
@@ -496,6 +504,6 @@ pub enum TakeOfferErrorCode {
     ZeroBuyTokenAmount,
 
     /// Triggered when the current time is outside the offer's time range.
-    #[msg("Current time must be within the offer's start and end time range")]
+    #[msg("Current time must be within the offer's start and end time range.")]
     InvalidCurrentTime,
 }

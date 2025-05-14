@@ -321,6 +321,7 @@ pub fn make_offer_one(
         &ctx.accounts.offer_buy_token_1_account,
         buy_token_total_amount,
     )?;
+    msg!("Transferring {} buy tokens 1 from boss to offer", buy_token_total_amount);
 
     emit!(OfferMadeOne {
         offer_id,
@@ -421,6 +422,7 @@ pub fn make_offer_two(
         &ctx.accounts.offer_buy_token_1_account,
         buy_token_1_total_amount,
     )?;
+    msg!("Transferring {} buy tokens 1 from boss to offer", buy_token_1_total_amount);
 
     transfer_token(
         &ctx,
@@ -428,6 +430,7 @@ pub fn make_offer_two(
         &ctx.accounts.offer_buy_token_2_account,
         buy_token_2_total_amount,
     )?;
+    msg!("Transferring {} buy tokens 2 from boss to offer", buy_token_2_total_amount);
 
     emit!(OfferMadeTwo {
         offer_id,
