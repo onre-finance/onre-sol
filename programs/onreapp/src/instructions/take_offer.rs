@@ -142,7 +142,7 @@ fn calculate_current_sell_amount(
         .unwrap();
 
     let sell_token_current_amount = offer.sell_token_start_amount
-        .checked_add(sell_token_amount_per_interval.checked_mul(current_interval + 1).unwrap()) // TODO: Check if bucket shift is required
+        .checked_add(sell_token_amount_per_interval.checked_mul(current_interval + 1).unwrap())
         .unwrap();
 
     Ok(sell_token_current_amount)
