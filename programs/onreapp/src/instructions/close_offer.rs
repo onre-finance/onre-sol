@@ -101,7 +101,7 @@ pub struct CloseOfferOne<'info> {
 /// - [`CloseOfferErrorCode::InvalidMint`] if token account mints mismatch during transfers.
 pub fn close_offer_one(ctx: Context<CloseOfferOne>) -> Result<()> {
     require!(
-        ctx.accounts.offer.buy_token_2.mint == system_program::ID,
+        ctx.accounts.offer.buy_token_2.mint == Pubkey::default(),
         CloseOfferErrorCode::InvalidCloseOffer
     );
 

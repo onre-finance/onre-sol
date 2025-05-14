@@ -326,7 +326,7 @@ pub fn make_offer_one(
     offer.offer_end_time = offer_end_time;
 
     offer.buy_token_1 = OfferToken { mint: ctx.accounts.buy_token_1_mint.key(), amount: buy_token_total_amount };
-    offer.buy_token_2 = OfferToken { mint: system_program::ID, amount: 0 };
+    offer.buy_token_2 = OfferToken { mint: Pubkey::default(), amount: 0 };
     offer.authority_bump = ctx.bumps.offer_token_authority;
 
     transfer_token(

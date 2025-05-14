@@ -38,7 +38,7 @@ pub struct TakeOfferOne<'info> {
     /// The offer account being taken, providing offer details.
     /// Ensures this is a single buy token offer by checking `buy_token_mint_2`.
     #[account(
-        constraint = offer.buy_token_2.mint == system_program::ID @ TakeOfferErrorCode::InvalidTakeOffer
+        constraint = offer.buy_token_2.mint == Pubkey::default() @ TakeOfferErrorCode::InvalidTakeOffer
     )]
     pub offer: Account<'info, Offer>,
 
@@ -243,7 +243,7 @@ pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Res
 pub struct TakeOfferTwo<'info> {
     /// The offer account being taken, providing offer details.
     #[account(
-        constraint = offer.buy_token_2.mint != system_program::ID @ TakeOfferErrorCode::InvalidTakeOffer
+        constraint = offer.buy_token_2.mint != Pubkey::default() @ TakeOfferErrorCode::InvalidTakeOffer
     )]
     pub offer: Account<'info, Offer>,
 
