@@ -94,7 +94,7 @@ describe("make offer", () => {
         await testHelper.expectTokenAccountAmountToBe(offerSellTokenPda, BigInt(0));
     });
 
-    test("Make offer with one buy token with invalid price fix duration should fail", async () => {
+    test("Make offer with one buy token with price fix duration greater than offer duration should fail", async () => {
         // given
         const { offerId } = testHelper.createOneTokenOfferAccounts(
             sellTokenMint, BigInt(0), 
@@ -118,10 +118,97 @@ describe("make offer", () => {
                 sellTokenMint,
                 buyTokenMint: buyToken1Mint
             })
-        ).rejects.toThrow();
+        ).rejects.toThrow(RegExp(".*InvalidPriceFixDuration.*"));
     });
 
-    test("Make an offer with same sell_token_start_amount and sell_token_end_amount", async () => {        
+    test("Make offer with one buy token with zero price fix duration should fail", async () => {
+        // given
+        const { offerId } = testHelper.createOneTokenOfferAccounts(
+            sellTokenMint, BigInt(0), 
+            buyToken1Mint, BigInt(0), 
+            boss, BigInt(600e9)
+        );
+
+        const offerStartTime = await testHelper.getCurrentClockTime();
+        const offerEndTime = offerStartTime + 7200;
+
+        // when
+        await expect(
+            testHelper.makeOfferOne({
+                offerId, 
+                buyTokenTotalAmount: 500e9, 
+                sellTokenStartAmount: 200e9, 
+                sellTokenEndAmount: 400e9, 
+                offerStartTime, 
+                offerEndTime, 
+                priceFixDuration: 0,
+                sellTokenMint,
+                buyTokenMint: buyToken1Mint
+            })
+        ).rejects.toThrow(RegExp(".*InvalidPriceFixDuration.*"));
+    });
+
+    test("Make offer with two buy tokens with price fix duration greater than offer duration should fail", async () => {
+        // given
+        const { offerId } = testHelper.createTwoTokenOfferAccounts(
+            sellTokenMint, BigInt(0), 
+            buyToken1Mint, BigInt(0), 
+            buyToken2Mint, BigInt(0), 
+            boss, BigInt(600e9), BigInt(600e9)
+        );
+
+        const offerStartTime = await testHelper.getCurrentClockTime();
+        const offerEndTime = offerStartTime + 7200;
+
+        // when
+        await expect(
+            testHelper.makeOfferTwo({
+                offerId, 
+                buyToken1TotalAmount: 500e9, 
+                buyToken2TotalAmount: 300e9, 
+                sellTokenStartAmount: 200e9, 
+                sellTokenEndAmount: 400e9, 
+                offerStartTime, 
+                offerEndTime, 
+                priceFixDuration: 7201,
+                sellTokenMint,
+                buyToken1Mint,
+                buyToken2Mint,
+            })
+        ).rejects.toThrow(RegExp(".*InvalidPriceFixDuration.*"));
+    });
+
+    test("Make offer with two buy token with zero price fix duration should fail", async () => {
+        // given
+        const { offerId } = testHelper.createTwoTokenOfferAccounts(
+            sellTokenMint, BigInt(0), 
+            buyToken1Mint, BigInt(0), 
+            buyToken2Mint, BigInt(0), 
+            boss, BigInt(600e9), BigInt(600e9)
+        );
+
+        const offerStartTime = await testHelper.getCurrentClockTime();
+        const offerEndTime = offerStartTime + 7200;
+
+        // when
+        await expect(
+            testHelper.makeOfferTwo({
+                offerId, 
+                buyToken1TotalAmount: 500e9, 
+                buyToken2TotalAmount: 300e9, 
+                sellTokenStartAmount: 200e9, 
+                sellTokenEndAmount: 400e9, 
+                offerStartTime, 
+                offerEndTime, 
+                priceFixDuration: 0,
+                sellTokenMint,
+                buyToken1Mint,
+                buyToken2Mint,
+            })
+        ).rejects.toThrow(RegExp(".*InvalidPriceFixDuration.*"));
+    });
+
+    test("Make an offer with same sell_token_start_amount and sell_token_end_amount should succeed", async () => {        
         // given
         const { offerId, offerPda } = testHelper.createOneTokenOfferAccounts(
             sellTokenMint, BigInt(0), 
@@ -151,7 +238,7 @@ describe("make offer", () => {
         expect(offerAccount.sellTokenEndAmount.eq(new BN(200e9))).toBe(true);
     });
 
-    test("Make an offer with two buy tokens", async () => {
+    test("Make an offer with two buy tokens should succeed", async () => {
         // given
         const { offerId, offerPda, bossBuyTokenAccount1, bossBuyTokenAccount2, offerBuyToken1Pda, offerBuyToken2Pda, offerSellTokenPda } = testHelper.createTwoTokenOfferAccounts(
             sellTokenMint, BigInt(0), 
@@ -209,5 +296,102 @@ describe("make offer", () => {
 
         // offerSellTokenPda stays empty
         await testHelper.expectTokenAccountAmountToBe(offerSellTokenPda, BigInt(0));
+    });
+
+    test("Make offer with one buy token with end time before start time should fail", async () => {
+        // given
+        const { offerId } = testHelper.createOneTokenOfferAccounts(
+            sellTokenMint, BigInt(0), 
+            buyToken1Mint, BigInt(0), 
+            boss, BigInt(600e9)
+        );
+
+        const offerStartTime = await testHelper.getCurrentClockTime();
+        const offerEndTime = offerStartTime - 1000;
+
+        // when
+        await expect(
+            testHelper.makeOfferOne({
+                offerId, 
+                buyTokenTotalAmount: 500e9, 
+                sellTokenStartAmount: 200e9, 
+                sellTokenEndAmount: 400e9, 
+                offerStartTime, 
+                offerEndTime, 
+                priceFixDuration: 60,
+                sellTokenMint,
+                buyTokenMint: buyToken1Mint,
+            })
+        ).rejects.toThrow(RegExp(".*InvalidOfferTime.*"));
+    });
+
+    test("Make offer with two buy tokens with end time before start time should fail", async () => {
+        // given
+        const { offerId } = testHelper.createTwoTokenOfferAccounts(
+            sellTokenMint, BigInt(0), 
+            buyToken1Mint, BigInt(0), 
+            buyToken2Mint, BigInt(0), 
+            boss, BigInt(600e9), BigInt(600e9)
+        );
+
+        const offerStartTime = await testHelper.getCurrentClockTime();
+        const offerEndTime = offerStartTime - 1000;
+
+        // when
+        await expect(
+            testHelper.makeOfferTwo({
+                offerId, 
+                buyToken1TotalAmount: 500e9, 
+                buyToken2TotalAmount: 300e9, 
+                sellTokenStartAmount: 200e9, 
+                sellTokenEndAmount: 400e9, 
+                offerStartTime, 
+                offerEndTime, 
+                priceFixDuration: 60,
+                sellTokenMint,
+                buyToken1Mint,
+                buyToken2Mint,
+            })
+        ).rejects.toThrow(RegExp(".*InvalidOfferTime.*"));
+    });
+
+    test("Make offer with existing offer_id should fail", async () => {
+        // given
+        const { offerId } = testHelper.createOneTokenOfferAccounts(
+            sellTokenMint, BigInt(0), 
+            buyToken1Mint, BigInt(0), 
+            boss, BigInt(600e9)
+        );
+
+        const offerStartTime = await testHelper.getCurrentClockTime();
+        const offerEndTime = offerStartTime + 7200;
+
+        // when
+        await testHelper.makeOfferOne({
+                offerId, 
+                buyTokenTotalAmount: 500e9, 
+                sellTokenStartAmount: 200e9, 
+                sellTokenEndAmount: 400e9, 
+                offerStartTime, 
+                offerEndTime, 
+                priceFixDuration: 3600,
+                sellTokenMint,
+                buyTokenMint: buyToken1Mint,
+            });
+
+        // then
+        await expect(
+            testHelper.makeOfferOne({
+                offerId, 
+                buyTokenTotalAmount: 500e9, 
+                sellTokenStartAmount: 200e9, 
+                sellTokenEndAmount: 400e9, 
+                offerStartTime, 
+                offerEndTime, 
+                priceFixDuration: 3600,
+                sellTokenMint,
+                buyTokenMint: buyToken1Mint,
+            })
+        ).rejects.toThrow();    
     });
 });
