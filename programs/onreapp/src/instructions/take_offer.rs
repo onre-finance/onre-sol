@@ -99,19 +99,24 @@ pub struct TakeOfferOne<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Calculates the received buy token amount based on time sectors and user's sell token amount.
+/// Calculates the current sell token amount based on the offer's dynamic pricing model.
+///
+/// The price of the sell token (how much is required per buy token) changes linearly over the offer's duration.
+/// The offer is divided into intervals, each lasting `price_fix_duration` seconds.
+/// The sell token amount starts at `sell_token_start_amount` + `one_interval_amount` at the beginning of the first interval
+/// and progresses towards `sell_token_end_amount` by the end of the last interval.
 ///
 /// # Arguments
-/// - `current_time`: Current timestamp
-/// - `offer_start_time`: Start time of the offer
-/// - `offer_end_time`: End time of the offer
-/// - `price_fix_duration`: Duration of each price fix period in seconds
-/// - `sell_token_start_amount`: Initial sell token amount
-/// - `sell_token_end_amount`: Final sell token amount
-/// - `user_sell_token_amount`: Amount of tokens the user wants to exchange
+/// - `offer`: A reference to the `Offer` account containing pricing parameters like
+///   `offer_start_time`, `offer_end_time`, `price_fix_duration`,
+///   `sell_token_start_amount`, and `sell_token_end_amount`.
 ///
 /// # Returns
-/// The calculated sell token amount for the current time
+/// The calculated sell token amount effectively representing the "price" for the current interval.
+/// This is the amount of sell tokens that corresponds to the total `buy_token_X_amount` defined in the offer for the current time interval.
+///
+/// # Errors
+/// - [`TakeOfferErrorCode::InvalidCurrentTime`] if the current time is outside the offer's active period.
 fn calculate_current_sell_amount(
     offer: &Offer
 ) -> Result<u64> {
@@ -145,29 +150,23 @@ fn calculate_current_sell_amount(
 
 /// Takes an offer with one buy token.
 ///
-/// Allows a user to exchange sell tokens for one buy token from the offer, transferring
-/// tokens between accounts and emitting an `OfferTakenOne` event with transaction details.
+/// Allows a user to exchange their sell tokens for buy tokens from the offer.
+/// The amount of buy token received depends on the `sell_token_amount` provided by the user
+/// and the current price determined by the offer's dynamic pricing parameters
+/// (`sell_token_start_amount`, `sell_token_end_amount`, `offer_start_time`, `offer_end_time`, `price_fix_duration`).
+/// Transfers tokens between accounts and emits an `OfferTakenOne` event.
 ///
 /// # Arguments
 /// - `ctx`: Context containing the accounts for the offer take.
-/// - `sell_token_amount`: Amount of sell tokens the user provides.
+/// - `sell_token_amount`: Amount of sell tokens the user provides to exchange for buy tokens.
 ///
 /// # Errors
-/// - [`TakeOfferErrorCode::OfferExceedsSellLimit`] if the sell amount exceeds the offer's limit.
-/// - [`TakeOfferErrorCode::InsufficientOfferBalance`] if the offer lacks sufficient buy tokens.
-/// - [`TakeOfferErrorCode::CalculationOverflow`] if amount calculations overflow.
+/// - [`TakeOfferErrorCode::InvalidCurrentTime`] if the offer is not active.
+/// - [`TakeOfferErrorCode::InsufficientOfferBalance`] if the offer lacks sufficient buy tokens to fulfill the exchange at the current price.
+/// - [`TakeOfferErrorCode::CalculationOverflow`] if intermediate amount calculations overflow.
+/// - [`TakeOfferErrorCode::ZeroBuyTokenAmount`] if the calculated buy token amount to be received is zero.
 pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Result<()> {
     let offer = &ctx.accounts.offer;
-
-    require!(
-        ctx.accounts
-            .offer_sell_token_account
-            .amount
-            .checked_add(sell_token_amount)
-            .unwrap()
-            <= offer.sell_token_end_amount,
-        TakeOfferErrorCode::OfferExceedsSellLimit
-    );
 
     let current_sell_token_amount = calculate_current_sell_amount(&offer).unwrap();
     msg!("Calculated current sell token amount: {}", current_sell_token_amount);
@@ -323,31 +322,25 @@ pub struct TakeOfferTwo<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Takes an offer with two buy tokens.
+/// Takes an offer with two buy tokens, considering the dynamic pricing model.
 ///
-/// Allows a user to exchange sell tokens for two buy tokens from the offer, transferring
-/// tokens between accounts and emitting an `OfferTakenTwo` event with transaction details.
+/// Allows a user to exchange their sell tokens for two types of buy tokens from the offer.
+/// The amount of each buy token received depends on the `sell_token_amount` provided by the user
+/// and the current price determined by the offer's dynamic pricing parameters
+/// (`sell_token_start_amount`, `sell_token_end_amount`, `offer_start_time`, `offer_end_time`, `price_fix_duration`).
+/// Transfers tokens between accounts and emits an `OfferTakenTwo` event.
 ///
 /// # Arguments
 /// - `ctx`: Context containing the accounts for the offer take.
-/// - `sell_token_amount`: Amount of sell tokens the user provides.
+/// - `sell_token_amount`: Amount of sell tokens the user provides to exchange for buy tokens.
 ///
 /// # Errors
-/// - [`TakeOfferErrorCode::OfferExceedsSellLimit`] if the sell amount exceeds the offer's limit.
-/// - [`TakeOfferErrorCode::InsufficientOfferBalance`] if the offer lacks sufficient buy tokens.
-/// - [`TakeOfferErrorCode::CalculationOverflow`] if amount calculations overflow.
+/// - [`TakeOfferErrorCode::InvalidCurrentTime`] if the offer is not active.
+/// - [`TakeOfferErrorCode::InsufficientOfferBalance`] if the offer lacks sufficient quantity of either buy token to fulfill the exchange at the current price.
+/// - [`TakeOfferErrorCode::CalculationOverflow`] if intermediate amount calculations overflow.
+/// - [`TakeOfferErrorCode::ZeroBuyTokenAmount`] if the calculated amount for either buy token to be received is zero.
 pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Result<()> {
     let offer = &ctx.accounts.offer;
-
-    require!(
-        ctx.accounts
-            .offer_sell_token_account
-            .amount
-            .checked_add(sell_token_amount)
-            .unwrap()
-            <= offer.sell_token_end_amount,
-        TakeOfferErrorCode::OfferExceedsSellLimit
-    );
 
     let current_sell_token_amount = calculate_current_sell_amount(&offer).unwrap();
     msg!("Calculated current sell token amount: {}", current_sell_token_amount);
@@ -436,20 +429,28 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
     Ok(())
 }
 
-/// Calculates the proportional buy token amount based on sell token input.
+/// Calculates the proportional amount of a specific buy token a user receives for their sell tokens.
+///
+/// This function determines how many units of a particular buy token the user gets
+/// based on the amount of sell tokens they provide, the total amount of that buy token
+/// available in the offer, and the current effective total sell token amount required for the offer
+/// (as determined by `calculate_current_sell_amount`).
+///
+/// Essentially, `(user_sell_token_amount / offer_sell_token_amount_at_current_price) * offer_total_buy_token_X_amount`.
 ///
 /// # Arguments
-/// - `sell_token_amount`: Amount of sell tokens provided by the user.
-/// - `offer_buy_token_amount`: Amount of buy tokens in the offer, used for price calculation.
-/// - `offer_sell_token_amount`: Current amount of sell tokens in the offer, used for price calculation.
+/// - `user_sell_token_amount`: Amount of sell tokens provided by the user.
+/// - `offer_buy_token_amount`: Total amount of the specific buy token set in the offer (e.g., `offer.buy_token_1.amount`).
+/// - `offer_sell_token_amount`: Current effective total sell token amount for the offer at the current time interval,
+///   calculated by `calculate_current_sell_amount`.
 ///
 /// # Returns
-/// The calculated amount of buy tokens to transfer, or an error if calculations fail.
+/// The calculated amount of the specific buy token to transfer to the user, or an error if the calculation fails.
 ///
 /// # Errors
-/// - [`TakeOfferErrorCode::InvalidSellTokenMint`] if `sell_token_total_amount` is zero.
-/// - [`TakeOfferErrorCode::CalculationOverflow`] if multiplication or division overflows.
-/// - [`TakeOfferErrorCode::ZeroBuyTokenAmount`] if the result is zero.
+/// - [`TakeOfferErrorCode::InvalidSellTokenMint`] if `offer_sell_token_amount` (the denominator) is zero.
+/// - [`TakeOfferErrorCode::CalculationOverflow`] if multiplication or division results in overflow.
+/// - [`TakeOfferErrorCode::ZeroBuyTokenAmount`] if the calculated buy token amount for the user is zero.
 fn calculate_buy_amount(
     user_sell_token_amount: u64,
     offer_buy_token_amount: u64,
@@ -486,10 +487,6 @@ pub enum TakeOfferErrorCode {
     /// Triggered when the user's buy token mint doesn't match the offer's.
     #[msg("The buy token mint does not match the offer.")]
     InvalidBuyTokenMint,
-
-    /// Triggered when the sell amount exceeds the offer's total sell limit.
-    #[msg("The offer would exceed its total sell token limit.")]
-    OfferExceedsSellLimit,
 
     /// Triggered when the offer type is invalid for the take instruction.
     #[msg("The offer is of 2 buy token type.")]
