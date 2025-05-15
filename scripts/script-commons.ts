@@ -10,7 +10,7 @@ export async function initProgram() {
     const connection = new anchor.web3.Connection(process.env.SOL_MAINNET_RPC_URL || '');
     const wallet = new anchor.Wallet(anchor.web3.Keypair.generate());
     const provider = new AnchorProvider(connection, wallet);
-    const program = new Program(idl as OnreApp, provider);
+    const program = new Program<OnreApp>(idl as OnreApp, provider);
 
     anchor.setProvider(provider);
 
