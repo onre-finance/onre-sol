@@ -3570,7 +3570,38 @@
   "errors": [
     {
       "code": 6000,
-      "name": "InvalidBossAddress"
+      "name": "InsufficientOfferBalance",
+      "msg": "Insufficient tokens remaining in the offer."
+    },
+    {
+      "code": 6001,
+      "name": "InvalidSellTokenMint",
+      "msg": "The sell token mint does not match the offer."
+    },
+    {
+      "code": 6002,
+      "name": "InvalidBuyTokenMint",
+      "msg": "The buy token mint does not match the offer."
+    },
+    {
+      "code": 6003,
+      "name": "OfferExceedsSellLimit",
+      "msg": "The offer would exceed its total sell token limit."
+    },
+    {
+      "code": 6004,
+      "name": "InvalidTakeOffer",
+      "msg": "The offer is of 2 buy token type."
+    },
+    {
+      "code": 6005,
+      "name": "CalculationOverflow",
+      "msg": "Calculation overflowed or invalid."
+    },
+    {
+      "code": 6006,
+      "name": "ZeroBuyTokenAmount",
+      "msg": "Zero buy token amount."
     }
   ],
   "types": [

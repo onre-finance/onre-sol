@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="CargoProjects">
+    <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="7ec466b6-8938-42a4-9bbe-23a88ad0257b" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/scripts/solana-receive-message.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/types/message_transmitter.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/types/token_messenger_minter.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/utils/utils.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Anchor.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Anchor.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/idl/onre_app.json" beforeDir="false" afterPath="$PROJECT_DIR$/target/idl/onre_app.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/types/onre_app.ts" beforeDir="false" afterPath="$PROJECT_DIR$/target/types/onre_app.ts" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ExecutionTargetManager" SELECTED_TARGET="RsBuildProfile:test" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/node_modules/@coral-xyz/anchor/dist/cjs/index.d.ts" root0="SKIP_INSPECTION" />
+    <setting file="file://$PROJECT_DIR$/node_modules/@solana/spl-token/src/instructions/associatedTokenAccount.ts" root0="SKIP_INSPECTION" />
+  </component>
+  <component name="MacroExpansionManager">
+    <option name="directoryName" value="m3Ke6IFx" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 6
+}</component>
+  <component name="ProjectId" id="2ucSgJRzDK4NXGYqqHbnjcUnT5n" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Java Scratch.Scratch.executor&quot;: &quot;Debug&quot;,
+    &quot;Jest.onreapp.executor&quot;: &quot;Run&quot;,
+    &quot;Node.js.cctp-eth-to-sol.ts.executor&quot;: &quot;Run&quot;,
+    &quot;Node.js.close-offer.ts.executor&quot;: &quot;Run&quot;,
+    &quot;Node.js.fetch-offer.ts.executor&quot;: &quot;Run&quot;,
+    &quot;Node.js.initialize.ts.executor&quot;: &quot;Run&quot;,
+    &quot;Node.js.make-offer-two.ts.executor&quot;: &quot;Run&quot;,
+    &quot;Node.js.make-offer.ts.executor&quot;: &quot;Run&quot;,
+    &quot;Node.js.replace-offer.ts.executor&quot;: &quot;Run&quot;,
+    &quot;Node.js.set-boss.ts.executor&quot;: &quot;Run&quot;,
+    &quot;Node.js.solana-receive-message.ts.executor&quot;: &quot;Run&quot;,
+    &quot;Node.js.transfer-token.ts.executor&quot;: &quot;Run&quot;,
+    &quot;Node.js.utils.ts.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;f/CLXSP-195-usdc&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/marian-danielrolnik/Documents/projects/onre-sol/scripts&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs.jest.jest_package&quot;: &quot;/Users/marian-danielrolnik/Documents/projects/onre-sol/node_modules/jest&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;org.rust.cargo.project.model.PROJECT_DISCOVERY&quot;: &quot;true&quot;,
+    &quot;org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon&quot;: &quot;&quot;,
+    &quot;org.rust.first.attach.projects&quot;: &quot;true&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.4827586&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/Users/marian-danielrolnik/Documents/projects/onre-sol/node_modules/typescript/lib&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  },
+  &quot;keyToStringList&quot;: {
+    &quot;com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File&quot;: [
+      &quot;JAVA&quot;
+    ]
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/scripts" />
+      <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$/target/deploy" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Cargo.Test onre-sol">
+    <configuration name="Test onre-sol" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+      <option name="buildProfileId" value="test" />
+      <option name="command" value="test --workspace" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
+      <option name="emulateTerminal" value="true" />
+      <option name="channel" value="DEFAULT" />
+      <option name="requiredFeatures" value="true" />
+      <option name="allFeatures" value="false" />
+      <option name="withSudo" value="false" />
+      <option name="buildTarget" value="REMOTE" />
+      <option name="backtrace" value="SHORT" />
+      <option name="isRedirectInput" value="false" />
+      <option name="redirectInputPath" value="" />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Scratch" type="Java Scratch" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="Scratch" />
+      <option name="SCRATCH_FILE_URL" value="file://$APPLICATION_CONFIG_DIR$/scratches/scratch_105.java" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="onreapp" type="JavaScriptTestRunnerJest" temporary="true" nameIsGenerated="true">
+      <node-interpreter value="project" />
+      <jest-package value="$PROJECT_DIR$/node_modules/jest" />
+      <working-dir value="$PROJECT_DIR$" />
+      <envs />
+      <scope-kind value="SUITE" />
+      <test-file value="$PROJECT_DIR$/tests/onreapp.spec.ts" />
+      <test-names>
+        <test-name value="onreapp" />
+      </test-names>
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Java Scratch.Scratch" />
+        <item itemvalue="Jest.onreapp" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="RustProjectSettings">
+    <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-9823dce3aa75-a94e463ab2e7-intellij.indexing.shared.core-IU-243.26053.27" />
+        <option value="bundled-js-predefined-d6986cc7102b-1632447f56bf-JavaScript-IU-243.26053.27" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="StructureViewState">
+    <option name="selectedTab" value="Logical" />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="7ec466b6-8938-42a4-9bbe-23a88ad0257b" name="Changes" comment="" />
+      <created>1742546479268</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1742546479268</updated>
+      <workItem from="1742546480863" duration="3517000" />
+      <workItem from="1742563496570" duration="586000" />
+      <workItem from="1742810632539" duration="19029000" />
+      <workItem from="1742889019135" duration="22862000" />
+      <workItem from="1743083621223" duration="5000" />
+      <workItem from="1743574617795" duration="1502000" />
+      <workItem from="1744801181887" duration="8871000" />
+      <workItem from="1745331434088" duration="1085000" />
+      <workItem from="1745416098508" duration="6929000" />
+      <workItem from="1745838132214" duration="9351000" />
+      <workItem from="1745926687112" duration="1313000" />
+      <workItem from="1745930665648" duration="12149000" />
+      <workItem from="1746450623248" duration="155000" />
+      <workItem from="1746450785313" duration="4036000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>

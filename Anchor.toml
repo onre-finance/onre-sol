@@ -15,6 +15,9 @@ url = "https://api.apr.dev"
 cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
+[clusters]
+
+
 [scripts]
 test = "./node_modules/.bin/jest --preset ts-jest"
 
