@@ -14,12 +14,12 @@ async function createMakeOfferOneTransaction() {
     const oldOfferId = new BN(1);
     const offerId = new BN(1);
 
-    const buyTokenAmount = new BN('20000000000000000');     // 9 decimals for ONe
-    const sellTokenStartAmount = new BN('20000000000');     // 6 decimals for USDC
-    const sellTokenEndAmount = new BN('30000000000');       // 6 decimals for USDC
-    const offerStartTime = Date.now() / 1000;
-    const offerEndTime = offerStartTime + 7200;
-    const priceFixDuration = new BN(3600);
+    const buyTokenAmount = 20000000e9;      // 9 decimals for ONe
+    const sellTokenStartAmount = 20000e6;   // 6 decimals for USDC
+    const sellTokenEndAmount = 30000e6;     // 6 decimals for USDC
+    const offerStartTime = Math.floor(new Date(2025, 5, 15).getTime() / 1000); // May 15, 2025
+    const offerEndTime = offerStartTime + (60 * 60 * 24 * 30); // +30 days
+    const priceFixDuration = 60 * 60; // 1 hour
 
     const program = await initProgram();
     const connection = new anchor.web3.Connection(RPC_URL);
@@ -78,14 +78,14 @@ async function createMakeOfferOneTransaction() {
 
         const tx = await program.methods
             .makeOfferOne(
-                offerId,
-                buyTokenAmount,
-                sellTokenStartAmount,
-                sellTokenEndAmount,
-                new BN(offerStartTime),
-                new BN(offerEndTime),
-                priceFixDuration
-            ).accountsPartial({
+              offerId,
+              new BN(buyTokenAmount),
+              new BN(sellTokenStartAmount),
+              new BN(sellTokenEndAmount),
+              new BN(offerStartTime),
+              new BN(offerEndTime),
+              new BN(priceFixDuration))
+            .accountsPartial({
                 offer: offerPda,
                 offerSellTokenAccount: getAssociatedTokenAddressSync(offer.sellTokenMint, offerAuthority, true),
                 offerBuyToken1Account: getAssociatedTokenAddressSync(offer.buyToken1.mint, offerAuthority, true),

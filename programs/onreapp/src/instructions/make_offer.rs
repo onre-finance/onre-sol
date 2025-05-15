@@ -310,7 +310,7 @@ pub fn make_offer_one(
         &ctx.accounts.offer_buy_token_1_account,
         buy_token_total_amount,
     )?;
-    msg!("Transferring {} buy tokens 1 from boss to offer", buy_token_total_amount);
+    msg!("Transferring {} buy tokens 1 from boss to offer", buy_token_total_amount, ctx.accounts.buy_token_1_mint.to_account_info().);
     msg!("Offer created with buy_token_total_amount: {}, sell_token_start_amount: {}, sell_token_end_amount: {} and price_fix_duration: {}", 
         buy_token_total_amount, 
         sell_token_start_amount, 

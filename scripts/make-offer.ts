@@ -16,27 +16,26 @@ import { getBossAccount, initProgram, PROGRAM_ID, RPC_URL } from './script-commo
 
 // Test
 const SELL_TOKEN_MINT = new PublicKey('qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWeQu');  // TestUSDC Mint Address
-const BUY_TOKEN_MINT = new PublicKey('5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C');  // TestONe  Mint Address 
+const BUY_TOKEN_MINT = new PublicKey('5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C');  // TestONe  Mint Address
 
 async function createMakeOfferOneTransaction() {
-
     const program = await initProgram();
     const connection = new anchor.web3.Connection(RPC_URL);
 
-    const offerId = new BN(1);
-    const buyTokenAmount = new BN(350000e9);        // 9 decimals for ONe
-    const sellTokenStartAmount = new BN(350000e9);  // 6 decimals for USDC
-    const sellTokenEndAmount = new BN(700000e9);    // 6 decimals for USDC
-    const offerStartTime = Date.now() / 1000;
-    const offerEndTime = offerStartTime + 7200;
-    const priceFixDuration = new BN(3600);
+    const offerId = 1;
+    const buyTokenAmount = 350000e9;            // 9 decimals for ONe
+    const sellTokenStartAmount = 350000e9;      // 6 decimals for USDC
+    const sellTokenEndAmount = 700000e9;      // 6 decimals for USDC
+    const offerStartTime = Math.floor(new Date(2025, 5, 15).getTime() / 1000); // May 15, 2025
+    const offerEndTime = offerStartTime + (60 * 60 * 24 * 30); // +30 days
+    const priceFixDuration = 60 * 60; // 1 hour
 
     const [offerAuthority] = PublicKey.findProgramAddressSync(
-        [Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)],
+        [Buffer.from('offer_authority'), new BN(offerId).toArrayLike(Buffer, 'le', 8)],
         program.programId,
     );
 
-    console.log('programId:', program.programId.toBase58());    
+    console.log('programId:', program.programId.toBase58());
     console.log('offerAuthority:', offerAuthority.toBase58());
 
     const BOSS = await getBossAccount(program);
@@ -61,20 +60,20 @@ async function createMakeOfferOneTransaction() {
     const [statePda] = PublicKey.findProgramAddressSync([Buffer.from('state')], PROGRAM_ID);
 
     const [offerPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('offer'), offerId.toArrayLike(Buffer, 'le', 8)],
+        [Buffer.from('offer'), new BN(offerId).toArrayLike(Buffer, 'le', 8)],
         PROGRAM_ID,
     );
     try {
         const tx = await program.methods
             .makeOfferOne(
-                offerId,
-                buyTokenAmount,
-                sellTokenStartAmount,
-                sellTokenEndAmount,
-                new BN(offerStartTime),
-                new BN(offerEndTime),
-                priceFixDuration
-            ).accountsPartial({
+              new BN(offerId), 
+              new BN(buyTokenAmount),
+              new BN(sellTokenStartAmount),
+              new BN(sellTokenEndAmount),
+              new BN(offerStartTime),
+              new BN(offerEndTime),
+              new BN(priceFixDuration))
+            .accountsPartial({
                 offer: offerPda,
                 offerSellTokenAccount: getAssociatedTokenAddressSync(SELL_TOKEN_MINT, offerAuthority, true),
                 offerBuyToken1Account: getAssociatedTokenAddressSync(BUY_TOKEN_MINT, offerAuthority, true),
