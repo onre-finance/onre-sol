@@ -17,12 +17,16 @@ async function createMakeOfferOneTransaction() {
     const program = await initProgram();
     const connection = new anchor.web3.Connection(process.env.SOL_MAINNET_RPC_URL || '');
 
-    const offerId = new BN(1);
-    const buyTokenAmount = new BN(200000e9);  // 9 decimals for ONe
-    const sellTokenAmount = new BN(20152574e4); // 6 decimals for USDC
+    const offerId = 1;
+    const buyTokenAmount = 200000e9;  // 9 decimals for ONe
+    const sellTokenStartAmount = 20152574e4; // 6 decimals for USDC
+    const sellTokenEndAmount = 20152574e4; // 6 decimals for USDC
+    const offerStartTime = Math.floor(new Date(2025, 5, 15).getTime() / 1000); // May 15, 2025
+    const offerEndTime = offerStartTime + (60 * 60 * 24 * 30); // +30 days
+    const priceFixDuration = 60 * 60; // 1 hour
 
     const [offerAuthority] = PublicKey.findProgramAddressSync(
-        [Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)],
+        [Buffer.from('offer_authority'), new BN(offerId).toArrayLike(Buffer, 'le', 8)],
         program.programId,
     );
 
@@ -46,12 +50,12 @@ async function createMakeOfferOneTransaction() {
     const [statePda] = PublicKey.findProgramAddressSync([Buffer.from('state')], PROGRAM_ID);
 
     const [offerPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('offer'), offerId.toArrayLike(Buffer, 'le', 8)],
+        [Buffer.from('offer'), new BN(offerId).toArrayLike(Buffer, 'le', 8)],
         PROGRAM_ID,
     );
     try {
         const tx = await program.methods
-            .makeOfferOne(offerId, buyTokenAmount, sellTokenAmount)
+            .makeOfferOne(new BN(offerId), new BN(buyTokenAmount), new BN(sellTokenStartAmount), new BN(sellTokenEndAmount), new BN(offerStartTime), new BN(offerEndTime), new BN(priceFixDuration))
             .accountsPartial({
                 offer: offerPda,
                 offerSellTokenAccount: getAssociatedTokenAddressSync(SELL_TOKEN_MINT, offerAuthority, true),
