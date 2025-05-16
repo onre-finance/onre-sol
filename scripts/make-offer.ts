@@ -8,14 +8,14 @@ import {
 import bs58 from 'bs58';
 import { BN } from 'bn.js';
 
-import { getBossAccount, initProgram, PROGRAM_ID } from './script-commons';
+import { getBossAccount, initProgram, PROGRAM_ID, RPC_URL } from './script-commons';
 
 const SELL_TOKEN_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'); // USDC Mint Address
 const BUY_TOKEN_MINT = new PublicKey('5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5');  // ONe Mint Address
 
 async function createMakeOfferOneTransaction() {
     const program = await initProgram();
-    const connection = new anchor.web3.Connection(process.env.SOL_MAINNET_RPC_URL || '');
+    const connection = new anchor.web3.Connection(RPC_URL);
 
     const offerId = new BN(1);
     const buyTokenAmount = new BN(200000e9);  // 9 decimals for ONe

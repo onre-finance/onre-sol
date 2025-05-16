@@ -7,7 +7,7 @@ import {
 import bs58 from 'bs58';
 import { BN } from 'bn.js';
 
-import { getBossAccount, getOffer, initProgram, PROGRAM_ID } from './script-commons';
+import { getBossAccount, getOffer, initProgram, PROGRAM_ID, RPC_URL } from './script-commons';
 import { PublicKey } from '@solana/web3.js';
 
 async function createMakeOfferOneTransaction() {
@@ -18,7 +18,7 @@ async function createMakeOfferOneTransaction() {
     const sellTokenAmount = new BN(150e9);
 
     const program = await initProgram();
-    const connection = new anchor.web3.Connection(process.env.SOL_MAINNET_RPC_URL || '');
+    const connection = new anchor.web3.Connection(RPC_URL);
 
     const BOSS = await getBossAccount(program);
     const offer = await getOffer(oldOfferId, program);

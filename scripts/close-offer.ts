@@ -5,11 +5,11 @@ import { BN } from 'bn.js';
 
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import bs58 from 'bs58';
-import { getBossAccount, getOffer, initProgram, PROGRAM_ID } from './script-commons';
+import { getBossAccount, getOffer, initProgram, PROGRAM_ID, RPC_URL } from './script-commons';
 
 async function closeOffer() {
     const offerId = new BN(1);
-    const connection = new anchor.web3.Connection(process.env.SOL_MAINNET_RPC_URL || '');
+    const connection = new anchor.web3.Connection(RPC_URL);
 
     const program = await initProgram();
     const BOSS = await getBossAccount(program);

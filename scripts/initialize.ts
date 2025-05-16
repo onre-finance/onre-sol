@@ -2,17 +2,18 @@ import * as anchor from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
 
-import { initProgram } from "./script-commons";
+import { initProgram, PROGRAM_ID, RPC_URL } from "./script-commons";
 
-const PROGRAM_ID = new PublicKey("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
+// PROD
+// const BOSS = new PublicKey("45YnzauhsBM8CpUz96Djf8UG5vqq2Dua62wuW9H3jaJ5"); // WARN: SQUAD MAIN ACCOUNT!!!
 
-const BOSS = new PublicKey("45YnzauhsBM8CpUz96Djf8UG5vqq2Dua62wuW9H3jaJ5"); // WARN: SQUAD MAIN ACCOUNT!!!
+// TEST & local
+const BOSS = new PublicKey("uwffP46DSrZhUZkdXhGyHJwY8TmRzSbMf5geGhXGyKi");
 
 async function createMakeOfferOneTransaction() {
-    const connection = new anchor.web3.Connection(process.env.SOL_MAINNET_RPC_URL || "");
+    const connection = new anchor.web3.Connection(RPC_URL);
     const program = await initProgram();
 
-    // Derive the state PDA
     const [statePda] = PublicKey.findProgramAddressSync([Buffer.from("state")], PROGRAM_ID);
 
     try {
