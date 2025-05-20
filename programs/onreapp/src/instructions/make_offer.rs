@@ -312,6 +312,10 @@ pub fn make_offer_one(
         MakeOfferErrorCode::InvalidPriceFixDuration
     );
     require!(
+        (offer_end_time - offer_start_time) % price_fix_duration == 0,
+        MakeOfferErrorCode::InvalidOfferTime
+    );
+    require!(
         ctx.accounts.boss_buy_token_1_account.amount >= buy_token_total_amount,
         MakeOfferErrorCode::InsufficientBalance
     );
@@ -429,6 +433,10 @@ pub fn make_offer_two(
         MakeOfferErrorCode::InvalidPriceFixDuration
     );
     require!(
+        (offer_end_time - offer_start_time) % price_fix_duration == 0,
+        MakeOfferErrorCode::InvalidOfferTime
+    );
+    require!(
         ctx.accounts.boss_buy_token_1_account.amount >= buy_token_1_total_amount,
         MakeOfferErrorCode::InsufficientBalance
     );
@@ -527,7 +535,7 @@ pub enum MakeOfferErrorCode {
     #[msg("Token transfer amount must be greater than zero. Sell token start amount must be > 0, end amount must be > 0, and start <= end.")]
     InvalidAmount,
 
-    #[msg("Token offer end time must be greater than start time")]
+    #[msg("Token offer end time must be greater than start time and end time - start time must be divisible by price fix duration")]
     InvalidOfferTime,
 
     /// Triggered when the price fix duration is invalid.
