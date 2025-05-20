@@ -14,8 +14,12 @@ async function createMakeOfferOneTransaction() {
     const oldOfferId = new BN(1);
     const offerId = new BN(1);
 
-    const buyTokenAmount = new BN(150e9);
-    const sellTokenAmount = new BN(150e9);
+    const buyTokenAmount = new BN('20000000000000000');     // 9 decimals for ONe
+    const sellTokenStartAmount = new BN('20000000000');     // 6 decimals for USDC
+    const sellTokenEndAmount = new BN('30000000000');       // 6 decimals for USDC
+    const offerStartTime = Date.now() / 1000;
+    const offerEndTime = offerStartTime + 7200;
+    const priceFixDuration = new BN(3600);
 
     const program = await initProgram();
     const connection = new anchor.web3.Connection(RPC_URL);
@@ -41,9 +45,9 @@ async function createMakeOfferOneTransaction() {
     );
     const offerBuyTokenAccountInstruction = createAssociatedTokenAccountInstruction(
         BOSS,
-        getAssociatedTokenAddressSync(offer.buyTokenMint1, offerAuthority, true),
+        getAssociatedTokenAddressSync(offer.buyToken1.mint, offerAuthority, true),
         offerAuthority,
-        offer.buyTokenMint1,
+        offer.buyToken1.mint,
     );
     // Derive the state PDA
     const [statePda] = PublicKey.findProgramAddressSync([Buffer.from('state')], PROGRAM_ID);
@@ -63,8 +67,8 @@ async function createMakeOfferOneTransaction() {
             .accountsPartial({
                 offer: oldOfferPda,
                 offerSellTokenAccount: getAssociatedTokenAddressSync(offer.sellTokenMint, oldOfferAuthority, true),
-                offerBuy1TokenAccount: getAssociatedTokenAddressSync(offer.buyTokenMint1, oldOfferAuthority, true),
-                bossBuy1TokenAccount: getAssociatedTokenAddressSync(offer.buyTokenMint1, BOSS, true),
+                offerBuy1TokenAccount: getAssociatedTokenAddressSync(offer.buyToken1.mint, oldOfferAuthority, true),
+                bossBuy1TokenAccount: getAssociatedTokenAddressSync(offer.buyToken1.mint, BOSS, true),
                 bossSellTokenAccount: getAssociatedTokenAddressSync(offer.sellTokenMint, BOSS, true),
                 state: statePda,
                 offerTokenAuthority: oldOfferAuthority,
@@ -73,15 +77,22 @@ async function createMakeOfferOneTransaction() {
             .instruction();
 
         const tx = await program.methods
-            .makeOfferOne(offerId, buyTokenAmount, sellTokenAmount)
-            .accountsPartial({
+            .makeOfferOne(
+                offerId,
+                buyTokenAmount,
+                sellTokenStartAmount,
+                sellTokenEndAmount,
+                new BN(offerStartTime),
+                new BN(offerEndTime),
+                priceFixDuration
+            ).accountsPartial({
                 offer: offerPda,
                 offerSellTokenAccount: getAssociatedTokenAddressSync(offer.sellTokenMint, offerAuthority, true),
-                offerBuyToken1Account: getAssociatedTokenAddressSync(offer.buyTokenMint1, offerAuthority, true),
+                offerBuyToken1Account: getAssociatedTokenAddressSync(offer.buyToken1.mint, offerAuthority, true),
                 offerTokenAuthority: offerAuthority,
-                bossBuyToken1Account: getAssociatedTokenAddressSync(offer.buyTokenMint1, BOSS, true),
+                bossBuyToken1Account: getAssociatedTokenAddressSync(offer.buyToken1.mint, BOSS, true),
                 sellTokenMint: offer.sellTokenMint,
-                buyToken1Mint: offer.buyTokenMint1,
+                buyToken1Mint: offer.buyToken1.mint,
                 state: statePda,
                 boss: BOSS,
             })

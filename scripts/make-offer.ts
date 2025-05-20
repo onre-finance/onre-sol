@@ -15,21 +15,21 @@ import { getBossAccount, initProgram, PROGRAM_ID, RPC_URL } from './script-commo
 // const BUY_TOKEN_MINT = new PublicKey('5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5');  // ONe Mint Address
 
 // Test & local
-const SELL_TOKEN_MINT = new PublicKey('mntjuZHsfoxSWbjMi7GMrrR5QhA9JaXhaUeyzmqHe3J');  // BSN Mint Address
-const BUY_TOKEN_MINT = new PublicKey('oneRcXEajZ1biQ5Ts9vPHXZ8penh9rRuEBNpx2DA9wE');  //  sUSDe Mint Address 
+const SELL_TOKEN_MINT = new PublicKey('mntjuZHsfoxSWbjMi7GMrrR5QhA9JaXhaUeyzmqHe3J');  // USDC Mint Address
+const BUY_TOKEN_MINT = new PublicKey('oneRcXEajZ1biQ5Ts9vPHXZ8penh9rRuEBNpx2DA9wE');  //  ONe  Mint Address 
 
 async function createMakeOfferOneTransaction() {
+
     const program = await initProgram();
     const connection = new anchor.web3.Connection(RPC_URL);
 
     const offerId = new BN(1);
-    const buyTokenAmount = new BN(350000e9);  // 9 decimals for ONe
-    const sellTokenStartAmount = new BN(350000e9); // 6 decimals for USDC
-    const sellTokenEndAmount = new BN(700000e9); // 6 decimals for USDC
+    const buyTokenAmount = new BN(350000e9);        // 9 decimals for ONe
+    const sellTokenStartAmount = new BN(350000e9);  // 6 decimals for USDC
+    const sellTokenEndAmount = new BN(700000e9);    // 6 decimals for USDC
     const offerStartTime = Date.now() / 1000;
     const offerEndTime = offerStartTime + 7200;
     const priceFixDuration = new BN(3600);
-
 
     const [offerAuthority] = PublicKey.findProgramAddressSync(
         [Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)],
@@ -85,7 +85,7 @@ async function createMakeOfferOneTransaction() {
                 state: statePda,
                 boss: BOSS,
             })
-            .preInstructions([offerBuyTokenAccountInstruction, offerSellTokenAccountInstruction])
+            .preInstructions([offerSellTokenAccountInstruction, offerBuyTokenAccountInstruction ])
             .transaction();
 
         tx.feePayer = BOSS;
