@@ -221,6 +221,7 @@ pub struct CloseOfferTwo<'info> {
     pub offer_token_authority: AccountInfo<'info>,
 
     /// The signer authorizing the closure, typically the boss.
+    #[account(mut)]
     pub boss: Signer<'info>,
 
     /// SPL Token program for token operations.
