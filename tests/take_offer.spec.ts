@@ -711,7 +711,7 @@ describe("take offer", () => {
         await testHelper.expectTokenAccountAmountToBe(offerUsdcTokenPda, BigInt(93e9)); // 95 - 2
     });
 
-    it("should allow taking offer until empty", async () => {
+    test("should allow taking offer until empty", async () => {
         // given
 
         const onreTokenMint = sellTokenMint;
