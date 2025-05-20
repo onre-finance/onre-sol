@@ -89,7 +89,6 @@ pub struct TakeOfferOne<'info> {
     pub offer_token_authority: AccountInfo<'info>,
 
     /// The user taking the offer, signs the transaction.
-    #[account(mut)]
     pub user: Signer<'info>,
 
     /// SPL Token program for token operations.
@@ -309,7 +308,6 @@ pub struct TakeOfferTwo<'info> {
     pub offer_token_authority: AccountInfo<'info>,
 
     /// The user taking the offer, signs the transaction.
-    #[account(mut)]
     pub user: Signer<'info>,
 
     /// SPL Token program for token operations.
