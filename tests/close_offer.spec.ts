@@ -1,6 +1,6 @@
 import { BankrunProvider } from "anchor-bankrun";
 import { startAnchor } from "anchor-bankrun";
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { ONREAPP_PROGRAM_ID, TestHelper } from "./test_helper";
 import { AddedProgram } from "solana-bankrun";
 import { Program } from "@coral-xyz/anchor";
@@ -80,15 +80,12 @@ describe("close offer", () => {
         const bossSellTokenAccount = testHelper.createTokenAccount(sellTokenMint, boss, BigInt(0), true);
 
         // when
-        // user gives sell tokens: 20e9
-        // user receives buy tokens: 10e9
         await testHelper.closeOfferOne(offerPda);
 
         // then
         await testHelper.expectTokenAccountAmountToBe(bossBuyTokenAccount, BigInt(10e9));
         await testHelper.expectTokenAccountAmountToBe(bossSellTokenAccount, BigInt(0e9));
     });
-
 
     test("closing an offer with two buy tokens should refund all buy tokens", async () => {
         // given
@@ -130,8 +127,6 @@ describe("close offer", () => {
         const bossSellTokenAccount = testHelper.createTokenAccount(sellTokenMint, boss, BigInt(0), true);
 
         // when
-        // user gives sell tokens: 20e9
-        // user receives buy tokens: 10e9
         await testHelper.closeOfferTwo(offerPda);
 
         // then
@@ -139,4 +134,79 @@ describe("close offer", () => {
         await testHelper.expectTokenAccountAmountToBe(bossBuyTokenAccount2, BigInt(10e9));
         await testHelper.expectTokenAccountAmountToBe(bossSellTokenAccount, BigInt(0e9));
     });
+
+    test("close_offer_two called on an offer with one buy token should fail", async () => {
+        // given
+        // create user
+        const user = testHelper.createUserAccount();
+        const userSellTokenAccount = testHelper.createTokenAccount(sellTokenMint, user.publicKey, BigInt(100e9), true);
+        const userBuyTokenAccount = testHelper.createTokenAccount(buyToken1Mint, user.publicKey, BigInt(0), true);
+        
+        // create offer accounts
+        const { offerId, offerPda, offerAuthority } = testHelper.createOneTokenOfferAccounts(
+            sellTokenMint, BigInt(0), 
+            buyToken1Mint, BigInt(0), 
+            boss, BigInt(10e9)
+        );
+        testHelper.createTokenAccount(SystemProgram.programId, offerAuthority, BigInt(0), true);
+        testHelper.createTokenAccount(SystemProgram.programId, boss, BigInt(10e9));
+
+        const priceFixDuration = 86400; // 1 day
+        const offerStartTime = await testHelper.getCurrentClockTime();
+        const offerEndTime = offerStartTime + (priceFixDuration * 3); // 3 days
+
+        // make offer
+        await testHelper.makeOfferOne({
+            offerId, 
+            buyTokenTotalAmount: 10e9, 
+            sellTokenStartAmount: 10e9, 
+            sellTokenEndAmount: 20e9,
+            offerStartTime, 
+            offerEndTime, 
+            priceFixDuration,
+            sellTokenMint,
+            buyTokenMint: buyToken1Mint,
+        })
+        
+        // when
+        await expect(testHelper.closeOfferTwo(offerPda)).rejects.toThrow(RegExp(".*InvalidCloseOffer.*"));
+    });
+
+    test("close_offer_one called on an offer with two buy tokens should fail", async () => {
+        // given
+        // create user
+        const user = testHelper.createUserAccount();
+        const userSellTokenAccount = testHelper.createTokenAccount(sellTokenMint, user.publicKey, BigInt(100e9), true);
+        const userBuyTokenAccount = testHelper.createTokenAccount(buyToken1Mint, user.publicKey, BigInt(0), true);
+        
+        // create offer accounts
+        const { offerId, offerPda, offerAuthority } = testHelper.createTwoTokenOfferAccounts(
+            sellTokenMint, BigInt(0), 
+            buyToken1Mint, BigInt(0), 
+            buyToken2Mint, BigInt(0),
+            boss, BigInt(10e9), BigInt(10e9)
+        );
+
+        const priceFixDuration = 86400; // 1 day
+        const offerStartTime = await testHelper.getCurrentClockTime();
+        const offerEndTime = offerStartTime + (priceFixDuration * 3); // 3 days
+
+        // make offer
+        await testHelper.makeOfferTwo({
+            offerId, 
+            buyToken1TotalAmount: 10e9, 
+            buyToken2TotalAmount: 10e9, 
+            sellTokenStartAmount: 10e9, 
+            sellTokenEndAmount: 20e9,
+            offerStartTime, 
+            offerEndTime, 
+            priceFixDuration,
+            sellTokenMint,
+            buyToken1Mint,
+            buyToken2Mint,
+        })
+        
+        // when
+        await expect(testHelper.closeOfferOne(offerPda)).rejects.toThrow(RegExp(".*InvalidCloseOffer.*"));
+    })
 })
