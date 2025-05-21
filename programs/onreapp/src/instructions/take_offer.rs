@@ -161,7 +161,7 @@ fn calculate_current_sell_amount(
 ///
 /// # Errors
 /// - [`TakeOfferErrorCode::InvalidCurrentTime`] if the offer is not active.
-/// - [`TakeOfferErrorCode::InsufficientOfferBalance`] if the offer lacks sufficient buy tokens to fulfill the exchange at the current price.
+/// - [`TakeOfferErrorCode::InsufficientOfferTokenOneBalance`] if the offer lacks sufficient buy tokens to fulfill the exchange at the current price.
 /// - [`TakeOfferErrorCode::CalculationOverflow`] if intermediate amount calculations overflow.
 /// - [`TakeOfferErrorCode::ZeroBuyTokenAmount`] if the calculated buy token amount to be received is zero.
 pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Result<()> {
@@ -179,7 +179,7 @@ pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Res
     msg!("Calculated buy token 1 amount: {}", buy_token_1_amount);
     require!(
         ctx.accounts.offer_buy_token_1_account.amount >= buy_token_1_amount,
-        TakeOfferErrorCode::InsufficientOfferBalance
+        TakeOfferErrorCode::InsufficientOfferTokenOneBalance
     );
 
     token::transfer(
@@ -331,7 +331,8 @@ pub struct TakeOfferTwo<'info> {
 ///
 /// # Errors
 /// - [`TakeOfferErrorCode::InvalidCurrentTime`] if the offer is not active.
-/// - [`TakeOfferErrorCode::InsufficientOfferBalance`] if the offer lacks sufficient quantity of either buy token to fulfill the exchange at the current price.
+/// - [`TakeOfferErrorCode::InsufficientOfferTokenOneBalance`] if the offer lacks sufficient quantity of buy token 1 to fulfill the exchange at the current price.
+/// - [`TakeOfferErrorCode::InsufficientOfferTokenTwoBalance`] if the offer lacks sufficient quantity of buy token 2 to fulfill the exchange at the current price.
 /// - [`TakeOfferErrorCode::CalculationOverflow`] if intermediate amount calculations overflow.
 /// - [`TakeOfferErrorCode::ZeroBuyTokenAmount`] if the calculated amount for either buy token to be received is zero.
 pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Result<()> {
@@ -348,7 +349,7 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
     msg!("Calculated buy token 1 amount: {}", buy_token_1_amount);
     require!(
         ctx.accounts.offer_buy_token_1_account.amount >= buy_token_1_amount,
-        TakeOfferErrorCode::InsufficientOfferBalance
+        TakeOfferErrorCode::InsufficientOfferTokenOneBalance
     );
 
     let buy_token_2_amount = calculate_buy_amount(
@@ -359,7 +360,7 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
     msg!("Calculated buy token 2 amount: {}", buy_token_2_amount);
     require!(
         ctx.accounts.offer_buy_token_2_account.amount >= buy_token_2_amount,
-        TakeOfferErrorCode::InsufficientOfferBalance
+        TakeOfferErrorCode::InsufficientOfferTokenTwoBalance
     );
 
     token::transfer(
@@ -470,8 +471,11 @@ fn calculate_buy_amount(
 #[error_code]
 pub enum TakeOfferErrorCode {
     /// Triggered when the offer lacks sufficient buy tokens to fulfill the take.
-    #[msg("Insufficient tokens remaining in the offer.")]
-    InsufficientOfferBalance,
+    #[msg("Insufficient tokens remaining in the offer for token 1.")]
+    InsufficientOfferTokenOneBalance,
+
+    #[msg("Insufficient tokens remaining in the offer for token 2.")]
+    InsufficientOfferTokenTwoBalance,
 
     /// Triggered when the user's sell token mint doesn't match the offer's.
     #[msg("The sell token mint does not match the offer.")]
