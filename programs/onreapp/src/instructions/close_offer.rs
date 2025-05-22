@@ -34,7 +34,7 @@ pub struct OfferClosed {
 #[derive(Accounts)]
 pub struct CloseOfferOne<'info> {
     /// The offer account to be closed, with rent refunded to `boss`.
-    #[account(mut, close = boss)]
+    #[account(mut, close = boss, constraint = offer.buy_token_2.mint == Pubkey::default() @ CloseOfferErrorCode::InvalidCloseOffer)]
     pub offer: Account<'info, Offer>,
 
     /// Offer's sell token ATA, must exist prior to execution, controlled by `offer_token_authority`.
@@ -100,11 +100,6 @@ pub struct CloseOfferOne<'info> {
 /// - [`CloseOfferErrorCode::InvalidCloseOffer`] if `buy_token_mint_2 != System Program ID`.
 /// - [`CloseOfferErrorCode::InvalidMint`] if token account mints mismatch during transfers.
 pub fn close_offer_one(ctx: Context<CloseOfferOne>) -> Result<()> {
-    require!(
-        ctx.accounts.offer.buy_token_2.mint == Pubkey::default(),
-        CloseOfferErrorCode::InvalidCloseOffer
-    );
-
     let offer_sell_token_account = &ctx.accounts.offer_sell_token_account;
     let offer_buy_1_token_account = &ctx.accounts.offer_buy_1_token_account;
     let boss_sell_token_account = &ctx.accounts.boss_sell_token_account;
@@ -158,7 +153,7 @@ pub fn close_offer_one(ctx: Context<CloseOfferOne>) -> Result<()> {
 #[derive(Accounts)]
 pub struct CloseOfferTwo<'info> {
     /// The offer account to be closed, with rent refunded to `boss`.
-    #[account(mut, close = boss)]
+    #[account(mut, close = boss, constraint = offer.buy_token_2.mint != Pubkey::default() @ CloseOfferErrorCode::InvalidCloseOffer)]
     pub offer: Account<'info, Offer>,
 
     /// Offer's sell token ATA, must exist prior to execution, controlled by `offer_token_authority`.
@@ -221,6 +216,7 @@ pub struct CloseOfferTwo<'info> {
     pub offer_token_authority: AccountInfo<'info>,
 
     /// The signer authorizing the closure, typically the boss.
+    #[account(mut)]
     pub boss: Signer<'info>,
 
     /// SPL Token program for token operations.

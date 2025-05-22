@@ -36,7 +36,6 @@ pub struct SetBoss<'info> {
     pub state: Account<'info, State>,
 
     /// The current boss, signing the transaction to authorize the update.
-    #[account(mut)]
     pub boss: Signer<'info>,
 
     /// Solana System program, included for potential rent accounting.

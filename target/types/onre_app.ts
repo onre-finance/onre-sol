@@ -1153,6 +1153,7 @@ export type OnreApp = {
           "docs": [
             "The signer authorizing the closure, typically the boss."
           ],
+          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -2373,7 +2374,6 @@ export type OnreApp = {
           "docs": [
             "The current boss, signing the transaction to authorize the update."
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -2847,7 +2847,6 @@ export type OnreApp = {
           "docs": [
             "The user taking the offer, signs the transaction."
           ],
-          "writable": true,
           "signer": true
         },
         {
@@ -3513,7 +3512,6 @@ export type OnreApp = {
           "docs": [
             "The user taking the offer, signs the transaction."
           ],
-          "writable": true,
           "signer": true
         },
         {
@@ -3663,36 +3661,41 @@ export type OnreApp = {
   "errors": [
     {
       "code": 6000,
-      "name": "insufficientOfferBalance",
-      "msg": "Insufficient tokens remaining in the offer."
+      "name": "insufficientOfferTokenOneBalance",
+      "msg": "Insufficient tokens remaining in the offer for token 1."
     },
     {
       "code": 6001,
+      "name": "insufficientOfferTokenTwoBalance",
+      "msg": "Insufficient tokens remaining in the offer for token 2."
+    },
+    {
+      "code": 6002,
       "name": "invalidSellTokenMint",
       "msg": "The sell token mint does not match the offer."
     },
     {
-      "code": 6002,
+      "code": 6003,
       "name": "invalidBuyTokenMint",
       "msg": "The buy token mint does not match the offer."
     },
     {
-      "code": 6003,
+      "code": 6004,
       "name": "invalidTakeOffer",
       "msg": "The offer is of 2 buy token type."
     },
     {
-      "code": 6004,
+      "code": 6005,
       "name": "calculationOverflow",
       "msg": "Calculation overflowed or invalid."
     },
     {
-      "code": 6005,
+      "code": 6006,
       "name": "zeroBuyTokenAmount",
       "msg": "Zero buy token amount."
     },
     {
-      "code": 6006,
+      "code": 6007,
       "name": "invalidCurrentTime",
       "msg": "Current time must be within the offer's start and end time range."
     }
@@ -3733,13 +3736,15 @@ export type OnreApp = {
         "",
         "# Fields",
         "- `offer_id`: Unique identifier for the offer.",
+        "- `sell_token_start_amount`: Initial amount of sell tokens required at offer start.",
+        "- `sell_token_end_amount`: Final amount of sell tokens required at offer end.",
         "- `sell_token_mint`: Mint of the token the offer expects to receive.",
-        "- `buy_token_mint_1`: Mint of the first buy token offered.",
-        "- `buy_token_mint_2`: Mint of the second buy token offered (System Program ID if unused).",
-        "- `buy_token_1_total_amount`: Total amount of the first buy token offered.",
-        "- `buy_token_2_total_amount`: Total amount of the second buy token offered (0 if unused).",
-        "- `sell_token_total_amount`: Total amount of sell tokens expected.",
-        "- `authority_bump`: Bump seed for the offer's token authority PDA."
+        "- `buy_token_1`: First buy token details (mint and amount).",
+        "- `buy_token_2`: Second buy token details (mint and amount, defaults if unused).",
+        "- `authority_bump`: Bump seed for the offer's token authority PDA.",
+        "- `price_fix_duration`: Duration in seconds for each fixed price interval.",
+        "- `offer_start_time`: Unix timestamp when the offer becomes active.",
+        "- `offer_end_time`: Unix timestamp when the offer expires."
       ],
       "type": {
         "kind": "struct",
@@ -3933,7 +3938,7 @@ export type OnreApp = {
             "type": "u64"
           },
           {
-            "name": "remainingSellTokenAmount",
+            "name": "remainingBuyTokenAmount",
             "type": "u64"
           }
         ]
@@ -3968,7 +3973,11 @@ export type OnreApp = {
             "type": "u64"
           },
           {
-            "name": "remainingSellTokenAmount",
+            "name": "remainingBuyToken1Amount",
+            "type": "u64"
+          },
+          {
+            "name": "remainingBuyToken2Amount",
             "type": "u64"
           }
         ]

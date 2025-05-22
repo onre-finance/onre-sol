@@ -7,13 +7,15 @@ use anchor_lang::prelude::*;
 ///
 /// # Fields
 /// - `offer_id`: Unique identifier for the offer.
+/// - `sell_token_start_amount`: Initial amount of sell tokens required at offer start.
+/// - `sell_token_end_amount`: Final amount of sell tokens required at offer end.
 /// - `sell_token_mint`: Mint of the token the offer expects to receive.
-/// - `buy_token_mint_1`: Mint of the first buy token offered.
-/// - `buy_token_mint_2`: Mint of the second buy token offered (System Program ID if unused).
-/// - `buy_token_1_total_amount`: Total amount of the first buy token offered.
-/// - `buy_token_2_total_amount`: Total amount of the second buy token offered (0 if unused).
-/// - `sell_token_total_amount`: Total amount of sell tokens expected.
+/// - `buy_token_1`: First buy token details (mint and amount).
+/// - `buy_token_2`: Second buy token details (mint and amount, defaults if unused).
 /// - `authority_bump`: Bump seed for the offer's token authority PDA.
+/// - `price_fix_duration`: Duration in seconds for each fixed price interval.
+/// - `offer_start_time`: Unix timestamp when the offer becomes active.
+/// - `offer_end_time`: Unix timestamp when the offer expires.
 #[account]
 #[derive(InitSpace)]
 pub struct Offer {

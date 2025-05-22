@@ -1147,6 +1147,7 @@
           "docs": [
             "The signer authorizing the closure, typically the boss."
           ],
+          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -2367,7 +2368,6 @@
           "docs": [
             "The current boss, signing the transaction to authorize the update."
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -2841,7 +2841,6 @@
           "docs": [
             "The user taking the offer, signs the transaction."
           ],
-          "writable": true,
           "signer": true
         },
         {
@@ -3507,7 +3506,6 @@
           "docs": [
             "The user taking the offer, signs the transaction."
           ],
-          "writable": true,
           "signer": true
         },
         {
@@ -3657,36 +3655,41 @@
   "errors": [
     {
       "code": 6000,
-      "name": "InsufficientOfferBalance",
-      "msg": "Insufficient tokens remaining in the offer."
+      "name": "InsufficientOfferTokenOneBalance",
+      "msg": "Insufficient tokens remaining in the offer for token 1."
     },
     {
       "code": 6001,
+      "name": "InsufficientOfferTokenTwoBalance",
+      "msg": "Insufficient tokens remaining in the offer for token 2."
+    },
+    {
+      "code": 6002,
       "name": "InvalidSellTokenMint",
       "msg": "The sell token mint does not match the offer."
     },
     {
-      "code": 6002,
+      "code": 6003,
       "name": "InvalidBuyTokenMint",
       "msg": "The buy token mint does not match the offer."
     },
     {
-      "code": 6003,
+      "code": 6004,
       "name": "InvalidTakeOffer",
       "msg": "The offer is of 2 buy token type."
     },
     {
-      "code": 6004,
+      "code": 6005,
       "name": "CalculationOverflow",
       "msg": "Calculation overflowed or invalid."
     },
     {
-      "code": 6005,
+      "code": 6006,
       "name": "ZeroBuyTokenAmount",
       "msg": "Zero buy token amount."
     },
     {
-      "code": 6006,
+      "code": 6007,
       "name": "InvalidCurrentTime",
       "msg": "Current time must be within the offer's start and end time range."
     }
@@ -3727,13 +3730,15 @@
         "",
         "# Fields",
         "- `offer_id`: Unique identifier for the offer.",
+        "- `sell_token_start_amount`: Initial amount of sell tokens required at offer start.",
+        "- `sell_token_end_amount`: Final amount of sell tokens required at offer end.",
         "- `sell_token_mint`: Mint of the token the offer expects to receive.",
-        "- `buy_token_mint_1`: Mint of the first buy token offered.",
-        "- `buy_token_mint_2`: Mint of the second buy token offered (System Program ID if unused).",
-        "- `buy_token_1_total_amount`: Total amount of the first buy token offered.",
-        "- `buy_token_2_total_amount`: Total amount of the second buy token offered (0 if unused).",
-        "- `sell_token_total_amount`: Total amount of sell tokens expected.",
-        "- `authority_bump`: Bump seed for the offer's token authority PDA."
+        "- `buy_token_1`: First buy token details (mint and amount).",
+        "- `buy_token_2`: Second buy token details (mint and amount, defaults if unused).",
+        "- `authority_bump`: Bump seed for the offer's token authority PDA.",
+        "- `price_fix_duration`: Duration in seconds for each fixed price interval.",
+        "- `offer_start_time`: Unix timestamp when the offer becomes active.",
+        "- `offer_end_time`: Unix timestamp when the offer expires."
       ],
       "type": {
         "kind": "struct",
@@ -3927,7 +3932,7 @@
             "type": "u64"
           },
           {
-            "name": "remaining_sell_token_amount",
+            "name": "remaining_buy_token_amount",
             "type": "u64"
           }
         ]
@@ -3962,7 +3967,11 @@
             "type": "u64"
           },
           {
-            "name": "remaining_sell_token_amount",
+            "name": "remaining_buy_token_1_amount",
+            "type": "u64"
+          },
+          {
+            "name": "remaining_buy_token_2_amount",
             "type": "u64"
           }
         ]
