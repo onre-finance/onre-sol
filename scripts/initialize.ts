@@ -8,7 +8,7 @@ import { initProgram, PROGRAM_ID, RPC_URL } from "./script-commons";
 // const BOSS = new PublicKey("45YnzauhsBM8CpUz96Djf8UG5vqq2Dua62wuW9H3jaJ5"); // WARN: SQUAD MAIN ACCOUNT!!!
 
 // TEST & local
-const BOSS = new PublicKey("uwffP46DSrZhUZkdXhGyHJwY8TmRzSbMf5geGhXGyKi");
+const BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC"); // DEV Squad
 
 async function createMakeOfferOneTransaction() {
     const connection = new anchor.web3.Connection(RPC_URL);

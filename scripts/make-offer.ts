@@ -14,9 +14,9 @@ import { getBossAccount, initProgram, PROGRAM_ID, RPC_URL } from './script-commo
 // const SELL_TOKEN_MINT = new PublicKey('EPjFWdd6AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'); // USDC Mint Address
 // const BUY_TOKEN_MINT = new PublicKey('5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5');  // ONe Mint Address
 
-// Test & local
-const SELL_TOKEN_MINT = new PublicKey('mntjuZHsfoxSWbjMi7GMrrR5QhA9JaXhaUeyzmqHe3J');  // USDC Mint Address
-const BUY_TOKEN_MINT = new PublicKey('oneRcXEajZ1biQ5Ts9vPHXZ8penh9rRuEBNpx2DA9wE');  //  ONe  Mint Address 
+// Test
+const SELL_TOKEN_MINT = new PublicKey('qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWeQu');  // TestUSDC Mint Address
+const BUY_TOKEN_MINT = new PublicKey('5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C');  // TestONe  Mint Address 
 
 async function createMakeOfferOneTransaction() {
 
