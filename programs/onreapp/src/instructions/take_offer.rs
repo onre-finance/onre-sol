@@ -220,7 +220,7 @@ pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Res
         user: ctx.accounts.user.key(),
         sell_token_amount,
         buy_token_1_amount,
-        remaining_buy_token_amount: ctx.accounts.offer_buy_token_1_account.amount
+        remaining_buy_token_amount: ctx.accounts.offer_buy_token_1_account.amount - buy_token_1_amount
     });
 
     Ok(())
@@ -416,8 +416,8 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
         sell_token_amount,
         buy_token_1_amount,
         buy_token_2_amount,
-        remaining_buy_token_1_amount: ctx.accounts.offer_buy_token_1_account.amount,
-        remaining_buy_token_2_amount: ctx.accounts.offer_buy_token_2_account.amount,
+        remaining_buy_token_1_amount: ctx.accounts.offer_buy_token_1_account.amount - buy_token_1_amount,
+        remaining_buy_token_2_amount: ctx.accounts.offer_buy_token_2_account.amount - buy_token_2_amount,
     });
 
     Ok(())
