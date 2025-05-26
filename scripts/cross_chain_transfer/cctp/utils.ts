@@ -21,16 +21,27 @@ import { hexlify } from 'ethers';
 import fetch from 'node-fetch';
 import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes/index.js';
 
-import type { MessageTransmitter } from '../types/message_transmitter.ts';
-import type { TokenMessengerMinter } from '../types/token_messenger_minter.ts';
-import messageTransmitterIdl from '../idl/message_transmitter.json' with { type: "json" };
-import tokenMessengerMinterIdl from '../idl/token_messenger_minter.json' with { type: "json" };
+import type { MessageTransmitter } from './types/message_transmitter.ts';
+import type { TokenMessengerMinter } from './types/token_messenger_minter.ts';
+import messageTransmitterIdl from './idl/message_transmitter.json' with { type: "json" };
+import tokenMessengerMinterIdl from './idl/token_messenger_minter.json' with { type: "json" };
 import anchor, { Program } from "@coral-xyz/anchor";
 import { encode } from '@coral-xyz/anchor/dist/cjs/utils/bytes/utf8.js';
 
-export const IRIS_API_URL = process.env.IRIS_API_URL ?? "https://iris-api.circle.com";
-export const SOLANA_SRC_DOMAIN_ID = 5;
-export const SOLANA_USDC_ADDRESS = process.env.SOLANA_USDC_ADDRESS ?? "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
+// IRIS API
+export const IRIS_API_URL = "https://iris-api.circle.com";
+
+// SOLANA constants
+export const SOL_RPC_URL = "https://api.mainnet-beta.solana.com";
+export const SOLANA_DOMAIN_ID = 5;
+export const SOLANA_USDC_ADDRESS = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+
+// ETHEREUM constants
+export const ETH_RPC_URL = "https://eth.drpc.org";
+export const ETH_DOMAIN_ID = 0;
+export const ETH_MESSAGE_TRANSMITTER_ADDRESS = "0x0a992d191DEeC32aFe36203Ad87D7d289a738F81";
+export const ETH_TOKEN_MESSENGER_ADDRESS = "0xBd3fa81B58Ba92a82136038B25aDec7066af3155";
+export const ETH_USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 
 export interface FindProgramAddressResponse {
     publicKey: PublicKey;
@@ -176,8 +187,7 @@ export const findProgramAddress = (
 };
 
 // Fetches attestation from attestation service given the txHash
-export const getMessages = async (txHash: string, maxRetries = 30) => {
-    console.log("Fetching messages for tx...", txHash);
+export const getAttestation = async (txHash: string, domainId: number, maxRetries: number, retryDelay: number) => {
     let attestationResponse: any = {};
     let attempts = 0;
     while (
@@ -186,18 +196,26 @@ export const getMessages = async (txHash: string, maxRetries = 30) => {
         attestationResponse.messages?.[0]?.attestation === 'PENDING') &&
         attempts < maxRetries
     ) {
-        const response = await fetch(`${IRIS_API_URL}/messages/${SOLANA_SRC_DOMAIN_ID}/${txHash}`);
+        console.log(`[Attempt: ${attempts}] Fetching attestation for ${txHash} ...`);
+
+        const response = await fetch(`${IRIS_API_URL}/messages/${domainId}/${txHash}`);
         attestationResponse = await response.json();
-        // Wait 2 seconds to avoid getting rate limited
+
+        // Wait retryDelay seconds to avoid getting rate limited
         if (attestationResponse.error || !attestationResponse.messages || attestationResponse.messages?.[0]?.attestation === 'PENDING') {
-            await new Promise(r => setTimeout(r, 2000));
+            await new Promise(r => setTimeout(r, retryDelay));
+        } else {
+            break;
         }
         attempts++;
+
     }
     if (attempts === maxRetries) {
         throw new Error("Max retries reached while fetching attestation messages.");
     }
-    return attestationResponse;
+    const { message, attestation } = attestationResponse.messages[0];
+
+    return { message, attestation };
 }
 
 export const decodeEventNonceFromMessage = (messageHex: string): string => {
