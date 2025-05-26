@@ -286,6 +286,11 @@ pub fn make_offer_one(
     validate_non_zero_token_amounts(&[buy_token_total_amount, sell_token_start_amount, sell_token_end_amount])?;
     validate_dynamic_price_params(sell_token_start_amount, sell_token_end_amount, offer_start_time, offer_end_time, price_fix_duration)?;
 
+    require!(
+        ctx.accounts.boss_buy_token_1_account.amount >= buy_token_total_amount,
+        MakeOfferErrorCode::InsufficientBalance
+    );
+
     let offer = &mut ctx.accounts.offer;
     offer.offer_id = offer_id;
     offer.sell_token_mint = ctx.accounts.sell_token_mint.key();
@@ -378,6 +383,7 @@ pub fn make_offer_two(
         ctx.accounts.boss_buy_token_2_account.amount >= buy_token_2_total_amount,
         MakeOfferErrorCode::InsufficientBalance
     );
+
     let offer = &mut ctx.accounts.offer;
     offer.offer_id = offer_id;
     offer.sell_token_mint = ctx.accounts.sell_token_mint.key();
