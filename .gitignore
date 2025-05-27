@@ -12,3 +12,4 @@ test-ledger
 .yarn
 .idea
 onre-sol.iml
+**/.env*

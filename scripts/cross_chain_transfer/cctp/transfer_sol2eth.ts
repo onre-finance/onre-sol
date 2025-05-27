@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import { evmAddressToBytes32, getAnchorConnection, getDepositForBurnPdas, getAttestation, getPrograms, ETH_RPC_URL, SOL_RPC_URL, SOLANA_USDC_ADDRESS, ETH_DOMAIN_ID, ETH_MESSAGE_TRANSMITTER_ADDRESS, SOLANA_DOMAIN_ID } from "./utils.ts";
 import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes/index.js";
@@ -7,10 +8,10 @@ import anchor from "@coral-xyz/anchor";
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 // SCRIPT PARAMETERS
-const SOLANA_SENDER_PRIVATE_KEY = "INSERT PRIVATE KEY HERE";
-const ETH_RECIPIENT_ADDRESS = "INSERT ETHEREUM RECIPIENT ADDRESS HERE";
-const ETH_PAYER_PRIVATE_KEY = "INSERT PRIVATE KEY HERE";
-const USDC_AMOUNT = 10000; // $0.01
+const SOLANA_SENDER_PRIVATE_KEY = process.env.SOLANA_SENDER_PRIVATE_KEY!;
+const ETH_RECIPIENT_ADDRESS = process.env.ETH_RECIPIENT_ADDRESS!;
+const ETH_PAYER_PRIVATE_KEY = process.env.ETH_PAYER_PRIVATE_KEY!;
+const USDC_AMOUNT = Number(process.env.USDC_AMOUNT!);
 
 
 const ethereumProvider = new JsonRpcProvider(ETH_RPC_URL);
