@@ -122,7 +122,7 @@ fn calculate_current_sell_amount(
     let current_time = Clock::get()?.unix_timestamp as u64;
     
     require!(
-        current_time >= offer.offer_start_time && current_time <= offer.offer_end_time,
+        current_time >= offer.offer_start_time && current_time < offer.offer_end_time,
         TakeOfferErrorCode::InvalidCurrentTime
     );
 
