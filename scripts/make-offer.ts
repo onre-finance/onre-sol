@@ -79,7 +79,7 @@ async function createMakeOfferOneTransaction() {
                 offerSellTokenAccount: getAssociatedTokenAddressSync(SELL_TOKEN_MINT, offerAuthority, true),
                 offerBuyToken1Account: getAssociatedTokenAddressSync(BUY_TOKEN_MINT, offerAuthority, true),
                 offerTokenAuthority: offerAuthority,
-                bossBuyToken1Account: getAssociatedTokenAddressSync(BUY_TOKEN_MINT, BOSS, false),
+                bossBuyToken1Account: getAssociatedTokenAddressSync(BUY_TOKEN_MINT, BOSS, true),
                 sellTokenMint: SELL_TOKEN_MINT,
                 buyToken1Mint: BUY_TOKEN_MINT,
                 state: statePda,
