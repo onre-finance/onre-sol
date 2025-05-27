@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes/index.js';
 import tokenMessengerAbi from './abis/TokenMessenger.json' with { type: "json" };
 import usdcAbi from './abis/Usdc.json' with { type: "json" };
@@ -6,11 +7,10 @@ import { decodeEventNonceFromMessage, ETH_DOMAIN_ID, ETH_RPC_URL, ETH_TOKEN_MESS
 import { Keypair, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction } from '@solana/spl-token';
 
-// SCRIPT PARAMETERS
-const ETH_SENDER_PRIVATE_KEY = "INSERT PRIVATE KEY HERE";
-const SOLANA_RECIPIENT_ADDRESS = "INSERT SOLANA RECIPIENT ADDRESS HERE";
-const SOLANA_PAYER_PRIVATE_KEY = "INSERT PRIVATE KEY HERE"; // pays for the creation of the ATA
-const USDC_AMOUNT = BigInt(100000); // $0.01
+const ETH_SENDER_PRIVATE_KEY = process.env.ETH_SENDER_PRIVATE_KEY!;
+const SOLANA_RECIPIENT_ADDRESS = process.env.SOLANA_RECIPIENT_ADDRESS!;
+const SOLANA_PAYER_PRIVATE_KEY = process.env.SOLANA_PAYER_PRIVATE_KEY!; // pays for the creation of the ATA
+const USDC_AMOUNT = BigInt(process.env.USDC_AMOUNT!);
 
 const ethereumProvider = new JsonRpcProvider(ETH_RPC_URL);
 const solanaProvider = getAnchorConnection(SOL_RPC_URL, Keypair.fromSecretKey(bs58.decode(SOLANA_PAYER_PRIVATE_KEY)));
@@ -207,10 +207,10 @@ async function mintUSDC(messageHex: string, attestationHex: string) {
 
 async function transferUsdc() {
     // STEP 1: Burn USDC
-    //const txHash = await burnUSDC();
+    const txHash = await burnUSDC();
 
     // STEP 2: Get message and hash
-    const { message, attestation } = await getAttestation('0x40300b77ecd2c2f3611a23fd653e25d964ac6734b7ffc3a2fdeb6b4d981ff529', ETH_DOMAIN_ID, 40, 30000);
+    const { message, attestation } = await getAttestation(txHash, ETH_DOMAIN_ID, 40, 30000);
 
     // STEP 3: Mint USDC on Solana
     await mintUSDC(message, attestation);
