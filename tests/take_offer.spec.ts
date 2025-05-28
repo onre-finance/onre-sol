@@ -711,7 +711,7 @@ describe("take offer", () => {
         await testHelper.expectTokenAccountAmountToBe(offerUsdcTokenPda, BigInt(93e9)); // 95 - 2
     });
 
-    it("should allow taking offer until empty", async () => {
+    test("should allow taking offer until empty", async () => {
         // given
 
         const onreTokenMint = sellTokenMint;
@@ -787,4 +787,50 @@ describe("take offer", () => {
         await testHelper.expectTokenAccountAmountToBe(offerOnreTokenPda, BigInt(120e9));
         await testHelper.expectTokenAccountAmountToBe(offerUsdcTokenPda, BigInt(0));
     });
+
+    test("take offer in last seconds should fail", async () => {
+        // given
+        const onreTokenMint = sellTokenMint;
+        const usdcTokenMint = buyToken1Mint;
+        
+        const user = testHelper.createUserAccount();
+        const userOnreTokenAccount = testHelper.createTokenAccount(onreTokenMint, user.publicKey, BigInt(300e9), true);
+        const userUsdcTokenAccount = testHelper.createTokenAccount(usdcTokenMint, user.publicKey, BigInt(0), true);
+        
+        const { offerId, offerPda, offerBuyTokenPda, offerSellTokenPda } = testHelper.createOneTokenOfferAccounts(
+            onreTokenMint, BigInt(0),
+            usdcTokenMint, BigInt(0),
+            boss, BigInt(1000e9)
+        );
+
+        const offerUsdcTokenPda = offerBuyTokenPda;
+        const offerOnreTokenPda = offerSellTokenPda;
+
+        const offerStartTime = await testHelper.getCurrentClockTime();
+        const priceFixDuration = 3600; // 1 hour
+        const offerEndTime = offerStartTime + (2 * priceFixDuration);
+
+        // make offer
+        await testHelper.makeOfferOne({
+            offerId,
+            buyTokenTotalAmount: 100e9,
+            sellTokenStartAmount: 100e9,
+            sellTokenEndAmount: 300e9,
+            offerStartTime,
+            offerEndTime,
+            priceFixDuration,
+            sellTokenMint: onreTokenMint,
+            buyTokenMint: usdcTokenMint,
+        })
+
+        // time travel to last second
+        await testHelper.advanceClockBy(priceFixDuration * 2);
+
+        // when
+        await expect(testHelper.takeOfferOne({
+            sellTokenAmount: 300e9,
+            offerPda,
+            user: user,
+        })).rejects.toThrow(RegExp(".*InvalidCurrentTime.*"));
+    })
 })

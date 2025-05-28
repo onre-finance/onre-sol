@@ -9,7 +9,7 @@ pub struct OfferTakenOne {
     pub user: Pubkey,
     pub sell_token_amount: u64,
     pub buy_token_1_amount: u64,
-    pub remaining_sell_token_amount: u64,
+    pub remaining_buy_token_amount: u64,
 }
 
 /// Event emitted when an offer with two buy tokens is taken.
@@ -20,7 +20,8 @@ pub struct OfferTakenTwo {
     pub sell_token_amount: u64,
     pub buy_token_1_amount: u64,
     pub buy_token_2_amount: u64,
-    pub remaining_sell_token_amount: u64,
+    pub remaining_buy_token_1_amount: u64,
+    pub remaining_buy_token_2_amount: u64,
 }
 
 /// Account structure for taking an offer with one buy token.
@@ -88,7 +89,6 @@ pub struct TakeOfferOne<'info> {
     pub offer_token_authority: AccountInfo<'info>,
 
     /// The user taking the offer, signs the transaction.
-    #[account(mut)]
     pub user: Signer<'info>,
 
     /// SPL Token program for token operations.
@@ -122,7 +122,7 @@ fn calculate_current_sell_amount(
     let current_time = Clock::get()?.unix_timestamp as u64;
     
     require!(
-        current_time >= offer.offer_start_time && current_time <= offer.offer_end_time,
+        current_time >= offer.offer_start_time && current_time < offer.offer_end_time,
         TakeOfferErrorCode::InvalidCurrentTime
     );
 
@@ -161,7 +161,7 @@ fn calculate_current_sell_amount(
 ///
 /// # Errors
 /// - [`TakeOfferErrorCode::InvalidCurrentTime`] if the offer is not active.
-/// - [`TakeOfferErrorCode::InsufficientOfferBalance`] if the offer lacks sufficient buy tokens to fulfill the exchange at the current price.
+/// - [`TakeOfferErrorCode::InsufficientOfferTokenOneBalance`] if the offer lacks sufficient buy tokens to fulfill the exchange at the current price.
 /// - [`TakeOfferErrorCode::CalculationOverflow`] if intermediate amount calculations overflow.
 /// - [`TakeOfferErrorCode::ZeroBuyTokenAmount`] if the calculated buy token amount to be received is zero.
 pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Result<()> {
@@ -179,7 +179,7 @@ pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Res
     msg!("Calculated buy token 1 amount: {}", buy_token_1_amount);
     require!(
         ctx.accounts.offer_buy_token_1_account.amount >= buy_token_1_amount,
-        TakeOfferErrorCode::InsufficientOfferBalance
+        TakeOfferErrorCode::InsufficientOfferTokenOneBalance
     );
 
     token::transfer(
@@ -220,10 +220,7 @@ pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Res
         user: ctx.accounts.user.key(),
         sell_token_amount,
         buy_token_1_amount,
-        remaining_sell_token_amount: offer
-            .sell_token_end_amount
-            .checked_sub(ctx.accounts.offer_sell_token_account.amount)
-            .unwrap(),
+        remaining_buy_token_amount: ctx.accounts.offer_buy_token_1_account.amount - buy_token_1_amount
     });
 
     Ok(())
@@ -311,7 +308,6 @@ pub struct TakeOfferTwo<'info> {
     pub offer_token_authority: AccountInfo<'info>,
 
     /// The user taking the offer, signs the transaction.
-    #[account(mut)]
     pub user: Signer<'info>,
 
     /// SPL Token program for token operations.
@@ -335,7 +331,8 @@ pub struct TakeOfferTwo<'info> {
 ///
 /// # Errors
 /// - [`TakeOfferErrorCode::InvalidCurrentTime`] if the offer is not active.
-/// - [`TakeOfferErrorCode::InsufficientOfferBalance`] if the offer lacks sufficient quantity of either buy token to fulfill the exchange at the current price.
+/// - [`TakeOfferErrorCode::InsufficientOfferTokenOneBalance`] if the offer lacks sufficient quantity of buy token 1 to fulfill the exchange at the current price.
+/// - [`TakeOfferErrorCode::InsufficientOfferTokenTwoBalance`] if the offer lacks sufficient quantity of buy token 2 to fulfill the exchange at the current price.
 /// - [`TakeOfferErrorCode::CalculationOverflow`] if intermediate amount calculations overflow.
 /// - [`TakeOfferErrorCode::ZeroBuyTokenAmount`] if the calculated amount for either buy token to be received is zero.
 pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Result<()> {
@@ -352,7 +349,7 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
     msg!("Calculated buy token 1 amount: {}", buy_token_1_amount);
     require!(
         ctx.accounts.offer_buy_token_1_account.amount >= buy_token_1_amount,
-        TakeOfferErrorCode::InsufficientOfferBalance
+        TakeOfferErrorCode::InsufficientOfferTokenOneBalance
     );
 
     let buy_token_2_amount = calculate_buy_amount(
@@ -363,7 +360,7 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
     msg!("Calculated buy token 2 amount: {}", buy_token_2_amount);
     require!(
         ctx.accounts.offer_buy_token_2_account.amount >= buy_token_2_amount,
-        TakeOfferErrorCode::InsufficientOfferBalance
+        TakeOfferErrorCode::InsufficientOfferTokenTwoBalance
     );
 
     token::transfer(
@@ -419,10 +416,8 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
         sell_token_amount,
         buy_token_1_amount,
         buy_token_2_amount,
-        remaining_sell_token_amount: offer
-            .sell_token_end_amount
-            .checked_sub(ctx.accounts.offer_sell_token_account.amount)
-            .unwrap(),
+        remaining_buy_token_1_amount: ctx.accounts.offer_buy_token_1_account.amount - buy_token_1_amount,
+        remaining_buy_token_2_amount: ctx.accounts.offer_buy_token_2_account.amount - buy_token_2_amount,
     });
 
     Ok(())
@@ -476,8 +471,11 @@ fn calculate_buy_amount(
 #[error_code]
 pub enum TakeOfferErrorCode {
     /// Triggered when the offer lacks sufficient buy tokens to fulfill the take.
-    #[msg("Insufficient tokens remaining in the offer.")]
-    InsufficientOfferBalance,
+    #[msg("Insufficient tokens remaining in the offer for token 1.")]
+    InsufficientOfferTokenOneBalance,
+
+    #[msg("Insufficient tokens remaining in the offer for token 2.")]
+    InsufficientOfferTokenTwoBalance,
 
     /// Triggered when the user's sell token mint doesn't match the offer's.
     #[msg("The sell token mint does not match the offer.")]

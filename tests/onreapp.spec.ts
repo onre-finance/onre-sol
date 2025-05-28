@@ -464,7 +464,7 @@ describe('onreapp', () => {
     const versionedTransaction = await user.signTransaction(tx);
     const signedTransactionBytes = versionedTransaction.serialize();
 
-    await expect(provider.connection.sendRawTransaction(signedTransactionBytes)).rejects.toThrow(RegExp('.*InsufficientOfferBalance.*'));
+    await expect(provider.connection.sendRawTransaction(signedTransactionBytes)).rejects.toThrow(RegExp('.*InsufficientOfferTokenOneBalance.*'));
   });
 
   it('Fails to take offer with one buy token due to invalid buy token mint', async () => {
@@ -1043,7 +1043,7 @@ describe('onreapp', () => {
     const versionedTransaction = await user.signTransaction(tx);
     const signedTransactionBytes = versionedTransaction.serialize();
 
-    await expect(provider.connection.sendRawTransaction(signedTransactionBytes)).rejects.toThrow(RegExp('.*InsufficientOfferBalance.*'));
+    await expect(provider.connection.sendRawTransaction(signedTransactionBytes)).rejects.toThrow(RegExp('.*InsufficientOfferTokenOneBalance.*'));
 
     // Clean up - close the offer
     await program.methods

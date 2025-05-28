@@ -203,6 +203,21 @@ export class TestHelper {
             .signers([params.user])
             .rpc();
     }
+
+    async closeOfferOne(offerPda: PublicKey) {
+        return await this.program.methods
+            .closeOfferOne()
+            .accounts({ offer: offerPda, state: this.statePda })
+            .rpc();
+    }
+
+    async closeOfferTwo(offerPda: PublicKey) {
+        return await this.program.methods
+            .closeOfferTwo()
+            .accounts({ offer: offerPda, state: this.statePda })
+            .rpc();
+    }
+
     async getOfferAccount(account: PublicKey) {
         return await this.program.account.offer.fetch(account);
     }

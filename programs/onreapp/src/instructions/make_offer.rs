@@ -283,38 +283,14 @@ pub fn make_offer_one(
     offer_end_time: u64,
     price_fix_duration: u64,
 ) -> Result<()> {
-    require!(
-        buy_token_total_amount > 0,
-        MakeOfferErrorCode::InvalidAmount
-    );
-    require!(
-        sell_token_start_amount > 0,
-        MakeOfferErrorCode::InvalidAmount
-    );
-    require!(
-        sell_token_end_amount > 0,
-        MakeOfferErrorCode::InvalidAmount
-    );
-    require!(
-        sell_token_start_amount <= sell_token_end_amount,
-        MakeOfferErrorCode::InvalidAmount
-    );
-    require!(
-        offer_start_time < offer_end_time,
-        MakeOfferErrorCode::InvalidOfferTime
-    );
-    require!(
-        price_fix_duration > 0,
-        MakeOfferErrorCode::InvalidPriceFixDuration
-    );
-    require!(
-        (offer_end_time - offer_start_time) >= price_fix_duration,
-        MakeOfferErrorCode::InvalidPriceFixDuration
-    );
+    validate_non_zero_token_amounts(&[buy_token_total_amount, sell_token_start_amount, sell_token_end_amount])?;
+    validate_dynamic_price_params(sell_token_start_amount, sell_token_end_amount, offer_start_time, offer_end_time, price_fix_duration)?;
+
     require!(
         ctx.accounts.boss_buy_token_1_account.amount >= buy_token_total_amount,
         MakeOfferErrorCode::InsufficientBalance
     );
+
     let offer = &mut ctx.accounts.offer;
     offer.offer_id = offer_id;
     offer.sell_token_mint = ctx.accounts.sell_token_mint.key();
@@ -396,38 +372,9 @@ pub fn make_offer_two(
     offer_end_time: u64,
     price_fix_duration: u64,
 ) -> Result<()> {
-    require!(
-        buy_token_1_total_amount > 0,
-        MakeOfferErrorCode::InvalidAmount
-    );
-    require!(
-        buy_token_2_total_amount > 0,
-        MakeOfferErrorCode::InvalidAmount
-    );
-    require!(
-        sell_token_start_amount > 0,
-        MakeOfferErrorCode::InvalidAmount
-    );
-    require!(
-        sell_token_end_amount > 0,
-        MakeOfferErrorCode::InvalidAmount
-    );
-    require!(
-        sell_token_start_amount <= sell_token_end_amount,
-        MakeOfferErrorCode::InvalidAmount
-    );
-    require!(
-        offer_start_time < offer_end_time,
-        MakeOfferErrorCode::InvalidOfferTime
-    );
-    require!(
-        price_fix_duration > 0,
-        MakeOfferErrorCode::InvalidPriceFixDuration
-    );
-    require!(
-        (offer_end_time - offer_start_time) >= price_fix_duration,
-        MakeOfferErrorCode::InvalidPriceFixDuration
-    );
+    validate_non_zero_token_amounts(&[buy_token_1_total_amount, buy_token_2_total_amount, sell_token_start_amount, sell_token_end_amount])?;
+    validate_dynamic_price_params(sell_token_start_amount, sell_token_end_amount, offer_start_time, offer_end_time, price_fix_duration)?;
+
     require!(
         ctx.accounts.boss_buy_token_1_account.amount >= buy_token_1_total_amount,
         MakeOfferErrorCode::InsufficientBalance
@@ -436,6 +383,7 @@ pub fn make_offer_two(
         ctx.accounts.boss_buy_token_2_account.amount >= buy_token_2_total_amount,
         MakeOfferErrorCode::InsufficientBalance
     );
+
     let offer = &mut ctx.accounts.offer;
     offer.offer_id = offer_id;
     offer.sell_token_mint = ctx.accounts.sell_token_mint.key();
@@ -516,6 +464,38 @@ fn transfer_token<'info, T: MakeOfferContext<'info> + anchor_lang::Bumps>(
     Ok(())
 }
 
+fn validate_non_zero_token_amounts(token_amounts: &[u64]) -> Result<()> {
+    require!(
+        token_amounts.iter().all(|&x| x > 0),
+        MakeOfferErrorCode::InvalidAmount
+    );
+    Ok(())
+}
+
+fn validate_dynamic_price_params(sell_token_start_amount: u64, sell_token_end_amount: u64, offer_start_time: u64, offer_end_time: u64, price_fix_duration: u64) -> Result<()> {
+    require!(
+        sell_token_start_amount <= sell_token_end_amount,
+        MakeOfferErrorCode::InvalidAmount
+    );
+    require!(
+        offer_start_time < offer_end_time,
+        MakeOfferErrorCode::InvalidOfferTime
+    );
+    require!(
+        price_fix_duration > 0,
+        MakeOfferErrorCode::InvalidPriceFixDuration
+    );
+    require!(
+        (offer_end_time - offer_start_time) >= price_fix_duration,
+        MakeOfferErrorCode::InvalidPriceFixDuration
+    );
+    require!(
+        (offer_end_time - offer_start_time) % price_fix_duration == 0,
+        MakeOfferErrorCode::InvalidOfferTime
+    );
+    Ok(())
+}
+
 /// Error codes for offer creation operations.
 #[error_code]
 pub enum MakeOfferErrorCode {
@@ -527,14 +507,10 @@ pub enum MakeOfferErrorCode {
     #[msg("Token transfer amount must be greater than zero. Sell token start amount must be > 0, end amount must be > 0, and start <= end.")]
     InvalidAmount,
 
-    #[msg("Token offer end time must be greater than start time")]
+    #[msg("Token offer end time must be greater than start time and end time - start time must be divisible by price fix duration")]
     InvalidOfferTime,
 
     /// Triggered when the price fix duration is invalid.
     #[msg("Price fix duration must be greater than zero and less than or equal to the total offer duration")]
     InvalidPriceFixDuration,
-
-    /// Triggered when the current time is outside the offer's time range.
-    #[msg("Current time must be within the offer's start and end time range")]
-    InvalidCurrentTime,
 }

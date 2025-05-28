@@ -307,7 +307,7 @@ describe("make offer", () => {
         );
 
         const offerStartTime = await testHelper.getCurrentClockTime();
-        const offerEndTime = offerStartTime - 1000;
+        const offerEndTime = offerStartTime - 60;
 
         // when
         await expect(
@@ -394,4 +394,35 @@ describe("make offer", () => {
             })
         ).rejects.toThrow();    
     });
+
+    test("Make offer with offer time not being a multiple of price_fix_duration should fail", async () => {
+        // given
+        // create user
+        const user = testHelper.createUserAccount();
+        const userSellTokenAccount = testHelper.createTokenAccount(sellTokenMint, user.publicKey, BigInt(100e9), true);
+        const userBuyToken1Account = testHelper.createTokenAccount(buyToken1Mint, user.publicKey, BigInt(0), true);
+
+        // create offer accounts
+        const { offerId, offerPda, offerSellTokenPda, offerBuyTokenPda } = testHelper.createOneTokenOfferAccounts(
+            sellTokenMint, BigInt(0), 
+            buyToken1Mint, BigInt(0), 
+            boss, BigInt(10e9)
+        );
+
+        const offerStartTime = await testHelper.getCurrentClockTime();
+        const offerEndTime = offerStartTime + 216_000; // 2.5 days
+
+        // make offer
+        await expect(testHelper.makeOfferOne({
+            offerId, 
+            buyTokenTotalAmount: 10e9, 
+            sellTokenStartAmount: 10e9, 
+            sellTokenEndAmount: 20e9, 
+            offerStartTime, 
+            offerEndTime, 
+            priceFixDuration: 86400, // 1 day
+            sellTokenMint,
+            buyTokenMint: buyToken1Mint,
+        })).rejects.toThrow(RegExp(".*InvalidOfferTime.*"));
+    })
 });
