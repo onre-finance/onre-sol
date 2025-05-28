@@ -11,24 +11,24 @@ import { BN } from 'bn.js';
 import { getBossAccount, initProgram, PROGRAM_ID, RPC_URL } from './script-commons';
 
 // PROD
-// const SELL_TOKEN_MINT = new PublicKey('EPjFWdd6AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'); // USDC Mint Address
-// const BUY_TOKEN_MINT = new PublicKey('5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5');  // ONe Mint Address
+const SELL_TOKEN_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'); // USDC Mint Address
+const BUY_TOKEN_MINT = new PublicKey('5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5');  // ONe Mint Address
 
 // Test
-const SELL_TOKEN_MINT = new PublicKey('qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWeQu');  // TestUSDC Mint Address
-const BUY_TOKEN_MINT = new PublicKey('5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C');  // TestONe  Mint Address
+// const SELL_TOKEN_MINT = new PublicKey('qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWeQu');  // TestUSDC Mint Address
+// const BUY_TOKEN_MINT = new PublicKey('5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C');  // TestONe  Mint Address
 
 async function createMakeOfferOneTransaction() {
     const program = await initProgram();
     const connection = new anchor.web3.Connection(RPC_URL);
 
     const offerId = 1;
-    const buyTokenAmount = 350000e9;            // 9 decimals for ONe
-    const sellTokenStartAmount = 350000e9;      // 6 decimals for USDC
-    const sellTokenEndAmount = 700000e9;      // 6 decimals for USDC
-    const offerStartTime = Math.floor(new Date(2025, 5, 15).getTime() / 1000); // May 15, 2025
-    const offerEndTime = offerStartTime + (60 * 60 * 24 * 30); // +30 days
-    const priceFixDuration = 60 * 60; // 1 hour
+    const buyTokenAmount =       '20000000000000000';   // 9 decimals for ONe
+    const sellTokenStartAmount = '20160514420000';      // 6 decimals for USDC
+    const sellTokenEndAmount =   '20340430000000';      // 6 decimals for USDC
+    const offerStartTime = Math.floor(new Date(Date.UTC(2025, 4, 27, 0, 0, 0)).getTime() / 1000); // May 27, 2025
+    const offerEndTime = offerStartTime + (60 * 60 * 24 * 19); // +19 days
+    const priceFixDuration = 60 * 60 * 24; // 1 day
 
     const [offerAuthority] = PublicKey.findProgramAddressSync(
         [Buffer.from('offer_authority'), new BN(offerId).toArrayLike(Buffer, 'le', 8)],
