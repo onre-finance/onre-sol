@@ -1,15 +1,15 @@
 // scripts/fetchOffer.ts
-import * as anchor from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
 import { BN } from 'bn.js';
 
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import bs58 from 'bs58';
 import { getBossAccount, getOffer, initProgram, PROGRAM_ID, RPC_URL } from './script-commons';
+import { web3 } from '@coral-xyz/anchor';
 
 async function closeOffer() {
     const offerId = new BN(1);
-    const connection = new anchor.web3.Connection(RPC_URL);
+    const connection = new web3.Connection(RPC_URL);
 
     const program = await initProgram();
     const BOSS = await getBossAccount(program);
@@ -35,8 +35,8 @@ async function closeOffer() {
             .accountsPartial({
                 offer: offerPda,
                 offerSellTokenAccount: getAssociatedTokenAddressSync(offer.sellTokenMint, offerAuthority, true),
-                offerBuy1TokenAccount: getAssociatedTokenAddressSync(offer.buyTokenMint1, offerAuthority, true),
-                bossBuy1TokenAccount: getAssociatedTokenAddressSync(offer.buyTokenMint1, BOSS, true),
+                offerBuy1TokenAccount: getAssociatedTokenAddressSync(offer.buyToken1.mint, offerAuthority, true),
+                bossBuy1TokenAccount: getAssociatedTokenAddressSync(offer.buyToken1.mint, BOSS, true),
                 bossSellTokenAccount: getAssociatedTokenAddressSync(offer.sellTokenMint, BOSS, true),
                 state: statePda,
                 offerTokenAuthority: offerAuthority,
