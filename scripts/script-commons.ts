@@ -35,3 +35,7 @@ export async function getOffer(offerId: BN, program: Program<OnreApp>) {
 
     return program.account.offer.fetch(offerPda);
 }
+
+export async function getOffers(program: Program<OnreApp>) {
+    return program.account.offer.all();
+}
