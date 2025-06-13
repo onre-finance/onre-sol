@@ -7,8 +7,8 @@ import idl from "../target/idl/onre_app.json"; // assert { type: 'json' };
 export const RPC_URL = process.env.SOL_MAINNET_RPC_URL || "";
 // export const RPC_URL = "http://localhost:8899";
 
-// export const PROGRAM_ID = new PublicKey('onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe'); // PROD
-export const PROGRAM_ID = new PublicKey("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2"); // TEST
+export const PROGRAM_ID = new PublicKey("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe"); // PROD
+// export const PROGRAM_ID = new PublicKey("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2"); // TEST
 // export const PROGRAM_ID = new PublicKey("devHfQHgiFNifkLW49RCXpyTUZMyKuBNnFSbrQ8XsbX"); // DEV
 
 export async function initProgram() {
