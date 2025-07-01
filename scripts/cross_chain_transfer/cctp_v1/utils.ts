@@ -32,16 +32,10 @@ import { encode } from '@coral-xyz/anchor/dist/cjs/utils/bytes/utf8.js';
 export const IRIS_API_URL = "https://iris-api.circle.com";
 
 // SOLANA constants
-export const SOL_RPC_URL = "https://api.mainnet-beta.solana.com";
 export const SOLANA_DOMAIN_ID = 5;
-export const SOLANA_USDC_ADDRESS = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
 // ETHEREUM constants
-export const ETH_RPC_URL = "https://eth.drpc.org";
 export const ETH_DOMAIN_ID = 0;
-export const ETH_MESSAGE_TRANSMITTER_ADDRESS = "0x0a992d191DEeC32aFe36203Ad87D7d289a738F81";
-export const ETH_TOKEN_MESSENGER_ADDRESS = "0xBd3fa81B58Ba92a82136038B25aDec7066af3155";
-export const ETH_USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 
 export interface FindProgramAddressResponse {
     publicKey: PublicKey;
@@ -64,9 +58,6 @@ export const getAnchorConnection = (
     anchor.setProvider(provider);
     return provider;
 };
-
-export const MESSAGE_TRANSMITTER_PROGRAM_ID = new PublicKey('CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd');
-export const TOKEN_MESSENGER_PROGRAM_ID = new PublicKey('CCTPm7iYc2tLXjkSrNnfwk4zkvWYqHACTGxAXqzuXxN');
 
 export const getPrograms = (provider: anchor.AnchorProvider) => {
     // Initialize contracts

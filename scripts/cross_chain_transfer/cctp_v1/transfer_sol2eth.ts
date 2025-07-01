@@ -1,24 +1,34 @@
 import 'dotenv/config';
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
-import { evmAddressToBytes32, getAnchorConnection, getDepositForBurnPdas, getAttestation, getPrograms, ETH_RPC_URL, SOL_RPC_URL, SOLANA_USDC_ADDRESS, ETH_DOMAIN_ID, ETH_MESSAGE_TRANSMITTER_ADDRESS, SOLANA_DOMAIN_ID } from "./utils.ts";
+import { evmAddressToBytes32, getAnchorConnection, getDepositForBurnPdas, getAttestation, getPrograms, ETH_DOMAIN_ID, SOLANA_DOMAIN_ID } from "./utils.ts";
 import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes/index.js";
 import { Contract, getBytes, JsonRpcProvider, Wallet } from "ethers";
 import messageTransmitterAbi from "./abis/MessageTransmitter.json" with { type: "json" }
 import anchor from "@coral-xyz/anchor";
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
-// SCRIPT PARAMETERS
-const SOLANA_SENDER_PRIVATE_KEY = process.env.SOLANA_SENDER_PRIVATE_KEY!;
+// wallets
+const SOL_SENDER_PRIVATE_KEY = process.env.SOL_SENDER_PRIVATE_KEY!;
 const ETH_RECIPIENT_ADDRESS = process.env.ETH_RECIPIENT_ADDRESS!;
 const ETH_PAYER_PRIVATE_KEY = process.env.ETH_PAYER_PRIVATE_KEY!;
+
+// rpc urls
+const ETH_RPC_URL = process.env.ETH_RPC_URL!;
+const SOL_RPC_URL = process.env.SOL_RPC_URL!;
+
+// usdc
+const SOL_USDC_ADDRESS = process.env.SOL_USDC_ADDRESS!;
+const ETH_USDC_ADDRESS = process.env.ETH_USDC_ADDRESS!;
 const USDC_AMOUNT = Number(process.env.USDC_AMOUNT!);
 
+// cctp contracts
+const ETH_MESSAGE_TRANSMITTER_ADDRESS = process.env.ETH_MESSAGE_TRANSMITTER_ADDRESS!;
 
 const ethereumProvider = new JsonRpcProvider(ETH_RPC_URL);
-const solanaProvider = getAnchorConnection(SOL_RPC_URL, Keypair.fromSecretKey(bs58.decode(SOLANA_SENDER_PRIVATE_KEY)));
+const solanaProvider = getAnchorConnection(SOL_RPC_URL, Keypair.fromSecretKey(bs58.decode(SOL_SENDER_PRIVATE_KEY)));
 
 const solanaSenderTokenAccount = await getAssociatedTokenAddress(
-    new PublicKey(SOLANA_USDC_ADDRESS),
+    new PublicKey(SOL_USDC_ADDRESS),
     solanaProvider.wallet.publicKey
 );
 
@@ -28,7 +38,7 @@ async function burnUSDC() {
     const mintRecipient = new PublicKey(getBytes(evmAddressToBytes32(ETH_RECIPIENT_ADDRESS)));
 
     // Get pdas
-    const pdas = getDepositForBurnPdas({messageTransmitterProgram, tokenMessengerMinterProgram}, new PublicKey(SOLANA_USDC_ADDRESS), ETH_DOMAIN_ID);
+    const pdas = getDepositForBurnPdas({messageTransmitterProgram, tokenMessengerMinterProgram}, new PublicKey(SOL_USDC_ADDRESS), ETH_DOMAIN_ID);
 
     // Generate a new keypair for the MessageSent event account.
     const messageSentEventAccountKeypair = Keypair.generate();
@@ -50,7 +60,7 @@ async function burnUSDC() {
         tokenMessenger: pdas.tokenMessengerAccount.publicKey,
         remoteTokenMessenger: pdas.remoteTokenMessengerKey.publicKey,
         tokenMinter: pdas.tokenMinterAccount.publicKey,
-        burnTokenMint: new PublicKey(SOLANA_USDC_ADDRESS),
+        burnTokenMint: new PublicKey(SOL_USDC_ADDRESS),
         burnTokenAccount: solanaSenderTokenAccount,
         messageTransmitterProgram: messageTransmitterProgram.programId,
         tokenMessengerMinterProgram: tokenMessengerMinterProgram.programId,

@@ -13,3 +13,4 @@ test-ledger
 .idea
 onre-sol.iml
 **/.env*
+!**/.env_example
