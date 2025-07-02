@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+import 'dotenv/config';
 import { PublicKey, Keypair, Connection } from '@solana/web3.js';
 import { hexlify } from 'ethers';
 import fetch from 'node-fetch';
@@ -43,15 +44,12 @@ export interface FindProgramAddressResponse {
 }
 
 // Configure client to use the provider and return it.
-export const getAnchorConnection = (
-    providerUrl: string,
-    payerKeypair: Keypair
-) => {
+export const getAnchorConnection = () => {
     // Create the provider
-    const connection = new Connection(providerUrl, "confirmed");
+    const connection = new Connection(process.env.SOL_RPC_URL!, "confirmed");
     const provider = new anchor.AnchorProvider(
         connection,
-        new anchor.Wallet(payerKeypair),
+        new anchor.Wallet(Keypair.fromSecretKey(bs58.decode(process.env.SOL_SENDER_PRIVATE_KEY!))),
         { commitment: "confirmed" }
     );
 
@@ -61,15 +59,15 @@ export const getAnchorConnection = (
 
 export const getPrograms = (provider: anchor.AnchorProvider) => {
     // Initialize contracts
-    const messageTransmitterProgram = new Program<MessageTransmitter>(messageTransmitterIdl as MessageTransmitter, provider);
-    const tokenMessengerMinterProgram = new Program<TokenMessengerMinter>(tokenMessengerMinterIdl as TokenMessengerMinter, provider);
+    const messageTransmitterProgram = new anchor.Program(messageTransmitterIdl as MessageTransmitter, provider);
+    const tokenMessengerMinterProgram = new anchor.Program(tokenMessengerMinterIdl as TokenMessengerMinter, provider);
     return { messageTransmitterProgram, tokenMessengerMinterProgram };
   }
 
 export const getDepositForBurnPdas = (
     {messageTransmitterProgram, tokenMessengerMinterProgram}: ReturnType<typeof getPrograms>,
     usdcAddress: PublicKey,
-    destinationDomain: number // FIXED: use 'number'
+    destinationDomain: Number,
 ) => {
     const messageTransmitterAccount = findProgramAddress("message_transmitter", messageTransmitterProgram.programId);
     const tokenMessengerAccount = findProgramAddress("token_messenger", tokenMessengerMinterProgram.programId);

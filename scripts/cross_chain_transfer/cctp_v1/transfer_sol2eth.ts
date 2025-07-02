@@ -14,7 +14,6 @@ const ETH_PAYER_PRIVATE_KEY = process.env.ETH_PAYER_PRIVATE_KEY!;
 
 // rpc urls
 const ETH_RPC_URL = process.env.ETH_RPC_URL!;
-const SOL_RPC_URL = process.env.SOL_RPC_URL!;
 
 // usdc
 const SOL_USDC_ADDRESS = process.env.SOL_USDC_ADDRESS!;
@@ -25,7 +24,7 @@ const USDC_AMOUNT = Number(process.env.USDC_AMOUNT!);
 const ETH_MESSAGE_TRANSMITTER_ADDRESS = process.env.ETH_MESSAGE_TRANSMITTER_ADDRESS!;
 
 const ethereumProvider = new JsonRpcProvider(ETH_RPC_URL);
-const solanaProvider = getAnchorConnection(SOL_RPC_URL, Keypair.fromSecretKey(bs58.decode(SOL_SENDER_PRIVATE_KEY)));
+const solanaProvider = getAnchorConnection();
 
 const solanaSenderTokenAccount = await getAssociatedTokenAddress(
     new PublicKey(SOL_USDC_ADDRESS),
