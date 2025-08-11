@@ -15,11 +15,11 @@ async function createMakeOfferOneTransaction() {
     const offerId = new BN(1);
 
     const buyTokenAmount =       new BN('20000000000000000');                   // 9 decimals for ONyc
-    const sellTokenStartAmount = new BN('20295502000000');                      // 6 decimals for USDC
-    const sellTokenEndAmount =   new BN('20606918000000');                      // 6 decimals for USDC
-    const offerStartTime = Math.floor(new Date(2025, 6, 15).getTime() / 1000);  // July 15, 2025
-    const offerEndTime = offerStartTime + (60 * 60 * 24 * 78);                  // +78 days (October, 1st)
-    const priceFixDuration = new BN(60 * 60); // 1 hour
+    const sellTokenStartAmount = new BN('20399638000000');                      // 6 decimals for USDC
+    const sellTokenEndAmount =   new BN('20493362740000');                      // 6 decimals for USDC
+    const offerStartTime = Math.floor(new Date(2025, 7, 12).getTime() / 1000);  // August 12, 2025
+    const offerEndTime = offerStartTime + (60 * 60 * 24 * 15);                  // +15 days (August, 27th)
+    const priceFixDuration = new BN(60 * 60 * 24); // 1 day
 
     const program = await initProgram();
     const connection = new anchor.web3.Connection(RPC_URL);
