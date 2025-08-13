@@ -173,4 +173,53 @@ pub mod onre_app {
     pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Result<()> {
         take_offer::take_offer_two(ctx, sell_token_amount)
     }
+
+    /// Initializes the program authority account.
+    ///
+    /// Delegates to `initialize_program_authority::initialize_program_authority`.
+    /// This sets up the program-level authority for controlling buy token transfers.
+    /// # Arguments
+    /// - `ctx`: Context for `InitializeProgramAuthority`.
+    pub fn initialize_program_authority(ctx: Context<InitializeProgramAuthority>) -> Result<()> {
+        initialize_program_authority::initialize_program_authority(ctx)
+    }
+
+    pub fn initialize_admin_state(ctx: Context<InitializeAdminState>) -> Result<()> {
+        initialize_admin_state::initialize_admin_state(ctx)
+    }
+
+    /// Adds a new admin to the admin state.
+    ///
+    /// Delegates to `add_admin::add_admin`.
+    /// Only existing admins can call this function.
+    /// 
+    /// # Arguments
+    /// - `ctx`: Context for `AddAdmin`.
+    /// - `new_admin`: Public key of the new admin to be added.
+    pub fn add_admin(ctx: Context<AddAdmin>, new_admin: Pubkey) -> Result<()> {
+        add_admin::add_admin(ctx, new_admin)
+    }
+
+    /// Removes an admin from the admin state.
+    ///
+    /// Delegates to `remove_admin::remove_admin`.
+    /// Only existing admins can call this function.
+    /// 
+    /// # Arguments
+    /// - `ctx`: Context for `RemoveAdmin`.
+    /// - `admin_to_remove`: Public key of the admin to be removed.
+    pub fn remove_admin(ctx: Context<RemoveAdmin>, admin_to_remove: Pubkey) -> Result<()> {
+        remove_admin::remove_admin(ctx, admin_to_remove)
+    }
+
+    /// Removes all admins and sets only the boss as admin.
+    ///
+    /// Delegates to `remove_all_admins::remove_all_admins`.
+    /// Only the boss can call this function.
+    /// 
+    /// # Arguments
+    /// - `ctx`: Context for `RemoveAllAdmins`.
+    pub fn remove_all_admins(ctx: Context<RemoveAllAdmins>) -> Result<()> {
+        remove_all_admins::remove_all_admins(ctx)
+    }
 }

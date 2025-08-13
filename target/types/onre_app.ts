@@ -41,6 +41,82 @@ export type OnreApp = {
   ],
   "instructions": [
     {
+      "name": "addAdmin",
+      "docs": [
+        "Adds a new admin to the admin state.",
+        "",
+        "Delegates to `add_admin::add_admin`.",
+        "Only existing admins can call this function.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `AddAdmin`.",
+        "- `new_admin`: Public key of the new admin to be added."
+      ],
+      "discriminator": [
+        177,
+        236,
+        33,
+        205,
+        124,
+        152,
+        55,
+        186
+      ],
+      "accounts": [
+        {
+          "name": "adminState",
+          "docs": [
+            "Admin state account containing the list of admins."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  100,
+                  109,
+                  105,
+                  110,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state"
+        },
+        {
+          "name": "admin",
+          "docs": [
+            "The current admin calling this function."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "newAdmin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "closeOfferOne",
       "docs": [
         "Closes an offer with one buy token.",
@@ -1238,6 +1314,154 @@ export type OnreApp = {
       "args": []
     },
     {
+      "name": "initializeAdminState",
+      "discriminator": [
+        143,
+        116,
+        15,
+        14,
+        59,
+        122,
+        82,
+        86
+      ],
+      "accounts": [
+        {
+          "name": "adminState",
+          "docs": [
+            "Program authority account to be initialized."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  100,
+                  109,
+                  105,
+                  110,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss paying for account creation and authorizing the initialization."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initializeProgramAuthority",
+      "docs": [
+        "Initializes the program authority account.",
+        "",
+        "Delegates to `initialize_program_authority::initialize_program_authority`.",
+        "This sets up the program-level authority for controlling buy token transfers.",
+        "# Arguments",
+        "- `ctx`: Context for `InitializeProgramAuthority`."
+      ],
+      "discriminator": [
+        9,
+        170,
+        250,
+        165,
+        85,
+        176,
+        170,
+        193
+      ],
+      "accounts": [
+        {
+          "name": "programAuthority",
+          "docs": [
+            "Program authority account to be initialized."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  103,
+                  114,
+                  97,
+                  109,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss paying for account creation and authorizing the initialization."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "makeOfferOne",
       "docs": [
         "Creates an offer with one buy token.",
@@ -2339,6 +2563,162 @@ export type OnreApp = {
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "removeAdmin",
+      "docs": [
+        "Removes an admin from the admin state.",
+        "",
+        "Delegates to `remove_admin::remove_admin`.",
+        "Only existing admins can call this function.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `RemoveAdmin`.",
+        "- `admin_to_remove`: Public key of the admin to be removed."
+      ],
+      "discriminator": [
+        74,
+        202,
+        71,
+        106,
+        252,
+        31,
+        72,
+        183
+      ],
+      "accounts": [
+        {
+          "name": "adminState",
+          "docs": [
+            "Admin state account containing the list of admins."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  100,
+                  109,
+                  105,
+                  110,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "The main state account, which contains the boss.",
+            "This account is used to verify the caller's authority."
+          ]
+        },
+        {
+          "name": "admin",
+          "docs": [
+            "The current admin calling this function."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "adminToRemove",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "removeAllAdmins",
+      "docs": [
+        "Removes all admins and sets only the boss as admin.",
+        "",
+        "Delegates to `remove_all_admins::remove_all_admins`.",
+        "Only the boss can call this function.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `RemoveAllAdmins`."
+      ],
+      "discriminator": [
+        126,
+        14,
+        61,
+        120,
+        119,
+        212,
+        16,
+        249
+      ],
+      "accounts": [
+        {
+          "name": "adminState",
+          "docs": [
+            "Admin state account containing the list of admins."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  100,
+                  109,
+                  105,
+                  110,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss authorizing the removal of all admins."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     },
     {
       "name": "setBoss",
@@ -3539,6 +3919,19 @@ export type OnreApp = {
   ],
   "accounts": [
     {
+      "name": "adminState",
+      "discriminator": [
+        190,
+        42,
+        124,
+        96,
+        242,
+        52,
+        141,
+        28
+      ]
+    },
+    {
       "name": "offer",
       "discriminator": [
         215,
@@ -3549,6 +3942,19 @@ export type OnreApp = {
         162,
         73,
         229
+      ]
+    },
+    {
+      "name": "programAuthority",
+      "discriminator": [
+        38,
+        198,
+        188,
+        60,
+        171,
+        210,
+        169,
+        38
       ]
     },
     {
@@ -3701,6 +4107,20 @@ export type OnreApp = {
     }
   ],
   "types": [
+    {
+      "name": "adminState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admins",
+            "type": {
+              "vec": "pubkey"
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "bossUpdated",
       "docs": [
@@ -3995,6 +4415,26 @@ export type OnreApp = {
           {
             "name": "amount",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "programAuthority",
+      "docs": [
+        "Program-level authority for controlling buy token transfers.",
+        "",
+        "This PDA controls the program's buy token vault and handles all buy token transfers",
+        "",
+        "# Fields",
+        "- `bump`: Bump seed for the program authority PDA."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }

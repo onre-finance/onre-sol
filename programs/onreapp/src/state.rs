@@ -48,3 +48,24 @@ pub struct OfferToken {
 pub struct State {
     pub boss: Pubkey,
 }
+
+/// Program-level authority for controlling buy token transfers.
+///
+/// This PDA controls the program's buy token vault and handles all buy token transfers
+///
+/// # Fields
+/// - `bump`: Bump seed for the program authority PDA.
+#[account]
+#[derive(InitSpace)]
+pub struct ProgramAuthority {
+    pub bump: u8,
+}
+
+#[account]
+pub struct AdminState {
+    pub admins: Vec<Pubkey>,
+}
+
+impl AdminState {
+    pub const INIT_SPACE: usize = 4 + 32 * 20; // 4 bytes for length + 20 admins (Pubkey, 32 bytes each)
+}

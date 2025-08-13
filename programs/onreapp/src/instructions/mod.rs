@@ -1,11 +1,7 @@
-pub mod make_offer;
-pub mod close_offer;
-pub mod take_offer;
-pub mod initialize;
-pub mod set_boss;
+pub mod admin;
+pub mod boss;
+pub mod user;
 
-pub use make_offer::*;
-pub use close_offer::*;
-pub use take_offer::*;
-pub use initialize::*;
-pub use set_boss::*;
+pub use admin::*;
+pub use boss::*;
+pub use user::*;

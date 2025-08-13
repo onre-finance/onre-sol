@@ -239,6 +239,59 @@ export class TestHelper {
             )
         )
     }
+
+    async initialize(boss: PublicKey) {
+        await this.program.methods.initialize().accounts({ boss }).rpc();
+    }
+
+    async initializeAdminState(boss: PublicKey) {
+        await this.program.methods.initializeAdminState()
+            .accounts({
+                state: this.statePda 
+            })
+            .rpc();
+    }
+
+    async addAdmin(admin: Keypair, newAdmin: PublicKey) {
+        return await this.program.methods
+            .addAdmin(newAdmin)
+            .accounts({ 
+                admin: admin.publicKey,
+                state: this.statePda
+            })
+            .signers([admin])
+            .rpc();
+    }
+
+    async removeAdmin(admin: Keypair, adminToRemove: PublicKey) {
+        return await this.program.methods
+            .removeAdmin(adminToRemove)
+            .accounts({ 
+                admin: admin.publicKey,
+                state: this.statePda
+            })
+            .signers([admin])
+            .rpc();
+    }
+
+    async removeAllAdmins(boss: Keypair) {
+        return await this.program.methods
+            .removeAllAdmins()
+            .accounts({
+                state: this.statePda
+            })
+            .signers([boss])
+            .rpc();
+    }
+
+    async airdropLamports(publicKey: PublicKey, amount: number) {
+        this.context.setAccount(publicKey, {
+            executable: false,
+            data: new Uint8Array([]),
+            lamports: amount,
+            owner: SystemProgram.programId, // Use SystemProgram as owner for fee-paying accounts
+        });
+    }
 }
 
 type OfferOneTokenAccounts = {

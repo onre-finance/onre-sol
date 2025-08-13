@@ -4,7 +4,7 @@ import { PublicKey } from "@solana/web3.js";
 import { OnreApp } from "../target/types/onre_app";
 import idl from "../target/idl/onre_app.json"; // assert { type: 'json' };
 
-export const RPC_URL = process.env.SOL_MAINNET_RPC_URL || "";
+export const RPC_URL = process.env.SOL_MAINNET_RPC_URL || "https://api.mainnet-beta.solana.com";
 // export const RPC_URL = "http://localhost:8899";
 
 export const PROGRAM_ID = new PublicKey("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe"); // PROD

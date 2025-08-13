@@ -84,7 +84,7 @@ describe("close offer", () => {
 
         // then
         await testHelper.expectTokenAccountAmountToBe(bossBuyTokenAccount, BigInt(10e9));
-        await testHelper.expectTokenAccountAmountToBe(bossSellTokenAccount, BigInt(0e9));
+        await testHelper.expectTokenAccountAmountToBe(bossSellTokenAccount, BigInt(0));
     });
 
     test("closing an offer with two buy tokens should refund all buy tokens", async () => {
@@ -132,7 +132,7 @@ describe("close offer", () => {
         // then
         await testHelper.expectTokenAccountAmountToBe(bossBuyTokenAccount1, BigInt(10e9));
         await testHelper.expectTokenAccountAmountToBe(bossBuyTokenAccount2, BigInt(10e9));
-        await testHelper.expectTokenAccountAmountToBe(bossSellTokenAccount, BigInt(0e9));
+        await testHelper.expectTokenAccountAmountToBe(bossSellTokenAccount, BigInt(0));
     });
 
     test("close_offer_two called on an offer with one buy token should fail", async () => {
