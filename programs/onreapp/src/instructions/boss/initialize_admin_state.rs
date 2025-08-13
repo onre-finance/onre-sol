@@ -27,6 +27,6 @@ pub struct InitializeAdminState<'info> {
 }
 
 /// Initializes the program authority account.
-pub fn initialize_admin_state(ctx: Context<InitializeAdminState>) -> Result<()> {
+pub fn initialize_admin_state(_ctx: Context<InitializeAdminState>) -> Result<()> {
     Ok(())
 }
