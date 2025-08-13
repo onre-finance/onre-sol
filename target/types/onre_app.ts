@@ -1177,6 +1177,33 @@ export type OnreApp = {
       "args": []
     },
     {
+      "name": "getNav",
+      "docs": [
+        "Returns the current NAV (price) for the given offer.",
+        "NAV = current_sell_token_amount / buy_token_one_amount"
+      ],
+      "discriminator": [
+        200,
+        89,
+        76,
+        53,
+        215,
+        218,
+        63,
+        21
+      ],
+      "accounts": [
+        {
+          "name": "offer",
+          "docs": [
+            "The offer to read NAV data from"
+          ]
+        }
+      ],
+      "args": [],
+      "returns": "u64"
+    },
+    {
       "name": "initialize",
       "docs": [
         "Initializes the program state.",

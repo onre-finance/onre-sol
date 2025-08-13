@@ -108,7 +108,7 @@ pub fn close_offer_one(ctx: Context<CloseOfferOne>) -> Result<()> {
     transfer_remaining_tokens(&ctx, offer_sell_token_account, boss_sell_token_account)?;
     transfer_remaining_tokens(&ctx, offer_buy_1_token_account, boss_buy_1_token_account)?;
 
-    let offer_id_bytes = &ctx.accounts.offer.offer_id.to_le_bytes();
+    let offer_id_bytes = ctx.accounts.offer.offer_id.to_le_bytes();
     let seeds = &[
         b"offer_authority".as_ref(),
         offer_id_bytes.as_ref(),
@@ -246,7 +246,7 @@ pub fn close_offer_two(ctx: Context<CloseOfferTwo>) -> Result<()> {
     transfer_remaining_tokens(&ctx, offer_buy_1_token_account, boss_buy_1_token_account)?;
     transfer_remaining_tokens(&ctx, offer_buy_2_token_account, boss_buy_2_token_account)?;
 
-    let offer_id_bytes = &ctx.accounts.offer.offer_id.to_le_bytes();
+    let offer_id_bytes = ctx.accounts.offer.offer_id.to_le_bytes();
     let seeds = &[
         b"offer_authority".as_ref(),
         offer_id_bytes.as_ref(),

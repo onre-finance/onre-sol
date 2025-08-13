@@ -15,7 +15,7 @@ describe("take offer", () => {
 
     let boss: PublicKey;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         const programInfo: AddedProgram = {
             programId: ONREAPP_PROGRAM_ID,
             name: "onreapp",

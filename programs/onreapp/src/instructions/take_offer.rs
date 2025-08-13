@@ -1,4 +1,5 @@
 use crate::state::Offer;
+use crate::instructions::pricing::calculate_current_sell_amount;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
@@ -98,54 +99,7 @@ pub struct TakeOfferOne<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Calculates the current sell token amount based on the offer's dynamic pricing model.
-///
-/// The price of the sell token (how much is required per buy token) changes linearly over the offer's duration.
-/// The offer is divided into intervals, each lasting `price_fix_duration` seconds.
-/// The sell token amount starts at `sell_token_start_amount` + `one_interval_amount` at the beginning of the first interval
-/// and progresses towards `sell_token_end_amount` by the end of the last interval.
-///
-/// # Arguments
-/// - `offer`: A reference to the `Offer` account containing pricing parameters like
-///   `offer_start_time`, `offer_end_time`, `price_fix_duration`,
-///   `sell_token_start_amount`, and `sell_token_end_amount`.
-///
-/// # Returns
-/// The calculated sell token amount effectively representing the "price" for the current interval.
-/// This is the amount of sell tokens that corresponds to the total `buy_token_X_amount` defined in the offer for the current time interval.
-///
-/// # Errors
-/// - [`TakeOfferErrorCode::InvalidCurrentTime`] if the current time is outside the offer's active period.
-fn calculate_current_sell_amount(
-    offer: &Offer
-) -> Result<u64> {
-    let current_time = Clock::get()?.unix_timestamp as u64;
-    
-    require!(
-        current_time >= offer.offer_start_time && current_time < offer.offer_end_time,
-        TakeOfferErrorCode::InvalidCurrentTime
-    );
-
-    let total_duration = offer.offer_end_time.checked_sub(offer.offer_start_time).unwrap();
-    let number_of_intervals = total_duration.checked_div(offer.price_fix_duration).unwrap();
-    let current_interval = current_time
-        .checked_sub(offer.offer_start_time)
-        .unwrap()
-        .checked_div(offer.price_fix_duration)
-        .unwrap();
-
-    let sell_token_amount_per_interval = offer.sell_token_end_amount
-        .checked_sub(offer.sell_token_start_amount)
-        .unwrap()
-        .checked_div(number_of_intervals)
-        .unwrap();
-
-    let sell_token_current_amount = offer.sell_token_start_amount
-        .checked_add(sell_token_amount_per_interval.checked_mul(current_interval + 1).unwrap())
-        .unwrap();
-
-    Ok(sell_token_current_amount)
-}
+// Pricing logic now lives in `instructions/pricing.rs`
 
 /// Takes an offer with one buy token.
 ///
@@ -167,7 +121,7 @@ fn calculate_current_sell_amount(
 pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Result<()> {
     let offer = &ctx.accounts.offer;
 
-    let current_sell_token_amount = calculate_current_sell_amount(&offer).unwrap();
+    let current_sell_token_amount = calculate_current_sell_amount(&offer)?;
     msg!("Calculated current sell token amount: {}", current_sell_token_amount);
 
     let buy_token_1_amount = calculate_buy_amount(
@@ -195,10 +149,10 @@ pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Res
     )?;
     msg!("Transferring {} sell tokens from user to offer", sell_token_amount);
 
-    let offer_id_bytes = &offer.offer_id.to_le_bytes();
+    let offer_id_bytes = offer.offer_id.to_le_bytes();
     let seeds = &[
         b"offer_authority".as_ref(),
-        offer_id_bytes,
+        offer_id_bytes.as_ref(),
         &[offer.authority_bump],
     ];
     let signer_seeds = &[&seeds[..]];
@@ -338,7 +292,7 @@ pub struct TakeOfferTwo<'info> {
 pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Result<()> {
     let offer = &ctx.accounts.offer;
 
-    let current_sell_token_amount = calculate_current_sell_amount(&offer).unwrap();
+    let current_sell_token_amount = calculate_current_sell_amount(&offer)?;
     msg!("Calculated current sell token amount: {}", current_sell_token_amount);
 
     let buy_token_1_amount = calculate_buy_amount(
@@ -376,10 +330,10 @@ pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Res
     )?;
     msg!("Transferring {} sell tokens from user to offer", sell_token_amount);
 
-    let offer_id_bytes = &offer.offer_id.to_le_bytes();
+    let offer_id_bytes = offer.offer_id.to_le_bytes();
     let seeds = &[
         b"offer_authority".as_ref(),
-        offer_id_bytes,
+        offer_id_bytes.as_ref(),
         &[offer.authority_bump],
     ];
     let signer_seeds = &[&seeds[..]];

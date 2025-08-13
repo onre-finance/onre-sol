@@ -173,4 +173,10 @@ pub mod onre_app {
     pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Result<()> {
         take_offer::take_offer_two(ctx, sell_token_amount)
     }
+
+    /// Returns the current NAV (price) for the given offer.
+    /// NAV = current_sell_token_amount / buy_token_one_amount
+    pub fn get_nav(ctx: Context<GetNav>) -> Result<u64> {
+        instructions::get_nav(ctx)
+    }
 }

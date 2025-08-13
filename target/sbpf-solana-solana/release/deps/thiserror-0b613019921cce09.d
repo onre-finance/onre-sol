@@ -1,0 +1,11 @@
+/Users/noro/Workspace/cleevio/onre-sol/target/sbpf-solana-solana/release/deps/libthiserror-0b613019921cce09.rmeta: /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/lib.rs /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/aserror.rs /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/display.rs /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/provide.rs /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/var.rs
+
+/Users/noro/Workspace/cleevio/onre-sol/target/sbpf-solana-solana/release/deps/libthiserror-0b613019921cce09.rlib: /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/lib.rs /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/aserror.rs /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/display.rs /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/provide.rs /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/var.rs
+
+/Users/noro/Workspace/cleevio/onre-sol/target/sbpf-solana-solana/release/deps/thiserror-0b613019921cce09.d: /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/lib.rs /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/aserror.rs /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/display.rs /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/provide.rs /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/var.rs
+
+/Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/lib.rs:
+/Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/aserror.rs:
+/Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/display.rs:
+/Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/provide.rs:
+/Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-2.0.12/src/var.rs:

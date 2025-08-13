@@ -1,0 +1,9 @@
+/Users/noro/Workspace/cleevio/onre-sol/target/sbpf-solana-solana/release/deps/libspl_associated_token_account_client-f870c6feeca55a93.rmeta: /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-associated-token-account-client-2.0.0/src/lib.rs /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-associated-token-account-client-2.0.0/src/address.rs /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-associated-token-account-client-2.0.0/src/instruction.rs
+
+/Users/noro/Workspace/cleevio/onre-sol/target/sbpf-solana-solana/release/deps/libspl_associated_token_account_client-f870c6feeca55a93.rlib: /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-associated-token-account-client-2.0.0/src/lib.rs /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-associated-token-account-client-2.0.0/src/address.rs /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-associated-token-account-client-2.0.0/src/instruction.rs
+
+/Users/noro/Workspace/cleevio/onre-sol/target/sbpf-solana-solana/release/deps/spl_associated_token_account_client-f870c6feeca55a93.d: /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-associated-token-account-client-2.0.0/src/lib.rs /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-associated-token-account-client-2.0.0/src/address.rs /Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-associated-token-account-client-2.0.0/src/instruction.rs
+
+/Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-associated-token-account-client-2.0.0/src/lib.rs:
+/Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-associated-token-account-client-2.0.0/src/address.rs:
+/Users/noro/.cargo/registry/src/index.crates.io-6f17d22bba15001f/spl-associated-token-account-client-2.0.0/src/instruction.rs:
