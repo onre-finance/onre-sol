@@ -86,11 +86,12 @@ describe("get apy", () => {
             );
             tx.sign([provider.wallet.payer]);
 
-            const result = await testHelper.context.banksClient.processTransaction(tx);
-            
-            if (result.returnData?.data) {
+            const result = await testHelper.context.banksClient.simulateTransaction(tx);
+            console.log(result.meta.returnData.data)
+
+            if (result.meta.returnData.data) {
                 // Decode the returned u64 (8 bytes) in little-endian format
-                const buffer = Buffer.from(result.returnData.data);
+                const buffer = Buffer.from(result.meta.returnData.data);
                 const apyBasisPoints = buffer.readBigUInt64LE(0);
                 const apyPercent = Number(apyBasisPoints) / 100; // Convert basis points to percentage
                 
@@ -135,6 +136,7 @@ describe("get apy", () => {
             // Short-term high growth scenarios
             { expectedApy: 100, days: 7, name: "100% APY over 7 days (crisis scenario)" },
             { expectedApy: 50, days: 30, name: "50% APY over 30 days (high volatility)" },
+            { expectedApy: 11.8, days: 15, name: "11.8% APY over 15 days (high volatility)" },
         ];
 
         for (const testCase of testCases) {
@@ -147,8 +149,8 @@ describe("get apy", () => {
             
             // Convert to token amounts
             // sell_amount = nav * buy_amount
-            const sellStartAmount = Math.floor(startNav * buyTokenAmount);
-            const sellEndAmount = Math.floor(endNav * buyTokenAmount);
+            const sellStartAmount = Math.floor(startNav * buyTokenAmount / 1000);
+            const sellEndAmount = Math.floor(endNav * buyTokenAmount / 1000);
             const durationSeconds = testCase.days * 24 * 60 * 60;
             
             console.log(`\n--- ${testCase.name} ---`);
@@ -171,6 +173,7 @@ describe("get apy", () => {
             // Allow for some tolerance in APY calculation due to fixed-point arithmetic
             const tolerance = Math.max(0.1, testCase.expectedApy * 0.02); // 2% tolerance or 0.1%, whichever is larger
             expect(Math.abs(result.apy - testCase.expectedApy)).toBeLessThan(tolerance);
+            console.log(`-----------------------------------`);
         }
     });
 
