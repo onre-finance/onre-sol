@@ -179,4 +179,13 @@ pub mod onre_app {
     pub fn get_nav(ctx: Context<GetNav>) -> Result<u64> {
         instructions::get_nav(ctx)
     }
+
+    /// Returns the current offer ID
+    pub fn get_current_offer(ctx: Context<GetCurrentOffer>) -> Result<u64> {
+        instructions::get_current_offer(ctx)
+    }
+
+    pub fn get_apy(ctx: Context<GetApy>) -> Result<u64> {
+        instructions::get_apy(ctx)
+    }
 }

@@ -5,6 +5,8 @@ pub mod initialize;
 pub mod set_boss;
 pub mod get_nav;
 pub mod pricing;
+pub mod get_apy;
+pub mod get_current_offer;
 
 pub use make_offer::*;
 pub use close_offer::*;
@@ -12,4 +14,6 @@ pub use take_offer::*;
 pub use initialize::*;
 pub use set_boss::*;
 pub use get_nav::*;
+pub use get_apy::*;
 pub use pricing::*;
+pub use get_current_offer::*;

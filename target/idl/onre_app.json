@@ -1171,6 +1171,48 @@
       "args": []
     },
     {
+      "name": "get_apy",
+      "discriminator": [
+        194,
+        123,
+        183,
+        54,
+        181,
+        74,
+        194,
+        97
+      ],
+      "accounts": [
+        {
+          "name": "offer",
+          "docs": [
+            "The offer to read NAV data from"
+          ]
+        }
+      ],
+      "args": [],
+      "returns": "u64"
+    },
+    {
+      "name": "get_current_offer",
+      "docs": [
+        "Returns the current offer ID"
+      ],
+      "discriminator": [
+        225,
+        35,
+        70,
+        115,
+        7,
+        112,
+        171,
+        191
+      ],
+      "accounts": [],
+      "args": [],
+      "returns": "u64"
+    },
+    {
       "name": "get_nav",
       "docs": [
         "Returns the current NAV (price) for the given offer.",

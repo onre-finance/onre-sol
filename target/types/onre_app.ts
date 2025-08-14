@@ -1177,6 +1177,48 @@ export type OnreApp = {
       "args": []
     },
     {
+      "name": "getApy",
+      "discriminator": [
+        194,
+        123,
+        183,
+        54,
+        181,
+        74,
+        194,
+        97
+      ],
+      "accounts": [
+        {
+          "name": "offer",
+          "docs": [
+            "The offer to read NAV data from"
+          ]
+        }
+      ],
+      "args": [],
+      "returns": "u64"
+    },
+    {
+      "name": "getCurrentOffer",
+      "docs": [
+        "Returns the current offer ID"
+      ],
+      "discriminator": [
+        225,
+        35,
+        70,
+        115,
+        7,
+        112,
+        171,
+        191
+      ],
+      "accounts": [],
+      "args": [],
+      "returns": "u64"
+    },
+    {
       "name": "getNav",
       "docs": [
         "Returns the current NAV (price) for the given offer.",
