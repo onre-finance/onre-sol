@@ -7,6 +7,7 @@ pub mod get_nav;
 pub mod pricing;
 pub mod get_apy;
 pub mod get_current_offer;
+pub mod get_circulating_supply;
 
 pub use make_offer::*;
 pub use close_offer::*;
@@ -17,3 +18,4 @@ pub use get_nav::*;
 pub use get_apy::*;
 pub use pricing::*;
 pub use get_current_offer::*;
+pub use get_circulating_supply::*;

@@ -188,4 +188,15 @@ pub mod onre_app {
     pub fn get_apy(ctx: Context<GetApy>) -> Result<u64> {
         instructions::get_apy(ctx)
     }
+
+    /// Returns the circulating supply for a token by subtracting vault and offer balances from total supply
+    ///
+    /// Calculates: total_supply - (vault_balance + offer_balance)
+    /// This gives the amount of tokens that are actually circulating and available to users.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `GetCirculatingSupply` containing the token accounts and mint
+    pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64> {
+        instructions::get_circulating_supply(ctx)
+    }
 }
