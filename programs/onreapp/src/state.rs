@@ -2,23 +2,45 @@ use anchor_lang::prelude::*;
 
 const MAX_SEGMENTS: usize = 10;
 
-/// Represents an offer data structure with time segments and typed structure.
+// Offer structs
+// Represents an offer data structure with time segments and typed structure.
 #[zero_copy]
 #[repr(C)]
-pub struct Offer {
+pub struct BuyOffer {
     pub offer_id: u64,
-    pub sell_token_mint: Pubkey,
-    pub active_segments: u8,
-    pub offer_type: u8, // 0 = BuyOffer, 1 = RedemptionSingle, 2 = RedemptionDual
-    pub _padding: [u8; 6], // Padding to align to 8-byte boundary
-    pub time_segments: [TimeSegment; MAX_SEGMENTS],
-    pub buy_token_1: OfferToken,
-    pub buy_token_2: OfferToken, // Only used for RedemptionDual (offer_type == 2)
+    pub token_in_mint: Pubkey,
+    pub token_out_mint: Pubkey,
+    pub time_segments: [BuyOfferTimeSegment; MAX_SEGMENTS],
 }
 
 #[zero_copy]
 #[repr(C)]
-pub struct TimeSegment {
+pub struct RedemptionSingleOffer {
+    pub offer_id: u64,
+    pub token_in_mint: Pubkey,
+    pub token_out_mint: Pubkey,
+    pub time_segments: [RedemptionSingleOfferTimeSegment; MAX_SEGMENTS],
+}
+
+/// Redemption offer that pays out in two different tokens based on a ratio
+/// 
+/// The ratio determines how much goes to token_out_one vs token_out_two:
+/// - Uses basis points (10000 = 100%)
+/// - Example: ratio = 8000 means 80% goes to token_out_one, 20% to token_out_two
+/// - For 1e9 token_in with ratio 8000: 0.8e9 in token_out_one, 0.2e9 in token_out_two
+#[zero_copy]
+#[repr(C)]
+pub struct RedemptionDualOffer {
+    pub offer_id: u64,
+    pub token_in_mint: Pubkey,
+    pub token_out_one_mint: Pubkey,
+    pub token_out_two_mint: Pubkey,
+    pub time_segments: [RedemptionDualOfferTimeSegment; MAX_SEGMENTS],
+}
+
+#[zero_copy]
+#[repr(C)]
+pub struct BuyOfferTimeSegment {
     pub segment_id: u64,
     pub start_time: u64,
     pub end_time: u64,
@@ -29,36 +51,48 @@ pub struct TimeSegment {
 
 #[zero_copy]
 #[repr(C)]
-pub struct OfferToken {
-    pub mint: Pubkey,
-    pub amount: u64,
+pub struct RedemptionSingleOfferTimeSegment {
+    pub segment_id: u64,
+    pub start_time: u64,
+    pub end_time: u64,
+    pub price: u64,
+}
+
+#[zero_copy]
+#[repr(C)]
+pub struct RedemptionDualOfferTimeSegment {
+    pub segment_id: u64,
+    pub start_time: u64,
+    pub end_time: u64,
+    /// Percentage of token_in that goes to token_out_one (in basis points, max 10000 = 100%)
+    /// Remaining amount (10000 - token_out_one_ratio) goes to token_out_two
+    pub token_out_one_ratio: u64,
+    pub price_token_one: u64,
+    pub price_token_two: u64,
 }
 
 /// Account holding 20 BuyOffer instances
 #[account(zero_copy)]
 #[repr(C)]
 pub struct BuyOfferAccount {
-    pub offers: [Offer; 20],
-    pub count: u8,
-    pub _padding: [u8; 7], // Padding to align to 8-byte boundary
+    pub offers: [BuyOffer; 20],
+    pub count: u64
 }
 
-/// Account holding 20 RedemptionOfferSingle instances  
+/// Account holding 20 RedemptionSingleOffer instances  
 #[account(zero_copy)]
 #[repr(C)]
 pub struct RedemptionOfferSingleAccount {
-    pub offers: [Offer; 20],
-    pub count: u8,
-    pub _padding: [u8; 7], // Padding to align to 8-byte boundary
+    pub offers: [RedemptionSingleOffer; 20],
+    pub count: u64,
 }
 
-/// Account holding 20 RedemptionOfferDual instances
+/// Account holding 20 RedemptionDualOffer instances
 #[account(zero_copy)]
 #[repr(C)]
 pub struct RedemptionOfferDualAccount {
-    pub offers: [Offer; 20],
-    pub count: u8,
-    pub _padding: [u8; 7], // Padding to align to 8-byte boundary
+    pub offers: [RedemptionDualOffer; 20],
+    pub count: u64,
 }
 
 /// Represents the program state in the Onre App program.
