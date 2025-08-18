@@ -3,16 +3,21 @@ use anchor_lang::prelude::*;
 const MAX_SEGMENTS: usize = 10;
 
 /// Represents an offer data structure with time segments and typed structure.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
+#[zero_copy]
+#[repr(C)]
 pub struct Offer {
     pub offer_id: u64,
     pub sell_token_mint: Pubkey,
     pub active_segments: u8,
+    pub offer_type: u8, // 0 = BuyOffer, 1 = RedemptionSingle, 2 = RedemptionDual
     pub time_segments: [TimeSegment; MAX_SEGMENTS],
-    pub offer_type: OfferType,
+    pub buy_token_1: OfferToken,
+    pub buy_token_2: OfferToken, // Only used for RedemptionDual (offer_type == 2)
+    pub _padding: [u8; 6], // Padding to align to 8-byte boundary
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
+#[zero_copy]
+#[repr(C)]
 pub struct TimeSegment {
     pub segment_id: u64,
     pub start_time: u64,
@@ -22,48 +27,38 @@ pub struct TimeSegment {
     pub price_fix_duration: u64,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
-pub enum OfferType {
-    BuyOffer { 
-        buy_token: OfferToken 
-    },
-    RedemptionOfferSingle { 
-        buy_token: OfferToken 
-    },
-    RedemptionOfferDual { 
-        buy_token_1: OfferToken,
-        buy_token_2: OfferToken 
-    },
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
+#[zero_copy]
+#[repr(C)]
 pub struct OfferToken {
     pub mint: Pubkey,
     pub amount: u64,
 }
 
 /// Account holding 20 BuyOffer instances
-#[account]
-#[derive(InitSpace)]
+#[account(zero_copy)]
+#[repr(C)]
 pub struct BuyOfferAccount {
     pub offers: [Offer; 20],
     pub count: u8,
+    pub _padding: [u8; 7], // Padding to align to 8-byte boundary
 }
 
 /// Account holding 20 RedemptionOfferSingle instances  
-#[account]
-#[derive(InitSpace)]
+#[account(zero_copy)]
+#[repr(C)]
 pub struct RedemptionOfferSingleAccount {
     pub offers: [Offer; 20],
     pub count: u8,
+    pub _padding: [u8; 7], // Padding to align to 8-byte boundary
 }
 
 /// Account holding 20 RedemptionOfferDual instances
-#[account]
-#[derive(InitSpace)]
+#[account(zero_copy)]
+#[repr(C)]
 pub struct RedemptionOfferDualAccount {
-    pub offers: [Offer; 20], 
+    pub offers: [Offer; 20],
     pub count: u8,
+    pub _padding: [u8; 7], // Padding to align to 8-byte boundary
 }
 
 /// Represents the program state in the Onre App program.
