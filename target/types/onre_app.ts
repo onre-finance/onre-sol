@@ -3428,28 +3428,8 @@ export type OnreApp = {
               {
                 "kind": "const",
                 "value": [
-                  105,
-                  110,
-                  116,
-                  101,
-                  114,
-                  109,
-                  101,
-                  100,
-                  105,
-                  97,
-                  114,
-                  121
+                  49
                 ]
-              },
-              {
-                "kind": "account",
-                "path": "offer.offer_id",
-                "account": "offer"
-              },
-              {
-                "kind": "account",
-                "path": "user"
               }
             ]
           }

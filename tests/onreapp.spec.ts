@@ -1316,7 +1316,7 @@ describe("onreapp", () => {
 
         // Derive intermediary authority PDA
         const [intermediaryAuthority] = PublicKey.findProgramAddressSync(
-            [Buffer.from("intermediary"), offerId.toArrayLike(Buffer, "le", 8), user.publicKey.toBuffer()],
+            [Buffer.from("1")],
             program.programId,
         );
         const intermediaryBuyTokenAccount = await getAssociatedTokenAddress(buyToken1Mint, intermediaryAuthority, true);
@@ -1400,8 +1400,8 @@ describe("onreapp", () => {
 
         // Derive intermediary account for verification
         const [intermediaryAuthority] = PublicKey.findProgramAddressSync(
-            [Buffer.from("intermediary"), offerId.toArrayLike(Buffer, "le", 8), user.publicKey.toBuffer()],
-            program.programId,
+          [Buffer.from("1")],
+          program.programId,
         );
         const intermediaryBuyTokenAccount = await getAssociatedTokenAddress(buyToken1Mint, intermediaryAuthority, true);
 

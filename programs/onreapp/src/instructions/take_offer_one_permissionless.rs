@@ -99,7 +99,7 @@ pub struct TakeOfferOnePermissionless<'info> {
     /// Uses a unique seed to avoid conflicts with other PDAs.
     /// CHECK: This account is validated by the seed derivation.
     #[account(
-        seeds = [b"intermediary", offer.offer_id.to_le_bytes().as_ref(), user.key().as_ref()],
+        seeds = [b"1"],
         bump
     )]
     pub intermediary_authority: AccountInfo<'info>,
@@ -284,11 +284,8 @@ pub fn take_offer_one_permissionless(
     msg!("Transferring {} buy tokens from offer to intermediary account", buy_token_1_amount);
 
     // Step 3: Transfer buy tokens from intermediary account to user
-    let user_key = ctx.accounts.user.key();
     let intermediary_seeds = &[
-        b"intermediary".as_ref(),
-        offer_id_bytes,
-        user_key.as_ref(),
+        b"1".as_ref(),
         &[ctx.bumps.intermediary_authority],
     ];
     let intermediary_signer_seeds = &[&intermediary_seeds[..]];
