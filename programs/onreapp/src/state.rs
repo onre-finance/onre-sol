@@ -10,10 +10,10 @@ pub struct Offer {
     pub sell_token_mint: Pubkey,
     pub active_segments: u8,
     pub offer_type: u8, // 0 = BuyOffer, 1 = RedemptionSingle, 2 = RedemptionDual
+    pub _padding: [u8; 6], // Padding to align to 8-byte boundary
     pub time_segments: [TimeSegment; MAX_SEGMENTS],
     pub buy_token_1: OfferToken,
     pub buy_token_2: OfferToken, // Only used for RedemptionDual (offer_type == 2)
-    pub _padding: [u8; 6], // Padding to align to 8-byte boundary
 }
 
 #[zero_copy]
