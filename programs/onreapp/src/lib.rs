@@ -177,7 +177,7 @@ pub mod onre_app {
     /// Returns the current NAV (price) for the given offer.
     /// NAV = current_sell_token_amount / buy_token_one_amount
     pub fn get_nav(ctx: Context<GetNav>) -> Result<u64> {
-        instructions::get_nav(ctx)
+        instructions::calculate_nav(ctx)
     }
 
     /// Returns the current offer ID

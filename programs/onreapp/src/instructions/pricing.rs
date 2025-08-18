@@ -49,5 +49,16 @@ pub fn calculate_current_sell_amount(offer: &Offer) -> Result<u64> {
     Ok(sell_token_current_amount)
 }
 
+pub fn calculate_nav(offer: &Offer) -> Result<u64> {
+    let current_sell_token_amount = calculate_current_sell_amount(offer)? as u128;
+    let buy_token_one_amount = offer.buy_token_1.amount as u128;
+
+    let nav = current_sell_token_amount
+        .checked_div(buy_token_one_amount)
+        .unwrap() as u64;
+
+    Ok(nav)
+}
+
 
 
