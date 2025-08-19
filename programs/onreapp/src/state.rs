@@ -1,40 +1,71 @@
 use anchor_lang::prelude::*;
 
-/// Represents an offer in the Onre App program.
-///
-/// Stores details of an offer where a boss provides buy tokens in exchange for sell tokens.
-/// Used in `make_offer`, `take_offer`, and `close_offer` instructions.
-///
-/// # Fields
-/// - `offer_id`: Unique identifier for the offer.
-/// - `sell_token_start_amount`: Initial amount of sell tokens required at offer start.
-/// - `sell_token_end_amount`: Final amount of sell tokens required at offer end.
-/// - `sell_token_mint`: Mint of the token the offer expects to receive.
-/// - `buy_token_1`: First buy token details (mint and amount).
-/// - `buy_token_2`: Second buy token details (mint and amount, defaults if unused).
-/// - `authority_bump`: Bump seed for the offer's token authority PDA.
-/// - `price_fix_duration`: Duration in seconds for each fixed price interval.
-/// - `offer_start_time`: Unix timestamp when the offer becomes active.
-/// - `offer_end_time`: Unix timestamp when the offer expires.
-#[account]
-#[derive(InitSpace)]
-pub struct Offer {
+const MAX_SEGMENTS: usize = 10;
+
+// Offer structs
+// Represents an offer data structure with time segments and typed structure.
+
+#[zero_copy]
+#[repr(C)]
+pub struct RedemptionSingleOffer {
     pub offer_id: u64,
-    pub sell_token_start_amount: u64,
-    pub sell_token_end_amount: u64,
-    pub sell_token_mint: Pubkey,
-    pub buy_token_1: OfferToken,
-    pub buy_token_2: OfferToken,
-    pub authority_bump: u8,
-    pub price_fix_duration: u64,
-    pub offer_start_time: u64,
-    pub offer_end_time: u64,
+    pub token_in_mint: Pubkey,
+    pub token_out_mint: Pubkey,
+    pub time_segments: [RedemptionSingleOfferTimeSegment; MAX_SEGMENTS],
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
-pub struct OfferToken {
-    pub mint: Pubkey,
-    pub amount: u64,
+/// Redemption offer that pays out in two different tokens based on a ratio
+/// 
+/// The ratio determines how much goes to token_out_one vs token_out_two:
+/// - Uses basis points (10000 = 100%)
+/// - Example: ratio = 8000 means 80% goes to token_out_one, 20% to token_out_two
+/// - For 1e9 token_in with ratio 8000: 0.8e9 in token_out_one, 0.2e9 in token_out_two
+#[zero_copy]
+#[repr(C)]
+pub struct RedemptionDualOffer {
+    pub offer_id: u64,
+    pub token_in_mint: Pubkey,
+    pub token_out_one_mint: Pubkey,
+    pub token_out_two_mint: Pubkey,
+    pub time_segments: [RedemptionDualOfferTimeSegment; MAX_SEGMENTS],
+}
+
+#[zero_copy]
+#[repr(C)]
+pub struct RedemptionSingleOfferTimeSegment {
+    pub segment_id: u64,
+    pub start_time: u64,
+    pub end_time: u64,
+    pub price: u64,
+}
+
+#[zero_copy]
+#[repr(C)]
+pub struct RedemptionDualOfferTimeSegment {
+    pub segment_id: u64,
+    pub start_time: u64,
+    pub end_time: u64,
+    /// Percentage of token_in that goes to token_out_one (in basis points, max 10000 = 100%)
+    /// Remaining amount (10000 - token_out_one_ratio) goes to token_out_two
+    pub token_out_one_ratio: u64,
+    pub price_token_one: u64,
+    pub price_token_two: u64,
+}
+
+/// Account holding 20 RedemptionSingleOffer instances  
+#[account(zero_copy)]
+#[repr(C)]
+pub struct RedemptionOfferSingleAccount {
+    pub offers: [RedemptionSingleOffer; 20],
+    pub count: u64,
+}
+
+/// Account holding 20 RedemptionDualOffer instances
+#[account(zero_copy)]
+#[repr(C)]
+pub struct RedemptionOfferDualAccount {
+    pub offers: [RedemptionDualOffer; 20],
+    pub count: u64,
 }
 
 /// Represents the program state in the Onre App program.

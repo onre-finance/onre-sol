@@ -15,11 +15,8 @@ url = "https://api.apr.dev"
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
-[clusters]
-
-
 [scripts]
-test = "mkdir -p ./tests/fixtures && cp target/deploy/onreapp.so ./tests/fixtures/ && ./node_modules/.bin/jest --runInBand --config jest.config.js"
+test = "mkdir -p ./tests/fixtures && cp target/deploy/onreapp.so ./tests/fixtures/ && ./node_modules/.bin/jest --env=node --runInBand --config jest.config.js"
 
 [test]
 startup_wait = 5000

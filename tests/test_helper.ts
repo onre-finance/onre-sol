@@ -1,20 +1,21 @@
 import { Clock, ProgramTestContext } from "solana-bankrun"
-import { OnreApp } from "../target/types/onre_app"
+import { Onreapp } from "../target/types/onreapp"
 import { BN, Program } from "@coral-xyz/anchor"
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import { ACCOUNT_SIZE, AccountLayout, getAssociatedTokenAddressSync, MINT_SIZE, MintLayout, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import idl from "../target/idl/onreapp.json";
 
-export const ONREAPP_PROGRAM_ID = new PublicKey("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
+export const ONREAPP_PROGRAM_ID = new PublicKey((idl as any).metadata.address);
 export const INITIAL_LAMPORTS = 1_000_000_000; // 1 SOL
 
 export class TestHelper {
     context: ProgramTestContext;
-    program: Program<OnreApp>;
+    program: Program<Onreapp>;
 
     // accounts
     statePda: PublicKey;
 
-    constructor(context: ProgramTestContext, program: Program<OnreApp>) {
+    constructor(context: ProgramTestContext, program: Program<Onreapp>) {
         this.context = context;
         this.program = program;
         [this.statePda] = PublicKey.findProgramAddressSync([Buffer.from('state')], ONREAPP_PROGRAM_ID);
@@ -81,6 +82,29 @@ export class TestHelper {
         });
     
         return tokenAccountAddress;
+    }
+
+    createBuyOfferAccounts(
+        tokenInMint: PublicKey,
+        offerTokenInAmount: bigint = BigInt(0),
+        tokenOutMint: PublicKey,
+        offerTokenOutAmount: bigint = BigInt(0),
+        boss: PublicKey,
+        bossTokenInAmount: bigint = BigInt(0),
+    ): BuyOfferAccounts {
+        const [buyOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from('buy_offers_v2')], ONREAPP_PROGRAM_ID);
+        const [offerAuthority] = PublicKey.findProgramAddressSync([Buffer.from('offer_authority')], ONREAPP_PROGRAM_ID);
+        const offerTokenInPda = this.createTokenAccount(tokenInMint, offerAuthority, offerTokenInAmount, true);
+        const offerTokenOutPda = this.createTokenAccount(tokenOutMint, offerAuthority, offerTokenOutAmount, true);
+        const bossTokenInAccount = this.createTokenAccount(tokenInMint, boss, bossTokenInAmount);
+    
+        return {
+            offerAuthority,
+            buyOfferAccountPda,
+            offerTokenInPda,
+            offerTokenOutPda,
+            bossTokenInAccount,
+        }
     }
 
     createOneTokenOfferAccounts( 
@@ -166,6 +190,18 @@ export class TestHelper {
             .rpc();
     }
 
+    async makeBuyOffer(params: MakeBuyOfferParams) {
+        return await this.program.methods
+            .makeBuyOffer(
+                new BN(params.offerId))
+            .accounts({
+                tokenInMint: params.tokenInMint,
+                tokenOutMint: params.tokenOutMint,
+                state: this.statePda,
+            })
+            .rpc();
+    }
+
     async makeOfferTwo(params: MakeOfferTwoParams) {
         return await this.program.methods
             .makeOfferTwo(
@@ -241,6 +277,14 @@ export class TestHelper {
     }
 }
 
+type BuyOfferAccounts = {
+    offerAuthority: PublicKey;
+    buyOfferAccountPda: PublicKey;
+    offerTokenInPda: PublicKey;
+    offerTokenOutPda: PublicKey;
+    bossTokenInAccount: PublicKey;
+}
+
 type OfferOneTokenAccounts = {
     offerId: BN;
     offerAuthority: PublicKey;
@@ -271,6 +315,12 @@ type MakeOfferOneParams = {
     priceFixDuration: number;
     sellTokenMint: PublicKey;
     buyTokenMint: PublicKey;
+}
+
+type MakeBuyOfferParams = {
+    offerId: BN;
+    tokenInMint: PublicKey;
+    tokenOutMint: PublicKey;
 }
 
 type MakeOfferTwoParams = {
