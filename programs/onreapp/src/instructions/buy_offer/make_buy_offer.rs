@@ -122,48 +122,9 @@ pub fn make_buy_offer(
 //     Ok(())
 // }
 
-fn validate_non_zero_amounts(amounts: &[u64]) -> Result<()> {
-    require!(
-        amounts.iter().all(|&x| x > 0),
-        MakeBuyOfferErrorCode::InvalidAmount
-    );
-    Ok(())
-}
-
-fn validate_time_params(start_time: u64, end_time: u64, price_fix_duration: u64) -> Result<()> {
-    require!(
-        start_time < end_time,
-        MakeBuyOfferErrorCode::InvalidOfferTime
-    );
-    require!(
-        price_fix_duration > 0,
-        MakeBuyOfferErrorCode::InvalidPriceFixDuration
-    );
-    require!(
-        (end_time - start_time) >= price_fix_duration,
-        MakeBuyOfferErrorCode::InvalidPriceFixDuration
-    );
-    Ok(())
-}
-
 /// Error codes for buy offer creation operations.
 #[error_code]
 pub enum MakeBuyOfferErrorCode {
-    /// Triggered when the boss's token account doesn't have sufficient balance.
-    #[msg("Insufficient token balance in boss account")]
-    InsufficientBalance,
-
-    /// Triggered when amounts are zero or invalid.
-    #[msg("Token amounts must be greater than zero")]
-    InvalidAmount,
-
-    /// Triggered when offer times are invalid.
-    #[msg("Offer end time must be greater than start time")]
-    InvalidOfferTime,
-
-    /// Triggered when the price fix duration is invalid.
-    #[msg("Price fix duration must be greater than zero and less than or equal to the total offer duration")]
-    InvalidPriceFixDuration,
 
     /// Triggered when the BuyOfferAccount is full.
     #[msg("Buy offer account is full, cannot create more offers")]

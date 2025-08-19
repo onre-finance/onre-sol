@@ -6,7 +6,9 @@ import { BankrunProvider } from "anchor-bankrun";
 import { BN, Program } from "@coral-xyz/anchor";
 import idl from "../../target/idl/onreapp.json";
 
-describe("make offer", () => {
+const MAX_BUY_OFFERS = 10;
+
+describe("Make buy offer", () => {
     let testHelper: TestHelper;
 
     let tokenInMint: PublicKey;
@@ -14,7 +16,7 @@ describe("make offer", () => {
 
     let boss: PublicKey;
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         const programInfo: AddedProgram = {
             programId: ONREAPP_PROGRAM_ID,
             name: "onreapp",
@@ -61,10 +63,15 @@ describe("make offer", () => {
     });
 
     test("Make multiple offers should succeed", async () => {
+        // given
+        const [buyOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from('buy_offers')], ONREAPP_PROGRAM_ID);
+        const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOfferAccountPda);
+        const offerCount = buyOfferAccount.count.toNumber();
+
         // when
-        // make first offer
+        // make one offer
         await testHelper.makeBuyOffer({
-            offerId: new BN(1),
+            offerId: new BN(4321),
             tokenInMint,
             tokenOutMint,
         });
@@ -72,27 +79,57 @@ describe("make offer", () => {
         const token2In = testHelper.createMint(boss, BigInt(100_000e9), 9);
         const token2Out = testHelper.createMint(boss, BigInt(100_000e9), 9);
 
-        // make second offer
+        // make another offer
         await testHelper.makeBuyOffer({
-            offerId: new BN(2),
+            offerId: new BN(1234),
             tokenInMint: token2In,
             tokenOutMint: token2Out,
         });
 
         // then
-        const [buyOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from('buy_offers')], ONREAPP_PROGRAM_ID);
         const buyOfferAccountData = await testHelper.program.account.buyOfferAccount.fetch(buyOfferAccountPda);
         
-        expect(buyOfferAccountData.count.toNumber()).toBe(2);
+        expect(buyOfferAccountData.count.toNumber()).toBe(offerCount + 2);
 
-        const firstOffer = buyOfferAccountData.offers[0];
-        expect(firstOffer.offerId.toNumber()).toBe(1);
+        const firstOffer = buyOfferAccountData.offers.find(offer => offer.offerId.toNumber() === 4321);
+        expect(firstOffer.offerId.toNumber()).toBe(4321);
         expect(firstOffer.tokenInMint.toString()).toBe(tokenInMint.toString());
         expect(firstOffer.tokenOutMint.toString()).toBe(tokenOutMint.toString());
 
-        const secondOffer = buyOfferAccountData.offers[1];
-        expect(secondOffer.offerId.toNumber()).toBe(2);
+        const secondOffer = buyOfferAccountData.offers.find(offer => offer.offerId.toNumber() === 1234);
+        expect(secondOffer.offerId.toNumber()).toBe(1234);
         expect(secondOffer.tokenInMint.toString()).toBe(token2In.toString());
         expect(secondOffer.tokenOutMint.toString()).toBe(token2Out.toString());
+    });
+
+    test("Make an offer with invalid token mints should fail", async () => {
+        // when
+        await expect(testHelper.makeBuyOffer({
+            offerId: new BN(1),
+            tokenInMint: new PublicKey(0),
+            tokenOutMint: new PublicKey(0),
+        })).rejects.toThrow();
+    });
+
+    test("Make more than max offers should fail", async () => {
+        // given
+        const [buyOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from('buy_offers')], ONREAPP_PROGRAM_ID);
+        const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOfferAccountPda);
+        const offerCount = buyOfferAccount.count.toNumber();
+
+        for (let i = offerCount; i < MAX_BUY_OFFERS; i++) {
+            await testHelper.makeBuyOffer({
+                offerId: new BN(i),
+                tokenInMint,
+                tokenOutMint,
+            });
+        }
+
+        // when
+        await expect(testHelper.makeBuyOffer({
+            offerId: new BN(1),
+            tokenInMint,
+            tokenOutMint,
+        })).rejects.toThrow();
     });
 });

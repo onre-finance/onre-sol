@@ -356,26 +356,6 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "insufficientBalance",
-      "msg": "Insufficient token balance in boss account"
-    },
-    {
-      "code": 6001,
-      "name": "invalidAmount",
-      "msg": "Token amounts must be greater than zero"
-    },
-    {
-      "code": 6002,
-      "name": "invalidOfferTime",
-      "msg": "Offer end time must be greater than start time"
-    },
-    {
-      "code": 6003,
-      "name": "invalidPriceFixDuration",
-      "msg": "Price fix duration must be greater than zero and less than or equal to the total offer duration"
-    },
-    {
-      "code": 6004,
       "name": "accountFull",
       "msg": "Buy offer account is full, cannot create more offers"
     }
