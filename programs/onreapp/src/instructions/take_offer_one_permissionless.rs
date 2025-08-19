@@ -16,13 +16,14 @@ pub struct OfferTakenOnePermissionless {
 
 /// Account structure for taking an offer with one buy token via permissionless route.
 ///
-/// This instruction uses an intermediary token account controlled by the program,
-/// transferring tokens from offer -> intermediary -> user. The intermediary account persists.
+/// This instruction uses intermediary token accounts controlled by the program,
+/// routing both sell and buy tokens through them. The intermediary accounts persist.
 ///
 /// # Flow
-/// 1. User provides sell tokens to offer
-/// 2. Offer transfers buy tokens to intermediary account (program-controlled)
-/// 3. Intermediary account transfers buy tokens to user
+/// 1. User provides sell tokens to intermediary account
+/// 2. Intermediary account transfers sell tokens to offer
+/// 3. Offer transfers buy tokens to intermediary account (program-controlled)
+/// 4. Intermediary account transfers buy tokens to user
 ///
 /// # Preconditions
 /// - All user ATAs must be initialized prior to execution
@@ -52,7 +53,7 @@ pub struct TakeOfferOnePermissionless<'info> {
     )]
     pub offer_buy_token_1_account: Account<'info, TokenAccount>,
 
-    /// User's sell token ATA, sends sell tokens to the offer.
+    /// User's sell token ATA, sends sell tokens to the intermediary account.
     /// Ensures mint matches the offer's sell token mint.
     #[account(
         mut,
@@ -82,8 +83,23 @@ pub struct TakeOfferOnePermissionless<'info> {
     )]
     pub intermediary_buy_token_account: Account<'info, TokenAccount>,
 
+    /// Intermediary token account that temporarily holds sell tokens.
+    /// This account is controlled by the program and is created once, then persists.
+    #[account(
+        init_if_needed,
+        payer = user,
+        associated_token::mint = sell_token_mint,
+        associated_token::authority = intermediary_authority,
+    )]
+    pub intermediary_sell_token_account: Account<'info, TokenAccount>,
+
     /// The mint account for the buy token 1.
+    #[account(constraint = buy_token_1_mint.key() == offer.buy_token_1.mint)]
     pub buy_token_1_mint: Account<'info, Mint>,
+
+    /// The mint account for the sell token.
+    #[account(constraint = sell_token_mint.key() == offer.sell_token_mint)]
+    pub sell_token_mint: Account<'info, Mint>,
 
     /// Derived PDA for offer token authority, controls offer token accounts.
     /// CHECK: This account is validated by the seed derivation.
@@ -244,21 +260,42 @@ pub fn take_offer_one_permissionless(
         TakeOfferPermissionlessErrorCode::InsufficientOfferTokenOneBalance
     );
 
-    // Step 1: Transfer sell tokens from user to offer
+    // Step 1: Transfer sell tokens from user to intermediary account
     token::transfer(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
                 from: ctx.accounts.user_sell_token_account.to_account_info(),
-                to: ctx.accounts.offer_sell_token_account.to_account_info(),
+                to: ctx.accounts.intermediary_sell_token_account.to_account_info(),
                 authority: ctx.accounts.user.to_account_info(),
             },
         ),
         sell_token_amount,
     )?;
-    msg!("Transferring {} sell tokens from user to offer", sell_token_amount);
+    msg!("Transferring {} sell tokens from user to intermediary", sell_token_amount);
 
-    // Step 2: Transfer buy tokens from offer to intermediary account
+    // Step 2: Transfer sell tokens from intermediary account to offer
+    let intermediary_seeds = &[
+        b"permissionless-1".as_ref(),
+        &[ctx.bumps.intermediary_authority],
+    ];
+    let intermediary_signer_seeds = &[&intermediary_seeds[..]];
+
+    token::transfer(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.intermediary_sell_token_account.to_account_info(),
+                to: ctx.accounts.offer_sell_token_account.to_account_info(),
+                authority: ctx.accounts.intermediary_authority.to_account_info(),
+            },
+            intermediary_signer_seeds,
+        ),
+        sell_token_amount,
+    )?;
+    msg!("Transferring {} sell tokens from intermediary to offer", sell_token_amount);
+
+    // Step 3: Transfer buy tokens from offer to intermediary account
     let offer_id_bytes = &offer.offer_id.to_le_bytes();
     let offer_seeds = &[
         b"offer_authority".as_ref(),
@@ -281,13 +318,7 @@ pub fn take_offer_one_permissionless(
     )?;
     msg!("Transferring {} buy tokens from offer to intermediary account", buy_token_1_amount);
 
-    // Step 3: Transfer buy tokens from intermediary account to user
-    let intermediary_seeds = &[
-        b"permissionless-1".as_ref(),
-        &[ctx.bumps.intermediary_authority],
-    ];
-    let intermediary_signer_seeds = &[&intermediary_seeds[..]];
-
+    // Step 4: Transfer buy tokens from intermediary account to user
     token::transfer(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),

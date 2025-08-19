@@ -1343,6 +1343,7 @@ describe("onreapp", () => {
             .accounts({
                 offer: offerPda,
                 buyToken1Mint,
+                sellTokenMint,
                 user: user.publicKey,
             })
             .signers([user.payer])
@@ -1419,6 +1420,7 @@ describe("onreapp", () => {
             .accounts({
                 offer: offerPda,
                 buyToken1Mint,
+                sellTokenMint,
                 user: user.publicKey,
             })
             .instruction();
@@ -1475,6 +1477,7 @@ describe("onreapp", () => {
                 .accounts({
                     offer: offerPda,
                     buyToken1Mint: buyToken2Mint, // Wrong mint!
+                    sellTokenMint,
                     user: user.publicKey,
                 })
                 .signers([user.payer])
@@ -1587,6 +1590,7 @@ describe("onreapp", () => {
             .accounts({
                 offer: permissionlessOfferPda,
                 buyToken1Mint,
+                sellTokenMint,
                 user: permissionlessUser.publicKey,
             })
             .signers([permissionlessUser.payer])
@@ -1657,6 +1661,7 @@ describe("onreapp", () => {
                 .accounts({
                     offer: offerPda,
                     buyToken1Mint,
+                    sellTokenMint,
                     user: user.publicKey,
                 })
                 .signers([user.payer])
