@@ -59,13 +59,21 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
     Ok(())
 }
 
+/// Account structure for initializing a permissionless account.
+///
+/// This struct defines the accounts required to create a new permissionless account,
+/// which can be used as an intermediary authority for routing tokens.
+///
+/// # Preconditions
+/// - Only the boss can initialize permissionless accounts
+/// - The permissionless account must not exist prior to execution
 #[derive(Accounts)]
 pub struct InitializePermissionlessAccount<'info> {
-    /// The program state account, initialized with the boss’s public key.
+    /// The permissionless account to be created.
     ///
     /// # Note
-    /// - Space is allocated as `8 + State::INIT_SPACE` bytes, where 8 bytes are for the discriminator.
-    /// - Seeded with `"state"` and a bump for PDA derivation.
+    /// - Space is allocated as `8 + PermissionlessAccount::INIT_SPACE` bytes
+    /// - Seeded with hardcoded "permissionless-1" for PDA derivation
     #[account(
         init,
         payer = boss,
@@ -75,10 +83,11 @@ pub struct InitializePermissionlessAccount<'info> {
     )]
     pub permissionless_account: Account<'info, PermissionlessAccount>,
 
+    /// The program state account, used to verify boss authorization.
     #[account(has_one = boss)]
     pub state: Account<'info, State>,
 
-    /// The signer funding and authorizing the state initialization, becomes the boss.
+    /// The boss account that authorizes and pays for the permissionless account creation.
     #[account(mut)]
     pub boss: Signer<'info>,
 
@@ -86,6 +95,22 @@ pub struct InitializePermissionlessAccount<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Initializes a new permissionless account with the provided name.
+///
+/// Creates a permissionless account that can serve as an intermediary authority
+/// for token routing operations. Only the boss can create these accounts.
+/// The PDA is always derived using the hardcoded seed "permissionless-1".
+///
+/// # Arguments
+/// - `ctx`: Context containing the accounts for permissionless account creation
+/// - `name`: The name to store in the permissionless account (separate from PDA seeds)
+///
+/// # Returns
+/// A `Result` indicating success or failure.
+///
+/// # Errors
+/// - Fails if the caller is not the boss (enforced by `has_one = boss` constraint)
+/// - Fails if the permissionless account already exists
 pub fn initialize_permissionless_account(ctx: Context<InitializePermissionlessAccount>, name: String) -> Result<()> {
     let permissionless_account = &mut ctx.accounts.permissionless_account;
     permissionless_account.name = name;

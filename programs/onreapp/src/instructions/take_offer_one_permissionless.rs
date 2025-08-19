@@ -28,7 +28,6 @@ pub struct OfferTakenOnePermissionless {
 /// - All user ATAs must be initialized prior to execution
 /// - Offer must have sufficient buy tokens available
 #[derive(Accounts)]
-#[instruction(sell_token_amount: u64)]
 pub struct TakeOfferOnePermissionless<'info> {
     /// The offer account being taken, providing offer details.
     /// Ensures this is a single buy token offer by checking `buy_token_mint_2`.

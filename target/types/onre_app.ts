@@ -1253,11 +1253,11 @@ export type OnreApp = {
         {
           "name": "permissionlessAccount",
           "docs": [
-            "The program state account, initialized with the boss’s public key.",
+            "The permissionless account to be created.",
             "",
             "# Note",
-            "- Space is allocated as `8 + State::INIT_SPACE` bytes, where 8 bytes are for the discriminator.",
-            "- Seeded with `\"state\"` and a bump for PDA derivation."
+            "- Space is allocated as `8 + PermissionlessAccount::INIT_SPACE` bytes",
+            "- Seeded with hardcoded \"permissionless-1\" for PDA derivation"
           ],
           "writable": true,
           "pda": {
@@ -1287,12 +1287,15 @@ export type OnreApp = {
           }
         },
         {
-          "name": "state"
+          "name": "state",
+          "docs": [
+            "The program state account, used to verify boss authorization."
+          ]
         },
         {
           "name": "boss",
           "docs": [
-            "The signer funding and authorizing the state initialization, becomes the boss."
+            "The boss account that authorizes and pays for the permissionless account creation."
           ],
           "writable": true,
           "signer": true,
