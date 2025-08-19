@@ -4,14 +4,6 @@ const MAX_SEGMENTS: usize = 10;
 
 // Offer structs
 // Represents an offer data structure with time segments and typed structure.
-#[zero_copy]
-#[repr(C)]
-pub struct BuyOffer {
-    pub offer_id: u64,
-    pub token_in_mint: Pubkey,
-    pub token_out_mint: Pubkey,
-    pub time_segments: [BuyOfferTimeSegment; MAX_SEGMENTS],
-}
 
 #[zero_copy]
 #[repr(C)]
@@ -40,17 +32,6 @@ pub struct RedemptionDualOffer {
 
 #[zero_copy]
 #[repr(C)]
-pub struct BuyOfferTimeSegment {
-    pub segment_id: u64,
-    pub start_time: u64,
-    pub end_time: u64,
-    pub start_price: u64,
-    pub end_price: u64,
-    pub price_fix_duration: u64,
-}
-
-#[zero_copy]
-#[repr(C)]
 pub struct RedemptionSingleOfferTimeSegment {
     pub segment_id: u64,
     pub start_time: u64,
@@ -69,14 +50,6 @@ pub struct RedemptionDualOfferTimeSegment {
     pub token_out_one_ratio: u64,
     pub price_token_one: u64,
     pub price_token_two: u64,
-}
-
-/// Account holding 20 BuyOffer instances
-#[account(zero_copy)]
-#[repr(C)]
-pub struct BuyOfferAccount {
-    pub offers: [BuyOffer; 20],
-    pub count: u64
 }
 
 /// Account holding 20 RedemptionSingleOffer instances  

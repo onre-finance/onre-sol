@@ -34,39 +34,59 @@ pub mod state;
 /// - PDA (Program Derived Address) accounts are used for offer and token authorities, ensuring ownership.
 /// - Events are emitted for significant actions (e.g., `OfferMadeOne`, `OfferTakenTwo`) for off-chain traceability.
 #[program]
-pub mod onre_app {
+pub mod onreapp {
     use super::*;
 
-    /// Creates an offer with one buy token.
+    /// Creates a buy offer.
     ///
-    /// Delegates to `make_offer::make_offer_one`.
-    /// The price of the sell token changes over time based on `sell_token_start_amount`,
-    /// `sell_token_end_amount`, and `price_fix_duration` within the offer's active time window.
-    /// Emits an `OfferMadeOne` event upon success.
+    /// Delegates to `buy_offer::make_buy_offer`.
+    /// The price of the token_out changes over time based on `start_price`,
+    /// `end_price`, and `price_fix_duration` within the offer's active time window.
+    /// Emits a `BuyOfferMade` event upon success.
     ///
     /// # Arguments
-    /// - `ctx`: Context for `MakeOfferOne`.
+    /// - `ctx`: Context for `MakeBuyOffer`.
     /// - `offer_id`: Unique ID for the offer.
-    /// - `buy_token_total_amount`: Total amount of the buy token offered.
+    pub fn make_buy_offer(
+        ctx: Context<MakeBuyOffer>,
+        offer_id: u64,
+    ) -> Result<()> {
+        buy_offer::make_buy_offer(ctx, offer_id)
+    }
+
+    /// Creates an offer with two buy tokens.
+    ///
+    /// Delegates to `make_offer::make_offer_two`.
+    /// The price of the sell token changes over time based on `sell_token_start_amount`,
+    /// `sell_token_end_amount`, and `price_fix_duration` within the offer's active time window.
+    /// Emits an `OfferMadeTwo` event upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `MakeOfferTwo`.
+    /// - `offer_id`: Unique ID for the offer.
+    /// - `buy_token_1_total_amount`: Total amount of the first buy token offered.
+    /// - `buy_token_2_total_amount`: Total amount of the second buy token offered.
     /// - `sell_token_start_amount`: Sell token amount at the start of the offer.
     /// - `sell_token_end_amount`: Sell token amount at the end of the offer.
     /// - `offer_start_time`: Offer activation timestamp.
     /// - `offer_end_time`: Offer expiration timestamp.
     /// - `price_fix_duration`: Duration of each price interval.
-    // pub fn make_offer_one(
-    //     ctx: Context<MakeOfferOne>,
+    // pub fn make_offer_two(
+    //     ctx: Context<MakeOfferTwo>,
     //     offer_id: u64,
-    //     buy_token_total_amount: u64,
+    //     buy_token_1_total_amount: u64,
+    //     buy_token_2_total_amount: u64,
     //     sell_token_start_amount: u64,
     //     sell_token_end_amount: u64,
     //     offer_start_time: u64,
     //     offer_end_time: u64,
     //     price_fix_duration: u64,
     // ) -> Result<()> {
-    //     make_offer::make_offer_one(
+    //     make_offer::make_offer_two(
     //         ctx,
     //         offer_id,
-    //         buy_token_total_amount,
+    //         buy_token_1_total_amount,
+    //         buy_token_2_total_amount,
     //         sell_token_start_amount,
     //         sell_token_end_amount,
     //         offer_start_time,

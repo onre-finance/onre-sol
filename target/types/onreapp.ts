@@ -2,12 +2,12 @@
  * Program IDL in camelCase format in order to be used in JS/TS.
  *
  * Note that this is only a type helper and is not the actual IDL. The original
- * IDL can be found at `target/idl/onre_app.json`.
+ * IDL can be found at `target/idl/onreapp.json`.
  */
-export type OnreApp = {
-  "address": "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe",
+export type Onreapp = {
+  "address": "DXcW85J14g5BhF2a6fpZewY64XbDLpm8e6C6KSbajs5z",
   "metadata": {
-    "name": "onreApp",
+    "name": "onreapp",
     "version": "0.1.0",
     "spec": "0.1.0",
     "description": "Created with Anchor"
@@ -43,17 +43,18 @@ export type OnreApp = {
     {
       "name": "initialize",
       "docs": [
-        "Creates an offer with one buy token.",
+        "Creates an offer with two buy tokens.",
         "",
-        "Delegates to `make_offer::make_offer_one`.",
+        "Delegates to `make_offer::make_offer_two`.",
         "The price of the sell token changes over time based on `sell_token_start_amount`,",
         "`sell_token_end_amount`, and `price_fix_duration` within the offer's active time window.",
-        "Emits an `OfferMadeOne` event upon success.",
+        "Emits an `OfferMadeTwo` event upon success.",
         "",
         "# Arguments",
-        "- `ctx`: Context for `MakeOfferOne`.",
+        "- `ctx`: Context for `MakeOfferTwo`.",
         "- `offer_id`: Unique ID for the offer.",
-        "- `buy_token_total_amount`: Total amount of the buy token offered.",
+        "- `buy_token_1_total_amount`: Total amount of the first buy token offered.",
+        "- `buy_token_2_total_amount`: Total amount of the second buy token offered.",
         "- `sell_token_start_amount`: Sell token amount at the start of the offer.",
         "- `sell_token_end_amount`: Sell token amount at the end of the offer.",
         "- `offer_start_time`: Offer activation timestamp.",
@@ -98,6 +99,32 @@ export type OnreApp = {
           }
         },
         {
+          "name": "buyOfferAccount",
+          "docs": [
+            "The buy offer account within the BuyOfferAccount, rent paid by `boss`."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "boss",
           "docs": [
             "The signer funding and authorizing the state initialization, becomes the boss."
@@ -114,6 +141,108 @@ export type OnreApp = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "makeBuyOffer",
+      "docs": [
+        "Creates a buy offer.",
+        "",
+        "Delegates to `buy_offer::make_buy_offer`.",
+        "The price of the token_out changes over time based on `start_price`,",
+        "`end_price`, and `price_fix_duration` within the offer's active time window.",
+        "Emits a `BuyOfferMade` event upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `MakeBuyOffer`.",
+        "- `offer_id`: Unique ID for the offer."
+      ],
+      "discriminator": [
+        252,
+        213,
+        23,
+        83,
+        192,
+        243,
+        197,
+        78
+      ],
+      "accounts": [
+        {
+          "name": "buyOfferAccount",
+          "docs": [
+            "The buy offer account within the BuyOfferAccount, rent paid by `boss`. Already initialized in initialize."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "Mint of the token_in for the offer."
+          ]
+        },
+        {
+          "name": "tokenOutMint",
+          "docs": [
+            "Mint of the token_out for the offer."
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer funding and authorizing the offer creation."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program for token operations."
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "setBoss",
@@ -170,6 +299,19 @@ export type OnreApp = {
   ],
   "accounts": [
     {
+      "name": "buyOfferAccount",
+      "discriminator": [
+        133,
+        58,
+        184,
+        29,
+        30,
+        246,
+        204,
+        136
+      ]
+    },
+    {
       "name": "state",
       "discriminator": [
         216,
@@ -196,12 +338,26 @@ export type OnreApp = {
         191,
         69
       ]
+    },
+    {
+      "name": "buyOfferMadeEvent",
+      "discriminator": [
+        76,
+        250,
+        64,
+        147,
+        6,
+        201,
+        35,
+        56
+      ]
     }
   ],
   "errors": [
     {
       "code": 6000,
-      "name": "bossAlreadySet"
+      "name": "accountFull",
+      "msg": "Buy offer account is full, cannot create more offers"
     }
   ],
   "types": [
@@ -226,6 +382,136 @@ export type OnreApp = {
               "The new boss’s public key."
             ],
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "buyOffer",
+      "docs": [
+        "Buy offer struct for token exchange with dynamic pricing"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "type": "u64"
+          },
+          {
+            "name": "tokenInMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenOutMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "timeSegments",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "buyOfferTimeSegment"
+                  }
+                },
+                10
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "buyOfferAccount",
+      "docs": [
+        "Account holding MAX_BUY_OFFERS BuyOffer instances (should fit 10KB limit)"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offers",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "buyOffer"
+                  }
+                },
+                10
+              ]
+            }
+          },
+          {
+            "name": "count",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "buyOfferMadeEvent",
+      "docs": [
+        "Event emitted when a buy offer is created."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "buyOfferTimeSegment",
+      "docs": [
+        "Time segment for buy offers with pricing information"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "segmentId",
+            "type": "u64"
+          },
+          {
+            "name": "startTime",
+            "type": "u64"
+          },
+          {
+            "name": "endTime",
+            "type": "u64"
+          },
+          {
+            "name": "startPrice",
+            "type": "u64"
+          },
+          {
+            "name": "endPrice",
+            "type": "u64"
+          },
+          {
+            "name": "priceFixDuration",
+            "type": "u64"
           }
         ]
       }
