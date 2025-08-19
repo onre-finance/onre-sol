@@ -139,6 +139,13 @@ pub mod onre_app {
         initialize::initialize(ctx)
     }
 
+    pub fn initialize_permissionless_account(
+        ctx: Context<InitializePermissionlessAccount>,
+        name: String,
+    ) -> Result<()> {
+        initialize::initialize_permissionless_account(ctx, name)
+    }
+
     /// Updates the boss in the program state.
     ///
     /// Delegates to `set_boss::set_boss` to change the boss, emitting a `BossUpdated` event.
@@ -172,5 +179,24 @@ pub mod onre_app {
     /// - `sell_token_amount`: Amount of sell tokens the user provides.
     pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Result<()> {
         take_offer::take_offer_two(ctx, sell_token_amount)
+    }
+
+    /// Takes an offer with one buy token via permissionless route.
+    ///
+    /// Delegates to `take_offer_one_permissionless::take_offer_one_permissionless`.
+    /// This instruction creates a program-controlled intermediary token account,
+    /// routes tokens from offer -> intermediary -> user, then closes the intermediary account.
+    /// The economic outcome is identical to `take_offer_one`, but provides an additional
+    /// layer of indirection through the program-controlled intermediary account.
+    /// Emits an `OfferTakenOnePermissionless` event.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `TakeOfferOnePermissionless`.
+    /// - `sell_token_amount`: Amount of sell tokens the user provides.
+    pub fn take_offer_one_permissionless(
+        ctx: Context<TakeOfferOnePermissionless>,
+        sell_token_amount: u64
+    ) -> Result<()> {
+        take_offer_one_permissionless::take_offer_one_permissionless(ctx, sell_token_amount)
     }
 }

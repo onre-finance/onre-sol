@@ -48,3 +48,10 @@ pub struct OfferToken {
 pub struct State {
     pub boss: Pubkey,
 }
+
+#[account]
+#[derive(InitSpace)]
+pub struct PermissionlessAccount {
+    #[max_len(50)]
+    pub name: String,
+}

@@ -1238,6 +1238,87 @@ export type OnreApp = {
       "args": []
     },
     {
+      "name": "initializePermissionlessAccount",
+      "discriminator": [
+        144,
+        160,
+        10,
+        56,
+        91,
+        17,
+        77,
+        115
+      ],
+      "accounts": [
+        {
+          "name": "permissionlessAccount",
+          "docs": [
+            "The permissionless account to be created.",
+            "",
+            "# Note",
+            "- Space is allocated as `8 + PermissionlessAccount::INIT_SPACE` bytes",
+            "- Seeded with hardcoded \"permissionless-1\" for PDA derivation"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  108,
+                  101,
+                  115,
+                  115,
+                  45,
+                  49
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "The program state account, used to verify boss authorization."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account that authorizes and pays for the permissionless account creation."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ]
+    },
+    {
       "name": "makeOfferOne",
       "docs": [
         "Creates an offer with one buy token.",
@@ -2872,6 +2953,621 @@ export type OnreApp = {
       ]
     },
     {
+      "name": "takeOfferOnePermissionless",
+      "docs": [
+        "Takes an offer with one buy token via permissionless route.",
+        "",
+        "Delegates to `take_offer_one_permissionless::take_offer_one_permissionless`.",
+        "This instruction creates a program-controlled intermediary token account,",
+        "routes tokens from offer -> intermediary -> user, then closes the intermediary account.",
+        "The economic outcome is identical to `take_offer_one`, but provides an additional",
+        "layer of indirection through the program-controlled intermediary account.",
+        "Emits an `OfferTakenOnePermissionless` event.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `TakeOfferOnePermissionless`.",
+        "- `sell_token_amount`: Amount of sell tokens the user provides."
+      ],
+      "discriminator": [
+        127,
+        154,
+        11,
+        211,
+        28,
+        202,
+        108,
+        174
+      ],
+      "accounts": [
+        {
+          "name": "offer",
+          "docs": [
+            "The offer account being taken, providing offer details.",
+            "Ensures this is a single buy token offer by checking `buy_token_mint_2`."
+          ]
+        },
+        {
+          "name": "offerSellTokenAccount",
+          "docs": [
+            "Offer's sell token ATA, receives the user's sell tokens."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "offerTokenAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "offer.sell_token_mint",
+                "account": "offer"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "offerBuyToken1Account",
+          "docs": [
+            "Offer's buy token 1 ATA, sends buy tokens to the intermediary account."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "offerTokenAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "offer.buy_token_1.mint",
+                "account": "offer"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "userSellTokenAccount",
+          "docs": [
+            "User's sell token ATA, sends sell tokens to the offer.",
+            "Ensures mint matches the offer's sell token mint."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "offer.sell_token_mint",
+                "account": "offer"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "userBuyToken1Account",
+          "docs": [
+            "User's buy token 1 ATA, receives buy tokens from the intermediary account.",
+            "Ensures mint matches the offer's buy token 1 mint."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "buyToken1Mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "intermediaryBuyTokenAccount",
+          "docs": [
+            "Intermediary token account that temporarily holds buy tokens.",
+            "This account is controlled by the program and is created once, then persists."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "intermediaryAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "buyToken1Mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "buyToken1Mint",
+          "docs": [
+            "The mint account for the buy token 1."
+          ]
+        },
+        {
+          "name": "offerTokenAuthority",
+          "docs": [
+            "Derived PDA for offer token authority, controls offer token accounts."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "offer.offer_id",
+                "account": "offer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "intermediaryAuthority",
+          "docs": [
+            "Derived PDA for intermediary authority, controls the intermediary token account.",
+            "Uses a unique seed to avoid conflicts with other PDAs."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  108,
+                  101,
+                  115,
+                  115,
+                  45,
+                  49
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "docs": [
+            "The user taking the offer, signs the transaction and pays for account creation."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program for token operations."
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token program for ATA operations."
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program, required for account creation."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "sellTokenAmount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "takeOfferTwo",
       "docs": [
         "Takes an offer with two buy tokens, respecting the current dynamic price.",
@@ -3552,6 +4248,19 @@ export type OnreApp = {
       ]
     },
     {
+      "name": "permissionlessAccount",
+      "discriminator": [
+        9,
+        107,
+        135,
+        228,
+        163,
+        199,
+        67,
+        169
+      ]
+    },
+    {
       "name": "state",
       "discriminator": [
         216,
@@ -3632,6 +4341,19 @@ export type OnreApp = {
       ]
     },
     {
+      "name": "offerTakenOnePermissionless",
+      "discriminator": [
+        254,
+        0,
+        6,
+        196,
+        21,
+        185,
+        214,
+        157
+      ]
+    },
+    {
       "name": "offerTakenTwo",
       "discriminator": [
         141,
@@ -3666,36 +4388,31 @@ export type OnreApp = {
     },
     {
       "code": 6001,
-      "name": "insufficientOfferTokenTwoBalance",
-      "msg": "Insufficient tokens remaining in the offer for token 2."
-    },
-    {
-      "code": 6002,
       "name": "invalidSellTokenMint",
       "msg": "The sell token mint does not match the offer."
     },
     {
-      "code": 6003,
+      "code": 6002,
       "name": "invalidBuyTokenMint",
       "msg": "The buy token mint does not match the offer."
     },
     {
-      "code": 6004,
+      "code": 6003,
       "name": "invalidTakeOffer",
       "msg": "The offer is of 2 buy token type."
     },
     {
-      "code": 6005,
+      "code": 6004,
       "name": "calculationOverflow",
       "msg": "Calculation overflowed or invalid."
     },
     {
-      "code": 6006,
+      "code": 6005,
       "name": "zeroBuyTokenAmount",
       "msg": "Zero buy token amount."
     },
     {
-      "code": 6007,
+      "code": 6006,
       "name": "invalidCurrentTime",
       "msg": "Current time must be within the offer's start and end time range."
     }
@@ -3945,6 +4662,41 @@ export type OnreApp = {
       }
     },
     {
+      "name": "offerTakenOnePermissionless",
+      "docs": [
+        "Event emitted when an offer with one buy token is taken via permissionless route."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "type": "u64"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "sellTokenAmount",
+            "type": "u64"
+          },
+          {
+            "name": "buyToken1Amount",
+            "type": "u64"
+          },
+          {
+            "name": "remainingBuyTokenAmount",
+            "type": "u64"
+          },
+          {
+            "name": "intermediaryAccount",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "offerTakenTwo",
       "docs": [
         "Event emitted when an offer with two buy tokens is taken."
@@ -3995,6 +4747,18 @@ export type OnreApp = {
           {
             "name": "amount",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "permissionlessAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string"
           }
         ]
       }
