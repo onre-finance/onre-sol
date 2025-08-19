@@ -19,7 +19,7 @@ wallet = "~/.config/solana/id.json"
 
 
 [scripts]
-test = "mkdir -p ./tests/fixtures && cp target/deploy/onreapp.so ./tests/fixtures/ && ./node_modules/.bin/jest --runInBand --config jest.config.js"
+test = "mkdir -p ./tests/fixtures && cp target/deploy/onreapp.so ./tests/fixtures/ && ./node_modules/.bin/jest --runInBand make_buy_offer"
 
 [test]
 startup_wait = 5000

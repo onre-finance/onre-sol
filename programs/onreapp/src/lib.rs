@@ -37,43 +37,45 @@ pub mod state;
 pub mod onre_app {
     use super::*;
 
-    /// Creates an offer with one buy token.
+    /// Creates a buy offer.
     ///
-    /// Delegates to `make_offer::make_offer_one`.
-    /// The price of the sell token changes over time based on `sell_token_start_amount`,
-    /// `sell_token_end_amount`, and `price_fix_duration` within the offer's active time window.
-    /// Emits an `OfferMadeOne` event upon success.
+    /// Delegates to `buy_offer::make_buy_offer`.
+    /// The price of the token_out changes over time based on `start_price`,
+    /// `end_price`, and `price_fix_duration` within the offer's active time window.
+    /// Emits a `BuyOfferMade` event upon success.
     ///
     /// # Arguments
-    /// - `ctx`: Context for `MakeOfferOne`.
+    /// - `ctx`: Context for `MakeBuyOffer`.
     /// - `offer_id`: Unique ID for the offer.
-    /// - `buy_token_total_amount`: Total amount of the buy token offered.
-    /// - `sell_token_start_amount`: Sell token amount at the start of the offer.
-    /// - `sell_token_end_amount`: Sell token amount at the end of the offer.
-    /// - `offer_start_time`: Offer activation timestamp.
-    /// - `offer_end_time`: Offer expiration timestamp.
+    /// - `token_in_amount`: Total amount of the token_in offered.
+    /// - `start_price`: Price at the start of the offer.
+    /// - `end_price`: Price at the end of the offer.
+    /// - `start_time`: Offer activation timestamp.
+    /// - `end_time`: Offer expiration timestamp.
     /// - `price_fix_duration`: Duration of each price interval.
-    // pub fn make_offer_one(
-    //     ctx: Context<MakeOfferOne>,
-    //     offer_id: u64,
-    //     buy_token_total_amount: u64,
-    //     sell_token_start_amount: u64,
-    //     sell_token_end_amount: u64,
-    //     offer_start_time: u64,
-    //     offer_end_time: u64,
-    //     price_fix_duration: u64,
-    // ) -> Result<()> {
-    //     make_offer::make_offer_one(
-    //         ctx,
-    //         offer_id,
-    //         buy_token_total_amount,
-    //         sell_token_start_amount,
-    //         sell_token_end_amount,
-    //         offer_start_time,
-    //         offer_end_time,
-    //         price_fix_duration,
-    //     )
-    // }
+    pub fn make_buy_offer(
+        ctx: Context<MakeBuyOffer>,
+        offer_id: u64,
+        token_in_amount: u64,
+        segment_id: u64,
+        start_price: u64,
+        end_price: u64,
+        start_time: u64,
+        end_time: u64,
+        price_fix_duration: u64,
+    ) -> Result<()> {
+        buy_offer::make_buy_offer(
+            ctx,
+            offer_id,
+            token_in_amount,
+            segment_id,
+            start_price,
+            end_price,
+            start_time,
+            end_time,
+            price_fix_duration,
+        )
+    }
     //
     // /// Creates an offer with two buy tokens.
     // ///

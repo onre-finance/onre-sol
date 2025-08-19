@@ -83,6 +83,29 @@ export class TestHelper {
         return tokenAccountAddress;
     }
 
+    createBuyOfferAccounts(
+        tokenInMint: PublicKey,
+        offerTokenInAmount: bigint = BigInt(0),
+        tokenOutMint: PublicKey,
+        offerTokenOutAmount: bigint = BigInt(0),
+        boss: PublicKey,
+        bossTokenInAmount: bigint = BigInt(0),
+    ): BuyOfferAccounts {
+        const [buyOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from('buy_offers_v2')], ONREAPP_PROGRAM_ID);
+        const [offerAuthority] = PublicKey.findProgramAddressSync([Buffer.from('offer_authority')], ONREAPP_PROGRAM_ID);
+        const offerTokenInPda = this.createTokenAccount(tokenInMint, offerAuthority, offerTokenInAmount, true);
+        const offerTokenOutPda = this.createTokenAccount(tokenOutMint, offerAuthority, offerTokenOutAmount, true);
+        const bossTokenInAccount = this.createTokenAccount(tokenInMint, boss, bossTokenInAmount);
+    
+        return {
+            offerAuthority,
+            buyOfferAccountPda,
+            offerTokenInPda,
+            offerTokenOutPda,
+            bossTokenInAccount,
+        }
+    }
+
     createOneTokenOfferAccounts( 
         sellTokenMint: PublicKey, 
         offerSellTokenAmount: bigint = BigInt(0),
@@ -166,6 +189,25 @@ export class TestHelper {
             .rpc();
     }
 
+    async makeBuyOffer(params: MakeBuyOfferParams) {
+        return await this.program.methods
+            .makeBuyOffer(
+                new BN(params.offerId), 
+                new BN(params.tokenInAmount), 
+                new BN(params.segmentId), 
+                new BN(params.startPrice), 
+                new BN(params.endPrice), 
+                new BN(params.startTime), 
+                new BN(params.endTime), 
+                new BN(params.priceFixDuration))
+            .accounts({
+                tokenInMint: params.tokenInMint,
+                tokenOutMint: params.tokenOutMint,
+                state: this.statePda,
+            })
+            .rpc();
+    }
+
     async makeOfferTwo(params: MakeOfferTwoParams) {
         return await this.program.methods
             .makeOfferTwo(
@@ -241,6 +283,14 @@ export class TestHelper {
     }
 }
 
+type BuyOfferAccounts = {
+    offerAuthority: PublicKey;
+    buyOfferAccountPda: PublicKey;
+    offerTokenInPda: PublicKey;
+    offerTokenOutPda: PublicKey;
+    bossTokenInAccount: PublicKey;
+}
+
 type OfferOneTokenAccounts = {
     offerId: BN;
     offerAuthority: PublicKey;
@@ -271,6 +321,19 @@ type MakeOfferOneParams = {
     priceFixDuration: number;
     sellTokenMint: PublicKey;
     buyTokenMint: PublicKey;
+}
+
+type MakeBuyOfferParams = {
+    offerId: BN;
+    tokenInAmount: number;
+    segmentId: number;
+    startPrice: number;
+    endPrice: number;
+    startTime: number;
+    endTime: number;
+    priceFixDuration: number;
+    tokenInMint: PublicKey;
+    tokenOutMint: PublicKey;
 }
 
 type MakeOfferTwoParams = {
