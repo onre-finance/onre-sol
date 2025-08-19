@@ -1,6 +1,6 @@
-use crate::state::Offer;
+use crate::state::{Offer, PermissionlessAccount};
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Transfer, CloseAccount, Mint};
+use anchor_spl::token::{self, Token, TokenAccount, Transfer, Mint};
 use anchor_spl::associated_token::AssociatedToken;
 
 /// Event emitted when an offer with one buy token is taken via permissionless route.
@@ -16,14 +16,13 @@ pub struct OfferTakenOnePermissionless {
 
 /// Account structure for taking an offer with one buy token via permissionless route.
 ///
-/// This instruction creates an intermediary token account controlled by the program,
-/// transfers tokens from offer -> intermediary -> user, then closes the intermediary account.
+/// This instruction uses an intermediary token account controlled by the program,
+/// transferring tokens from offer -> intermediary -> user. The intermediary account persists.
 ///
 /// # Flow
 /// 1. User provides sell tokens to offer
 /// 2. Offer transfers buy tokens to intermediary account (program-controlled)
 /// 3. Intermediary account transfers buy tokens to user
-/// 4. Intermediary account is closed and rent returned to user
 ///
 /// # Preconditions
 /// - All user ATAs must be initialized prior to execution
@@ -75,9 +74,9 @@ pub struct TakeOfferOnePermissionless<'info> {
     pub user_buy_token_1_account: Account<'info, TokenAccount>,
 
     /// Intermediary token account that temporarily holds buy tokens.
-    /// This account is controlled by the program and is created/closed within this instruction.
+    /// This account is controlled by the program and is created once, then persists.
     #[account(
-        init,
+        init_if_needed,
         payer = user,
         associated_token::mint = buy_token_1_mint,
         associated_token::authority = intermediary_authority,
@@ -99,10 +98,10 @@ pub struct TakeOfferOnePermissionless<'info> {
     /// Uses a unique seed to avoid conflicts with other PDAs.
     /// CHECK: This account is validated by the seed derivation.
     #[account(
-        seeds = [b"1"],
+        seeds = [b"permissionless-1"],
         bump
     )]
-    pub intermediary_authority: AccountInfo<'info>,
+    pub intermediary_authority: Account<'info, PermissionlessAccount>,
 
     /// The user taking the offer, signs the transaction and pays for account creation.
     #[account(mut)]
@@ -213,7 +212,7 @@ fn calculate_buy_amount(
 
 /// Takes an offer with one buy token via permissionless route.
 ///
-/// Creates an intermediary account, routes tokens through it, then closes the account.
+/// Uses an intermediary account to route tokens through it. The intermediary account persists.
 /// This provides an additional layer of indirection while maintaining the same economic outcome.
 ///
 /// # Arguments
@@ -285,7 +284,7 @@ pub fn take_offer_one_permissionless(
 
     // Step 3: Transfer buy tokens from intermediary account to user
     let intermediary_seeds = &[
-        b"1".as_ref(),
+        b"permissionless-1".as_ref(),
         &[ctx.bumps.intermediary_authority],
     ];
     let intermediary_signer_seeds = &[&intermediary_seeds[..]];
@@ -303,20 +302,6 @@ pub fn take_offer_one_permissionless(
         buy_token_1_amount,
     )?;
     msg!("Transferring {} buy tokens from intermediary to user", buy_token_1_amount);
-
-    // Step 4: Close the intermediary account and return rent to user
-    token::close_account(
-        CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            CloseAccount {
-                account: ctx.accounts.intermediary_buy_token_account.to_account_info(),
-                destination: ctx.accounts.user.to_account_info(),
-                authority: ctx.accounts.intermediary_authority.to_account_info(),
-            },
-            intermediary_signer_seeds,
-        ),
-    )?;
-    msg!("Closed intermediary account and returned rent to user");
 
     emit!(OfferTakenOnePermissionless {
         offer_id: offer.offer_id,

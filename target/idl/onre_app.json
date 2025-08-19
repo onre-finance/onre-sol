@@ -1232,6 +1232,84 @@
       "args": []
     },
     {
+      "name": "initialize_permissionless_account",
+      "discriminator": [
+        144,
+        160,
+        10,
+        56,
+        91,
+        17,
+        77,
+        115
+      ],
+      "accounts": [
+        {
+          "name": "permissionless_account",
+          "docs": [
+            "The program state account, initialized with the boss’s public key.",
+            "",
+            "# Note",
+            "- Space is allocated as `8 + State::INIT_SPACE` bytes, where 8 bytes are for the discriminator.",
+            "- Seeded with `\"state\"` and a bump for PDA derivation."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  108,
+                  101,
+                  115,
+                  115,
+                  45,
+                  49
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state"
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer funding and authorizing the state initialization, becomes the boss."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ]
+    },
+    {
       "name": "make_offer_one",
       "docs": [
         "Creates an offer with one buy token.",
@@ -3280,7 +3358,7 @@
           "name": "intermediary_buy_token_account",
           "docs": [
             "Intermediary token account that temporarily holds buy tokens.",
-            "This account is controlled by the program and is created/closed within this instruction."
+            "This account is controlled by the program and is created once, then persists."
           ],
           "writable": true,
           "pda": {
@@ -3422,6 +3500,21 @@
               {
                 "kind": "const",
                 "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  108,
+                  101,
+                  115,
+                  115,
+                  45,
                   49
                 ]
               }
@@ -4146,6 +4239,19 @@
       ]
     },
     {
+      "name": "PermissionlessAccount",
+      "discriminator": [
+        9,
+        107,
+        135,
+        228,
+        163,
+        199,
+        67,
+        169
+      ]
+    },
+    {
       "name": "State",
       "discriminator": [
         216,
@@ -4632,6 +4738,18 @@
           {
             "name": "amount",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PermissionlessAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string"
           }
         ]
       }

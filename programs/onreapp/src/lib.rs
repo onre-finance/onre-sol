@@ -139,6 +139,13 @@ pub mod onre_app {
         initialize::initialize(ctx)
     }
 
+    pub fn initialize_permissionless_account(
+        ctx: Context<InitializePermissionlessAccount>,
+        name: String,
+    ) -> Result<()> {
+        initialize::initialize_permissionless_account(ctx, name)
+    }
+
     /// Updates the boss in the program state.
     ///
     /// Delegates to `set_boss::set_boss` to change the boss, emitting a `BossUpdated` event.

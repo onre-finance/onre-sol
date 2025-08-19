@@ -1,4 +1,4 @@
-use crate::state::State;
+use crate::state::{PermissionlessAccount, State};
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 
@@ -56,5 +56,38 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         return err!(InitializeErrorCode::BossAlreadySet);
     }
     state.boss = ctx.accounts.boss.key();
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct InitializePermissionlessAccount<'info> {
+    /// The program state account, initialized with the boss’s public key.
+    ///
+    /// # Note
+    /// - Space is allocated as `8 + State::INIT_SPACE` bytes, where 8 bytes are for the discriminator.
+    /// - Seeded with `"state"` and a bump for PDA derivation.
+    #[account(
+        init,
+        payer = boss,
+        space = 8 + PermissionlessAccount::INIT_SPACE,
+        seeds = [b"permissionless-1"],
+        bump
+    )]
+    pub permissionless_account: Account<'info, PermissionlessAccount>,
+
+    #[account(has_one = boss)]
+    pub state: Account<'info, State>,
+
+    /// The signer funding and authorizing the state initialization, becomes the boss.
+    #[account(mut)]
+    pub boss: Signer<'info>,
+
+    /// Solana System program for account creation and rent payment.
+    pub system_program: Program<'info, System>,
+}
+
+pub fn initialize_permissionless_account(ctx: Context<InitializePermissionlessAccount>, name: String) -> Result<()> {
+    let permissionless_account = &mut ctx.accounts.permissionless_account;
+    permissionless_account.name = name;
     Ok(())
 }

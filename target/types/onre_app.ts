@@ -1238,6 +1238,84 @@ export type OnreApp = {
       "args": []
     },
     {
+      "name": "initializePermissionlessAccount",
+      "discriminator": [
+        144,
+        160,
+        10,
+        56,
+        91,
+        17,
+        77,
+        115
+      ],
+      "accounts": [
+        {
+          "name": "permissionlessAccount",
+          "docs": [
+            "The program state account, initialized with the boss’s public key.",
+            "",
+            "# Note",
+            "- Space is allocated as `8 + State::INIT_SPACE` bytes, where 8 bytes are for the discriminator.",
+            "- Seeded with `\"state\"` and a bump for PDA derivation."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  108,
+                  101,
+                  115,
+                  115,
+                  45,
+                  49
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state"
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer funding and authorizing the state initialization, becomes the boss."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ]
+    },
+    {
       "name": "makeOfferOne",
       "docs": [
         "Creates an offer with one buy token.",
@@ -3286,7 +3364,7 @@ export type OnreApp = {
           "name": "intermediaryBuyTokenAccount",
           "docs": [
             "Intermediary token account that temporarily holds buy tokens.",
-            "This account is controlled by the program and is created/closed within this instruction."
+            "This account is controlled by the program and is created once, then persists."
           ],
           "writable": true,
           "pda": {
@@ -3428,6 +3506,21 @@ export type OnreApp = {
               {
                 "kind": "const",
                 "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  108,
+                  101,
+                  115,
+                  115,
+                  45,
                   49
                 ]
               }
@@ -4152,6 +4245,19 @@ export type OnreApp = {
       ]
     },
     {
+      "name": "permissionlessAccount",
+      "discriminator": [
+        9,
+        107,
+        135,
+        228,
+        163,
+        199,
+        67,
+        169
+      ]
+    },
+    {
       "name": "state",
       "discriminator": [
         216,
@@ -4638,6 +4744,18 @@ export type OnreApp = {
           {
             "name": "amount",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "permissionlessAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string"
           }
         ]
       }

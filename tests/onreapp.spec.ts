@@ -1316,10 +1316,19 @@ describe("onreapp", () => {
 
         // Derive intermediary authority PDA
         const [intermediaryAuthority] = PublicKey.findProgramAddressSync(
-            [Buffer.from("1")],
+            [Buffer.from("permissionless-1")],
             program.programId,
         );
         const intermediaryBuyTokenAccount = await getAssociatedTokenAddress(buyToken1Mint, intermediaryAuthority, true);
+
+        // Initialize permissionless account
+        await program.methods
+            .initializePermissionlessAccount("permissionless-1")
+            .accounts({
+                state: statePda,
+            })
+            .signers([initialBoss.payer])
+            .rpc();
 
         // Record balances before transaction
         const userSellTokenBalanceBefore = await provider.connection.getTokenAccountBalance(userSellTokenAccount);
@@ -1353,19 +1362,19 @@ describe("onreapp", () => {
         expect(+offerSellTokenBalanceAfter.value.amount).toEqual(+offerSellTokenBalanceBefore.value.amount + 50e9);
         expect(+offerBuyToken1BalanceAfter.value.amount).toEqual(+offerBuyToken1BalanceBefore.value.amount - 25e9);
 
-        // Verify intermediary account was closed and rent returned
-        // User should have received rent back (minus transaction fees)
-        expect(userSolBalanceAfter).toBeGreaterThan(userSolBalanceBefore - 10000000); // Account for tx fees
+        // Verify intermediary account persists (no longer closed)
+        // User should have paid for account creation (if needed)
+        expect(userSolBalanceAfter).toBeLessThan(userSolBalanceBefore); // Account for tx fees and potential account creation
 
-        // Verify intermediary account no longer exists
-        const intermediaryAccountInfo = await provider.connection.getAccountInfo(intermediaryBuyTokenAccount);
-        expect(intermediaryAccountInfo).toBeNull();
+        // Verify intermediary account still exists and has zero balance
+        const intermediaryAccountInfo = await provider.connection.getTokenAccountBalance(intermediaryBuyTokenAccount);
+        expect(+intermediaryAccountInfo.value.amount).toEqual(0);
 
         // Clean up - close the offer
         await program.methods.closeOfferOne().accounts({ offer: offerPda, state: statePda }).rpc();
     });
 
-    it("Verifies intermediary account is properly created and closed", async () => {
+    it("Verifies intermediary account is properly created and persists", async () => {
         const offerId = new anchor.BN(5001);
         const [offerAuthority] = PublicKey.findProgramAddressSync([Buffer.from("offer_authority"), offerId.toArrayLike(Buffer, "le", 8)], program.programId);
         const [offerPda] = PublicKey.findProgramAddressSync([Buffer.from("offer"), offerId.toArrayLike(Buffer, "le", 8)], program.programId);
@@ -1400,15 +1409,10 @@ describe("onreapp", () => {
 
         // Derive intermediary account for verification
         const [intermediaryAuthority] = PublicKey.findProgramAddressSync(
-          [Buffer.from("1")],
+          [Buffer.from("permissionless-1")],
           program.programId,
         );
         const intermediaryBuyTokenAccount = await getAssociatedTokenAddress(buyToken1Mint, intermediaryAuthority, true);
-
-        // Verify intermediary account doesn't exist before transaction
-        let intermediaryAccountInfo = await provider.connection.getAccountInfo(intermediaryBuyTokenAccount);
-        expect(intermediaryAccountInfo).toBeNull();
-
         // Create a partial transaction to observe intermediary account creation
         const takeOfferIx = await program.methods
             .takeOfferOnePermissionless(new anchor.BN(50e9))
@@ -1422,9 +1426,9 @@ describe("onreapp", () => {
         // Execute the transaction
         await createAndSendTransaction(provider, user, [takeOfferIx]);
 
-        // Verify intermediary account is closed after transaction
-        intermediaryAccountInfo = await provider.connection.getAccountInfo(intermediaryBuyTokenAccount);
-        expect(intermediaryAccountInfo).toBeNull();
+        // Verify intermediary account persists after transaction
+        const intermediaryTokenAccountInfo = await provider.connection.getTokenAccountBalance(intermediaryBuyTokenAccount);
+        expect(+intermediaryTokenAccountInfo.value.amount).toEqual(0);
 
         // Clean up
         await program.methods.closeOfferOne().accounts({ offer: offerPda, state: statePda }).rpc();
@@ -1671,5 +1675,53 @@ describe("onreapp", () => {
             const [offerPda] = PublicKey.findProgramAddressSync([Buffer.from("offer"), offerId.toArrayLike(Buffer, "le", 8)], program.programId);
             await program.methods.closeOfferOne().accounts({ offer: offerPda, state: statePda }).rpc();
         }
+    });
+
+    it("Initializes permissionless account and verifies name", async () => {
+        const accountName = "permissionless-1";
+        const [permissionlessAccountPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from(accountName)],
+            program.programId,
+        );
+
+        // Fetch and verify the account
+        const permissionlessAccount = await program.account.permissionlessAccount.fetch(permissionlessAccountPda);
+        expect(permissionlessAccount.name).toEqual(accountName);
+    });
+
+    it("Fails to initialize permissionless account from non-boss account", async () => {
+        const unauthorizedUser = new anchor.Wallet(Keypair.generate());
+        await airdropLamports(provider, unauthorizedUser.publicKey, anchor.web3.LAMPORTS_PER_SOL * 5);
+
+        const accountName = "unauthorized-test";
+
+        // Try to initialize from non-boss account - should fail
+        await expect(
+            program.methods
+                .initializePermissionlessAccount(accountName)
+                .accountsPartial({
+                    state: statePda,
+                    boss: unauthorizedUser.publicKey, // Wrong boss
+                })
+                .signers([unauthorizedUser.payer])
+                .rpc()
+        ).rejects.toThrow();
+    });
+
+    it("Fails to initialize permissionless account with boss signature but wrong boss account", async () => {
+        const wrongBoss = Keypair.generate().publicKey;
+        const accountName = "wrong-boss-test";
+
+        // Try to initialize with boss signature but wrong boss account - should fail
+        await expect(
+            program.methods
+                .initializePermissionlessAccount(accountName)
+                .accountsPartial({
+                    state: statePda,
+                    boss: wrongBoss, // Wrong boss account but signed by correct boss
+                })
+                .signers([initialBoss.payer])
+                .rpc()
+        ).rejects.toThrow();
     });
 });
