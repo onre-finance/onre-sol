@@ -1,10 +1,10 @@
 import { PublicKey } from "@solana/web3.js";
 import { ONREAPP_PROGRAM_ID, TestHelper } from "../test_helper";
 import { AddedProgram, startAnchor } from "solana-bankrun";
-import { OnreApp } from "../../target/types/onre_app";
+import { Onreapp } from "../../target/types/onreapp";
 import { BankrunProvider } from "anchor-bankrun";
 import { BN, Program } from "@coral-xyz/anchor";
-import idl from "../../target/idl/onre_app.json";
+import idl from "../../target/idl/onreapp.json";
 
 describe("make offer", () => {
     let testHelper: TestHelper;
@@ -14,16 +14,17 @@ describe("make offer", () => {
 
     let boss: PublicKey;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         const programInfo: AddedProgram = {
             programId: ONREAPP_PROGRAM_ID,
             name: "onreapp",
         };
 
-        const context = await startAnchor("", [programInfo], []);
+        const workspace = process.cwd();
+        const context = await startAnchor(workspace, [programInfo], []);
 
         const provider = new BankrunProvider(context);
-        const program = new Program<OnreApp>(
+        const program = new Program<Onreapp>(
             idl,
             provider,
         );
@@ -40,43 +41,58 @@ describe("make offer", () => {
     });
 
     test("Make a buy offer should succeed", async () => {
-        // given
-        const { offerAuthority, buyOfferAccountPda, offerTokenInPda, offerTokenOutPda, bossTokenInAccount } = testHelper.createBuyOfferAccounts(
-            tokenInMint, BigInt(0), 
-            tokenOutMint, BigInt(0), 
-            boss, BigInt(100_000e9),
-        );
-
         // when
         await testHelper.makeBuyOffer({
             offerId: new BN(1),
-            tokenInAmount: 10e9,
-            segmentId: 1,
-            startPrice: 1e9,
-            endPrice: 2e9,
-            startTime: 10_000,
-            endTime: 20_000,
-            priceFixDuration: 1000, // 10 intervals
             tokenInMint,
             tokenOutMint,
         });
 
-        // // then
-        // const buyOfferAccountData = await testHelper.program.account.buyOfferAccount.fetch(buyOfferAccountPda);
+        // then
+        const [buyOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from('buy_offers')], ONREAPP_PROGRAM_ID);
+        const buyOfferAccountData = await testHelper.program.account.buyOfferAccount.fetch(buyOfferAccountPda);
         
-        // expect(buyOfferAccountData.count.toNumber()).toBe(1);
+        expect(buyOfferAccountData.count.toNumber()).toBe(1);
         
-        // const firstOffer = buyOfferAccountData.offers[0];
-        // expect(firstOffer.offerId.toNumber()).toBe(1);
-        // expect(firstOffer.tokenInMint.toString()).toBe(tokenInMint.toString());
-        // expect(firstOffer.tokenOutMint.toString()).toBe(tokenOutMint.toString());
+        const firstOffer = buyOfferAccountData.offers[0];
+        expect(firstOffer.offerId.toNumber()).toBe(1);
+        expect(firstOffer.tokenInMint.toString()).toBe(tokenInMint.toString());
+        expect(firstOffer.tokenOutMint.toString()).toBe(tokenOutMint.toString());
+    });
+
+    test("Make multiple offers should succeed", async () => {
+        // when
+        // make first offer
+        await testHelper.makeBuyOffer({
+            offerId: new BN(1),
+            tokenInMint,
+            tokenOutMint,
+        });
+
+        const token2In = testHelper.createMint(boss, BigInt(100_000e9), 9);
+        const token2Out = testHelper.createMint(boss, BigInt(100_000e9), 9);
+
+        // make second offer
+        await testHelper.makeBuyOffer({
+            offerId: new BN(2),
+            tokenInMint: token2In,
+            tokenOutMint: token2Out,
+        });
+
+        // then
+        const [buyOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from('buy_offers')], ONREAPP_PROGRAM_ID);
+        const buyOfferAccountData = await testHelper.program.account.buyOfferAccount.fetch(buyOfferAccountPda);
         
-        // const timeSegment = firstOffer.timeSegments[0];
-        // expect(timeSegment.segmentId.toNumber()).toBe(1);
-        // expect(timeSegment.startPrice.toNumber()).toBe(1e9); // 1 billion
-        // expect(timeSegment.endPrice.toNumber()).toBe(2e9);   // 2 billion
-        // expect(timeSegment.startTime.toNumber()).toBe(10_000);
-        // expect(timeSegment.endTime.toNumber()).toBe(20_000);
-        // expect(timeSegment.priceFixDuration.toNumber()).toBe(1000);
+        expect(buyOfferAccountData.count.toNumber()).toBe(2);
+
+        const firstOffer = buyOfferAccountData.offers[0];
+        expect(firstOffer.offerId.toNumber()).toBe(1);
+        expect(firstOffer.tokenInMint.toString()).toBe(tokenInMint.toString());
+        expect(firstOffer.tokenOutMint.toString()).toBe(tokenOutMint.toString());
+
+        const secondOffer = buyOfferAccountData.offers[1];
+        expect(secondOffer.offerId.toNumber()).toBe(2);
+        expect(secondOffer.tokenInMint.toString()).toBe(token2In.toString());
+        expect(secondOffer.tokenOutMint.toString()).toBe(token2Out.toString());
     });
 });

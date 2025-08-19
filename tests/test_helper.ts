@@ -1,20 +1,20 @@
 import { Clock, ProgramTestContext } from "solana-bankrun"
-import { OnreApp } from "../target/types/onre_app"
+import { Onreapp } from "../target/types/onreapp"
 import { BN, Program } from "@coral-xyz/anchor"
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import { ACCOUNT_SIZE, AccountLayout, getAssociatedTokenAddressSync, MINT_SIZE, MintLayout, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
-export const ONREAPP_PROGRAM_ID = new PublicKey("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
+export const ONREAPP_PROGRAM_ID = new PublicKey("DXcW85J14g5BhF2a6fpZewY64XbDLpm8e6C6KSbajs5z");
 export const INITIAL_LAMPORTS = 1_000_000_000; // 1 SOL
 
 export class TestHelper {
     context: ProgramTestContext;
-    program: Program<OnreApp>;
+    program: Program<Onreapp>;
 
     // accounts
     statePda: PublicKey;
 
-    constructor(context: ProgramTestContext, program: Program<OnreApp>) {
+    constructor(context: ProgramTestContext, program: Program<Onreapp>) {
         this.context = context;
         this.program = program;
         [this.statePda] = PublicKey.findProgramAddressSync([Buffer.from('state')], ONREAPP_PROGRAM_ID);
@@ -192,14 +192,7 @@ export class TestHelper {
     async makeBuyOffer(params: MakeBuyOfferParams) {
         return await this.program.methods
             .makeBuyOffer(
-                new BN(params.offerId), 
-                new BN(params.tokenInAmount), 
-                new BN(params.segmentId), 
-                new BN(params.startPrice), 
-                new BN(params.endPrice), 
-                new BN(params.startTime), 
-                new BN(params.endTime), 
-                new BN(params.priceFixDuration))
+                new BN(params.offerId))
             .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
@@ -325,13 +318,6 @@ type MakeOfferOneParams = {
 
 type MakeBuyOfferParams = {
     offerId: BN;
-    tokenInAmount: number;
-    segmentId: number;
-    startPrice: number;
-    endPrice: number;
-    startTime: number;
-    endTime: number;
-    priceFixDuration: number;
     tokenInMint: PublicKey;
     tokenOutMint: PublicKey;
 }

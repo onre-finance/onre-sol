@@ -8,12 +8,6 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 pub struct BuyOfferMadeEvent {
     pub offer_id: u64,
     pub boss: Pubkey,
-    pub token_in_amount: u64,
-    pub start_price: u64,
-    pub end_price: u64,
-    pub start_time: u64,
-    pub end_time: u64,
-    pub price_fix_duration: u64,
 }
 
 /// Account structure for creating a buy offer.
@@ -26,39 +20,10 @@ pub struct BuyOfferMadeEvent {
 #[derive(Accounts)]
 #[instruction(offer_id: u64)]
 pub struct MakeBuyOffer<'info> {
-    /// The buy offer account within the BuyOfferAccount, rent paid by `boss`.
-    #[account(
-        init,
-        payer = boss,
-        space = 8 + std::mem::size_of::<BuyOfferAccount>(),
-        seeds = [b"buy_offers_v2"],
-        bump
-    )]
+
+    /// The buy offer account within the BuyOfferAccount, rent paid by `boss`. Already initialized in initialize.
+    #[account(mut, seeds = [b"buy_offers"], bump)]
     pub buy_offer_account: AccountLoader<'info, BuyOfferAccount>,
-
-    /// Boss's token_in ATA, must exist prior to execution, owned by `boss`.
-    #[account(
-        mut,
-        associated_token::mint = token_in_mint,
-        associated_token::authority = boss,
-    )]
-    pub boss_token_in_account: Box<Account<'info, TokenAccount>>,
-
-    /// Offer's token_in ATA, controlled by `offer_token_authority`.
-    #[account(
-        mut,
-        associated_token::mint = token_in_mint,
-        associated_token::authority = offer_token_authority,
-    )]
-    pub offer_token_in_account: Account<'info, TokenAccount>,
-
-    /// Derived PDA for token authority.
-    /// CHECK: This account is validated by the seeds constraint
-    #[account(
-        seeds = [b"offer_authority"],
-        bump
-    )]
-    pub offer_token_authority: AccountInfo<'info>,
 
     /// Mint of the token_in for the offer.
     pub token_in_mint: Box<Account<'info, Mint>>,
@@ -104,25 +69,10 @@ pub struct MakeBuyOffer<'info> {
 /// - [`MakeBuyOfferErrorCode::AccountFull`] if the BuyOfferAccount is full.
 pub fn make_buy_offer(
     ctx: Context<MakeBuyOffer>,
-    offer_id: u64,
-    token_in_amount: u64,
-    segment_id: u64,
-    start_price: u64,
-    end_price: u64,
-    start_time: u64,
-    end_time: u64,
-    price_fix_duration: u64,
+    offer_id: u64
 ) -> Result<()> {
-    validate_non_zero_amounts(&[token_in_amount, start_price, end_price])?;
-    validate_time_params(start_time, end_time, price_fix_duration)?;
+    let buy_offer_account = &mut ctx.accounts.buy_offer_account.load_mut()?;
 
-    require!(
-        ctx.accounts.boss_token_in_account.amount >= token_in_amount,
-        MakeBuyOfferErrorCode::InsufficientBalance
-    );
-
-    let mut buy_offer_account = ctx.accounts.buy_offer_account.load_mut()?;
-    
     // Check if account is full
     require!(
         buy_offer_account.count < MAX_BUY_OFFERS as u64,
@@ -138,62 +88,39 @@ pub fn make_buy_offer(
     buy_offer.token_in_mint = ctx.accounts.token_in_mint.key();
     buy_offer.token_out_mint = ctx.accounts.token_out_mint.key();
     
-    // Create time segment
-    buy_offer.time_segments[0] = BuyOfferTimeSegment {
-        segment_id,
-        start_time,
-        end_time,
-        start_price,
-        end_price,
-        price_fix_duration,
-    };
-
-    // Initialize remaining segments to default
-    for i in 1..buy_offer.time_segments.len() {
+    // Initialize time segments to default
+    for i in 0..buy_offer.time_segments.len() {
         buy_offer.time_segments[i] = BuyOfferTimeSegment::default();
     }
 
     buy_offer_account.count += 1;
 
-    // Transfer token_in from boss to offer
-    transfer_token(
-        &ctx,
-        token_in_amount,
-    )?;
-
-    msg!("Buy offer created with ID: {}, token_in_amount: {}, start_price: {}, end_price: {}",
-        offer_id, token_in_amount, start_price, end_price);
+    msg!("Buy offer created with ID: {}", offer_id);
 
     emit!(BuyOfferMadeEvent {
         offer_id,
         boss: ctx.accounts.boss.key(),
-        token_in_amount,
-        start_price,
-        end_price,
-        start_time,
-        end_time,
-        price_fix_duration,
     });
 
     Ok(())
 }
 
 /// Transfers tokens from a source to a destination account.
-fn transfer_token(
-    ctx: &Context<MakeBuyOffer>,
-    amount: u64,
-) -> Result<()> {
-    let cpi_ctx = CpiContext::new(
-        ctx.accounts.token_program.to_account_info(),
-        Transfer {
-            from: ctx.accounts.boss_token_in_account.to_account_info(),
-            to: ctx.accounts.offer_token_in_account.to_account_info(),
-            authority: ctx.accounts.boss.to_account_info(),
-        },
-    );
-    token::transfer(cpi_ctx, amount)?;
-    Ok(())
-}
+// fn transfer_token(
+//     ctx: &Context<MakeBuyOffer>,
+//     amount: u64,
+// ) -> Result<()> {
+//     let cpi_ctx = CpiContext::new(
+//         ctx.accounts.token_program.to_account_info(),
+//         Transfer {
+//             from: ctx.accounts.boss_token_in_account.to_account_info(),
+//             to: ctx.accounts.offer_token_in_account.to_account_info(),
+//             authority: ctx.accounts.boss.to_account_info(),
+//         },
+//     );
+//     token::transfer(cpi_ctx, amount)?;
+//     Ok(())
+// }
 
 fn validate_non_zero_amounts(amounts: &[u64]) -> Result<()> {
     require!(

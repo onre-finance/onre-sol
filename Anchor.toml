@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-onreapp = "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe"
+onreapp = "DXcW85J14g5BhF2a6fpZewY64XbDLpm8e6C6KSbajs5z"
 
 [registry]
 url = "https://api.apr.dev"
@@ -15,11 +15,8 @@ url = "https://api.apr.dev"
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
-[clusters]
-
-
 [scripts]
-test = "mkdir -p ./tests/fixtures && cp target/deploy/onreapp.so ./tests/fixtures/ && ./node_modules/.bin/jest --runInBand make_buy_offer"
+test = "mkdir -p ./tests/fixtures && cp target/deploy/onreapp.so ./tests/fixtures/ && ./node_modules/.bin/jest --env=node --runInBand make_buy_offer"
 
 [test]
 startup_wait = 5000
