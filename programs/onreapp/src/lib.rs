@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use instructions::*;
 
 // Program ID declaration
-declare_id!("DXcW85J14g5BhF2a6fpZewY64XbDLpm8e6C6KSbajs5z");
+declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
 
 pub mod contexts;
 pub mod instructions;

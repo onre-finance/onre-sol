@@ -3,8 +3,9 @@ import { Onreapp } from "../target/types/onreapp"
 import { BN, Program } from "@coral-xyz/anchor"
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import { ACCOUNT_SIZE, AccountLayout, getAssociatedTokenAddressSync, MINT_SIZE, MintLayout, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import idl from "../target/idl/onreapp.json";
 
-export const ONREAPP_PROGRAM_ID = new PublicKey("DXcW85J14g5BhF2a6fpZewY64XbDLpm8e6C6KSbajs5z");
+export const ONREAPP_PROGRAM_ID = new PublicKey((idl as any).metadata.address);
 export const INITIAL_LAMPORTS = 1_000_000_000; // 1 SOL
 
 export class TestHelper {
