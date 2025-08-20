@@ -35,6 +35,88 @@
   ],
   "instructions": [
     {
+      "name": "close_buy_offer",
+      "docs": [
+        "Closes a buy offer.",
+        "",
+        "Delegates to `buy_offer::close_buy_offer`.",
+        "Removes the offer from the buy offers account and clears its data.",
+        "Emits a `CloseBuyOfferEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `CloseBuyOffer`.",
+        "- `offer_id`: ID of the offer to close."
+      ],
+      "discriminator": [
+        219,
+        41,
+        39,
+        0,
+        56,
+        98,
+        212,
+        133
+      ],
+      "accounts": [
+        {
+          "name": "buy_offer_account",
+          "docs": [
+            "The buy offer account within the BuyOfferAccount, rent paid by `boss`."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer funding and authorizing the offer closure."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "offer_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "initialize",
       "docs": [
         "Creates an offer with two buy tokens.",
@@ -93,9 +175,49 @@
           }
         },
         {
+          "name": "boss",
+          "docs": [
+            "The signer funding and authorizing the state initialization, becomes the boss."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_offers",
+      "docs": [
+        "Initializes the buy offers account.",
+        "",
+        "Delegates to `buy_offer::initialize_offers`.",
+        "Only the boss can call this instruction to create the buy offers account.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `InitializeOffers`."
+      ],
+      "discriminator": [
+        226,
+        123,
+        68,
+        141,
+        151,
+        152,
+        119,
+        113
+      ],
+      "accounts": [
+        {
           "name": "buy_offer_account",
           "docs": [
-            "The buy offer account within the BuyOfferAccount, rent paid by `boss`."
+            "The buy offer account to initialize, rent paid by `boss`."
           ],
           "writable": true,
           "pda": {
@@ -121,10 +243,19 @@
         {
           "name": "boss",
           "docs": [
-            "The signer funding and authorizing the state initialization, becomes the boss."
+            "The signer authorizing the initialization, must be the boss."
           ],
           "writable": true,
-          "signer": true
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
         },
         {
           "name": "system_program",
@@ -217,13 +348,6 @@
           ]
         },
         {
-          "name": "token_program",
-          "docs": [
-            "SPL Token program for token operations."
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
           "name": "system_program",
           "docs": [
             "Solana System program for account creation and rent payment."
@@ -231,12 +355,7 @@
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": [
-        {
-          "name": "offer_id",
-          "type": "u64"
-        }
-      ]
+      "args": []
     },
     {
       "name": "set_boss",
@@ -345,13 +464,25 @@
         35,
         56
       ]
+    },
+    {
+      "name": "CloseBuyOfferEvent",
+      "discriminator": [
+        55,
+        231,
+        182,
+        155,
+        92,
+        109,
+        208,
+        111
+      ]
     }
   ],
   "errors": [
     {
       "code": 6000,
-      "name": "AccountFull",
-      "msg": "Buy offer account is full, cannot create more offers"
+      "name": "InvalidBossAddress"
     }
   ],
   "types": [
@@ -446,7 +577,7 @@
             }
           },
           {
-            "name": "count",
+            "name": "counter",
             "type": "u64"
           }
         ]
@@ -506,6 +637,22 @@
           {
             "name": "price_fix_duration",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CloseBuyOfferEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offer_id",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
           }
         ]
       }

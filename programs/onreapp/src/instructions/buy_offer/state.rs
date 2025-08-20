@@ -38,10 +38,21 @@ impl Default for BuyOfferTimeSegment {
     }
 }
 
+impl Default for BuyOffer {
+    fn default() -> Self {
+        Self {
+            offer_id: 0,
+            token_in_mint: Pubkey::default(),
+            token_out_mint: Pubkey::default(),
+            time_segments: [BuyOfferTimeSegment::default(); MAX_SEGMENTS],
+        }
+    }
+}
+
 /// Account holding MAX_BUY_OFFERS BuyOffer instances (should fit 10KB limit)
 #[account(zero_copy)]
 #[repr(C)]
 pub struct BuyOfferAccount {
     pub offers: [BuyOffer; MAX_BUY_OFFERS],
-    pub count: u64
+    pub counter: u64
 }

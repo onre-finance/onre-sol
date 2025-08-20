@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/onreapp.json`.
  */
 export type Onreapp = {
-  "address": "DXcW85J14g5BhF2a6fpZewY64XbDLpm8e6C6KSbajs5z",
+  "address": "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe",
   "metadata": {
     "name": "onreapp",
     "version": "0.1.0",
@@ -40,6 +40,88 @@ export type Onreapp = {
     "- Events are emitted for significant actions (e.g., `OfferMadeOne`, `OfferTakenTwo`) for off-chain traceability."
   ],
   "instructions": [
+    {
+      "name": "closeBuyOffer",
+      "docs": [
+        "Closes a buy offer.",
+        "",
+        "Delegates to `buy_offer::close_buy_offer`.",
+        "Removes the offer from the buy offers account and clears its data.",
+        "Emits a `CloseBuyOfferEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `CloseBuyOffer`.",
+        "- `offer_id`: ID of the offer to close."
+      ],
+      "discriminator": [
+        219,
+        41,
+        39,
+        0,
+        56,
+        98,
+        212,
+        133
+      ],
+      "accounts": [
+        {
+          "name": "buyOfferAccount",
+          "docs": [
+            "The buy offer account within the BuyOfferAccount, rent paid by `boss`."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer funding and authorizing the offer closure."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        }
+      ]
+    },
     {
       "name": "initialize",
       "docs": [
@@ -99,9 +181,49 @@ export type Onreapp = {
           }
         },
         {
+          "name": "boss",
+          "docs": [
+            "The signer funding and authorizing the state initialization, becomes the boss."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initializeOffers",
+      "docs": [
+        "Initializes the buy offers account.",
+        "",
+        "Delegates to `buy_offer::initialize_offers`.",
+        "Only the boss can call this instruction to create the buy offers account.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `InitializeOffers`."
+      ],
+      "discriminator": [
+        226,
+        123,
+        68,
+        141,
+        151,
+        152,
+        119,
+        113
+      ],
+      "accounts": [
+        {
           "name": "buyOfferAccount",
           "docs": [
-            "The buy offer account within the BuyOfferAccount, rent paid by `boss`."
+            "The buy offer account to initialize, rent paid by `boss`."
           ],
           "writable": true,
           "pda": {
@@ -127,10 +249,19 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The signer funding and authorizing the state initialization, becomes the boss."
+            "The signer authorizing the initialization, must be the boss."
           ],
           "writable": true,
-          "signer": true
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
         },
         {
           "name": "systemProgram",
@@ -223,13 +354,6 @@ export type Onreapp = {
           ]
         },
         {
-          "name": "tokenProgram",
-          "docs": [
-            "SPL Token program for token operations."
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
           "name": "systemProgram",
           "docs": [
             "Solana System program for account creation and rent payment."
@@ -237,12 +361,7 @@ export type Onreapp = {
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": [
-        {
-          "name": "offerId",
-          "type": "u64"
-        }
-      ]
+      "args": []
     },
     {
       "name": "setBoss",
@@ -351,13 +470,25 @@ export type Onreapp = {
         35,
         56
       ]
+    },
+    {
+      "name": "closeBuyOfferEvent",
+      "discriminator": [
+        55,
+        231,
+        182,
+        155,
+        92,
+        109,
+        208,
+        111
+      ]
     }
   ],
   "errors": [
     {
       "code": 6000,
-      "name": "accountFull",
-      "msg": "Buy offer account is full, cannot create more offers"
+      "name": "invalidBossAddress"
     }
   ],
   "types": [
@@ -452,7 +583,7 @@ export type Onreapp = {
             }
           },
           {
-            "name": "count",
+            "name": "counter",
             "type": "u64"
           }
         ]
@@ -512,6 +643,22 @@ export type Onreapp = {
           {
             "name": "priceFixDuration",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "closeBuyOfferEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
           }
         ]
       }

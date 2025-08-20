@@ -5,7 +5,7 @@ import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import { ACCOUNT_SIZE, AccountLayout, getAssociatedTokenAddressSync, MINT_SIZE, MintLayout, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import idl from "../target/idl/onreapp.json";
 
-export const ONREAPP_PROGRAM_ID = new PublicKey((idl as any).metadata.address);
+export const ONREAPP_PROGRAM_ID = new PublicKey((idl as any).address);
 export const INITIAL_LAMPORTS = 1_000_000_000; // 1 SOL
 
 export class TestHelper {
@@ -20,7 +20,7 @@ export class TestHelper {
         this.program = program;
         [this.statePda] = PublicKey.findProgramAddressSync([Buffer.from('state')], ONREAPP_PROGRAM_ID);
     }
-    
+
     createUserAccount(): Keypair {
         const user = Keypair.generate();
         this.context.setAccount(user.publicKey, {
@@ -29,7 +29,7 @@ export class TestHelper {
             lamports: INITIAL_LAMPORTS,
             owner: SystemProgram.programId,
         });
-    
+
         return user;
     }
 
@@ -44,7 +44,7 @@ export class TestHelper {
             freezeAuthorityOption: 0,
             freezeAuthority: freezeAuthority,
         }, mintData)
-        
+
         const mintAddress = PublicKey.unique();
         this.context.setAccount(mintAddress, {
             executable: false,
@@ -52,7 +52,7 @@ export class TestHelper {
             lamports: INITIAL_LAMPORTS,
             owner: TOKEN_PROGRAM_ID,
         });
-    
+
         return mintAddress
     };
 
@@ -71,16 +71,16 @@ export class TestHelper {
             closeAuthorityOption: 0,
             closeAuthority: PublicKey.default,
         }, tokenAccountData);
-    
+
         const tokenAccountAddress = getAssociatedTokenAddressSync(mint, owner, allowOwnerOffCurve);
-    
+
         this.context.setAccount(tokenAccountAddress, {
             executable: false,
             data: tokenAccountData,
             lamports: INITIAL_LAMPORTS,
             owner: TOKEN_PROGRAM_ID,
         });
-    
+
         return tokenAccountAddress;
     }
 
@@ -97,7 +97,7 @@ export class TestHelper {
         const offerTokenInPda = this.createTokenAccount(tokenInMint, offerAuthority, offerTokenInAmount, true);
         const offerTokenOutPda = this.createTokenAccount(tokenOutMint, offerAuthority, offerTokenOutAmount, true);
         const bossTokenInAccount = this.createTokenAccount(tokenInMint, boss, bossTokenInAmount);
-    
+
         return {
             offerAuthority,
             buyOfferAccountPda,
@@ -107,8 +107,8 @@ export class TestHelper {
         }
     }
 
-    createOneTokenOfferAccounts( 
-        sellTokenMint: PublicKey, 
+    createOneTokenOfferAccounts(
+        sellTokenMint: PublicKey,
         offerSellTokenAmount: bigint = BigInt(0),
         buyTokenMint: PublicKey,
         offerBuyTokenAmount: bigint = BigInt(0),
@@ -121,7 +121,7 @@ export class TestHelper {
         const offerSellTokenPda = this.createTokenAccount(sellTokenMint, offerAuthority, offerSellTokenAmount, true);
         const offerBuyTokenPda = this.createTokenAccount(buyTokenMint, offerAuthority, offerBuyTokenAmount, true);
         const bossBuyTokenAccount = this.createTokenAccount(buyTokenMint, boss, bossBuyTokenAmount);
-    
+
         return {
             offerId,
             offerAuthority,
@@ -132,8 +132,8 @@ export class TestHelper {
         }
     }
 
-    createTwoTokenOfferAccounts( 
-        sellTokenMint: PublicKey, 
+    createTwoTokenOfferAccounts(
+        sellTokenMint: PublicKey,
         offerSellTokenAmount: bigint = BigInt(0),
         buyToken1Mint: PublicKey,
         offerBuyToken1Amount: bigint = BigInt(0),
@@ -151,7 +151,7 @@ export class TestHelper {
         const offerBuyToken2Pda = this.createTokenAccount(buyToken2Mint, offerAuthority, offerBuyToken2Amount, true);
         const bossBuyTokenAccount1 = this.createTokenAccount(buyToken1Mint, boss, bossBuyTokenAmount1);
         const bossBuyTokenAccount2 = this.createTokenAccount(buyToken2Mint, boss, bossBuyTokenAmount2);
-    
+
         return {
             offerId,
             offerAuthority,
@@ -175,12 +175,12 @@ export class TestHelper {
     ) {
         return await this.program.methods
             .makeOfferOne(
-                params.offerId, 
-                new BN(params.buyTokenTotalAmount), 
-                new BN(params.sellTokenStartAmount), 
-                new BN(params.sellTokenEndAmount), 
-                new BN(params.offerStartTime), 
-                new BN(params.offerEndTime), 
+                params.offerId,
+                new BN(params.buyTokenTotalAmount),
+                new BN(params.sellTokenStartAmount),
+                new BN(params.sellTokenEndAmount),
+                new BN(params.offerStartTime),
+                new BN(params.offerEndTime),
                 new BN(params.priceFixDuration))
             .accounts({
                 sellTokenMint: params.sellTokenMint,
@@ -192,8 +192,7 @@ export class TestHelper {
 
     async makeBuyOffer(params: MakeBuyOfferParams) {
         return await this.program.methods
-            .makeBuyOffer(
-                new BN(params.offerId))
+            .makeBuyOffer()
             .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
@@ -205,13 +204,13 @@ export class TestHelper {
     async makeOfferTwo(params: MakeOfferTwoParams) {
         return await this.program.methods
             .makeOfferTwo(
-                params.offerId, 
-                new BN(params.buyToken1TotalAmount), 
-                new BN(params.buyToken2TotalAmount), 
-                new BN(params.sellTokenStartAmount), 
-                new BN(params.sellTokenEndAmount), 
-                new BN(params.offerStartTime), 
-                new BN(params.offerEndTime), 
+                params.offerId,
+                new BN(params.buyToken1TotalAmount),
+                new BN(params.buyToken2TotalAmount),
+                new BN(params.sellTokenStartAmount),
+                new BN(params.sellTokenEndAmount),
+                new BN(params.offerStartTime),
+                new BN(params.offerEndTime),
                 new BN(params.priceFixDuration))
             .accounts({
                 sellTokenMint: params.sellTokenMint,
@@ -318,7 +317,6 @@ type MakeOfferOneParams = {
 }
 
 type MakeBuyOfferParams = {
-    offerId: BN;
     tokenInMint: PublicKey;
     tokenOutMint: PublicKey;
 }

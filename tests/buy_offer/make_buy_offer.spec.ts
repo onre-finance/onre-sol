@@ -40,12 +40,14 @@ describe("Make buy offer", () => {
         tokenOutMint = testHelper.createMint(boss, BigInt(100_000e9), 9);
         
         await program.methods.initialize().accounts({ boss }).rpc();
+        await program.methods.initializeOffers().accounts({ 
+            state: testHelper.statePda 
+        }).rpc();
     });
 
     test("Make a buy offer should succeed", async () => {
         // when
         await testHelper.makeBuyOffer({
-            offerId: new BN(1),
             tokenInMint,
             tokenOutMint,
         });
@@ -54,7 +56,7 @@ describe("Make buy offer", () => {
         const [buyOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from('buy_offers')], ONREAPP_PROGRAM_ID);
         const buyOfferAccountData = await testHelper.program.account.buyOfferAccount.fetch(buyOfferAccountPda);
         
-        expect(buyOfferAccountData.count.toNumber()).toBe(1);
+        expect(buyOfferAccountData.counter.toNumber()).toBe(1);
         
         const firstOffer = buyOfferAccountData.offers[0];
         expect(firstOffer.offerId.toNumber()).toBe(1);
@@ -65,13 +67,12 @@ describe("Make buy offer", () => {
     test("Make multiple offers should succeed", async () => {
         // given
         const [buyOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from('buy_offers')], ONREAPP_PROGRAM_ID);
-        const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOfferAccountPda);
-        const offerCount = buyOfferAccount.count.toNumber();
+        const initialData = await testHelper.program.account.buyOfferAccount.fetch(buyOfferAccountPda);
+        const initialCounter = initialData.counter.toNumber();
 
         // when
-        // make one offer
+        // make first offer
         await testHelper.makeBuyOffer({
-            offerId: new BN(4321),
             tokenInMint,
             tokenOutMint,
         });
@@ -79,9 +80,8 @@ describe("Make buy offer", () => {
         const token2In = testHelper.createMint(boss, BigInt(100_000e9), 9);
         const token2Out = testHelper.createMint(boss, BigInt(100_000e9), 9);
 
-        // make another offer
+        // make second offer
         await testHelper.makeBuyOffer({
-            offerId: new BN(1234),
             tokenInMint: token2In,
             tokenOutMint: token2Out,
         });
@@ -89,47 +89,79 @@ describe("Make buy offer", () => {
         // then
         const buyOfferAccountData = await testHelper.program.account.buyOfferAccount.fetch(buyOfferAccountPda);
         
-        expect(buyOfferAccountData.count.toNumber()).toBe(offerCount + 2);
+        expect(buyOfferAccountData.counter.toNumber()).toBe(initialCounter + 2);
 
-        const firstOffer = buyOfferAccountData.offers.find(offer => offer.offerId.toNumber() === 4321);
-        expect(firstOffer.offerId.toNumber()).toBe(4321);
-        expect(firstOffer.tokenInMint.toString()).toBe(tokenInMint.toString());
-        expect(firstOffer.tokenOutMint.toString()).toBe(tokenOutMint.toString());
+        // Find offers by their auto-generated IDs
+        const firstOffer = buyOfferAccountData.offers.find(offer => 
+            offer.tokenInMint.toString() === tokenInMint.toString() && 
+            offer.offerId.toNumber() > initialCounter
+        );
+        expect(firstOffer).toBeDefined();
+        expect(firstOffer!.offerId.toNumber()).toBe(initialCounter + 1);
+        expect(firstOffer!.tokenOutMint.toString()).toBe(tokenOutMint.toString());
 
-        const secondOffer = buyOfferAccountData.offers.find(offer => offer.offerId.toNumber() === 1234);
-        expect(secondOffer.offerId.toNumber()).toBe(1234);
-        expect(secondOffer.tokenInMint.toString()).toBe(token2In.toString());
-        expect(secondOffer.tokenOutMint.toString()).toBe(token2Out.toString());
+        const secondOffer = buyOfferAccountData.offers.find(offer => 
+            offer.tokenInMint.toString() === token2In.toString()
+        );
+        expect(secondOffer).toBeDefined();
+        expect(secondOffer!.offerId.toNumber()).toBe(initialCounter + 2);
+        expect(secondOffer!.tokenOutMint.toString()).toBe(token2Out.toString());
     });
 
     test("Make an offer with invalid token mints should fail", async () => {
         // when
         await expect(testHelper.makeBuyOffer({
-            offerId: new BN(1),
             tokenInMint: new PublicKey(0),
             tokenOutMint: new PublicKey(0),
         })).rejects.toThrow();
     });
 
     test("Make more than max offers should fail", async () => {
-        // given
+        // given - check how many offers already exist from previous tests
         const [buyOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from('buy_offers')], ONREAPP_PROGRAM_ID);
-        const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOfferAccountPda);
-        const offerCount = buyOfferAccount.count.toNumber();
+        let buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOfferAccountPda);
+        const existingOffers = buyOfferAccount.offers.filter(offer => offer.offerId.toNumber() > 0).length;
+        
+        console.log(`Existing offers: ${existingOffers}`);
+        
+        // Fill up remaining slots
+        const offersToMake = MAX_BUY_OFFERS - existingOffers;
+        console.log(`Need to make ${offersToMake} more offers`);
+        
+        for (let i = 0; i < offersToMake; i++) {
+            console.log(`Making offer ${i + 1}/${offersToMake}`);
+            try {
+                // Create unique mints for each offer to avoid duplicate transaction issues
+                const uniqueTokenIn = testHelper.createMint(boss, BigInt(100_000e9), 9);
+                const uniqueTokenOut = testHelper.createMint(boss, BigInt(100_000e9), 9);
+                
+                await testHelper.makeBuyOffer({
+                    tokenInMint: uniqueTokenIn,
+                    tokenOutMint: uniqueTokenOut,
+                });
+            } catch (error) {
+                console.log(`Error making offer ${i + 1}:`, error);
+                throw error;
+            }
+        }
 
-        for (let i = offerCount; i < MAX_BUY_OFFERS; i++) {
+        // Verify array is full
+        buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOfferAccountPda);
+        const activeOffers = buyOfferAccount.offers.filter(offer => offer.offerId.toNumber() > 0).length;
+        console.log(`Final active offers: ${activeOffers}`);
+        expect(activeOffers).toBe(MAX_BUY_OFFERS);
+
+        // when - try to make one more offer (should fail)
+        console.log("Attempting to make one more offer (should fail)");
+        try {
             await testHelper.makeBuyOffer({
-                offerId: new BN(i),
                 tokenInMint,
                 tokenOutMint,
             });
+            throw new Error("Expected makeBuyOffer to fail but it succeeded");
+        } catch (error) {
+            console.log("Got expected error:", error.message);
+            expect(error.message).toContain("Buy offer account is full");
         }
-
-        // when
-        await expect(testHelper.makeBuyOffer({
-            offerId: new BN(1),
-            tokenInMint,
-            tokenOutMint,
-        })).rejects.toThrow();
     });
 });
