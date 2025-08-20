@@ -41,6 +41,106 @@ export type Onreapp = {
   ],
   "instructions": [
     {
+      "name": "addBuyOfferTimeSegment",
+      "docs": [
+        "Adds a time segment to an existing buy offer.",
+        "",
+        "Delegates to `buy_offer::add_buy_offer_time_segment`.",
+        "Creates a new time segment with auto-generated segment_id for the specified buy offer.",
+        "Emits a `BuyOfferTimeSegmentAdded` event upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `AddBuyOfferTimeSegment`.",
+        "- `offer_id`: ID of the buy offer to add the segment to.",
+        "- `start_time`: Unix timestamp when the segment becomes active.",
+        "- `end_time`: Unix timestamp when the segment expires.",
+        "- `start_price`: Price at the beginning of the segment.",
+        "- `end_price`: Price at the end of the segment.",
+        "- `price_fix_duration`: Duration in seconds for each price interval."
+      ],
+      "discriminator": [
+        140,
+        222,
+        35,
+        48,
+        3,
+        196,
+        118,
+        34
+      ],
+      "accounts": [
+        {
+          "name": "buyOfferAccount",
+          "docs": [
+            "The buy offer account containing all buy offers"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the time segment addition (must be boss)."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        },
+        {
+          "name": "startTime",
+          "type": "u64"
+        },
+        {
+          "name": "endTime",
+          "type": "u64"
+        },
+        {
+          "name": "startPrice",
+          "type": "u64"
+        },
+        {
+          "name": "endPrice",
+          "type": "u64"
+        },
+        {
+          "name": "priceFixDuration",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "closeBuyOffer",
       "docs": [
         "Closes a buy offer.",
@@ -78,101 +178,6 @@ export type Onreapp = {
                   98,
                   117,
                   121,
-                  95,
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  115
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "boss",
-          "docs": [
-            "The signer funding and authorizing the offer closure."
-          ],
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "state",
-          "docs": [
-            "Program state, ensures `boss` is authorized."
-          ]
-        },
-        {
-          "name": "systemProgram",
-          "docs": [
-            "Solana System program for account creation and rent payment."
-          ],
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "offerId",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "closeDualRedemptionOffer",
-      "docs": [
-        "Closes a dual redemption offer.",
-        "",
-        "Delegates to `redemption_offer::close_dual_redemption_offer`.",
-        "Removes the offer from the dual redemption offers account and clears its data.",
-        "Only the boss can close dual redemption offers.",
-        "Emits a `CloseDualRedemptionOfferEvent` upon success.",
-        "",
-        "# Arguments",
-        "- `ctx`: Context for `CloseDualRedemptionOffer`.",
-        "- `offer_id`: ID of the offer to close."
-      ],
-      "discriminator": [
-        119,
-        28,
-        211,
-        241,
-        93,
-        126,
-        181,
-        254
-      ],
-      "accounts": [
-        {
-          "name": "dualRedemptionOfferAccount",
-          "docs": [
-            "The dual redemption offer account containing all offers."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  100,
-                  117,
-                  97,
-                  108,
-                  95,
-                  114,
-                  101,
-                  100,
-                  101,
-                  109,
-                  112,
-                  116,
-                  105,
-                  111,
-                  110,
                   95,
                   111,
                   102,
@@ -475,44 +480,6 @@ export type Onreapp = {
           }
         },
         {
-          "name": "dualRedemptionOfferAccount",
-          "docs": [
-            "The dual redemption offer account to initialize, rent paid by `boss`."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  100,
-                  117,
-                  97,
-                  108,
-                  95,
-                  114,
-                  101,
-                  100,
-                  101,
-                  109,
-                  112,
-                  116,
-                  105,
-                  111,
-                  110,
-                  95,
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  115
-                ]
-              }
-            ]
-          }
-        },
-        {
           "name": "boss",
           "docs": [
             "The signer authorizing the initialization, must be the boss."
@@ -701,139 +668,6 @@ export type Onreapp = {
       "args": []
     },
     {
-      "name": "makeDualRedemptionOffer",
-      "docs": [
-        "Creates a dual redemption offer.",
-        "",
-        "Delegates to `redemption_offer::make_dual_redemption_offer`.",
-        "Creates an offer where users can exchange token_in for two different token_out at fixed prices.",
-        "The ratio_basis_points determines the split between the two output tokens.",
-        "Emits a `DualRedemptionOfferMadeEvent` upon success.",
-        "",
-        "# Arguments",
-        "- `ctx`: Context for `MakeDualRedemptionOffer`.",
-        "- `start_time`: Unix timestamp for when the offer becomes active.",
-        "- `end_time`: Unix timestamp for when the offer expires.",
-        "- `price_1`: Fixed price for token_out_1 with 9 decimal precision.",
-        "- `price_2`: Fixed price for token_out_2 with 9 decimal precision.",
-        "- `ratio_basis_points`: Ratio in basis points for token_out_1 (e.g., 8000 = 80% for token_out_1, 20% for token_out_2)."
-      ],
-      "discriminator": [
-        118,
-        199,
-        200,
-        41,
-        17,
-        39,
-        110,
-        2
-      ],
-      "accounts": [
-        {
-          "name": "dualRedemptionOfferAccount",
-          "docs": [
-            "The dual redemption offer account within the DualRedemptionOfferAccount, rent paid by `boss`. Already initialized in initialize."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  100,
-                  117,
-                  97,
-                  108,
-                  95,
-                  114,
-                  101,
-                  100,
-                  101,
-                  109,
-                  112,
-                  116,
-                  105,
-                  111,
-                  110,
-                  95,
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  115
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "tokenInMint",
-          "docs": [
-            "Mint of the token_in for the offer."
-          ]
-        },
-        {
-          "name": "tokenOutMint1",
-          "docs": [
-            "Mint of the first token_out for the offer."
-          ]
-        },
-        {
-          "name": "tokenOutMint2",
-          "docs": [
-            "Mint of the second token_out for the offer."
-          ]
-        },
-        {
-          "name": "state",
-          "docs": [
-            "Program state, ensures `boss` is authorized."
-          ]
-        },
-        {
-          "name": "boss",
-          "docs": [
-            "The signer funding and authorizing the offer creation."
-          ],
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "systemProgram",
-          "docs": [
-            "Solana System program for account creation and rent payment."
-          ],
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "startTime",
-          "type": "u64"
-        },
-        {
-          "name": "endTime",
-          "type": "u64"
-        },
-        {
-          "name": "price1",
-          "type": "u64"
-        },
-        {
-          "name": "price2",
-          "type": "u64"
-        },
-        {
-          "name": "ratioBasisPoints",
-          "type": "u64"
-        }
-      ]
-    },
-    {
       "name": "makeSingleRedemptionOffer",
       "discriminator": [
         166,
@@ -987,717 +821,6 @@ export type Onreapp = {
         {
           "name": "newBoss",
           "type": "pubkey"
-        }
-      ]
-    },
-    {
-      "name": "takeDualRedemptionOffer",
-      "docs": [
-        "Takes a dual redemption offer.",
-        "",
-        "Delegates to `redemption_offer::take_dual_redemption_offer`.",
-        "Allows a user to exchange token_in for token_out_1 and token_out_2 based on the offer's prices and ratio.",
-        "The ratio_basis_points determines how the token_in amount is split between the two output tokens.",
-        "Anyone can take the offer as long as it's active and vault has sufficient balances.",
-        "Emits a `TakeDualRedemptionOfferEvent` upon success.",
-        "",
-        "# Arguments",
-        "- `ctx`: Context for `TakeDualRedemptionOffer`.",
-        "- `offer_id`: ID of the offer to take.",
-        "- `token_in_amount`: Amount of token_in to provide."
-      ],
-      "discriminator": [
-        169,
-        176,
-        120,
-        222,
-        25,
-        181,
-        136,
-        201
-      ],
-      "accounts": [
-        {
-          "name": "dualRedemptionOfferAccount",
-          "docs": [
-            "The dual redemption offer account containing all offers."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  100,
-                  117,
-                  97,
-                  108,
-                  95,
-                  114,
-                  101,
-                  100,
-                  101,
-                  109,
-                  112,
-                  116,
-                  105,
-                  111,
-                  110,
-                  95,
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  115
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "state",
-          "docs": [
-            "Program state to get the boss."
-          ]
-        },
-        {
-          "name": "boss",
-          "docs": [
-            "The boss account that receives token_in payments.",
-            "This must match the boss in the state account."
-          ]
-        },
-        {
-          "name": "vaultAuthority",
-          "docs": [
-            "The vault authority that controls vault token accounts."
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "tokenInMint",
-          "docs": [
-            "The token mint for token_in."
-          ]
-        },
-        {
-          "name": "tokenOutMint1",
-          "docs": [
-            "The token mint for token_out_1."
-          ]
-        },
-        {
-          "name": "tokenOutMint2",
-          "docs": [
-            "The token mint for token_out_2."
-          ]
-        },
-        {
-          "name": "userTokenInAccount",
-          "docs": [
-            "User's token_in account (source of payment)."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "userTokenOut1Account",
-          "docs": [
-            "User's token_out_1 account (destination of token_out_1)."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutMint1"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "userTokenOut2Account",
-          "docs": [
-            "User's token_out_2 account (destination of token_out_2)."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutMint2"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "bossTokenInAccount",
-          "docs": [
-            "Boss's token_in account (destination of payment)."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "boss"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "vaultTokenOut1Account",
-          "docs": [
-            "Vault's token_out_1 account (source of token_out_1 to give)."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "vaultAuthority"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutMint1"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "vaultTokenOut2Account",
-          "docs": [
-            "Vault's token_out_2 account (source of token_out_2 to give)."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "vaultAuthority"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutMint2"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "user",
-          "docs": [
-            "The user taking the offer."
-          ],
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "tokenProgram",
-          "docs": [
-            "SPL Token program."
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        }
-      ],
-      "args": [
-        {
-          "name": "offerId",
-          "type": "u64"
-        },
-        {
-          "name": "tokenInAmount",
-          "type": "u64"
         }
       ]
     },
@@ -2812,19 +1935,6 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "dualRedemptionOfferAccount",
-      "discriminator": [
-        3,
-        137,
-        109,
-        2,
-        212,
-        4,
-        144,
-        224
-      ]
-    },
-    {
       "name": "singleRedemptionOfferAccount",
       "discriminator": [
         147,
@@ -2892,6 +2002,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "buyOfferTimeSegmentAddedEvent",
+      "discriminator": [
+        140,
+        120,
+        65,
+        125,
+        249,
+        100,
+        84,
+        205
+      ]
+    },
+    {
       "name": "closeBuyOfferEvent",
       "discriminator": [
         55,
@@ -2902,19 +2025,6 @@ export type Onreapp = {
         109,
         208,
         111
-      ]
-    },
-    {
-      "name": "closeDualRedemptionOfferEvent",
-      "discriminator": [
-        202,
-        17,
-        179,
-        245,
-        187,
-        36,
-        245,
-        79
       ]
     },
     {
@@ -2931,19 +2041,6 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "dualRedemptionOfferMadeEvent",
-      "discriminator": [
-        197,
-        72,
-        62,
-        30,
-        67,
-        78,
-        44,
-        238
-      ]
-    },
-    {
       "name": "singleRedemptionOfferMadeEvent",
       "discriminator": [
         153,
@@ -2954,19 +2051,6 @@ export type Onreapp = {
         20,
         189,
         216
-      ]
-    },
-    {
-      "name": "takeDualRedemptionOfferEvent",
-      "discriminator": [
-        114,
-        131,
-        40,
-        206,
-        32,
-        226,
-        157,
-        247
       ]
     },
     {
@@ -3012,8 +2096,7 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "mathOverflow",
-      "msg": "Math overflow"
+      "name": "bossAlreadySet"
     }
   ],
   "types": [
@@ -3085,7 +2168,7 @@ export type Onreapp = {
     {
       "name": "buyOfferAccount",
       "docs": [
-        "Account holding MAX_BUY_OFFERS BuyOffer instances"
+        "Account holding MAX_BUY_OFFERS BuyOffer instances (should fit 10KB limit)"
       ],
       "serialization": "bytemuck",
       "repr": {
@@ -3173,7 +2256,10 @@ export type Onreapp = {
       }
     },
     {
-      "name": "closeBuyOfferEvent",
+      "name": "buyOfferTimeSegmentAddedEvent",
+      "docs": [
+        "Event emitted when a time segment is added to a buy offer."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -3182,14 +2268,34 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "boss",
-            "type": "pubkey"
+            "name": "segmentId",
+            "type": "u64"
+          },
+          {
+            "name": "startTime",
+            "type": "u64"
+          },
+          {
+            "name": "endTime",
+            "type": "u64"
+          },
+          {
+            "name": "startPrice",
+            "type": "u64"
+          },
+          {
+            "name": "endPrice",
+            "type": "u64"
+          },
+          {
+            "name": "priceFixDuration",
+            "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "closeDualRedemptionOfferEvent",
+      "name": "closeBuyOfferEvent",
       "type": {
         "kind": "struct",
         "fields": [
@@ -3211,128 +2317,6 @@ export type Onreapp = {
         "fields": [
           {
             "name": "offerId",
-            "type": "u64"
-          },
-          {
-            "name": "boss",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "dualRedemptionOffer",
-      "docs": [
-        "Dual redemption offer struct for token exchange with static pricing for two output tokens"
-      ],
-      "serialization": "bytemuck",
-      "repr": {
-        "kind": "c"
-      },
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "offerId",
-            "type": "u64"
-          },
-          {
-            "name": "tokenInMint",
-            "type": "pubkey"
-          },
-          {
-            "name": "tokenOutMint1",
-            "type": "pubkey"
-          },
-          {
-            "name": "tokenOutMint2",
-            "type": "pubkey"
-          },
-          {
-            "name": "startTime",
-            "type": "u64"
-          },
-          {
-            "name": "endTime",
-            "type": "u64"
-          },
-          {
-            "name": "price1",
-            "type": "u64"
-          },
-          {
-            "name": "price2",
-            "type": "u64"
-          },
-          {
-            "name": "ratioBasisPoints",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "dualRedemptionOfferAccount",
-      "docs": [
-        "Account holding MAX_DUAL_REDEMPTION_OFFERS DualRedemptionOffer instances"
-      ],
-      "serialization": "bytemuck",
-      "repr": {
-        "kind": "c"
-      },
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "offers",
-            "type": {
-              "array": [
-                {
-                  "defined": {
-                    "name": "dualRedemptionOffer"
-                  }
-                },
-                50
-              ]
-            }
-          },
-          {
-            "name": "counter",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "dualRedemptionOfferMadeEvent",
-      "docs": [
-        "Event emitted when a dual redemption offer is created."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "offerId",
-            "type": "u64"
-          },
-          {
-            "name": "startTime",
-            "type": "u64"
-          },
-          {
-            "name": "endTime",
-            "type": "u64"
-          },
-          {
-            "name": "price1",
-            "type": "u64"
-          },
-          {
-            "name": "price2",
-            "type": "u64"
-          },
-          {
-            "name": "ratioBasisPoints",
             "type": "u64"
           },
           {
@@ -3384,7 +2368,7 @@ export type Onreapp = {
     {
       "name": "singleRedemptionOfferAccount",
       "docs": [
-        "Account holding MAX_REDEMPTION_OFFERS SingleRedemptionOffer instances"
+        "Account holding MAX_REDEMPTION_OFFERS SingleRedemptionOffer instances (should fit 10KB limit)"
       ],
       "serialization": "bytemuck",
       "repr": {
@@ -3459,34 +2443,6 @@ export type Onreapp = {
         "fields": [
           {
             "name": "boss",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "takeDualRedemptionOfferEvent",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "offerId",
-            "type": "u64"
-          },
-          {
-            "name": "tokenInAmount",
-            "type": "u64"
-          },
-          {
-            "name": "tokenOut1Amount",
-            "type": "u64"
-          },
-          {
-            "name": "tokenOut2Amount",
-            "type": "u64"
-          },
-          {
-            "name": "user",
             "type": "pubkey"
           }
         ]
