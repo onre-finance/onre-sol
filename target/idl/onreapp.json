@@ -348,13 +348,6 @@
           ]
         },
         {
-          "name": "token_program",
-          "docs": [
-            "SPL Token program for token operations."
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
           "name": "system_program",
           "docs": [
             "Solana System program for account creation and rent payment."
@@ -489,8 +482,7 @@
   "errors": [
     {
       "code": 6000,
-      "name": "AccountFull",
-      "msg": "Buy offer account is full, cannot create more offers"
+      "name": "InvalidBossAddress"
     }
   ],
   "types": [

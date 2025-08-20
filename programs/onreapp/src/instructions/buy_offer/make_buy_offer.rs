@@ -38,9 +38,6 @@ pub struct MakeBuyOffer<'info> {
     #[account(mut)]
     pub boss: Signer<'info>,
 
-    /// SPL Token program for token operations.
-    pub token_program: Program<'info, Token>,
-
     /// Solana System program for account creation and rent payment.
     pub system_program: Program<'info, System>,
 }

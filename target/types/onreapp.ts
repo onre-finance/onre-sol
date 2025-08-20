@@ -354,13 +354,6 @@ export type Onreapp = {
           ]
         },
         {
-          "name": "tokenProgram",
-          "docs": [
-            "SPL Token program for token operations."
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
           "name": "systemProgram",
           "docs": [
             "Solana System program for account creation and rent payment."
@@ -495,8 +488,7 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "accountFull",
-      "msg": "Buy offer account is full, cannot create more offers"
+      "name": "invalidBossAddress"
     }
   ],
   "types": [
