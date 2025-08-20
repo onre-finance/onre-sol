@@ -186,6 +186,19 @@ describe("Close buy offer", () => {
         expect(buyOfferAccountData.offers[0].tokenOutMint.toString()).toBe(new PublicKey(0).toString());
     });
 
+    test("Close buy offer with offer_id 0 should fail", async () => {
+        // when/then - try to close with invalid offer_id = 0
+        const invalidOfferId = new BN(0);
+        await expect(
+            program.methods
+                .closeBuyOffer(invalidOfferId)
+                .accounts({
+                    state: testHelper.statePda,
+                })
+                .rpc()
+        ).rejects.toThrow("Offer not found");
+    });
+
     test("Close non-existent buy offer should fail", async () => {
         // when/then - try to close non-existent offer (doesn't matter how many other offers exist)
         const nonExistentOfferId = new BN(999);

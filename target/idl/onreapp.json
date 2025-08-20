@@ -494,8 +494,7 @@
   "errors": [
     {
       "code": 6000,
-      "name": "AccountFull",
-      "msg": "Buy offer account is full, cannot create more offers"
+      "name": "InvalidBossAddress"
     }
   ],
   "types": [

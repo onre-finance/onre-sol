@@ -500,8 +500,7 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "accountFull",
-      "msg": "Buy offer account is full, cannot create more offers"
+      "name": "invalidBossAddress"
     }
   ],
   "types": [

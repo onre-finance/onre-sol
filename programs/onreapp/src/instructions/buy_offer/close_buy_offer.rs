@@ -39,6 +39,9 @@ pub fn close_buy_offer(
     ctx: Context<CloseBuyOffer>,
     offer_id: u64,
 ) -> Result<()> {
+    if offer_id == 0 {
+        return Err(error!(CloseBuyOfferErrorCode::OfferNotFound));
+    }
     let buy_offer_account = &mut ctx.accounts.buy_offer_account.load_mut()?;
 
     let offer_index = buy_offer_account.offers.iter().position(|offer| offer.offer_id == offer_id);
