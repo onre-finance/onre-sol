@@ -201,6 +201,40 @@ pub mod onreapp {
         buy_offer::close_buy_offer(ctx, offer_id)
     }
 
+    /// Adds a time segment to an existing buy offer.
+    ///
+    /// Delegates to `buy_offer::add_buy_offer_time_segment`.
+    /// Creates a new time segment with auto-generated segment_id for the specified buy offer.
+    /// Emits a `BuyOfferTimeSegmentAdded` event upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `AddBuyOfferTimeSegment`.
+    /// - `offer_id`: ID of the buy offer to add the segment to.
+    /// - `start_time`: Unix timestamp when the segment becomes active.
+    /// - `end_time`: Unix timestamp when the segment expires.
+    /// - `start_price`: Price at the beginning of the segment.
+    /// - `end_price`: Price at the end of the segment.
+    /// - `price_fix_duration`: Duration in seconds for each price interval.
+    pub fn add_buy_offer_time_segment(
+        ctx: Context<AddBuyOfferTimeSegment>,
+        offer_id: u64,
+        start_time: u64,
+        end_time: u64,
+        start_price: u64,
+        end_price: u64,
+        price_fix_duration: u64,
+    ) -> Result<()> {
+        buy_offer::add_buy_offer_time_segment(
+            ctx,
+            offer_id,
+            start_time,
+            end_time,
+            start_price,
+            end_price,
+            price_fix_duration,
+        )
+    }
+
     /// Creates an offer with two buy tokens.
     ///
     /// Delegates to `make_offer::make_offer_two`.
