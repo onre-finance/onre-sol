@@ -123,6 +123,102 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "closeSingleRedemptionOffer",
+      "docs": [
+        "Closes a single redemption offer.",
+        "",
+        "Delegates to `redemption_offer::close_single_redemption_offer`.",
+        "Removes the offer from the single redemption offers account and clears its data.",
+        "Emits a `CloseSingleRedemptionOfferEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `CloseSingleRedemptionOffer`.",
+        "- `offer_id`: ID of the offer to close."
+      ],
+      "discriminator": [
+        170,
+        162,
+        152,
+        127,
+        143,
+        20,
+        36,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "singleRedemptionOfferAccount",
+          "docs": [
+            "The single redemption offer account within the SingleRedemptionOfferAccount, rent paid by `boss`."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  105,
+                  110,
+                  103,
+                  108,
+                  101,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer funding and authorizing the offer closure."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "initialize",
       "docs": [
         "Creates an offer with two buy tokens.",
@@ -640,6 +736,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "closeSingleRedemptionOfferEvent",
+      "discriminator": [
+        119,
+        19,
+        54,
+        13,
+        63,
+        141,
+        52,
+        62
+      ]
+    },
+    {
       "name": "singleRedemptionOfferMadeEvent",
       "discriminator": [
         153,
@@ -656,7 +765,8 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "bossAlreadySet"
+      "name": "accountFull",
+      "msg": "Buy offer account is full, cannot create more offers"
     }
   ],
   "types": [
@@ -817,6 +927,22 @@ export type Onreapp = {
     },
     {
       "name": "closeBuyOfferEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "closeSingleRedemptionOfferEvent",
       "type": {
         "kind": "struct",
         "fields": [
