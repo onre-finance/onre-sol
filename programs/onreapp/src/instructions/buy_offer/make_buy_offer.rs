@@ -86,11 +86,6 @@ pub fn make_buy_offer(
     buy_offer.offer_id = offer_id;
     buy_offer.token_in_mint = ctx.accounts.token_in_mint.key();
     buy_offer.token_out_mint = ctx.accounts.token_out_mint.key();
-    
-    // Initialize time segments to default
-    for i in 0..buy_offer.time_segments.len() {
-        buy_offer.time_segments[i] = BuyOfferTimeSegment::default();
-    }
 
     buy_offer_account.count += 1;
 
