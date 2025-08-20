@@ -47,46 +47,48 @@ describe("Close buy offer", () => {
         [buyOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from('buy_offers')], ONREAPP_PROGRAM_ID);
     });
 
-    test("Close buy offer should succeed and remove the offer", async () => {
+    test("Close buy offer should succeed and clear the offer", async () => {
         // given - create an offer first
-        const offerId = new BN(1);
         await testHelper.makeBuyOffer({
-            offerId,
             tokenInMint,
             tokenOutMint,
         });
 
         // verify offer exists
         let buyOfferAccountData = await program.account.buyOfferAccount.fetch(buyOfferAccountPda);
-        expect(buyOfferAccountData.count.toNumber()).toBe(1);
-        expect(buyOfferAccountData.offers[0].offerId.toNumber()).toBe(1);
+        const initialCounter = buyOfferAccountData.counter.toNumber();
+        const createdOffer = buyOfferAccountData.offers.find(offer => offer.offerId.toNumber() === initialCounter);
+        expect(createdOffer).toBeDefined();
 
         // when - close the offer
         await program.methods
-            .closeBuyOffer(offerId)
+            .closeBuyOffer(new BN(initialCounter))
             .accounts({
                 state: testHelper.statePda,
             })
             .rpc();
 
-        // then - verify offer is removed
+        // then - verify offer is cleared
         buyOfferAccountData = await program.account.buyOfferAccount.fetch(buyOfferAccountPda);
-        expect(buyOfferAccountData.count.toNumber()).toBe(0);
         
-        // verify the offer slot is cleared
-        expect(buyOfferAccountData.offers[0].offerId.toNumber()).toBe(0);
-        expect(buyOfferAccountData.offers[0].tokenInMint.toString()).toBe(new PublicKey(0).toString());
-        expect(buyOfferAccountData.offers[0].tokenOutMint.toString()).toBe(new PublicKey(0).toString());
+        // Counter should remain the same (not decremented)
+        expect(buyOfferAccountData.counter.toNumber()).toBe(initialCounter);
+        
+        // Find the offer that was closed - should be cleared
+        const closedOffer = buyOfferAccountData.offers.find(offer => offer.offerId.toNumber() === initialCounter);
+        expect(closedOffer).toBeUndefined(); // Should not exist anymore
+        
+        // Verify all offers are cleared (since this is the only one)
+        const activeOffers = buyOfferAccountData.offers.filter(offer => offer.offerId.toNumber() > 0);
+        expect(activeOffers.length).toBe(0);
     });
 
-    test("Close buy offer should move last offer to removed position", async () => {
+    test("Close buy offer should clear specific offer without affecting others", async () => {
         // given - create multiple offers
-        const offer1Id = new BN(10);
-        const offer2Id = new BN(20);
-        const offer3Id = new BN(30);
+        const initialData = await program.account.buyOfferAccount.fetch(buyOfferAccountPda);
+        const startingCounter = initialData.counter.toNumber();
 
         await testHelper.makeBuyOffer({
-            offerId: offer1Id,
             tokenInMint,
             tokenOutMint,
         });
@@ -95,7 +97,6 @@ describe("Close buy offer", () => {
         const token2Out = testHelper.createMint(boss, BigInt(100_000e9), 9);
         
         await testHelper.makeBuyOffer({
-            offerId: offer2Id,
             tokenInMint: token2In,
             tokenOutMint: token2Out,
         });
@@ -104,86 +105,80 @@ describe("Close buy offer", () => {
         const token3Out = testHelper.createMint(boss, BigInt(100_000e9), 9);
 
         await testHelper.makeBuyOffer({
-            offerId: offer3Id,
             tokenInMint: token3In,
             tokenOutMint: token3Out,
         });
 
         // verify all offers exist
         let buyOfferAccountData = await program.account.buyOfferAccount.fetch(buyOfferAccountPda);
-        expect(buyOfferAccountData.count.toNumber()).toBe(3);
+        expect(buyOfferAccountData.counter.toNumber()).toBe(startingCounter + 3);
+        let activeOffers = buyOfferAccountData.offers.filter(offer => offer.offerId.toNumber() > startingCounter);
+        expect(activeOffers.length).toBe(3);
 
-        // when - close the middle offer (index 1)
+        // when - close the middle offer
+        const middleOfferId = startingCounter + 2;
         await program.methods
-            .closeBuyOffer(offer2Id)
+            .closeBuyOffer(new BN(middleOfferId))
             .accounts({
                 state: testHelper.statePda,
             })
             .rpc();
 
-        // then - verify the last offer moved to position 1
+        // then - verify only the middle offer is cleared
         buyOfferAccountData = await program.account.buyOfferAccount.fetch(buyOfferAccountPda);
-        expect(buyOfferAccountData.count.toNumber()).toBe(2);
         
-        // offer1 should still be at index 0
-        expect(buyOfferAccountData.offers[0].offerId.toNumber()).toBe(10);
+        // Counter remains the same
+        expect(buyOfferAccountData.counter.toNumber()).toBe(startingCounter + 3);
         
-        // offer3 should have moved to index 1 (where offer2 was)
-        expect(buyOfferAccountData.offers[1].offerId.toNumber()).toBe(30);
-        expect(buyOfferAccountData.offers[1].tokenInMint.toString()).toBe(token3In.toString());
-        expect(buyOfferAccountData.offers[1].tokenOutMint.toString()).toBe(token3Out.toString());
-
-        // the last position should be cleared
-        expect(buyOfferAccountData.offers[2].offerId.toNumber()).toBe(0);
-        expect(buyOfferAccountData.offers[2].tokenInMint.toString()).toBe(new PublicKey(0).toString());
+        // Only 2 active offers remain
+        activeOffers = buyOfferAccountData.offers.filter(offer => offer.offerId.toNumber() > startingCounter);
+        expect(activeOffers.length).toBe(2);
+        
+        // First and third offers should still exist
+        const firstOffer = buyOfferAccountData.offers.find(offer => offer.offerId.toNumber() === startingCounter + 1);
+        const thirdOffer = buyOfferAccountData.offers.find(offer => offer.offerId.toNumber() === startingCounter + 3);
+        
+        expect(firstOffer).toBeDefined();
+        expect(thirdOffer).toBeDefined();
+        
+        // Middle offer should be cleared
+        const middleOffer = buyOfferAccountData.offers.find(offer => offer.offerId.toNumber() === middleOfferId);
+        expect(middleOffer).toBeUndefined();
     });
 
-    test("Close last buy offer should clear data and decrease count", async () => {
-        // given - clear any existing offers first
-        let buyOfferAccountData = await program.account.buyOfferAccount.fetch(buyOfferAccountPda);
-        const currentCount = buyOfferAccountData.count.toNumber();
-        
-        // Close any existing offers
-        for (let i = 0; i < currentCount; i++) {
-            const existingOfferId = buyOfferAccountData.offers[i].offerId;
-            if (existingOfferId.toNumber() > 0) {
-                await program.methods
-                    .closeBuyOffer(existingOfferId)
-                    .accounts({
-                        state: testHelper.statePda,
-                    })
-                    .rpc();
-            }
-        }
+    test("Close offer should clear data properly", async () => {
+        // given - create one offer
+        const initialData = await program.account.buyOfferAccount.fetch(buyOfferAccountPda);
+        const startingCounter = initialData.counter.toNumber();
 
-        // create one offer
-        const offerId = new BN(100);
         await testHelper.makeBuyOffer({
-            offerId,
             tokenInMint,
             tokenOutMint,
         });
 
         // verify offer exists
-        buyOfferAccountData = await program.account.buyOfferAccount.fetch(buyOfferAccountPda);
-        expect(buyOfferAccountData.count.toNumber()).toBe(1);
+        let buyOfferAccountData = await program.account.buyOfferAccount.fetch(buyOfferAccountPda);
+        const newOfferId = startingCounter + 1;
+        const createdOffer = buyOfferAccountData.offers.find(offer => offer.offerId.toNumber() === newOfferId);
+        expect(createdOffer).toBeDefined();
 
-        // when - close the only offer
+        // when - close the offer
         await program.methods
-            .closeBuyOffer(offerId)
+            .closeBuyOffer(new BN(newOfferId))
             .accounts({
                 state: testHelper.statePda,
             })
             .rpc();
 
-        // then - verify count is 0 and data is cleared
+        // then - verify data is cleared
         buyOfferAccountData = await program.account.buyOfferAccount.fetch(buyOfferAccountPda);
-        expect(buyOfferAccountData.count.toNumber()).toBe(0);
         
-        // verify the offer data is cleared
-        expect(buyOfferAccountData.offers[0].offerId.toNumber()).toBe(0);
-        expect(buyOfferAccountData.offers[0].tokenInMint.toString()).toBe(new PublicKey(0).toString());
-        expect(buyOfferAccountData.offers[0].tokenOutMint.toString()).toBe(new PublicKey(0).toString());
+        // Counter remains unchanged
+        expect(buyOfferAccountData.counter.toNumber()).toBe(newOfferId);
+        
+        // Offer should be cleared (offerId = 0)
+        const clearedOffer = buyOfferAccountData.offers.find(offer => offer.offerId.toNumber() === newOfferId);
+        expect(clearedOffer).toBeUndefined();
     });
 
     test("Close buy offer with offer_id 0 should fail", async () => {
@@ -214,19 +209,22 @@ describe("Close buy offer", () => {
 
     test("Close buy offer should fail when not called by boss", async () => {
         // given - create an offer
-        const offerId = new BN(200);
+        const initialData = await program.account.buyOfferAccount.fetch(buyOfferAccountPda);
+        const startingCounter = initialData.counter.toNumber();
+
         await testHelper.makeBuyOffer({
-            offerId,
             tokenInMint,
             tokenOutMint,
         });
+
+        const newOfferId = startingCounter + 1;
 
         // when/then - try to close with different signer
         const notBoss = testHelper.createUserAccount();
         
         await expect(
             program.methods
-                .closeBuyOffer(offerId)
+                .closeBuyOffer(new BN(newOfferId))
                 .accountsPartial({
                     state: testHelper.statePda,
                     boss: notBoss.publicKey,

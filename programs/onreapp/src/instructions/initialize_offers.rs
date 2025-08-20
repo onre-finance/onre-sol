@@ -32,7 +32,7 @@ pub struct InitializeOffers<'info> {
 
 /// Initializes the buy offers account.
 ///
-/// Creates and initializes the buy offers account with count set to 0.
+/// Creates and initializes the buy offers account with counter set to 0.
 /// Only the boss can call this instruction.
 ///
 /// # Arguments
@@ -43,7 +43,7 @@ pub struct InitializeOffers<'info> {
 pub fn initialize_offers(ctx: Context<InitializeOffers>) -> Result<()> {
     // Load the zero-copy account and initialize it
     let mut buy_offer_account = ctx.accounts.buy_offer_account.load_init()?;
-    buy_offer_account.count = 0;
+    buy_offer_account.counter = 0;
 
     Ok(())
 }

@@ -67,27 +67,23 @@ pub struct MakeBuyOffer<'info> {
 /// - [`MakeBuyOfferErrorCode::InvalidPriceFixDuration`] if duration is invalid.
 /// - [`MakeBuyOfferErrorCode::AccountFull`] if the BuyOfferAccount is full.
 pub fn make_buy_offer(
-    ctx: Context<MakeBuyOffer>,
-    offer_id: u64
+    ctx: Context<MakeBuyOffer>
 ) -> Result<()> {
     let buy_offer_account = &mut ctx.accounts.buy_offer_account.load_mut()?;
 
-    // Check if account is full
-    require!(
-        buy_offer_account.count < MAX_BUY_OFFERS as u64,
-        MakeBuyOfferErrorCode::AccountFull
-    );
-
     // Find the next available slot
-    let slot_index = buy_offer_account.count as usize;
+    let slot_index = buy_offer_account.offers.iter().position(|offer| offer.offer_id == 0)
+        .ok_or(MakeBuyOfferErrorCode::AccountFull)?;
+    
+    // Get the next offer ID and update counter
+    let offer_id = buy_offer_account.counter.saturating_add(1);
+    buy_offer_account.counter = offer_id;
     
     // Create the buy offer
     let buy_offer = &mut buy_offer_account.offers[slot_index];
     buy_offer.offer_id = offer_id;
     buy_offer.token_in_mint = ctx.accounts.token_in_mint.key();
     buy_offer.token_out_mint = ctx.accounts.token_out_mint.key();
-
-    buy_offer_account.count += 1;
 
     msg!("Buy offer created with ID: {}", offer_id);
 

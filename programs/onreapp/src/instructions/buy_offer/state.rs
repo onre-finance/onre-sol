@@ -54,5 +54,5 @@ impl Default for BuyOffer {
 #[repr(C)]
 pub struct BuyOfferAccount {
     pub offers: [BuyOffer; MAX_BUY_OFFERS],
-    pub count: u64
+    pub counter: u64
 }

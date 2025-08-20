@@ -362,12 +362,7 @@
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": [
-        {
-          "name": "offer_id",
-          "type": "u64"
-        }
-      ]
+      "args": []
     },
     {
       "name": "set_boss",
@@ -494,7 +489,8 @@
   "errors": [
     {
       "code": 6000,
-      "name": "InvalidBossAddress"
+      "name": "AccountFull",
+      "msg": "Buy offer account is full, cannot create more offers"
     }
   ],
   "types": [
@@ -589,7 +585,7 @@
             }
           },
           {
-            "name": "count",
+            "name": "counter",
             "type": "u64"
           }
         ]

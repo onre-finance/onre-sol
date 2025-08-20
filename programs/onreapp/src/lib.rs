@@ -60,9 +60,8 @@ pub mod onreapp {
     /// - `offer_id`: Unique ID for the offer.
     pub fn make_buy_offer(
         ctx: Context<MakeBuyOffer>,
-        offer_id: u64,
     ) -> Result<()> {
-        buy_offer::make_buy_offer(ctx, offer_id)
+        buy_offer::make_buy_offer(ctx)
     }
 
     /// Closes a buy offer.

@@ -368,12 +368,7 @@ export type Onreapp = {
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": [
-        {
-          "name": "offerId",
-          "type": "u64"
-        }
-      ]
+      "args": []
     },
     {
       "name": "setBoss",
@@ -500,7 +495,8 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "invalidBossAddress"
+      "name": "accountFull",
+      "msg": "Buy offer account is full, cannot create more offers"
     }
   ],
   "types": [
@@ -595,7 +591,7 @@ export type Onreapp = {
             }
           },
           {
-            "name": "count",
+            "name": "counter",
             "type": "u64"
           }
         ]
