@@ -58,10 +58,17 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `MakeBuyOffer`.
     /// - `offer_id`: Unique ID for the offer.
-    pub fn make_buy_offer(
-        ctx: Context<MakeBuyOffer>,
-    ) -> Result<()> {
+    pub fn make_buy_offer(ctx: Context<MakeBuyOffer>) -> Result<()> {
         buy_offer::make_buy_offer(ctx)
+    }
+
+    pub fn make_single_redemption_offer(
+        ctx: Context<MakeSingleRedemptionOffer>,
+        start_time: u64,
+        end_time: u64,
+        price: u64,
+    ) -> Result<()> {
+        redemption_offer::make_single_redemption_offer(ctx, start_time, end_time, price)
     }
 
     /// Closes a buy offer.
@@ -73,10 +80,7 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `CloseBuyOffer`.
     /// - `offer_id`: ID of the offer to close.
-    pub fn close_buy_offer(
-        ctx: Context<CloseBuyOffer>,
-        offer_id: u64,
-    ) -> Result<()> {
+    pub fn close_buy_offer(ctx: Context<CloseBuyOffer>, offer_id: u64) -> Result<()> {
         buy_offer::close_buy_offer(ctx, offer_id)
     }
 

@@ -52,14 +52,6 @@ pub struct RedemptionDualOfferTimeSegment {
     pub price_token_two: u64,
 }
 
-/// Account holding 20 RedemptionSingleOffer instances  
-#[account(zero_copy)]
-#[repr(C)]
-pub struct RedemptionOfferSingleAccount {
-    pub offers: [RedemptionSingleOffer; 20],
-    pub count: u64,
-}
-
 /// Account holding 20 RedemptionDualOffer instances
 #[account(zero_copy)]
 #[repr(C)]

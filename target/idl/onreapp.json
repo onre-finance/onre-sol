@@ -241,6 +241,43 @@
           }
         },
         {
+          "name": "single_redemption_offer_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  105,
+                  110,
+                  103,
+                  108,
+                  101,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "boss",
           "docs": [
             "The signer authorizing the initialization, must be the boss."
@@ -358,6 +395,111 @@
       "args": []
     },
     {
+      "name": "make_single_redemption_offer",
+      "discriminator": [
+        166,
+        32,
+        26,
+        139,
+        15,
+        237,
+        70,
+        155
+      ],
+      "accounts": [
+        {
+          "name": "single_redemption_offer_account",
+          "docs": [
+            "The buy offer account within the BuyOfferAccount, rent paid by `boss`. Already initialized in initialize."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  105,
+                  110,
+                  103,
+                  108,
+                  101,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_in_mint",
+          "docs": [
+            "Mint of the token_in for the offer."
+          ]
+        },
+        {
+          "name": "token_out_mint",
+          "docs": [
+            "Mint of the token_out for the offer."
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer funding and authorizing the offer creation."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "start_time",
+          "type": "u64"
+        },
+        {
+          "name": "end_time",
+          "type": "u64"
+        },
+        {
+          "name": "price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "set_boss",
       "docs": [
         "Delegates to `set_boss::set_boss` to change the boss, emitting a `BossUpdated` event."
@@ -425,6 +567,19 @@
       ]
     },
     {
+      "name": "SingleRedemptionOfferAccount",
+      "discriminator": [
+        147,
+        253,
+        140,
+        13,
+        219,
+        99,
+        149,
+        241
+      ]
+    },
+    {
       "name": "State",
       "discriminator": [
         216,
@@ -477,12 +632,25 @@
         208,
         111
       ]
+    },
+    {
+      "name": "SingleRedemptionOfferMadeEvent",
+      "discriminator": [
+        153,
+        203,
+        254,
+        191,
+        172,
+        20,
+        189,
+        216
+      ]
     }
   ],
   "errors": [
     {
       "code": 6000,
-      "name": "InvalidBossAddress"
+      "name": "BossAlreadySet"
     }
   ],
   "types": [
@@ -648,6 +816,108 @@
         "fields": [
           {
             "name": "offer_id",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SingleRedemptionOffer",
+      "docs": [
+        "Redemption offer struct for token exchange with static pricing"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offer_id",
+            "type": "u64"
+          },
+          {
+            "name": "token_in_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_out_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "start_time",
+            "type": "u64"
+          },
+          {
+            "name": "end_time",
+            "type": "u64"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SingleRedemptionOfferAccount",
+      "docs": [
+        "Account holding MAX_BUY_OFFERS RedemptionOfferSingle instances (should fit 10KB limit)"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offers",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "SingleRedemptionOffer"
+                  }
+                },
+                50
+              ]
+            }
+          },
+          {
+            "name": "counter",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SingleRedemptionOfferMadeEvent",
+      "docs": [
+        "Event emitted when a buy offer is created."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offer_id",
+            "type": "u64"
+          },
+          {
+            "name": "start_time",
+            "type": "u64"
+          },
+          {
+            "name": "end_time",
+            "type": "u64"
+          },
+          {
+            "name": "price",
             "type": "u64"
           },
           {

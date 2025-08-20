@@ -247,6 +247,43 @@ export type Onreapp = {
           }
         },
         {
+          "name": "singleRedemptionOfferAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  105,
+                  110,
+                  103,
+                  108,
+                  101,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "boss",
           "docs": [
             "The signer authorizing the initialization, must be the boss."
@@ -364,6 +401,111 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "makeSingleRedemptionOffer",
+      "discriminator": [
+        166,
+        32,
+        26,
+        139,
+        15,
+        237,
+        70,
+        155
+      ],
+      "accounts": [
+        {
+          "name": "singleRedemptionOfferAccount",
+          "docs": [
+            "The buy offer account within the BuyOfferAccount, rent paid by `boss`. Already initialized in initialize."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  105,
+                  110,
+                  103,
+                  108,
+                  101,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "Mint of the token_in for the offer."
+          ]
+        },
+        {
+          "name": "tokenOutMint",
+          "docs": [
+            "Mint of the token_out for the offer."
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer funding and authorizing the offer creation."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "startTime",
+          "type": "u64"
+        },
+        {
+          "name": "endTime",
+          "type": "u64"
+        },
+        {
+          "name": "price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "setBoss",
       "docs": [
         "Delegates to `set_boss::set_boss` to change the boss, emitting a `BossUpdated` event."
@@ -431,6 +573,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "singleRedemptionOfferAccount",
+      "discriminator": [
+        147,
+        253,
+        140,
+        13,
+        219,
+        99,
+        149,
+        241
+      ]
+    },
+    {
       "name": "state",
       "discriminator": [
         216,
@@ -483,12 +638,25 @@ export type Onreapp = {
         208,
         111
       ]
+    },
+    {
+      "name": "singleRedemptionOfferMadeEvent",
+      "discriminator": [
+        153,
+        203,
+        254,
+        191,
+        172,
+        20,
+        189,
+        216
+      ]
     }
   ],
   "errors": [
     {
       "code": 6000,
-      "name": "invalidBossAddress"
+      "name": "bossAlreadySet"
     }
   ],
   "types": [
@@ -654,6 +822,108 @@ export type Onreapp = {
         "fields": [
           {
             "name": "offerId",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "singleRedemptionOffer",
+      "docs": [
+        "Redemption offer struct for token exchange with static pricing"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "type": "u64"
+          },
+          {
+            "name": "tokenInMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenOutMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "startTime",
+            "type": "u64"
+          },
+          {
+            "name": "endTime",
+            "type": "u64"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "singleRedemptionOfferAccount",
+      "docs": [
+        "Account holding MAX_BUY_OFFERS RedemptionOfferSingle instances (should fit 10KB limit)"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offers",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "singleRedemptionOffer"
+                  }
+                },
+                50
+              ]
+            }
+          },
+          {
+            "name": "counter",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "singleRedemptionOfferMadeEvent",
+      "docs": [
+        "Event emitted when a buy offer is created."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "type": "u64"
+          },
+          {
+            "name": "startTime",
+            "type": "u64"
+          },
+          {
+            "name": "endTime",
+            "type": "u64"
+          },
+          {
+            "name": "price",
             "type": "u64"
           },
           {
