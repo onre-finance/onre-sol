@@ -1,4 +1,3 @@
-use crate::instructions::BuyOfferAccount;
 use crate::state::State;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
@@ -33,15 +32,6 @@ pub struct Initialize<'info> {
     )]
     pub state: Account<'info, State>,
 
-    /// The buy offer account within the BuyOfferAccount, rent paid by `boss`.
-    #[account(
-        init,
-        payer = boss,
-        space = 8 + std::mem::size_of::<BuyOfferAccount>(),
-        seeds = [b"buy_offers"],
-        bump
-    )]
-    pub buy_offer_account: AccountLoader<'info, BuyOfferAccount>,
 
     /// The signer funding and authorizing the state initialization, becomes the boss.
     #[account(mut)]
@@ -67,10 +57,6 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         return err!(InitializeErrorCode::BossAlreadySet);
     }
     state.boss = ctx.accounts.boss.key();
-
-    // Load the zero-copy account appropriately
-    let mut buy_offer_account = ctx.accounts.buy_offer_account.load_init()?;
-    buy_offer_account.count = 0;
 
     Ok(())
 }

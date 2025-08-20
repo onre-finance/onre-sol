@@ -40,6 +40,9 @@ describe("Make buy offer", () => {
         tokenOutMint = testHelper.createMint(boss, BigInt(100_000e9), 9);
         
         await program.methods.initialize().accounts({ boss }).rpc();
+        await program.methods.initializeOffers().accounts({ 
+            state: testHelper.statePda 
+        }).rpc();
     });
 
     test("Make a buy offer should succeed", async () => {

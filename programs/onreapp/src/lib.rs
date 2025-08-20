@@ -37,6 +37,17 @@ pub mod state;
 pub mod onreapp {
     use super::*;
 
+    /// Initializes the buy offers account.
+    ///
+    /// Delegates to `buy_offer::initialize_offers`.
+    /// Only the boss can call this instruction to create the buy offers account.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `InitializeOffers`.
+    pub fn initialize_offers(ctx: Context<InitializeOffers>) -> Result<()> {
+        initialize_offers::initialize_offers(ctx)
+    }
+
     /// Creates a buy offer.
     ///
     /// Delegates to `buy_offer::make_buy_offer`.
@@ -52,6 +63,22 @@ pub mod onreapp {
         offer_id: u64,
     ) -> Result<()> {
         buy_offer::make_buy_offer(ctx, offer_id)
+    }
+
+    /// Closes a buy offer.
+    ///
+    /// Delegates to `buy_offer::close_buy_offer`.
+    /// Removes the offer from the buy offers account and clears its data.
+    /// Emits a `CloseBuyOfferEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `CloseBuyOffer`.
+    /// - `offer_id`: ID of the offer to close.
+    pub fn close_buy_offer(
+        ctx: Context<CloseBuyOffer>,
+        offer_id: u64,
+    ) -> Result<()> {
+        buy_offer::close_buy_offer(ctx, offer_id)
     }
 
     /// Creates an offer with two buy tokens.
