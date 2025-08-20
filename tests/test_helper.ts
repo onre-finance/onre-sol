@@ -170,6 +170,15 @@ export class TestHelper {
         expect(tokenAccountData.amount).toBe(amount);
     }
 
+    async getTokenAccountBalance(tokenAccount: PublicKey): Promise<bigint> {
+        const account = await this.context.banksClient.getAccount(tokenAccount);
+        if (!account) {
+            throw new Error("Token account not found");
+        }
+        const tokenAccountData = AccountLayout.decode(account.data);
+        return tokenAccountData.amount;
+    }
+
     async makeOfferOne(
         params: MakeOfferOneParams
     ) {

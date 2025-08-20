@@ -71,3 +71,8 @@ pub struct RedemptionOfferDualAccount {
 pub struct State {
     pub boss: Pubkey,
 }
+
+
+#[account]
+#[derive(InitSpace)]
+pub struct VaultAuthority{}
