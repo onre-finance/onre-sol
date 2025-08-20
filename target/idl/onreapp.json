@@ -102,13 +102,6 @@
           ]
         },
         {
-          "name": "token_program",
-          "docs": [
-            "SPL Token program for token operations."
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
           "name": "system_program",
           "docs": [
             "Solana System program for account creation and rent payment."

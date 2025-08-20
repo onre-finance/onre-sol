@@ -108,13 +108,6 @@ export type Onreapp = {
           ]
         },
         {
-          "name": "tokenProgram",
-          "docs": [
-            "SPL Token program for token operations."
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
           "name": "systemProgram",
           "docs": [
             "Solana System program for account creation and rent payment."

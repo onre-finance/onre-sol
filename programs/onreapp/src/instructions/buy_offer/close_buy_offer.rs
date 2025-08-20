@@ -30,9 +30,6 @@ pub struct CloseBuyOffer<'info> {
     #[account(has_one = boss)]
     pub state: Box<Account<'info, State>>,
 
-    /// SPL Token program for token operations.
-    pub token_program: Program<'info, Token>,
-
     /// Solana System program for account creation and rent payment.
     pub system_program: Program<'info, System>,
 }

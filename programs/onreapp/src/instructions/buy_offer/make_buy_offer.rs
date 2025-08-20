@@ -18,7 +18,6 @@ pub struct BuyOfferMadeEvent {
 /// # Preconditions
 /// - All Associated Token Accounts (ATAs) must be initialized prior to execution.
 #[derive(Accounts)]
-#[instruction(offer_id: u64)]
 pub struct MakeBuyOffer<'info> {
 
     /// The buy offer account within the BuyOfferAccount, rent paid by `boss`. Already initialized in initialize.
