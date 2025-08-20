@@ -117,6 +117,102 @@
       ]
     },
     {
+      "name": "close_single_redemption_offer",
+      "docs": [
+        "Closes a single redemption offer.",
+        "",
+        "Delegates to `redemption_offer::close_single_redemption_offer`.",
+        "Removes the offer from the single redemption offers account and clears its data.",
+        "Emits a `CloseSingleRedemptionOfferEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `CloseSingleRedemptionOffer`.",
+        "- `offer_id`: ID of the offer to close."
+      ],
+      "discriminator": [
+        170,
+        162,
+        152,
+        127,
+        143,
+        20,
+        36,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "single_redemption_offer_account",
+          "docs": [
+            "The single redemption offer account within the SingleRedemptionOfferAccount, rent paid by `boss`."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  105,
+                  110,
+                  103,
+                  108,
+                  101,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer funding and authorizing the offer closure."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "offer_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "initialize",
       "docs": [
         "Creates an offer with two buy tokens.",
@@ -634,6 +730,19 @@
       ]
     },
     {
+      "name": "CloseSingleRedemptionOfferEvent",
+      "discriminator": [
+        119,
+        19,
+        54,
+        13,
+        63,
+        141,
+        52,
+        62
+      ]
+    },
+    {
       "name": "SingleRedemptionOfferMadeEvent",
       "discriminator": [
         153,
@@ -650,7 +759,8 @@
   "errors": [
     {
       "code": 6000,
-      "name": "BossAlreadySet"
+      "name": "AccountFull",
+      "msg": "Buy offer account is full, cannot create more offers"
     }
   ],
   "types": [
@@ -811,6 +921,22 @@
     },
     {
       "name": "CloseBuyOfferEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offer_id",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CloseSingleRedemptionOfferEvent",
       "type": {
         "kind": "struct",
         "fields": [

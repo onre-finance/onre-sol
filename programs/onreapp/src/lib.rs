@@ -71,6 +71,19 @@ pub mod onreapp {
         redemption_offer::make_single_redemption_offer(ctx, start_time, end_time, price)
     }
 
+    /// Closes a single redemption offer.
+    ///
+    /// Delegates to `redemption_offer::close_single_redemption_offer`.
+    /// Removes the offer from the single redemption offers account and clears its data.
+    /// Emits a `CloseSingleRedemptionOfferEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `CloseSingleRedemptionOffer`.
+    /// - `offer_id`: ID of the offer to close.
+    pub fn close_single_redemption_offer(ctx: Context<CloseSingleRedemptionOffer>, offer_id: u64) -> Result<()> {
+        redemption_offer::close_single_redemption_offer(ctx, offer_id)
+    }
+
     /// Closes a buy offer.
     ///
     /// Delegates to `buy_offer::close_buy_offer`.
