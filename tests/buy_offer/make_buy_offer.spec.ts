@@ -96,12 +96,12 @@ describe("Make buy offer", () => {
 
     // Find offers by their auto-generated IDs
     const firstOffer = buyOfferAccountData.offers.find(offer =>
-      offer.tokenInMint.toString() === tokenInMint.toString() &&
+      offer.tokenInMint.toString() === token1In.toString() &&
       offer.offerId.toNumber() > initialCounter
     );
     expect(firstOffer).toBeDefined();
     expect(firstOffer!.offerId.toNumber()).toBe(initialCounter + 1);
-    expect(firstOffer!.tokenOutMint.toString()).toBe(tokenOutMint.toString());
+    expect(firstOffer!.tokenOutMint.toString()).toBe(token1Out.toString());
 
     const secondOffer = buyOfferAccountData.offers.find(offer =>
       offer.tokenInMint.toString() === token2In.toString()

@@ -140,6 +140,14 @@ pub fn take_single_redemption_offer(
     // Execute transfers
     execute_transfers(&ctx, token_in_amount, token_out_amount)?;
     
+    msg!(
+        "Redemption offer taken - ID: {}, token_in: {}, token_out: {}, user: {}",
+        offer_id,
+        token_in_amount,
+        token_out_amount,
+        ctx.accounts.user.key()
+    );
+    
     // Emit event
     emit!(TakeSingleRedemptionOfferEvent {
         offer_id,

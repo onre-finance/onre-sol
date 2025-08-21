@@ -1,6 +1,7 @@
 use crate::state::{State, VaultAuthority};
+use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 use anchor_spl::associated_token::AssociatedToken;
 
 #[event]
@@ -73,16 +74,20 @@ pub struct VaultDeposit<'info> {
 /// A `Result` indicating success or failure.
 pub fn vault_deposit(ctx: Context<VaultDeposit>, amount: u64) -> Result<()> {
     // Transfer tokens from boss to vault
-    let cpi_accounts = Transfer {
-        from: ctx.accounts.boss_token_account.to_account_info(),
-        to: ctx.accounts.vault_token_account.to_account_info(),
-        authority: ctx.accounts.boss.to_account_info(),
-    };
-    
-    let cpi_program = ctx.accounts.token_program.to_account_info();
-    let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-    
-    token::transfer(cpi_ctx, amount)?;
+    transfer_tokens(
+        &ctx.accounts.token_program,
+        &ctx.accounts.boss_token_account,
+        &ctx.accounts.vault_token_account,
+        &ctx.accounts.boss,
+        None,
+        amount,
+    )?;
+
+    msg!(
+        "Vault deposit - mint: {}, amount: {}",
+        ctx.accounts.token_mint.key(),
+        amount
+    );
 
     emit!(VaultDepositEvent {
         mint: ctx.accounts.token_mint.key(),

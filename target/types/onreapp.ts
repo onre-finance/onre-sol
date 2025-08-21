@@ -583,7 +583,7 @@ export type Onreapp = {
         {
           "name": "singleRedemptionOfferAccount",
           "docs": [
-            "The buy offer account within the BuyOfferAccount, rent paid by `boss`. Already initialized in initialize."
+            "The single redemption offer account within the SingleRedemptionOfferAccount, rent paid by `boss`. Already initialized in initialize."
           ],
           "writable": true,
           "pda": {
@@ -2216,7 +2216,7 @@ export type Onreapp = {
     {
       "name": "singleRedemptionOfferAccount",
       "docs": [
-        "Account holding MAX_BUY_OFFERS RedemptionOfferSingle instances (should fit 10KB limit)"
+        "Account holding MAX_REDEMPTION_OFFERS SingleRedemptionOffer instances (should fit 10KB limit)"
       ],
       "serialization": "bytemuck",
       "repr": {
@@ -2248,7 +2248,7 @@ export type Onreapp = {
     {
       "name": "singleRedemptionOfferMadeEvent",
       "docs": [
-        "Event emitted when a buy offer is created."
+        "Event emitted when a single redemption offer is created."
       ],
       "type": {
         "kind": "struct",

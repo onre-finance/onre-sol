@@ -28,7 +28,7 @@ impl Default for SingleRedemptionOffer {
     }
 }
 
-/// Account holding MAX_BUY_OFFERS RedemptionOfferSingle instances (should fit 10KB limit)
+/// Account holding MAX_REDEMPTION_OFFERS SingleRedemptionOffer instances (should fit 10KB limit)
 #[account(zero_copy)]
 #[repr(C)]
 pub struct SingleRedemptionOfferAccount {

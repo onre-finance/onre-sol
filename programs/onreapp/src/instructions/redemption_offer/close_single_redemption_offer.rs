@@ -33,6 +33,20 @@ pub struct CloseSingleRedemptionOffer<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Closes a single redemption offer.
+///
+/// Removes the specified redemption offer from the account by clearing it (setting to default values).
+/// Only the boss can close redemption offers.
+///
+/// # Arguments
+/// - `ctx`: Context containing the accounts for the closure operation.
+/// - `offer_id`: ID of the offer to close.
+///
+/// # Errors
+/// - [`CloseSingleRedemptionOfferErrorCode::OfferNotFound`] if the offer doesn't exist or ID is 0.
+///
+/// # Returns
+/// A `Result` indicating success or failure.
 pub fn close_single_redemption_offer(ctx: Context<CloseSingleRedemptionOffer>, offer_id: u64) -> Result<()> {
     if offer_id == 0 {
         return Err(error!(CloseSingleRedemptionOfferErrorCode::OfferNotFound));
@@ -46,6 +60,8 @@ pub fn close_single_redemption_offer(ctx: Context<CloseSingleRedemptionOffer>, o
         .ok_or(CloseSingleRedemptionOfferErrorCode::OfferNotFound)?;
 
     single_redemption_offer_account.offers[offer_index] = Default::default();
+
+    msg!("Redemption offer closed with ID: {}", offer_id);
 
     emit!(CloseSingleRedemptionOfferEvent {
         offer_id,

@@ -1,6 +1,7 @@
 use crate::state::{State, VaultAuthority};
+use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 #[event]
 pub struct VaultWithdrawEvent {
@@ -74,16 +75,20 @@ pub fn vault_withdraw(ctx: Context<VaultWithdraw>, amount: u64) -> Result<()> {
     let signer_seeds = &[vault_authority_seeds.as_slice()];
 
     // Transfer tokens from vault to boss using vault authority as signer
-    let cpi_accounts = Transfer {
-        from: ctx.accounts.vault_token_account.to_account_info(),
-        to: ctx.accounts.boss_token_account.to_account_info(),
-        authority: ctx.accounts.vault_authority.to_account_info(),
-    };
-    
-    let cpi_program = ctx.accounts.token_program.to_account_info();
-    let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer_seeds);
-    
-    token::transfer(cpi_ctx, amount)?;
+    transfer_tokens(
+        &ctx.accounts.token_program,
+        &ctx.accounts.vault_token_account,
+        &ctx.accounts.boss_token_account,
+        &ctx.accounts.vault_authority.to_account_info(),
+        Some(signer_seeds),
+        amount,
+    )?;
+
+    msg!(
+        "Vault withdraw - mint: {}, amount: {}",
+        ctx.accounts.token_mint.key(),
+        amount
+    );
 
     emit!(VaultWithdrawEvent {
         mint: ctx.accounts.token_mint.key(),

@@ -274,7 +274,7 @@ describe("Make single redemption offer", () => {
                     state: testHelper.statePda,
                 })
                 .rpc()
-        ).rejects.toThrow("Buy offer account is full");
+        ).rejects.toThrow("Single redemption offer account is full");
     });
 
     test("Make redemption offer should fail when not called by boss", async () => {

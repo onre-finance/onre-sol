@@ -4,7 +4,7 @@ use crate::state::State;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
-/// Event emitted when a buy offer is created.
+/// Event emitted when a single redemption offer is created.
 #[event]
 pub struct SingleRedemptionOfferMadeEvent {
     pub offer_id: u64,
@@ -14,16 +14,16 @@ pub struct SingleRedemptionOfferMadeEvent {
     pub boss: Pubkey,
 }
 
-/// Account structure for creating a buy offer.
+/// Account structure for creating a single redemption offer.
 ///
-/// This struct defines the accounts required to initialize a buy offer where the boss provides
-/// token_in in exchange for token_out. The price can change dynamically over the offer's duration.
+/// This struct defines the accounts required to initialize a redemption offer where users can
+/// exchange token_in for token_out at a fixed price during the offer's duration.
 ///
 /// # Preconditions
 /// - All Associated Token Accounts (ATAs) must be initialized prior to execution.
 #[derive(Accounts)]
 pub struct MakeSingleRedemptionOffer<'info> {
-    /// The buy offer account within the BuyOfferAccount, rent paid by `boss`. Already initialized in initialize.
+    /// The single redemption offer account within the SingleRedemptionOfferAccount, rent paid by `boss`. Already initialized in initialize.
     #[account(mut, seeds = [b"single_redemption_offers"], bump)]
     pub single_redemption_offer_account: AccountLoader<'info, SingleRedemptionOfferAccount>,
 
@@ -45,27 +45,19 @@ pub struct MakeSingleRedemptionOffer<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Creates a buy offer.
+/// Creates a single redemption offer.
 ///
-/// Initializes a buy offer where the boss provides token_in in exchange for token_out.
-/// The price of the token_out can change dynamically over the offer's duration.
+/// Initializes a redemption offer where users can exchange token_in for token_out at a fixed price.
+/// The price remains constant throughout the offer's duration.
 ///
 /// # Arguments
-/// - `ctx`: Context containing the accounts for the offer.
-/// - `offer_id`: Unique identifier for the offer.
-/// - `token_in_amount`: Total amount of the token_in to be offered.
-/// - `start_price`: Price at the beginning of the offer.
-/// - `end_price`: Price at the end of the offer.
+/// - `ctx`: Context containing the accounts for the redemption offer.
 /// - `start_time`: Unix timestamp for when the offer becomes active.
 /// - `end_time`: Unix timestamp for when the offer expires.
-/// - `price_fix_duration`: Duration in seconds for each price interval.
+/// - `price`: Fixed price with 9 decimal precision (e.g., 1.5 = 1500000000).
 ///
 /// # Errors
-/// - [`MakeBuyOfferErrorCode::InsufficientBalance`] if the boss lacks sufficient `token_in_amount`.
-/// - [`MakeBuyOfferErrorCode::InvalidAmount`] if amounts are zero or invalid.
-/// - [`MakeBuyOfferErrorCode::InvalidOfferTime`] if times are invalid.
-/// - [`MakeBuyOfferErrorCode::InvalidPriceFixDuration`] if duration is invalid.
-/// - [`MakeBuyOfferErrorCode::AccountFull`] if the BuyOfferAccount is full.
+/// - [`SingleRedemptionOfferErrorCode::AccountFull`] if the SingleRedemptionOfferAccount is full.
 pub fn make_single_redemption_offer(
     ctx: Context<MakeSingleRedemptionOffer>,
     start_time: u64,
@@ -111,10 +103,10 @@ pub fn make_single_redemption_offer(
     Ok(())
 }
 
-/// Error codes for buy offer creation operations.
+/// Error codes for single redemption offer creation operations.
 #[error_code]
 pub enum SingleRedemptionOfferErrorCode {
-    /// Triggered when the BuyOfferAccount is full.
-    #[msg("Buy offer account is full, cannot create more offers")]
+    /// Triggered when the SingleRedemptionOfferAccount is full.
+    #[msg("Single redemption offer account is full, cannot create more offers")]
     AccountFull,
 }

@@ -55,5 +55,8 @@ pub fn initialize_offers(ctx: Context<InitializeOffers>) -> Result<()> {
     buy_offer_account.counter = 0;
     let mut single_redemption_offer_account = ctx.accounts.single_redemption_offer_account.load_init()?;
     single_redemption_offer_account.counter = 0;
+    
+    msg!("Offers accounts initialized - buy_offers and single_redemption_offers counters set to 0");
+    
     Ok(())
 }

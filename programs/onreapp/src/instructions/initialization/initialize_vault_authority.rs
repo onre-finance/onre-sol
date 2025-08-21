@@ -1,6 +1,4 @@
 use anchor_lang::prelude::*;
-use crate::instructions::buy_offer::BuyOfferAccount;
-use crate::instructions::SingleRedemptionOfferAccount;
 use crate::state::{State, VaultAuthority};
 
 /// Account structure for initializing the vault authority account.
@@ -42,5 +40,6 @@ pub struct InitializeVaultAuthority<'info> {
 /// # Returns
 /// A `Result` indicating success or failure.
 pub fn initialize_vault_authority(_ctx: Context<InitializeVaultAuthority>) -> Result<()> {
+    msg!("Vault authority initialized successfully");
     Ok(())
 }
