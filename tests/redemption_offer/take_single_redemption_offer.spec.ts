@@ -612,7 +612,6 @@ describe("Take single redemption offer", () => {
         console.log(`ABC exchanged: 1000 (1.000 ABC)`);
         console.log(`Price stored: ${price.toString()} (0.8123123123 * 10^9, truncated)`);
         console.log(`XYZ received: ${xyzReceived.toString()} (${Number(xyzReceived)/1000} XYZ)`);
-        console.log(`Expected conceptually: ~812 XYZ tokens (0.812 XYZ)`);
         
         // The calculation should give us the precise mathematical result
         // Let's verify the actual calculation matches our formula
