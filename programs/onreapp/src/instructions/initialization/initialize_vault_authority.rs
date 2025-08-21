@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use crate::constants::seeds;
 use crate::state::{State, VaultAuthority};
 
 /// Account structure for initializing the vault authority account.
@@ -12,7 +13,7 @@ pub struct InitializeVaultAuthority<'info> {
         init,
         payer = boss,
         space = 8 + VaultAuthority::INIT_SPACE,
-        seeds = [b"vault_authority"],
+        seeds = [seeds::VAULT_AUTHORITY],
         bump
     )]
     pub vault_authority: Account<'info, VaultAuthority>,

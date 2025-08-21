@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use crate::constants::seeds;
 use crate::instructions::buy_offer::BuyOfferAccount;
 use crate::instructions::SingleRedemptionOfferAccount;
 use crate::state::{State};
@@ -14,7 +15,7 @@ pub struct InitializeOffers<'info> {
         init,
         payer = boss,
         space = 8 + std::mem::size_of::<BuyOfferAccount>(),
-        seeds = [b"buy_offers"],
+        seeds = [seeds::BUY_OFFERS],
         bump
     )]
     pub buy_offer_account: AccountLoader<'info, BuyOfferAccount>,
@@ -23,7 +24,7 @@ pub struct InitializeOffers<'info> {
         init,
         payer = boss,
         space = 8 + std::mem::size_of::<SingleRedemptionOfferAccount>(),
-        seeds = [b"single_redemption_offers"],
+        seeds = [seeds::SINGLE_REDEMPTION_OFFERS],
         bump
     )]
     pub single_redemption_offer_account: AccountLoader<'info, SingleRedemptionOfferAccount>,

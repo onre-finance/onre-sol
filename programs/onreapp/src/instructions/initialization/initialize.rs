@@ -1,3 +1,4 @@
+use crate::constants::seeds;
 use crate::state::State;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
@@ -27,7 +28,7 @@ pub struct Initialize<'info> {
         init,
         payer = boss,
         space = 8 + State::INIT_SPACE,
-        seeds = [b"state"],
+        seeds = [seeds::STATE],
         bump
     )]
     pub state: Account<'info, State>,

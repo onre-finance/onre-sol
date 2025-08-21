@@ -1,3 +1,4 @@
+use crate::constants::seeds;
 use crate::state::{State, VaultAuthority};
 use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
@@ -18,7 +19,7 @@ pub struct VaultDepositEvent {
 #[derive(Accounts)]
 pub struct VaultDeposit<'info> {
     /// The vault authority account that controls the vault token accounts.
-    #[account(seeds = [b"vault_authority"], bump)]
+    #[account(seeds = [seeds::VAULT_AUTHORITY], bump)]
     pub vault_authority: Account<'info, VaultAuthority>,
 
     /// The token mint for the deposit.

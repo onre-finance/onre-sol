@@ -1,3 +1,4 @@
+use crate::constants::seeds;
 use crate::state::{State, VaultAuthority};
 use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
@@ -17,7 +18,7 @@ pub struct VaultWithdrawEvent {
 #[derive(Accounts)]
 pub struct VaultWithdraw<'info> {
     /// The vault authority account that controls the vault token accounts.
-    #[account(seeds = [b"vault_authority"], bump)]
+    #[account(seeds = [seeds::VAULT_AUTHORITY], bump)]
     pub vault_authority: Account<'info, VaultAuthority>,
 
     /// The token mint for the withdrawal.
@@ -69,7 +70,7 @@ pub fn vault_withdraw(ctx: Context<VaultWithdraw>, amount: u64) -> Result<()> {
     // Get vault authority bump for signing
     let vault_authority_bump = ctx.bumps.vault_authority;
     let vault_authority_seeds = &[
-        b"vault_authority".as_ref(),
+        seeds::VAULT_AUTHORITY,
         &[vault_authority_bump],
     ];
     let signer_seeds = &[vault_authority_seeds.as_slice()];

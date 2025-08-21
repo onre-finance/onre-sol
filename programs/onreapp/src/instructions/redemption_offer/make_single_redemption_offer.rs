@@ -1,4 +1,5 @@
 use super::state::MAX_REDEMPTION_OFFERS;
+use crate::constants::seeds;
 use crate::instructions::SingleRedemptionOfferAccount;
 use crate::state::State;
 use anchor_lang::prelude::*;
@@ -24,7 +25,7 @@ pub struct SingleRedemptionOfferMadeEvent {
 #[derive(Accounts)]
 pub struct MakeSingleRedemptionOffer<'info> {
     /// The single redemption offer account within the SingleRedemptionOfferAccount, rent paid by `boss`. Already initialized in initialize.
-    #[account(mut, seeds = [b"single_redemption_offers"], bump)]
+    #[account(mut, seeds = [seeds::SINGLE_REDEMPTION_OFFERS], bump)]
     pub single_redemption_offer_account: AccountLoader<'info, SingleRedemptionOfferAccount>,
 
     /// Mint of the token_in for the offer.

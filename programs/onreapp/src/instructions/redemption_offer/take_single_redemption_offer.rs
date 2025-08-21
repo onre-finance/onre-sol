@@ -1,3 +1,4 @@
+use crate::constants::seeds;
 use crate::instructions::{SingleRedemptionOffer, SingleRedemptionOfferAccount};
 use crate::state::State;
 use crate::utils::transfer_tokens;
@@ -38,7 +39,7 @@ pub struct TakeSingleRedemptionOfferEvent {
 #[instruction(offer_id: u64)]
 pub struct TakeSingleRedemptionOffer<'info> {
     /// The single redemption offer account containing all offers.
-    #[account(mut, seeds = [b"single_redemption_offers"], bump)]
+    #[account(mut, seeds = [seeds::SINGLE_REDEMPTION_OFFERS], bump)]
     pub single_redemption_offer_account: AccountLoader<'info, SingleRedemptionOfferAccount>,
 
     /// Program state to get the boss.
@@ -53,7 +54,7 @@ pub struct TakeSingleRedemptionOffer<'info> {
     pub boss: UncheckedAccount<'info>,
 
     /// The vault authority that controls vault token accounts.
-    #[account(seeds = [b"vault_authority"], bump)]
+    #[account(seeds = [seeds::VAULT_AUTHORITY], bump)]
     /// CHECK: This is safe as it's a PDA used for signing
     pub vault_authority: UncheckedAccount<'info>,
 
@@ -198,7 +199,7 @@ fn validate_offer(
     if current_time < offer.start_time {
         return Err(error!(TakeSingleRedemptionOfferErrorCode::OfferNotActive));
     }
-    if current_time > offer.end_time {
+    if current_time >= offer.end_time {
         return Err(error!(TakeSingleRedemptionOfferErrorCode::OfferExpired));
     }
     
@@ -248,7 +249,7 @@ fn execute_transfers(
     // Transfer token_out from vault to user using vault authority
     let vault_authority_bump = ctx.bumps.vault_authority;
     let vault_authority_seeds = &[
-        b"vault_authority".as_ref(),
+        seeds::VAULT_AUTHORITY,
         &[vault_authority_bump],
     ];
     let signer_seeds = &[vault_authority_seeds.as_slice()];

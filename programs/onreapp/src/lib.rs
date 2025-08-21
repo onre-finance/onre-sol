@@ -4,6 +4,7 @@ use instructions::*;
 // Program ID declaration
 declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
 
+pub mod constants;
 pub mod contexts;
 pub mod instructions;
 pub mod state;

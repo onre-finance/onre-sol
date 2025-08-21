@@ -1,3 +1,4 @@
+use crate::constants::seeds;
 use crate::instructions::SingleRedemptionOfferAccount;
 use crate::state::State;
 use anchor_lang::prelude::*;
@@ -18,7 +19,7 @@ pub struct CloseSingleRedemptionOfferEvent {
 #[derive(Accounts)]
 pub struct CloseSingleRedemptionOffer<'info> {
     /// The single redemption offer account within the SingleRedemptionOfferAccount, rent paid by `boss`.
-    #[account(mut, seeds = [b"single_redemption_offers"], bump)]
+    #[account(mut, seeds = [seeds::SINGLE_REDEMPTION_OFFERS], bump)]
     pub single_redemption_offer_account: AccountLoader<'info, SingleRedemptionOfferAccount>,
 
     /// The signer funding and authorizing the offer closure.

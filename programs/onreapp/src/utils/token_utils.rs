@@ -24,7 +24,7 @@ use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 /// )?;
 /// 
 /// // PDA-signed transfer
-/// let authority_seeds = &[b"vault_authority", &[bump]];
+/// let authority_seeds = &[seeds::VAULT_AUTHORITY, &[bump]];
 /// let signer_seeds = &[authority_seeds.as_slice()];
 /// transfer_tokens(
 ///     &ctx.accounts.token_program,
