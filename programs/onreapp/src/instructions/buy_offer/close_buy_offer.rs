@@ -1,3 +1,4 @@
+use crate::constants::seeds;
 use crate::instructions::buy_offer::BuyOfferAccount;
 use crate::state::State;
 use anchor_lang::prelude::*;
@@ -18,7 +19,7 @@ pub struct CloseBuyOfferEvent {
 #[derive(Accounts)]
 pub struct CloseBuyOffer<'info> {
     /// The buy offer account within the BuyOfferAccount, rent paid by `boss`.
-    #[account(mut, seeds = [b"buy_offers"], bump)]
+    #[account(mut, seeds = [seeds::BUY_OFFERS], bump)]
     pub buy_offer_account: AccountLoader<'info, BuyOfferAccount>,
 
     /// The signer funding and authorizing the offer closure.

@@ -1,6 +1,8 @@
 use anchor_lang::prelude::*;
+use crate::constants::seeds;
 use crate::instructions::buy_offer::BuyOfferAccount;
-use crate::state::State;
+use crate::instructions::SingleRedemptionOfferAccount;
+use crate::state::{State};
 
 /// Account structure for initializing the buy offers account.
 ///
@@ -13,10 +15,19 @@ pub struct InitializeOffers<'info> {
         init,
         payer = boss,
         space = 8 + std::mem::size_of::<BuyOfferAccount>(),
-        seeds = [b"buy_offers"],
+        seeds = [seeds::BUY_OFFERS],
         bump
     )]
     pub buy_offer_account: AccountLoader<'info, BuyOfferAccount>,
+
+    #[account(
+        init,
+        payer = boss,
+        space = 8 + std::mem::size_of::<SingleRedemptionOfferAccount>(),
+        seeds = [seeds::SINGLE_REDEMPTION_OFFERS],
+        bump
+    )]
+    pub single_redemption_offer_account: AccountLoader<'info, SingleRedemptionOfferAccount>,
 
     /// The signer authorizing the initialization, must be the boss.
     #[account(mut)]
@@ -41,9 +52,12 @@ pub struct InitializeOffers<'info> {
 /// # Returns
 /// A `Result` indicating success or failure.
 pub fn initialize_offers(ctx: Context<InitializeOffers>) -> Result<()> {
-    // Load the zero-copy account and initialize it
     let mut buy_offer_account = ctx.accounts.buy_offer_account.load_init()?;
     buy_offer_account.counter = 0;
-
+    let mut single_redemption_offer_account = ctx.accounts.single_redemption_offer_account.load_init()?;
+    single_redemption_offer_account.counter = 0;
+    
+    msg!("Offers accounts initialized - buy_offers and single_redemption_offers counters set to 0");
+    
     Ok(())
 }

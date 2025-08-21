@@ -4,9 +4,11 @@ use instructions::*;
 // Program ID declaration
 declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
 
+pub mod constants;
 pub mod contexts;
 pub mod instructions;
 pub mod state;
+pub mod utils;
 
 /// The main program module for the Onre App.
 ///
@@ -48,6 +50,38 @@ pub mod onreapp {
         initialize_offers::initialize_offers(ctx)
     }
 
+    pub fn initialize_vault_authority(ctx: Context<InitializeVaultAuthority>) -> Result<()> {
+        initialize_vault_authority::initialize_vault_authority(ctx)
+    }
+
+    /// Deposits tokens into the vault.
+    ///
+    /// Delegates to `vault_operations::vault_deposit`.
+    /// Transfers tokens from boss's account to vault's token account for the specified mint.
+    /// Creates vault token account if it doesn't exist using init_if_needed.
+    /// Only the boss can call this instruction.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `VaultDeposit`.
+    /// - `amount`: Amount of tokens to deposit.
+    pub fn vault_deposit(ctx: Context<VaultDeposit>, amount: u64) -> Result<()> {
+        vault_operations::vault_deposit(ctx, amount)
+    }
+
+    /// Withdraws tokens from the vault.
+    ///
+    /// Delegates to `vault_operations::vault_withdraw`.
+    /// Transfers tokens from vault's token account to boss's token account for the specified mint.
+    /// Both token accounts must already exist.
+    /// Only the boss can call this instruction.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `VaultWithdraw`.
+    /// - `amount`: Amount of tokens to withdraw.
+    pub fn vault_withdraw(ctx: Context<VaultWithdraw>, amount: u64) -> Result<()> {
+        vault_operations::vault_withdraw(ctx, amount)
+    }
+
     /// Creates a buy offer.
     ///
     /// Delegates to `buy_offer::make_buy_offer`.
@@ -58,10 +92,45 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `MakeBuyOffer`.
     /// - `offer_id`: Unique ID for the offer.
-    pub fn make_buy_offer(
-        ctx: Context<MakeBuyOffer>,
-    ) -> Result<()> {
+    pub fn make_buy_offer(ctx: Context<MakeBuyOffer>) -> Result<()> {
         buy_offer::make_buy_offer(ctx)
+    }
+
+    pub fn make_single_redemption_offer(
+        ctx: Context<MakeSingleRedemptionOffer>,
+        start_time: u64,
+        end_time: u64,
+        price: u64,
+    ) -> Result<()> {
+        redemption_offer::make_single_redemption_offer(ctx, start_time, end_time, price)
+    }
+
+    /// Closes a single redemption offer.
+    ///
+    /// Delegates to `redemption_offer::close_single_redemption_offer`.
+    /// Removes the offer from the single redemption offers account and clears its data.
+    /// Emits a `CloseSingleRedemptionOfferEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `CloseSingleRedemptionOffer`.
+    /// - `offer_id`: ID of the offer to close.
+    pub fn close_single_redemption_offer(ctx: Context<CloseSingleRedemptionOffer>, offer_id: u64) -> Result<()> {
+        redemption_offer::close_single_redemption_offer(ctx, offer_id)
+    }
+
+    /// Takes a single redemption offer.
+    ///
+    /// Delegates to `redemption_offer::take_single_redemption_offer`.
+    /// Allows a user to exchange token_in for token_out based on the offer's price.
+    /// Price is stored with token_in_decimals precision. Anyone can take the offer.
+    /// Emits a `TakeSingleRedemptionOfferEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `TakeSingleRedemptionOffer`.
+    /// - `offer_id`: ID of the offer to take.
+    /// - `token_in_amount`: Amount of token_in to provide.
+    pub fn take_single_redemption_offer(ctx: Context<TakeSingleRedemptionOffer>, offer_id: u64, token_in_amount: u64) -> Result<()> {
+        redemption_offer::take_single_redemption_offer(ctx, offer_id, token_in_amount)
     }
 
     /// Closes a buy offer.
@@ -73,10 +142,7 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `CloseBuyOffer`.
     /// - `offer_id`: ID of the offer to close.
-    pub fn close_buy_offer(
-        ctx: Context<CloseBuyOffer>,
-        offer_id: u64,
-    ) -> Result<()> {
+    pub fn close_buy_offer(ctx: Context<CloseBuyOffer>, offer_id: u64) -> Result<()> {
         buy_offer::close_buy_offer(ctx, offer_id)
     }
 
