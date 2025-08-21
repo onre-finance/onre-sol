@@ -1,7 +1,8 @@
-use crate::instructions::SingleRedemptionOfferAccount;
+use crate::instructions::{SingleRedemptionOffer, SingleRedemptionOfferAccount};
 use crate::state::State;
+use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 #[error_code]
 pub enum TakeSingleRedemptionOfferErrorCode {
@@ -17,6 +18,8 @@ pub enum TakeSingleRedemptionOfferErrorCode {
     OfferNotActive,
     #[msg("Math overflow")]
     MathOverflow,
+    #[msg("Invalid boss account")]
+    InvalidBoss,
 }
 
 #[event]
@@ -39,11 +42,14 @@ pub struct TakeSingleRedemptionOffer<'info> {
     pub single_redemption_offer_account: AccountLoader<'info, SingleRedemptionOfferAccount>,
 
     /// Program state to get the boss.
-    #[account(has_one = boss)]
     pub state: Box<Account<'info, State>>,
 
     /// The boss account that receives token_in payments.
-    /// CHECK: This account is validated through the state account
+    /// This must match the boss in the state account.
+    #[account(
+        constraint = boss.key() == state.boss @ TakeSingleRedemptionOfferErrorCode::InvalidBoss
+    )]
+    /// CHECK: This account is validated through the constraint above
     pub boss: UncheckedAccount<'info>,
 
     /// The vault authority that controls vault token accounts.
@@ -52,27 +58,9 @@ pub struct TakeSingleRedemptionOffer<'info> {
     pub vault_authority: UncheckedAccount<'info>,
 
     /// The token mint for token_in.
-    #[account(
-        constraint = {
-            let offer_account = single_redemption_offer_account.load()?;
-            let offer = offer_account.offers.iter()
-                .find(|o| o.offer_id == offer_id)
-                .ok_or(TakeSingleRedemptionOfferErrorCode::OfferNotFound)?;
-            offer.token_in_mint == token_in_mint.key()
-        } @ TakeSingleRedemptionOfferErrorCode::InvalidTokenInMint
-    )]
     pub token_in_mint: Box<Account<'info, Mint>>,
 
     /// The token mint for token_out.
-    #[account(
-        constraint = {
-            let offer_account = single_redemption_offer_account.load()?;
-            let offer = offer_account.offers.iter()
-                .find(|o| o.offer_id == offer_id)
-                .ok_or(TakeSingleRedemptionOfferErrorCode::OfferNotFound)?;
-            offer.token_out_mint == token_out_mint.key()
-        } @ TakeSingleRedemptionOfferErrorCode::InvalidTokenOutMint
-    )]
     pub token_out_mint: Box<Account<'info, Mint>>,
 
     /// User's token_in account (source of payment).
@@ -135,6 +123,39 @@ pub fn take_single_redemption_offer(
     offer_id: u64,
     token_in_amount: u64,
 ) -> Result<()> {
+    // Find the offer
+    let offer = find_offer(&ctx, offer_id)?;
+    
+    // Validate the offer
+    validate_offer(&ctx, &offer)?;
+    
+    // Calculate token_out_amount
+    let token_out_amount = calculate_token_out_amount(
+        token_in_amount,
+        offer.price,
+        ctx.accounts.token_in_mint.decimals,
+        ctx.accounts.token_out_mint.decimals,
+    )?;
+    
+    // Execute transfers
+    execute_transfers(&ctx, token_in_amount, token_out_amount)?;
+    
+    // Emit event
+    emit!(TakeSingleRedemptionOfferEvent {
+        offer_id,
+        token_in_amount,
+        token_out_amount,
+        user: ctx.accounts.user.key(),
+    });
+
+    Ok(())
+}
+
+/// Finds the offer by ID (pure data retrieval)
+fn find_offer(
+    ctx: &Context<TakeSingleRedemptionOffer>,
+    offer_id: u64,
+) -> Result<SingleRedemptionOffer> {
     if offer_id == 0 {
         return Err(error!(TakeSingleRedemptionOfferErrorCode::OfferNotFound));
     }
@@ -148,9 +169,23 @@ pub fn take_single_redemption_offer(
         .find(|offer| offer.offer_id == offer_id)
         .ok_or(TakeSingleRedemptionOfferErrorCode::OfferNotFound)?;
 
-    // Token mint validation is now handled in account constraints
+    Ok(*offer)
+}
 
-    // Check if offer is active
+/// Validates all offer conditions (business rules)
+fn validate_offer(
+    ctx: &Context<TakeSingleRedemptionOffer>,
+    offer: &SingleRedemptionOffer,
+) -> Result<()> {
+    // Validate token mints match the offer
+    if offer.token_in_mint != ctx.accounts.token_in_mint.key() {
+        return Err(error!(TakeSingleRedemptionOfferErrorCode::InvalidTokenInMint));
+    }
+    if offer.token_out_mint != ctx.accounts.token_out_mint.key() {
+        return Err(error!(TakeSingleRedemptionOfferErrorCode::InvalidTokenOutMint));
+    }
+
+    // Validate offer timing
     let current_time = Clock::get()?.unix_timestamp as u64;
     if current_time < offer.start_time {
         return Err(error!(TakeSingleRedemptionOfferErrorCode::OfferNotActive));
@@ -158,15 +193,20 @@ pub fn take_single_redemption_offer(
     if current_time > offer.end_time {
         return Err(error!(TakeSingleRedemptionOfferErrorCode::OfferExpired));
     }
-
-    // Calculate token_out_amount with decimal precision handling
-    // Formula: token_out_amount = (token_in_amount * 10^(token_out_decimals + 9)) / (price * 10^token_in_decimals)
-    let token_in_decimals = ctx.accounts.token_in_mint.decimals;
-    let token_out_decimals = ctx.accounts.token_out_mint.decimals;
     
-    // Use u128 for calculations to prevent overflow
+    Ok(())
+}
+
+/// Calculates the token_out_amount based on token_in_amount, price, and decimals
+fn calculate_token_out_amount(
+    token_in_amount: u64,
+    price: u64,
+    token_in_decimals: u8,
+    token_out_decimals: u8,
+) -> Result<u64> {
+    // Formula: token_out_amount = (token_in_amount * 10^(token_out_decimals + 9)) / (price * 10^token_in_decimals)
     let token_in_amount_u128 = token_in_amount as u128;
-    let price_u128 = offer.price as u128;
+    let price_u128 = price as u128;
     
     // Calculate: numerator = token_in_amount * 10^(token_out_decimals + 9)
     let numerator = token_in_amount_u128
@@ -178,22 +218,25 @@ pub fn take_single_redemption_offer(
         .checked_mul(10_u128.pow(token_in_decimals as u32))
         .ok_or(TakeSingleRedemptionOfferErrorCode::MathOverflow)?;
     
-    let token_out_amount = (numerator / denominator) as u64;
+    Ok((numerator / denominator) as u64)
+}
 
+/// Executes both token transfers (user to boss, vault to user)
+fn execute_transfers(
+    ctx: &Context<TakeSingleRedemptionOffer>,
+    token_in_amount: u64,
+    token_out_amount: u64,
+) -> Result<()> {
     // Transfer token_in from user to boss
-    let transfer_in_accounts = Transfer {
-        from: ctx.accounts.user_token_in_account.to_account_info(),
-        to: ctx.accounts.boss_token_in_account.to_account_info(),
-        authority: ctx.accounts.user.to_account_info(),
-    };
+    transfer_tokens(
+        &ctx.accounts.token_program,
+        &ctx.accounts.user_token_in_account,
+        &ctx.accounts.boss_token_in_account,
+        &ctx.accounts.user,
+        None,
+        token_in_amount,
+    )?;
     
-    let transfer_in_ctx = CpiContext::new(
-        ctx.accounts.token_program.to_account_info(),
-        transfer_in_accounts,
-    );
-    
-    token::transfer(transfer_in_ctx, token_in_amount)?;
-
     // Transfer token_out from vault to user using vault authority
     let vault_authority_bump = ctx.bumps.vault_authority;
     let vault_authority_seeds = &[
@@ -202,26 +245,14 @@ pub fn take_single_redemption_offer(
     ];
     let signer_seeds = &[vault_authority_seeds.as_slice()];
 
-    let transfer_out_accounts = Transfer {
-        from: ctx.accounts.vault_token_out_account.to_account_info(),
-        to: ctx.accounts.user_token_out_account.to_account_info(),
-        authority: ctx.accounts.vault_authority.to_account_info(),
-    };
-    
-    let transfer_out_ctx = CpiContext::new_with_signer(
-        ctx.accounts.token_program.to_account_info(),
-        transfer_out_accounts,
-        signer_seeds,
-    );
-    
-    token::transfer(transfer_out_ctx, token_out_amount)?;
-
-    emit!(TakeSingleRedemptionOfferEvent {
-        offer_id,
-        token_in_amount,
+    transfer_tokens(
+        &ctx.accounts.token_program,
+        &ctx.accounts.vault_token_out_account,
+        &ctx.accounts.user_token_out_account,
+        &ctx.accounts.vault_authority,
+        Some(signer_seeds),
         token_out_amount,
-        user: ctx.accounts.user.key(),
-    });
-
+    )?;
+    
     Ok(())
 }

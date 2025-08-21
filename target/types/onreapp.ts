@@ -799,10 +799,8 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The boss account that receives token_in payments."
-          ],
-          "relations": [
-            "state"
+            "The boss account that receives token_in payments.",
+            "This must match the boss in the state account."
           ]
         },
         {

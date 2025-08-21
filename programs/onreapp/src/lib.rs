@@ -7,6 +7,7 @@ declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
 pub mod contexts;
 pub mod instructions;
 pub mod state;
+pub mod utils;
 
 /// The main program module for the Onre App.
 ///
