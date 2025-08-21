@@ -55,7 +55,7 @@ pub struct MakeSingleRedemptionOffer<'info> {
 /// - `ctx`: Context containing the accounts for the redemption offer.
 /// - `start_time`: Unix timestamp for when the offer becomes active.
 /// - `end_time`: Unix timestamp for when the offer expires.
-/// - `price`: Fixed price with 9 decimal precision (e.g., 1.5 = 1500000000).
+/// - `price`: How much token_in needed for 1 token_out, with 9 decimal precision (e.g., 1.5 = 1500000000).
 ///
 /// # Errors
 /// - [`SingleRedemptionOfferErrorCode::AccountFull`] if the SingleRedemptionOfferAccount is full.

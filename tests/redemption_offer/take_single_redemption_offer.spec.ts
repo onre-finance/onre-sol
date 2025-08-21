@@ -538,7 +538,7 @@ describe("Take single redemption offer", () => {
 
     test("Price calculation with 3-decimal tokens and 9-decimal price precision", async () => {
         // given - ABC and XYZ tokens both with 3 decimals
-        // Exchange rate: 1 ABC = 0.8123123123 XYZ
+        // Price semantics: 1 XYZ = 0.8123123123 ABC (price is how much ABC needed for 1 XYZ)
         // Price stored: 0.8123123123 * 10^9 = 812312312 (truncated from 812312312.3)
         
         const abcMint = testHelper.createMint(boss, BigInt(0), 3); // ABC with 3 decimals
@@ -612,6 +612,7 @@ describe("Take single redemption offer", () => {
         console.log(`ABC exchanged: 1000 (1.000 ABC)`);
         console.log(`Price stored: ${price.toString()} (0.8123123123 * 10^9, truncated)`);
         console.log(`XYZ received: ${xyzReceived.toString()} (${Number(xyzReceived)/1000} XYZ)`);
+        console.log(`Expected conceptually: 1000/0.8123123123 = ~1231 XYZ tokens (1.231 XYZ)`);
         
         // The calculation should give us the precise mathematical result
         // Let's verify the actual calculation matches our formula

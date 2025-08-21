@@ -107,9 +107,10 @@ pub struct TakeSingleRedemptionOffer<'info> {
 /// Takes a single redemption offer.
 ///
 /// Allows a user to exchange token_in for token_out based on the offer's price.
-/// The price is stored with 9 decimal precision, so 1.000000001 = 1000000001.
+/// The price represents how much token_in is needed to get 1 token_out (with 9 decimal precision).
 /// 
-/// Calculation: if user provides 10 token_in and price is 2, user gets 5 token_out.
+/// Example: if price is 2000000000 (2.0), user needs 2 token_in to get 1 token_out.
+/// So providing 10 token_in gives 5 token_out.
 /// Formula: token_out_amount = (token_in_amount * 10^(token_out_decimals + 9)) / (price * 10^token_in_decimals)
 ///
 /// # Arguments
