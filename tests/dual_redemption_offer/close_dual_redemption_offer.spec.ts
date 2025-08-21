@@ -241,7 +241,7 @@ describe("Close dual redemption offer", () => {
     await expect(
       testHelper.program.methods
         .closeDualRedemptionOffer(new BN(offerId))
-        .accounts({
+        .accountsPartial({
           state: testHelper.statePda,
           boss: fakeUser.publicKey,
         })
