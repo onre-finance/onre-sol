@@ -731,7 +731,7 @@ export type Onreapp = {
         "",
         "Delegates to `redemption_offer::take_single_redemption_offer`.",
         "Allows a user to exchange token_in for token_out based on the offer's price.",
-        "Price is stored with 9 decimal precision. Anyone can take the offer.",
+        "Price is stored with token_in_decimals precision. Anyone can take the offer.",
         "Emits a `TakeSingleRedemptionOfferEvent` upon success.",
         "",
         "# Arguments",
