@@ -133,6 +133,61 @@ pub mod onreapp {
         redemption_offer::take_single_redemption_offer(ctx, offer_id, token_in_amount)
     }
 
+    /// Creates a dual redemption offer.
+    ///
+    /// Delegates to `redemption_offer::make_dual_redemption_offer`.
+    /// Creates an offer where users can exchange token_in for two different token_out at fixed prices.
+    /// The ratio_basis_points determines the split between the two output tokens.
+    /// Emits a `DualRedemptionOfferMadeEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `MakeDualRedemptionOffer`.
+    /// - `start_time`: Unix timestamp for when the offer becomes active.
+    /// - `end_time`: Unix timestamp for when the offer expires.
+    /// - `price_1`: Fixed price for token_out_1 with 9 decimal precision.
+    /// - `price_2`: Fixed price for token_out_2 with 9 decimal precision.
+    /// - `ratio_basis_points`: Ratio in basis points for token_out_1 (e.g., 8000 = 80% for token_out_1, 20% for token_out_2).
+    pub fn make_dual_redemption_offer(
+        ctx: Context<MakeDualRedemptionOffer>,
+        start_time: u64,
+        end_time: u64,
+        price_1: u64,
+        price_2: u64,
+        ratio_basis_points: u16,
+    ) -> Result<()> {
+        redemption_offer::make_dual_redemption_offer(ctx, start_time, end_time, price_1, price_2, ratio_basis_points)
+    }
+
+    /// Closes a dual redemption offer.
+    ///
+    /// Delegates to `redemption_offer::close_dual_redemption_offer`.
+    /// Removes the offer from the dual redemption offers account and clears its data.
+    /// Only the boss can close dual redemption offers.
+    /// Emits a `CloseDualRedemptionOfferEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `CloseDualRedemptionOffer`.
+    /// - `offer_id`: ID of the offer to close.
+    pub fn close_dual_redemption_offer(ctx: Context<CloseDualRedemptionOffer>, offer_id: u64) -> Result<()> {
+        redemption_offer::close_dual_redemption_offer(ctx, offer_id)
+    }
+
+    /// Takes a dual redemption offer.
+    ///
+    /// Delegates to `redemption_offer::take_dual_redemption_offer`.
+    /// Allows a user to exchange token_in for token_out_1 and token_out_2 based on the offer's prices and ratio.
+    /// The ratio_basis_points determines how the token_in amount is split between the two output tokens.
+    /// Anyone can take the offer as long as it's active and vault has sufficient balances.
+    /// Emits a `TakeDualRedemptionOfferEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `TakeDualRedemptionOffer`.
+    /// - `offer_id`: ID of the offer to take.
+    /// - `token_in_amount`: Amount of token_in to provide.
+    pub fn take_dual_redemption_offer(ctx: Context<TakeDualRedemptionOffer>, offer_id: u64, token_in_amount: u64) -> Result<()> {
+        redemption_offer::take_dual_redemption_offer(ctx, offer_id, token_in_amount)
+    }
+
     /// Closes a buy offer.
     ///
     /// Delegates to `buy_offer::close_buy_offer`.

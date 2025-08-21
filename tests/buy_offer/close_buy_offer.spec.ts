@@ -15,7 +15,7 @@ describe("Close buy offer", () => {
     let boss: PublicKey;
     let buyOfferAccountPda: PublicKey;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         const programInfo: AddedProgram = {
             programId: ONREAPP_PROGRAM_ID,
             name: "onreapp",

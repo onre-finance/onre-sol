@@ -17,7 +17,7 @@ describe("Vault Operations", () => {
     let bossTokenAccount: PublicKey;
     let vaultTokenAccount: PublicKey;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         const programInfo: AddedProgram = {
             programId: ONREAPP_PROGRAM_ID,
             name: "onreapp",
@@ -52,46 +52,63 @@ describe("Vault Operations", () => {
 
     describe("Vault Deposit", () => {
         test("Deposit tokens should succeed and create vault token account", async () => {
-            // given
+            // given - create unique token for this test
+            const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+            const testBossTokenAccount = testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
+            const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, vaultAuthorityPda, true);
             const depositAmount = new BN(100_000e9);
 
             // when
             await program.methods
                 .vaultDeposit(depositAmount)
                 .accounts({
-                    tokenMint,
+                    tokenMint: testTokenMint,
                     state: testHelper.statePda,
                 })
                 .rpc();
 
             // then - verify vault token account was created and has correct balance
-            await testHelper.expectTokenAccountAmountToBe(vaultTokenAccount, BigInt(depositAmount.toString()));
+            await testHelper.expectTokenAccountAmountToBe(testVaultTokenAccount, BigInt(depositAmount.toString()));
 
             // Verify boss token account balance decreased
             const expectedBossBalance = BigInt(1_000_000e9 - 100_000e9);
-            await testHelper.expectTokenAccountAmountToBe(bossTokenAccount, expectedBossBalance);
+            await testHelper.expectTokenAccountAmountToBe(testBossTokenAccount, expectedBossBalance);
         });
 
         test("Deposit additional tokens should succeed", async () => {
-            // given
+            // given - create unique token and do initial deposit
+            const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+            const testBossTokenAccount = testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
+            const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, vaultAuthorityPda, true);
+            
+            // First deposit to set up initial balance
+            const initialDepositAmount = new BN(100_000e9);
+            await program.methods
+                .vaultDeposit(initialDepositAmount)
+                .accounts({
+                    tokenMint: testTokenMint,
+                    state: testHelper.statePda,
+                })
+                .rpc();
+            
             const additionalAmount = new BN(50_000e9);
             
-            // Get current balances
-            const initialVaultBalance = await testHelper.getTokenAccountBalance(vaultTokenAccount);
-            const initialBossBalance = await testHelper.getTokenAccountBalance(bossTokenAccount);
+            // Get current balances after first deposit
+            const initialVaultBalance = await testHelper.getTokenAccountBalance(testVaultTokenAccount);
+            const initialBossBalance = await testHelper.getTokenAccountBalance(testBossTokenAccount);
 
             // when
             await program.methods
                 .vaultDeposit(additionalAmount)
                 .accounts({
-                    tokenMint,
+                    tokenMint: testTokenMint,
                     state: testHelper.statePda,
                 })
                 .rpc();
 
             // then
-            const finalVaultBalance = await testHelper.getTokenAccountBalance(vaultTokenAccount);
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossTokenAccount);
+            const finalVaultBalance = await testHelper.getTokenAccountBalance(testVaultTokenAccount);
+            const finalBossBalance = await testHelper.getTokenAccountBalance(testBossTokenAccount);
 
             expect(finalVaultBalance).toBe(initialVaultBalance + BigInt(additionalAmount.toString()));
             expect(finalBossBalance).toBe(initialBossBalance - BigInt(additionalAmount.toString()));
@@ -119,6 +136,7 @@ describe("Vault Operations", () => {
 
         test("Deposit should fail when not called by boss", async () => {
             // given
+            const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
             const notBoss = testHelper.createUserAccount();
             const depositAmount = new BN(10_000e9);
 
@@ -127,7 +145,7 @@ describe("Vault Operations", () => {
                 program.methods
                     .vaultDeposit(depositAmount)
                     .accountsPartial({
-                        tokenMint,
+                        tokenMint: testTokenMint,
                         state: testHelper.statePda,
                         boss: notBoss.publicKey,
                     })
@@ -137,7 +155,9 @@ describe("Vault Operations", () => {
         });
 
         test("Deposit should fail with insufficient balance", async () => {
-            // given - try to deposit more than available
+            // given - create token with limited balance and try to deposit more than available
+            const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+            testHelper.createTokenAccount(testTokenMint, boss, BigInt(100e9)); // Only 100 tokens
             const excessiveAmount = new BN("10000000000000000000000"); // Way more than available
 
             // when/then
@@ -145,7 +165,7 @@ describe("Vault Operations", () => {
                 program.methods
                     .vaultDeposit(excessiveAmount)
                     .accounts({
-                        tokenMint,
+                        tokenMint: testTokenMint,
                         state: testHelper.statePda,
                     })
                     .rpc()
@@ -155,25 +175,39 @@ describe("Vault Operations", () => {
 
     describe("Vault Withdraw", () => {
         test("Withdraw tokens should succeed", async () => {
-            // given
+            // given - create unique token and set up vault with tokens
+            const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+            const testBossTokenAccount = testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
+            const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, vaultAuthorityPda, true);
+            
+            // First deposit tokens to vault
+            const depositAmount = new BN(100_000e9);
+            await program.methods
+                .vaultDeposit(depositAmount)
+                .accounts({
+                    tokenMint: testTokenMint,
+                    state: testHelper.statePda,
+                })
+                .rpc();
+                
             const withdrawAmount = new BN(30_000e9);
             
             // Get current balances
-            const initialVaultBalance = await testHelper.getTokenAccountBalance(vaultTokenAccount);
-            const initialBossBalance = await testHelper.getTokenAccountBalance(bossTokenAccount);
+            const initialVaultBalance = await testHelper.getTokenAccountBalance(testVaultTokenAccount);
+            const initialBossBalance = await testHelper.getTokenAccountBalance(testBossTokenAccount);
 
             // when
             await program.methods
                 .vaultWithdraw(withdrawAmount)
                 .accounts({
-                    tokenMint,
+                    tokenMint: testTokenMint,
                     state: testHelper.statePda,
                 })
                 .rpc();
 
             // then
-            const finalVaultBalance = await testHelper.getTokenAccountBalance(vaultTokenAccount);
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossTokenAccount);
+            const finalVaultBalance = await testHelper.getTokenAccountBalance(testVaultTokenAccount);
+            const finalBossBalance = await testHelper.getTokenAccountBalance(testBossTokenAccount);
 
             expect(finalVaultBalance).toBe(initialVaultBalance - BigInt(withdrawAmount.toString()));
             expect(finalBossBalance).toBe(initialBossBalance + BigInt(withdrawAmount.toString()));
@@ -181,6 +215,7 @@ describe("Vault Operations", () => {
 
         test("Withdraw should fail when not called by boss", async () => {
             // given
+            const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
             const notBoss = testHelper.createUserAccount();
             const withdrawAmount = new BN(10_000e9);
 
@@ -189,7 +224,7 @@ describe("Vault Operations", () => {
                 program.methods
                     .vaultWithdraw(withdrawAmount)
                     .accountsPartial({
-                        tokenMint,
+                        tokenMint: testTokenMint,
                         state: testHelper.statePda,
                         boss: notBoss.publicKey,
                     })
@@ -199,16 +234,30 @@ describe("Vault Operations", () => {
         });
 
         test("Withdraw should fail with insufficient vault balance", async () => {
-            // given - try to withdraw more than vault has
-            const vaultBalance = await testHelper.getTokenAccountBalance(vaultTokenAccount);
-            const excessiveAmount = new BN(Number(vaultBalance) + 1_000_000_000);
+            // given - create unique token with small vault balance
+            const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+            const testBossTokenAccount = testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
+            const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, vaultAuthorityPda, true);
+            
+            // Deposit small amount to vault
+            const smallDepositAmount = new BN(1_000e9); // Only 1,000 tokens
+            await program.methods
+                .vaultDeposit(smallDepositAmount)
+                .accounts({
+                    tokenMint: testTokenMint,
+                    state: testHelper.statePda,
+                })
+                .rpc();
+            
+            // Try to withdraw more than vault has
+            const excessiveAmount = new BN(10_000e9); // Try to withdraw 10,000 tokens
 
             // when/then
             await expect(
                 program.methods
                     .vaultWithdraw(excessiveAmount)
                     .accounts({
-                        tokenMint,
+                        tokenMint: testTokenMint,
                         state: testHelper.statePda,
                     })
                     .rpc()
@@ -264,21 +313,35 @@ describe("Vault Operations", () => {
         });
 
         test("Withdraw all remaining tokens should succeed", async () => {
-            // given
-            const vaultBalance = await testHelper.getTokenAccountBalance(vaultTokenAccount);
+            // given - create unique token and set up vault with tokens
+            const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+            const testBossTokenAccount = testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
+            const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, vaultAuthorityPda, true);
+            
+            // First deposit tokens to vault
+            const depositAmount = new BN(100_000e9);
+            await program.methods
+                .vaultDeposit(depositAmount)
+                .accounts({
+                    tokenMint: testTokenMint,
+                    state: testHelper.statePda,
+                })
+                .rpc();
+                
+            const vaultBalance = await testHelper.getTokenAccountBalance(testVaultTokenAccount);
             const remainingAmount = new BN(Number(vaultBalance));
 
             // when
             await program.methods
                 .vaultWithdraw(remainingAmount)
                 .accounts({
-                    tokenMint,
+                    tokenMint: testTokenMint,
                     state: testHelper.statePda,
                 })
                 .rpc();
 
             // then
-            await testHelper.expectTokenAccountAmountToBe(vaultTokenAccount, BigInt(0));
+            await testHelper.expectTokenAccountAmountToBe(testVaultTokenAccount, BigInt(0));
         });
     });
 });

@@ -13,7 +13,7 @@ describe("Close single redemption offer", () => {
     let boss: PublicKey;
     let singleRedemptionOfferAccountPda: PublicKey;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         const programInfo: AddedProgram = {
             programId: ONREAPP_PROGRAM_ID,
             name: "onreapp",
