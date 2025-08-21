@@ -49,7 +49,7 @@ impl Default for BuyOffer {
     }
 }
 
-/// Account holding MAX_BUY_OFFERS BuyOffer instances (should fit 10KB limit)
+/// Account holding MAX_BUY_OFFERS BuyOffer instances
 #[account(zero_copy)]
 #[repr(C)]
 pub struct BuyOfferAccount {

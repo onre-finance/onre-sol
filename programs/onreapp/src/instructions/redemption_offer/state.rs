@@ -29,7 +29,7 @@ impl Default for SingleRedemptionOffer {
     }
 }
 
-/// Account holding MAX_REDEMPTION_OFFERS SingleRedemptionOffer instances (should fit 10KB limit)
+/// Account holding MAX_REDEMPTION_OFFERS SingleRedemptionOffer instances
 #[account(zero_copy)]
 #[repr(C)]
 pub struct SingleRedemptionOfferAccount {
@@ -70,7 +70,7 @@ impl Default for DualRedemptionOffer {
     }
 }
 
-/// Account holding MAX_DUAL_REDEMPTION_OFFERS DualRedemptionOffer instances (should fit 10KB limit)
+/// Account holding MAX_DUAL_REDEMPTION_OFFERS DualRedemptionOffer instances
 #[account(zero_copy)]
 #[repr(C)]
 pub struct DualRedemptionOfferAccount {
