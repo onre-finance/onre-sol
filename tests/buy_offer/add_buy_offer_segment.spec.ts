@@ -8,7 +8,7 @@ import idl from "../../target/idl/onreapp.json";
 
 const MAX_SEGMENTS = 10;
 
-describe("Add Buy Offer Time Segment", () => {
+describe("Add Buy Offer Segment", () => {
     let testHelper: TestHelper;
     let tokenInMint: PublicKey;
     let tokenOutMint: PublicKey;
@@ -69,7 +69,7 @@ describe("Add Buy Offer Time Segment", () => {
         const priceFixDuration = new BN(3600); // 1 hour
 
         const tx = await testHelper.program.methods
-            .addBuyOfferTimeSegment(
+            .addBuyOfferSegment(
                 offerId,
                 startTime,
                 startPrice,
@@ -87,7 +87,7 @@ describe("Add Buy Offer Time Segment", () => {
         const updatedOffer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
         expect(updatedOffer.offerId.toString()).toBe(offerId.toString());
         
-        const segment = updatedOffer.timeSegments[0];
+        const segment = updatedOffer.segments[0];
         expect(segment.segmentId.toString()).toBe("1");
         expect(segment.startTime.toString()).toBe(startTime.toString());
         expect(segment.validFrom.toString()).toBe(startTime.toString()); // valid_from should equal start_time when start_time is in future
@@ -118,7 +118,7 @@ describe("Add Buy Offer Time Segment", () => {
         const priceFixDuration = new BN(1800);
 
         await testHelper.program.methods
-            .addBuyOfferTimeSegment(
+            .addBuyOfferSegment(
                 offerId,
                 pastStartTime,
                 startPrice,
@@ -132,7 +132,7 @@ describe("Add Buy Offer Time Segment", () => {
 
         const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
         const updatedOffer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
-        const segment = updatedOffer.timeSegments[0];
+        const segment = updatedOffer.segments[0];
 
         expect(segment.startTime.toString()).toBe(pastStartTime.toString());
         // valid_from should be approximately current time (within a few seconds)
@@ -153,7 +153,7 @@ describe("Add Buy Offer Time Segment", () => {
 
         // Add first segment
         await testHelper.program.methods
-            .addBuyOfferTimeSegment(
+            .addBuyOfferSegment(
                 offerId,
                 new BN(currentTime + 1000),
                 new BN(1000000),
@@ -167,7 +167,7 @@ describe("Add Buy Offer Time Segment", () => {
 
         // Add second segment (with later start_time)
         await testHelper.program.methods
-            .addBuyOfferTimeSegment(
+            .addBuyOfferSegment(
                 offerId,
                 new BN(currentTime + 3000),
                 new BN(2000000),
@@ -181,7 +181,7 @@ describe("Add Buy Offer Time Segment", () => {
 
         // Add third segment
         await testHelper.program.methods
-            .addBuyOfferTimeSegment(
+            .addBuyOfferSegment(
                 offerId,
                 new BN(currentTime + 5000),
                 new BN(3000000),
@@ -201,9 +201,9 @@ describe("Add Buy Offer Time Segment", () => {
         const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
         const offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
         
-        expect(offer.timeSegments[0].segmentId.toString()).toBe("1");
-        expect(offer.timeSegments[1].segmentId.toString()).toBe("2");
-        expect(offer.timeSegments[2].segmentId.toString()).toBe("3");
+        expect(offer.segments[0].segmentId.toString()).toBe("1");
+        expect(offer.segments[1].segmentId.toString()).toBe("2");
+        expect(offer.segments[2].segmentId.toString()).toBe("3");
     });
 
     it("Should reject zero offer_id", async () => {
@@ -211,7 +211,7 @@ describe("Add Buy Offer Time Segment", () => {
         
         await expect(
             testHelper.program.methods
-                .addBuyOfferTimeSegment(
+                .addBuyOfferSegment(
                     new BN(0), // Invalid: zero offer_id
                     new BN(currentTime + 1000),
                     new BN(1000000),
@@ -234,7 +234,7 @@ describe("Add Buy Offer Time Segment", () => {
 
         await expect(
             testHelper.program.methods
-                .addBuyOfferTimeSegment(
+                .addBuyOfferSegment(
                     offerId,
                     new BN(0), // Invalid: zero start_time
                     new BN(1000000),
@@ -259,7 +259,7 @@ describe("Add Buy Offer Time Segment", () => {
 
         await expect(
             testHelper.program.methods
-                .addBuyOfferTimeSegment(
+                .addBuyOfferSegment(
                     offerId,
                     new BN(currentTime + 1000),
                     new BN(0), // Invalid: zero start_price
@@ -284,7 +284,7 @@ describe("Add Buy Offer Time Segment", () => {
 
         await expect(
             testHelper.program.methods
-                .addBuyOfferTimeSegment(
+                .addBuyOfferSegment(
                     offerId,
                     new BN(currentTime + 1000),
                     new BN(1000000),
@@ -309,7 +309,7 @@ describe("Add Buy Offer Time Segment", () => {
 
         await expect(
             testHelper.program.methods
-                .addBuyOfferTimeSegment(
+                .addBuyOfferSegment(
                     offerId,
                     new BN(currentTime + 1000),
                     new BN(1000000),
@@ -334,7 +334,7 @@ describe("Add Buy Offer Time Segment", () => {
 
         // Add first segment
         await testHelper.program.methods
-            .addBuyOfferTimeSegment(
+            .addBuyOfferSegment(
                 offerId,
                 new BN(currentTime + 2000),
                 new BN(1000000),
@@ -349,7 +349,7 @@ describe("Add Buy Offer Time Segment", () => {
         // Try to add segment with earlier start_time (should fail)
         await expect(
             testHelper.program.methods
-                .addBuyOfferTimeSegment(
+                .addBuyOfferSegment(
                     offerId,
                     new BN(currentTime + 1000), // Invalid: before previous start_time
                     new BN(2000000),
@@ -375,7 +375,7 @@ describe("Add Buy Offer Time Segment", () => {
 
         // Add first segment
         await testHelper.program.methods
-            .addBuyOfferTimeSegment(
+            .addBuyOfferSegment(
                 offerId,
                 startTime,
                 new BN(1000000),
@@ -389,7 +389,7 @@ describe("Add Buy Offer Time Segment", () => {
 
         // Add segment with same start_time (should fail)
         await expect(testHelper.program.methods
-            .addBuyOfferTimeSegment(
+            .addBuyOfferSegment(
                 offerId,
                 startTime, // Same start_time - should be allowed
                 new BN(2000000),
@@ -408,7 +408,7 @@ describe("Add Buy Offer Time Segment", () => {
         
         await expect(
             testHelper.program.methods
-                .addBuyOfferTimeSegment(
+                .addBuyOfferSegment(
                     nonExistentOfferId,
                     new BN(currentTime + 1000),
                     new BN(1000000),
@@ -440,7 +440,7 @@ describe("Add Buy Offer Time Segment", () => {
             const segmentStartTime = new BN(currentTime + (i * segmentTimeOffset));
 
             await testHelper.program.methods
-                .addBuyOfferTimeSegment(
+                .addBuyOfferSegment(
                     offerId,
                     segmentStartTime,
                     startPrice,
@@ -460,7 +460,7 @@ describe("Add Buy Offer Time Segment", () => {
 
         await expect(
             testHelper.program.methods
-                .addBuyOfferTimeSegment(
+                .addBuyOfferSegment(
                     offerId,
                     segmentStartTime,
                     startPrice,
@@ -494,7 +494,7 @@ describe("Add Buy Offer Time Segment", () => {
         const largePriceYield = new BN("999999"); // 99.9999% yield (9999/10000)
         
         await testHelper.program.methods
-            .addBuyOfferTimeSegment(
+            .addBuyOfferSegment(
                 offerId,
                 new BN(currentTime + 1000),
                 largeStartPrice,
@@ -509,7 +509,7 @@ describe("Add Buy Offer Time Segment", () => {
         // Verify the segment was added with large values
         const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
         const offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
-        const segment = offer.timeSegments[0];
+        const segment = offer.segments[0];
         
         expect(segment.startPrice.toString()).toBe(largeStartPrice.toString());
         expect(segment.priceYield.toString()).toBe(largePriceYield.toString());
@@ -529,7 +529,7 @@ describe("Add Buy Offer Time Segment", () => {
         );
 
         await testHelper.program.methods
-            .addBuyOfferTimeSegment(
+            .addBuyOfferSegment(
                 offerId,
                 new BN(1), // Minimum valid start_time
                 new BN(1), // Minimum valid start_price
@@ -544,7 +544,7 @@ describe("Add Buy Offer Time Segment", () => {
         // Verify the segment was added
         const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
         const offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
-        const segment = offer.timeSegments[0];
+        const segment = offer.segments[0];
         
         expect(segment.segmentId.toString()).toBe("1");
         expect(segment.startTime.toString()).toBe("1");
@@ -569,7 +569,7 @@ describe("Add Buy Offer Time Segment", () => {
         
         await expect(
             testHelper.program.methods
-                .addBuyOfferTimeSegment(
+                .addBuyOfferSegment(
                     offerId,
                     new BN(currentTime + 1000),
                     new BN(1000000),
@@ -613,7 +613,7 @@ describe("Add Buy Offer Time Segment", () => {
 
         // Add segments to both offers
         await testHelper.program.methods
-            .addBuyOfferTimeSegment(
+            .addBuyOfferSegment(
                 offer1Id,
                 new BN(currentTime + 1000),
                 new BN(1000000),
@@ -626,7 +626,7 @@ describe("Add Buy Offer Time Segment", () => {
             .rpc();
 
         await testHelper.program.methods
-            .addBuyOfferTimeSegment(
+            .addBuyOfferSegment(
                 offer2Id,
                 new BN(currentTime + 1000),
                 new BN(3000000),
@@ -639,7 +639,7 @@ describe("Add Buy Offer Time Segment", () => {
             .rpc();
 
         await testHelper.program.methods
-            .addBuyOfferTimeSegment(
+            .addBuyOfferSegment(
                 offer1Id,
                 new BN(currentTime + 3000),
                 new BN(2000000),
@@ -657,18 +657,18 @@ describe("Add Buy Offer Time Segment", () => {
         const offer2 = buyOfferAccount.offers.find(o => o.offerId.eq(offer2Id));
         
         // Offer 1 should have segments 1 and 2
-        expect(offer1.timeSegments[0].segmentId.toString()).toBe("1");
-        expect(offer1.timeSegments[1].segmentId.toString()).toBe("2");
+        expect(offer1.segments[0].segmentId.toString()).toBe("1");
+        expect(offer1.segments[1].segmentId.toString()).toBe("2");
         
         // Offer 2 should have segment 1 (independent sequence)
-        expect(offer2.timeSegments[0].segmentId.toString()).toBe("1");
+        expect(offer2.segments[0].segmentId.toString()).toBe("1");
         
         // Verify prices are correct for each offer
-        expect(offer1.timeSegments[0].startPrice.toString()).toBe("1000000");
-        expect(offer2.timeSegments[0].startPrice.toString()).toBe("3000000");
+        expect(offer1.segments[0].startPrice.toString()).toBe("1000000");
+        expect(offer2.segments[0].startPrice.toString()).toBe("3000000");
         
         // Verify yields are correct
-        expect(offer1.timeSegments[0].priceYield.toString()).toBe("5000"); // 50%
-        expect(offer2.timeSegments[0].priceYield.toString()).toBe("7500"); // 75%
+        expect(offer1.segments[0].priceYield.toString()).toBe("5000"); // 50%
+        expect(offer2.segments[0].priceYield.toString()).toBe("7500"); // 75%
     });
 });

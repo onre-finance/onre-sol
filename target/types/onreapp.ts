@@ -41,7 +41,7 @@ export type Onreapp = {
   ],
   "instructions": [
     {
-      "name": "addBuyOfferTimeSegment",
+      "name": "addBuyOfferSegment",
       "docs": [
         "Adds a time segment to an existing buy offer.",
         "",
@@ -58,14 +58,14 @@ export type Onreapp = {
         "- `price_fix_duration`: Duration in seconds for each price interval."
       ],
       "discriminator": [
-        140,
-        222,
-        35,
-        48,
-        3,
-        196,
-        118,
-        34
+        100,
+        203,
+        117,
+        214,
+        22,
+        17,
+        78,
+        195
       ],
       "accounts": [
         {
@@ -1997,16 +1997,16 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "buyOfferTimeSegmentAddedEvent",
+      "name": "buyOfferSegmentAddedEvent",
       "discriminator": [
-        140,
-        120,
-        65,
-        125,
-        249,
-        100,
-        84,
-        205
+        246,
+        232,
+        93,
+        3,
+        61,
+        229,
+        188,
+        173
       ]
     },
     {
@@ -2145,12 +2145,12 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
-            "name": "timeSegments",
+            "name": "segments",
             "type": {
               "array": [
                 {
                   "defined": {
-                    "name": "buyOfferTimeSegment"
+                    "name": "buyOfferSegment"
                   }
                 },
                 10
@@ -2212,7 +2212,7 @@ export type Onreapp = {
       }
     },
     {
-      "name": "buyOfferTimeSegment",
+      "name": "buyOfferSegment",
       "docs": [
         "Time segment for buy offers with pricing information"
       ],
@@ -2251,7 +2251,7 @@ export type Onreapp = {
       }
     },
     {
-      "name": "buyOfferTimeSegmentAddedEvent",
+      "name": "buyOfferSegmentAddedEvent",
       "docs": [
         "Event emitted when a time segment is added to a buy offer."
       ],

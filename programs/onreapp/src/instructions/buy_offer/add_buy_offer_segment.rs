@@ -1,10 +1,10 @@
 use crate::state::State;
-use super::state::{BuyOfferAccount, BuyOfferTimeSegment, BuyOffer, MAX_BUY_OFFERS};
+use super::state::{BuyOfferAccount, BuyOfferSegment, BuyOffer, MAX_BUY_OFFERS};
 use anchor_lang::prelude::*;
 
 /// Event emitted when a time segment is added to a buy offer.
 #[event]
-pub struct BuyOfferTimeSegmentAddedEvent {
+pub struct BuyOfferSegmentAddedEvent {
     pub offer_id: u64,
     pub segment_id: u64,
     pub start_time: u64,
@@ -19,7 +19,7 @@ pub struct BuyOfferTimeSegmentAddedEvent {
 /// This struct defines the accounts required to add a time segment to an existing buy offer.
 /// Only the boss can add time segments to offers.
 #[derive(Accounts)]
-pub struct AddBuyOfferTimeSegment<'info> {
+pub struct AddBuyOfferSegment<'info> {
     /// The buy offer account containing all buy offers
     #[account(mut, seeds = [b"buy_offers"], bump)]
     pub buy_offer_account: AccountLoader<'info, BuyOfferAccount>,
@@ -47,12 +47,12 @@ pub struct AddBuyOfferTimeSegment<'info> {
 /// - `price_fix_duration`: Duration in seconds for each price interval.
 ///
 /// # Errors
-/// - [`AddBuyOfferTimeSegmentErrorCode::OfferNotFound`] if offer_id doesn't exist.
-/// - [`AddBuyOfferTimeSegmentErrorCode::InvalidTimeRange`] if start_time is before latest existing segment.
-/// - [`AddBuyOfferTimeSegmentErrorCode::ZeroValue`] if any value is zero.
-/// - [`AddBuyOfferTimeSegmentErrorCode::TooManySegments`] if the offer already has MAX_SEGMENTS.
-pub fn add_buy_offer_time_segment(
-    ctx: Context<AddBuyOfferTimeSegment>,
+/// - [`AddBuyOfferSegmentErrorCode::OfferNotFound`] if offer_id doesn't exist.
+/// - [`AddBuyOfferSegmentErrorCode::InvalidTimeRange`] if start_time is before latest existing segment.
+/// - [`AddBuyOfferSegmentErrorCode::ZeroValue`] if any value is zero.
+/// - [`AddBuyOfferSegmentErrorCode::TooManySegments`] if the offer already has MAX_SEGMENTS.
+pub fn add_buy_offer_segment(
+    ctx: Context<AddBuyOfferSegment>,
     offer_id: u64,
     start_time: u64,
     start_price: u64,
@@ -64,17 +64,17 @@ pub fn add_buy_offer_time_segment(
     let current_time = Clock::get()?.unix_timestamp as u64;
 
     // Validate input parameters
-    require!(offer_id > 0, AddBuyOfferTimeSegmentErrorCode::ZeroValue);
-    require!(start_time > 0, AddBuyOfferTimeSegmentErrorCode::ZeroValue);
-    require!(start_price > 0, AddBuyOfferTimeSegmentErrorCode::ZeroValue);
-    require!(price_yield > 0, AddBuyOfferTimeSegmentErrorCode::ZeroValue);
-    require!(price_fix_duration > 0, AddBuyOfferTimeSegmentErrorCode::ZeroValue);
+    require!(offer_id > 0, AddBuyOfferSegmentErrorCode::ZeroValue);
+    require!(start_time > 0, AddBuyOfferSegmentErrorCode::ZeroValue);
+    require!(start_price > 0, AddBuyOfferSegmentErrorCode::ZeroValue);
+    require!(price_yield > 0, AddBuyOfferSegmentErrorCode::ZeroValue);
+    require!(price_fix_duration > 0, AddBuyOfferSegmentErrorCode::ZeroValue);
 
     // Find the offer by offer_id
     let offer = find_buy_offer_by_id(&mut buy_offer_account.offers, offer_id)?;
 
     // Validate start_time is not before the latest existing segment's start_time
-    let latest_start_time = offer.time_segments
+    let latest_start_time = offer.segments
         .iter()
         .filter(|segment| segment.segment_id != 0)
         .map(|segment| segment.start_time)
@@ -83,11 +83,11 @@ pub fn add_buy_offer_time_segment(
     
     require!(
         start_time > latest_start_time,
-        AddBuyOfferTimeSegmentErrorCode::InvalidTimeRange
+        AddBuyOfferSegmentErrorCode::InvalidTimeRange
     );
 
     // Calculate the next segment_id
-    let next_segment_id = calculate_next_segment_id(&offer.time_segments);
+    let next_segment_id = calculate_next_segment_id(&offer.segments);
 
     // Calculate valid_from: max(start_time, current_time) 
     let valid_from = if start_time > current_time {
@@ -97,10 +97,10 @@ pub fn add_buy_offer_time_segment(
     };
 
     // Find an empty slot in time_segments array
-    let empty_slot_index = find_empty_segment_slot(&offer.time_segments)?;
+    let empty_slot_index = find_empty_segment_slot(&offer.segments)?;
 
     // Create the new time segment
-    let new_segment = BuyOfferTimeSegment {
+    let new_segment = BuyOfferSegment {
         segment_id: next_segment_id,
         valid_from,
         start_time,
@@ -110,7 +110,7 @@ pub fn add_buy_offer_time_segment(
     };
 
     // Add the segment to the offer
-    offer.time_segments[empty_slot_index] = new_segment;
+    offer.segments[empty_slot_index] = new_segment;
 
     msg!(
         "Time segment added to buy offer ID: {}, segment ID: {}",
@@ -118,7 +118,7 @@ pub fn add_buy_offer_time_segment(
         next_segment_id
     );
 
-    emit!(BuyOfferTimeSegmentAddedEvent {
+    emit!(BuyOfferSegmentAddedEvent {
         offer_id,
         segment_id: next_segment_id,
         start_time,
@@ -136,11 +136,11 @@ fn find_buy_offer_by_id(offers: &mut [BuyOffer; MAX_BUY_OFFERS], offer_id: u64) 
     offers
         .iter_mut()
         .find(|offer| offer.offer_id == offer_id && offer.offer_id != 0)
-        .ok_or(AddBuyOfferTimeSegmentErrorCode::OfferNotFound.into())
+        .ok_or(AddBuyOfferSegmentErrorCode::OfferNotFound.into())
 }
 
 /// Calculates the next segment_id by finding the highest existing segment_id and adding 1.
-fn calculate_next_segment_id(segments: &[BuyOfferTimeSegment; 10]) -> u64 {
+fn calculate_next_segment_id(segments: &[BuyOfferSegment; 10]) -> u64 {
     let max_segment_id = segments
         .iter()
         .filter(|segment| segment.segment_id != 0)
@@ -153,16 +153,16 @@ fn calculate_next_segment_id(segments: &[BuyOfferTimeSegment; 10]) -> u64 {
 
 
 /// Finds the first empty slot in the time_segments array.
-fn find_empty_segment_slot(segments: &[BuyOfferTimeSegment; 10]) -> Result<usize> {
+fn find_empty_segment_slot(segments: &[BuyOfferSegment; 10]) -> Result<usize> {
     segments
         .iter()
         .position(|segment| segment.segment_id == 0)
-        .ok_or(AddBuyOfferTimeSegmentErrorCode::TooManySegments.into())
+        .ok_or(AddBuyOfferSegmentErrorCode::TooManySegments.into())
 }
 
-/// Error codes for add buy offer time segment operations.
+/// Error codes for add buy offer segment operations.
 #[error_code]
-pub enum AddBuyOfferTimeSegmentErrorCode {
+pub enum AddBuyOfferSegmentErrorCode {
     /// Triggered when the specified offer_id is not found.
     #[msg("Buy offer with the specified ID was not found")]
     OfferNotFound,

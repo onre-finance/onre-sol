@@ -35,7 +35,7 @@
   ],
   "instructions": [
     {
-      "name": "add_buy_offer_time_segment",
+      "name": "add_buy_offer_segment",
       "docs": [
         "Adds a time segment to an existing buy offer.",
         "",
@@ -52,14 +52,14 @@
         "- `price_fix_duration`: Duration in seconds for each price interval."
       ],
       "discriminator": [
-        140,
-        222,
-        35,
-        48,
-        3,
-        196,
-        118,
-        34
+        100,
+        203,
+        117,
+        214,
+        22,
+        17,
+        78,
+        195
       ],
       "accounts": [
         {
@@ -1991,16 +1991,16 @@
       ]
     },
     {
-      "name": "BuyOfferTimeSegmentAddedEvent",
+      "name": "BuyOfferSegmentAddedEvent",
       "discriminator": [
-        140,
-        120,
-        65,
-        125,
-        249,
-        100,
-        84,
-        205
+        246,
+        232,
+        93,
+        3,
+        61,
+        229,
+        188,
+        173
       ]
     },
     {
@@ -2139,12 +2139,12 @@
             "type": "pubkey"
           },
           {
-            "name": "time_segments",
+            "name": "segments",
             "type": {
               "array": [
                 {
                   "defined": {
-                    "name": "BuyOfferTimeSegment"
+                    "name": "BuyOfferSegment"
                   }
                 },
                 10
@@ -2206,7 +2206,7 @@
       }
     },
     {
-      "name": "BuyOfferTimeSegment",
+      "name": "BuyOfferSegment",
       "docs": [
         "Time segment for buy offers with pricing information"
       ],
@@ -2245,7 +2245,7 @@
       }
     },
     {
-      "name": "BuyOfferTimeSegmentAddedEvent",
+      "name": "BuyOfferSegmentAddedEvent",
       "docs": [
         "Event emitted when a time segment is added to a buy offer."
       ],
