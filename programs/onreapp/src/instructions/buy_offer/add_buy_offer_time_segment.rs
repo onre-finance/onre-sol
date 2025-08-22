@@ -8,9 +8,9 @@ pub struct BuyOfferTimeSegmentAddedEvent {
     pub offer_id: u64,
     pub segment_id: u64,
     pub start_time: u64,
-    pub end_time: u64,
+    pub valid_from: u64,
     pub start_price: u64,
-    pub end_price: u64,
+    pub price_yield: u64,
     pub price_fix_duration: u64,
 }
 
@@ -42,57 +42,59 @@ pub struct AddBuyOfferTimeSegment<'info> {
 /// - `ctx`: Context containing the accounts for the operation.
 /// - `offer_id`: ID of the buy offer to add the segment to.
 /// - `start_time`: Unix timestamp when the segment becomes active.
-/// - `end_time`: Unix timestamp when the segment expires.
 /// - `start_price`: Price at the beginning of the segment.
-/// - `end_price`: Price at the end of the segment.
+/// - `price_yield`: Price yield percentage * 10000 (with 4 decimal places).
 /// - `price_fix_duration`: Duration in seconds for each price interval.
 ///
 /// # Errors
 /// - [`AddBuyOfferTimeSegmentErrorCode::OfferNotFound`] if offer_id doesn't exist.
-/// - [`AddBuyOfferTimeSegmentErrorCode::InvalidTimeRange`] if start_time >= end_time.
-/// - [`AddBuyOfferTimeSegmentErrorCode::InvalidPriceRange`] if start_price >= end_price.
+/// - [`AddBuyOfferTimeSegmentErrorCode::InvalidTimeRange`] if start_time is before latest existing segment.
 /// - [`AddBuyOfferTimeSegmentErrorCode::ZeroValue`] if any value is zero.
-/// - [`AddBuyOfferTimeSegmentErrorCode::OverlappingSegment`] if the segment overlaps with existing ones.
 /// - [`AddBuyOfferTimeSegmentErrorCode::TooManySegments`] if the offer already has MAX_SEGMENTS.
 pub fn add_buy_offer_time_segment(
     ctx: Context<AddBuyOfferTimeSegment>,
     offer_id: u64,
     start_time: u64,
-    end_time: u64,
     start_price: u64,
-    end_price: u64,
+    price_yield: u64,
     price_fix_duration: u64,
 ) -> Result<()> {
     let buy_offer_account = &mut ctx.accounts.buy_offer_account.load_mut()?;
 
+    let current_time = Clock::get()?.unix_timestamp as u64;
+
     // Validate input parameters
     require!(offer_id > 0, AddBuyOfferTimeSegmentErrorCode::ZeroValue);
     require!(start_time > 0, AddBuyOfferTimeSegmentErrorCode::ZeroValue);
-    require!(end_time > 0, AddBuyOfferTimeSegmentErrorCode::ZeroValue);
     require!(start_price > 0, AddBuyOfferTimeSegmentErrorCode::ZeroValue);
-    require!(end_price > 0, AddBuyOfferTimeSegmentErrorCode::ZeroValue);
+    require!(price_yield > 0, AddBuyOfferTimeSegmentErrorCode::ZeroValue);
     require!(price_fix_duration > 0, AddBuyOfferTimeSegmentErrorCode::ZeroValue);
-
-    // Validate time range
-    require!(
-        start_time < end_time,
-        AddBuyOfferTimeSegmentErrorCode::InvalidTimeRange
-    );
-
-    // Validate price range
-    require!(
-        start_price < end_price,
-        AddBuyOfferTimeSegmentErrorCode::InvalidPriceRange
-    );
 
     // Find the offer by offer_id
     let offer = find_buy_offer_by_id(&mut buy_offer_account.offers, offer_id)?;
 
+    // Validate start_time is not before the latest existing segment's start_time
+    let latest_start_time = offer.time_segments
+        .iter()
+        .filter(|segment| segment.segment_id != 0)
+        .map(|segment| segment.start_time)
+        .max()
+        .unwrap_or(0);
+    
+    require!(
+        start_time > latest_start_time,
+        AddBuyOfferTimeSegmentErrorCode::InvalidTimeRange
+    );
+
     // Calculate the next segment_id
     let next_segment_id = calculate_next_segment_id(&offer.time_segments);
 
-    // Validate no overlapping segments
-    validate_no_overlap(&offer.time_segments, start_time, end_time)?;
+    // Calculate valid_from: max(start_time, current_time) 
+    let valid_from = if start_time > current_time {
+        start_time
+    } else {
+        current_time
+    };
 
     // Find an empty slot in time_segments array
     let empty_slot_index = find_empty_segment_slot(&offer.time_segments)?;
@@ -100,10 +102,10 @@ pub fn add_buy_offer_time_segment(
     // Create the new time segment
     let new_segment = BuyOfferTimeSegment {
         segment_id: next_segment_id,
+        valid_from,
         start_time,
-        end_time,
         start_price,
-        end_price,
+        price_yield,
         price_fix_duration,
     };
 
@@ -120,9 +122,9 @@ pub fn add_buy_offer_time_segment(
         offer_id,
         segment_id: next_segment_id,
         start_time,
-        end_time,
+        valid_from,
         start_price,
-        end_price,
+        price_yield,
         price_fix_duration,
     });
 
@@ -149,25 +151,6 @@ fn calculate_next_segment_id(segments: &[BuyOfferTimeSegment; 10]) -> u64 {
     max_segment_id + 1
 }
 
-/// Validates that the new time segment doesn't overlap with existing segments.
-fn validate_no_overlap(
-    segments: &[BuyOfferTimeSegment; 10],
-    start_time: u64,
-    end_time: u64,
-) -> Result<()> {
-    for segment in segments.iter() {
-        // Skip empty segments
-        if segment.segment_id == 0 {
-            continue;
-        }
-
-        // Check for overlap: new segment starts before existing ends and new segment ends after existing starts
-        if start_time < segment.end_time && end_time > segment.start_time {
-            return Err(AddBuyOfferTimeSegmentErrorCode::OverlappingSegment.into());
-        }
-    }
-    Ok(())
-}
 
 /// Finds the first empty slot in the time_segments array.
 fn find_empty_segment_slot(segments: &[BuyOfferTimeSegment; 10]) -> Result<usize> {
@@ -184,21 +167,13 @@ pub enum AddBuyOfferTimeSegmentErrorCode {
     #[msg("Buy offer with the specified ID was not found")]
     OfferNotFound,
 
-    /// Triggered when start_time >= end_time.
-    #[msg("Invalid time range: start_time must be less than end_time")]
+    /// Triggered when start_time is before the latest existing segment.
+    #[msg("Invalid time range: start_time must be after the latest existing segment")]
     InvalidTimeRange,
-
-    /// Triggered when start_price >= end_price.
-    #[msg("Invalid price range: start_price must be less than end_price")]
-    InvalidPriceRange,
 
     /// Triggered when any required value is zero.
     #[msg("Invalid input: values cannot be zero")]
     ZeroValue,
-
-    /// Triggered when the new segment overlaps with existing segments.
-    #[msg("Time segment overlaps with existing segments")]
-    OverlappingSegment,
 
     /// Triggered when the offer already has the maximum number of segments.
     #[msg("Cannot add more segments: maximum limit reached")]
