@@ -1,6 +1,6 @@
 use crate::constants::seeds;
 use crate::state::State;
-use super::state::{BuyOfferAccount, BuyOfferTimeSegment, MAX_BUY_OFFERS};
+use super::state::{BuyOfferAccount, BuyOfferSegment, MAX_BUY_OFFERS};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 

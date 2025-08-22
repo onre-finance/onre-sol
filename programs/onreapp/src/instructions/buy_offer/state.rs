@@ -10,13 +10,13 @@ pub struct BuyOffer {
     pub offer_id: u64,
     pub token_in_mint: Pubkey,
     pub token_out_mint: Pubkey,
-    pub time_segments: [BuyOfferTimeSegment; MAX_SEGMENTS],
+    pub segments: [BuyOfferSegment; MAX_SEGMENTS],
 }
 
 /// Time segment for buy offers with pricing information
 #[zero_copy]
 #[repr(C)]
-pub struct BuyOfferTimeSegment {
+pub struct BuyOfferSegment {
     pub segment_id: u64,
     pub valid_from: u64,
     pub start_time: u64,
@@ -26,7 +26,7 @@ pub struct BuyOfferTimeSegment {
     pub price_fix_duration: u64,
 }
 
-impl Default for BuyOfferTimeSegment {
+impl Default for BuyOfferSegment {
     fn default() -> Self {
         Self {
             segment_id: 0,
@@ -45,7 +45,7 @@ impl Default for BuyOffer {
             offer_id: 0,
             token_in_mint: Pubkey::default(),
             token_out_mint: Pubkey::default(),
-            time_segments: [BuyOfferTimeSegment::default(); MAX_SEGMENTS],
+            segments: [BuyOfferSegment::default(); MAX_SEGMENTS],
         }
     }
 }

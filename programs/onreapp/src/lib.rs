@@ -205,24 +205,24 @@ pub mod onreapp {
     ///
     /// Delegates to `buy_offer::add_buy_offer_time_segment`.
     /// Creates a new time segment with auto-generated segment_id for the specified buy offer.
-    /// Emits a `BuyOfferTimeSegmentAdded` event upon success.
+    /// Emits a `BuyOfferSegmentAdded` event upon success.
     ///
     /// # Arguments
-    /// - `ctx`: Context for `AddBuyOfferTimeSegment`.
+    /// - `ctx`: Context for `AddBuyOfferSegment`.
     /// - `offer_id`: ID of the buy offer to add the segment to.
     /// - `start_time`: Unix timestamp when the segment becomes active.
     /// - `start_price`: Price at the beginning of the segment.
     /// - `price_yield`: Price yield percentage * 10000 (with 4 decimal places).
     /// - `price_fix_duration`: Duration in seconds for each price interval.
-    pub fn add_buy_offer_time_segment(
-        ctx: Context<AddBuyOfferTimeSegment>,
+    pub fn add_buy_offer_segment(
+        ctx: Context<AddBuyOfferSegment>,
         offer_id: u64,
         start_time: u64,
         start_price: u64,
         price_yield: u64,
         price_fix_duration: u64,
     ) -> Result<()> {
-        buy_offer::add_buy_offer_time_segment(
+        buy_offer::add_buy_offer_segment(
             ctx,
             offer_id,
             start_time,
