@@ -53,9 +53,8 @@ export type Onreapp = {
         "- `ctx`: Context for `AddBuyOfferTimeSegment`.",
         "- `offer_id`: ID of the buy offer to add the segment to.",
         "- `start_time`: Unix timestamp when the segment becomes active.",
-        "- `end_time`: Unix timestamp when the segment expires.",
         "- `start_price`: Price at the beginning of the segment.",
-        "- `end_price`: Price at the end of the segment.",
+        "- `price_yield`: Price yield percentage * 10000 (with 4 decimal places).",
         "- `price_fix_duration`: Duration in seconds for each price interval."
       ],
       "discriminator": [
@@ -123,15 +122,11 @@ export type Onreapp = {
           "type": "u64"
         },
         {
-          "name": "endTime",
-          "type": "u64"
-        },
-        {
           "name": "startPrice",
           "type": "u64"
         },
         {
-          "name": "endPrice",
+          "name": "priceYield",
           "type": "u64"
         },
         {
@@ -2096,7 +2091,7 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "bossAlreadySet"
+      "name": "invalidBossAddress"
     }
   ],
   "types": [
@@ -2233,11 +2228,11 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "startTime",
+            "name": "validFrom",
             "type": "u64"
           },
           {
-            "name": "endTime",
+            "name": "startTime",
             "type": "u64"
           },
           {
@@ -2245,7 +2240,7 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "endPrice",
+            "name": "priceYield",
             "type": "u64"
           },
           {
@@ -2276,7 +2271,7 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "endTime",
+            "name": "validFrom",
             "type": "u64"
           },
           {
@@ -2284,7 +2279,7 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "endPrice",
+            "name": "priceYield",
             "type": "u64"
           },
           {

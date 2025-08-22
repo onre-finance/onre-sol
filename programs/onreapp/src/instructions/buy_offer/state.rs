@@ -18,10 +18,11 @@ pub struct BuyOffer {
 #[repr(C)]
 pub struct BuyOfferTimeSegment {
     pub segment_id: u64,
+    pub valid_from: u64,
     pub start_time: u64,
-    pub end_time: u64,
     pub start_price: u64,
-    pub end_price: u64,
+    // Price yield percentage * 10000 (with 4 decimal places)
+    pub price_yield: u64,
     pub price_fix_duration: u64,
 }
 
@@ -29,10 +30,10 @@ impl Default for BuyOfferTimeSegment {
     fn default() -> Self {
         Self {
             segment_id: 0,
+            valid_from: 0,
             start_time: 0,
-            end_time: 0,
             start_price: 0,
-            end_price: 0,
+            price_yield: 0,
             price_fix_duration: 0,
         }
     }

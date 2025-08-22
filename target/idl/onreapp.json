@@ -47,9 +47,8 @@
         "- `ctx`: Context for `AddBuyOfferTimeSegment`.",
         "- `offer_id`: ID of the buy offer to add the segment to.",
         "- `start_time`: Unix timestamp when the segment becomes active.",
-        "- `end_time`: Unix timestamp when the segment expires.",
         "- `start_price`: Price at the beginning of the segment.",
-        "- `end_price`: Price at the end of the segment.",
+        "- `price_yield`: Price yield percentage * 10000 (with 4 decimal places).",
         "- `price_fix_duration`: Duration in seconds for each price interval."
       ],
       "discriminator": [
@@ -117,15 +116,11 @@
           "type": "u64"
         },
         {
-          "name": "end_time",
-          "type": "u64"
-        },
-        {
           "name": "start_price",
           "type": "u64"
         },
         {
-          "name": "end_price",
+          "name": "price_yield",
           "type": "u64"
         },
         {
@@ -2090,7 +2085,7 @@
   "errors": [
     {
       "code": 6000,
-      "name": "BossAlreadySet"
+      "name": "InvalidBossAddress"
     }
   ],
   "types": [
@@ -2227,11 +2222,11 @@
             "type": "u64"
           },
           {
-            "name": "start_time",
+            "name": "valid_from",
             "type": "u64"
           },
           {
-            "name": "end_time",
+            "name": "start_time",
             "type": "u64"
           },
           {
@@ -2239,7 +2234,7 @@
             "type": "u64"
           },
           {
-            "name": "end_price",
+            "name": "price_yield",
             "type": "u64"
           },
           {
@@ -2270,7 +2265,7 @@
             "type": "u64"
           },
           {
-            "name": "end_time",
+            "name": "valid_from",
             "type": "u64"
           },
           {
@@ -2278,7 +2273,7 @@
             "type": "u64"
           },
           {
-            "name": "end_price",
+            "name": "price_yield",
             "type": "u64"
           },
           {

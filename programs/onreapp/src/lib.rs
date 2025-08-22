@@ -211,26 +211,23 @@ pub mod onreapp {
     /// - `ctx`: Context for `AddBuyOfferTimeSegment`.
     /// - `offer_id`: ID of the buy offer to add the segment to.
     /// - `start_time`: Unix timestamp when the segment becomes active.
-    /// - `end_time`: Unix timestamp when the segment expires.
     /// - `start_price`: Price at the beginning of the segment.
-    /// - `end_price`: Price at the end of the segment.
+    /// - `price_yield`: Price yield percentage * 10000 (with 4 decimal places).
     /// - `price_fix_duration`: Duration in seconds for each price interval.
     pub fn add_buy_offer_time_segment(
         ctx: Context<AddBuyOfferTimeSegment>,
         offer_id: u64,
         start_time: u64,
-        end_time: u64,
         start_price: u64,
-        end_price: u64,
+        price_yield: u64,
         price_fix_duration: u64,
     ) -> Result<()> {
         buy_offer::add_buy_offer_time_segment(
             ctx,
             offer_id,
             start_time,
-            end_time,
             start_price,
-            end_price,
+            price_yield,
             price_fix_duration,
         )
     }
