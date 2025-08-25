@@ -1,6 +1,12 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
+#[error_code]
+pub enum TokenUtilsErrorCode {
+    #[msg("Math overflow")]
+    MathOverflow,
+}
+
 /// Generic token transfer function that handles both regular and PDA-signed transfers
 /// 
 /// # Arguments
@@ -62,4 +68,42 @@ pub fn transfer_tokens<'info>(
     };
     
     token::transfer(transfer_ctx, amount)
+}
+
+/// Calculates token_out_amount based on token_in_amount, price, and decimals.
+/// This formula is used in both single and dual redemption offers.
+/// 
+/// Formula: token_out_amount = (token_in_amount * 10^(token_out_decimals + 9)) / (price * 10^token_in_decimals)
+/// 
+/// # Arguments
+/// * `token_in_amount` - Amount of input tokens
+/// * `price` - Price with 9 decimal precision (e.g., 2.0 = 2000000000)
+/// * `token_in_decimals` - Decimal places of input token
+/// * `token_out_decimals` - Decimal places of output token
+/// 
+/// # Returns
+/// The calculated amount of output tokens
+/// 
+/// # Errors
+/// Returns MathOverflow if calculation exceeds u128 limits
+pub fn calculate_token_out_amount(
+    token_in_amount: u64,
+    price: u64,
+    token_in_decimals: u8,
+    token_out_decimals: u8,
+) -> Result<u64> {
+    let token_in_amount_u128 = token_in_amount as u128;
+    let price_u128 = price as u128;
+    
+    // Calculate: numerator = token_in_amount * 10^(token_out_decimals + 9)
+    let numerator = token_in_amount_u128
+        .checked_mul(10_u128.pow((token_out_decimals + 9) as u32))
+        .ok_or(TokenUtilsErrorCode::MathOverflow)?;
+    
+    // Calculate: denominator = price * 10^token_in_decimals
+    let denominator = price_u128
+        .checked_mul(10_u128.pow(token_in_decimals as u32))
+        .ok_or(TokenUtilsErrorCode::MathOverflow)?;
+    
+    Ok((numerator / denominator) as u64)
 }

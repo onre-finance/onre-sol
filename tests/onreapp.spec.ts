@@ -63,7 +63,7 @@
 //   let statePda: PublicKey;
 //   let offerAuthority: PublicKey;
 //
-//   beforeAll(async () => {
+//   beforeEach(async () => {
 //     await airdropLamports(provider, initialBoss.publicKey, anchor.web3.LAMPORTS_PER_SOL * 20);
 //
 //     sellTokenMint = await createMint(provider.connection, initialBoss.payer, initialBoss.publicKey, null, 9);

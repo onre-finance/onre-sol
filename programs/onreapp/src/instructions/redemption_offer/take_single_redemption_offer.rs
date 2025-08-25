@@ -1,7 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::{SingleRedemptionOffer, SingleRedemptionOfferAccount};
 use crate::state::State;
-use crate::utils::transfer_tokens;
+use crate::utils::{transfer_tokens, calculate_token_out_amount};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
@@ -207,29 +207,6 @@ fn validate_offer(
     Ok(())
 }
 
-/// Calculates the token_out_amount based on token_in_amount, price, and decimals
-fn calculate_token_out_amount(
-    token_in_amount: u64,
-    price: u64,
-    token_in_decimals: u8,
-    token_out_decimals: u8,
-) -> Result<u64> {
-    // Formula: token_out_amount = (token_in_amount * 10^(token_out_decimals + 9)) / (price * 10^token_in_decimals)
-    let token_in_amount_u128 = token_in_amount as u128;
-    let price_u128 = price as u128;
-    
-    // Calculate: numerator = token_in_amount * 10^(token_out_decimals + 9)
-    let numerator = token_in_amount_u128
-        .checked_mul(10_u128.pow((token_out_decimals + 9) as u32))
-        .ok_or(TakeSingleRedemptionOfferErrorCode::MathOverflow)?;
-    
-    // Calculate: denominator = price * 10^token_in_decimals
-    let denominator = price_u128
-        .checked_mul(10_u128.pow(token_in_decimals as u32))
-        .ok_or(TakeSingleRedemptionOfferErrorCode::MathOverflow)?;
-    
-    Ok((numerator / denominator) as u64)
-}
 
 /// Executes both token transfers (user to boss, vault to user)
 fn execute_transfers(

@@ -16,7 +16,7 @@ describe("Take single redemption offer", () => {
     let singleRedemptionOfferAccountPda: PublicKey;
     let vaultAuthorityPda: PublicKey;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         const programInfo: AddedProgram = {
             programId: ONREAPP_PROGRAM_ID,
             name: "onreapp",
@@ -598,8 +598,8 @@ describe("Take single redemption offer", () => {
         const bossAbcAfter = await testHelper.getTokenAccountBalance(bossAbcTokenAccount);
 
         // Verify ABC transfer (user -> boss)
-        expect(userAbcAfter).toBe(userAbcBefore - 1000n);
-        expect(bossAbcAfter).toBe(bossAbcBefore + 1000n);
+        expect(userAbcAfter).toBe(userAbcBefore - BigInt(1000));
+        expect(bossAbcAfter).toBe(bossAbcBefore + BigInt(1000));
 
         // Calculate expected XYZ output
         // Formula: token_out = (token_in * 10^(token_out_decimals + 9)) / (price * 10^token_in_decimals)
