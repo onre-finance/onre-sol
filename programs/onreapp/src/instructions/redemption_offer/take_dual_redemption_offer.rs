@@ -249,7 +249,7 @@ fn calculate_token_out_amounts(
     token_in_amount: u64,
     price_1: u64,
     price_2: u64,
-    ratio_basis_points: u16,
+    ratio_basis_points: u64,
     token_in_decimals: u8,
     token_out_1_decimals: u8,
     token_out_2_decimals: u8,

@@ -87,7 +87,7 @@ describe("Take dual redemption offer", () => {
         // Create dual redemption offer: price1 = 2.0, price2 = 1.0, ratio = 8000 (80% for token1, 20% for token2)
         const price1 = new BN("2000000000"); // 2.0 * 10^9
         const price2 = new BN("1000000000"); // 1.0 * 10^9
-        const ratioBasisPoints = 8000; // 80% for token_out_1
+        const ratioBasisPoints = new BN(8000); // 80% for token_out_1
         const startTime = new BN(Math.floor(Date.now() / 1000) - 60); // Start 1 minute ago
         const endTime = new BN(startTime.toNumber() + 3600);
 
@@ -176,7 +176,7 @@ describe("Take dual redemption offer", () => {
         // Create dual redemption offer: price1 = 3.0, price2 = 1.5, ratio = 0 (0% for token1, 100% for token2)
         const price1 = new BN("3000000000"); // 3.0 * 10^9
         const price2 = new BN("1500000000"); // 1.5 * 10^9
-        const ratioBasisPoints = 0; // 0% for token_out_1, 100% for token_out_2
+        const ratioBasisPoints = new BN(0); // 0% for token_out_1, 100% for token_out_2
         const startTime = new BN(Math.floor(Date.now() / 1000) - 60);
         const endTime = new BN(startTime.toNumber() + 3600);
 
@@ -262,7 +262,7 @@ describe("Take dual redemption offer", () => {
         // Create dual redemption offer: price1 = 0.5, price2 = 2.0, ratio = 10000 (100% for token1, 0% for token2)
         const price1 = new BN("500000000"); // 0.5 * 10^9
         const price2 = new BN("2000000000"); // 2.0 * 10^9
-        const ratioBasisPoints = 10000; // 100% for token_out_1, 0% for token_out_2
+        const ratioBasisPoints = new BN(10000); // 100% for token_out_1, 0% for token_out_2
         const startTime = new BN(Math.floor(Date.now() / 1000) - 60);
         const endTime = new BN(startTime.toNumber() + 3600);
 
@@ -392,7 +392,7 @@ describe("Take dual redemption offer", () => {
         const endTime = new BN(currentTime - 3600); // 1 hour ago (expired)
 
         await program.methods
-            .makeDualRedemptionOffer(startTime, endTime, price1, price2, 5000)
+            .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(5000))
             .accounts({
                 tokenInMint,
                 tokenOutMint1,
@@ -457,7 +457,7 @@ describe("Take dual redemption offer", () => {
         const endTime = new BN(startTime.toNumber() + 3600);
 
         await program.methods
-            .makeDualRedemptionOffer(startTime, endTime, price1, price2, 5000)
+            .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(5000))
             .accounts({
                 tokenInMint: correctTokenInMint,
                 tokenOutMint1: correctTokenOutMint1,

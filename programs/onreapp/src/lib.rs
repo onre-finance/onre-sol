@@ -153,7 +153,7 @@ pub mod onreapp {
         end_time: u64,
         price_1: u64,
         price_2: u64,
-        ratio_basis_points: u16,
+        ratio_basis_points: u64,
     ) -> Result<()> {
         redemption_offer::make_dual_redemption_offer(ctx, start_time, end_time, price_1, price_2, ratio_basis_points)
     }
