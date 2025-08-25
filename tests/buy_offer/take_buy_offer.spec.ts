@@ -98,14 +98,14 @@ describe("Take Buy Offer", () => {
         it("Should calculate correct price in first interval", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
             
-            // Add segment: start_price = 1.0 (1e9), yield = 3.65% (36500), duration = 1 day
+            // Add vector: start_price = 1.0 (1e9), yield = 3.65% (36500), duration = 1 day
             const startPrice = new BN(1e9); // 1.0 with 9 decimals
             const priceYield = new BN(36_500); // 3.65% yearly yield (scaled by 1M)
             const priceFixDuration = new BN(86400); // 1 day
             const startTime = new BN(currentTime);
 
             await testHelper.program.methods
-                .addBuyOfferSegment(offerId, startTime, startPrice, priceYield, priceFixDuration)
+                .addBuyOfferVector(offerId, startTime, startPrice, priceYield, priceFixDuration)
                 .accounts({ state: testHelper.statePda })
                 .rpc();
 
@@ -143,7 +143,7 @@ describe("Take Buy Offer", () => {
             const startTime = new BN(currentTime);
 
             await testHelper.program.methods
-                .addBuyOfferSegment(offerId, startTime, startPrice, priceYield, priceFixDuration)
+                .addBuyOfferVector(offerId, startTime, startPrice, priceYield, priceFixDuration)
                 .accounts({ state: testHelper.statePda })
                 .rpc();
 
@@ -195,7 +195,7 @@ describe("Take Buy Offer", () => {
             const startTime = new BN(currentTime);
 
             await testHelper.program.methods
-                .addBuyOfferSegment(offerId, startTime, startPrice, priceYield, priceFixDuration)
+                .addBuyOfferVector(offerId, startTime, startPrice, priceYield, priceFixDuration)
                 .accounts({ state: testHelper.statePda })
                 .rpc();
 
@@ -228,13 +228,13 @@ describe("Take Buy Offer", () => {
         });
     });
 
-    describe("Multiple Segments Tests", () => {
-        it("Should use most recent active segment", async () => {
+    describe("Multiple Vectors Tests", () => {
+        it("Should use most recent active vector", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
             
-            // Add first segment (past)
+            // Add first vector (past)
             await testHelper.program.methods
-                .addBuyOfferSegment(
+                .addBuyOfferVector(
                     offerId, 
                     new BN(currentTime - 1000), 
                     new BN(1e9), 
@@ -244,9 +244,9 @@ describe("Take Buy Offer", () => {
                 .accounts({ state: testHelper.statePda })
                 .rpc();
 
-            // Add second segment (more recent)
+            // Add second vector (more recent)
             await testHelper.program.methods
-                .addBuyOfferSegment(
+                .addBuyOfferVector(
                     offerId, 
                     new BN(currentTime - 100), 
                     new BN(2e9), // Different start price
@@ -256,7 +256,7 @@ describe("Take Buy Offer", () => {
                 .accounts({ state: testHelper.statePda })
                 .rpc();
 
-            // Should use the second segment's pricing
+            // Should use the second vector's pricing
             // Price = 2.0 * (1 + 0.073 * 1/365) ≈ 2.0004
             const expectedTokenInAmount = new BN(2_000_400);
             
@@ -300,12 +300,12 @@ describe("Take Buy Offer", () => {
             ).rejects.toThrow("Offer not found");
         });
 
-        it("Should fail when no active segment exists", async () => {
+        it("Should fail when no active vector exists", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
             
-            // Add segment in the future
+            // Add vector in the future
             await testHelper.program.methods
-                .addBuyOfferSegment(
+                .addBuyOfferVector(
                     offerId, 
                     new BN(currentTime + 10000), // Future start time
                     new BN(1e9), 
@@ -327,14 +327,14 @@ describe("Take Buy Offer", () => {
                     })
                     .signers([user])
                     .rpc()
-            ).rejects.toThrow("No active segment");
+            ).rejects.toThrow("No active vector");
         });
 
         it("Should fail with insufficient user token balance", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
             
             await testHelper.program.methods
-                .addBuyOfferSegment(
+                .addBuyOfferVector(
                     offerId, 
                     new BN(currentTime), 
                     new BN(1e9), 
@@ -365,9 +365,9 @@ describe("Take Buy Offer", () => {
         it("Should fail with insufficient vault balance", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
             
-            // Add segment with very low price (expensive for vault)
+            // Add vector with very low price (expensive for vault)
             await testHelper.program.methods
-                .addBuyOfferSegment(
+                .addBuyOfferVector(
                     offerId, 
                     new BN(currentTime), 
                     new BN(1e6), // Very low price = 0.001 USDC per token
@@ -401,7 +401,7 @@ describe("Take Buy Offer", () => {
             const currentTime = await testHelper.getCurrentClockTime();
             
             await testHelper.program.methods
-                .addBuyOfferSegment(
+                .addBuyOfferVector(
                     offerId, 
                     new BN(currentTime), 
                     new BN(1e9), 
@@ -448,7 +448,7 @@ describe("Take Buy Offer", () => {
             const currentTime = await testHelper.getCurrentClockTime();
             
             await testHelper.program.methods
-                .addBuyOfferSegment(
+                .addBuyOfferVector(
                     offerId, 
                     new BN(currentTime), 
                     new BN(1e9), 
@@ -490,7 +490,7 @@ describe("Take Buy Offer", () => {
             const currentTime = await testHelper.getCurrentClockTime();
             
             await testHelper.program.methods
-                .addBuyOfferSegment(
+                .addBuyOfferVector(
                     offerId, 
                     new BN(currentTime), 
                     new BN(1e9), 

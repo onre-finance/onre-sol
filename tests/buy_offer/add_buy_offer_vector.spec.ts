@@ -8,7 +8,7 @@ import idl from "../../target/idl/onreapp.json";
 
 const MAX_SEGMENTS = 10;
 
-describe("Add Buy Offer Segment", () => {
+describe("Add Buy Offer Vector", () => {
     let testHelper: TestHelper;
     let tokenInMint: PublicKey;
     let tokenOutMint: PublicKey;
@@ -43,7 +43,7 @@ describe("Add Buy Offer Segment", () => {
         }).rpc();
     });
 
-    it("Should create a buy offer and add a time segment", async () => {
+    it("Should create a buy offer and add a time vector", async () => {
         // First create a buy offer using testHelper
         await testHelper.makeBuyOffer({
             tokenInMint,
@@ -61,7 +61,7 @@ describe("Add Buy Offer Segment", () => {
         const offer = buyOfferAccountBefore.offers.find(o => o.offerId.toNumber() !== 0);
         const offerId = offer.offerId;
 
-        // Now add a time segment to the offer
+        // Now add a time vector to the offer
         const currentTime = await testHelper.getCurrentClockTime();
         const startTime = new BN(currentTime + 3600); // 1 hour in future
         const startPrice = new BN(1000000); // 1 token
@@ -69,7 +69,7 @@ describe("Add Buy Offer Segment", () => {
         const priceFixDuration = new BN(3600); // 1 hour
 
         const tx = await testHelper.program.methods
-            .addBuyOfferSegment(
+            .addBuyOfferVector(
                 offerId,
                 startTime,
                 startPrice,
@@ -81,19 +81,19 @@ describe("Add Buy Offer Segment", () => {
             })
             .rpc();
 
-        // Verify the time segment was added
+        // Verify the time vector was added
         const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
 
         const updatedOffer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
         expect(updatedOffer.offerId.toString()).toBe(offerId.toString());
         
-        const segment = updatedOffer.segments[0];
-        expect(segment.segmentId.toString()).toBe("1");
-        expect(segment.startTime.toString()).toBe(startTime.toString());
-        expect(segment.validFrom.toString()).toBe(startTime.toString()); // valid_from should equal start_time when start_time is in future
-        expect(segment.startPrice.toString()).toBe(startPrice.toString());
-        expect(segment.priceYield.toString()).toBe(priceYield.toString());
-        expect(segment.priceFixDuration.toString()).toBe(priceFixDuration.toString());
+        const vector = updatedOffer.vectors[0];
+        expect(vector.vectorId.toString()).toBe("1");
+        expect(vector.startTime.toString()).toBe(startTime.toString());
+        expect(vector.validFrom.toString()).toBe(startTime.toString()); // valid_from should equal start_time when start_time is in future
+        expect(vector.startPrice.toString()).toBe(startPrice.toString());
+        expect(vector.priceYield.toString()).toBe(priceYield.toString());
+        expect(vector.priceFixDuration.toString()).toBe(priceFixDuration.toString());
     });
 
     it("Should calculate valid_from as current time when start_time is in the past", async () => {
@@ -118,7 +118,7 @@ describe("Add Buy Offer Segment", () => {
         const priceFixDuration = new BN(1800);
 
         await testHelper.program.methods
-            .addBuyOfferSegment(
+            .addBuyOfferVector(
                 offerId,
                 pastStartTime,
                 startPrice,
@@ -132,16 +132,16 @@ describe("Add Buy Offer Segment", () => {
 
         const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
         const updatedOffer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
-        const segment = updatedOffer.segments[0];
+        const vector = updatedOffer.vectors[0];
 
-        expect(segment.startTime.toString()).toBe(pastStartTime.toString());
+        expect(vector.startTime.toString()).toBe(pastStartTime.toString());
         // valid_from should be approximately current time (within a few seconds)
-        const validFromTime = parseInt(segment.validFrom.toString());
+        const validFromTime = parseInt(vector.validFrom.toString());
         expect(validFromTime).toBeGreaterThanOrEqual(currentTime);
         expect(validFromTime).toBeLessThanOrEqual(currentTime + 2); // Allow up to 2 seconds difference
     });
 
-    it("Should auto-increment segment IDs correctly", async () => {
+    it("Should auto-increment vector IDs correctly", async () => {
         const offerId = new BN(1);
         // Create buy offer
         await testHelper.makeBuyOffer({
@@ -151,9 +151,9 @@ describe("Add Buy Offer Segment", () => {
 
         const currentTime = await testHelper.getCurrentClockTime();
 
-        // Add first segment
+        // Add first vector
         await testHelper.program.methods
-            .addBuyOfferSegment(
+            .addBuyOfferVector(
                 offerId,
                 new BN(currentTime + 1000),
                 new BN(1000000),
@@ -165,9 +165,9 @@ describe("Add Buy Offer Segment", () => {
             })
             .rpc();
 
-        // Add second segment (with later start_time)
+        // Add second vector (with later start_time)
         await testHelper.program.methods
-            .addBuyOfferSegment(
+            .addBuyOfferVector(
                 offerId,
                 new BN(currentTime + 3000),
                 new BN(2000000),
@@ -179,9 +179,9 @@ describe("Add Buy Offer Segment", () => {
             })
             .rpc();
 
-        // Add third segment
+        // Add third vector
         await testHelper.program.methods
-            .addBuyOfferSegment(
+            .addBuyOfferVector(
                 offerId,
                 new BN(currentTime + 5000),
                 new BN(3000000),
@@ -193,7 +193,7 @@ describe("Add Buy Offer Segment", () => {
             })
             .rpc();
 
-        // Verify segments have correct auto-incremented IDs
+        // Verify vectors have correct auto-incremented IDs
         const [buyOffersPda] = PublicKey.findProgramAddressSync(
             [Buffer.from("buy_offers")],
             ONREAPP_PROGRAM_ID
@@ -201,9 +201,9 @@ describe("Add Buy Offer Segment", () => {
         const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
         const offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
         
-        expect(offer.segments[0].segmentId.toString()).toBe("1");
-        expect(offer.segments[1].segmentId.toString()).toBe("2");
-        expect(offer.segments[2].segmentId.toString()).toBe("3");
+        expect(offer.vectors[0].vectorId.toString()).toBe("1");
+        expect(offer.vectors[1].vectorId.toString()).toBe("2");
+        expect(offer.vectors[2].vectorId.toString()).toBe("3");
     });
 
     it("Should reject zero offer_id", async () => {
@@ -211,7 +211,7 @@ describe("Add Buy Offer Segment", () => {
         
         await expect(
             testHelper.program.methods
-                .addBuyOfferSegment(
+                .addBuyOfferVector(
                     new BN(0), // Invalid: zero offer_id
                     new BN(currentTime + 1000),
                     new BN(1000000),
@@ -234,7 +234,7 @@ describe("Add Buy Offer Segment", () => {
 
         await expect(
             testHelper.program.methods
-                .addBuyOfferSegment(
+                .addBuyOfferVector(
                     offerId,
                     new BN(0), // Invalid: zero start_time
                     new BN(1000000),
@@ -259,7 +259,7 @@ describe("Add Buy Offer Segment", () => {
 
         await expect(
             testHelper.program.methods
-                .addBuyOfferSegment(
+                .addBuyOfferVector(
                     offerId,
                     new BN(currentTime + 1000),
                     new BN(0), // Invalid: zero start_price
@@ -284,7 +284,7 @@ describe("Add Buy Offer Segment", () => {
 
         await expect(
             testHelper.program.methods
-                .addBuyOfferSegment(
+                .addBuyOfferVector(
                     offerId,
                     new BN(currentTime + 1000),
                     new BN(1000000),
@@ -309,7 +309,7 @@ describe("Add Buy Offer Segment", () => {
 
         await expect(
             testHelper.program.methods
-                .addBuyOfferSegment(
+                .addBuyOfferVector(
                     offerId,
                     new BN(currentTime + 1000),
                     new BN(1000000),
@@ -323,7 +323,7 @@ describe("Add Buy Offer Segment", () => {
         ).rejects.toThrow("Invalid input: values cannot be zero");
     });
 
-    it("Should reject start_time before latest existing segment start_time", async () => {
+    it("Should reject start_time before latest existing vector start_time", async () => {
         const offerId = new BN(1);
         await testHelper.makeBuyOffer({
             tokenInMint,
@@ -332,9 +332,9 @@ describe("Add Buy Offer Segment", () => {
 
         const currentTime = await testHelper.getCurrentClockTime();
 
-        // Add first segment
+        // Add first vector
         await testHelper.program.methods
-            .addBuyOfferSegment(
+            .addBuyOfferVector(
                 offerId,
                 new BN(currentTime + 2000),
                 new BN(1000000),
@@ -346,10 +346,10 @@ describe("Add Buy Offer Segment", () => {
             })
             .rpc();
 
-        // Try to add segment with earlier start_time (should fail)
+        // Try to add vector with earlier start_time (should fail)
         await expect(
             testHelper.program.methods
-                .addBuyOfferSegment(
+                .addBuyOfferVector(
                     offerId,
                     new BN(currentTime + 1000), // Invalid: before previous start_time
                     new BN(2000000),
@@ -360,10 +360,10 @@ describe("Add Buy Offer Segment", () => {
                     state: testHelper.statePda,
                 })
                 .rpc()
-        ).rejects.toThrow("Invalid time range: start_time must be after the latest existing segment");
+        ).rejects.toThrow("Invalid time range: start_time must be after the latest existing vector");
     });
 
-    it("Should reject start_time equal to latest existing segment start_time", async () => {
+    it("Should reject start_time equal to latest existing vector start_time", async () => {
         const offerId = new BN(1);
         await testHelper.makeBuyOffer({
             tokenInMint,
@@ -373,9 +373,9 @@ describe("Add Buy Offer Segment", () => {
         const currentTime = await testHelper.getCurrentClockTime();
         const startTime = new BN(currentTime + 2000);
 
-        // Add first segment
+        // Add first vector
         await testHelper.program.methods
-            .addBuyOfferSegment(
+            .addBuyOfferVector(
                 offerId,
                 startTime,
                 new BN(1000000),
@@ -387,9 +387,9 @@ describe("Add Buy Offer Segment", () => {
             })
             .rpc();
 
-        // Add segment with same start_time (should fail)
+        // Add vector with same start_time (should fail)
         await expect(testHelper.program.methods
-            .addBuyOfferSegment(
+            .addBuyOfferVector(
                 offerId,
                 startTime, // Same start_time - should be allowed
                 new BN(2000000),
@@ -399,16 +399,16 @@ describe("Add Buy Offer Segment", () => {
             .accounts({
                 state: testHelper.statePda,
             })
-            .rpc()).rejects.toThrow("Invalid time range: start_time must be after the latest existing segment.");
+            .rpc()).rejects.toThrow("Invalid time range: start_time must be after the latest existing vector.");
     });
 
-    it("Should reject adding segment to non-existent offer", async () => {
+    it("Should reject adding vector to non-existent offer", async () => {
         const nonExistentOfferId = new BN(999999);
         const currentTime = await testHelper.getCurrentClockTime();
         
         await expect(
             testHelper.program.methods
-                .addBuyOfferSegment(
+                .addBuyOfferVector(
                     nonExistentOfferId,
                     new BN(currentTime + 1000),
                     new BN(1000000),
@@ -422,7 +422,7 @@ describe("Add Buy Offer Segment", () => {
         ).rejects.toThrow("Buy offer with the specified ID was not found");
     });
 
-    it("Should reject when offer has maximum segments", async () => {
+    it("Should reject when offer has maximum vectors", async () => {
         const offerId = new BN(1);
         await testHelper.makeBuyOffer({
             tokenInMint,
@@ -430,19 +430,19 @@ describe("Add Buy Offer Segment", () => {
         });
 
         const currentTime = await testHelper.getCurrentClockTime();
-        const segmentTimeOffset = 1000;
+        const vectorTimeOffset = 1000;
         const startPrice = new BN(1000000);
         const priceYield = new BN(5000);
         const priceFixDuration = new BN(3600);
 
-        // Add maximum number of segments
+        // Add maximum number of vectors
         for (let i = 1; i <= MAX_SEGMENTS; i++) {
-            const segmentStartTime = new BN(currentTime + (i * segmentTimeOffset));
+            const vectorStartTime = new BN(currentTime + (i * vectorTimeOffset));
 
             await testHelper.program.methods
-                .addBuyOfferSegment(
+                .addBuyOfferVector(
                     offerId,
-                    segmentStartTime,
+                    vectorStartTime,
                     startPrice,
                     priceYield,
                     priceFixDuration
@@ -452,17 +452,17 @@ describe("Add Buy Offer Segment", () => {
                 })
                 .rpc();
 
-            console.log(`Added segment ${i}`);
+            console.log(`Added vector ${i}`);
         }
 
-        // Try to add one more segment (should fail)
-        const segmentStartTime = new BN(currentTime + ((MAX_SEGMENTS + 1) * segmentTimeOffset));
+        // Try to add one more vector (should fail)
+        const vectorStartTime = new BN(currentTime + ((MAX_SEGMENTS + 1) * vectorTimeOffset));
 
         await expect(
             testHelper.program.methods
-                .addBuyOfferSegment(
+                .addBuyOfferVector(
                     offerId,
-                    segmentStartTime,
+                    vectorStartTime,
                     startPrice,
                     priceYield,
                     priceFixDuration
@@ -471,7 +471,7 @@ describe("Add Buy Offer Segment", () => {
                     state: testHelper.statePda,
                 })
                 .rpc()
-        ).rejects.toThrow("Cannot add more segments: maximum limit reached");
+        ).rejects.toThrow("Cannot add more vectors: maximum limit reached");
     });
 
     it("Should handle large price and yield values correctly", async () => {
@@ -494,7 +494,7 @@ describe("Add Buy Offer Segment", () => {
         const largePriceYield = new BN("999999"); // 99.9999% yield (9999/10000)
         
         await testHelper.program.methods
-            .addBuyOfferSegment(
+            .addBuyOfferVector(
                 offerId,
                 new BN(currentTime + 1000),
                 largeStartPrice,
@@ -506,13 +506,13 @@ describe("Add Buy Offer Segment", () => {
             })
             .rpc();
 
-        // Verify the segment was added with large values
+        // Verify the vector was added with large values
         const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
         const offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
-        const segment = offer.segments[0];
+        const vector = offer.vectors[0];
         
-        expect(segment.startPrice.toString()).toBe(largeStartPrice.toString());
-        expect(segment.priceYield.toString()).toBe(largePriceYield.toString());
+        expect(vector.startPrice.toString()).toBe(largeStartPrice.toString());
+        expect(vector.priceYield.toString()).toBe(largePriceYield.toString());
     });
 
     it("Should handle minimum valid values (1 for all fields)", async () => {
@@ -529,7 +529,7 @@ describe("Add Buy Offer Segment", () => {
         );
 
         await testHelper.program.methods
-            .addBuyOfferSegment(
+            .addBuyOfferVector(
                 offerId,
                 new BN(1), // Minimum valid start_time
                 new BN(1), // Minimum valid start_price
@@ -541,20 +541,20 @@ describe("Add Buy Offer Segment", () => {
             })
             .rpc();
 
-        // Verify the segment was added
+        // Verify the vector was added
         const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
         const offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
-        const segment = offer.segments[0];
+        const vector = offer.vectors[0];
         
-        expect(segment.segmentId.toString()).toBe("1");
-        expect(segment.startTime.toString()).toBe("1");
+        expect(vector.vectorId.toString()).toBe("1");
+        expect(vector.startTime.toString()).toBe("1");
         // valid_from should be current time since start_time=1 is in the past
         const currentTime = await testHelper.getCurrentClockTime();
-        const validFromTime = parseInt(segment.validFrom.toString());
+        const validFromTime = parseInt(vector.validFrom.toString());
         expect(validFromTime).toBeGreaterThanOrEqual(currentTime);
-        expect(segment.startPrice.toString()).toBe("1");
-        expect(segment.priceYield.toString()).toBe("1");
-        expect(segment.priceFixDuration.toString()).toBe("1");
+        expect(vector.startPrice.toString()).toBe("1");
+        expect(vector.priceYield.toString()).toBe("1");
+        expect(vector.priceFixDuration.toString()).toBe("1");
     });
 
     it("Should reject when called by non-boss", async () => {
@@ -569,7 +569,7 @@ describe("Add Buy Offer Segment", () => {
         
         await expect(
             testHelper.program.methods
-                .addBuyOfferSegment(
+                .addBuyOfferVector(
                     offerId,
                     new BN(currentTime + 1000),
                     new BN(1000000),
@@ -585,7 +585,7 @@ describe("Add Buy Offer Segment", () => {
         ).rejects.toThrow(); // Should fail due to boss constraint
     });
 
-    it("Should handle segments added to multiple different offers", async () => {
+    it("Should handle vectors added to multiple different offers", async () => {
         const offer1Id = new BN(1);
         const offer2Id = new BN(2);
         
@@ -611,9 +611,9 @@ describe("Add Buy Offer Segment", () => {
 
         const currentTime = await testHelper.getCurrentClockTime();
 
-        // Add segments to both offers
+        // Add vectors to both offers
         await testHelper.program.methods
-            .addBuyOfferSegment(
+            .addBuyOfferVector(
                 offer1Id,
                 new BN(currentTime + 1000),
                 new BN(1000000),
@@ -626,7 +626,7 @@ describe("Add Buy Offer Segment", () => {
             .rpc();
 
         await testHelper.program.methods
-            .addBuyOfferSegment(
+            .addBuyOfferVector(
                 offer2Id,
                 new BN(currentTime + 1000),
                 new BN(3000000),
@@ -639,7 +639,7 @@ describe("Add Buy Offer Segment", () => {
             .rpc();
 
         await testHelper.program.methods
-            .addBuyOfferSegment(
+            .addBuyOfferVector(
                 offer1Id,
                 new BN(currentTime + 3000),
                 new BN(2000000),
@@ -651,24 +651,24 @@ describe("Add Buy Offer Segment", () => {
             })
             .rpc();
 
-        // Verify each offer has its own segment ID sequence
+        // Verify each offer has its own vector ID sequence
         const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
         const offer1 = buyOfferAccount.offers.find(o => o.offerId.eq(offer1Id));
         const offer2 = buyOfferAccount.offers.find(o => o.offerId.eq(offer2Id));
         
-        // Offer 1 should have segments 1 and 2
-        expect(offer1.segments[0].segmentId.toString()).toBe("1");
-        expect(offer1.segments[1].segmentId.toString()).toBe("2");
+        // Offer 1 should have vectors 1 and 2
+        expect(offer1.vectors[0].vectorId.toString()).toBe("1");
+        expect(offer1.vectors[1].vectorId.toString()).toBe("2");
         
-        // Offer 2 should have segment 1 (independent sequence)
-        expect(offer2.segments[0].segmentId.toString()).toBe("1");
+        // Offer 2 should have vector 1 (independent sequence)
+        expect(offer2.vectors[0].vectorId.toString()).toBe("1");
         
         // Verify prices are correct for each offer
-        expect(offer1.segments[0].startPrice.toString()).toBe("1000000");
-        expect(offer2.segments[0].startPrice.toString()).toBe("3000000");
+        expect(offer1.vectors[0].startPrice.toString()).toBe("1000000");
+        expect(offer2.vectors[0].startPrice.toString()).toBe("3000000");
         
         // Verify yields are correct
-        expect(offer1.segments[0].priceYield.toString()).toBe("5000"); // 50%
-        expect(offer2.segments[0].priceYield.toString()).toBe("7500"); // 75%
+        expect(offer1.vectors[0].priceYield.toString()).toBe("5000"); // 50%
+        expect(offer2.vectors[0].priceYield.toString()).toBe("7500"); // 75%
     });
 });

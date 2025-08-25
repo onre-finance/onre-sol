@@ -1,5 +1,5 @@
 use crate::constants::seeds;
-use crate::instructions::{BuyOffer, BuyOfferAccount, BuyOfferSegment};
+use crate::instructions::{BuyOffer, BuyOfferAccount, BuyOfferVector};
 use crate::state::State;
 use anchor_lang::{instruction, Accounts};
 use anchor_lang::prelude::*;
@@ -13,8 +13,8 @@ pub enum TakeBuyOfferErrorCode {
     OfferNotFound,
     #[msg("Invalid boss account")]
     InvalidBoss,
-    #[msg("No active segment")]
-    NoActiveSegment,
+    #[msg("No active vector")]
+    NoActiveVector,
     #[msg("Overflow error")]
     OverflowError
 }
@@ -120,7 +120,7 @@ pub struct TakeBuyOffer<'info> {
 /// # Process Flow
 /// 
 /// 1. Load and validate the buy offer exists
-/// 2. Find the currently active pricing segment
+/// 2. Find the currently active pricing vector
 /// 3. Calculate current price based on time elapsed and yield parameters
 /// 4. Calculate how many token_out to give for the provided token_in_amount
 /// 5. Execute atomic transfers: user → boss (token_in), vault → user (token_out)
@@ -134,7 +134,7 @@ pub struct TakeBuyOffer<'info> {
 /// # Errors
 /// 
 /// * `OfferNotFound` - The specified offer_id doesn't exist
-/// * `NoActiveSegment` - No pricing segment is currently active  
+/// * `NoActiveVector` - No pricing vector is currently active  
 /// * `OverflowError` - Mathematical overflow in price calculations
 /// * Token transfer errors if insufficient balances or invalid accounts
 pub fn take_buy_offer(
@@ -147,14 +147,14 @@ pub fn take_buy_offer(
     // Find the offer
     let offer = find_offer(&offer_account, offer_id)?;
     
-    let active_segment = find_active_segment(&offer)?;
+    let active_vector = find_active_vector(&offer)?;
 
     // Price with 9 decimals !!
     let current_price = calculate_current_price(
-        active_segment.price_yield,
-        active_segment.start_price,
-        active_segment.start_time,
-        active_segment.price_fix_duration,
+        active_vector.price_yield,
+        active_vector.start_price,
+        active_vector.start_time,
+        active_vector.price_fix_duration,
         ctx.accounts.token_in_mint.decimals,
         ctx.accounts.token_out_mint.decimals,
     )?;
@@ -209,7 +209,7 @@ fn calculate_current_price(price_yield: u64, start_price: u64, start_time: u64, 
 
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    require!(start_time <= current_time, TakeBuyOfferErrorCode::NoActiveSegment);
+    require!(start_time <= current_time, TakeBuyOfferErrorCode::NoActiveVector);
 
     let elapsed_since_start = current_time.saturating_sub(start_time);
 
@@ -260,17 +260,17 @@ fn find_offer(offer_account: &BuyOfferAccount, offer_id: u64) -> Result<BuyOffer
     Ok(*offer)
 }
 
-fn find_active_segment(offer: &BuyOffer) -> Result<BuyOfferSegment> {
+fn find_active_vector(offer: &BuyOffer) -> Result<BuyOfferVector> {
     let current_time = Clock::get()?.unix_timestamp as u64;
     
-    let active_segment = offer.segments
+    let active_vector = offer.vectors
         .iter()
-        .filter(|segment| segment.segment_id != 0) // Only consider non-empty segments
-        .filter(|segment| segment.valid_from <= current_time) // Only segments that have started
-        .max_by_key(|segment| segment.valid_from) // Find latest valid_from in the past
-        .ok_or(TakeBuyOfferErrorCode::NoActiveSegment)?;
+        .filter(|vector| vector.vector_id != 0) // Only consider non-empty vectors
+        .filter(|vector| vector.valid_from <= current_time) // Only vectors that have started
+        .max_by_key(|vector| vector.valid_from) // Find latest valid_from in the past
+        .ok_or(TakeBuyOfferErrorCode::NoActiveVector)?;
     
-    Ok(*active_segment)
+    Ok(*active_vector)
 }
 
 /// Executes both token transfers (user to boss, vault to user)
