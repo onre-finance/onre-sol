@@ -231,6 +231,24 @@ pub mod onreapp {
             price_fix_duration,
         )
     }
+    
+    /// Takes a buy offer.
+    ///
+    /// Delegates to `buy_offer::take_buy_offer`.
+    /// Allows a user to exchange token_in for token_out based on the offer's dynamic price.
+    /// Emits a `TakeBuyOfferEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `TakeBuyOffer`.
+    /// - `offer_id`: ID of the offer to take.
+    /// - `token_in_amount`: Amount of token_in to provide.
+    pub fn take_buy_offer(
+        ctx: Context<TakeBuyOffer>,
+        offer_id: u64,
+        token_in_amount: u64,
+    ) -> Result<()> {
+        buy_offer::take_buy_offer(ctx, offer_id, token_in_amount)
+    }
 
     /// Creates an offer with two buy tokens.
     ///
