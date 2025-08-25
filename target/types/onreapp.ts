@@ -41,31 +41,31 @@ export type Onreapp = {
   ],
   "instructions": [
     {
-      "name": "addBuyOfferSegment",
+      "name": "addBuyOfferVector",
       "docs": [
-        "Adds a time segment to an existing buy offer.",
+        "Adds a time vector to an existing buy offer.",
         "",
-        "Delegates to `buy_offer::add_buy_offer_time_segment`.",
-        "Creates a new time segment with auto-generated segment_id for the specified buy offer.",
-        "Emits a `BuyOfferSegmentAdded` event upon success.",
+        "Delegates to `buy_offer::add_buy_offer_time_vector`.",
+        "Creates a new time vector with auto-generated vector_id for the specified buy offer.",
+        "Emits a `BuyOfferVectorAdded` event upon success.",
         "",
         "# Arguments",
-        "- `ctx`: Context for `AddBuyOfferSegment`.",
-        "- `offer_id`: ID of the buy offer to add the segment to.",
-        "- `start_time`: Unix timestamp when the segment becomes active.",
-        "- `start_price`: Price at the beginning of the segment.",
+        "- `ctx`: Context for `AddBuyOfferVector`.",
+        "- `offer_id`: ID of the buy offer to add the vector to.",
+        "- `start_time`: Unix timestamp when the vector becomes active.",
+        "- `start_price`: Price at the beginning of the vector.",
         "- `price_yield`: Price yield percentage * 10000 (with 4 decimal places).",
         "- `price_fix_duration`: Duration in seconds for each price interval."
       ],
       "discriminator": [
-        100,
-        203,
-        117,
-        214,
-        22,
-        17,
-        78,
-        195
+        246,
+        20,
+        14,
+        161,
+        143,
+        108,
+        10,
+        4
       ],
       "accounts": [
         {
@@ -103,7 +103,7 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The signer authorizing the time segment addition (must be boss)."
+            "The signer authorizing the time vector addition (must be boss)."
           ],
           "writable": true,
           "signer": true,
@@ -1112,6 +1112,9 @@ export type Onreapp = {
       "accounts": [
         {
           "name": "buyOfferAccount",
+          "docs": [
+            "The buy offer account containing all active buy offers"
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -1136,20 +1139,20 @@ export type Onreapp = {
         {
           "name": "state",
           "docs": [
-            "Program state to get the boss."
+            "Program state account containing the boss public key"
           ]
         },
         {
           "name": "boss",
           "docs": [
-            "The boss account that receives token_in payments.",
-            "This must match the boss in the state account."
+            "The boss account that receives token_in payments",
+            "Must match the boss stored in the program state"
           ]
         },
         {
           "name": "vaultAuthority",
           "docs": [
-            "The vault authority that controls vault token accounts."
+            "The vault authority PDA that controls vault token accounts"
           ],
           "pda": {
             "seeds": [
@@ -1179,19 +1182,19 @@ export type Onreapp = {
         {
           "name": "tokenInMint",
           "docs": [
-            "The token mint for token_in."
+            "The mint account for the input token (what user pays)"
           ]
         },
         {
           "name": "tokenOutMint",
           "docs": [
-            "The token mint for token_out."
+            "The mint account for the output token (what user receives)"
           ]
         },
         {
           "name": "userTokenInAccount",
           "docs": [
-            "User's token_in account (source of payment)."
+            "User's token_in account (source of payment)"
           ],
           "writable": true,
           "pda": {
@@ -1284,7 +1287,7 @@ export type Onreapp = {
         {
           "name": "userTokenOutAccount",
           "docs": [
-            "User's token_out account (destination of tokens)."
+            "User's token_out account (destination of received tokens)"
           ],
           "writable": true,
           "pda": {
@@ -1377,7 +1380,7 @@ export type Onreapp = {
         {
           "name": "bossTokenInAccount",
           "docs": [
-            "Boss's token_in account (destination of payment)."
+            "Boss's token_in account (destination of user's payment)"
           ],
           "writable": true,
           "pda": {
@@ -1470,7 +1473,7 @@ export type Onreapp = {
         {
           "name": "vaultTokenOutAccount",
           "docs": [
-            "Vault's token_out account (source of tokens to give)."
+            "Vault's token_out account (source of tokens to distribute to user)"
           ],
           "writable": true,
           "pda": {
@@ -1563,7 +1566,7 @@ export type Onreapp = {
         {
           "name": "user",
           "docs": [
-            "The user taking the offer."
+            "The user taking the offer (must sign the transaction)"
           ],
           "writable": true,
           "signer": true
@@ -1571,7 +1574,7 @@ export type Onreapp = {
         {
           "name": "tokenProgram",
           "docs": [
-            "SPL Token program."
+            "SPL Token program for token transfers"
           ],
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
@@ -3489,16 +3492,16 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "buyOfferSegmentAddedEvent",
+      "name": "buyOfferVectorAddedEvent",
       "discriminator": [
-        246,
-        232,
-        93,
-        3,
-        61,
+        40,
+        116,
         229,
-        188,
-        173
+        220,
+        106,
+        39,
+        19,
+        188
       ]
     },
     {
@@ -3690,12 +3693,12 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
-            "name": "segments",
+            "name": "vectors",
             "type": {
               "array": [
                 {
                   "defined": {
-                    "name": "buyOfferSegment"
+                    "name": "buyOfferVector"
                   }
                 },
                 10
@@ -3757,9 +3760,9 @@ export type Onreapp = {
       }
     },
     {
-      "name": "buyOfferSegment",
+      "name": "buyOfferVector",
       "docs": [
-        "Time segment for buy offers with pricing information"
+        "Time vector for buy offers with pricing information"
       ],
       "serialization": "bytemuck",
       "repr": {
@@ -3769,7 +3772,7 @@ export type Onreapp = {
         "kind": "struct",
         "fields": [
           {
-            "name": "segmentId",
+            "name": "vectorId",
             "type": "u64"
           },
           {
@@ -3796,9 +3799,9 @@ export type Onreapp = {
       }
     },
     {
-      "name": "buyOfferSegmentAddedEvent",
+      "name": "buyOfferVectorAddedEvent",
       "docs": [
-        "Event emitted when a time segment is added to a buy offer."
+        "Event emitted when a time vector is added to a buy offer."
       ],
       "type": {
         "kind": "struct",
@@ -3808,7 +3811,7 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "segmentId",
+            "name": "vectorId",
             "type": "u64"
           },
           {
@@ -4137,23 +4140,38 @@ export type Onreapp = {
     },
     {
       "name": "takeBuyOfferEvent",
+      "docs": [
+        "Event emitted when a buy offer is successfully taken"
+      ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "offerId",
+            "docs": [
+              "The ID of the buy offer that was taken"
+            ],
             "type": "u64"
           },
           {
             "name": "tokenInAmount",
+            "docs": [
+              "Amount of token_in paid by the user"
+            ],
             "type": "u64"
           },
           {
             "name": "tokenOutAmount",
+            "docs": [
+              "Amount of token_out received by the user"
+            ],
             "type": "u64"
           },
           {
             "name": "user",
+            "docs": [
+              "Public key of the user who took the offer"
+            ],
             "type": "pubkey"
           }
         ]

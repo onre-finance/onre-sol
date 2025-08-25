@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-const MAX_SEGMENTS: usize = 10;
+const MAX_VECTORS: usize = 10;
 pub const MAX_BUY_OFFERS: usize = 10;
 
 /// Buy offer struct for token exchange with dynamic pricing
@@ -10,26 +10,26 @@ pub struct BuyOffer {
     pub offer_id: u64,
     pub token_in_mint: Pubkey,
     pub token_out_mint: Pubkey,
-    pub segments: [BuyOfferSegment; MAX_SEGMENTS],
+    pub vectors: [BuyOfferVector; MAX_VECTORS],
 }
 
-/// Time segment for buy offers with pricing information
+/// Time vector for buy offers with pricing information
 #[zero_copy]
 #[repr(C)]
-pub struct BuyOfferSegment {
-    pub segment_id: u64,
+pub struct BuyOfferVector {
+    pub vector_id: u64,
     pub valid_from: u64,
     pub start_time: u64,
     pub start_price: u64,
-    // Price yield percentage * 10000 (with 4 decimal places)
+    // Price yield percentage * 10000 (with 4 decimal places = 12.34% => 123400)
     pub price_yield: u64,
     pub price_fix_duration: u64,
 }
 
-impl Default for BuyOfferSegment {
+impl Default for BuyOfferVector {
     fn default() -> Self {
         Self {
-            segment_id: 0,
+            vector_id: 0,
             valid_from: 0,
             start_time: 0,
             start_price: 0,
@@ -45,7 +45,7 @@ impl Default for BuyOffer {
             offer_id: 0,
             token_in_mint: Pubkey::default(),
             token_out_mint: Pubkey::default(),
-            segments: [BuyOfferSegment::default(); MAX_SEGMENTS],
+            vectors: [BuyOfferVector::default(); MAX_VECTORS],
         }
     }
 }
