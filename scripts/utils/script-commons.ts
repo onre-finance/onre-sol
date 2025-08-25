@@ -1,11 +1,11 @@
 import * as anchor from "@coral-xyz/anchor";
 import {AnchorProvider, BN, Program} from "@coral-xyz/anchor";
 import {PublicKey} from "@solana/web3.js";
-import {Onreapp} from "../target/types/onreapp";
-import idl from "../target/idl/onreapp.json"; // assert { type: 'json' };
+import {Onreapp} from "../../target/types/onreapp";
+import idl from "../../target/idl/onreapp.json"; // assert { type: 'json' };
 
-export const RPC_URL = process.env.SOL_MAINNET_RPC_URL || "https://api.mainnet-beta.solana.com";
-// export const RPC_URL = "http://localhost:8899";
+// export const RPC_URL = process.env.SOL_MAINNET_RPC_URL || "https://api.mainnet-beta.solana.com";
+export const RPC_URL = "http://localhost:8899";
 
 export const PROGRAM_ID = new PublicKey("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe"); // PROD
 // export const PROGRAM_ID = new PublicKey("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2"); // TEST
@@ -22,7 +22,7 @@ export async function initProgram() {
     return program;
 }
 
-export async function getBossAccount(program: Program<OnreApp>) {
+export async function getBossAccount(program: Program<Onreapp>) {
     const [statePda] = PublicKey.findProgramAddressSync([Buffer.from("state")], PROGRAM_ID);
 
     const stateAccount = await program.account.state.fetch(statePda);
@@ -30,7 +30,7 @@ export async function getBossAccount(program: Program<OnreApp>) {
     return stateAccount.boss;
 }
 
-export async function getOffer(offerId: BN, program: Program<OnreApp>) {
+export async function getOffer(offerId: BN, program: Program<Onreapp>) {
     const [offerPda] = PublicKey.findProgramAddressSync([Buffer.from("offer"), offerId.toArrayLike(Buffer, "le", 8)], PROGRAM_ID);
 
     return program.account.offer.fetch(offerPda);

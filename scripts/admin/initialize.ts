@@ -2,13 +2,13 @@ import * as anchor from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
 
-import { initProgram, PROGRAM_ID, RPC_URL } from "./script-commons";
+import { initProgram, PROGRAM_ID, RPC_URL } from "../utils/script-commons";
 
 // PROD
 // const BOSS = new PublicKey("45YnzauhsBM8CpUz96Djf8UG5vqq2Dua62wuW9H3jaJ5"); // WARN: SQUAD MAIN ACCOUNT!!!
 
 // TEST & local
-const BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC"); // DEV Squad
+const BOSS = new PublicKey("9tTUg7r9ftofzoPXKeUPB35oN4Lm8KkrVDVQbbM7Xzxx"); // DEV Squad
 
 async function initialize() {
     const connection = new anchor.web3.Connection(RPC_URL);

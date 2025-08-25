@@ -1,5 +1,5 @@
 // getBoss.ts
-import { getBossAccount, initProgram } from "./script-commons";
+import { getBossAccount, initProgram } from "../utils/script-commons";
 
 async function main() {
   try {
