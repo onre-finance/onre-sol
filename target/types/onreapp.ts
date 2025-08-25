@@ -829,7 +829,7 @@ export type Onreapp = {
         },
         {
           "name": "ratioBasisPoints",
-          "type": "u16"
+          "type": "u64"
         }
       ]
     },
@@ -3085,7 +3085,7 @@ export type Onreapp = {
     {
       "name": "buyOfferAccount",
       "docs": [
-        "Account holding MAX_BUY_OFFERS BuyOffer instances (should fit 10KB limit)"
+        "Account holding MAX_BUY_OFFERS BuyOffer instances"
       ],
       "serialization": "bytemuck",
       "repr": {
@@ -3266,16 +3266,7 @@ export type Onreapp = {
           },
           {
             "name": "ratioBasisPoints",
-            "type": "u16"
-          },
-          {
-            "name": "padding",
-            "type": {
-              "array": [
-                "u8",
-                6
-              ]
-            }
+            "type": "u64"
           }
         ]
       }
@@ -3283,7 +3274,7 @@ export type Onreapp = {
     {
       "name": "dualRedemptionOfferAccount",
       "docs": [
-        "Account holding MAX_DUAL_REDEMPTION_OFFERS DualRedemptionOffer instances (should fit 10KB limit)"
+        "Account holding MAX_DUAL_REDEMPTION_OFFERS DualRedemptionOffer instances"
       ],
       "serialization": "bytemuck",
       "repr": {
@@ -3342,7 +3333,7 @@ export type Onreapp = {
           },
           {
             "name": "ratioBasisPoints",
-            "type": "u16"
+            "type": "u64"
           },
           {
             "name": "boss",
@@ -3393,7 +3384,7 @@ export type Onreapp = {
     {
       "name": "singleRedemptionOfferAccount",
       "docs": [
-        "Account holding MAX_REDEMPTION_OFFERS SingleRedemptionOffer instances (should fit 10KB limit)"
+        "Account holding MAX_REDEMPTION_OFFERS SingleRedemptionOffer instances"
       ],
       "serialization": "bytemuck",
       "repr": {

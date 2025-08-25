@@ -49,8 +49,7 @@ pub struct DualRedemptionOffer {
     pub end_time: u64,
     pub price_1: u64, // Price for token_out_1 with 9 decimal precision
     pub price_2: u64, // Price for token_out_2 with 9 decimal precision
-    pub ratio_basis_points: u16, // Basis points (e.g., 8000 = 80% for token_out_1, 20% for token_out_2)
-    pub _padding: [u8; 6], // Padding to align struct size to 64 bytes
+    pub ratio_basis_points: u64, // Basis points (e.g., 8000 = 80% for token_out_1, 20% for token_out_2)
 }
 
 impl Default for DualRedemptionOffer {
@@ -65,7 +64,6 @@ impl Default for DualRedemptionOffer {
             price_1: 0,
             price_2: 0,
             ratio_basis_points: 0,
-            _padding: [0; 6], // Ensure struct size is 64 bytes
         }
     }
 }

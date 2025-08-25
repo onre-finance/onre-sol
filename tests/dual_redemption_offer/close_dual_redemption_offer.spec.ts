@@ -45,7 +45,7 @@ describe("Close dual redemption offer", () => {
     const endTime = new BN(startTime.toNumber() + 3600);
     const price1 = new BN(1500000000);
     const price2 = new BN(2000000000);
-    const ratioBasisPoints = 8000;
+    const ratioBasisPoints = new BN(8000);
 
     await testHelper.program.methods
       .makeDualRedemptionOffer(startTime, endTime, price1, price2, ratioBasisPoints)
@@ -109,7 +109,7 @@ describe("Close dual redemption offer", () => {
 
     // Create first offer
     await testHelper.program.methods
-      .makeDualRedemptionOffer(startTime, endTime, price1, price2, 7000)
+      .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(7000))
       .accounts({
         tokenInMint: token1InMint,
         tokenOutMint1: token1OutMint1,
@@ -120,7 +120,7 @@ describe("Close dual redemption offer", () => {
 
     // Create second offer
     await testHelper.program.methods
-      .makeDualRedemptionOffer(startTime, endTime, price1, price2, 9000)
+      .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(9000))
       .accounts({
         tokenInMint: token2InMint,
         tokenOutMint1: token2OutMint1,
@@ -215,7 +215,7 @@ describe("Close dual redemption offer", () => {
     const price2 = new BN(500000000);
 
     await testHelper.program.methods
-      .makeDualRedemptionOffer(startTime, endTime, price1, price2, 8000)
+      .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(8000))
       .accounts({
         tokenInMint,
         tokenOutMint1,
@@ -262,7 +262,7 @@ describe("Close dual redemption offer", () => {
     const price2 = new BN(500000000);
 
     await testHelper.program.methods
-      .makeDualRedemptionOffer(startTime, endTime, price1, price2, 8000)
+      .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(8000))
       .accounts({
         tokenInMint,
         tokenOutMint1,
@@ -324,7 +324,7 @@ describe("Close dual redemption offer", () => {
     const price2 = new BN(500000000);
 
     await testHelper.program.methods
-      .makeDualRedemptionOffer(startTime, endTime, price1, price2, 8000)
+      .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(8000))
       .accounts({
         tokenInMint,
         tokenOutMint1,
@@ -357,7 +357,7 @@ describe("Close dual redemption offer", () => {
     const newTokenOutMint2 = testHelper.createMint(boss, BigInt(100_000e9), 6);
 
     await testHelper.program.methods
-      .makeDualRedemptionOffer(startTime, endTime, price1, price2, 5000)
+      .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(5000))
       .accounts({
         tokenInMint: newTokenInMint,
         tokenOutMint1: newTokenOutMint1,

@@ -13,7 +13,7 @@ pub struct DualRedemptionOfferMadeEvent {
     pub end_time: u64,
     pub price_1: u64,
     pub price_2: u64,
-    pub ratio_basis_points: u16,
+    pub ratio_basis_points: u64,
     pub boss: Pubkey,
 }
 
@@ -73,7 +73,7 @@ pub fn make_dual_redemption_offer(
     end_time: u64,
     price_1: u64,
     price_2: u64,
-    ratio_basis_points: u16,
+    ratio_basis_points: u64,
 ) -> Result<()> {
     // Validate ratio is within valid range (0-10000 basis points = 0-100%)
     if ratio_basis_points > 10000 {
