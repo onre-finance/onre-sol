@@ -107,3 +107,19 @@ pub fn calculate_token_out_amount(
     
     Ok((numerator / denominator) as u64)
 }
+
+/// Formats an u64 number as a decimal string where the last 9 digits are the fraction
+pub fn u64_to_dec9(n: u64) -> String {
+    let int_part = n / 1_000_000_000;
+    let frac_part = n % 1_000_000_000;
+
+    if frac_part == 0 {
+        return int_part.to_string();
+    }
+    let mut frac = format!("{:09}", frac_part);
+    while frac.ends_with('0') {
+        frac.pop();
+    }
+
+    format!("{}.{}", int_part, frac)
+}
