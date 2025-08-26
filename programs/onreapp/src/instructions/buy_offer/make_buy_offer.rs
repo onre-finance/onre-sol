@@ -1,8 +1,8 @@
+use super::state::BuyOfferAccount;
 use crate::constants::seeds;
 use crate::state::State;
-use super::state::{BuyOfferAccount, BuyOfferVector, MAX_BUY_OFFERS};
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
+use anchor_spl::token::Mint;
 
 /// Event emitted when a buy offer is created.
 #[event]
@@ -20,7 +20,6 @@ pub struct BuyOfferMadeEvent {
 /// - All Associated Token Accounts (ATAs) must be initialized prior to execution.
 #[derive(Accounts)]
 pub struct MakeBuyOffer<'info> {
-
     /// The buy offer account within the BuyOfferAccount, rent paid by `boss`. Already initialized in initialize.
     #[account(mut, seeds = [seeds::BUY_OFFERS], bump)]
     pub buy_offer_account: AccountLoader<'info, BuyOfferAccount>,
@@ -45,7 +44,7 @@ pub struct MakeBuyOffer<'info> {
 
 /// Creates a buy offer.
 ///
-/// Initializes a buy offer where the boss provides token_in in exchange for token_out. 
+/// Initializes a buy offer where the boss provides token_in in exchange for token_out.
 /// The price of the token_out can change dynamically over the offer's duration.
 ///
 /// # Arguments
@@ -64,19 +63,20 @@ pub struct MakeBuyOffer<'info> {
 /// - [`MakeBuyOfferErrorCode::InvalidOfferTime`] if times are invalid.
 /// - [`MakeBuyOfferErrorCode::InvalidPriceFixDuration`] if duration is invalid.
 /// - [`MakeBuyOfferErrorCode::AccountFull`] if the BuyOfferAccount is full.
-pub fn make_buy_offer(
-    ctx: Context<MakeBuyOffer>
-) -> Result<()> {
+pub fn make_buy_offer(ctx: Context<MakeBuyOffer>) -> Result<()> {
     let buy_offer_account = &mut ctx.accounts.buy_offer_account.load_mut()?;
 
     // Find the next available slot
-    let slot_index = buy_offer_account.offers.iter().position(|offer| offer.offer_id == 0)
+    let slot_index = buy_offer_account
+        .offers
+        .iter()
+        .position(|offer| offer.offer_id == 0)
         .ok_or(MakeBuyOfferErrorCode::AccountFull)?;
-    
+
     // Get the next offer ID and update counter
     let offer_id = buy_offer_account.counter.saturating_add(1);
     buy_offer_account.counter = offer_id;
-    
+
     // Create the buy offer
     let buy_offer = &mut buy_offer_account.offers[slot_index];
     buy_offer.offer_id = offer_id;
@@ -93,27 +93,9 @@ pub fn make_buy_offer(
     Ok(())
 }
 
-/// Transfers tokens from a source to a destination account.
-// fn transfer_token(
-//     ctx: &Context<MakeBuyOffer>,
-//     amount: u64,
-// ) -> Result<()> {
-//     let cpi_ctx = CpiContext::new(
-//         ctx.accounts.token_program.to_account_info(),
-//         Transfer {
-//             from: ctx.accounts.boss_token_in_account.to_account_info(),
-//             to: ctx.accounts.offer_token_in_account.to_account_info(),
-//             authority: ctx.accounts.boss.to_account_info(),
-//         },
-//     );
-//     token::transfer(cpi_ctx, amount)?;
-//     Ok(())
-// }
-
 /// Error codes for buy offer creation operations.
 #[error_code]
 pub enum MakeBuyOfferErrorCode {
-
     /// Triggered when the BuyOfferAccount is full.
     #[msg("Buy offer account is full, cannot create more offers")]
     AccountFull,

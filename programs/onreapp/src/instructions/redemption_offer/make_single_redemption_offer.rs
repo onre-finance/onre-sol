@@ -1,9 +1,8 @@
-use super::state::MAX_REDEMPTION_OFFERS;
 use crate::constants::seeds;
 use crate::instructions::SingleRedemptionOfferAccount;
 use crate::state::State;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
+use anchor_spl::token::Mint;
 
 /// Event emitted when a single redemption offer is created.
 #[event]

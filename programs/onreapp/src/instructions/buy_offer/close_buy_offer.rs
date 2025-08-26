@@ -2,7 +2,6 @@ use crate::constants::seeds;
 use crate::instructions::buy_offer::BuyOfferAccount;
 use crate::state::State;
 use anchor_lang::prelude::*;
-use anchor_spl::token::Token;
 
 #[error_code]
 pub enum CloseBuyOfferErrorCode {

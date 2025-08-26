@@ -3,7 +3,7 @@ use crate::instructions::{BuyOffer, BuyOfferAccount, BuyOfferVector};
 use crate::state::State;
 use crate::utils::{calculate_token_out_amount, transfer_tokens, u64_to_dec9};
 use anchor_lang::prelude::*;
-use anchor_lang::{instruction, Accounts};
+use anchor_lang::Accounts;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
 /// Error codes specific to the take_buy_offer instruction
