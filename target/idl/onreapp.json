@@ -403,6 +403,87 @@
       ]
     },
     {
+      "name": "delete_buy_offer_vector",
+      "docs": [
+        "Deletes a time vector from a buy offer.",
+        "",
+        "Delegates to `buy_offer::delete_buy_offer_vector`.",
+        "Removes the specified time vector from the buy offer by setting it to default values.",
+        "Only the boss can delete time vectors from offers.",
+        "Emits a `BuyOfferVectorDeleted` event upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `DeleteBuyOfferVector`.",
+        "- `offer_id`: ID of the buy offer containing the vector to delete.",
+        "- `vector_id`: ID of the vector to delete."
+      ],
+      "discriminator": [
+        37,
+        168,
+        3,
+        196,
+        118,
+        93,
+        9,
+        204
+      ],
+      "accounts": [
+        {
+          "name": "buy_offer_account",
+          "docs": [
+            "The buy offer account containing all buy offers"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the time vector deletion (must be boss)."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "offer_id",
+          "type": "u64"
+        },
+        {
+          "name": "vector_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "initialize",
       "docs": [
         "Initializes the program state.",
@@ -903,7 +984,7 @@
         },
         {
           "name": "ratio_basis_points",
-          "type": "u16"
+          "type": "u64"
         }
       ]
     },
@@ -3497,6 +3578,19 @@
       ]
     },
     {
+      "name": "BuyOfferVectorDeletedEvent",
+      "discriminator": [
+        117,
+        149,
+        77,
+        139,
+        75,
+        124,
+        144,
+        75
+      ]
+    },
+    {
       "name": "CloseBuyOfferEvent",
       "discriminator": [
         55,
@@ -3834,6 +3928,25 @@
       }
     },
     {
+      "name": "BuyOfferVectorDeletedEvent",
+      "docs": [
+        "Event emitted when a time vector is deleted from a buy offer."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offer_id",
+            "type": "u64"
+          },
+          {
+            "name": "vector_id",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "CloseBuyOfferEvent",
       "type": {
         "kind": "struct",
@@ -3927,16 +4040,7 @@
           },
           {
             "name": "ratio_basis_points",
-            "type": "u16"
-          },
-          {
-            "name": "_padding",
-            "type": {
-              "array": [
-                "u8",
-                6
-              ]
-            }
+            "type": "u64"
           }
         ]
       }
@@ -4003,7 +4107,7 @@
           },
           {
             "name": "ratio_basis_points",
-            "type": "u16"
+            "type": "u64"
           },
           {
             "name": "boss",

@@ -264,6 +264,25 @@ pub mod onreapp {
         )
     }
 
+    /// Deletes a time vector from a buy offer.
+    ///
+    /// Delegates to `buy_offer::delete_buy_offer_vector`.
+    /// Removes the specified time vector from the buy offer by setting it to default values.
+    /// Only the boss can delete time vectors from offers.
+    /// Emits a `BuyOfferVectorDeleted` event upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `DeleteBuyOfferVector`.
+    /// - `offer_id`: ID of the buy offer containing the vector to delete.
+    /// - `vector_id`: ID of the vector to delete.
+    pub fn delete_buy_offer_vector(
+        ctx: Context<DeleteBuyOfferVector>,
+        offer_id: u64,
+        vector_id: u64,
+    ) -> Result<()> {
+        buy_offer::delete_buy_offer_vector(ctx, offer_id, vector_id)
+    }
+
     /// Takes a buy offer.
     ///
     /// Delegates to `buy_offer::take_buy_offer`.

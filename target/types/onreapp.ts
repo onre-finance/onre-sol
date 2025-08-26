@@ -409,6 +409,87 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "deleteBuyOfferVector",
+      "docs": [
+        "Deletes a time vector from a buy offer.",
+        "",
+        "Delegates to `buy_offer::delete_buy_offer_vector`.",
+        "Removes the specified time vector from the buy offer by setting it to default values.",
+        "Only the boss can delete time vectors from offers.",
+        "Emits a `BuyOfferVectorDeleted` event upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `DeleteBuyOfferVector`.",
+        "- `offer_id`: ID of the buy offer containing the vector to delete.",
+        "- `vector_id`: ID of the vector to delete."
+      ],
+      "discriminator": [
+        37,
+        168,
+        3,
+        196,
+        118,
+        93,
+        9,
+        204
+      ],
+      "accounts": [
+        {
+          "name": "buyOfferAccount",
+          "docs": [
+            "The buy offer account containing all buy offers"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the time vector deletion (must be boss)."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        },
+        {
+          "name": "vectorId",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "initialize",
       "docs": [
         "Initializes the program state.",
@@ -909,7 +990,7 @@ export type Onreapp = {
         },
         {
           "name": "ratioBasisPoints",
-          "type": "u16"
+          "type": "u64"
         }
       ]
     },
@@ -3503,6 +3584,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "buyOfferVectorDeletedEvent",
+      "discriminator": [
+        117,
+        149,
+        77,
+        139,
+        75,
+        124,
+        144,
+        75
+      ]
+    },
+    {
       "name": "closeBuyOfferEvent",
       "discriminator": [
         55,
@@ -3840,6 +3934,25 @@ export type Onreapp = {
       }
     },
     {
+      "name": "buyOfferVectorDeletedEvent",
+      "docs": [
+        "Event emitted when a time vector is deleted from a buy offer."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "type": "u64"
+          },
+          {
+            "name": "vectorId",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "closeBuyOfferEvent",
       "type": {
         "kind": "struct",
@@ -3933,16 +4046,7 @@ export type Onreapp = {
           },
           {
             "name": "ratioBasisPoints",
-            "type": "u16"
-          },
-          {
-            "name": "padding",
-            "type": {
-              "array": [
-                "u8",
-                6
-              ]
-            }
+            "type": "u64"
           }
         ]
       }
@@ -4009,7 +4113,7 @@ export type Onreapp = {
           },
           {
             "name": "ratioBasisPoints",
-            "type": "u16"
+            "type": "u64"
           },
           {
             "name": "boss",
