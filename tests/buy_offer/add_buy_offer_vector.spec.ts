@@ -1,9 +1,9 @@
-import { PublicKey } from "@solana/web3.js";
-import { ONREAPP_PROGRAM_ID, TestHelper } from "../test_helper";
-import { AddedProgram, startAnchor } from "solana-bankrun";
-import { Onreapp } from "../../target/types/onreapp";
-import { BankrunProvider } from "anchor-bankrun";
-import { BN, Program } from "@coral-xyz/anchor";
+import {PublicKey} from "@solana/web3.js";
+import {ONREAPP_PROGRAM_ID, TestHelper} from "../test_helper";
+import {AddedProgram, startAnchor} from "solana-bankrun";
+import {Onreapp} from "../../target/types/onreapp";
+import {BankrunProvider} from "anchor-bankrun";
+import {BN, Program} from "@coral-xyz/anchor";
 import idl from "../../target/idl/onreapp.json";
 
 const MAX_SEGMENTS = 10;
@@ -31,15 +31,15 @@ describe("Add Buy Offer Vector", () => {
 
         testHelper = new TestHelper(context, program);
         boss = provider.wallet.publicKey;
-        
+
         // Create mints
         tokenInMint = testHelper.createMint(boss, BigInt(100_000e9), 9);
         tokenOutMint = testHelper.createMint(boss, BigInt(100_000e9), 9);
-        
+
         // Initialize program and offers
-        await program.methods.initialize().accounts({ boss }).rpc();
-        await program.methods.initializeOffers().accounts({ 
-            state: testHelper.statePda 
+        await program.methods.initialize().accounts({boss}).rpc();
+        await program.methods.initializeOffers().accounts({
+            state: testHelper.statePda
         }).rpc();
     });
 
@@ -86,7 +86,7 @@ describe("Add Buy Offer Vector", () => {
 
         const updatedOffer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
         expect(updatedOffer.offerId.toString()).toBe(offerId.toString());
-        
+
         const vector = updatedOffer.vectors[0];
         expect(vector.vectorId.toString()).toBe("1");
         expect(vector.startTime.toString()).toBe(startTime.toString());
@@ -200,7 +200,7 @@ describe("Add Buy Offer Vector", () => {
         );
         const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
         const offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
-        
+
         expect(offer.vectors[0].vectorId.toString()).toBe("1");
         expect(offer.vectors[1].vectorId.toString()).toBe("2");
         expect(offer.vectors[2].vectorId.toString()).toBe("3");
@@ -208,7 +208,7 @@ describe("Add Buy Offer Vector", () => {
 
     it("Should reject zero offer_id", async () => {
         const currentTime = await testHelper.getCurrentClockTime();
-        
+
         await expect(
             testHelper.program.methods
                 .addBuyOfferVector(
@@ -405,7 +405,7 @@ describe("Add Buy Offer Vector", () => {
     it("Should reject adding vector to non-existent offer", async () => {
         const nonExistentOfferId = new BN(999999);
         const currentTime = await testHelper.getCurrentClockTime();
-        
+
         await expect(
             testHelper.program.methods
                 .addBuyOfferVector(
@@ -492,7 +492,7 @@ describe("Add Buy Offer Vector", () => {
         // Use large values
         const largeStartPrice = new BN("999999999999999999"); // Large u64 value
         const largePriceYield = new BN("999999"); // 99.9999% yield (9999/10000)
-        
+
         await testHelper.program.methods
             .addBuyOfferVector(
                 offerId,
@@ -510,7 +510,7 @@ describe("Add Buy Offer Vector", () => {
         const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
         const offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
         const vector = offer.vectors[0];
-        
+
         expect(vector.startPrice.toString()).toBe(largeStartPrice.toString());
         expect(vector.priceYield.toString()).toBe(largePriceYield.toString());
     });
@@ -545,7 +545,7 @@ describe("Add Buy Offer Vector", () => {
         const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
         const offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
         const vector = offer.vectors[0];
-        
+
         expect(vector.vectorId.toString()).toBe("1");
         expect(vector.startTime.toString()).toBe("1");
         // valid_from should be current time since start_time=1 is in the past
@@ -566,7 +566,7 @@ describe("Add Buy Offer Vector", () => {
 
         const notBoss = testHelper.createUserAccount();
         const currentTime = await testHelper.getCurrentClockTime();
-        
+
         await expect(
             testHelper.program.methods
                 .addBuyOfferVector(
@@ -588,7 +588,7 @@ describe("Add Buy Offer Vector", () => {
     it("Should handle vectors added to multiple different offers", async () => {
         const offer1Id = new BN(1);
         const offer2Id = new BN(2);
-        
+
         // Create two offers
         await testHelper.makeBuyOffer({
             tokenInMint,
@@ -597,7 +597,7 @@ describe("Add Buy Offer Vector", () => {
 
         const token2In = testHelper.createMint(boss, BigInt(100_000e9), 9);
         const token2Out = testHelper.createMint(boss, BigInt(100_000e9), 9);
-        
+
         await testHelper.makeBuyOffer({
             tokenInMint: token2In,
             tokenOutMint: token2Out,
@@ -655,20 +655,114 @@ describe("Add Buy Offer Vector", () => {
         const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
         const offer1 = buyOfferAccount.offers.find(o => o.offerId.eq(offer1Id));
         const offer2 = buyOfferAccount.offers.find(o => o.offerId.eq(offer2Id));
-        
+
         // Offer 1 should have vectors 1 and 2
         expect(offer1.vectors[0].vectorId.toString()).toBe("1");
         expect(offer1.vectors[1].vectorId.toString()).toBe("2");
-        
+
         // Offer 2 should have vector 1 (independent sequence)
         expect(offer2.vectors[0].vectorId.toString()).toBe("1");
-        
+
         // Verify prices are correct for each offer
         expect(offer1.vectors[0].startPrice.toString()).toBe("1000000");
         expect(offer2.vectors[0].startPrice.toString()).toBe("3000000");
-        
+
         // Verify yields are correct
         expect(offer1.vectors[0].priceYield.toString()).toBe("5000"); // 50%
         expect(offer2.vectors[0].priceYield.toString()).toBe("7500"); // 75%
+    });
+
+    it("Should clean old past vectors, keeping only current active and previous active", async () => {
+        const offerId = new BN(1);
+        await testHelper.makeBuyOffer({
+            tokenInMint,
+            tokenOutMint,
+        });
+
+        const [buyOffersPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("buy_offers")],
+            ONREAPP_PROGRAM_ID
+        );
+
+        const currentTime = await testHelper.getCurrentClockTime();
+
+        // Add 5 vectors: all in the future
+        const vectors = [
+            {startTime: currentTime + 1000, price: 1000000},
+            {startTime: currentTime + 2000, price: 2000000},
+            {startTime: currentTime + 3000, price: 3000000},
+            {startTime: currentTime + 4000, price: 4000000},
+            {startTime: currentTime + 5000, price: 5000000},
+        ];
+
+        // Add all vectors
+        for (let i = 0; i < vectors.length; i++) {
+            await testHelper.program.methods
+                .addBuyOfferVector(
+                    offerId,
+                    new BN(vectors[i].startTime),
+                    new BN(vectors[i].price),
+                    new BN(5000), // 50% yield
+                    new BN(3600)  // 1 hour duration
+                )
+                .accounts({
+                    state: testHelper.statePda,
+                })
+                .rpc();
+        }
+
+        // Verify all 5 vectors were added
+        let buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
+        let offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
+        let activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
+        expect(activeVectors.length).toBe(5);
+
+        // Time travel so the 4th vector is now active
+        await testHelper.advanceClockBy(4500);
+
+        // Add another vector to trigger cleanup
+        await testHelper.program.methods
+            .addBuyOfferVector(
+                offerId,
+                new BN(currentTime + 6000), // Vector 6 (future)
+                new BN(6000000),
+                new BN(5000),
+                new BN(3600)
+            )
+            .accounts({
+                state: testHelper.statePda,
+            })
+            .rpc();
+
+        // After cleanup, should only have:
+        // - Vector 4 (currently active - most recent valid_from <= current_time)
+        // - Vector 3 (previously active - closest smaller vector_id to vector 3)
+        // - Vector 5 (future vector - should be kept)
+        // - Vector 6 (newly added future vector)
+        // Vector 1 and 2 should be deleted (oldest past vector)
+
+        buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
+        offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
+        activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
+
+        // Should have exactly 4 vectors remaining (deleted vector 1 and 2)
+        expect(activeVectors.length).toBe(4);
+
+        // Find vectors by their prices to identify them
+        const remainingVectorIds = activeVectors.map(v => v.vectorId.toNumber()).sort();
+        const remainingPrices = activeVectors.map(v => v.startPrice.toNumber()).sort();
+
+        // Should have vectors 2, 3, 4, 5, and 6
+        expect(remainingVectorIds).toEqual([3, 4, 5, 6]);
+
+        // Verify the specific prices are present
+        expect(remainingPrices).toContain(3000000); // Vector 3 (previous active)
+        expect(remainingPrices).toContain(4000000); // Vector 4 (current active)
+        expect(remainingPrices).toContain(5000000); // Vector 5 (future)
+        expect(remainingPrices).toContain(6000000); // Vector 6 (newly added)
+
+        // Verify vector 1 and 2 were cleaned up (oldest past vector)
+        expect(remainingPrices).not.toContain(1000000); // Vector 1 price
+        expect(remainingPrices).not.toContain(2000000); // Vector 2 price
     });
 });

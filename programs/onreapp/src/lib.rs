@@ -96,6 +96,17 @@ pub mod onreapp {
         buy_offer::make_buy_offer(ctx)
     }
 
+    /// Creates a single redemption offer.
+    ///
+    /// Delegates to `redemption_offer::make_single_redemption_offer`.
+    /// Creates an offer where users can exchange token_in for token_out at a fixed price.
+    /// Emits a `SingleRedemptionOfferMadeEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `MakeSingleRedemptionOffer`.
+    /// - `start_time`: Unix timestamp for when the offer becomes active.
+    /// - `end_time`: Unix timestamp for when the offer expires.
+    /// - `price`: How much token_in needed for 1 token_out, with 9 decimal precision.
     pub fn make_single_redemption_offer(
         ctx: Context<MakeSingleRedemptionOffer>,
         start_time: u64,
@@ -114,7 +125,10 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `CloseSingleRedemptionOffer`.
     /// - `offer_id`: ID of the offer to close.
-    pub fn close_single_redemption_offer(ctx: Context<CloseSingleRedemptionOffer>, offer_id: u64) -> Result<()> {
+    pub fn close_single_redemption_offer(
+        ctx: Context<CloseSingleRedemptionOffer>,
+        offer_id: u64,
+    ) -> Result<()> {
         redemption_offer::close_single_redemption_offer(ctx, offer_id)
     }
 
@@ -129,7 +143,11 @@ pub mod onreapp {
     /// - `ctx`: Context for `TakeSingleRedemptionOffer`.
     /// - `offer_id`: ID of the offer to take.
     /// - `token_in_amount`: Amount of token_in to provide.
-    pub fn take_single_redemption_offer(ctx: Context<TakeSingleRedemptionOffer>, offer_id: u64, token_in_amount: u64) -> Result<()> {
+    pub fn take_single_redemption_offer(
+        ctx: Context<TakeSingleRedemptionOffer>,
+        offer_id: u64,
+        token_in_amount: u64,
+    ) -> Result<()> {
         redemption_offer::take_single_redemption_offer(ctx, offer_id, token_in_amount)
     }
 
@@ -155,7 +173,14 @@ pub mod onreapp {
         price_2: u64,
         ratio_basis_points: u64,
     ) -> Result<()> {
-        redemption_offer::make_dual_redemption_offer(ctx, start_time, end_time, price_1, price_2, ratio_basis_points)
+        redemption_offer::make_dual_redemption_offer(
+            ctx,
+            start_time,
+            end_time,
+            price_1,
+            price_2,
+            ratio_basis_points,
+        )
     }
 
     /// Closes a dual redemption offer.
@@ -168,7 +193,10 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `CloseDualRedemptionOffer`.
     /// - `offer_id`: ID of the offer to close.
-    pub fn close_dual_redemption_offer(ctx: Context<CloseDualRedemptionOffer>, offer_id: u64) -> Result<()> {
+    pub fn close_dual_redemption_offer(
+        ctx: Context<CloseDualRedemptionOffer>,
+        offer_id: u64,
+    ) -> Result<()> {
         redemption_offer::close_dual_redemption_offer(ctx, offer_id)
     }
 
@@ -184,7 +212,11 @@ pub mod onreapp {
     /// - `ctx`: Context for `TakeDualRedemptionOffer`.
     /// - `offer_id`: ID of the offer to take.
     /// - `token_in_amount`: Amount of token_in to provide.
-    pub fn take_dual_redemption_offer(ctx: Context<TakeDualRedemptionOffer>, offer_id: u64, token_in_amount: u64) -> Result<()> {
+    pub fn take_dual_redemption_offer(
+        ctx: Context<TakeDualRedemptionOffer>,
+        offer_id: u64,
+        token_in_amount: u64,
+    ) -> Result<()> {
         redemption_offer::take_dual_redemption_offer(ctx, offer_id, token_in_amount)
     }
 
@@ -231,7 +263,7 @@ pub mod onreapp {
             price_fix_duration,
         )
     }
-    
+
     /// Takes a buy offer.
     ///
     /// Delegates to `buy_offer::take_buy_offer`.
@@ -250,106 +282,8 @@ pub mod onreapp {
         buy_offer::take_buy_offer(ctx, offer_id, token_in_amount)
     }
 
-    /// Creates an offer with two buy tokens.
+    /// Initializes the program state.
     ///
-    /// Delegates to `make_offer::make_offer_two`.
-    /// The price of the sell token changes over time based on `sell_token_start_amount`,
-    /// `sell_token_end_amount`, and `price_fix_duration` within the offer's active time window.
-    /// Emits an `OfferMadeTwo` event upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `MakeOfferTwo`.
-    /// - `offer_id`: Unique ID for the offer.
-    /// - `buy_token_1_total_amount`: Total amount of the first buy token offered.
-    /// - `buy_token_2_total_amount`: Total amount of the second buy token offered.
-    /// - `sell_token_start_amount`: Sell token amount at the start of the offer.
-    /// - `sell_token_end_amount`: Sell token amount at the end of the offer.
-    /// - `offer_start_time`: Offer activation timestamp.
-    /// - `offer_end_time`: Offer expiration timestamp.
-    /// - `price_fix_duration`: Duration of each price interval.
-    // pub fn make_offer_two(
-    //     ctx: Context<MakeOfferTwo>,
-    //     offer_id: u64,
-    //     buy_token_1_total_amount: u64,
-    //     buy_token_2_total_amount: u64,
-    //     sell_token_start_amount: u64,
-    //     sell_token_end_amount: u64,
-    //     offer_start_time: u64,
-    //     offer_end_time: u64,
-    //     price_fix_duration: u64,
-    // ) -> Result<()> {
-    //     make_offer::make_offer_two(
-    //         ctx,
-    //         offer_id,
-    //         buy_token_1_total_amount,
-    //         buy_token_2_total_amount,
-    //         sell_token_start_amount,
-    //         sell_token_end_amount,
-    //         offer_start_time,
-    //         offer_end_time,
-    //         price_fix_duration,
-    //     )
-    // }
-    //
-    // /// Creates an offer with two buy tokens.
-    // ///
-    // /// Delegates to `make_offer::make_offer_two`.
-    // /// The price of the sell token changes over time based on `sell_token_start_amount`,
-    // /// `sell_token_end_amount`, and `price_fix_duration` within the offer's active time window.
-    // /// Emits an `OfferMadeTwo` event upon success.
-    // ///
-    // /// # Arguments
-    // /// - `ctx`: Context for `MakeOfferTwo`.
-    // /// - `offer_id`: Unique ID for the offer.
-    // /// - `buy_token_1_total_amount`: Total amount of the first buy token offered.
-    // /// - `buy_token_2_total_amount`: Total amount of the second buy token offered.
-    // /// - `sell_token_start_amount`: Sell token amount at the start of the offer.
-    // /// - `sell_token_end_amount`: Sell token amount at the end of the offer.
-    // /// - `offer_start_time`: Offer activation timestamp.
-    // /// - `offer_end_time`: Offer expiration timestamp.
-    // /// - `price_fix_duration`: Duration of each price interval.
-    // pub fn make_offer_two(
-    //     ctx: Context<MakeOfferTwo>,
-    //     offer_id: u64,
-    //     buy_token_1_total_amount: u64,
-    //     buy_token_2_total_amount: u64,
-    //     sell_token_start_amount: u64,
-    //     sell_token_end_amount: u64,
-    //     offer_start_time: u64,
-    //     offer_end_time: u64,
-    //     price_fix_duration: u64,
-    // ) -> Result<()> {
-    //     make_offer::make_offer_two(
-    //         ctx,
-    //         offer_id,
-    //         buy_token_1_total_amount,
-    //         buy_token_2_total_amount,
-    //         sell_token_start_amount,
-    //         sell_token_end_amount,
-    //         offer_start_time,
-    //         offer_end_time,
-    //         price_fix_duration,
-    //     )
-    // }
-    //
-    // /// Closes an offer with one buy token.
-    // ///
-    // /// Delegates to `close_offer::close_offer_one` to transfer remaining tokens and close the offer.
-    // /// Emits `TokensTransferred` and `OfferClosed` events.
-    // pub fn close_offer_one(ctx: Context<CloseOfferOne>) -> Result<()> {
-    //     close_offer::close_offer_one(ctx)
-    // }
-    //
-    // /// Closes an offer with two buy tokens.
-    // ///
-    // /// Delegates to `close_offer::close_offer_two` to transfer remaining tokens and close the offer.
-    // /// Emits `TokensTransferred` and `OfferClosed` events.
-    // pub fn close_offer_two(ctx: Context<CloseOfferTwo>) -> Result<()> {
-    //     close_offer::close_offer_two(ctx)
-    // }
-    //
-    // /// Initializes the program state.
-    // ///
     /// Delegates to `initialize::initialize` to set the initial boss in the state account.
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         initialize::initialize(ctx)
@@ -361,32 +295,4 @@ pub mod onreapp {
     pub fn set_boss(ctx: Context<SetBoss>, new_boss: Pubkey) -> Result<()> {
         set_boss::set_boss(ctx, new_boss)
     }
-
-    // /// Takes an offer with one buy token, respecting the current dynamic price.
-    // ///
-    // /// Delegates to `take_offer::take_offer_one`.
-    // /// The amount of buy token received is calculated based on the current price derived from the
-    // /// offer's dynamic pricing parameters.
-    // /// Emits an `OfferTakenOne` event.
-    // ///
-    // /// # Arguments
-    // /// - `ctx`: Context for `TakeOfferOne`.
-    // /// - `sell_token_amount`: Amount of sell tokens the user provides.
-    // pub fn take_offer_one(ctx: Context<TakeOfferOne>, sell_token_amount: u64) -> Result<()> {
-    //     take_offer::take_offer_one(ctx, sell_token_amount)
-    // }
-    //
-    // /// Takes an offer with two buy tokens, respecting the current dynamic price.
-    // ///
-    // /// Delegates to `take_offer::take_offer_two`.
-    // /// The amount of each buy token received is calculated based on the current price derived from the
-    // /// offer's dynamic pricing parameters.
-    // /// Emits an `OfferTakenTwo` event.
-    // ///
-    // /// # Arguments
-    // /// - `ctx`: Context for `TakeOfferTwo`.
-    // /// - `sell_token_amount`: Amount of sell tokens the user provides.
-    // pub fn take_offer_two(ctx: Context<TakeOfferTwo>, sell_token_amount: u64) -> Result<()> {
-    //     take_offer::take_offer_two(ctx, sell_token_amount)
-    // }
 }

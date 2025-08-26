@@ -1,5 +1,5 @@
+use super::state::{BuyOffer, BuyOfferAccount, BuyOfferVector, MAX_BUY_OFFERS};
 use crate::state::State;
-use super::state::{BuyOfferAccount, BuyOfferVector, BuyOffer, MAX_BUY_OFFERS};
 use anchor_lang::prelude::*;
 
 /// Event emitted when a time vector is added to a buy offer.
@@ -63,33 +63,35 @@ pub fn add_buy_offer_vector(
 
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    // Validate input parameters
-    require!(offer_id > 0, AddBuyOfferVectorErrorCode::ZeroValue);
-    require!(start_time > 0, AddBuyOfferVectorErrorCode::ZeroValue);
-    require!(start_price > 0, AddBuyOfferVectorErrorCode::ZeroValue);
-    require!(price_yield > 0, AddBuyOfferVectorErrorCode::ZeroValue);
-    require!(price_fix_duration > 0, AddBuyOfferVectorErrorCode::ZeroValue);
+    validate_inputs(
+        offer_id,
+        start_time,
+        start_price,
+        price_yield,
+        price_fix_duration,
+    )?;
 
     // Find the offer by offer_id
     let offer = find_buy_offer_by_id(&mut buy_offer_account.offers, offer_id)?;
 
     // Validate start_time is not before the latest existing vector's start_time
-    let latest_start_time = offer.vectors
+    let latest_start_time = offer
+        .vectors
         .iter()
         .filter(|vector| vector.vector_id != 0)
         .map(|vector| vector.start_time)
         .max()
         .unwrap_or(0);
-    
+
     require!(
         start_time > latest_start_time,
         AddBuyOfferVectorErrorCode::InvalidTimeRange
     );
 
-    // Calculate the next vector_id
-    let next_vector_id = calculate_next_vector_id(&offer.vectors);
+    let next_vector_id = offer.counter + 1;
+    offer.counter = next_vector_id;
 
-    // Calculate valid_from: max(start_time, current_time) 
+    // Calculate valid_from: max(start_time, current_time)
     let valid_from = if start_time > current_time {
         start_time
     } else {
@@ -112,6 +114,9 @@ pub fn add_buy_offer_vector(
     // Add the vector to the offer
     offer.vectors[empty_slot_index] = new_vector;
 
+    // Clean up old vectors before emitting success message
+    clean_old_vectors(offer, current_time);
+
     msg!(
         "Time vector added to buy offer ID: {}, vector ID: {}",
         offer_id,
@@ -131,26 +136,36 @@ pub fn add_buy_offer_vector(
     Ok(())
 }
 
+fn validate_inputs(
+    offer_id: u64,
+    start_time: u64,
+    start_price: u64,
+    price_yield: u64,
+    price_fix_duration: u64,
+) -> Result<()> {
+    // Validate input parameters
+    require!(offer_id > 0, AddBuyOfferVectorErrorCode::ZeroValue);
+    require!(start_time > 0, AddBuyOfferVectorErrorCode::ZeroValue);
+    require!(start_price > 0, AddBuyOfferVectorErrorCode::ZeroValue);
+    require!(price_yield > 0, AddBuyOfferVectorErrorCode::ZeroValue);
+    require!(
+        price_fix_duration > 0,
+        AddBuyOfferVectorErrorCode::ZeroValue
+    );
+
+    Ok(())
+}
+
 /// Finds a buy offer by its ID in the offers array.
-fn find_buy_offer_by_id(offers: &mut [BuyOffer; MAX_BUY_OFFERS], offer_id: u64) -> Result<&mut BuyOffer> {
+fn find_buy_offer_by_id(
+    offers: &mut [BuyOffer; MAX_BUY_OFFERS],
+    offer_id: u64,
+) -> Result<&mut BuyOffer> {
     offers
         .iter_mut()
         .find(|offer| offer.offer_id == offer_id && offer.offer_id != 0)
         .ok_or(AddBuyOfferVectorErrorCode::OfferNotFound.into())
 }
-
-/// Calculates the next vector_id by finding the highest existing vector_id and adding 1.
-fn calculate_next_vector_id(vectors: &[BuyOfferVector; 10]) -> u64 {
-    let max_vector_id = vectors
-        .iter()
-        .filter(|vector| vector.vector_id != 0)
-        .map(|vector| vector.vector_id)
-        .max()
-        .unwrap_or(0);
-    
-    max_vector_id + 1
-}
-
 
 /// Finds the first empty slot in the time_vectors array.
 fn find_empty_vector_slot(vectors: &[BuyOfferVector; 10]) -> Result<usize> {
@@ -158,6 +173,54 @@ fn find_empty_vector_slot(vectors: &[BuyOfferVector; 10]) -> Result<usize> {
         .iter()
         .position(|vector| vector.vector_id == 0)
         .ok_or(AddBuyOfferVectorErrorCode::TooManyVectors.into())
+}
+
+/// Cleans old inactive vectors from the offer, keeping only the currently active vector
+/// and the last previously active vector.
+///
+/// # Arguments
+/// - `offer`: Mutable reference to the buy offer containing vectors to clean
+/// - `current_time`: Current unix timestamp for determining active vector
+///
+/// # Behavior
+/// - Finds the currently active vector (most recent valid_from <= current_time)
+/// - Finds the previously active vector (closest smaller vector_id to active vector)
+/// - Deletes all other vectors by setting them to default (vector_id = 0)
+fn clean_old_vectors(offer: &mut BuyOffer, current_time: u64) {
+    // Find currently active vector
+    let active_vector = offer
+        .vectors
+        .iter()
+        .filter(|vector| vector.vector_id != 0) // Only non-empty vectors
+        .filter(|vector| vector.valid_from <= current_time) // Only vectors that have started
+        .max_by_key(|vector| vector.valid_from); // Find latest valid_from in the past
+
+    let active_vector_id = match active_vector {
+        Some(vector) => vector.vector_id,
+        None => return, // No active vector found, nothing to clean
+    };
+
+    // Find previously active vector (closest smaller vector_id)
+    let prev_vector_id = offer
+        .vectors
+        .iter()
+        .filter(|vector| vector.vector_id != 0) // Only non-empty vectors
+        .filter(|vector| vector.vector_id < active_vector_id) // Only smaller IDs
+        .map(|vector| vector.vector_id)
+        .max() // Find the largest ID that's still smaller than active
+        .unwrap_or(0); // If no previous vector exists, use 0
+
+    // Clear all vectors except active and previous
+    for vector in offer.vectors.iter_mut() {
+        if vector.vector_id != 0 // Don't touch already empty slots
+            && vector.vector_id != active_vector_id // Keep active vector
+            && vector.vector_id != prev_vector_id // Keep previous vector
+            && vector.vector_id < active_vector_id
+        // Keep all future vectors
+        {
+            *vector = BuyOfferVector::default(); // Clear the vector
+        }
+    }
 }
 
 /// Error codes for add buy offer vector operations.

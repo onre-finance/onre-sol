@@ -405,23 +405,8 @@
     {
       "name": "initialize",
       "docs": [
-        "Creates an offer with two buy tokens.",
+        "Initializes the program state.",
         "",
-        "Delegates to `make_offer::make_offer_two`.",
-        "The price of the sell token changes over time based on `sell_token_start_amount`,",
-        "`sell_token_end_amount`, and `price_fix_duration` within the offer's active time window.",
-        "Emits an `OfferMadeTwo` event upon success.",
-        "",
-        "# Arguments",
-        "- `ctx`: Context for `MakeOfferTwo`.",
-        "- `offer_id`: Unique ID for the offer.",
-        "- `buy_token_1_total_amount`: Total amount of the first buy token offered.",
-        "- `buy_token_2_total_amount`: Total amount of the second buy token offered.",
-        "- `sell_token_start_amount`: Sell token amount at the start of the offer.",
-        "- `sell_token_end_amount`: Sell token amount at the end of the offer.",
-        "- `offer_start_time`: Offer activation timestamp.",
-        "- `offer_end_time`: Offer expiration timestamp.",
-        "- `price_fix_duration`: Duration of each price interval.",
         "Delegates to `initialize::initialize` to set the initial boss in the state account."
       ],
       "discriminator": [
@@ -924,6 +909,19 @@
     },
     {
       "name": "make_single_redemption_offer",
+      "docs": [
+        "Creates a single redemption offer.",
+        "",
+        "Delegates to `redemption_offer::make_single_redemption_offer`.",
+        "Creates an offer where users can exchange token_in for token_out at a fixed price.",
+        "Emits a `SingleRedemptionOfferMadeEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `MakeSingleRedemptionOffer`.",
+        "- `start_time`: Unix timestamp for when the offer becomes active.",
+        "- `end_time`: Unix timestamp for when the offer expires.",
+        "- `price`: How much token_in needed for 1 token_out, with 9 decimal precision."
+      ],
       "discriminator": [
         166,
         32,
@@ -3698,6 +3696,10 @@
                 10
               ]
             }
+          },
+          {
+            "name": "counter",
+            "type": "u64"
           }
         ]
       }

@@ -1,22 +1,22 @@
 use crate::constants::seeds;
 use crate::instructions::{BuyOffer, BuyOfferAccount, BuyOfferVector};
 use crate::state::State;
-use anchor_lang::{instruction, Accounts};
-use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token, TokenAccount};
 use crate::utils::{calculate_token_out_amount, transfer_tokens, u64_to_dec9};
+use anchor_lang::prelude::*;
+use anchor_lang::{instruction, Accounts};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 /// Error codes specific to the take_buy_offer instruction
 #[error_code]
 pub enum TakeBuyOfferErrorCode {
-    #[msg("Offer not found")]   
+    #[msg("Offer not found")]
     OfferNotFound,
     #[msg("Invalid boss account")]
     InvalidBoss,
     #[msg("No active vector")]
     NoActiveVector,
     #[msg("Overflow error")]
-    OverflowError
+    OverflowError,
 }
 
 /// Event emitted when a buy offer is successfully taken
@@ -33,11 +33,10 @@ pub struct TakeBuyOfferEvent {
 }
 
 /// Accounts required for taking a buy offer
-/// 
+///
 /// This struct defines all the accounts needed to execute a take_buy_offer instruction,
 /// including validation constraints to ensure security and proper authorization.
 #[derive(Accounts)]
-#[instruction(offer_id: u64)]
 pub struct TakeBuyOffer<'info> {
     /// The buy offer account containing all active buy offers
     #[account(mut, seeds = [seeds::BUY_OFFERS], bump)]
@@ -106,33 +105,33 @@ pub struct TakeBuyOffer<'info> {
 }
 
 /// Main instruction handler for taking a buy offer
-/// 
+///
 /// This function allows users to accept a buy offer by paying the current market price
 /// in token_in to receive token_out from the vault. The price is calculated using a
 /// discrete interval pricing model with linear yield growth.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `ctx` - The instruction context containing all required accounts
 /// * `offer_id` - The unique ID of the buy offer to take
 /// * `token_in_amount` - The amount of token_in the user is willing to pay
-/// 
+///
 /// # Process Flow
-/// 
+///
 /// 1. Load and validate the buy offer exists
 /// 2. Find the currently active pricing vector
 /// 3. Calculate current price based on time elapsed and yield parameters
 /// 4. Calculate how many token_out to give for the provided token_in_amount
 /// 5. Execute atomic transfers: user → boss (token_in), vault → user (token_out)
 /// 6. Emit event with transaction details
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `Ok(())` - If the offer was successfully taken
 /// * `Err(_)` - If validation fails or transfers cannot be completed
-/// 
+///
 /// # Errors
-/// 
+///
 /// * `OfferNotFound` - The specified offer_id doesn't exist
 /// * `NoActiveVector` - No pricing vector is currently active  
 /// * `OverflowError` - Mathematical overflow in price calculations
@@ -143,10 +142,10 @@ pub fn take_buy_offer(
     token_in_amount: u64,
 ) -> Result<()> {
     let offer_account = ctx.accounts.buy_offer_account.load_mut()?;
-    
+
     // Find the offer
     let offer = find_offer(&offer_account, offer_id)?;
-    
+
     let active_vector = find_active_vector(&offer)?;
 
     // Price with 9 decimals !!
@@ -155,35 +154,33 @@ pub fn take_buy_offer(
         active_vector.start_price,
         active_vector.start_time,
         active_vector.price_fix_duration,
-        ctx.accounts.token_in_mint.decimals,
-        ctx.accounts.token_out_mint.decimals,
     )?;
-    
+
     let token_out_amount = calculate_token_out_amount(
         token_in_amount,
         current_price,
         ctx.accounts.token_in_mint.decimals,
         ctx.accounts.token_out_mint.decimals,
     )?;
-    
+
     execute_transfers(&ctx, token_in_amount, token_out_amount)?;
-    
+
     msg!(
         "Buy offer taken - ID: {}, token_in: {}, token_out: {}, user: {}, price: {}",
-        offer_id, 
-        token_in_amount, 
-        token_out_amount, 
+        offer_id,
+        token_in_amount,
+        token_out_amount,
         ctx.accounts.user.key,
         u64_to_dec9(current_price)
     );
-    
+
     emit!(TakeBuyOfferEvent {
         offer_id,
         token_in_amount,
         token_out_amount,
         user: ctx.accounts.user.key(),
     });
-    
+
     Ok(())
 }
 
@@ -202,14 +199,21 @@ pub fn take_buy_offer(
 /// where S = 365*24*3600, and y is yearly yield as a decimal.
 /// We compute this in fixed-point to avoid precision loss.
 ///
-fn calculate_current_price(price_yield: u64, start_price: u64, start_time: u64, price_fix_duration: u64, token_in_decimals: u8, token_out_decimals: u8,
+fn calculate_current_price(
+    price_yield: u64,
+    start_price: u64,
+    start_time: u64,
+    price_fix_duration: u64,
 ) -> Result<u64> {
-    const SCALE: u128 = 1_000_000;          // because price_yield is scaled by 1_000_000
-    const S: u64 = 365 * 24 * 3600;         // seconds per year
+    const SCALE: u128 = 1_000_000; // because price_yield is scaled by 1_000_000
+    const S: u64 = 365 * 24 * 3600; // seconds per year
 
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    require!(start_time <= current_time, TakeBuyOfferErrorCode::NoActiveVector);
+    require!(
+        start_time <= current_time,
+        TakeBuyOfferErrorCode::NoActiveVector
+    );
 
     let elapsed_since_start = current_time.saturating_sub(start_time);
 
@@ -217,15 +221,18 @@ fn calculate_current_price(price_yield: u64, start_price: u64, start_time: u64, 
     let k = elapsed_since_start / price_fix_duration;
 
     // elapsed_effective = (k + 1) * D  (end-of-current-interval snap)
-    let elapsed_effective = k.checked_add(1).unwrap()
-        .checked_mul(price_fix_duration).ok_or(TakeBuyOfferErrorCode::OverflowError)?;
+    let elapsed_effective = k
+        .checked_add(1)
+        .unwrap()
+        .checked_mul(price_fix_duration)
+        .ok_or(TakeBuyOfferErrorCode::OverflowError)?;
 
     // Compute: price = P0 * (1 + y * elapsed_effective / S)
     // With fixed-point:
     //   factor_num = SCALE*S + y_scaled*elapsed_effective
     //   factor_den = SCALE*S
     //   price = start_price * factor_num / factor_den
-    let factor_den = (SCALE)
+    let factor_den = SCALE
         .checked_mul(S as u128)
         .expect("SCALE*S overflow (should not happen)");
     let y_part = (price_yield as u128)
@@ -237,8 +244,10 @@ fn calculate_current_price(price_yield: u64, start_price: u64, start_time: u64, 
 
     // base price growth applied to start_price
     let price_u128 = (start_price as u128)
-        .checked_mul(factor_num).ok_or(TakeBuyOfferErrorCode::OverflowError)?
-        .checked_div(factor_den).ok_or(TakeBuyOfferErrorCode::OverflowError)?;
+        .checked_mul(factor_num)
+        .ok_or(TakeBuyOfferErrorCode::OverflowError)?
+        .checked_div(factor_den)
+        .ok_or(TakeBuyOfferErrorCode::OverflowError)?;
 
     if price_u128 > u64::MAX as u128 {
         return Err(error!(TakeBuyOfferErrorCode::OverflowError));
@@ -248,28 +257,30 @@ fn calculate_current_price(price_yield: u64, start_price: u64, start_time: u64, 
 }
 
 fn find_offer(offer_account: &BuyOfferAccount, offer_id: u64) -> Result<BuyOffer> {
-    if (offer_id == 0) {
+    if offer_id == 0 {
         return Err(error!(TakeBuyOfferErrorCode::OfferNotFound));
     }
-    
-    let offer = offer_account.offers
+
+    let offer = offer_account
+        .offers
         .iter()
         .find(|offer| offer.offer_id == offer_id)
         .ok_or(TakeBuyOfferErrorCode::OfferNotFound)?;
-    
+
     Ok(*offer)
 }
 
 fn find_active_vector(offer: &BuyOffer) -> Result<BuyOfferVector> {
     let current_time = Clock::get()?.unix_timestamp as u64;
-    
-    let active_vector = offer.vectors
+
+    let active_vector = offer
+        .vectors
         .iter()
         .filter(|vector| vector.vector_id != 0) // Only consider non-empty vectors
         .filter(|vector| vector.valid_from <= current_time) // Only vectors that have started
         .max_by_key(|vector| vector.valid_from) // Find latest valid_from in the past
         .ok_or(TakeBuyOfferErrorCode::NoActiveVector)?;
-    
+
     Ok(*active_vector)
 }
 
@@ -291,10 +302,7 @@ fn execute_transfers(
 
     // Transfer token_out from vault to user using vault authority
     let vault_authority_bump = ctx.bumps.vault_authority;
-    let vault_authority_seeds = &[
-        seeds::VAULT_AUTHORITY,
-        &[vault_authority_bump],
-    ];
+    let vault_authority_seeds = &[seeds::VAULT_AUTHORITY, &[vault_authority_bump]];
     let signer_seeds = &[vault_authority_seeds.as_slice()];
 
     transfer_tokens(
