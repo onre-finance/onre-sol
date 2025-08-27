@@ -7,6 +7,8 @@ use anchor_lang::Accounts;
 pub enum InitializeErrorCode {
     /// Error when attempting to initialize when boss is already set.
     BossAlreadySet,
+    /// Error when attempting to initialize a permissionless account with an invalid name
+    InvalidPermissionlessAccountName,
 }
 
 /// Account structure for initializing the program state.
@@ -111,8 +113,16 @@ pub struct InitializePermissionlessAccount<'info> {
 /// # Errors
 /// - Fails if the caller is not the boss (enforced by `has_one = boss` constraint)
 /// - Fails if the permissionless account already exists
-pub fn initialize_permissionless_account(ctx: Context<InitializePermissionlessAccount>, name: String) -> Result<()> {
+pub fn initialize_permissionless_account(
+    ctx: Context<InitializePermissionlessAccount>,
+    name: String,
+) -> Result<()> {
+    let name_cleaned = name.trim();
+    require!(
+        !name_cleaned.is_empty(),
+        InitializeErrorCode::InvalidPermissionlessAccountName
+    );
     let permissionless_account = &mut ctx.accounts.permissionless_account;
-    permissionless_account.name = name;
+    permissionless_account.name = name_cleaned.to_string();
     Ok(())
 }
