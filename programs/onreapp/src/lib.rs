@@ -139,6 +139,11 @@ pub mod onre_app {
         initialize::initialize(ctx)
     }
 
+    /// Initializes a permissionless account.
+    ///
+    /// Delegates to `initialize::initialize_permissionless_account` to create a new permissionless account.
+    /// The account is created as a PDA with the seed "permissionless-1".
+    /// Only the boss can initialize permissionless accounts.
     pub fn initialize_permissionless_account(
         ctx: Context<InitializePermissionlessAccount>,
         name: String,
@@ -195,7 +200,7 @@ pub mod onre_app {
     /// - `sell_token_amount`: Amount of sell tokens the user provides.
     pub fn take_offer_one_permissionless(
         ctx: Context<TakeOfferOnePermissionless>,
-        sell_token_amount: u64
+        sell_token_amount: u64,
     ) -> Result<()> {
         take_offer_one_permissionless::take_offer_one_permissionless(ctx, sell_token_amount)
     }
