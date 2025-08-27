@@ -1,8 +1,15 @@
-import { Clock, ProgramTestContext } from "solana-bankrun"
-import { Onreapp } from "../target/types/onreapp"
-import { BN, Program } from "@coral-xyz/anchor"
-import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
-import { ACCOUNT_SIZE, AccountLayout, getAssociatedTokenAddressSync, MINT_SIZE, MintLayout, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import {Clock, ProgramTestContext} from "solana-bankrun"
+import {Onreapp} from "../target/types/onreapp"
+import {BN, Program} from "@coral-xyz/anchor"
+import {Keypair, PublicKey, SystemProgram} from "@solana/web3.js";
+import {
+    ACCOUNT_SIZE,
+    AccountLayout,
+    getAssociatedTokenAddressSync,
+    MINT_SIZE,
+    MintLayout,
+    TOKEN_PROGRAM_ID
+} from "@solana/spl-token";
 import idl from "../target/idl/onreapp.json";
 
 export const ONREAPP_PROGRAM_ID = new PublicKey((idl as any).address);
@@ -179,26 +186,6 @@ export class TestHelper {
         return tokenAccountData.amount;
     }
 
-    async makeOfferOne(
-        params: MakeOfferOneParams
-    ) {
-        return await this.program.methods
-            .makeOfferOne(
-                params.offerId,
-                new BN(params.buyTokenTotalAmount),
-                new BN(params.sellTokenStartAmount),
-                new BN(params.sellTokenEndAmount),
-                new BN(params.offerStartTime),
-                new BN(params.offerEndTime),
-                new BN(params.priceFixDuration))
-            .accounts({
-                sellTokenMint: params.sellTokenMint,
-                buyToken1Mint: params.buyTokenMint,
-                state: this.statePda,
-            })
-            .rpc();
-    }
-
     async makeBuyOffer(params: MakeBuyOfferParams) {
         return await this.program.methods
             .makeBuyOffer()
@@ -208,62 +195,6 @@ export class TestHelper {
                 state: this.statePda,
             })
             .rpc();
-    }
-
-    async makeOfferTwo(params: MakeOfferTwoParams) {
-        return await this.program.methods
-            .makeOfferTwo(
-                params.offerId,
-                new BN(params.buyToken1TotalAmount),
-                new BN(params.buyToken2TotalAmount),
-                new BN(params.sellTokenStartAmount),
-                new BN(params.sellTokenEndAmount),
-                new BN(params.offerStartTime),
-                new BN(params.offerEndTime),
-                new BN(params.priceFixDuration))
-            .accounts({
-                sellTokenMint: params.sellTokenMint,
-                buyToken1Mint: params.buyToken1Mint,
-                buyToken2Mint: params.buyToken2Mint,
-                state: this.statePda,
-            })
-            .rpc();
-    }
-
-    async takeOfferOne(params: TakeOfferParams) {
-        return await this.program.methods
-            .takeOfferOne(
-                new BN(params.sellTokenAmount))
-            .accounts({ offer: params.offerPda, user: params.user.publicKey })
-            .signers([params.user])
-            .rpc();
-    }
-
-    async takeOfferTwo(params: TakeOfferParams) {
-        return await this.program.methods
-            .takeOfferTwo(
-                new BN(params.sellTokenAmount))
-            .accounts({ offer: params.offerPda, user: params.user.publicKey })
-            .signers([params.user])
-            .rpc();
-    }
-
-    async closeOfferOne(offerPda: PublicKey) {
-        return await this.program.methods
-            .closeOfferOne()
-            .accounts({ offer: offerPda, state: this.statePda })
-            .rpc();
-    }
-
-    async closeOfferTwo(offerPda: PublicKey) {
-        return await this.program.methods
-            .closeOfferTwo()
-            .accounts({ offer: offerPda, state: this.statePda })
-            .rpc();
-    }
-
-    async getOfferAccount(account: PublicKey) {
-        return await this.program.account.offer.fetch(account);
     }
 
     async getCurrentClockTime() {
@@ -313,39 +244,7 @@ type OfferTwoTokenAccounts = {
     bossBuyTokenAccount2: PublicKey;
 }
 
-type MakeOfferOneParams = {
-    offerId: BN;
-    buyTokenTotalAmount: number;
-    sellTokenStartAmount: number;
-    sellTokenEndAmount: number;
-    offerStartTime: number;
-    offerEndTime: number;
-    priceFixDuration: number;
-    sellTokenMint: PublicKey;
-    buyTokenMint: PublicKey;
-}
-
 type MakeBuyOfferParams = {
     tokenInMint: PublicKey;
     tokenOutMint: PublicKey;
-}
-
-type MakeOfferTwoParams = {
-    offerId: BN;
-    buyToken1TotalAmount: number;
-    buyToken2TotalAmount: number;
-    sellTokenStartAmount: number;
-    sellTokenEndAmount: number;
-    offerStartTime: number;
-    offerEndTime: number;
-    priceFixDuration: number;
-    sellTokenMint: PublicKey;
-    buyToken1Mint: PublicKey;
-    buyToken2Mint: PublicKey;
-}
-
-type TakeOfferParams = {
-    sellTokenAmount: number;
-    offerPda: PublicKey;
-    user: Keypair;
 }

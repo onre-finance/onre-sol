@@ -41,6 +41,101 @@ export type Onreapp = {
   ],
   "instructions": [
     {
+      "name": "addBuyOfferVector",
+      "docs": [
+        "Adds a time vector to an existing buy offer.",
+        "",
+        "Delegates to `buy_offer::add_buy_offer_time_vector`.",
+        "Creates a new time vector with auto-generated vector_id for the specified buy offer.",
+        "Emits a `BuyOfferVectorAdded` event upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `AddBuyOfferVector`.",
+        "- `offer_id`: ID of the buy offer to add the vector to.",
+        "- `start_time`: Unix timestamp when the vector becomes active.",
+        "- `start_price`: Price at the beginning of the vector.",
+        "- `price_yield`: Price yield percentage * 10000 (with 4 decimal places).",
+        "- `price_fix_duration`: Duration in seconds for each price interval."
+      ],
+      "discriminator": [
+        246,
+        20,
+        14,
+        161,
+        143,
+        108,
+        10,
+        4
+      ],
+      "accounts": [
+        {
+          "name": "buyOfferAccount",
+          "docs": [
+            "The buy offer account containing all buy offers"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the time vector addition (must be boss)."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        },
+        {
+          "name": "startTime",
+          "type": "u64"
+        },
+        {
+          "name": "startPrice",
+          "type": "u64"
+        },
+        {
+          "name": "priceYield",
+          "type": "u64"
+        },
+        {
+          "name": "priceFixDuration",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "closeBuyOffer",
       "docs": [
         "Closes a buy offer.",
@@ -314,25 +409,91 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "initialize",
+      "name": "deleteBuyOfferVector",
       "docs": [
-        "Creates an offer with two buy tokens.",
+        "Deletes a time vector from a buy offer.",
         "",
-        "Delegates to `make_offer::make_offer_two`.",
-        "The price of the sell token changes over time based on `sell_token_start_amount`,",
-        "`sell_token_end_amount`, and `price_fix_duration` within the offer's active time window.",
-        "Emits an `OfferMadeTwo` event upon success.",
+        "Delegates to `buy_offer::delete_buy_offer_vector`.",
+        "Removes the specified time vector from the buy offer by setting it to default values.",
+        "Only the boss can delete time vectors from offers.",
+        "Emits a `BuyOfferVectorDeleted` event upon success.",
         "",
         "# Arguments",
-        "- `ctx`: Context for `MakeOfferTwo`.",
-        "- `offer_id`: Unique ID for the offer.",
-        "- `buy_token_1_total_amount`: Total amount of the first buy token offered.",
-        "- `buy_token_2_total_amount`: Total amount of the second buy token offered.",
-        "- `sell_token_start_amount`: Sell token amount at the start of the offer.",
-        "- `sell_token_end_amount`: Sell token amount at the end of the offer.",
-        "- `offer_start_time`: Offer activation timestamp.",
-        "- `offer_end_time`: Offer expiration timestamp.",
-        "- `price_fix_duration`: Duration of each price interval.",
+        "- `ctx`: Context for `DeleteBuyOfferVector`.",
+        "- `offer_id`: ID of the buy offer containing the vector to delete.",
+        "- `vector_id`: ID of the vector to delete."
+      ],
+      "discriminator": [
+        37,
+        168,
+        3,
+        196,
+        118,
+        93,
+        9,
+        204
+      ],
+      "accounts": [
+        {
+          "name": "buyOfferAccount",
+          "docs": [
+            "The buy offer account containing all buy offers"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the time vector deletion (must be boss)."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        },
+        {
+          "name": "vectorId",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "docs": [
+        "Initializes the program state.",
+        "",
         "Delegates to `initialize::initialize` to set the initial boss in the state account."
       ],
       "discriminator": [
@@ -835,6 +996,19 @@ export type Onreapp = {
     },
     {
       "name": "makeSingleRedemptionOffer",
+      "docs": [
+        "Creates a single redemption offer.",
+        "",
+        "Delegates to `redemption_offer::make_single_redemption_offer`.",
+        "Creates an offer where users can exchange token_in for token_out at a fixed price.",
+        "Emits a `SingleRedemptionOfferMadeEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `MakeSingleRedemptionOffer`.",
+        "- `start_time`: Unix timestamp for when the offer becomes active.",
+        "- `end_time`: Unix timestamp for when the offer expires.",
+        "- `price`: How much token_in needed for 1 token_out, with 9 decimal precision."
+      ],
       "discriminator": [
         166,
         32,
@@ -987,6 +1161,511 @@ export type Onreapp = {
         {
           "name": "newBoss",
           "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "takeBuyOffer",
+      "docs": [
+        "Takes a buy offer.",
+        "",
+        "Delegates to `buy_offer::take_buy_offer`.",
+        "Allows a user to exchange token_in for token_out based on the offer's dynamic price.",
+        "Emits a `TakeBuyOfferEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `TakeBuyOffer`.",
+        "- `offer_id`: ID of the offer to take.",
+        "- `token_in_amount`: Amount of token_in to provide."
+      ],
+      "discriminator": [
+        10,
+        155,
+        119,
+        29,
+        245,
+        1,
+        19,
+        212
+      ],
+      "accounts": [
+        {
+          "name": "buyOfferAccount",
+          "docs": [
+            "The buy offer account containing all active buy offers"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing the boss public key"
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account that receives token_in payments",
+            "Must match the boss stored in the program state"
+          ]
+        },
+        {
+          "name": "vaultAuthority",
+          "docs": [
+            "The vault authority PDA that controls vault token accounts"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "The mint account for the input token (what user pays)"
+          ]
+        },
+        {
+          "name": "tokenOutMint",
+          "docs": [
+            "The mint account for the output token (what user receives)"
+          ]
+        },
+        {
+          "name": "userTokenInAccount",
+          "docs": [
+            "User's token_in account (source of payment)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "userTokenOutAccount",
+          "docs": [
+            "User's token_out account (destination of received tokens)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "bossTokenInAccount",
+          "docs": [
+            "Boss's token_in account (destination of user's payment)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenOutAccount",
+          "docs": [
+            "Vault's token_out account (source of tokens to distribute to user)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "user",
+          "docs": [
+            "The user taking the offer (must sign the transaction)"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program for token transfers"
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        },
+        {
+          "name": "tokenInAmount",
+          "type": "u64"
         }
       ]
     },
@@ -2892,6 +3571,32 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "buyOfferVectorAddedEvent",
+      "discriminator": [
+        40,
+        116,
+        229,
+        220,
+        106,
+        39,
+        19,
+        188
+      ]
+    },
+    {
+      "name": "buyOfferVectorDeletedEvent",
+      "discriminator": [
+        117,
+        149,
+        77,
+        139,
+        75,
+        124,
+        144,
+        75
+      ]
+    },
+    {
       "name": "closeBuyOfferEvent",
       "discriminator": [
         55,
@@ -2954,6 +3659,19 @@ export type Onreapp = {
         20,
         189,
         216
+      ]
+    },
+    {
+      "name": "takeBuyOfferEvent",
+      "discriminator": [
+        59,
+        147,
+        67,
+        41,
+        42,
+        119,
+        163,
+        88
       ]
     },
     {
@@ -3067,17 +3785,21 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
-            "name": "timeSegments",
+            "name": "vectors",
             "type": {
               "array": [
                 {
                   "defined": {
-                    "name": "buyOfferTimeSegment"
+                    "name": "buyOfferVector"
                   }
                 },
                 10
               ]
             }
+          },
+          {
+            "name": "counter",
+            "type": "u64"
           }
         ]
       }
@@ -3134,9 +3856,9 @@ export type Onreapp = {
       }
     },
     {
-      "name": "buyOfferTimeSegment",
+      "name": "buyOfferVector",
       "docs": [
-        "Time segment for buy offers with pricing information"
+        "Time vector for buy offers with pricing information"
       ],
       "serialization": "bytemuck",
       "repr": {
@@ -3146,7 +3868,11 @@ export type Onreapp = {
         "kind": "struct",
         "fields": [
           {
-            "name": "segmentId",
+            "name": "vectorId",
+            "type": "u64"
+          },
+          {
+            "name": "validFrom",
             "type": "u64"
           },
           {
@@ -3154,7 +3880,42 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "endTime",
+            "name": "startPrice",
+            "type": "u64"
+          },
+          {
+            "name": "priceYield",
+            "type": "u64"
+          },
+          {
+            "name": "priceFixDuration",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "buyOfferVectorAddedEvent",
+      "docs": [
+        "Event emitted when a time vector is added to a buy offer."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "type": "u64"
+          },
+          {
+            "name": "vectorId",
+            "type": "u64"
+          },
+          {
+            "name": "startTime",
+            "type": "u64"
+          },
+          {
+            "name": "validFrom",
             "type": "u64"
           },
           {
@@ -3162,11 +3923,30 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "endPrice",
+            "name": "priceYield",
             "type": "u64"
           },
           {
             "name": "priceFixDuration",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "buyOfferVectorDeletedEvent",
+      "docs": [
+        "Event emitted when a time vector is deleted from a buy offer."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "type": "u64"
+          },
+          {
+            "name": "vectorId",
             "type": "u64"
           }
         ]
@@ -3459,6 +4239,45 @@ export type Onreapp = {
         "fields": [
           {
             "name": "boss",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "takeBuyOfferEvent",
+      "docs": [
+        "Event emitted when a buy offer is successfully taken"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "docs": [
+              "The ID of the buy offer that was taken"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tokenInAmount",
+            "docs": [
+              "Amount of token_in paid by the user"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tokenOutAmount",
+            "docs": [
+              "Amount of token_out received by the user"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "user",
+            "docs": [
+              "Public key of the user who took the offer"
+            ],
             "type": "pubkey"
           }
         ]

@@ -1,4 +1,3 @@
-use super::state::MAX_DUAL_REDEMPTION_OFFERS;
 use crate::constants::seeds;
 use crate::instructions::DualRedemptionOfferAccount;
 use crate::state::State;
