@@ -18,8 +18,8 @@ async function fetchOffer(offerId: BN) {
         console.log('  Buy Token 2 Total Amount:', offerAccount.buyToken2.amount.toString());
         console.log('  Sell Token Start Amount:', offerAccount.sellTokenStartAmount.toString());
         console.log('  Sell Token End Amount:', offerAccount.sellTokenEndAmount.toString());
-        console.log('  Offer Start Time:', offerAccount.offerStartTime.toString());
-        console.log('  Offer End Time:', offerAccount.offerEndTime.toString());
+        console.log('  Offer Start Time:', new Date(offerAccount.offerStartTime.toNumber() * 1000));
+        console.log('  Offer End Time:', new Date(offerAccount.offerEndTime.toNumber() * 1000));
         console.log('  Price Fix Duration:', offerAccount.priceFixDuration.toString());
         console.log('  Authority Bump:', offerAccount.authorityBump);
 
