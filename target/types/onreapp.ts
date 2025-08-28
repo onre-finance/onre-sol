@@ -1670,6 +1670,729 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "takeBuyOfferPermissionless",
+      "docs": [
+        "Takes a buy offer using permissionless flow with intermediary accounts.",
+        "",
+        "Delegates to `buy_offer::take_buy_offer_permissionless`.",
+        "Similar to take_buy_offer but routes token transfers through intermediary accounts",
+        "owned by the program instead of direct user-to-boss and vault-to-user transfers.",
+        "Emits a `TakeBuyOfferPermissionlessEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `TakeBuyOfferPermissionless`.",
+        "- `offer_id`: ID of the offer to take.",
+        "- `token_in_amount`: Amount of token_in to provide."
+      ],
+      "discriminator": [
+        209,
+        116,
+        84,
+        124,
+        15,
+        126,
+        86,
+        66
+      ],
+      "accounts": [
+        {
+          "name": "buyOfferAccount",
+          "docs": [
+            "The buy offer account containing all active buy offers"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing the boss public key"
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account that receives token_in payments",
+            "Must match the boss stored in the program state"
+          ]
+        },
+        {
+          "name": "vaultAuthority",
+          "docs": [
+            "The vault authority PDA that controls vault token accounts"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "permissionlessAuthority",
+          "docs": [
+            "The permissionless authority PDA that controls intermediary token accounts"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  108,
+                  101,
+                  115,
+                  115,
+                  45,
+                  49
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "The mint account for the input token (what user pays)"
+          ]
+        },
+        {
+          "name": "tokenOutMint",
+          "docs": [
+            "The mint account for the output token (what user receives)"
+          ]
+        },
+        {
+          "name": "userTokenInAccount",
+          "docs": [
+            "User's token_in account (source of payment)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "userTokenOutAccount",
+          "docs": [
+            "User's token_out account (destination of received tokens)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "bossTokenInAccount",
+          "docs": [
+            "Boss's token_in account (final destination of user's payment)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenOutAccount",
+          "docs": [
+            "Vault's token_out account (source of tokens to distribute)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "permissionlessTokenInAccount",
+          "docs": [
+            "Permissionless intermediary token_in account (temporary holding for token_in)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "permissionlessAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "permissionlessTokenOutAccount",
+          "docs": [
+            "Permissionless intermediary token_out account (temporary holding for token_out)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "permissionlessAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "user",
+          "docs": [
+            "The user taking the offer (must sign the transaction)"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program for token transfers"
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        },
+        {
+          "name": "tokenInAmount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "takeDualRedemptionOffer",
       "docs": [
         "Takes a dual redemption offer.",
@@ -3675,6 +4398,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "takeBuyOfferPermissionlessEvent",
+      "discriminator": [
+        64,
+        186,
+        164,
+        220,
+        143,
+        172,
+        74,
+        44
+      ]
+    },
+    {
       "name": "takeDualRedemptionOfferEvent",
       "discriminator": [
         114,
@@ -4248,6 +4984,45 @@ export type Onreapp = {
       "name": "takeBuyOfferEvent",
       "docs": [
         "Event emitted when a buy offer is successfully taken"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "docs": [
+              "The ID of the buy offer that was taken"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tokenInAmount",
+            "docs": [
+              "Amount of token_in paid by the user"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tokenOutAmount",
+            "docs": [
+              "Amount of token_out received by the user"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "user",
+            "docs": [
+              "Public key of the user who took the offer"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "takeBuyOfferPermissionlessEvent",
+      "docs": [
+        "Event emitted when a buy offer is successfully taken via permissionless flow"
       ],
       "type": {
         "kind": "struct",

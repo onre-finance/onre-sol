@@ -1,5 +1,5 @@
 use crate::constants::seeds;
-use crate::instructions::buy_offer::buy_offer_utils::{process_buy_offer_core, execute_direct_transfers};
+use crate::instructions::buy_offer::buy_offer_utils::{process_buy_offer_core, execute_permissionless_transfers};
 use crate::instructions::{BuyOfferAccount};
 use crate::state::State;
 use crate::utils::u64_to_dec9;
@@ -7,16 +7,16 @@ use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
-/// Error codes specific to the take_buy_offer instruction
+/// Error codes specific to the take_buy_offer_permissionless instruction
 #[error_code]
-pub enum TakeBuyOfferErrorCode {
+pub enum TakeBuyOfferPermissionlessErrorCode {
     #[msg("Invalid boss account")]
     InvalidBoss,
 }
 
-/// Event emitted when a buy offer is successfully taken
+/// Event emitted when a buy offer is successfully taken via permissionless flow
 #[event]
-pub struct TakeBuyOfferEvent {
+pub struct TakeBuyOfferPermissionlessEvent {
     /// The ID of the buy offer that was taken
     pub offer_id: u64,
     /// Amount of token_in paid by the user
@@ -27,12 +27,12 @@ pub struct TakeBuyOfferEvent {
     pub user: Pubkey,
 }
 
-/// Accounts required for taking a buy offer
+/// Accounts required for taking a buy offer via permissionless flow
 ///
-/// This struct defines all the accounts needed to execute a take_buy_offer instruction,
-/// including validation constraints to ensure security and proper authorization.
+/// This struct defines all the accounts needed to execute a take_buy_offer_permissionless instruction,
+/// including intermediary accounts owned by the program for routing token transfers.
 #[derive(Accounts)]
-pub struct TakeBuyOffer<'info> {
+pub struct TakeBuyOfferPermissionless<'info> {
     /// The buy offer account containing all active buy offers
     #[account(mut, seeds = [seeds::BUY_OFFERS], bump)]
     pub buy_offer_account: AccountLoader<'info, BuyOfferAccount>,
@@ -43,7 +43,7 @@ pub struct TakeBuyOffer<'info> {
     /// The boss account that receives token_in payments
     /// Must match the boss stored in the program state
     #[account(
-        constraint = boss.key() == state.boss @ TakeBuyOfferErrorCode::InvalidBoss
+        constraint = boss.key() == state.boss @ TakeBuyOfferPermissionlessErrorCode::InvalidBoss
     )]
     /// CHECK: This account is validated through the constraint above
     pub boss: UncheckedAccount<'info>,
@@ -52,6 +52,11 @@ pub struct TakeBuyOffer<'info> {
     #[account(seeds = [seeds::VAULT_AUTHORITY], bump)]
     /// CHECK: This is safe as it's a PDA used for signing
     pub vault_authority: UncheckedAccount<'info>,
+
+    /// The permissionless authority PDA that controls intermediary token accounts
+    #[account(seeds = [seeds::PERMISSIONLESS_1], bump)]
+    /// CHECK: This is safe as it's a PDA used for signing
+    pub permissionless_authority: UncheckedAccount<'info>,
 
     /// The mint account for the input token (what user pays)
     pub token_in_mint: Box<Account<'info, Mint>>,
@@ -75,7 +80,7 @@ pub struct TakeBuyOffer<'info> {
     )]
     pub user_token_out_account: Box<Account<'info, TokenAccount>>,
 
-    /// Boss's token_in account (destination of user's payment)
+    /// Boss's token_in account (final destination of user's payment)
     #[account(
         mut,
         associated_token::mint = token_in_mint,
@@ -83,13 +88,29 @@ pub struct TakeBuyOffer<'info> {
     )]
     pub boss_token_in_account: Box<Account<'info, TokenAccount>>,
 
-    /// Vault's token_out account (source of tokens to distribute to user)
+    /// Vault's token_out account (source of tokens to distribute)
     #[account(
         mut,
         associated_token::mint = token_out_mint,
         associated_token::authority = vault_authority
     )]
     pub vault_token_out_account: Box<Account<'info, TokenAccount>>,
+
+    /// Permissionless intermediary token_in account (temporary holding for token_in)
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = permissionless_authority
+    )]
+    pub permissionless_token_in_account: Box<Account<'info, TokenAccount>>,
+
+    /// Permissionless intermediary token_out account (temporary holding for token_out)
+    #[account(
+        mut,
+        associated_token::mint = token_out_mint,
+        associated_token::authority = permissionless_authority
+    )]
+    pub permissionless_token_out_account: Box<Account<'info, TokenAccount>>,
 
     /// The user taking the offer (must sign the transaction)
     #[account(mut)]
@@ -99,11 +120,14 @@ pub struct TakeBuyOffer<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-/// Main instruction handler for taking a buy offer
+/// Main instruction handler for taking a buy offer via permissionless flow
 ///
-/// This function allows users to accept a buy offer by paying the current market price
-/// in token_in to receive token_out from the vault. The price is calculated using a
-/// discrete interval pricing model with linear yield growth.
+/// This function allows users to accept a buy offer using intermediary accounts owned by the program.
+/// Instead of direct transfers, tokens are routed through permissionless intermediary accounts:
+/// 1. User → Permissionless intermediary (token_in)
+/// 2. Permissionless intermediary → Boss (token_in)
+/// 3. Vault → Permissionless intermediary (token_out) 
+/// 4. Permissionless intermediary → User (token_out)
 ///
 /// # Arguments
 ///
@@ -117,7 +141,7 @@ pub struct TakeBuyOffer<'info> {
 /// 2. Find the currently active pricing vector
 /// 3. Calculate current price based on time elapsed and yield parameters
 /// 4. Calculate how many token_out to give for the provided token_in_amount
-/// 5. Execute atomic transfers: user → boss (token_in), vault → user (token_out)
+/// 5. Execute atomic transfers through intermediary accounts
 /// 6. Emit event with transaction details
 ///
 /// # Returns
@@ -131,8 +155,8 @@ pub struct TakeBuyOffer<'info> {
 /// * `NoActiveVector` - No pricing vector is currently active  
 /// * `OverflowError` - Mathematical overflow in price calculations
 /// * Token transfer errors if insufficient balances or invalid accounts
-pub fn take_buy_offer(
-    ctx: Context<TakeBuyOffer>,
+pub fn take_buy_offer_permissionless(
+    ctx: Context<TakeBuyOfferPermissionless>,
     offer_id: u64,
     token_in_amount: u64,
 ) -> Result<()> {
@@ -150,22 +174,26 @@ pub fn take_buy_offer(
         _ => e, // For now, just pass through core errors
     })?;
 
-    // Execute direct transfers
-    execute_direct_transfers(
+    // Execute permissionless transfers
+    execute_permissionless_transfers(
         &ctx.accounts.user,
         &ctx.accounts.user_token_in_account,
         &ctx.accounts.boss_token_in_account,
         &ctx.accounts.vault_authority,
         &ctx.accounts.vault_token_out_account,
         &ctx.accounts.user_token_out_account,
+        &ctx.accounts.permissionless_authority,
+        &ctx.accounts.permissionless_token_in_account,
+        &ctx.accounts.permissionless_token_out_account,
         &ctx.accounts.token_program,
         ctx.bumps.vault_authority,
+        ctx.bumps.permissionless_authority,
         token_in_amount,
         result.token_out_amount,
     )?;
 
     msg!(
-        "Buy offer taken - ID: {}, token_in: {}, token_out: {}, user: {}, price: {}",
+        "Buy offer taken (permissionless) - ID: {}, token_in: {}, token_out: {}, user: {}, price: {}",
         offer_id,
         token_in_amount,
         result.token_out_amount,
@@ -173,7 +201,7 @@ pub fn take_buy_offer(
         u64_to_dec9(result.current_price)
     );
 
-    emit!(TakeBuyOfferEvent {
+    emit!(TakeBuyOfferPermissionlessEvent {
         offer_id,
         token_in_amount,
         token_out_amount: result.token_out_amount,

@@ -301,6 +301,25 @@ pub mod onreapp {
         buy_offer::take_buy_offer(ctx, offer_id, token_in_amount)
     }
 
+    /// Takes a buy offer using permissionless flow with intermediary accounts.
+    ///
+    /// Delegates to `buy_offer::take_buy_offer_permissionless`.
+    /// Similar to take_buy_offer but routes token transfers through intermediary accounts
+    /// owned by the program instead of direct user-to-boss and vault-to-user transfers.
+    /// Emits a `TakeBuyOfferPermissionlessEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `TakeBuyOfferPermissionless`.
+    /// - `offer_id`: ID of the offer to take.
+    /// - `token_in_amount`: Amount of token_in to provide.
+    pub fn take_buy_offer_permissionless(
+        ctx: Context<TakeBuyOfferPermissionless>,
+        offer_id: u64,
+        token_in_amount: u64,
+    ) -> Result<()> {
+        buy_offer::take_buy_offer_permissionless(ctx, offer_id, token_in_amount)
+    }
+
     /// Initializes the program state.
     ///
     /// Delegates to `initialize::initialize` to set the initial boss in the state account.

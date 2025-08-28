@@ -4,10 +4,14 @@ pub mod add_buy_offer_vector;
 pub mod delete_buy_offer_vector;
 pub mod state;
 pub mod take_buy_offer;
+pub mod take_buy_offer_permissionless;
+pub mod buy_offer_utils;
 
 pub use make_buy_offer::*;
 pub use take_buy_offer::*;
+pub use take_buy_offer_permissionless::*;
 pub use close_buy_offer::*;
 pub use add_buy_offer_vector::*;
 pub use delete_buy_offer_vector::*;
 pub use state::*;
+pub use buy_offer_utils::*;
