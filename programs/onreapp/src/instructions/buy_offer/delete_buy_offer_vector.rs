@@ -1,4 +1,5 @@
-use super::state::{BuyOffer, BuyOfferAccount, BuyOfferVector, MAX_BUY_OFFERS};
+use super::state::{BuyOfferAccount, BuyOfferVector};
+use crate::instructions::find_offer_mut;
 use crate::state::State;
 use anchor_lang::prelude::*;
 
@@ -50,14 +51,17 @@ pub fn delete_buy_offer_vector(
 
     // Validate inputs
     require!(offer_id != 0, DeleteBuyOfferVectorErrorCode::OfferNotFound);
-    require!(vector_id != 0, DeleteBuyOfferVectorErrorCode::VectorNotFound);
+    require!(
+        vector_id != 0,
+        DeleteBuyOfferVectorErrorCode::VectorNotFound
+    );
 
     // Find the offer by offer_id
-    let offer = find_buy_offer_by_id(&mut buy_offer_account.offers, offer_id)?;
+    let offer = find_offer_mut(buy_offer_account, offer_id)?;
 
     // Find and delete the vector by vector_id
     let vector_index = find_vector_index_by_id(&offer.vectors, vector_id)?;
-    
+
     // Delete the vector by setting it to default
     offer.vectors[vector_index] = BuyOfferVector::default();
 
@@ -75,22 +79,8 @@ pub fn delete_buy_offer_vector(
     Ok(())
 }
 
-/// Finds a buy offer by its ID in the offers array.
-fn find_buy_offer_by_id(
-    offers: &mut [BuyOffer; MAX_BUY_OFFERS],
-    offer_id: u64,
-) -> Result<&mut BuyOffer> {
-    offers
-        .iter_mut()
-        .find(|offer| offer.offer_id == offer_id && offer.offer_id != 0)
-        .ok_or(DeleteBuyOfferVectorErrorCode::OfferNotFound.into())
-}
-
 /// Finds the index of a vector by its ID in the vectors array.
-fn find_vector_index_by_id(
-    vectors: &[BuyOfferVector; 10],
-    vector_id: u64,
-) -> Result<usize> {
+fn find_vector_index_by_id(vectors: &[BuyOfferVector; 10], vector_id: u64) -> Result<usize> {
     vectors
         .iter()
         .position(|vector| vector.vector_id == vector_id && vector.vector_id != 0)

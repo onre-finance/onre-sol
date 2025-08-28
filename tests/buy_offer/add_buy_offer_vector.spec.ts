@@ -419,7 +419,7 @@ describe("Add Buy Offer Vector", () => {
                     state: testHelper.statePda,
                 })
                 .rpc()
-        ).rejects.toThrow("Buy offer with the specified ID was not found");
+        ).rejects.toThrow("Offer not found");
     });
 
     it("Should reject when offer has maximum vectors", async () => {

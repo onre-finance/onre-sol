@@ -43,7 +43,7 @@ describe("Delete Buy Offer Vector", () => {
 
     it("Should delete an existing vector from a buy offer", async () => {
         const offerId = new BN(1);
-        
+
         // Create a buy offer
         await testHelper.makeBuyOffer({
             tokenInMint,
@@ -106,7 +106,7 @@ describe("Delete Buy Offer Vector", () => {
 
     it("Should fail when vector_id is zero", async () => {
         const offerId = new BN(1);
-        
+
         // Create a buy offer
         await testHelper.makeBuyOffer({
             tokenInMint,
@@ -125,7 +125,7 @@ describe("Delete Buy Offer Vector", () => {
 
     it("Should fail when offer doesn't exist", async () => {
         const nonExistentOfferId = new BN(999);
-        
+
         await expect(
             testHelper.program.methods
                 .deleteBuyOfferVector(nonExistentOfferId, new BN(1))
@@ -133,12 +133,12 @@ describe("Delete Buy Offer Vector", () => {
                     state: testHelper.statePda,
                 })
                 .rpc()
-        ).rejects.toThrow("Buy offer with the specified ID was not found");
+        ).rejects.toThrow("Offer not found");
     });
 
     it("Should fail when vector doesn't exist in the offer", async () => {
         const offerId = new BN(1);
-        
+
         // Create a buy offer
         await testHelper.makeBuyOffer({
             tokenInMint,
@@ -157,7 +157,7 @@ describe("Delete Buy Offer Vector", () => {
 
     it("Should delete specific vector while keeping others", async () => {
         const offerId = new BN(1);
-        
+
         // Create a buy offer
         await testHelper.makeBuyOffer({
             tokenInMint,
@@ -205,11 +205,11 @@ describe("Delete Buy Offer Vector", () => {
         buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
         offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
         activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
-        
+
         expect(activeVectors.length).toBe(2);
         const vectorIds = activeVectors.map(v => v.vectorId.toNumber()).sort();
         expect(vectorIds).toEqual([1, 3]);
-        
+
         // Verify prices of remaining vectors
         const vectorPrices = activeVectors.map(v => v.startPrice.toNumber()).sort();
         expect(vectorPrices).toContain(1000000); // Vector 1
@@ -219,7 +219,7 @@ describe("Delete Buy Offer Vector", () => {
 
     it("Should reject when called by non-boss", async () => {
         const offerId = new BN(1);
-        
+
         // Create a buy offer
         await testHelper.makeBuyOffer({
             tokenInMint,
@@ -243,7 +243,7 @@ describe("Delete Buy Offer Vector", () => {
             .rpc();
 
         const notBoss = testHelper.createUserAccount();
-        
+
         await expect(
             testHelper.program.methods
                 .deleteBuyOfferVector(offerId, new BN(1))

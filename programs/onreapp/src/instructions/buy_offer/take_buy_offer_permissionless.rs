@@ -1,6 +1,8 @@
 use crate::constants::seeds;
-use crate::instructions::buy_offer::buy_offer_utils::{process_buy_offer_core, execute_permissionless_transfers};
-use crate::instructions::{BuyOfferAccount};
+use crate::instructions::buy_offer::buy_offer_utils::{
+    execute_permissionless_transfers, process_buy_offer_core,
+};
+use crate::instructions::BuyOfferAccount;
 use crate::state::State;
 use crate::utils::u64_to_dec9;
 use anchor_lang::prelude::*;
@@ -126,7 +128,7 @@ pub struct TakeBuyOfferPermissionless<'info> {
 /// Instead of direct transfers, tokens are routed through permissionless intermediary accounts:
 /// 1. User → Permissionless intermediary (token_in)
 /// 2. Permissionless intermediary → Boss (token_in)
-/// 3. Vault → Permissionless intermediary (token_out) 
+/// 3. Vault → Permissionless intermediary (token_out)
 /// 4. Permissionless intermediary → User (token_out)
 ///
 /// # Arguments
@@ -169,10 +171,7 @@ pub fn take_buy_offer_permissionless(
         token_in_amount,
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
-    ).map_err(|e| match e {
-        // Convert core errors to instruction-specific errors where needed
-        _ => e, // For now, just pass through core errors
-    })?;
+    )?;
 
     // Execute permissionless transfers
     execute_permissionless_transfers(
@@ -210,4 +209,3 @@ pub fn take_buy_offer_permissionless(
 
     Ok(())
 }
-

@@ -1,6 +1,8 @@
 use crate::constants::seeds;
-use crate::instructions::buy_offer::buy_offer_utils::{process_buy_offer_core, execute_direct_transfers};
-use crate::instructions::{BuyOfferAccount};
+use crate::instructions::buy_offer::buy_offer_utils::{
+    execute_direct_transfers, process_buy_offer_core,
+};
+use crate::instructions::BuyOfferAccount;
 use crate::state::State;
 use crate::utils::u64_to_dec9;
 use anchor_lang::prelude::*;
@@ -145,10 +147,7 @@ pub fn take_buy_offer(
         token_in_amount,
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
-    ).map_err(|e| match e {
-        // Convert core errors to instruction-specific errors where needed
-        _ => e, // For now, just pass through core errors
-    })?;
+    )?;
 
     // Execute direct transfers
     execute_direct_transfers(
@@ -182,4 +181,3 @@ pub fn take_buy_offer(
 
     Ok(())
 }
-

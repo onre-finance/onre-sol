@@ -22,20 +22,20 @@ pub struct BuyOfferProcessResult {
 }
 
 /// Core processing logic shared between both take_buy_offer instructions
-/// 
+///
 /// This function handles all the common validation and calculation logic:
 /// 1. Find and validate the offer exists
 /// 2. Find the currently active pricing vector
 /// 3. Calculate current price based on time and yield parameters
 /// 4. Calculate token_out_amount based on price and decimals
-/// 
+///
 /// # Arguments
 /// * `offer_account` - The loaded buy offer account
 /// * `offer_id` - The ID of the offer to process
 /// * `token_in_amount` - Amount of token_in being provided
 /// * `token_in_mint` - The token_in mint for decimal information
 /// * `token_out_mint` - The token_out mint for decimal information
-/// 
+///
 /// # Returns
 /// A `BuyOfferProcessResult` containing the calculated price and token_out_amount
 pub fn process_buy_offer_core(
@@ -45,11 +45,13 @@ pub fn process_buy_offer_core(
     token_in_mint: &Account<Mint>,
     token_out_mint: &Account<Mint>,
 ) -> Result<BuyOfferProcessResult> {
+    let current_time = Clock::get()?.unix_timestamp as u64;
+
     // Find the offer
     let offer = find_offer(offer_account, offer_id)?;
 
     // Find the currently active pricing vector
-    let active_vector = find_active_vector(&offer)?;
+    let active_vector = find_active_vector_at(&offer, current_time)?;
 
     // Calculate current price with 9 decimals
     let current_price = calculate_current_price(
@@ -74,11 +76,11 @@ pub fn process_buy_offer_core(
 }
 
 /// Finds a buy offer by ID in the offer account
-/// 
+///
 /// # Arguments
 /// * `offer_account` - The buy offer account containing all offers
 /// * `offer_id` - The ID of the offer to find
-/// 
+///
 /// # Returns
 /// The found `BuyOffer` or an error if not found
 pub fn find_offer(offer_account: &BuyOfferAccount, offer_id: u64) -> Result<BuyOffer> {
@@ -95,21 +97,63 @@ pub fn find_offer(offer_account: &BuyOfferAccount, offer_id: u64) -> Result<BuyO
     Ok(*offer)
 }
 
+/// Finds a mutable reference to buy offer by ID in the offer account
+///
+/// # Arguments
+/// * `offer_account` - The buy offer account containing all offers
+/// * `offer_id` - The ID of the offer to find
+///
+/// # Returns
+/// The found `BuyOffer` or an error if not found
+pub fn find_offer_mut(offer_account: &mut BuyOfferAccount, offer_id: u64) -> Result<&mut BuyOffer> {
+    if offer_id == 0 {
+        return Err(error!(BuyOfferCoreError::OfferNotFound));
+    }
+
+    let offer = offer_account
+        .offers
+        .iter_mut()
+        .find(|offer| offer.offer_id == offer_id)
+        .ok_or(BuyOfferCoreError::OfferNotFound)?;
+
+    Ok(offer)
+}
+
+/// Finds a buy offer index by ID in the offer account
+///
+/// # Arguments
+/// * `offer_account` - The buy offer account containing all offers
+/// * `offer_id` - The ID of the offer to find
+///
+/// # Returns
+/// The found `BuyOffer` or an error if not found
+pub fn find_offer_index(offer_account: &BuyOfferAccount, offer_id: u64) -> Result<usize> {
+    if offer_id == 0 {
+        return Err(error!(BuyOfferCoreError::OfferNotFound));
+    }
+
+    let offer_id = offer_account
+        .offers
+        .iter()
+        .position(|offer| offer.offer_id == offer_id)
+        .ok_or(BuyOfferCoreError::OfferNotFound)?;
+
+    Ok(offer_id)
+}
+
 /// Finds the currently active vector for a buy offer
-/// 
+///
 /// # Arguments
 /// * `offer` - The buy offer to search for an active vector
-/// 
+///
 /// # Returns
 /// The active `BuyOfferVector` or an error if none is active
-pub fn find_active_vector(offer: &BuyOffer) -> Result<BuyOfferVector> {
-    let current_time = Clock::get()?.unix_timestamp as u64;
-
+pub fn find_active_vector_at(offer: &BuyOffer, time: u64) -> Result<BuyOfferVector> {
     let active_vector = offer
         .vectors
         .iter()
         .filter(|vector| vector.vector_id != 0) // Only consider non-empty vectors
-        .filter(|vector| vector.valid_from <= current_time) // Only vectors that have started
+        .filter(|vector| vector.valid_from <= time) // Only vectors that have started
         .max_by_key(|vector| vector.valid_from) // Find latest valid_from in the past
         .ok_or(BuyOfferCoreError::NoActiveVector)?;
 
@@ -117,7 +161,7 @@ pub fn find_active_vector(offer: &BuyOffer) -> Result<BuyOfferVector> {
 }
 
 /// Linear (uncompounded) price calculation with "price-fix" windows that snap to the END of the current window.
-/// 
+///
 /// This function implements the discrete interval pricing model:
 /// - price_yield: yearly yield scaled by 1_000_000 (e.g., 10.12% => 101_200)
 /// - start_price: starting price
@@ -132,13 +176,13 @@ pub fn find_active_vector(offer: &BuyOffer) -> Result<BuyOfferVector> {
 ///   P(t) = P0 * (1 + y * ((k + 1)*D) / S)
 /// where S = 365*24*3600, and y is yearly yield as a decimal.
 /// We compute this in fixed-point to avoid precision loss.
-/// 
+///
 /// # Arguments
 /// * `price_yield` - Yearly yield scaled by 1_000_000
 /// * `start_price` - Starting price
 /// * `start_time` - Unix timestamp when pricing starts
 /// * `price_fix_duration` - Duration of each price interval in seconds
-/// 
+///
 /// # Returns
 /// The calculated current price
 pub fn calculate_current_price(
@@ -258,7 +302,8 @@ pub fn execute_permissionless_transfers<'info>(
     token_in_amount: u64,
     token_out_amount: u64,
 ) -> Result<()> {
-    let permissionless_authority_seeds = &[seeds::PERMISSIONLESS_1, &[permissionless_authority_bump]];
+    let permissionless_authority_seeds =
+        &[seeds::PERMISSIONLESS_1, &[permissionless_authority_bump]];
     let permissionless_signer_seeds = &[permissionless_authority_seeds.as_slice()];
 
     let vault_authority_seeds = &[seeds::VAULT_AUTHORITY, &[vault_authority_bump]];
