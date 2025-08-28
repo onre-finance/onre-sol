@@ -327,6 +327,18 @@ pub mod onreapp {
         initialize::initialize(ctx)
     }
 
+    /// Initializes a permissionless account.
+    ///
+    /// Delegates to `initialize::initialize_permissionless_account` to create a new permissionless account.
+    /// The account is created as a PDA with the seed "permissionless-1".
+    /// Only the boss can initialize permissionless accounts.
+    pub fn initialize_permissionless_account(
+        ctx: Context<InitializePermissionlessAccount>,
+        name: String,
+    ) -> Result<()> {
+        initialize_permissionless::initialize_permissionless_account(ctx, name)
+    }
+
     // /// Updates the boss in the program state.
     // ///
     /// Delegates to `set_boss::set_boss` to change the boss, emitting a `BossUpdated` event.

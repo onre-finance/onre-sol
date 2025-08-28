@@ -701,6 +701,94 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "initializePermissionlessAccount",
+      "docs": [
+        "Initializes a permissionless account.",
+        "",
+        "Delegates to `initialize::initialize_permissionless_account` to create a new permissionless account.",
+        "The account is created as a PDA with the seed \"permissionless-1\".",
+        "Only the boss can initialize permissionless accounts."
+      ],
+      "discriminator": [
+        144,
+        160,
+        10,
+        56,
+        91,
+        17,
+        77,
+        115
+      ],
+      "accounts": [
+        {
+          "name": "permissionlessAccount",
+          "docs": [
+            "The permissionless account to be created.",
+            "",
+            "# Note",
+            "- Space is allocated as `8 + PermissionlessAccount::INIT_SPACE` bytes",
+            "- Seeded with hardcoded \"permissionless-1\" for PDA derivation"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  108,
+                  101,
+                  115,
+                  115,
+                  45,
+                  49
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "The program state account, used to verify boss authorization."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account that authorizes and pays for the permissionless account creation."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ]
+    },
+    {
       "name": "initializeVaultAuthority",
       "discriminator": [
         47,
@@ -4227,6 +4315,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "permissionlessAccount",
+      "discriminator": [
+        9,
+        107,
+        135,
+        228,
+        163,
+        199,
+        67,
+        169
+      ]
+    },
+    {
       "name": "singleRedemptionOfferAccount",
       "discriminator": [
         147,
@@ -4854,6 +4955,18 @@ export type Onreapp = {
           {
             "name": "boss",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "permissionlessAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string"
           }
         ]
       }
