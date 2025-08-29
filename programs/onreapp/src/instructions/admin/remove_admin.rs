@@ -23,10 +23,7 @@ pub struct RemoveAdmin<'info> {
 
     /// The boss calling this function.
     #[account(mut)]
-    pub boss: Signer<'info>,
-
-    /// Solana System program for account creation.
-    pub system_program: Program<'info, System>,
+    pub boss: Signer<'info>
 }
 
 /// Removes an admin from the admin state.

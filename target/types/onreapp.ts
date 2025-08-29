@@ -116,13 +116,6 @@ export type Onreapp = {
           "relations": [
             "state"
           ]
-        },
-        {
-          "name": "systemProgram",
-          "docs": [
-            "Solana System program for account creation."
-          ],
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
@@ -1443,13 +1436,6 @@ export type Onreapp = {
           "relations": [
             "state"
           ]
-        },
-        {
-          "name": "systemProgram",
-          "docs": [
-            "Solana System program for account creation."
-          ],
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [

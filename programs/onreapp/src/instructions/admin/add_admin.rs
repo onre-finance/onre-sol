@@ -23,9 +23,6 @@ pub struct AddAdmin<'info> {
     /// The signer authorizing the addition, must be the boss.
     #[account(mut)]
     pub boss: Signer<'info>,
-
-    /// Solana System program for account creation.
-    pub system_program: Program<'info, System>,
 }
 
 /// Adds a new admin to the admin state.
