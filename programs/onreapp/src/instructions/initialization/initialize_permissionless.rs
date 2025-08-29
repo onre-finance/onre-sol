@@ -1,4 +1,5 @@
 use crate::state::{PermissionlessAccount, State};
+use crate::constants::seeds;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 
@@ -28,7 +29,7 @@ pub struct InitializePermissionlessAccount<'info> {
         init,
         payer = boss,
         space = 8 + PermissionlessAccount::INIT_SPACE,
-        seeds = [b"permissionless-1"],
+        seeds = [seeds::PERMISSIONLESS_1],
         bump
     )]
     pub permissionless_account: Account<'info, PermissionlessAccount>,

@@ -41,6 +41,91 @@ export type Onreapp = {
   ],
   "instructions": [
     {
+      "name": "addAdmin",
+      "docs": [
+        "Adds a new admin to the admin state.",
+        "",
+        "Delegates to `admin::add_admin` to add a new admin to the admin list.",
+        "Only the boss can call this instruction to add new admins.",
+        "# Arguments",
+        "- `ctx`: Context for `AddAdmin`.",
+        "- `new_admin`: Public key of the new admin to be added."
+      ],
+      "discriminator": [
+        177,
+        236,
+        33,
+        205,
+        124,
+        152,
+        55,
+        186
+      ],
+      "accounts": [
+        {
+          "name": "adminState",
+          "docs": [
+            "Admin state account containing the list of admins."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  100,
+                  109,
+                  105,
+                  110,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the addition, must be the boss."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newAdmin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "addBuyOfferVector",
       "docs": [
         "Adds a time vector to an existing buy offer.",
@@ -544,6 +629,81 @@ export type Onreapp = {
           "name": "systemProgram",
           "docs": [
             "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initializeAdminState",
+      "docs": [
+        "Initializes the admin state.",
+        "",
+        "Delegates to `initialize_admin_state::initialize_admin_state` to set up the admin state account.",
+        "Only the boss can call this instruction to create the admin state account.",
+        "# Arguments",
+        "- `ctx`: Context for `InitializeAdminState`."
+      ],
+      "discriminator": [
+        143,
+        116,
+        15,
+        14,
+        59,
+        122,
+        82,
+        86
+      ],
+      "accounts": [
+        {
+          "name": "adminState",
+          "docs": [
+            "Program authority account to be initialized."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  100,
+                  109,
+                  105,
+                  110,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss paying for account creation and authorizing the initialization."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation."
           ],
           "address": "11111111111111111111111111111111"
         }
@@ -1197,6 +1357,91 @@ export type Onreapp = {
         {
           "name": "price",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "removeAdmin",
+      "docs": [
+        "Removes an admin from the admin state.",
+        "",
+        "Delegates to `admin::remove_admin` to remove an admin from the admin list.",
+        "Only the boss can call this instruction to remove admins.",
+        "# Arguments",
+        "- `ctx`: Context for `RemoveAdmin`.",
+        "- `admin_to_remove`: Public key of the admin to be removed."
+      ],
+      "discriminator": [
+        74,
+        202,
+        71,
+        106,
+        252,
+        31,
+        72,
+        183
+      ],
+      "accounts": [
+        {
+          "name": "adminState",
+          "docs": [
+            "Admin state account containing the list of admins."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  100,
+                  109,
+                  105,
+                  110,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss calling this function."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "adminToRemove",
+          "type": "pubkey"
         }
       ]
     },
@@ -4289,6 +4534,19 @@ export type Onreapp = {
   ],
   "accounts": [
     {
+      "name": "adminState",
+      "discriminator": [
+        190,
+        42,
+        124,
+        96,
+        242,
+        52,
+        141,
+        28
+      ]
+    },
+    {
       "name": "buyOfferAccount",
       "discriminator": [
         133,
@@ -4572,6 +4830,23 @@ export type Onreapp = {
     }
   ],
   "types": [
+    {
+      "name": "adminState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admins",
+            "type": {
+              "array": [
+                "pubkey",
+                20
+              ]
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "bossUpdated",
       "docs": [

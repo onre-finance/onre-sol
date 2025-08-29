@@ -17,4 +17,7 @@ pub mod seeds {
     
     /// Seed for the permissionless intermediary authority account
     pub const PERMISSIONLESS_1: &[u8] = b"permissionless-1";
+
+    /// Seed for the admin state account
+    pub const ADMIN_STATE: &[u8] = b"admin_state";
 }

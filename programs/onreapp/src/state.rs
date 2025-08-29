@@ -22,3 +22,11 @@ pub struct PermissionlessAccount {
     #[max_len(50)]
     pub name: String,
 }
+
+#[account]
+#[derive(InitSpace)]
+pub struct AdminState {
+    pub admins: [Pubkey; MAX_ADMINS],
+}
+
+pub const MAX_ADMINS: usize = 20;
