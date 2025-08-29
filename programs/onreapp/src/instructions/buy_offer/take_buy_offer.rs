@@ -52,8 +52,8 @@ pub struct TakeBuyOffer<'info> {
     /// CHECK: This account is validated through the constraint above
     pub boss: UncheckedAccount<'info>,
 
-    /// The vault authority PDA that controls vault token accounts
-    #[account(seeds = [seeds::VAULT_AUTHORITY], bump)]
+    /// The buy offer vault authority PDA that controls vault token accounts
+    #[account(seeds = [seeds::BUY_OFFER_VAULT_AUTHORITY], bump)]
     /// CHECK: This is safe as it's a PDA used for signing
     pub vault_authority: UncheckedAccount<'info>,
 

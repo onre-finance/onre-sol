@@ -14,7 +14,15 @@ pub struct State {
 
 #[account]
 #[derive(InitSpace)]
-pub struct VaultAuthority {}
+pub struct BuyOfferVaultAuthority {}
+
+#[account]
+#[derive(InitSpace)]
+pub struct SingleRedemptionVaultAuthority {}
+
+#[account]
+#[derive(InitSpace)]
+pub struct DualRedemptionVaultAuthority {}
 
 #[account]
 #[derive(InitSpace)]
