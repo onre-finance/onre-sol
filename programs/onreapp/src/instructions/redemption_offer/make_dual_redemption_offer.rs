@@ -1,6 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::DualRedemptionOfferAccount;
 use crate::state::State;
+use crate::utils::MAX_BASIS_POINTS;
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
 
@@ -79,12 +80,12 @@ pub fn make_dual_redemption_offer(
     fee_basis_points: u64,
 ) -> Result<()> {
     // Validate ratio is within valid range (0-10000 basis points = 0-100%)
-    if ratio_basis_points > 10000 {
+    if ratio_basis_points > MAX_BASIS_POINTS {
         return Err(error!(DualRedemptionOfferErrorCode::InvalidRatio));
     }
 
     // Validate fee is within valid range (0-10000 basis points = 0-100%)
-    if fee_basis_points > 10000 {
+    if fee_basis_points > MAX_BASIS_POINTS {
         return Err(error!(DualRedemptionOfferErrorCode::InvalidFee));
     }
 
@@ -122,7 +123,7 @@ pub fn make_dual_redemption_offer(
         end_time
     );
 
-    emit!(DualRedemptionOfferMadeEvent{
+    emit!(DualRedemptionOfferMadeEvent {
         offer_id,
         start_time,
         end_time,

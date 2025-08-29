@@ -326,7 +326,7 @@ describe("Take Buy Offer Permissionless", () => {
             const expectedTokenInAmount = new BN(1_000_100); // 1.0001 USDC (6 decimals)
 
             await testHelper.program.methods
-                .takeBuyOffer(offerId, expectedTokenInAmount)
+                .takeBuyOfferPermissionless(offerId, expectedTokenInAmount)
                 .accounts({
                     state: testHelper.statePda,
                     boss: boss,
