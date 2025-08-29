@@ -4,7 +4,7 @@ import os from "os";
 import path from "path";
 import bs58 from "bs58";
 
-import { RPC_URL } from "./script-commons";
+import { RPC_URL } from "../utils/script-commons";
 
 // Function to load wallet from ~/.config/solana/id.json
 function loadWalletKey(): Keypair {
