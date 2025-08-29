@@ -537,7 +537,7 @@ describe("Take Buy Offer Permissionless", () => {
                     offerId,
                     new BN(currentTime),
                     new BN(1e6), // Very low price = 0.001 USDC per token
-                    new BN(1), // Minimum allowed yield (not zero)
+                    new BN(0), // Zero yield for fixed price
                     new BN(86400)
                 )
                 .accounts({state: testHelper.statePda})
@@ -716,7 +716,7 @@ describe("Take Buy Offer Permissionless", () => {
     });
 
     describe("Edge Cases", () => {
-        it("Should handle minimal yield correctly", async () => {
+        it("Should handle zero yield (fixed price) correctly", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await testHelper.program.methods
@@ -724,7 +724,7 @@ describe("Take Buy Offer Permissionless", () => {
                     offerId,
                     new BN(currentTime),
                     new BN(1e9),
-                    new BN(1), // Minimal yield
+                    new BN(0), // Zero yield for fixed price
                     new BN(86400)
                 )
                 .accounts({state: testHelper.statePda})
@@ -752,8 +752,7 @@ describe("Take Buy Offer Permissionless", () => {
             const userBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
             const receivedTokens = userBalanceAfter - userBalanceBefore;
-            expect(receivedTokens).toBeGreaterThan(BigInt(990_000_000));
-            expect(receivedTokens).toBeLessThan(BigInt(1_010_000_000));
+            expect(receivedTokens).toEqual(BigInt(1_000_000_000));
         });
 
         it("Should handle high yield over long time period with precision", async () => {
@@ -792,8 +791,7 @@ describe("Take Buy Offer Permissionless", () => {
             const userBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
             const receivedTokens = userBalanceAfter - userBalanceBefore;
-            expect(receivedTokens).toBeGreaterThan(BigInt(990_000_000));
-            expect(receivedTokens).toBeLessThan(BigInt(1_010_000_000));
+            expect(receivedTokens).toEqual(BigInt(1_000_000_000));
         });
     });
 });

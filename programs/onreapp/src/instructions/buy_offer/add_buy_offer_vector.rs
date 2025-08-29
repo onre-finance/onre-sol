@@ -64,13 +64,7 @@ pub fn add_buy_offer_vector(
 
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    validate_inputs(
-        offer_id,
-        start_time,
-        start_price,
-        price_yield,
-        price_fix_duration,
-    )?;
+    validate_inputs(offer_id, start_time, start_price, price_fix_duration)?;
 
     // Find the offer by offer_id
     let offer = find_offer_mut(buy_offer_account, offer_id)?;
@@ -141,14 +135,12 @@ fn validate_inputs(
     offer_id: u64,
     start_time: u64,
     start_price: u64,
-    price_yield: u64,
     price_fix_duration: u64,
 ) -> Result<()> {
     // Validate input parameters
     require!(offer_id > 0, AddBuyOfferVectorErrorCode::ZeroValue);
     require!(start_time > 0, AddBuyOfferVectorErrorCode::ZeroValue);
     require!(start_price > 0, AddBuyOfferVectorErrorCode::ZeroValue);
-    require!(price_yield > 0, AddBuyOfferVectorErrorCode::ZeroValue);
     require!(
         price_fix_duration > 0,
         AddBuyOfferVectorErrorCode::ZeroValue

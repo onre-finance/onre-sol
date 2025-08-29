@@ -273,7 +273,7 @@ describe("Add Buy Offer Vector", () => {
         ).rejects.toThrow("Invalid input: values cannot be zero");
     });
 
-    it("Should reject zero price_yield", async () => {
+    it("Should allow zero price_yield", async () => {
         const offerId = new BN(1);
         await testHelper.makeBuyOffer({
             tokenInMint,
@@ -282,20 +282,29 @@ describe("Add Buy Offer Vector", () => {
 
         const currentTime = await testHelper.getCurrentClockTime();
 
-        await expect(
-            testHelper.program.methods
-                .addBuyOfferVector(
-                    offerId,
-                    new BN(currentTime + 1000),
-                    new BN(1000000),
-                    new BN(0), // Invalid: zero price_yield
-                    new BN(3600)
-                )
-                .accounts({
-                    state: testHelper.statePda,
-                })
-                .rpc()
-        ).rejects.toThrow("Invalid input: values cannot be zero");
+        await testHelper.program.methods
+            .addBuyOfferVector(
+                offerId,
+                new BN(currentTime + 1000),
+                new BN(1000000),
+                new BN(0), // Invalid: zero price_yield
+                new BN(3600)
+            )
+            .accounts({
+                state: testHelper.statePda,
+            })
+            .rpc();
+
+        // Verify vector was added correctly
+        const [buyOffersPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("buy_offers")],
+            ONREAPP_PROGRAM_ID
+        );
+        const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
+        const offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
+        const vector = offer.vectors[0];
+
+        expect(vector.priceYield.toString()).toBe("0");
     });
 
     it("Should reject zero price_fix_duration", async () => {
