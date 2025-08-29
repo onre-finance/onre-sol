@@ -8,6 +8,7 @@ use anchor_spl::token::Mint;
 #[event]
 pub struct BuyOfferMadeEvent {
     pub offer_id: u64,
+    pub fee_basis_points: u64,
     pub boss: Pubkey,
 }
 
@@ -49,21 +50,17 @@ pub struct MakeBuyOffer<'info> {
 ///
 /// # Arguments
 /// - `ctx`: Context containing the accounts for the offer.
-/// - `offer_id`: Unique identifier for the offer.
-/// - `token_in_amount`: Total amount of the token_in to be offered.
-/// - `start_price`: Price at the beginning of the offer.
-/// - `end_price`: Price at the end of the offer.
-/// - `start_time`: Unix timestamp for when the offer becomes active.
-/// - `end_time`: Unix timestamp for when the offer expires.
-/// - `price_fix_duration`: Duration in seconds for each price interval.
+/// - `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer.
 ///
 /// # Errors
-/// - [`MakeBuyOfferErrorCode::InsufficientBalance`] if the boss lacks sufficient `token_in_amount`.
-/// - [`MakeBuyOfferErrorCode::InvalidAmount`] if amounts are zero or invalid.
-/// - [`MakeBuyOfferErrorCode::InvalidOfferTime`] if times are invalid.
-/// - [`MakeBuyOfferErrorCode::InvalidPriceFixDuration`] if duration is invalid.
 /// - [`MakeBuyOfferErrorCode::AccountFull`] if the BuyOfferAccount is full.
-pub fn make_buy_offer(ctx: Context<MakeBuyOffer>) -> Result<()> {
+/// - [`MakeBuyOfferErrorCode::InvalidFee`] if fee_basis_points > 10000.
+pub fn make_buy_offer(ctx: Context<MakeBuyOffer>, fee_basis_points: u64) -> Result<()> {
+    // Validate fee is within valid range (0-10000 basis points = 0-100%)
+    if fee_basis_points > 10000 {
+        return Err(error!(MakeBuyOfferErrorCode::InvalidFee));
+    }
+
     let buy_offer_account = &mut ctx.accounts.buy_offer_account.load_mut()?;
 
     // Find the next available slot
@@ -82,11 +79,13 @@ pub fn make_buy_offer(ctx: Context<MakeBuyOffer>) -> Result<()> {
     buy_offer.offer_id = offer_id;
     buy_offer.token_in_mint = ctx.accounts.token_in_mint.key();
     buy_offer.token_out_mint = ctx.accounts.token_out_mint.key();
+    buy_offer.fee_basis_points = fee_basis_points;
 
     msg!("Buy offer created with ID: {}", offer_id);
 
     emit!(BuyOfferMadeEvent {
         offer_id,
+        fee_basis_points,
         boss: ctx.accounts.boss.key(),
     });
 
@@ -99,4 +98,7 @@ pub enum MakeBuyOfferErrorCode {
     /// Triggered when the BuyOfferAccount is full.
     #[msg("Buy offer account is full, cannot create more offers")]
     AccountFull,
+    /// Triggered when fee_basis_points is greater than 10000.
+    #[msg("Invalid fee: fee_basis_points must be <= 10000")]
+    InvalidFee,
 }

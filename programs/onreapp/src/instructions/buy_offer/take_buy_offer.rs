@@ -1,10 +1,8 @@
 use crate::constants::seeds;
-use crate::instructions::buy_offer::buy_offer_utils::{
-    execute_direct_transfers, process_buy_offer_core,
-};
+use crate::instructions::buy_offer::buy_offer_utils::{find_offer, process_buy_offer_core};
 use crate::instructions::BuyOfferAccount;
 use crate::state::State;
-use crate::utils::u64_to_dec9;
+use crate::utils::{transfer_tokens, u64_to_dec9};
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token::{Mint, Token, TokenAccount};
@@ -14,6 +12,8 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 pub enum TakeBuyOfferErrorCode {
     #[msg("Invalid boss account")]
     InvalidBoss,
+    #[msg("Math overflow")]
+    MathOverflow,
 }
 
 /// Event emitted when a buy offer is successfully taken
@@ -21,10 +21,12 @@ pub enum TakeBuyOfferErrorCode {
 pub struct TakeBuyOfferEvent {
     /// The ID of the buy offer that was taken
     pub offer_id: u64,
-    /// Amount of token_in paid by the user
+    /// Amount of token_in paid by the user (including fee)
     pub token_in_amount: u64,
     /// Amount of token_out received by the user
     pub token_out_amount: u64,
+    /// Fee amount paid by the user in token_in
+    pub fee_amount: u64,
     /// Public key of the user who took the offer
     pub user: Pubkey,
 }
@@ -138,35 +140,60 @@ pub fn take_buy_offer(
     offer_id: u64,
     token_in_amount: u64,
 ) -> Result<()> {
-    let offer_account = ctx.accounts.buy_offer_account.load_mut()?;
+    let offer_account = ctx.accounts.buy_offer_account.load()?;
 
-    // Use shared core processing logic
+    // Find the offer to get fee information
+    let offer = find_offer(&offer_account, offer_id)?;
+
+    // Calculate fee amount in token_in tokens
+    let fee_amount = (token_in_amount as u128)
+        .checked_mul(offer.fee_basis_points as u128)
+        .ok_or(TakeBuyOfferErrorCode::MathOverflow)?
+        .checked_div(10000)
+        .ok_or(TakeBuyOfferErrorCode::MathOverflow)? as u64;
+
+    // Amount after fee deduction for the main offer exchange
+    let remaining_token_in_amount = token_in_amount
+        .checked_sub(fee_amount)
+        .ok_or(TakeBuyOfferErrorCode::MathOverflow)?;
+
+    // Use shared core processing logic for main exchange amount
     let result = process_buy_offer_core(
         &offer_account,
         offer_id,
-        token_in_amount,
+        remaining_token_in_amount,
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
     )?;
 
-    // Execute direct transfers
-    execute_direct_transfers(
-        &ctx.accounts.user,
+    // Transfer full token_in amount (including fee) from user to boss in single transaction
+    transfer_tokens(
+        &ctx.accounts.token_program,
         &ctx.accounts.user_token_in_account,
         &ctx.accounts.boss_token_in_account,
-        &ctx.accounts.vault_authority,
+        &ctx.accounts.user,
+        None,
+        token_in_amount,
+    )?;
+
+    // Transfer token_out from vault to user using vault authority
+    let vault_authority_seeds = &[seeds::VAULT_AUTHORITY, &[ctx.bumps.vault_authority]];
+    let signer_seeds = &[vault_authority_seeds.as_slice()];
+
+    transfer_tokens(
+        &ctx.accounts.token_program,
         &ctx.accounts.vault_token_out_account,
         &ctx.accounts.user_token_out_account,
-        &ctx.accounts.token_program,
-        ctx.bumps.vault_authority,
-        token_in_amount,
+        &ctx.accounts.vault_authority,
+        Some(signer_seeds),
         result.token_out_amount,
     )?;
 
     msg!(
-        "Buy offer taken - ID: {}, token_in: {}, token_out: {}, user: {}, price: {}",
+        "Buy offer taken - ID: {}, token_in: {}, fee: {}, token_out: {}, user: {}, price: {}",
         offer_id,
         token_in_amount,
+        fee_amount,
         result.token_out_amount,
         ctx.accounts.user.key,
         u64_to_dec9(result.current_price)
@@ -176,6 +203,7 @@ pub fn take_buy_offer(
         offer_id,
         token_in_amount,
         token_out_amount: result.token_out_amount,
+        fee_amount,
         user: ctx.accounts.user.key(),
     });
 

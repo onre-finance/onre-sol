@@ -871,7 +871,7 @@ export type Onreapp = {
         "",
         "# Arguments",
         "- `ctx`: Context for `MakeBuyOffer`.",
-        "- `offer_id`: Unique ID for the offer."
+        "- `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer."
       ],
       "discriminator": [
         252,
@@ -947,7 +947,12 @@ export type Onreapp = {
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "feeBasisPoints",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "makeDualRedemptionOffer",
@@ -965,7 +970,8 @@ export type Onreapp = {
         "- `end_time`: Unix timestamp for when the offer expires.",
         "- `price_1`: Fixed price for token_out_1 with 9 decimal precision.",
         "- `price_2`: Fixed price for token_out_2 with 9 decimal precision.",
-        "- `ratio_basis_points`: Ratio in basis points for token_out_1 (e.g., 8000 = 80% for token_out_1, 20% for token_out_2)."
+        "- `ratio_basis_points`: Ratio in basis points for token_out_1 (e.g., 8000 = 80% for token_out_1, 20% for token_out_2).",
+        "- `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer."
       ],
       "discriminator": [
         118,
@@ -1079,6 +1085,10 @@ export type Onreapp = {
         {
           "name": "ratioBasisPoints",
           "type": "u64"
+        },
+        {
+          "name": "feeBasisPoints",
+          "type": "u64"
         }
       ]
     },
@@ -1095,7 +1105,8 @@ export type Onreapp = {
         "- `ctx`: Context for `MakeSingleRedemptionOffer`.",
         "- `start_time`: Unix timestamp for when the offer becomes active.",
         "- `end_time`: Unix timestamp for when the offer expires.",
-        "- `price`: How much token_in needed for 1 token_out, with 9 decimal precision."
+        "- `price`: How much token_in needed for 1 token_out, with 9 decimal precision.",
+        "- `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer."
       ],
       "discriminator": [
         166,
@@ -1196,6 +1207,10 @@ export type Onreapp = {
         },
         {
           "name": "price",
+          "type": "u64"
+        },
+        {
+          "name": "feeBasisPoints",
           "type": "u64"
         }
       ]
@@ -4637,6 +4652,10 @@ export type Onreapp = {
           {
             "name": "counter",
             "type": "u64"
+          },
+          {
+            "name": "feeBasisPoints",
+            "type": "u64"
           }
         ]
       }
@@ -4683,6 +4702,10 @@ export type Onreapp = {
         "fields": [
           {
             "name": "offerId",
+            "type": "u64"
+          },
+          {
+            "name": "feeBasisPoints",
             "type": "u64"
           },
           {
@@ -4898,6 +4921,10 @@ export type Onreapp = {
           {
             "name": "ratioBasisPoints",
             "type": "u64"
+          },
+          {
+            "name": "feeBasisPoints",
+            "type": "u64"
           }
         ]
       }
@@ -4967,6 +4994,10 @@ export type Onreapp = {
             "type": "u64"
           },
           {
+            "name": "feeBasisPoints",
+            "type": "u64"
+          },
+          {
             "name": "boss",
             "type": "pubkey"
           }
@@ -5019,6 +5050,10 @@ export type Onreapp = {
           },
           {
             "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "feeBasisPoints",
             "type": "u64"
           }
         ]
@@ -5081,6 +5116,10 @@ export type Onreapp = {
             "type": "u64"
           },
           {
+            "name": "feeBasisPoints",
+            "type": "u64"
+          },
+          {
             "name": "boss",
             "type": "pubkey"
           }
@@ -5125,7 +5164,7 @@ export type Onreapp = {
           {
             "name": "tokenInAmount",
             "docs": [
-              "Amount of token_in paid by the user"
+              "Amount of token_in paid by the user (including fee)"
             ],
             "type": "u64"
           },
@@ -5133,6 +5172,13 @@ export type Onreapp = {
             "name": "tokenOutAmount",
             "docs": [
               "Amount of token_out received by the user"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "feeAmount",
+            "docs": [
+              "Fee amount paid by the user in token_in"
             ],
             "type": "u64"
           },
@@ -5207,6 +5253,10 @@ export type Onreapp = {
             "type": "u64"
           },
           {
+            "name": "feeAmount",
+            "type": "u64"
+          },
+          {
             "name": "user",
             "type": "pubkey"
           }
@@ -5228,6 +5278,10 @@ export type Onreapp = {
           },
           {
             "name": "tokenOutAmount",
+            "type": "u64"
+          },
+          {
+            "name": "feeAmount",
             "type": "u64"
           },
           {

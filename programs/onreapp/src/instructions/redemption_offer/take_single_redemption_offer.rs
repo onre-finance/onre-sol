@@ -28,6 +28,7 @@ pub struct TakeSingleRedemptionOfferEvent {
     pub offer_id: u64,
     pub token_in_amount: u64,
     pub token_out_amount: u64,
+    pub fee_amount: u64,
     pub user: Pubkey,
 }
 
@@ -131,9 +132,21 @@ pub fn take_single_redemption_offer(
     // Validate the offer
     validate_offer(&ctx, &offer)?;
     
-    // Calculate token_out_amount
+    // Calculate fee amount in token_in tokens
+    let fee_amount = (token_in_amount as u128)
+        .checked_mul(offer.fee_basis_points as u128)
+        .ok_or(TakeSingleRedemptionOfferErrorCode::MathOverflow)?
+        .checked_div(10000)
+        .ok_or(TakeSingleRedemptionOfferErrorCode::MathOverflow)? as u64;
+
+    // Amount after fee deduction for the main offer exchange
+    let remaining_token_in_amount = token_in_amount
+        .checked_sub(fee_amount)
+        .ok_or(TakeSingleRedemptionOfferErrorCode::MathOverflow)?;
+    
+    // Calculate token_out_amount based on remaining amount after fee
     let token_out_amount = calculate_token_out_amount(
-        token_in_amount,
+        remaining_token_in_amount,
         offer.price,
         ctx.accounts.token_in_mint.decimals,
         ctx.accounts.token_out_mint.decimals,
@@ -143,9 +156,10 @@ pub fn take_single_redemption_offer(
     execute_transfers(&ctx, token_in_amount, token_out_amount)?;
     
     msg!(
-        "Redemption offer taken - ID: {}, token_in: {}, token_out: {}, user: {}",
+        "Redemption offer taken - ID: {}, token_in: {}, fee: {}, token_out: {}, user: {}",
         offer_id,
         token_in_amount,
+        fee_amount,
         token_out_amount,
         ctx.accounts.user.key()
     );
@@ -155,6 +169,7 @@ pub fn take_single_redemption_offer(
         offer_id,
         token_in_amount,
         token_out_amount,
+        fee_amount,
         user: ctx.accounts.user.key(),
     });
 
@@ -208,20 +223,20 @@ fn validate_offer(
 }
 
 
-/// Executes both token transfers (user to boss, vault to user)
+/// Executes token transfers (single transfer for total amount including fee)
 fn execute_transfers(
     ctx: &Context<TakeSingleRedemptionOffer>,
-    token_in_amount: u64,
+    total_token_in_amount: u64,
     token_out_amount: u64,
 ) -> Result<()> {
-    // Transfer token_in from user to boss
+    // Transfer total token_in from user to boss (includes fee)
     transfer_tokens(
         &ctx.accounts.token_program,
         &ctx.accounts.user_token_in_account,
         &ctx.accounts.boss_token_in_account,
         &ctx.accounts.user,
         None,
-        token_in_amount,
+        total_token_in_amount,
     )?;
     
     // Transfer token_out from vault to user using vault authority

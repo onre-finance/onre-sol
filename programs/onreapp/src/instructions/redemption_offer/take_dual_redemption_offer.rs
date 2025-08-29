@@ -31,6 +31,7 @@ pub struct TakeDualRedemptionOfferEvent {
     pub token_in_amount: u64,
     pub token_out_1_amount: u64,
     pub token_out_2_amount: u64,
+    pub fee_amount: u64,
     pub user: Pubkey,
 }
 
@@ -154,9 +155,21 @@ pub fn take_dual_redemption_offer(
     // Validate the offer
     validate_offer(&ctx, &offer)?;
     
-    // Calculate token_out amounts based on ratio and prices
+    // Calculate fee amount in token_in tokens
+    let fee_amount = (token_in_amount as u128)
+        .checked_mul(offer.fee_basis_points as u128)
+        .ok_or(TakeDualRedemptionOfferErrorCode::MathOverflow)?
+        .checked_div(10000)
+        .ok_or(TakeDualRedemptionOfferErrorCode::MathOverflow)? as u64;
+
+    // Amount after fee deduction for the main offer exchange
+    let remaining_token_in_amount = token_in_amount
+        .checked_sub(fee_amount)
+        .ok_or(TakeDualRedemptionOfferErrorCode::MathOverflow)?;
+    
+    // Calculate token_out amounts based on remaining amount after fee
     let (token_out_1_amount, token_out_2_amount) = calculate_token_out_amounts(
-        token_in_amount,
+        remaining_token_in_amount,
         offer.price_1,
         offer.price_2,
         offer.ratio_basis_points,
@@ -169,9 +182,10 @@ pub fn take_dual_redemption_offer(
     execute_transfers(&ctx, token_in_amount, token_out_1_amount, token_out_2_amount)?;
     
     msg!(
-        "Dual redemption offer taken - ID: {}, token_in: {}, token_out_1: {}, token_out_2: {}, user: {}",
+        "Dual redemption offer taken - ID: {}, token_in: {}, fee: {}, token_out_1: {}, token_out_2: {}, user: {}",
         offer_id,
         token_in_amount,
+        fee_amount,
         token_out_1_amount,
         token_out_2_amount,
         ctx.accounts.user.key()
@@ -183,6 +197,7 @@ pub fn take_dual_redemption_offer(
         token_in_amount,
         token_out_1_amount,
         token_out_2_amount,
+        fee_amount,
         user: ctx.accounts.user.key(),
     });
 
@@ -294,21 +309,21 @@ fn calculate_token_out_amounts(
 }
 
 
-/// Executes all token transfers (user to boss, vault to user for both output tokens)
+/// Executes all token transfers (single transfer for total amount including fee)
 fn execute_transfers(
     ctx: &Context<TakeDualRedemptionOffer>,
-    token_in_amount: u64,
+    total_token_in_amount: u64,
     token_out_1_amount: u64,
     token_out_2_amount: u64,
 ) -> Result<()> {
-    // Transfer token_in from user to boss
+    // Transfer total token_in from user to boss (includes fee)
     transfer_tokens(
         &ctx.accounts.token_program,
         &ctx.accounts.user_token_in_account,
         &ctx.accounts.boss_token_in_account,
         &ctx.accounts.user,
         None,
-        token_in_amount,
+        total_token_in_amount,
     )?;
     
     // Prepare vault authority seeds for signing transfers from vault
