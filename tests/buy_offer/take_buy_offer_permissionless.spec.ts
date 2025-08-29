@@ -6,7 +6,7 @@ import {BankrunProvider} from "anchor-bankrun";
 import {BN, Program} from "@coral-xyz/anchor";
 import idl from "../../target/idl/onreapp.json";
 
-describe("Take Buy Offer", () => {
+describe("Take Buy Offer Permissionless", () => {
     let testHelper: TestHelper;
     let tokenInMint: PublicKey;
     let tokenOutMint: PublicKey;
@@ -17,6 +17,9 @@ describe("Take Buy Offer", () => {
     let bossTokenInAccount: PublicKey;
     let vaultAuthorityPda: PublicKey;
     let vaultTokenOutAccount: PublicKey;
+    let permissionlessAuthorityPda: PublicKey;
+    let permissionlessTokenInAccount: PublicKey;
+    let permissionlessTokenOutAccount: PublicKey;
     let offerId: BN;
 
     beforeEach(async () => {
@@ -75,16 +78,32 @@ describe("Take Buy Offer", () => {
             ONREAPP_PROGRAM_ID
         );
 
+        // Initialize permissionless authority
+        [permissionlessAuthorityPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("permissionless-1")],
+            ONREAPP_PROGRAM_ID
+        );
+
+        await testHelper.program.methods
+            .initializePermissionlessAccount("test-account")
+            .accounts({
+                state: testHelper.statePda,
+            })
+            .rpc();
+
         // Create user accounts
         user = testHelper.createUserAccount();
         userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(10_000e6), true);
         userTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, user.publicKey, BigInt(0), true);
         bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
 
-        // Create and fund vault
+        // Create vault and permissionless intermediary accounts
         vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, vaultAuthorityPda, BigInt(0), true);
-        const bossTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, boss, BigInt(10_000e9));
+        permissionlessTokenInAccount = testHelper.createTokenAccount(tokenInMint, permissionlessAuthorityPda, BigInt(0), true);
+        permissionlessTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, permissionlessAuthorityPda, BigInt(0), true);
 
+        // Fund vault
+        const bossTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, boss, BigInt(10_000e9));
         await testHelper.program.methods
             .vaultDeposit(new BN(5_000e9))
             .accounts({
@@ -94,14 +113,14 @@ describe("Take Buy Offer", () => {
             .rpc();
     });
 
-    describe("Price Calculation Tests", () => {
-        it("Should calculate correct price in first interval", async () => {
+    describe("Basic Functionality Tests", () => {
+        it("Should successfully execute permissionless buy offer", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
-            // Add vector: start_price = 1.0 (1e9), APRÏ = 3.65% (36500), duration = 1 day
-            const startPrice = new BN(1e9); // 1.0 with 9 decimals
-            const apr = new BN(36_500); // 3.65% APR (scaled by 1M)
-            const priceFixDuration = new BN(86400); // 1 day
+            // Add vector: start_price = 1.0 (1e9), APR = 3.65% (36500), duration = 1 day
+            const startPrice = new BN(1e9);
+            const apr = new BN(36_500);
+            const priceFixDuration = new BN(86400);
             const startTime = new BN(currentTime);
 
             await testHelper.program.methods
@@ -109,15 +128,162 @@ describe("Take Buy Offer", () => {
                 .accounts({state: testHelper.statePda})
                 .rpc();
 
-            // Price in first interval should be: 1.0 * (1 + 0.0365 * (1 * 86400) / (365*24*3600))
-            // = 1.0 * (1 + 0.0365 * 1/365) = 1.0 * 1.0001 = 1.0001
+            const expectedTokenInAmount = new BN(1_000_100); // 1.0001 USDC
 
-            const expectedTokenInAmount = new BN(1_000_100); // 1.0001 USDC (6 decimals)
+            // Execute permissionless buy offer
+            await testHelper.program.methods
+                .takeBuyOfferPermissionless(offerId, expectedTokenInAmount)
+                .accounts({
+                    state: testHelper.statePda,
+                    boss: boss,
+                    tokenInMint: tokenInMint,
+                    tokenOutMint: tokenOutMint,
+                    user: user.publicKey,
+                })
+                .signers([user])
+                .rpc();
+
+            // Verify user received tokens
+            const userTokenOutBalance = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+            expect(userTokenOutBalance).toBe(BigInt(1e9));
+        });
+
+        it("Should complete 4-step transfer process correctly", async () => {
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            await testHelper.program.methods
+                .addBuyOfferVector(
+                    offerId,
+                    new BN(currentTime),
+                    new BN(1e9),
+                    new BN(36_500),
+                    new BN(86400)
+                )
+                .accounts({state: testHelper.statePda})
+                .rpc();
+
+            const tokenInAmount = new BN(1_000_100);
+
+            // Get balances before transaction
+            const userTokenInBefore = await testHelper.getTokenAccountBalance(userTokenInAccount);
+            const userTokenOutBefore = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+            const bossTokenInBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+            const vaultTokenOutBefore = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+            const permissionlessTokenInBefore = await testHelper.getTokenAccountBalance(permissionlessTokenInAccount);
+            const permissionlessTokenOutBefore = await testHelper.getTokenAccountBalance(permissionlessTokenOutAccount);
+
+            await testHelper.program.methods
+                .takeBuyOfferPermissionless(offerId, tokenInAmount)
+                .accounts({
+                    state: testHelper.statePda,
+                    boss: boss,
+                    tokenInMint: tokenInMint,
+                    tokenOutMint: tokenOutMint,
+                    user: user.publicKey,
+                })
+                .signers([user])
+                .rpc();
+
+            // Get balances after transaction
+            const userTokenInAfter = await testHelper.getTokenAccountBalance(userTokenInAccount);
+            const userTokenOutAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+            const bossTokenInAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+            const vaultTokenOutAfter = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+            const permissionlessTokenInAfter = await testHelper.getTokenAccountBalance(permissionlessTokenInAccount);
+            const permissionlessTokenOutAfter = await testHelper.getTokenAccountBalance(permissionlessTokenOutAccount);
+
+            // Verify all transfers
+            expect(userTokenInBefore - userTokenInAfter).toBe(BigInt(tokenInAmount.toNumber())); // User paid token_in
+            expect(userTokenOutAfter - userTokenOutBefore).toBe(BigInt(1e9)); // User received token_out
+            expect(bossTokenInAfter - bossTokenInBefore).toBe(BigInt(tokenInAmount.toNumber())); // Boss received token_in
+            expect(vaultTokenOutBefore - vaultTokenOutAfter).toBe(BigInt(1e9)); // Vault gave token_out
+
+            // Verify intermediary accounts are empty (no residual balances)
+            expect(permissionlessTokenInAfter).toBe(permissionlessTokenInBefore); // Should be 0
+            expect(permissionlessTokenOutAfter).toBe(permissionlessTokenOutBefore); // Should be 0
+        });
+
+        it("Should APR identical results to direct take_buy_offer", async () => {
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            await testHelper.program.methods
+                .addBuyOfferVector(
+                    offerId,
+                    new BN(currentTime),
+                    new BN(1e9),
+                    new BN(36_500),
+                    new BN(86400)
+                )
+                .accounts({state: testHelper.statePda})
+                .rpc();
+
+            const tokenInAmount = new BN(1_000_100);
+
+            // Create second user for direct comparison
+            const user2 = testHelper.createUserAccount();
+            const user2TokenInAccount = testHelper.createTokenAccount(tokenInMint, user2.publicKey, BigInt(10_000e6), true);
+            const user2TokenOutAccount = testHelper.createTokenAccount(tokenOutMint, user2.publicKey, BigInt(0), true);
+
+            // Execute both transactions at the same time
+            const user1BalanceBefore = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+            const user2BalanceBefore = await testHelper.getTokenAccountBalance(user2TokenOutAccount);
+
+            // Execute permissionless flow
+            await testHelper.program.methods
+                .takeBuyOfferPermissionless(offerId, tokenInAmount)
+                .accounts({
+                    state: testHelper.statePda,
+                    boss: boss,
+                    tokenInMint: tokenInMint,
+                    tokenOutMint: tokenOutMint,
+                    user: user.publicKey,
+                })
+                .signers([user])
+                .rpc();
+
+            // Execute direct flow
+            await testHelper.program.methods
+                .takeBuyOffer(offerId, tokenInAmount)
+                .accounts({
+                    state: testHelper.statePda,
+                    boss: boss,
+                    tokenInMint: tokenInMint,
+                    tokenOutMint: tokenOutMint,
+                    user: user2.publicKey,
+                })
+                .signers([user2])
+                .rpc();
+
+            const user1BalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+            const user2BalanceAfter = await testHelper.getTokenAccountBalance(user2TokenOutAccount);
+
+            // Both should receive identical amounts
+            const user1Received = user1BalanceAfter - user1BalanceBefore;
+            const user2Received = user2BalanceAfter - user2BalanceBefore;
+            expect(user1Received).toBe(user2Received);
+        });
+    });
+
+    describe("Price Calculation Tests", () => {
+        it("Should calculate correct price in first interval", async () => {
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            const startPrice = new BN(1e9);
+            const apr = new BN(36_500);
+            const priceFixDuration = new BN(86400);
+            const startTime = new BN(currentTime);
+
+            await testHelper.program.methods
+                .addBuyOfferVector(offerId, startTime, startPrice, apr, priceFixDuration)
+                .accounts({state: testHelper.statePda})
+                .rpc();
+
+            const expectedTokenInAmount = new BN(1_000_100); // 1.0001 USDC
 
             const userTokenOutBalanceBefore = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
             await testHelper.program.methods
-                .takeBuyOffer(offerId, expectedTokenInAmount)
+                .takeBuyOfferPermissionless(offerId, expectedTokenInAmount)
                 .accounts({
                     state: testHelper.statePda,
                     boss: boss,
@@ -137,13 +303,14 @@ describe("Take Buy Offer", () => {
         it("Should maintain price within same interval", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
-            const startPrice = new BN(1e9);
-            const apr = new BN(36_500);
-            const priceFixDuration = new BN(86400);
-            const startTime = new BN(currentTime);
-
             await testHelper.program.methods
-                .addBuyOfferVector(offerId, startTime, startPrice, apr, priceFixDuration)
+                .addBuyOfferVector(
+                    offerId,
+                    new BN(currentTime),
+                    new BN(1e9),
+                    new BN(36_500),
+                    new BN(86400)
+                )
                 .accounts({state: testHelper.statePda})
                 .rpc();
 
@@ -151,7 +318,7 @@ describe("Take Buy Offer", () => {
 
             // First trade
             await testHelper.program.methods
-                .takeBuyOffer(offerId, expectedTokenInAmount)
+                .takeBuyOfferPermissionless(offerId, expectedTokenInAmount)
                 .accounts({
                     state: testHelper.statePda,
                     boss: boss,
@@ -165,14 +332,13 @@ describe("Take Buy Offer", () => {
             // Advance time within the same interval (less than 1 day)
             await testHelper.advanceClockBy(30_000); // 8 hours
 
-            // Second trade - should use same price
-            // Second user to workaround bankrun optimizing same transactions as one
+            // Second trade with different user
             const user2 = testHelper.createUserAccount();
             const user2TokenInAccount = testHelper.createTokenAccount(tokenInMint, user2.publicKey, BigInt(10_000e6), true);
             const user2TokenOutAccount = testHelper.createTokenAccount(tokenOutMint, user2.publicKey, BigInt(0), true);
 
             await testHelper.program.methods
-                .takeBuyOffer(offerId, expectedTokenInAmount)
+                .takeBuyOfferPermissionless(offerId, expectedTokenInAmount)
                 .accounts({
                     state: testHelper.statePda,
                     boss: boss,
@@ -186,7 +352,7 @@ describe("Take Buy Offer", () => {
             const user1Balance = await testHelper.getTokenAccountBalance(userTokenOutAccount);
             const user2Balance = await testHelper.getTokenAccountBalance(user2TokenOutAccount);
 
-            // Should receive another 1 token out
+            // Both should receive 1 token out
             expect(user1Balance).toBe(BigInt(1e9));
             expect(user2Balance).toBe(BigInt(1e9));
         });
@@ -194,28 +360,26 @@ describe("Take Buy Offer", () => {
         it("Should calculate higher price in second interval", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
-            const startPrice = new BN(1e9);
-            const apr = new BN(36_500);
-            const priceFixDuration = new BN(86400);
-            const startTime = new BN(currentTime);
-
             await testHelper.program.methods
-                .addBuyOfferVector(offerId, startTime, startPrice, apr, priceFixDuration)
+                .addBuyOfferVector(
+                    offerId,
+                    new BN(currentTime),
+                    new BN(1e9),
+                    new BN(36_500),
+                    new BN(86400)
+                )
                 .accounts({state: testHelper.statePda})
                 .rpc();
 
             // Advance to second interval
             await testHelper.advanceClockBy(86_400); // 1 day
 
-            // Price in second interval: 1.0 * (1 + 0.0365 * (2 * 86400) / (365*24*3600))
-            // = 1.0 * (1 + 0.0365 * 2/365) = 1.0 * 1.0002 = 1.0002
-
             const expectedTokenInAmount = new BN(1_000_200); // 1.0002 USDC
 
             const userBalanceBefore = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
             await testHelper.program.methods
-                .takeBuyOffer(offerId, expectedTokenInAmount)
+                .takeBuyOfferPermissionless(offerId, expectedTokenInAmount)
                 .accounts({
                     state: testHelper.statePda,
                     boss: boss,
@@ -231,9 +395,7 @@ describe("Take Buy Offer", () => {
             // Should receive 1 token out
             expect(userBalanceAfter - userBalanceBefore).toBe(BigInt(1e9));
         });
-    });
 
-    describe("Multiple Vectors Tests", () => {
         it("Should use most recent active vector", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
@@ -262,13 +424,12 @@ describe("Take Buy Offer", () => {
                 .rpc();
 
             // Should use the second vector's pricing
-            // Price = 2.0 * (1 + 0.073 * 1/365) ≈ 2.0004
             const expectedTokenInAmount = new BN(2_000_400);
 
             const userBalanceBefore = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
             await testHelper.program.methods
-                .takeBuyOffer(offerId, expectedTokenInAmount)
+                .takeBuyOfferPermissionless(offerId, expectedTokenInAmount)
                 .accounts({
                     state: testHelper.statePda,
                     boss: boss,
@@ -286,13 +447,13 @@ describe("Take Buy Offer", () => {
         });
     });
 
-    describe("Error Cases", () => {
+    describe("Error Handling Tests", () => {
         it("Should fail when offer does not exist", async () => {
             const nonExistentOfferId = new BN(999);
 
             await expect(
                 testHelper.program.methods
-                    .takeBuyOffer(nonExistentOfferId, new BN(1_000_000))
+                    .takeBuyOfferPermissionless(nonExistentOfferId, new BN(1_000_000))
                     .accounts({
                         state: testHelper.statePda,
                         boss: boss,
@@ -322,7 +483,7 @@ describe("Take Buy Offer", () => {
 
             await expect(
                 testHelper.program.methods
-                    .takeBuyOffer(offerId, new BN(1_000_000))
+                    .takeBuyOfferPermissionless(offerId, new BN(1_000_000))
                     .accounts({
                         state: testHelper.statePda,
                         boss: boss,
@@ -354,7 +515,7 @@ describe("Take Buy Offer", () => {
 
             await expect(
                 testHelper.program.methods
-                    .takeBuyOffer(offerId, excessiveAmount)
+                    .takeBuyOfferPermissionless(offerId, excessiveAmount)
                     .accounts({
                         state: testHelper.statePda,
                         boss: boss,
@@ -387,7 +548,7 @@ describe("Take Buy Offer", () => {
 
             await expect(
                 testHelper.program.methods
-                    .takeBuyOffer(offerId, tokenInAmount)
+                    .takeBuyOfferPermissionless(offerId, tokenInAmount)
                     .accounts({
                         state: testHelper.statePda,
                         boss: boss,
@@ -401,8 +562,8 @@ describe("Take Buy Offer", () => {
         });
     });
 
-    describe("Token Transfer Tests", () => {
-        it("Should correctly transfer tokens between accounts", async () => {
+    describe("Permissionless-Specific Tests", () => {
+        it("Should handle multiple concurrent permissionless transactions", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await testHelper.program.methods
@@ -416,15 +577,74 @@ describe("Take Buy Offer", () => {
                 .accounts({state: testHelper.statePda})
                 .rpc();
 
+            // Create multiple users
+            const users = [];
+            const tokenInAccounts = [];
+            const tokenOutAccounts = [];
+
+            for (let i = 0; i < 3; i++) {
+                const user = testHelper.createUserAccount();
+                const tokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(10_000e6), true);
+                const tokenOutAccount = testHelper.createTokenAccount(tokenOutMint, user.publicKey, BigInt(0), true);
+
+                users.push(user);
+                tokenInAccounts.push(tokenInAccount);
+                tokenOutAccounts.push(tokenOutAccount);
+            }
+
             const tokenInAmount = new BN(1_000_100);
 
-            const userTokenInBefore = await testHelper.getTokenAccountBalance(userTokenInAccount);
+            // Execute all transactions
+            const promises = users.map((user, i) =>
+                testHelper.program.methods
+                    .takeBuyOfferPermissionless(offerId, tokenInAmount)
+                    .accounts({
+                        state: testHelper.statePda,
+                        boss: boss,
+                        tokenInMint: tokenInMint,
+                        tokenOutMint: tokenOutMint,
+                        user: user.publicKey,
+                    })
+                    .signers([user])
+                    .rpc()
+            );
+
+            await Promise.all(promises);
+
+            // Verify all users received tokens
+            for (let i = 0; i < users.length; i++) {
+                const balance = await testHelper.getTokenAccountBalance(tokenOutAccounts[i]);
+                expect(balance).toBe(BigInt(1e9));
+            }
+
+            // Verify intermediary accounts are still empty
+            const permissionlessTokenInBalance = await testHelper.getTokenAccountBalance(permissionlessTokenInAccount);
+            const permissionlessTokenOutBalance = await testHelper.getTokenAccountBalance(permissionlessTokenOutAccount);
+            expect(permissionlessTokenInBalance).toBe(BigInt(0));
+            expect(permissionlessTokenOutBalance).toBe(BigInt(0));
+        });
+
+        it("Should maintain precision through 4-step transfer with different decimals", async () => {
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            // Use a more complex price to test precision
+            await testHelper.program.methods
+                .addBuyOfferVector(
+                    offerId,
+                    new BN(currentTime),
+                    new BN(1_234_567_890), // 1.23456789 with 9 decimals
+                    new BN(45_670), // 4.567% yearly APR
+                    new BN(86400)
+                )
+                .accounts({state: testHelper.statePda})
+                .rpc();
+
+            const tokenInAmount = new BN(1_234_688); // Calculated amount in USDC (6 decimals)
+
             const userTokenOutBefore = await testHelper.getTokenAccountBalance(userTokenOutAccount);
-            const bossTokenInBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
-            const vaultTokenOutBefore = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
 
             await testHelper.program.methods
-                .takeBuyOffer(offerId, tokenInAmount)
+                .takeBuyOfferPermissionless(offerId, tokenInAmount)
                 .accounts({
                     state: testHelper.statePda,
                     boss: boss,
@@ -435,16 +655,63 @@ describe("Take Buy Offer", () => {
                 .signers([user])
                 .rpc();
 
-            const userTokenInAfter = await testHelper.getTokenAccountBalance(userTokenInAccount);
             const userTokenOutAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
-            const bossTokenInAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
-            const vaultTokenOutAfter = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
 
-            // Verify transfers
-            expect(userTokenInBefore - userTokenInAfter).toBe(BigInt(tokenInAmount.toNumber()));
-            expect(userTokenOutAfter - userTokenOutBefore).toBe(BigInt(1e9));
-            expect(bossTokenInAfter - bossTokenInBefore).toBe(BigInt(tokenInAmount.toNumber()));
-            expect(vaultTokenOutBefore - vaultTokenOutAfter).toBe(BigInt(1e9));
+            // Should receive close to 1 token out with proper precision handling
+            const receivedTokens = userTokenOutAfter - userTokenOutBefore;
+            expect(receivedTokens).toBeGreaterThan(BigInt(990_000_000)); // Allow for small rounding
+            expect(receivedTokens).toBeLessThan(BigInt(1_010_000_000));
+        });
+
+        it("Should leave intermediary accounts with zero balance after large transaction", async () => {
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            // Add more funding to vault for large transaction
+            const bossTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, boss, BigInt(50_000e9));
+            await testHelper.program.methods
+                .vaultDeposit(new BN(25_000e9))
+                .accounts({
+                    state: testHelper.statePda,
+                    tokenMint: tokenOutMint,
+                })
+                .rpc();
+
+            await testHelper.program.methods
+                .addBuyOfferVector(
+                    offerId,
+                    new BN(currentTime),
+                    new BN(1e9),
+                    new BN(36_500),
+                    new BN(86400)
+                )
+                .accounts({state: testHelper.statePda})
+                .rpc();
+
+            // Large transaction
+            const largeTokenInAmount = new BN(5_000_500_000); // 5000.5 USDC
+
+            await testHelper.program.methods
+                .takeBuyOfferPermissionless(offerId, largeTokenInAmount)
+                .accounts({
+                    state: testHelper.statePda,
+                    boss: boss,
+                    tokenInMint: tokenInMint,
+                    tokenOutMint: tokenOutMint,
+                    user: user.publicKey,
+                })
+                .signers([user])
+                .rpc();
+
+            // Verify intermediary accounts are empty
+            const permissionlessTokenInBalance = await testHelper.getTokenAccountBalance(permissionlessTokenInAccount);
+            const permissionlessTokenOutBalance = await testHelper.getTokenAccountBalance(permissionlessTokenOutAccount);
+
+            expect(permissionlessTokenInBalance).toBe(BigInt(0));
+            expect(permissionlessTokenOutBalance).toBe(BigInt(0));
+
+            // Verify user received the expected large amount
+            const userTokenOutBalance = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+            expect(userTokenOutBalance).toBeGreaterThanOrEqual(BigInt(5000e9)); // Should receive ~5000 tokens
         });
     });
 
@@ -463,16 +730,15 @@ describe("Take Buy Offer", () => {
                 .accounts({state: testHelper.statePda})
                 .rpc();
 
-            // Price should remain almost constant with minimal APR
+            // Advance time significantly
             await testHelper.advanceClockBy(86_401 * 10); // 10 days
 
-            // With 0.0001% APR over 10 days: price ≈ 1.000000027 ≈ 1.0 USDC
             const expectedTokenInAmount = new BN(1_000_000); // Exactly 1.0 USDC
 
             const userBalanceBefore = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
             await testHelper.program.methods
-                .takeBuyOffer(offerId, expectedTokenInAmount)
+                .takeBuyOfferPermissionless(offerId, expectedTokenInAmount)
                 .accounts({
                     state: testHelper.statePda,
                     boss: boss,
@@ -485,7 +751,6 @@ describe("Take Buy Offer", () => {
 
             const userBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
-            // Should receive 1 token out
             const receivedTokens = userBalanceAfter - userBalanceBefore;
             expect(receivedTokens).toEqual(BigInt(1_000_000_000));
         });
@@ -507,15 +772,12 @@ describe("Take Buy Offer", () => {
             // Advance 1 year (365 days)
             await testHelper.advanceClockBy(86400 * 365);
 
-            // After 1 year with 36.5% APR: price = 1.0 * (1 + 0.365) = 1.365
-            // But due to discrete intervals, it uses (366 * D) / S formula
-            // Let's calculate the actual expected price and use a tolerance
-            const expectedTokenInAmount = new BN(1_366_000); // Based on the actual calculation from logs
+            const expectedTokenInAmount = new BN(1_366_000);
 
             const userBalanceBefore = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
             await testHelper.program.methods
-                .takeBuyOffer(offerId, expectedTokenInAmount)
+                .takeBuyOfferPermissionless(offerId, expectedTokenInAmount)
                 .accounts({
                     state: testHelper.statePda,
                     boss: boss,
@@ -528,7 +790,6 @@ describe("Take Buy Offer", () => {
 
             const userBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
-            // Should receive 1 token out
             const receivedTokens = userBalanceAfter - userBalanceBefore;
             expect(receivedTokens).toEqual(BigInt(1_000_000_000));
         });

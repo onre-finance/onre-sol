@@ -14,4 +14,7 @@ pub mod seeds {
     
     /// Seed for the vault authority account
     pub const VAULT_AUTHORITY: &[u8] = b"vault_authority";
+    
+    /// Seed for the permissionless intermediary authority account
+    pub const PERMISSIONLESS_1: &[u8] = b"permissionless-1";
 }

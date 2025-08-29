@@ -244,14 +244,14 @@ pub mod onreapp {
     /// - `offer_id`: ID of the buy offer to add the vector to.
     /// - `start_time`: Unix timestamp when the vector becomes active.
     /// - `start_price`: Price at the beginning of the vector.
-    /// - `price_yield`: Price yield percentage * 10000 (with 4 decimal places).
+    /// - `apr`: Annual Percentage Rate (APR) (see BuyOfferVector::apr for details).
     /// - `price_fix_duration`: Duration in seconds for each price interval.
     pub fn add_buy_offer_vector(
         ctx: Context<AddBuyOfferVector>,
         offer_id: u64,
         start_time: u64,
         start_price: u64,
-        price_yield: u64,
+        apr: u64,
         price_fix_duration: u64,
     ) -> Result<()> {
         buy_offer::add_buy_offer_vector(
@@ -259,7 +259,7 @@ pub mod onreapp {
             offer_id,
             start_time,
             start_price,
-            price_yield,
+            apr,
             price_fix_duration,
         )
     }
@@ -301,11 +301,42 @@ pub mod onreapp {
         buy_offer::take_buy_offer(ctx, offer_id, token_in_amount)
     }
 
+    /// Takes a buy offer using permissionless flow with intermediary accounts.
+    ///
+    /// Delegates to `buy_offer::take_buy_offer_permissionless`.
+    /// Similar to take_buy_offer but routes token transfers through intermediary accounts
+    /// owned by the program instead of direct user-to-boss and vault-to-user transfers.
+    /// Emits a `TakeBuyOfferPermissionlessEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `TakeBuyOfferPermissionless`.
+    /// - `offer_id`: ID of the offer to take.
+    /// - `token_in_amount`: Amount of token_in to provide.
+    pub fn take_buy_offer_permissionless(
+        ctx: Context<TakeBuyOfferPermissionless>,
+        offer_id: u64,
+        token_in_amount: u64,
+    ) -> Result<()> {
+        buy_offer::take_buy_offer_permissionless(ctx, offer_id, token_in_amount)
+    }
+
     /// Initializes the program state.
     ///
     /// Delegates to `initialize::initialize` to set the initial boss in the state account.
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         initialize::initialize(ctx)
+    }
+
+    /// Initializes a permissionless account.
+    ///
+    /// Delegates to `initialize::initialize_permissionless_account` to create a new permissionless account.
+    /// The account is created as a PDA with the seed "permissionless-1".
+    /// Only the boss can initialize permissionless accounts.
+    pub fn initialize_permissionless_account(
+        ctx: Context<InitializePermissionlessAccount>,
+        name: String,
+    ) -> Result<()> {
+        initialize_permissionless::initialize_permissionless_account(ctx, name)
     }
 
     // /// Updates the boss in the program state.

@@ -12,7 +12,13 @@ pub struct State {
     pub boss: Pubkey,
 }
 
+#[account]
+#[derive(InitSpace)]
+pub struct VaultAuthority {}
 
 #[account]
 #[derive(InitSpace)]
-pub struct VaultAuthority{}
+pub struct PermissionlessAccount {
+    #[max_len(50)]
+    pub name: String,
+}

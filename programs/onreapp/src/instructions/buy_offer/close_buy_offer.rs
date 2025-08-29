@@ -1,13 +1,8 @@
 use crate::constants::seeds;
 use crate::instructions::buy_offer::BuyOfferAccount;
+use crate::instructions::find_offer_index;
 use crate::state::State;
 use anchor_lang::prelude::*;
-
-#[error_code]
-pub enum CloseBuyOfferErrorCode {
-    #[msg("Offer not found")]
-    OfferNotFound,
-}
 
 #[event]
 pub struct CloseBuyOfferEvent {
@@ -34,16 +29,9 @@ pub struct CloseBuyOffer<'info> {
 }
 
 pub fn close_buy_offer(ctx: Context<CloseBuyOffer>, offer_id: u64) -> Result<()> {
-    if offer_id == 0 {
-        return Err(error!(CloseBuyOfferErrorCode::OfferNotFound));
-    }
     let buy_offer_account = &mut ctx.accounts.buy_offer_account.load_mut()?;
 
-    let offer_index = buy_offer_account
-        .offers
-        .iter()
-        .position(|offer| offer.offer_id == offer_id)
-        .ok_or(CloseBuyOfferErrorCode::OfferNotFound)?;
+    let offer_index = find_offer_index(buy_offer_account, offer_id)?;
 
     buy_offer_account.offers[offer_index] = Default::default();
 

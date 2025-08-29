@@ -1,9 +1,9 @@
-import { PublicKey } from "@solana/web3.js";
-import { ONREAPP_PROGRAM_ID, TestHelper } from "../test_helper";
-import { AddedProgram, startAnchor } from "solana-bankrun";
-import { Onreapp } from "../../target/types/onreapp";
-import { BankrunProvider } from "anchor-bankrun";
-import { BN, Program } from "@coral-xyz/anchor";
+import {PublicKey} from "@solana/web3.js";
+import {ONREAPP_PROGRAM_ID, TestHelper} from "../test_helper";
+import {AddedProgram, startAnchor} from "solana-bankrun";
+import {Onreapp} from "../../target/types/onreapp";
+import {BankrunProvider} from "anchor-bankrun";
+import {BN, Program} from "@coral-xyz/anchor";
 import idl from "../../target/idl/onreapp.json";
 
 const MAX_REDEMPTION_OFFERS = 50;
@@ -11,7 +11,7 @@ const MAX_REDEMPTION_OFFERS = 50;
 describe("Make single redemption offer", () => {
     let testHelper: TestHelper;
     let program: Program<Onreapp>;
-    
+
     let tokenInMint: PublicKey;
     let tokenOutMint: PublicKey;
     let boss: PublicKey;
@@ -34,15 +34,15 @@ describe("Make single redemption offer", () => {
 
         testHelper = new TestHelper(context, program);
         boss = provider.wallet.publicKey;
-        
+
         // Create mints
         tokenInMint = testHelper.createMint(boss, BigInt(100_000e9), 9);
         tokenOutMint = testHelper.createMint(boss, BigInt(100_000e9), 9);
-        
+
         // Initialize program and offers
-        await program.methods.initialize().accounts({ boss }).rpc();
-        await program.methods.initializeOffers().accounts({ 
-            state: testHelper.statePda 
+        await program.methods.initialize().accounts({boss}).rpc();
+        await program.methods.initializeOffers().accounts({
+            state: testHelper.statePda
         }).rpc();
 
         // Get single redemption offer account PDA
@@ -67,9 +67,9 @@ describe("Make single redemption offer", () => {
 
         // then
         const redemptionOfferAccountData = await program.account.singleRedemptionOfferAccount.fetch(singleRedemptionOfferAccountPda);
-        
+
         expect(redemptionOfferAccountData.counter.toNumber()).toBe(1);
-        
+
         const firstOffer = redemptionOfferAccountData.offers[0];
         expect(firstOffer.offerId.toNumber()).toBe(1);
         expect(firstOffer.tokenInMint.toString()).toBe(tokenInMint.toString());
@@ -101,7 +101,7 @@ describe("Make single redemption offer", () => {
         // create second offer with different tokens
         const token2In = testHelper.createMint(boss, BigInt(100_000e9), 9);
         const token2Out = testHelper.createMint(boss, BigInt(100_000e9), 9);
-        
+
         const startTime2 = new BN(Math.floor(Date.now() / 1000) + 3600); // 1 hour from now
         const endTime2 = new BN(startTime2.toNumber() + 7200); // 2 hours duration
         const price2 = new BN(3000);
@@ -117,12 +117,12 @@ describe("Make single redemption offer", () => {
 
         // then
         const redemptionOfferAccountData = await program.account.singleRedemptionOfferAccount.fetch(singleRedemptionOfferAccountPda);
-        
+
         expect(redemptionOfferAccountData.counter.toNumber()).toBe(initialCounter + 2);
 
         // Find offers by their auto-generated IDs
-        const firstOffer = redemptionOfferAccountData.offers.find(offer => 
-            offer.tokenInMint.toString() === tokenInMint.toString() && 
+        const firstOffer = redemptionOfferAccountData.offers.find(offer =>
+            offer.tokenInMint.toString() === tokenInMint.toString() &&
             offer.offerId.toNumber() > initialCounter
         );
         expect(firstOffer).toBeDefined();
@@ -130,7 +130,7 @@ describe("Make single redemption offer", () => {
         expect(firstOffer!.price.toNumber()).toBe(price1.toNumber());
         expect(firstOffer!.startTime.toNumber()).toBe(startTime1.toNumber());
 
-        const secondOffer = redemptionOfferAccountData.offers.find(offer => 
+        const secondOffer = redemptionOfferAccountData.offers.find(offer =>
             offer.tokenInMint.toString() === token2In.toString()
         );
         expect(secondOffer).toBeDefined();
@@ -178,8 +178,8 @@ describe("Make single redemption offer", () => {
 
         // then
         const redemptionOfferAccountData = await program.account.singleRedemptionOfferAccount.fetch(singleRedemptionOfferAccountPda);
-        
-        const zeroOffer = redemptionOfferAccountData.offers.find(offer => 
+
+        const zeroOffer = redemptionOfferAccountData.offers.find(offer =>
             offer.tokenInMint.toString() === uniqueTokenIn.toString()
         );
         expect(zeroOffer).toBeDefined();
@@ -207,8 +207,8 @@ describe("Make single redemption offer", () => {
 
         // then
         const redemptionOfferAccountData = await program.account.singleRedemptionOfferAccount.fetch(singleRedemptionOfferAccountPda);
-        
-        const pastOffer = redemptionOfferAccountData.offers.find(offer => 
+
+        const pastOffer = redemptionOfferAccountData.offers.find(offer =>
             offer.tokenInMint.toString() === uniqueTokenIn.toString()
         );
         expect(pastOffer).toBeDefined();
@@ -220,22 +220,16 @@ describe("Make single redemption offer", () => {
         // given - check how many offers already exist
         let redemptionOfferAccount = await program.account.singleRedemptionOfferAccount.fetch(singleRedemptionOfferAccountPda);
         const existingOffers = redemptionOfferAccount.offers.filter(offer => offer.offerId.toNumber() > 0).length;
-        
-        console.log(`Existing redemption offers: ${existingOffers}`);
-        
+
         // Fill up remaining slots
         const offersToMake = MAX_REDEMPTION_OFFERS - existingOffers;
-        console.log(`Need to make ${offersToMake} more offers`);
-        
         const baseTime = Math.floor(Date.now() / 1000);
-        
+
         for (let i = 0; i < offersToMake; i++) {
-            console.log(`Making redemption offer ${i + 1}/${offersToMake}`);
-            
             // Create unique mints for each offer to avoid duplicate transaction issues
             const uniqueTokenIn = testHelper.createMint(boss, BigInt(100_000e9), 9);
             const uniqueTokenOut = testHelper.createMint(boss, BigInt(100_000e9), 9);
-            
+
             const startTime = new BN(baseTime + i * 100); // Stagger start times
             const endTime = new BN(baseTime + i * 100 + 3600);
             const price = new BN(1000 + i); // Different prices
@@ -253,12 +247,9 @@ describe("Make single redemption offer", () => {
         // Verify array is full
         redemptionOfferAccount = await program.account.singleRedemptionOfferAccount.fetch(singleRedemptionOfferAccountPda);
         const activeOffers = redemptionOfferAccount.offers.filter(offer => offer.offerId.toNumber() > 0).length;
-        console.log(`Final active redemption offers: ${activeOffers}`);
         expect(activeOffers).toBe(MAX_REDEMPTION_OFFERS);
 
         // when - try to make one more offer (should fail)
-        console.log("Attempting to make one more redemption offer (should fail)");
-        
         const finalTokenIn = testHelper.createMint(boss, BigInt(100_000e9), 9);
         const finalTokenOut = testHelper.createMint(boss, BigInt(100_000e9), 9);
         const finalStartTime = new BN(baseTime + 10000);
@@ -288,7 +279,7 @@ describe("Make single redemption offer", () => {
 
         // when/then - try to create with different signer
         const notBoss = testHelper.createUserAccount();
-        
+
         await expect(
             program.methods
                 .makeSingleRedemptionOffer(startTime, endTime, price)

@@ -65,7 +65,7 @@ describe("Add Buy Offer Vector", () => {
         const currentTime = await testHelper.getCurrentClockTime();
         const startTime = new BN(currentTime + 3600); // 1 hour in future
         const startPrice = new BN(1000000); // 1 token
-        const priceYield = new BN(5000);    // 50% yield (5000/10000)
+        const apr = new BN(5000);    // 50% APR (5000/10000)
         const priceFixDuration = new BN(3600); // 1 hour
 
         const tx = await testHelper.program.methods
@@ -73,7 +73,7 @@ describe("Add Buy Offer Vector", () => {
                 offerId,
                 startTime,
                 startPrice,
-                priceYield,
+                apr,
                 priceFixDuration
             )
             .accounts({
@@ -92,7 +92,7 @@ describe("Add Buy Offer Vector", () => {
         expect(vector.startTime.toString()).toBe(startTime.toString());
         expect(vector.validFrom.toString()).toBe(startTime.toString()); // valid_from should equal start_time when start_time is in future
         expect(vector.startPrice.toString()).toBe(startPrice.toString());
-        expect(vector.priceYield.toString()).toBe(priceYield.toString());
+        expect(vector.apr.toString()).toBe(apr.toString());
         expect(vector.priceFixDuration.toString()).toBe(priceFixDuration.toString());
     });
 
@@ -114,7 +114,7 @@ describe("Add Buy Offer Vector", () => {
         const currentTime = await testHelper.getCurrentClockTime();
         const pastStartTime = new BN(currentTime - 3600); // 1 hour ago
         const startPrice = new BN(1000000);
-        const priceYield = new BN(2500); // 25% yield
+        const apr = new BN(2500); // 25% APR
         const priceFixDuration = new BN(1800);
 
         await testHelper.program.methods
@@ -122,7 +122,7 @@ describe("Add Buy Offer Vector", () => {
                 offerId,
                 pastStartTime,
                 startPrice,
-                priceYield,
+                apr,
                 priceFixDuration
             )
             .accounts({
@@ -273,7 +273,7 @@ describe("Add Buy Offer Vector", () => {
         ).rejects.toThrow("Invalid input: values cannot be zero");
     });
 
-    it("Should reject zero price_yield", async () => {
+    it("Should allow zero apr", async () => {
         const offerId = new BN(1);
         await testHelper.makeBuyOffer({
             tokenInMint,
@@ -282,20 +282,29 @@ describe("Add Buy Offer Vector", () => {
 
         const currentTime = await testHelper.getCurrentClockTime();
 
-        await expect(
-            testHelper.program.methods
-                .addBuyOfferVector(
-                    offerId,
-                    new BN(currentTime + 1000),
-                    new BN(1000000),
-                    new BN(0), // Invalid: zero price_yield
-                    new BN(3600)
-                )
-                .accounts({
-                    state: testHelper.statePda,
-                })
-                .rpc()
-        ).rejects.toThrow("Invalid input: values cannot be zero");
+        await testHelper.program.methods
+            .addBuyOfferVector(
+                offerId,
+                new BN(currentTime + 1000),
+                new BN(1000000),
+                new BN(0), // Invalid: zero apr
+                new BN(3600)
+            )
+            .accounts({
+                state: testHelper.statePda,
+            })
+            .rpc();
+
+        // Verify vector was added correctly
+        const [buyOffersPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("buy_offers")],
+            ONREAPP_PROGRAM_ID
+        );
+        const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
+        const offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
+        const vector = offer.vectors[0];
+
+        expect(vector.apr.toString()).toBe("0");
     });
 
     it("Should reject zero price_fix_duration", async () => {
@@ -419,7 +428,7 @@ describe("Add Buy Offer Vector", () => {
                     state: testHelper.statePda,
                 })
                 .rpc()
-        ).rejects.toThrow("Buy offer with the specified ID was not found");
+        ).rejects.toThrow("Offer not found");
     });
 
     it("Should reject when offer has maximum vectors", async () => {
@@ -432,7 +441,7 @@ describe("Add Buy Offer Vector", () => {
         const currentTime = await testHelper.getCurrentClockTime();
         const vectorTimeOffset = 1000;
         const startPrice = new BN(1000000);
-        const priceYield = new BN(5000);
+        const apr = new BN(5000);
         const priceFixDuration = new BN(3600);
 
         // Add maximum number of vectors
@@ -444,15 +453,13 @@ describe("Add Buy Offer Vector", () => {
                     offerId,
                     vectorStartTime,
                     startPrice,
-                    priceYield,
+                    apr,
                     priceFixDuration
                 )
                 .accounts({
                     state: testHelper.statePda,
                 })
                 .rpc();
-
-            console.log(`Added vector ${i}`);
         }
 
         // Try to add one more vector (should fail)
@@ -464,7 +471,7 @@ describe("Add Buy Offer Vector", () => {
                     offerId,
                     vectorStartTime,
                     startPrice,
-                    priceYield,
+                    apr,
                     priceFixDuration
                 )
                 .accounts({
@@ -474,7 +481,7 @@ describe("Add Buy Offer Vector", () => {
         ).rejects.toThrow("Cannot add more vectors: maximum limit reached");
     });
 
-    it("Should handle large price and yield values correctly", async () => {
+    it("Should handle large price and apr values correctly", async () => {
         const offerId = new BN(1);
         await testHelper.makeBuyOffer({
             tokenInMint,
@@ -491,14 +498,14 @@ describe("Add Buy Offer Vector", () => {
 
         // Use large values
         const largeStartPrice = new BN("999999999999999999"); // Large u64 value
-        const largePriceYield = new BN("999999"); // 99.9999% yield (9999/10000)
+        const largeApr = new BN("999999"); // 99.9999% APR (9999/10000)
 
         await testHelper.program.methods
             .addBuyOfferVector(
                 offerId,
                 new BN(currentTime + 1000),
                 largeStartPrice,
-                largePriceYield,
+                largeApr,
                 new BN(3600)
             )
             .accounts({
@@ -512,7 +519,7 @@ describe("Add Buy Offer Vector", () => {
         const vector = offer.vectors[0];
 
         expect(vector.startPrice.toString()).toBe(largeStartPrice.toString());
-        expect(vector.priceYield.toString()).toBe(largePriceYield.toString());
+        expect(vector.apr.toString()).toBe(largeApr.toString());
     });
 
     it("Should handle minimum valid values (1 for all fields)", async () => {
@@ -533,7 +540,7 @@ describe("Add Buy Offer Vector", () => {
                 offerId,
                 new BN(1), // Minimum valid start_time
                 new BN(1), // Minimum valid start_price
-                new BN(1), // Minimum valid price_yield
+                new BN(1), // Minimum valid apr
                 new BN(1)  // Minimum valid price_fix_duration
             )
             .accounts({
@@ -553,7 +560,7 @@ describe("Add Buy Offer Vector", () => {
         const validFromTime = parseInt(vector.validFrom.toString());
         expect(validFromTime).toBeGreaterThanOrEqual(currentTime);
         expect(vector.startPrice.toString()).toBe("1");
-        expect(vector.priceYield.toString()).toBe("1");
+        expect(vector.apr.toString()).toBe("1");
         expect(vector.priceFixDuration.toString()).toBe("1");
     });
 
@@ -667,9 +674,9 @@ describe("Add Buy Offer Vector", () => {
         expect(offer1.vectors[0].startPrice.toString()).toBe("1000000");
         expect(offer2.vectors[0].startPrice.toString()).toBe("3000000");
 
-        // Verify yields are correct
-        expect(offer1.vectors[0].priceYield.toString()).toBe("5000"); // 50%
-        expect(offer2.vectors[0].priceYield.toString()).toBe("7500"); // 75%
+        // Verify APRs are correct
+        expect(offer1.vectors[0].apr.toString()).toBe("5000"); // 50%
+        expect(offer2.vectors[0].apr.toString()).toBe("7500"); // 75%
     });
 
     it("Should clean old past vectors, keeping only current active and previous active", async () => {
@@ -702,7 +709,7 @@ describe("Add Buy Offer Vector", () => {
                     offerId,
                     new BN(vectors[i].startTime),
                     new BN(vectors[i].price),
-                    new BN(5000), // 50% yield
+                    new BN(5000), // 50% APR
                     new BN(3600)  // 1 hour duration
                 )
                 .accounts({
