@@ -53,32 +53,88 @@ pub mod onreapp {
         initialize_vault_authority::initialize_vault_authority(ctx)
     }
 
-    /// Deposits tokens into the vault.
+    /// Deposits tokens into the buy offer vault.
     ///
-    /// Delegates to `vault_operations::vault_deposit`.
-    /// Transfers tokens from boss's account to vault's token account for the specified mint.
+    /// Delegates to `vault_operations::buy_offer_vault_deposit`.
+    /// Transfers tokens from boss's account to buy offer vault's token account for the specified mint.
     /// Creates vault token account if it doesn't exist using init_if_needed.
     /// Only the boss can call this instruction.
     ///
     /// # Arguments
-    /// - `ctx`: Context for `VaultDeposit`.
+    /// - `ctx`: Context for `BuyOfferVaultDeposit`.
     /// - `amount`: Amount of tokens to deposit.
-    pub fn vault_deposit(ctx: Context<VaultDeposit>, amount: u64) -> Result<()> {
-        vault_operations::vault_deposit(ctx, amount)
+    pub fn buy_offer_vault_deposit(ctx: Context<BuyOfferVaultDeposit>, amount: u64) -> Result<()> {
+        vault_operations::buy_offer_vault_deposit(ctx, amount)
     }
 
-    /// Withdraws tokens from the vault.
+    /// Deposits tokens into the single redemption vault.
     ///
-    /// Delegates to `vault_operations::vault_withdraw`.
-    /// Transfers tokens from vault's token account to boss's token account for the specified mint.
-    /// Both token accounts must already exist.
+    /// Delegates to `vault_operations::single_redemption_vault_deposit`.
+    /// Transfers tokens from boss's account to single redemption vault's token account for the specified mint.
+    /// Creates vault token account if it doesn't exist using init_if_needed.
     /// Only the boss can call this instruction.
     ///
     /// # Arguments
-    /// - `ctx`: Context for `VaultWithdraw`.
+    /// - `ctx`: Context for `SingleRedemptionVaultDeposit`.
+    /// - `amount`: Amount of tokens to deposit.
+    pub fn single_redemption_vault_deposit(ctx: Context<SingleRedemptionVaultDeposit>, amount: u64) -> Result<()> {
+        vault_operations::single_redemption_vault_deposit(ctx, amount)
+    }
+
+    /// Deposits tokens into the dual redemption vault.
+    ///
+    /// Delegates to `vault_operations::dual_redemption_vault_deposit`.
+    /// Transfers tokens from boss's account to dual redemption vault's token account for the specified mint.
+    /// Creates vault token account if it doesn't exist using init_if_needed.
+    /// Only the boss can call this instruction.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `DualRedemptionVaultDeposit`.
+    /// - `amount`: Amount of tokens to deposit.
+    pub fn dual_redemption_vault_deposit(ctx: Context<DualRedemptionVaultDeposit>, amount: u64) -> Result<()> {
+        vault_operations::dual_redemption_vault_deposit(ctx, amount)
+    }
+
+    /// Withdraws tokens from the buy offer vault.
+    ///
+    /// Delegates to `vault_operations::buy_offer_vault_withdraw`.
+    /// Transfers tokens from buy offer vault's token account to boss's account for the specified mint.
+    /// Creates boss token account if it doesn't exist using init_if_needed.
+    /// Only the boss can call this instruction.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `BuyOfferVaultWithdraw`.
     /// - `amount`: Amount of tokens to withdraw.
-    pub fn vault_withdraw(ctx: Context<VaultWithdraw>, amount: u64) -> Result<()> {
-        vault_operations::vault_withdraw(ctx, amount)
+    pub fn buy_offer_vault_withdraw(ctx: Context<BuyOfferVaultWithdraw>, amount: u64) -> Result<()> {
+        vault_operations::buy_offer_vault_withdraw(ctx, amount)
+    }
+
+    /// Withdraws tokens from the single redemption vault.
+    ///
+    /// Delegates to `vault_operations::single_redemption_vault_withdraw`.
+    /// Transfers tokens from single redemption vault's token account to boss's account for the specified mint.
+    /// Creates boss token account if it doesn't exist using init_if_needed.
+    /// Only the boss can call this instruction.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `SingleRedemptionVaultWithdraw`.
+    /// - `amount`: Amount of tokens to withdraw.
+    pub fn single_redemption_vault_withdraw(ctx: Context<SingleRedemptionVaultWithdraw>, amount: u64) -> Result<()> {
+        vault_operations::single_redemption_vault_withdraw(ctx, amount)
+    }
+
+    /// Withdraws tokens from the dual redemption vault.
+    ///
+    /// Delegates to `vault_operations::dual_redemption_vault_withdraw`.
+    /// Transfers tokens from dual redemption vault's token account to boss's account for the specified mint.
+    /// Creates boss token account if it doesn't exist using init_if_needed.
+    /// Only the boss can call this instruction.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `DualRedemptionVaultWithdraw`.
+    /// - `amount`: Amount of tokens to withdraw.
+    pub fn dual_redemption_vault_withdraw(ctx: Context<DualRedemptionVaultWithdraw>, amount: u64) -> Result<()> {
+        vault_operations::dual_redemption_vault_withdraw(ctx, amount)
     }
 
     /// Creates a buy offer.
