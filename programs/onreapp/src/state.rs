@@ -26,5 +26,7 @@ pub struct PermissionlessAccount {
 #[account]
 #[derive(InitSpace)]
 pub struct AdminState {
-    pub admins: [Pubkey; 20],
+    pub admins: [Pubkey; MAX_ADMINS],
 }
+
+pub const MAX_ADMINS: usize = 20;

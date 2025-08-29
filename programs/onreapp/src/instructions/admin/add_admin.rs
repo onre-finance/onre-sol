@@ -1,4 +1,4 @@
-use crate::state::{AdminState, State};
+use crate::state::{AdminState, State, MAX_ADMINS};
 use crate::constants::seeds;
 use anchor_lang::prelude::*;
 
@@ -44,7 +44,7 @@ pub fn add_admin(ctx: Context<AddAdmin>, new_admin: Pubkey) -> Result<()> {
     );
 
     // Find first empty slot
-    for i in 0..20 {
+    for i in 0..MAX_ADMINS {
         if admin_state.admins[i] == Pubkey::default() {
             admin_state.admins[i] = new_admin;
             return Ok(());

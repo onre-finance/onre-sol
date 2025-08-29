@@ -1,4 +1,4 @@
-use crate::state::{AdminState, State};
+use crate::state::{AdminState, State, MAX_ADMINS};
 use crate::constants::seeds;
 use anchor_lang::prelude::*;
 
@@ -37,7 +37,7 @@ pub fn remove_admin(ctx: Context<RemoveAdmin>, admin_to_remove: Pubkey) -> Resul
     let admin_state = &mut ctx.accounts.admin_state;
 
     // Find and remove the admin
-    for i in 0..20 {
+    for i in 0..MAX_ADMINS {
         if admin_state.admins[i] == admin_to_remove {
             admin_state.admins[i] = Pubkey::default();
             return Ok(());
