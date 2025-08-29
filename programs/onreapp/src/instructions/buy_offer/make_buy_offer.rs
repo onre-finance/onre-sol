@@ -1,6 +1,7 @@
 use super::buy_offer_state::BuyOfferAccount;
 use crate::constants::seeds;
 use crate::state::State;
+use crate::utils::MAX_BASIS_POINTS;
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
 
@@ -57,9 +58,10 @@ pub struct MakeBuyOffer<'info> {
 /// - [`MakeBuyOfferErrorCode::InvalidFee`] if fee_basis_points > 10000.
 pub fn make_buy_offer(ctx: Context<MakeBuyOffer>, fee_basis_points: u64) -> Result<()> {
     // Validate fee is within valid range (0-10000 basis points = 0-100%)
-    if fee_basis_points > 10000 {
-        return Err(error!(MakeBuyOfferErrorCode::InvalidFee));
-    }
+    require!(
+        fee_basis_points <= MAX_BASIS_POINTS,
+        MakeBuyOfferErrorCode::InvalidFee
+    );
 
     let buy_offer_account = &mut ctx.accounts.buy_offer_account.load_mut()?;
 

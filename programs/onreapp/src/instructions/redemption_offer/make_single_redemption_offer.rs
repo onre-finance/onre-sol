@@ -69,9 +69,10 @@ pub fn make_single_redemption_offer(
     fee_basis_points: u64,
 ) -> Result<()> {
     // Validate fee is within valid range (0-10000 basis points = 0-100%)
-    if fee_basis_points > 10000 {
-        return Err(error!(SingleRedemptionOfferErrorCode::InvalidFee));
-    }
+    require!(
+        fee_basis_points <= 10000,
+        SingleRedemptionOfferErrorCode::InvalidFee
+    );
 
     let single_redemption_offer_account =
         &mut ctx.accounts.single_redemption_offer_account.load_mut()?;
@@ -102,7 +103,7 @@ pub fn make_single_redemption_offer(
         end_time
     );
 
-    emit!(SingleRedemptionOfferMadeEvent{
+    emit!(SingleRedemptionOfferMadeEvent {
         offer_id,
         start_time,
         end_time,
