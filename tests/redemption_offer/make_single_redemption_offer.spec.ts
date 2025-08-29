@@ -57,7 +57,7 @@ describe("Make single redemption offer", () => {
 
         // when
         await program.methods
-            .makeSingleRedemptionOffer(startTime, endTime, price)
+            .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
             .accounts({
                 tokenInMint,
                 tokenOutMint,
@@ -90,7 +90,7 @@ describe("Make single redemption offer", () => {
         const price1 = new BN(2000);
 
         await program.methods
-            .makeSingleRedemptionOffer(startTime1, endTime1, price1)
+            .makeSingleRedemptionOffer(startTime1, endTime1, price1, new BN(0))
             .accounts({
                 tokenInMint,
                 tokenOutMint,
@@ -107,7 +107,7 @@ describe("Make single redemption offer", () => {
         const price2 = new BN(3000);
 
         await program.methods
-            .makeSingleRedemptionOffer(startTime2, endTime2, price2)
+            .makeSingleRedemptionOffer(startTime2, endTime2, price2, new BN(0))
             .accounts({
                 tokenInMint: token2In,
                 tokenOutMint: token2Out,
@@ -147,7 +147,7 @@ describe("Make single redemption offer", () => {
 
         await expect(
             program.methods
-                .makeSingleRedemptionOffer(startTime, endTime, price)
+                .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
                 .accounts({
                     tokenInMint: new PublicKey(0),
                     tokenOutMint: new PublicKey(0),
@@ -168,7 +168,7 @@ describe("Make single redemption offer", () => {
 
         // when
         await program.methods
-            .makeSingleRedemptionOffer(startTime, endTime, price)
+            .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
             .accounts({
                 tokenInMint: uniqueTokenIn,
                 tokenOutMint: uniqueTokenOut,
@@ -197,7 +197,7 @@ describe("Make single redemption offer", () => {
 
         // when
         await program.methods
-            .makeSingleRedemptionOffer(startTime, endTime, price)
+            .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
             .accounts({
                 tokenInMint: uniqueTokenIn,
                 tokenOutMint: uniqueTokenOut,
@@ -235,7 +235,7 @@ describe("Make single redemption offer", () => {
             const price = new BN(1000 + i); // Different prices
 
             await program.methods
-                .makeSingleRedemptionOffer(startTime, endTime, price)
+                .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
                 .accounts({
                     tokenInMint: uniqueTokenIn,
                     tokenOutMint: uniqueTokenOut,
@@ -258,7 +258,7 @@ describe("Make single redemption offer", () => {
 
         await expect(
             program.methods
-                .makeSingleRedemptionOffer(finalStartTime, finalEndTime, finalPrice)
+                .makeSingleRedemptionOffer(finalStartTime, finalEndTime, finalPrice, new BN(0))
                 .accounts({
                     tokenInMint: finalTokenIn,
                     tokenOutMint: finalTokenOut,
@@ -282,7 +282,7 @@ describe("Make single redemption offer", () => {
 
         await expect(
             program.methods
-                .makeSingleRedemptionOffer(startTime, endTime, price)
+                .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
                 .accountsPartial({
                     tokenInMint: uniqueTokenIn,
                     tokenOutMint: uniqueTokenOut,

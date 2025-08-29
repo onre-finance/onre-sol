@@ -865,7 +865,7 @@
         "",
         "# Arguments",
         "- `ctx`: Context for `MakeBuyOffer`.",
-        "- `offer_id`: Unique ID for the offer."
+        "- `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer."
       ],
       "discriminator": [
         252,
@@ -941,7 +941,12 @@
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "fee_basis_points",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "make_dual_redemption_offer",
@@ -959,7 +964,8 @@
         "- `end_time`: Unix timestamp for when the offer expires.",
         "- `price_1`: Fixed price for token_out_1 with 9 decimal precision.",
         "- `price_2`: Fixed price for token_out_2 with 9 decimal precision.",
-        "- `ratio_basis_points`: Ratio in basis points for token_out_1 (e.g., 8000 = 80% for token_out_1, 20% for token_out_2)."
+        "- `ratio_basis_points`: Ratio in basis points for token_out_1 (e.g., 8000 = 80% for token_out_1, 20% for token_out_2).",
+        "- `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer."
       ],
       "discriminator": [
         118,
@@ -1073,6 +1079,10 @@
         {
           "name": "ratio_basis_points",
           "type": "u64"
+        },
+        {
+          "name": "fee_basis_points",
+          "type": "u64"
         }
       ]
     },
@@ -1089,7 +1099,8 @@
         "- `ctx`: Context for `MakeSingleRedemptionOffer`.",
         "- `start_time`: Unix timestamp for when the offer becomes active.",
         "- `end_time`: Unix timestamp for when the offer expires.",
-        "- `price`: How much token_in needed for 1 token_out, with 9 decimal precision."
+        "- `price`: How much token_in needed for 1 token_out, with 9 decimal precision.",
+        "- `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer."
       ],
       "discriminator": [
         166,
@@ -1190,6 +1201,10 @@
         },
         {
           "name": "price",
+          "type": "u64"
+        },
+        {
+          "name": "fee_basis_points",
           "type": "u64"
         }
       ]
@@ -4631,6 +4646,10 @@
           {
             "name": "counter",
             "type": "u64"
+          },
+          {
+            "name": "fee_basis_points",
+            "type": "u64"
           }
         ]
       }
@@ -4677,6 +4696,10 @@
         "fields": [
           {
             "name": "offer_id",
+            "type": "u64"
+          },
+          {
+            "name": "fee_basis_points",
             "type": "u64"
           },
           {
@@ -4892,6 +4915,10 @@
           {
             "name": "ratio_basis_points",
             "type": "u64"
+          },
+          {
+            "name": "fee_basis_points",
+            "type": "u64"
           }
         ]
       }
@@ -4961,6 +4988,10 @@
             "type": "u64"
           },
           {
+            "name": "fee_basis_points",
+            "type": "u64"
+          },
+          {
             "name": "boss",
             "type": "pubkey"
           }
@@ -5013,6 +5044,10 @@
           },
           {
             "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "fee_basis_points",
             "type": "u64"
           }
         ]
@@ -5075,6 +5110,10 @@
             "type": "u64"
           },
           {
+            "name": "fee_basis_points",
+            "type": "u64"
+          },
+          {
             "name": "boss",
             "type": "pubkey"
           }
@@ -5119,7 +5158,7 @@
           {
             "name": "token_in_amount",
             "docs": [
-              "Amount of token_in paid by the user"
+              "Amount of token_in paid by the user (including fee)"
             ],
             "type": "u64"
           },
@@ -5127,6 +5166,13 @@
             "name": "token_out_amount",
             "docs": [
               "Amount of token_out received by the user"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "fee_amount",
+            "docs": [
+              "Fee amount paid by the user in token_in"
             ],
             "type": "u64"
           },
@@ -5170,6 +5216,13 @@
             "type": "u64"
           },
           {
+            "name": "fee_amount",
+            "docs": [
+              "Fee amount paid by the user in token_in"
+            ],
+            "type": "u64"
+          },
+          {
             "name": "user",
             "docs": [
               "Public key of the user who took the offer"
@@ -5201,6 +5254,10 @@
             "type": "u64"
           },
           {
+            "name": "fee_amount",
+            "type": "u64"
+          },
+          {
             "name": "user",
             "type": "pubkey"
           }
@@ -5222,6 +5279,10 @@
           },
           {
             "name": "token_out_amount",
+            "type": "u64"
+          },
+          {
+            "name": "fee_amount",
             "type": "u64"
           },
           {

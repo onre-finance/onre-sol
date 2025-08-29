@@ -98,7 +98,7 @@ describe("Take Buy Offer", () => {
         it("Should calculate correct price in first interval", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
-            // Add vector: start_price = 1.0 (1e9), APRÏ = 3.65% (36500), duration = 1 day
+            // Add vector: start_price = 1.0 (1e9), APR = 3.65% (36500), duration = 1 day
             const startPrice = new BN(1e9); // 1.0 with 9 decimals
             const apr = new BN(36_500); // 3.65% APR (scaled by 1M)
             const priceFixDuration = new BN(86400); // 1 day
@@ -133,6 +133,49 @@ describe("Take Buy Offer", () => {
             // Should receive 1 token out (1e9)
             expect(userTokenOutBalanceAfter - userTokenOutBalanceBefore).toBe(BigInt(1e9));
         });
+
+        it("Should calculate correct price with fee", async () => {
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            // Create a new buy offer
+            await testHelper.makeBuyOffer({
+                tokenInMint,
+                tokenOutMint,
+                feeBasisPoints: 100, // 1% fee
+            });
+
+            const offerId = new BN(2);
+            const startPrice = new BN(1e9);
+            const apr = new BN(36_500);
+            const priceFixDuration = new BN(86400);
+            const startTime = new BN(currentTime);
+
+            await testHelper.program.methods
+                .addBuyOfferVector(offerId, startTime, startPrice, apr, priceFixDuration)
+                .accounts({state: testHelper.statePda})
+                .rpc();
+
+            // Price in first interval should be: 1.0 * (1 + 0.0365 * (1 * 86400) / (365*24*3600))
+            // = 1.0 * (1 + 0.0365 * 1/365) = 1.0 * 1.0001 = 1.0001
+            const expectedTokenInAmount = new BN(1_000_100); // 1.0001 USDC (6 decimals)
+
+            await testHelper.program.methods
+                .takeBuyOffer(offerId, expectedTokenInAmount)
+                .accounts({
+                    state: testHelper.statePda,
+                    boss: boss,
+                    tokenInMint: tokenInMint,
+                    tokenOutMint: tokenOutMint,
+                    user: user.publicKey,
+                })
+                .signers([user])
+                .rpc();
+
+            const userTokenOutBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+
+            // Should receive 0.9 token out
+            expect(userTokenOutBalanceAfter).toBe(BigInt(99e7));
+        })
 
         it("Should maintain price within same interval", async () => {
             const currentTime = await testHelper.getCurrentClockTime();

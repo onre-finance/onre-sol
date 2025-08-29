@@ -187,8 +187,9 @@ export class TestHelper {
     }
 
     async makeBuyOffer(params: MakeBuyOfferParams) {
+        const feeBasisPoints = params.feeBasisPoints ?? 0;
         return await this.program.methods
-            .makeBuyOffer()
+            .makeBuyOffer(new BN(feeBasisPoints))
             .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
@@ -247,4 +248,5 @@ type OfferTwoTokenAccounts = {
 type MakeBuyOfferParams = {
     tokenInMint: PublicKey;
     tokenOutMint: PublicKey;
+    feeBasisPoints?: number;
 }

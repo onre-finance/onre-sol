@@ -13,6 +13,7 @@ pub struct BuyOffer {
     pub token_out_mint: Pubkey,
     pub vectors: [BuyOfferVector; MAX_VECTORS],
     pub counter: u64,
+    pub fee_basis_points: u64,
 }
 
 /// Time vector for buy offers with pricing information
