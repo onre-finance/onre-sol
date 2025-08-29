@@ -5497,6 +5497,13 @@ export type Onreapp = {
             "type": "u64"
           },
           {
+            "name": "feeAmount",
+            "docs": [
+              "Fee amount paid by the user in token_in"
+            ],
+            "type": "u64"
+          },
+          {
             "name": "user",
             "docs": [
               "Public key of the user who took the offer"
