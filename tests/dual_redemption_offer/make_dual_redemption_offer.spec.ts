@@ -51,7 +51,7 @@ describe("Make dual redemption offer", () => {
 
         // when
         await testHelper.program.methods
-            .makeDualRedemptionOffer(startTime, endTime, price1, price2, ratioBasisPoints)
+            .makeDualRedemptionOffer(startTime, endTime, price1, price2, ratioBasisPoints, new BN(0))
             .accounts({
                 tokenInMint,
                 tokenOutMint1,
@@ -104,7 +104,7 @@ describe("Make dual redemption offer", () => {
         const ratio1 = new BN(7000); // 70/30 split
 
         await testHelper.program.methods
-            .makeDualRedemptionOffer(startTime1, endTime1, price1_1, price1_2, ratio1)
+            .makeDualRedemptionOffer(startTime1, endTime1, price1_1, price1_2, ratio1, new BN(0))
             .accounts({
                 tokenInMint: token1In,
                 tokenOutMint1: token1Out1,
@@ -125,7 +125,7 @@ describe("Make dual redemption offer", () => {
         const ratio2 = new BN(9000); // 90/10 split
 
         await testHelper.program.methods
-            .makeDualRedemptionOffer(startTime2, endTime2, price2_1, price2_2, ratio2)
+            .makeDualRedemptionOffer(startTime2, endTime2, price2_1, price2_2, ratio2, new BN(0))
             .accounts({
                 tokenInMint: token2In,
                 tokenOutMint1: token2Out1,
@@ -175,7 +175,7 @@ describe("Make dual redemption offer", () => {
         // when/then
         await expect(
             testHelper.program.methods
-                .makeDualRedemptionOffer(startTime, endTime, price1, price2, invalidRatio)
+                .makeDualRedemptionOffer(startTime, endTime, price1, price2, invalidRatio, new BN(0))
                 .accounts({
                     tokenInMint,
                     tokenOutMint1,
@@ -198,7 +198,7 @@ describe("Make dual redemption offer", () => {
         const price2 = new BN(500000000);
 
         await testHelper.program.methods
-            .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(0)) // 0% for token_out_1
+            .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(0), new BN(0)) // 0% for token_out_1
             .accounts({
                 tokenInMint: tokenInMint1,
                 tokenOutMint1: tokenOutMint1_1,
@@ -213,7 +213,7 @@ describe("Make dual redemption offer", () => {
         const tokenOutMint2_2 = testHelper.createMint(boss, BigInt(100_000e9), 6);
 
         await testHelper.program.methods
-            .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(10000)) // 100% for token_out_1
+            .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(10000), new BN(0)) // 100% for token_out_1
             .accounts({
                 tokenInMint: tokenInMint2,
                 tokenOutMint1: tokenOutMint2_1,
@@ -252,7 +252,7 @@ describe("Make dual redemption offer", () => {
 
         await expect(
             testHelper.program.methods
-                .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(8000))
+                .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(8000), new BN(0))
                 .accountsPartial({
                     tokenInMint: uniqueTokenIn,
                     tokenOutMint1: uniqueTokenOut1,
@@ -289,7 +289,7 @@ describe("Make dual redemption offer", () => {
                 const uniqueTokenOut2 = testHelper.createMint(boss, BigInt(100_000e9), 6);
 
                 await testHelper.program.methods
-                    .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(8000))
+                    .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(8000), new BN(0))
                     .accounts({
                         tokenInMint: uniqueTokenIn,
                         tokenOutMint1: uniqueTokenOut1,
@@ -314,7 +314,7 @@ describe("Make dual redemption offer", () => {
 
         await expect(
             testHelper.program.methods
-                .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(8000))
+                .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(8000), new BN(0))
                 .accounts({
                     tokenInMint: finalTokenIn,
                     tokenOutMint1: finalTokenOut1,

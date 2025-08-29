@@ -11,6 +11,7 @@ pub struct SingleRedemptionOfferMadeEvent {
     pub start_time: u64,
     pub end_time: u64,
     pub price: u64,
+    pub fee_basis_points: u64,
     pub boss: Pubkey,
 }
 
@@ -55,15 +56,23 @@ pub struct MakeSingleRedemptionOffer<'info> {
 /// - `start_time`: Unix timestamp for when the offer becomes active.
 /// - `end_time`: Unix timestamp for when the offer expires.
 /// - `price`: How much token_in needed for 1 token_out, with 9 decimal precision (e.g., 1.5 = 1500000000).
+/// - `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer.
 ///
 /// # Errors
 /// - [`SingleRedemptionOfferErrorCode::AccountFull`] if the SingleRedemptionOfferAccount is full.
+/// - [`SingleRedemptionOfferErrorCode::InvalidFee`] if fee_basis_points > 10000.
 pub fn make_single_redemption_offer(
     ctx: Context<MakeSingleRedemptionOffer>,
     start_time: u64,
     end_time: u64,
     price: u64,
+    fee_basis_points: u64,
 ) -> Result<()> {
+    // Validate fee is within valid range (0-10000 basis points = 0-100%)
+    if fee_basis_points > 10000 {
+        return Err(error!(SingleRedemptionOfferErrorCode::InvalidFee));
+    }
+
     let single_redemption_offer_account =
         &mut ctx.accounts.single_redemption_offer_account.load_mut()?;
 
@@ -83,6 +92,7 @@ pub fn make_single_redemption_offer(
     redemption_offer.price = price;
     redemption_offer.start_time = start_time;
     redemption_offer.end_time = end_time;
+    redemption_offer.fee_basis_points = fee_basis_points;
 
     msg!(
         "Redemption offer created with ID: {}, price: {}, startTime: {}, endTime: {}",
@@ -97,6 +107,7 @@ pub fn make_single_redemption_offer(
         start_time,
         end_time,
         price,
+        fee_basis_points,
         boss: ctx.accounts.boss.key(),
     });
 
@@ -109,4 +120,7 @@ pub enum SingleRedemptionOfferErrorCode {
     /// Triggered when the SingleRedemptionOfferAccount is full.
     #[msg("Single redemption offer account is full, cannot create more offers")]
     AccountFull,
+    /// Triggered when fee_basis_points is greater than 10000.
+    #[msg("Invalid fee: fee_basis_points must be <= 10000")]
+    InvalidFee,
 }
