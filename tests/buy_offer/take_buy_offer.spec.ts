@@ -15,7 +15,7 @@ describe("Take Buy Offer", () => {
     let userTokenInAccount: PublicKey;
     let userTokenOutAccount: PublicKey;
     let bossTokenInAccount: PublicKey;
-    let vaultAuthorityPda: PublicKey;
+    let buyOfferVaultAuthorityPda: PublicKey;
     let vaultTokenOutAccount: PublicKey;
     let offerId: BN;
 
@@ -70,8 +70,8 @@ describe("Take Buy Offer", () => {
             })
             .rpc();
 
-        [vaultAuthorityPda] = PublicKey.findProgramAddressSync(
-            [Buffer.from("vault_authority")],
+        [buyOfferVaultAuthorityPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("buy_offer_vault_authority")],
             ONREAPP_PROGRAM_ID
         );
 
@@ -82,11 +82,11 @@ describe("Take Buy Offer", () => {
         bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
 
         // Create and fund vault
-        vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, vaultAuthorityPda, BigInt(0), true);
+        vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, buyOfferVaultAuthorityPda, BigInt(0), true);
         const bossTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, boss, BigInt(10_000e9));
 
         await testHelper.program.methods
-            .vaultDeposit(new BN(5_000e9))
+            .buyOfferVaultDeposit(new BN(5_000e9))
             .accounts({
                 state: testHelper.statePda,
                 tokenMint: tokenOutMint,

@@ -1,26 +1,26 @@
 use crate::constants::seeds;
-use crate::state::{State, VaultAuthority};
+use crate::state::{State, SingleRedemptionVaultAuthority};
 use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use anchor_spl::associated_token::AssociatedToken;
 
 #[event]
-pub struct VaultDepositEvent {
+pub struct SingleRedemptionVaultDepositEvent {
     pub mint: Pubkey,
     pub amount: u64,
     pub boss: Pubkey,
 }
 
-/// Account structure for depositing tokens to the vault.
+/// Account structure for depositing tokens to the single redemption vault.
 ///
 /// This struct defines the accounts required for the boss to deposit tokens
-/// into the vault authority's token accounts.
+/// into the single redemption vault authority's token accounts.
 #[derive(Accounts)]
-pub struct VaultDeposit<'info> {
-    /// The vault authority account that controls the vault token accounts.
-    #[account(seeds = [seeds::VAULT_AUTHORITY], bump)]
-    pub vault_authority: Account<'info, VaultAuthority>,
+pub struct SingleRedemptionVaultDeposit<'info> {
+    /// The single redemption vault authority account that controls the vault token accounts.
+    #[account(seeds = [seeds::SINGLE_REDEMPTION_VAULT_AUTHORITY], bump)]
+    pub vault_authority: Account<'info, SingleRedemptionVaultAuthority>,
 
     /// The token mint for the deposit.
     pub token_mint: Box<Account<'info, Mint>>,
@@ -61,9 +61,9 @@ pub struct VaultDeposit<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Deposits tokens into the vault.
+/// Deposits tokens into the single redemption vault.
 ///
-/// Transfers tokens from the boss's token account to the vault's token account
+/// Transfers tokens from the boss's token account to the single redemption vault's token account
 /// for the specified mint. Creates the vault token account if it doesn't exist.
 /// Only the boss can call this instruction.
 ///
@@ -73,28 +73,29 @@ pub struct VaultDeposit<'info> {
 ///
 /// # Returns
 /// A `Result` indicating success or failure.
-pub fn vault_deposit(ctx: Context<VaultDeposit>, amount: u64) -> Result<()> {
+pub fn single_redemption_vault_deposit(ctx: Context<SingleRedemptionVaultDeposit>, amount: u64) -> Result<()> {
+    let boss_token_account = &ctx.accounts.boss_token_account;
+    let vault_token_account = &ctx.accounts.vault_token_account;
+    let boss = &ctx.accounts.boss;
+    let token_program = &ctx.accounts.token_program;
+    let token_mint = &ctx.accounts.token_mint;
+
     // Transfer tokens from boss to vault
     transfer_tokens(
-        &ctx.accounts.token_program,
-        &ctx.accounts.boss_token_account,
-        &ctx.accounts.vault_token_account,
-        &ctx.accounts.boss,
+        token_program,
+        boss_token_account,
+        vault_token_account,
+        boss,
         None,
         amount,
     )?;
 
-    msg!(
-        "Vault deposit - mint: {}, amount: {}",
-        ctx.accounts.token_mint.key(),
-        amount
-    );
-
-    emit!(VaultDepositEvent {
-        mint: ctx.accounts.token_mint.key(),
+    emit!(SingleRedemptionVaultDepositEvent {
+        mint: token_mint.key(),
         amount,
-        boss: ctx.accounts.boss.key(),
+        boss: boss.key(),
     });
 
+    msg!("Single redemption vault deposit successful: {} tokens", amount);
     Ok(())
 }

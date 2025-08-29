@@ -56,8 +56,8 @@ pub struct TakeDualRedemptionOffer<'info> {
     /// CHECK: This account is validated through the constraint above
     pub boss: UncheckedAccount<'info>,
 
-    /// The vault authority that controls vault token accounts.
-    #[account(seeds = [seeds::VAULT_AUTHORITY], bump)]
+    /// The dual redemption vault authority that controls vault token accounts.
+    #[account(seeds = [seeds::DUAL_REDEMPTION_VAULT_AUTHORITY], bump)]
     /// CHECK: This is safe as it's a PDA used for signing
     pub vault_authority: UncheckedAccount<'info>,
 
@@ -314,7 +314,7 @@ fn execute_transfers(
     // Prepare vault authority seeds for signing transfers from vault
     let vault_authority_bump = ctx.bumps.vault_authority;
     let vault_authority_seeds = &[
-        seeds::VAULT_AUTHORITY,
+        seeds::DUAL_REDEMPTION_VAULT_AUTHORITY,
         &[vault_authority_bump],
     ];
     let signer_seeds = &[vault_authority_seeds.as_slice()];
