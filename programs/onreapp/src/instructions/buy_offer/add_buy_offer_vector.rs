@@ -1,4 +1,5 @@
-use super::state::{BuyOffer, BuyOfferAccount, BuyOfferVector};
+use super::buy_offer_state::{BuyOffer, BuyOfferAccount, BuyOfferVector};
+use crate::constants::seeds;
 use crate::instructions::{find_active_vector_at, find_offer_mut};
 use crate::state::State;
 use anchor_lang::prelude::*;
@@ -22,7 +23,7 @@ pub struct BuyOfferVectorAddedEvent {
 #[derive(Accounts)]
 pub struct AddBuyOfferVector<'info> {
     /// The buy offer account containing all buy offers
-    #[account(mut, seeds = [b"buy_offers"], bump)]
+    #[account(mut, seeds = [seeds::BUY_OFFERS], bump)]
     pub buy_offer_account: AccountLoader<'info, BuyOfferAccount>,
 
     /// Program state, ensures `boss` is authorized.

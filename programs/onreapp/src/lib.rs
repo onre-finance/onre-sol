@@ -5,7 +5,6 @@ use instructions::*;
 declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
 
 pub mod constants;
-pub mod contexts;
 pub mod instructions;
 pub mod state;
 pub mod utils;
@@ -344,5 +343,37 @@ pub mod onreapp {
     /// Delegates to `set_boss::set_boss` to change the boss, emitting a `BossUpdated` event.
     pub fn set_boss(ctx: Context<SetBoss>, new_boss: Pubkey) -> Result<()> {
         set_boss::set_boss(ctx, new_boss)
+    }
+
+    /// Initializes the admin state.
+    ///
+    /// Delegates to `initialize_admin_state::initialize_admin_state` to set up the admin state account.
+    /// Only the boss can call this instruction to create the admin state account.
+    /// # Arguments
+    /// - `ctx`: Context for `InitializeAdminState`.
+    pub fn initialize_admin_state(ctx: Context<InitializeAdminState>) -> Result<()> {
+        initialize_admin_state::initialize_admin_state(ctx)
+    }
+
+    /// Adds a new admin to the admin state.
+    ///
+    /// Delegates to `admin::add_admin` to add a new admin to the admin list.
+    /// Only the boss can call this instruction to add new admins.
+    /// # Arguments
+    /// - `ctx`: Context for `AddAdmin`.
+    /// - `new_admin`: Public key of the new admin to be added.
+    pub fn add_admin(ctx: Context<AddAdmin>, new_admin: Pubkey) -> Result<()> {
+        admin::add_admin(ctx, new_admin)
+    }
+
+    /// Removes an admin from the admin state.
+    ///
+    /// Delegates to `admin::remove_admin` to remove an admin from the admin list.
+    /// Only the boss can call this instruction to remove admins.
+    /// # Arguments
+    /// - `ctx`: Context for `RemoveAdmin`.
+    /// - `admin_to_remove`: Public key of the admin to be removed.
+    pub fn remove_admin(ctx: Context<RemoveAdmin>, admin_to_remove: Pubkey) -> Result<()> {
+        admin::remove_admin(ctx, admin_to_remove)
     }
 }

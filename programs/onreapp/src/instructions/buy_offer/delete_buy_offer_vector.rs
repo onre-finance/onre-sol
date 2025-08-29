@@ -1,7 +1,8 @@
-use super::state::{BuyOfferAccount, BuyOfferVector};
+use super::buy_offer_state::{BuyOfferAccount, BuyOfferVector};
 use crate::instructions::{find_active_vector_at, find_offer_mut};
 use crate::state::State;
 use anchor_lang::prelude::*;
+use crate::constants::seeds;
 
 /// Event emitted when a time vector is deleted from a buy offer.
 #[event]
@@ -17,7 +18,7 @@ pub struct BuyOfferVectorDeletedEvent {
 #[derive(Accounts)]
 pub struct DeleteBuyOfferVector<'info> {
     /// The buy offer account containing all buy offers
-    #[account(mut, seeds = [b"buy_offers"], bump)]
+    #[account(mut, seeds = [seeds::BUY_OFFERS], bump)]
     pub buy_offer_account: AccountLoader<'info, BuyOfferAccount>,
 
     /// Program state, ensures `boss` is authorized.

@@ -22,3 +22,10 @@ pub struct PermissionlessAccount {
     #[max_len(50)]
     pub name: String,
 }
+
+#[account]
+#[derive(InitSpace)]
+pub struct AdminState {
+    #[max_len(20)]
+    pub admins: Vec<Pubkey>,
+}

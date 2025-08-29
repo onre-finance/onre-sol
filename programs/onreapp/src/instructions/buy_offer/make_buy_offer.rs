@@ -1,4 +1,4 @@
-use super::state::BuyOfferAccount;
+use super::buy_offer_state::BuyOfferAccount;
 use crate::constants::seeds;
 use crate::state::State;
 use anchor_lang::prelude::*;
