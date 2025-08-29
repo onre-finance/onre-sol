@@ -4,7 +4,6 @@ use anchor_lang::prelude::*;
 
 /// Account structure for removing an admin.
 #[derive(Accounts)]
-#[instruction(admin_to_remove: Pubkey)]
 pub struct RemoveAdmin<'info> {
     /// Admin state account containing the list of admins.
     #[account(
@@ -37,18 +36,16 @@ pub struct RemoveAdmin<'info> {
 pub fn remove_admin(ctx: Context<RemoveAdmin>, admin_to_remove: Pubkey) -> Result<()> {
     let admin_state = &mut ctx.accounts.admin_state;
 
-    let admin_index = admin_state.admins.iter().position(|&x| x == admin_to_remove);
-    
-    match admin_index {
-        Some(index) => {
-            admin_state.admins.swap_remove(index);
-        }
-        None => {
-            return Err(RemoveAdminErrorCode::AdminNotFound.into());
+    // Find and remove the admin
+    for i in 0..20 {
+        if admin_state.admins[i] == admin_to_remove {
+            admin_state.admins[i] = Pubkey::default();
+            return Ok(());
         }
     }
 
-    Ok(())
+    // If we get here, admin was not found
+    Err(RemoveAdminErrorCode::AdminNotFound.into())
 }
 
 /// Error codes for remove admin operations.

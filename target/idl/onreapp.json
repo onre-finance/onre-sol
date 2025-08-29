@@ -4832,7 +4832,10 @@
           {
             "name": "admins",
             "type": {
-              "vec": "pubkey"
+              "array": [
+                "pubkey",
+                20
+              ]
             }
           }
         ]

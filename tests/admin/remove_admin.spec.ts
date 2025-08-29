@@ -56,7 +56,8 @@ describe("Remove Admin", () => {
         // given
         const initialAdminState = await program.account.adminState.fetch(adminStatePda);
         expect(initialAdminState.admins).toContainEqual(admin2.publicKey);
-        expect(initialAdminState.admins).toHaveLength(3);
+        const initialActiveAdmins = initialAdminState.admins.filter(admin => !admin.equals(PublicKey.default));
+        expect(initialActiveAdmins).toHaveLength(3);
 
         // when
         await program.methods.removeAdmin(admin2.publicKey).rpc();
@@ -64,7 +65,8 @@ describe("Remove Admin", () => {
         // then
         const adminStateAccount = await program.account.adminState.fetch(adminStatePda);
         expect(adminStateAccount.admins).not.toContainEqual(admin2.publicKey);
-        expect(adminStateAccount.admins).toHaveLength(2);
+        const activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
+        expect(activeAdmins).toHaveLength(2);
         // Verify other admins are still there
         expect(adminStateAccount.admins).toContainEqual(admin1.publicKey);
         expect(adminStateAccount.admins).toContainEqual(admin3.publicKey);
@@ -90,14 +92,16 @@ describe("Remove Admin", () => {
     test("Can remove all admins one by one", async () => {
         // given
         const initialAdminState = await program.account.adminState.fetch(adminStatePda);
-        expect(initialAdminState.admins).toHaveLength(3);
+        const initialActiveAdmins = initialAdminState.admins.filter(admin => !admin.equals(PublicKey.default));
+        expect(initialActiveAdmins).toHaveLength(3);
 
         // when - remove first admin
         await program.methods.removeAdmin(admin1.publicKey).rpc();
 
         // then
         let adminStateAccount = await program.account.adminState.fetch(adminStatePda);
-        expect(adminStateAccount.admins).toHaveLength(2);
+        let activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
+        expect(activeAdmins).toHaveLength(2);
         expect(adminStateAccount.admins).not.toContainEqual(admin1.publicKey);
 
         // when - remove second admin
@@ -105,7 +109,8 @@ describe("Remove Admin", () => {
 
         // then
         adminStateAccount = await program.account.adminState.fetch(adminStatePda);
-        expect(adminStateAccount.admins).toHaveLength(1);
+        activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
+        expect(activeAdmins).toHaveLength(1);
         expect(adminStateAccount.admins).not.toContainEqual(admin2.publicKey);
 
         // when - remove third admin
@@ -113,7 +118,8 @@ describe("Remove Admin", () => {
 
         // then
         adminStateAccount = await program.account.adminState.fetch(adminStatePda);
-        expect(adminStateAccount.admins).toHaveLength(0);
+        activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
+        expect(activeAdmins).toHaveLength(0);
         expect(adminStateAccount.admins).not.toContainEqual(admin3.publicKey);
     });
 
@@ -123,7 +129,8 @@ describe("Remove Admin", () => {
 
         let adminStateAccount = await program.account.adminState.fetch(adminStatePda);
         expect(adminStateAccount.admins).not.toContainEqual(admin1.publicKey);
-        expect(adminStateAccount.admins).toHaveLength(2);
+        let activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
+        expect(activeAdmins).toHaveLength(2);
 
         // when - re-add admin1
         await program.methods.addAdmin(admin1.publicKey).rpc();
@@ -131,7 +138,8 @@ describe("Remove Admin", () => {
         // then
         adminStateAccount = await program.account.adminState.fetch(adminStatePda);
         expect(adminStateAccount.admins).toContainEqual(admin1.publicKey);
-        expect(adminStateAccount.admins).toHaveLength(3);
+        activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
+        expect(activeAdmins).toHaveLength(3);
     });
 
     test("Boss can remove themselves if they are in the admin list", async () => {
@@ -140,7 +148,8 @@ describe("Remove Admin", () => {
 
         let adminStateAccount = await program.account.adminState.fetch(adminStatePda);
         expect(adminStateAccount.admins).toContainEqual(boss);
-        expect(adminStateAccount.admins).toHaveLength(4);
+        let activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
+        expect(activeAdmins).toHaveLength(4);
 
         // when - boss removes themselves
         await program.methods.removeAdmin(boss).rpc();
@@ -148,7 +157,8 @@ describe("Remove Admin", () => {
         // then
         adminStateAccount = await program.account.adminState.fetch(adminStatePda);
         expect(adminStateAccount.admins).not.toContainEqual(boss);
-        expect(adminStateAccount.admins).toHaveLength(3);
+        activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
+        expect(activeAdmins).toHaveLength(3);
     });
 
     test("Cannot remove the same admin twice", async () => {
@@ -173,7 +183,8 @@ describe("Remove Admin", () => {
 
         // then - verify remaining admins (swap_remove moves last element to removed position)
         const adminStateAccount = await program.account.adminState.fetch(adminStatePda);
-        expect(adminStateAccount.admins).toHaveLength(2);
+        const activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
+        expect(activeAdmins).toHaveLength(2);
         expect(adminStateAccount.admins).toContainEqual(admin1.publicKey);
         expect(adminStateAccount.admins).toContainEqual(admin3.publicKey);
         expect(adminStateAccount.admins).not.toContainEqual(admin2.publicKey);

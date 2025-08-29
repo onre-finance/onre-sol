@@ -50,7 +50,8 @@ describe("Add Admin", () => {
         // then
         const adminStateAccount = await program.account.adminState.fetch(adminStatePda);
         expect(adminStateAccount.admins).toContainEqual(newAdmin.publicKey);
-        expect(adminStateAccount.admins).toHaveLength(1);
+        const activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
+        expect(activeAdmins).toHaveLength(1);
     });
 
     test("Non-boss cannot add admin - should fail", async () => {
@@ -87,7 +88,8 @@ describe("Add Admin", () => {
 
         // verify we still have exactly 20 admins
         const adminStateAccount = await program.account.adminState.fetch(adminStatePda);
-        expect(adminStateAccount.admins).toHaveLength(20);
+        const activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
+        expect(activeAdmins).toHaveLength(20);
     });
 
     test("Can add multiple different admins", async () => {
@@ -106,7 +108,8 @@ describe("Add Admin", () => {
         expect(adminStateAccount.admins).toContainEqual(admin1.publicKey);
         expect(adminStateAccount.admins).toContainEqual(admin2.publicKey);
         expect(adminStateAccount.admins).toContainEqual(admin3.publicKey);
-        expect(adminStateAccount.admins).toHaveLength(3);
+        const activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
+        expect(activeAdmins).toHaveLength(3);
     });
 
     test("Boss can add themselves as admin", async () => {
@@ -116,6 +119,7 @@ describe("Add Admin", () => {
         // then
         const adminStateAccount = await program.account.adminState.fetch(adminStatePda);
         expect(adminStateAccount.admins).toContainEqual(boss);
-        expect(adminStateAccount.admins).toHaveLength(1);
+        const activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
+        expect(activeAdmins).toHaveLength(1);
     });
 });

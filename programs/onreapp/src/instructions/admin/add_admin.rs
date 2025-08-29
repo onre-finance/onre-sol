@@ -37,19 +37,22 @@ pub struct AddAdmin<'info> {
 pub fn add_admin(ctx: Context<AddAdmin>, new_admin: Pubkey) -> Result<()> {
     let admin_state = &mut ctx.accounts.admin_state;
 
+    // Check if admin already exists
     require!(
         !admin_state.admins.contains(&new_admin),
         AddAdminErrorCode::AdminAlreadyExists
     );
 
-    require!(
-        admin_state.admins.len() < 20,
-        AddAdminErrorCode::MaxAdminsReached
-    );
+    // Find first empty slot
+    for i in 0..20 {
+        if admin_state.admins[i] == Pubkey::default() {
+            admin_state.admins[i] = new_admin;
+            return Ok(());
+        }
+    }
 
-    admin_state.admins.push(new_admin);
-
-    Ok(())
+    // If we get here, all slots are full
+    Err(AddAdminErrorCode::MaxAdminsReached.into())
 }
 
 /// Error codes for add admin operations.

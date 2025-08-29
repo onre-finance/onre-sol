@@ -4838,7 +4838,10 @@ export type Onreapp = {
           {
             "name": "admins",
             "type": {
-              "vec": "pubkey"
+              "array": [
+                "pubkey",
+                20
+              ]
             }
           }
         ]
