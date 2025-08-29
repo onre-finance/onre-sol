@@ -79,15 +79,15 @@ pub fn make_dual_redemption_offer(
     ratio_basis_points: u64,
     fee_basis_points: u64,
 ) -> Result<()> {
-    // Validate ratio is within valid range (0-10000 basis points = 0-100%)
-    if ratio_basis_points > MAX_BASIS_POINTS {
-        return Err(error!(DualRedemptionOfferErrorCode::InvalidRatio));
-    }
-
-    // Validate fee is within valid range (0-10000 basis points = 0-100%)
-    if fee_basis_points > MAX_BASIS_POINTS {
-        return Err(error!(DualRedemptionOfferErrorCode::InvalidFee));
-    }
+    // Validate basis points are within valid range (0-10000 basis points = 0-100%)
+    require!(
+        ratio_basis_points <= MAX_BASIS_POINTS,
+        DualRedemptionOfferErrorCode::InvalidRatio
+    );
+    require!(
+        fee_basis_points <= MAX_BASIS_POINTS,
+        DualRedemptionOfferErrorCode::InvalidFee
+    );
 
     let dual_redemption_offer_account =
         &mut ctx.accounts.dual_redemption_offer_account.load_mut()?;
