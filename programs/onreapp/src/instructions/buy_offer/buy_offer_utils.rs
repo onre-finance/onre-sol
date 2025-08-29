@@ -26,7 +26,7 @@ pub struct BuyOfferProcessResult {
 /// This function handles all the common validation and calculation logic:
 /// 1. Find and validate the offer exists
 /// 2. Find the currently active pricing vector
-/// 3. Calculate current price based on time and yield parameters
+/// 3. Calculate current price based on time and APR parameters
 /// 4. Calculate token_out_amount based on price and decimals
 ///
 /// # Arguments
@@ -55,7 +55,7 @@ pub fn process_buy_offer_core(
 
     // Calculate current price with 9 decimals
     let current_price = calculate_current_price(
-        active_vector.price_yield,
+        active_vector.apr,
         active_vector.start_price,
         active_vector.start_time,
         active_vector.price_fix_duration,
@@ -163,7 +163,7 @@ pub fn find_active_vector_at(offer: &BuyOffer, time: u64) -> Result<BuyOfferVect
 /// Linear (uncompounded) price calculation with "price-fix" windows that snap to the END of the current window.
 ///
 /// This function implements the discrete interval pricing model:
-/// - price_yield: yearly yield scaled by 1_000_000 (e.g., 10.12% => 101_200)
+/// - apr: Annual Percentage Rate scaled by 1_000_000 (e.g., 10.12% => 101_200)
 /// - start_price: starting price
 /// - start_time: epoch seconds when the price starts evolving
 /// - price_fix_duration: duration (seconds) of each price-fix window; price is constant within a window
@@ -178,7 +178,7 @@ pub fn find_active_vector_at(offer: &BuyOffer, time: u64) -> Result<BuyOfferVect
 /// We compute this in fixed-point to avoid precision loss.
 ///
 /// # Arguments
-/// * `price_yield` - Yearly yield scaled by 1_000_000
+/// * `apr` - Annual Percentage Rate scaled by 1_000_000
 /// * `start_price` - Starting price
 /// * `start_time` - Unix timestamp when pricing starts
 /// * `price_fix_duration` - Duration of each price interval in seconds
@@ -186,12 +186,12 @@ pub fn find_active_vector_at(offer: &BuyOffer, time: u64) -> Result<BuyOfferVect
 /// # Returns
 /// The calculated current price
 pub fn calculate_current_price(
-    price_yield: u64,
+    apr: u64,
     start_price: u64,
     start_time: u64,
     price_fix_duration: u64,
 ) -> Result<u64> {
-    const SCALE: u128 = 1_000_000; // because price_yield is scaled by 1_000_000
+    const SCALE: u128 = 1_000_000; // because APR is scaled by 1_000_000
     const S: u64 = 365 * 24 * 3600; // seconds per year
 
     let current_time = Clock::get()?.unix_timestamp as u64;
@@ -221,7 +221,7 @@ pub fn calculate_current_price(
     let factor_den = SCALE
         .checked_mul(S as u128)
         .expect("SCALE*S overflow (should not happen)");
-    let y_part = (price_yield as u128)
+    let y_part = (apr as u128)
         .checked_mul(elapsed_effective as u128)
         .ok_or(BuyOfferCoreError::OverflowError)?;
     let factor_num = factor_den

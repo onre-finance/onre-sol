@@ -119,12 +119,12 @@ describe("Take Buy Offer Permissionless", () => {
 
             // Add vector: start_price = 1.0 (1e9), yield = 3.65% (36500), duration = 1 day
             const startPrice = new BN(1e9);
-            const priceYield = new BN(36_500);
+            const apr = new BN(36_500);
             const priceFixDuration = new BN(86400);
             const startTime = new BN(currentTime);
 
             await testHelper.program.methods
-                .addBuyOfferVector(offerId, startTime, startPrice, priceYield, priceFixDuration)
+                .addBuyOfferVector(offerId, startTime, startPrice, apr, priceFixDuration)
                 .accounts({state: testHelper.statePda})
                 .rpc();
 
@@ -269,12 +269,12 @@ describe("Take Buy Offer Permissionless", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             const startPrice = new BN(1e9);
-            const priceYield = new BN(36_500);
+            const apr = new BN(36_500);
             const priceFixDuration = new BN(86400);
             const startTime = new BN(currentTime);
 
             await testHelper.program.methods
-                .addBuyOfferVector(offerId, startTime, startPrice, priceYield, priceFixDuration)
+                .addBuyOfferVector(offerId, startTime, startPrice, apr, priceFixDuration)
                 .accounts({state: testHelper.statePda})
                 .rpc();
 

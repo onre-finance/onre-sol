@@ -54,7 +54,7 @@ export type Onreapp = {
         "- `offer_id`: ID of the buy offer to add the vector to.",
         "- `start_time`: Unix timestamp when the vector becomes active.",
         "- `start_price`: Price at the beginning of the vector.",
-        "- `price_yield`: Price yield percentage * 10000 (with 4 decimal places).",
+        "- `apr`: Annual Percentage Rate (APR) in basis points (see BuyOfferVector::apr for details).",
         "- `price_fix_duration`: Duration in seconds for each price interval."
       ],
       "discriminator": [
@@ -126,7 +126,7 @@ export type Onreapp = {
           "type": "u64"
         },
         {
-          "name": "priceYield",
+          "name": "apr",
           "type": "u64"
         },
         {
@@ -4721,7 +4721,22 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "priceYield",
+            "name": "apr",
+            "docs": [
+              "Annual Percentage Rate (APR) expressed in basis points",
+              "",
+              "APR represents the annualized rate of return for this buy offer.",
+              "It is scaled by 1,000,000 for precision (6 decimal places).",
+              "",
+              "Examples:",
+              "- 0 = 0% APR (fixed price, no yield over time)",
+              "- 36_500 = 0.0365% APR (3.65% annual rate)",
+              "- 1_000_000 = 1% APR",
+              "- 10_000_000 = 10% APR",
+              "",
+              "The APR determines how the price increases over time intervals.",
+              "Price = start_price * (1 + APR * time_elapsed / seconds_in_year)"
+            ],
             "type": "u64"
           },
           {
@@ -4760,7 +4775,7 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "priceYield",
+            "name": "apr",
             "type": "u64"
           },
           {

@@ -11,7 +11,7 @@ pub struct BuyOfferVectorAddedEvent {
     pub start_time: u64,
     pub valid_from: u64,
     pub start_price: u64,
-    pub price_yield: u64,
+    pub apr: u64,
     pub price_fix_duration: u64,
 }
 
@@ -44,7 +44,7 @@ pub struct AddBuyOfferVector<'info> {
 /// - `offer_id`: ID of the buy offer to add the vector to.
 /// - `start_time`: Unix timestamp when the vector becomes active.
 /// - `start_price`: Price at the beginning of the vector.
-/// - `price_yield`: Price yield percentage * 10000 (with 4 decimal places).
+/// - `apr`: Annual Percentage Rate (APR) in basis points (see BuyOfferVector::apr for details).
 /// - `price_fix_duration`: Duration in seconds for each price interval.
 ///
 /// # Errors
@@ -57,7 +57,7 @@ pub fn add_buy_offer_vector(
     offer_id: u64,
     start_time: u64,
     start_price: u64,
-    price_yield: u64,
+    apr: u64,
     price_fix_duration: u64,
 ) -> Result<()> {
     let buy_offer_account = &mut ctx.accounts.buy_offer_account.load_mut()?;
@@ -102,7 +102,7 @@ pub fn add_buy_offer_vector(
         valid_from,
         start_time,
         start_price,
-        price_yield,
+        apr,
         price_fix_duration,
     };
 
@@ -124,7 +124,7 @@ pub fn add_buy_offer_vector(
         start_time,
         valid_from,
         start_price,
-        price_yield,
+        apr,
         price_fix_duration,
     });
 

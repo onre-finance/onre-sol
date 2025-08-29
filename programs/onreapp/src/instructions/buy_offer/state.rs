@@ -24,8 +24,19 @@ pub struct BuyOfferVector {
     pub valid_from: u64,
     pub start_time: u64,
     pub start_price: u64,
-    // Price yield percentage * 10000 (with 4 decimal places = 12.34% => 123400)
-    pub price_yield: u64,
+    /// Annual Percentage Rate (APR)
+    ///
+    /// APR represents the annualized rate of return for this buy offer.
+    /// It is scaled by 1,000,000 for precision (6 decimal places).
+    ///
+    /// Examples:
+    /// - 0 = 0% APR (fixed price, no yield over time)
+    /// - 36_500 = 0.0365% APR (3.65% annual rate)
+    /// - 1_000_000 = 1% APR
+    /// - 10_000_000 = 10% APR
+    ///
+    /// The APR determines how the price increases over time intervals.
+    pub apr: u64,
     pub price_fix_duration: u64,
 }
 

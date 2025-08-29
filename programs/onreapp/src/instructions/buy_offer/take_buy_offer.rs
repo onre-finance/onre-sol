@@ -117,7 +117,7 @@ pub struct TakeBuyOffer<'info> {
 ///
 /// 1. Load and validate the buy offer exists
 /// 2. Find the currently active pricing vector
-/// 3. Calculate current price based on time elapsed and yield parameters
+/// 3. Calculate current price based on time elapsed and APR parameters
 /// 4. Calculate how many token_out to give for the provided token_in_amount
 /// 5. Execute atomic transfers: user → boss (token_in), vault → user (token_out)
 /// 6. Emit event with transaction details
