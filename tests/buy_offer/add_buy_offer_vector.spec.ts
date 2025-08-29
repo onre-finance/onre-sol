@@ -460,8 +460,6 @@ describe("Add Buy Offer Vector", () => {
                     state: testHelper.statePda,
                 })
                 .rpc();
-
-            console.log(`Added vector ${i}`);
         }
 
         // Try to add one more vector (should fail)

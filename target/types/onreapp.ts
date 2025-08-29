@@ -54,7 +54,7 @@ export type Onreapp = {
         "- `offer_id`: ID of the buy offer to add the vector to.",
         "- `start_time`: Unix timestamp when the vector becomes active.",
         "- `start_price`: Price at the beginning of the vector.",
-        "- `apr`: Annual Percentage Rate (APR) in basis points (see BuyOfferVector::apr for details).",
+        "- `apr`: Annual Percentage Rate (APR) (see BuyOfferVector::apr for details).",
         "- `price_fix_duration`: Duration in seconds for each price interval."
       ],
       "discriminator": [
@@ -4723,7 +4723,7 @@ export type Onreapp = {
           {
             "name": "apr",
             "docs": [
-              "Annual Percentage Rate (APR) expressed in basis points",
+              "Annual Percentage Rate (APR)",
               "",
               "APR represents the annualized rate of return for this buy offer.",
               "It is scaled by 1,000,000 for precision (6 decimal places).",
@@ -4734,8 +4734,7 @@ export type Onreapp = {
               "- 1_000_000 = 1% APR",
               "- 10_000_000 = 10% APR",
               "",
-              "The APR determines how the price increases over time intervals.",
-              "Price = start_price * (1 + APR * time_elapsed / seconds_in_year)"
+              "The APR determines how the price increases over time intervals."
             ],
             "type": "u64"
           },

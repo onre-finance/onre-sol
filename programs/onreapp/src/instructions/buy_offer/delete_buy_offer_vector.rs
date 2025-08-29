@@ -1,5 +1,5 @@
 use super::state::{BuyOfferAccount, BuyOfferVector};
-use crate::instructions::find_offer_mut;
+use crate::instructions::{find_active_vector_at, find_offer_mut};
 use crate::state::State;
 use anchor_lang::prelude::*;
 
@@ -62,6 +62,19 @@ pub fn delete_buy_offer_vector(
     // Find and delete the vector by vector_id
     let vector_index = find_vector_index_by_id(&offer.vectors, vector_id)?;
 
+    let current_vector = find_active_vector_at(offer, Clock::get()?.unix_timestamp as u64);
+
+    if current_vector.is_ok() {
+        let prev_vector = find_active_vector_at(offer, current_vector?.valid_from - 1);
+
+        if prev_vector.is_ok() {
+            require!(
+                prev_vector?.vector_id != vector_id,
+                DeleteBuyOfferVectorErrorCode::CannotDeletePreviousVector
+            );
+        }
+    }
+
     // Delete the vector by setting it to default
     offer.vectors[vector_index] = BuyOfferVector::default();
 
@@ -97,4 +110,7 @@ pub enum DeleteBuyOfferVectorErrorCode {
     /// Triggered when the specified vector_id is 0 or not found in the offer.
     #[msg("Vector with the specified ID was not found in the offer")]
     VectorNotFound,
+
+    #[msg("Cannot delete previously active vector")]
+    CannotDeletePreviousVector,
 }
