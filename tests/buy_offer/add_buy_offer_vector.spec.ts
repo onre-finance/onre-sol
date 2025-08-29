@@ -65,7 +65,7 @@ describe("Add Buy Offer Vector", () => {
         const currentTime = await testHelper.getCurrentClockTime();
         const startTime = new BN(currentTime + 3600); // 1 hour in future
         const startPrice = new BN(1000000); // 1 token
-        const apr = new BN(5000);    // 50% yield (5000/10000)
+        const apr = new BN(5000);    // 50% APR (5000/10000)
         const priceFixDuration = new BN(3600); // 1 hour
 
         const tx = await testHelper.program.methods
@@ -114,7 +114,7 @@ describe("Add Buy Offer Vector", () => {
         const currentTime = await testHelper.getCurrentClockTime();
         const pastStartTime = new BN(currentTime - 3600); // 1 hour ago
         const startPrice = new BN(1000000);
-        const apr = new BN(2500); // 25% yield
+        const apr = new BN(2500); // 25% APR
         const priceFixDuration = new BN(1800);
 
         await testHelper.program.methods
@@ -498,7 +498,7 @@ describe("Add Buy Offer Vector", () => {
 
         // Use large values
         const largeStartPrice = new BN("999999999999999999"); // Large u64 value
-        const largeApr = new BN("999999"); // 99.9999% yield (9999/10000)
+        const largeApr = new BN("999999"); // 99.9999% APR (9999/10000)
 
         await testHelper.program.methods
             .addBuyOfferVector(
@@ -674,7 +674,7 @@ describe("Add Buy Offer Vector", () => {
         expect(offer1.vectors[0].startPrice.toString()).toBe("1000000");
         expect(offer2.vectors[0].startPrice.toString()).toBe("3000000");
 
-        // Verify yields are correct
+        // Verify APRs are correct
         expect(offer1.vectors[0].apr.toString()).toBe("5000"); // 50%
         expect(offer2.vectors[0].apr.toString()).toBe("7500"); // 75%
     });
@@ -709,7 +709,7 @@ describe("Add Buy Offer Vector", () => {
                     offerId,
                     new BN(vectors[i].startTime),
                     new BN(vectors[i].price),
-                    new BN(5000), // 50% yield
+                    new BN(5000), // 50% APR
                     new BN(3600)  // 1 hour duration
                 )
                 .accounts({

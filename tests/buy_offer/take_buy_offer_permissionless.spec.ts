@@ -117,7 +117,7 @@ describe("Take Buy Offer Permissionless", () => {
         it("Should successfully execute permissionless buy offer", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
-            // Add vector: start_price = 1.0 (1e9), yield = 3.65% (36500), duration = 1 day
+            // Add vector: start_price = 1.0 (1e9), APR = 3.65% (36500), duration = 1 day
             const startPrice = new BN(1e9);
             const apr = new BN(36_500);
             const priceFixDuration = new BN(86400);
@@ -203,7 +203,7 @@ describe("Take Buy Offer Permissionless", () => {
             expect(permissionlessTokenOutAfter).toBe(permissionlessTokenOutBefore); // Should be 0
         });
 
-        it("Should yield identical results to direct take_buy_offer", async () => {
+        it("Should APR identical results to direct take_buy_offer", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await testHelper.program.methods
@@ -417,7 +417,7 @@ describe("Take Buy Offer Permissionless", () => {
                     offerId,
                     new BN(currentTime - 100),
                     new BN(2e9), // Different start price
-                    new BN(73_000), // Different yield (7.3%)
+                    new BN(73_000), // Different APR (7.3%)
                     new BN(86400)
                 )
                 .accounts({state: testHelper.statePda})
@@ -537,7 +537,7 @@ describe("Take Buy Offer Permissionless", () => {
                     offerId,
                     new BN(currentTime),
                     new BN(1e6), // Very low price = 0.001 USDC per token
-                    new BN(0), // Zero yield for fixed price
+                    new BN(0), // Zero APR for fixed price
                     new BN(86400)
                 )
                 .accounts({state: testHelper.statePda})
@@ -633,7 +633,7 @@ describe("Take Buy Offer Permissionless", () => {
                     offerId,
                     new BN(currentTime),
                     new BN(1_234_567_890), // 1.23456789 with 9 decimals
-                    new BN(45_670), // 4.567% yearly yield
+                    new BN(45_670), // 4.567% yearly APR
                     new BN(86400)
                 )
                 .accounts({state: testHelper.statePda})
@@ -716,7 +716,7 @@ describe("Take Buy Offer Permissionless", () => {
     });
 
     describe("Edge Cases", () => {
-        it("Should handle zero yield (fixed price) correctly", async () => {
+        it("Should handle zero APR (fixed price) correctly", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await testHelper.program.methods
@@ -724,7 +724,7 @@ describe("Take Buy Offer Permissionless", () => {
                     offerId,
                     new BN(currentTime),
                     new BN(1e9),
-                    new BN(0), // Zero yield for fixed price
+                    new BN(0), // Zero APR for fixed price
                     new BN(86400)
                 )
                 .accounts({state: testHelper.statePda})
@@ -755,7 +755,7 @@ describe("Take Buy Offer Permissionless", () => {
             expect(receivedTokens).toEqual(BigInt(1_000_000_000));
         });
 
-        it("Should handle high yield over long time period with precision", async () => {
+        it("Should handle high APR over long time period with precision", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await testHelper.program.methods
@@ -763,7 +763,7 @@ describe("Take Buy Offer Permissionless", () => {
                     offerId,
                     new BN(currentTime),
                     new BN(1e9),
-                    new BN(365_000), // 36.5% yearly yield
+                    new BN(365_000), // 36.5% yearly APR
                     new BN(86400)
                 )
                 .accounts({state: testHelper.statePda})

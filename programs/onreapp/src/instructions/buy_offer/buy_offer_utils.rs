@@ -174,7 +174,7 @@ pub fn find_active_vector_at(offer: &BuyOffer, time: u64) -> Result<BuyOfferVect
 ///
 ///   k = floor((t - start_time) / D)
 ///   P(t) = P0 * (1 + y * ((k + 1)*D) / S)
-/// where S = 365*24*3600, and y is yearly yield as a decimal.
+/// where S = 365*24*3600, and y is yearly APR as a decimal.
 /// We compute this in fixed-point to avoid precision loss.
 ///
 /// # Arguments

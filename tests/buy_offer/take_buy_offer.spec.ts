@@ -100,7 +100,7 @@ describe("Take Buy Offer", () => {
 
             // Add vector: start_price = 1.0 (1e9), APRÏ = 3.65% (36500), duration = 1 day
             const startPrice = new BN(1e9); // 1.0 with 9 decimals
-            const apr = new BN(36_500); // 3.65% yearly yield (scaled by 1M)
+            const apr = new BN(36_500); // 3.65% APR (scaled by 1M)
             const priceFixDuration = new BN(86400); // 1 day
             const startTime = new BN(currentTime);
 
@@ -255,7 +255,7 @@ describe("Take Buy Offer", () => {
                     offerId,
                     new BN(currentTime - 100),
                     new BN(2e9), // Different start price
-                    new BN(73_000), // Different yield (7.3%)
+                    new BN(73_000), // Different APR (7.3%)
                     new BN(86400)
                 )
                 .accounts({state: testHelper.statePda})
@@ -376,7 +376,7 @@ describe("Take Buy Offer", () => {
                     offerId,
                     new BN(currentTime),
                     new BN(1e6), // Very low price = 0.001 USDC per token
-                    new BN(0), // Zero yield for fixed price
+                    new BN(0), // Zero APR for fixed price
                     new BN(86400)
                 )
                 .accounts({state: testHelper.statePda})
@@ -449,7 +449,7 @@ describe("Take Buy Offer", () => {
     });
 
     describe("Edge Cases", () => {
-        it("Should handle zero yield (fixed price) correctly", async () => {
+        it("Should handle zero APR (fixed price) correctly", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await testHelper.program.methods
@@ -457,16 +457,16 @@ describe("Take Buy Offer", () => {
                     offerId,
                     new BN(currentTime),
                     new BN(1e9),
-                    new BN(0), // Zero yield for fixed price
+                    new BN(0), // Zero APR for fixed price
                     new BN(86400)
                 )
                 .accounts({state: testHelper.statePda})
                 .rpc();
 
-            // Price should remain almost constant with minimal yield
+            // Price should remain almost constant with minimal APR
             await testHelper.advanceClockBy(86_401 * 10); // 10 days
 
-            // With 0.0001% yearly yield over 10 days: price ≈ 1.000000027 ≈ 1.0 USDC
+            // With 0.0001% APR over 10 days: price ≈ 1.000000027 ≈ 1.0 USDC
             const expectedTokenInAmount = new BN(1_000_000); // Exactly 1.0 USDC
 
             const userBalanceBefore = await testHelper.getTokenAccountBalance(userTokenOutAccount);
@@ -490,7 +490,7 @@ describe("Take Buy Offer", () => {
             expect(receivedTokens).toEqual(BigInt(1_000_000_000));
         });
 
-        it("Should handle high yield over long time period with precision", async () => {
+        it("Should handle high APR over long time period with precision", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await testHelper.program.methods
@@ -498,7 +498,7 @@ describe("Take Buy Offer", () => {
                     offerId,
                     new BN(currentTime),
                     new BN(1e9),
-                    new BN(365_000), // 36.5% yearly yield
+                    new BN(365_000), // 36.5% yearly APR
                     new BN(86400)
                 )
                 .accounts({state: testHelper.statePda})
@@ -507,7 +507,7 @@ describe("Take Buy Offer", () => {
             // Advance 1 year (365 days)
             await testHelper.advanceClockBy(86400 * 365);
 
-            // After 1 year with 36.5% yield: price = 1.0 * (1 + 0.365) = 1.365
+            // After 1 year with 36.5% APR: price = 1.0 * (1 + 0.365) = 1.365
             // But due to discrete intervals, it uses (366 * D) / S formula
             // Let's calculate the actual expected price and use a tolerance
             const expectedTokenInAmount = new BN(1_366_000); // Based on the actual calculation from logs
