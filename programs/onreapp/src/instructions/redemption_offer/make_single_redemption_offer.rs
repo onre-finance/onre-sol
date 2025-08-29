@@ -1,6 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::SingleRedemptionOfferAccount;
 use crate::state::State;
+use crate::utils::MAX_BASIS_POINTS;
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
 
@@ -70,7 +71,7 @@ pub fn make_single_redemption_offer(
 ) -> Result<()> {
     // Validate fee is within valid range (0-10000 basis points = 0-100%)
     require!(
-        fee_basis_points <= 10000,
+        fee_basis_points <= MAX_BASIS_POINTS,
         SingleRedemptionOfferErrorCode::InvalidFee
     );
 
