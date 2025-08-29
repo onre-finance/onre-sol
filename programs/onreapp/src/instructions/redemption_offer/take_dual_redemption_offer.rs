@@ -1,7 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::{DualRedemptionOffer, DualRedemptionOfferAccount};
 use crate::state::State;
-use crate::utils::{calculate_fees, calculate_token_out_amount, transfer_tokens};
+use crate::utils::{calculate_fees, calculate_token_out_amount, transfer_tokens, MAX_BASIS_POINTS};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
@@ -273,21 +273,21 @@ fn calculate_token_out_amounts(
 ) -> Result<(u64, u64)> {
     let token_in_amount_u128 = token_in_amount as u128;
     let ratio_1_u128 = ratio_basis_points as u128;
-    let ratio_2_u128 = (10000 - ratio_basis_points) as u128;
+    let ratio_2_u128 = (MAX_BASIS_POINTS - ratio_basis_points) as u128;
 
     // Split token_in amount based on ratio
     // token_in_1 = token_in_amount * ratio_basis_points / 10000
     let token_in_1_amount = token_in_amount_u128
         .checked_mul(ratio_1_u128)
         .ok_or(TakeDualRedemptionOfferErrorCode::MathOverflow)?
-        .checked_div(10000)
+        .checked_div(MAX_BASIS_POINTS as u128)
         .ok_or(TakeDualRedemptionOfferErrorCode::MathOverflow)? as u64;
 
     // token_in_2 = token_in_amount * (10000 - ratio_basis_points) / 10000
     let token_in_2_amount = token_in_amount_u128
         .checked_mul(ratio_2_u128)
         .ok_or(TakeDualRedemptionOfferErrorCode::MathOverflow)?
-        .checked_div(10000)
+        .checked_div(MAX_BASIS_POINTS as u128)
         .ok_or(TakeDualRedemptionOfferErrorCode::MathOverflow)? as u64;
 
     // Calculate token_out_1_amount using price_1
