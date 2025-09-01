@@ -11,7 +11,7 @@ import { initProgram, PROGRAM_ID, RPC_URL } from "./script-commons";
 const BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC"); // DEV Squad
 
 // Configure the permissionless account name here
-const PERMISSIONLESS_ACCOUNT_NAME = "BOB";
+const PERMISSIONLESS_ACCOUNT_NAME = "ON Technologies Corporation";
 
 async function createInitializePermissionlessTransaction() {
     const connection = new anchor.web3.Connection(RPC_URL);
