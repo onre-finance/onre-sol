@@ -13,6 +13,7 @@ pub struct SingleRedemptionOffer {
     pub start_time: u64,
     pub end_time: u64,
     pub price: u64,
+    pub fee_basis_points: u64,
 }
 
 
@@ -24,7 +25,8 @@ impl Default for SingleRedemptionOffer {
             token_out_mint: Pubkey::default(),
             start_time: 0,
             end_time: 0,
-            price: 0
+            price: 0,
+            fee_basis_points: 0,
         }
     }
 }
@@ -50,6 +52,7 @@ pub struct DualRedemptionOffer {
     pub price_1: u64, // Price for token_out_1 with 9 decimal precision
     pub price_2: u64, // Price for token_out_2 with 9 decimal precision
     pub ratio_basis_points: u64, // Basis points (e.g., 8000 = 80% for token_out_1, 20% for token_out_2)
+    pub fee_basis_points: u64,
 }
 
 impl Default for DualRedemptionOffer {
@@ -64,6 +67,7 @@ impl Default for DualRedemptionOffer {
             price_1: 0,
             price_2: 0,
             ratio_basis_points: 0,
+            fee_basis_points: 0,
         }
     }
 }

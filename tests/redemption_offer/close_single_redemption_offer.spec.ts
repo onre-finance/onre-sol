@@ -1,15 +1,15 @@
-import { PublicKey } from "@solana/web3.js";
-import { ONREAPP_PROGRAM_ID, TestHelper } from "../test_helper";
-import { AddedProgram, startAnchor } from "solana-bankrun";
-import { Onreapp } from "../../target/types/onreapp";
-import { BankrunProvider } from "anchor-bankrun";
-import { BN, Program } from "@coral-xyz/anchor";
+import {PublicKey} from "@solana/web3.js";
+import {ONREAPP_PROGRAM_ID, TestHelper} from "../test_helper";
+import {AddedProgram, startAnchor} from "solana-bankrun";
+import {Onreapp} from "../../target/types/onreapp";
+import {BankrunProvider} from "anchor-bankrun";
+import {BN, Program} from "@coral-xyz/anchor";
 import idl from "../../target/idl/onreapp.json";
 
 describe("Close single redemption offer", () => {
     let testHelper: TestHelper;
     let program: Program<Onreapp>;
-    
+
     let boss: PublicKey;
     let singleRedemptionOfferAccountPda: PublicKey;
 
@@ -30,11 +30,11 @@ describe("Close single redemption offer", () => {
 
         testHelper = new TestHelper(context, program);
         boss = provider.wallet.publicKey;
-        
+
         // Initialize program and offers
-        await program.methods.initialize().accounts({ boss }).rpc();
-        await program.methods.initializeOffers().accounts({ 
-            state: testHelper.statePda 
+        await program.methods.initialize().accounts({boss}).rpc();
+        await program.methods.initializeOffers().accounts({
+            state: testHelper.statePda
         }).rpc();
 
         // Get single redemption offer account PDA
@@ -50,7 +50,7 @@ describe("Close single redemption offer", () => {
         const price = new BN(1000);
 
         await program.methods
-            .makeSingleRedemptionOffer(startTime, endTime, price)
+            .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
             .accounts({
                 tokenInMint,
                 tokenOutMint,
@@ -61,11 +61,11 @@ describe("Close single redemption offer", () => {
         // Verify offer was created
         let redemptionOfferAccountData = await program.account.singleRedemptionOfferAccount.fetch(singleRedemptionOfferAccountPda);
         const offerId = redemptionOfferAccountData.counter.toNumber();
-        
+
         const createdOffer = redemptionOfferAccountData.offers.find(offer => offer.offerId.toNumber() === offerId);
         expect(createdOffer).toBeDefined();
         expect(createdOffer!.offerId.toNumber()).toBe(offerId);
-        
+
         // Count active offers before closing
         const activeOffersBefore = redemptionOfferAccountData.offers.filter(offer => offer.offerId.toNumber() > 0).length;
 
@@ -79,15 +79,15 @@ describe("Close single redemption offer", () => {
 
         // then - verify offer is cleared
         redemptionOfferAccountData = await program.account.singleRedemptionOfferAccount.fetch(singleRedemptionOfferAccountPda);
-        
+
         // The offer with the original ID should no longer exist
         const closedOffer = redemptionOfferAccountData.offers.find(offer => offer.offerId.toNumber() === offerId);
         expect(closedOffer).toBeUndefined();
-        
+
         // Count active offers after closing - should be one less
         const activeOffersAfter = redemptionOfferAccountData.offers.filter(offer => offer.offerId.toNumber() > 0).length;
         expect(activeOffersAfter).toBe(activeOffersBefore - 1);
-        
+
         // Counter should remain unchanged (we don't decrease it when closing)
         expect(redemptionOfferAccountData.counter.toNumber()).toBe(offerId);
     });
@@ -95,7 +95,7 @@ describe("Close single redemption offer", () => {
     test("Close non-existent redemption offer should fail", async () => {
         // when/then - try to close offer that doesn't exist
         const nonExistentOfferId = new BN(9999);
-        
+
         await expect(
             program.methods
                 .closeSingleRedemptionOffer(nonExistentOfferId)
@@ -127,7 +127,7 @@ describe("Close single redemption offer", () => {
         const price = new BN(1500);
 
         await program.methods
-            .makeSingleRedemptionOffer(startTime, endTime, price)
+            .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
             .accounts({
                 tokenInMint,
                 tokenOutMint,
@@ -141,7 +141,7 @@ describe("Close single redemption offer", () => {
 
         // when/then - try to close with different signer
         const notBoss = testHelper.createUserAccount();
-        
+
         await expect(
             program.methods
                 .closeSingleRedemptionOffer(new BN(offerId))
@@ -158,7 +158,7 @@ describe("Close single redemption offer", () => {
         // given - create multiple redemption offers
         const offers = [];
         const baseTime = Math.floor(Date.now() / 1000);
-        
+
         for (let i = 0; i < 3; i++) {
             const tokenInMint = testHelper.createMint(boss, BigInt(100_000e9), 9);
             const tokenOutMint = testHelper.createMint(boss, BigInt(100_000e9), 9);
@@ -167,7 +167,7 @@ describe("Close single redemption offer", () => {
             const price = new BN(1000 + i * 100);
 
             await program.methods
-                .makeSingleRedemptionOffer(startTime, endTime, price)
+                .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
                 .accounts({
                     tokenInMint,
                     tokenOutMint,
@@ -175,7 +175,7 @@ describe("Close single redemption offer", () => {
                 })
                 .rpc();
 
-            offers.push({ tokenInMint, tokenOutMint, price: price.toNumber() });
+            offers.push({tokenInMint, tokenOutMint, price: price.toNumber()});
         }
 
         // Get all offer IDs
@@ -200,7 +200,7 @@ describe("Close single redemption offer", () => {
 
         // then - verify correct offers are closed
         redemptionOfferAccountData = await program.account.singleRedemptionOfferAccount.fetch(singleRedemptionOfferAccountPda);
-        
+
         // First offer should be closed (cleared)
         const firstOffer = redemptionOfferAccountData.offers.find(offer => offer.offerId.toNumber() === offerIds[0]);
         expect(firstOffer).toBeUndefined();

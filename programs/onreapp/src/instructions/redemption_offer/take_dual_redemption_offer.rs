@@ -1,7 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::{DualRedemptionOffer, DualRedemptionOfferAccount};
 use crate::state::State;
-use crate::utils::{transfer_tokens, calculate_token_out_amount};
+use crate::utils::{calculate_fees, calculate_token_out_amount, transfer_tokens, MAX_BASIS_POINTS};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
@@ -31,6 +31,7 @@ pub struct TakeDualRedemptionOfferEvent {
     pub token_in_amount: u64,
     pub token_out_1_amount: u64,
     pub token_out_2_amount: u64,
+    pub fee_amount: u64,
     pub user: Pubkey,
 }
 
@@ -131,7 +132,7 @@ pub struct TakeDualRedemptionOffer<'info> {
 /// Allows a user to exchange token_in for token_out_1 and token_out_2 based on the offer's prices and ratio.
 /// The prices represent how much token_in is needed to get 1 token_out (with 9 decimal precision).
 /// The ratio determines how much of the total token_in amount goes to each output token.
-/// 
+///
 /// Example: if price_1 is 2000000000 (2.0), price_2 is 1000000000 (1.0), and ratio is 8000 (80%):
 /// - 80% of token_in is used to get token_out_1 at price_1
 /// - 20% of token_in is used to get token_out_2 at price_2
@@ -150,13 +151,16 @@ pub fn take_dual_redemption_offer(
 ) -> Result<()> {
     // Find the offer
     let offer = find_offer(&ctx, offer_id)?;
-    
+
     // Validate the offer
     validate_offer(&ctx, &offer)?;
-    
-    // Calculate token_out amounts based on ratio and prices
+
+    // Calculate fee amount in token_in tokens
+    let fee_amounts = calculate_fees(token_in_amount, offer.fee_basis_points)?;
+
+    // Calculate token_out amounts based on remaining amount after fee
     let (token_out_1_amount, token_out_2_amount) = calculate_token_out_amounts(
-        token_in_amount,
+        fee_amounts.remaining_token_in_amount,
         offer.price_1,
         offer.price_2,
         offer.ratio_basis_points,
@@ -164,25 +168,32 @@ pub fn take_dual_redemption_offer(
         ctx.accounts.token_out_mint_1.decimals,
         ctx.accounts.token_out_mint_2.decimals,
     )?;
-    
+
     // Execute transfers
-    execute_transfers(&ctx, token_in_amount, token_out_1_amount, token_out_2_amount)?;
-    
+    execute_transfers(
+        &ctx,
+        token_in_amount,
+        token_out_1_amount,
+        token_out_2_amount,
+    )?;
+
     msg!(
-        "Dual redemption offer taken - ID: {}, token_in: {}, token_out_1: {}, token_out_2: {}, user: {}",
+        "Dual redemption offer taken - ID: {}, token_in: {}, fee: {}, token_out_1: {}, token_out_2: {}, user: {}",
         offer_id,
         token_in_amount,
+        fee_amounts.fee_amount,
         token_out_1_amount,
         token_out_2_amount,
         ctx.accounts.user.key()
     );
-    
+
     // Emit event
     emit!(TakeDualRedemptionOfferEvent {
         offer_id,
         token_in_amount,
         token_out_1_amount,
         token_out_2_amount,
+        fee_amount: fee_amounts.fee_amount,
         user: ctx.accounts.user.key(),
     });
 
@@ -194,9 +205,10 @@ fn find_offer(
     ctx: &Context<TakeDualRedemptionOffer>,
     offer_id: u64,
 ) -> Result<DualRedemptionOffer> {
-    if offer_id == 0 {
-        return Err(error!(TakeDualRedemptionOfferErrorCode::OfferNotFound));
-    }
+    require!(
+        offer_id != 0,
+        TakeDualRedemptionOfferErrorCode::OfferNotFound
+    );
 
     let dual_redemption_offer_account = &ctx.accounts.dual_redemption_offer_account.load()?;
 
@@ -216,34 +228,39 @@ fn validate_offer(
     offer: &DualRedemptionOffer,
 ) -> Result<()> {
     // Validate token mints match the offer
-    if offer.token_in_mint != ctx.accounts.token_in_mint.key() {
-        return Err(error!(TakeDualRedemptionOfferErrorCode::InvalidTokenInMint));
-    }
-    if offer.token_out_mint_1 != ctx.accounts.token_out_mint_1.key() {
-        return Err(error!(TakeDualRedemptionOfferErrorCode::InvalidTokenOutMint1));
-    }
-    if offer.token_out_mint_2 != ctx.accounts.token_out_mint_2.key() {
-        return Err(error!(TakeDualRedemptionOfferErrorCode::InvalidTokenOutMint2));
-    }
+    require!(
+        offer.token_in_mint == ctx.accounts.token_in_mint.key(),
+        TakeDualRedemptionOfferErrorCode::InvalidTokenInMint
+    );
+    require!(
+        offer.token_out_mint_1 == ctx.accounts.token_out_mint_1.key(),
+        TakeDualRedemptionOfferErrorCode::InvalidTokenOutMint1
+    );
+    require!(
+        offer.token_out_mint_2 == ctx.accounts.token_out_mint_2.key(),
+        TakeDualRedemptionOfferErrorCode::InvalidTokenOutMint2
+    );
 
     // Validate offer timing
     let current_time = Clock::get()?.unix_timestamp as u64;
-    if current_time < offer.start_time {
-        return Err(error!(TakeDualRedemptionOfferErrorCode::OfferNotActive));
-    }
-    if current_time >= offer.end_time {
-        return Err(error!(TakeDualRedemptionOfferErrorCode::OfferExpired));
-    }
-    
+    require!(
+        current_time >= offer.start_time,
+        TakeDualRedemptionOfferErrorCode::OfferNotActive
+    );
+    require!(
+        current_time < offer.end_time,
+        TakeDualRedemptionOfferErrorCode::OfferExpired
+    );
+
     Ok(())
 }
 
 /// Calculates the token_out amounts based on token_in_amount, prices, ratio, and decimals
-/// 
+///
 /// The ratio determines how the token_in amount is split between the two output tokens:
 /// - ratio_basis_points out of 10000 goes to token_out_1
 /// - (10000 - ratio_basis_points) out of 10000 goes to token_out_2
-/// 
+///
 /// Then each portion is converted using its respective price.
 fn calculate_token_out_amounts(
     token_in_amount: u64,
@@ -256,24 +273,23 @@ fn calculate_token_out_amounts(
 ) -> Result<(u64, u64)> {
     let token_in_amount_u128 = token_in_amount as u128;
     let ratio_1_u128 = ratio_basis_points as u128;
-    let ratio_2_u128 = (10000 - ratio_basis_points) as u128;
-    
+    let ratio_2_u128 = (MAX_BASIS_POINTS - ratio_basis_points) as u128;
+
     // Split token_in amount based on ratio
     // token_in_1 = token_in_amount * ratio_basis_points / 10000
     let token_in_1_amount = token_in_amount_u128
         .checked_mul(ratio_1_u128)
         .ok_or(TakeDualRedemptionOfferErrorCode::MathOverflow)?
-        .checked_div(10000)
+        .checked_div(MAX_BASIS_POINTS as u128)
         .ok_or(TakeDualRedemptionOfferErrorCode::MathOverflow)? as u64;
-    
+
     // token_in_2 = token_in_amount * (10000 - ratio_basis_points) / 10000
     let token_in_2_amount = token_in_amount_u128
         .checked_mul(ratio_2_u128)
         .ok_or(TakeDualRedemptionOfferErrorCode::MathOverflow)?
-        .checked_div(10000)
+        .checked_div(MAX_BASIS_POINTS as u128)
         .ok_or(TakeDualRedemptionOfferErrorCode::MathOverflow)? as u64;
-    
-    
+
     // Calculate token_out_1_amount using price_1
     let token_out_1_amount = calculate_token_out_amount(
         token_in_1_amount,
@@ -281,7 +297,7 @@ fn calculate_token_out_amounts(
         token_in_decimals,
         token_out_1_decimals,
     )?;
-    
+
     // Calculate token_out_2_amount using price_2
     let token_out_2_amount = calculate_token_out_amount(
         token_in_2_amount,
@@ -289,34 +305,30 @@ fn calculate_token_out_amounts(
         token_in_decimals,
         token_out_2_decimals,
     )?;
-    
+
     Ok((token_out_1_amount, token_out_2_amount))
 }
 
-
-/// Executes all token transfers (user to boss, vault to user for both output tokens)
+/// Executes all token transfers (single transfer for total amount including fee)
 fn execute_transfers(
     ctx: &Context<TakeDualRedemptionOffer>,
-    token_in_amount: u64,
+    total_token_in_amount: u64,
     token_out_1_amount: u64,
     token_out_2_amount: u64,
 ) -> Result<()> {
-    // Transfer token_in from user to boss
+    // Transfer total token_in from user to boss (includes fee)
     transfer_tokens(
         &ctx.accounts.token_program,
         &ctx.accounts.user_token_in_account,
         &ctx.accounts.boss_token_in_account,
         &ctx.accounts.user,
         None,
-        token_in_amount,
+        total_token_in_amount,
     )?;
-    
+
     // Prepare vault authority seeds for signing transfers from vault
     let vault_authority_bump = ctx.bumps.vault_authority;
-    let vault_authority_seeds = &[
-        seeds::VAULT_AUTHORITY,
-        &[vault_authority_bump],
-    ];
+    let vault_authority_seeds = &[seeds::VAULT_AUTHORITY, &[vault_authority_bump]];
     let signer_seeds = &[vault_authority_seeds.as_slice()];
 
     // Transfer token_out_1 from vault to user using vault authority
@@ -328,7 +340,7 @@ fn execute_transfers(
         Some(signer_seeds),
         token_out_1_amount,
     )?;
-    
+
     // Transfer token_out_2 from vault to user using vault authority
     transfer_tokens(
         &ctx.accounts.token_program,
@@ -338,6 +350,6 @@ fn execute_transfers(
         Some(signer_seeds),
         token_out_2_amount,
     )?;
-    
+
     Ok(())
 }

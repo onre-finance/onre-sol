@@ -1,16 +1,16 @@
-import { PublicKey } from "@solana/web3.js";
-import { ONREAPP_PROGRAM_ID, TestHelper } from "../test_helper";
-import { AddedProgram, startAnchor } from "solana-bankrun";
-import { Onreapp } from "../../target/types/onreapp";
-import { BankrunProvider } from "anchor-bankrun";
-import { BN, Program } from "@coral-xyz/anchor";
+import {PublicKey} from "@solana/web3.js";
+import {ONREAPP_PROGRAM_ID, TestHelper} from "../test_helper";
+import {AddedProgram, startAnchor} from "solana-bankrun";
+import {Onreapp} from "../../target/types/onreapp";
+import {BankrunProvider} from "anchor-bankrun";
+import {BN, Program} from "@coral-xyz/anchor";
 import idl from "../../target/idl/onreapp.json";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import {getAssociatedTokenAddressSync} from "@solana/spl-token";
 
 describe("Take dual redemption offer", () => {
     let testHelper: TestHelper;
     let program: Program<Onreapp>;
-    
+
     let boss: PublicKey;
     let user: any;
     let dualRedemptionOfferAccountPda: PublicKey;
@@ -34,14 +34,14 @@ describe("Take dual redemption offer", () => {
         testHelper = new TestHelper(context, program);
         boss = provider.wallet.publicKey;
         user = testHelper.createUserAccount();
-        
+
         // Initialize program, offers, and vault authority
-        await program.methods.initialize().accounts({ boss }).rpc();
-        await program.methods.initializeOffers().accounts({ 
-            state: testHelper.statePda 
+        await program.methods.initialize().accounts({boss}).rpc();
+        await program.methods.initializeOffers().accounts({
+            state: testHelper.statePda
         }).rpc();
-        await program.methods.initializeVaultAuthority().accounts({ 
-            state: testHelper.statePda 
+        await program.methods.initializeVaultAuthority().accounts({
+            state: testHelper.statePda
         }).rpc();
 
         // Get PDAs
@@ -54,19 +54,19 @@ describe("Take dual redemption offer", () => {
         const tokenInMint = testHelper.createMint(boss, BigInt(0), 9);
         const tokenOutMint1 = testHelper.createMint(boss, BigInt(0), 9);
         const tokenOutMint2 = testHelper.createMint(boss, BigInt(0), 6);
-        
+
         // Create user accounts and fund them
         const userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(1000e9)); // 1000 tokens
         const userTokenOutAccount1 = testHelper.createTokenAccount(tokenOutMint1, user.publicKey, BigInt(0));
         const userTokenOutAccount2 = testHelper.createTokenAccount(tokenOutMint2, user.publicKey, BigInt(0));
         const bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
-        
+
         // Set up vault with tokens
         testHelper.createTokenAccount(tokenOutMint1, boss, BigInt(1000e9)); // 1000 tokens for boss
         testHelper.createTokenAccount(tokenOutMint2, boss, BigInt(1000e6)); // 1000 tokens for boss
         const vaultTokenOutAccount1 = getAssociatedTokenAddressSync(tokenOutMint1, vaultAuthorityPda, true);
         const vaultTokenOutAccount2 = getAssociatedTokenAddressSync(tokenOutMint2, vaultAuthorityPda, true);
-        
+
         // Deposit tokens to vault
         await program.methods
             .vaultDeposit(new BN("1000000000000")) // 1000 tokens with 9 decimals
@@ -92,7 +92,7 @@ describe("Take dual redemption offer", () => {
         const endTime = new BN(startTime.toNumber() + 3600);
 
         await program.methods
-            .makeDualRedemptionOffer(startTime, endTime, price1, price2, ratioBasisPoints)
+            .makeDualRedemptionOffer(startTime, endTime, price1, price2, ratioBasisPoints, new BN(0))
             .accounts({
                 tokenInMint,
                 tokenOutMint1,
@@ -129,33 +129,109 @@ describe("Take dual redemption offer", () => {
         await testHelper.expectTokenAccountAmountToBe(userTokenInAccount, BigInt("900000000000"));
         await testHelper.expectTokenAccountAmountToBe(userTokenOutAccount1, BigInt("40000000000"));
         await testHelper.expectTokenAccountAmountToBe(userTokenOutAccount2, BigInt("20000000"));
-        
+
         // Boss should have: 0 + 100 = 100 token_in
         await testHelper.expectTokenAccountAmountToBe(bossTokenInAccount, BigInt("100000000000"));
-        
+
         // Vault should have: 1000 - 40 = 960 token_out_1, 1000 - 20 = 980 token_out_2
         await testHelper.expectTokenAccountAmountToBe(vaultTokenOutAccount1, BigInt("960000000000"));
         await testHelper.expectTokenAccountAmountToBe(vaultTokenOutAccount2, BigInt("980000000"));
     });
+
+    test("Should calculate correct price with fee", async () => {
+        const currentTime = await testHelper.getCurrentClockTime();
+
+        const tokenInMint = testHelper.createMint(boss, BigInt(100_000e9), 9); // ONyc
+        const tokenOutMint1 = testHelper.createMint(boss, BigInt(100_000e9), 6); // USDC
+        const tokenOutMint2 = testHelper.createMint(boss, BigInt(100_000e9), 9); // rONyr
+
+        // Set up vault with tokens
+        testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
+        testHelper.createTokenAccount(tokenOutMint1, boss, BigInt(1000e9)); // 1000 tokens for boss
+        testHelper.createTokenAccount(tokenOutMint2, boss, BigInt(1000e6)); // 1000 tokens for boss
+
+        // Deposit tokens to vault
+        await program.methods
+            .vaultDeposit(new BN("1000000000000")) // 1000 tokens with 9 decimals
+            .accounts({
+                tokenMint: tokenOutMint1,
+                state: testHelper.statePda,
+            })
+            .rpc();
+
+        await program.methods
+            .vaultDeposit(new BN("1000000000")) // 1000 tokens with 6 decimals
+            .accounts({
+                tokenMint: tokenOutMint2,
+                state: testHelper.statePda,
+            })
+            .rpc();
+
+        const offerId = new BN(1);
+        const startTime = new BN(currentTime);
+        const endTime = new BN(startTime.toNumber() + 86400);
+        const price1 = new BN(1_000_000_000); // 1.0 ONyc for 1 USDC
+        const price2 = new BN(500_000_000); // 0.5 ONyc per rONyc
+        const ratioBasisPoints = new BN(8000); // 80/20 split
+        const feeBasisPoints = new BN(100); // 1% fee
+
+        await program.methods
+            .makeDualRedemptionOffer(startTime, endTime, price1, price2, ratioBasisPoints, feeBasisPoints)
+            .accounts({
+                tokenInMint,
+                tokenOutMint1,
+                tokenOutMint2,
+                state: testHelper.statePda,
+            })
+            .rpc();
+
+        testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(10000e6));
+        const userTokenOutAccount1 = testHelper.createTokenAccount(tokenOutMint1, user.publicKey, BigInt(0));
+        const userTokenOutAccount2 = testHelper.createTokenAccount(tokenOutMint2, user.publicKey, BigInt(0));
+
+        const expectedTokenInAmount = new BN(1_000_000_000); // 1 ONyc (9 decimals)
+
+        await testHelper.program.methods
+            .takeDualRedemptionOffer(offerId, expectedTokenInAmount)
+            .accounts({
+                state: testHelper.statePda,
+                boss: boss,
+                tokenInMint,
+                tokenOutMint1,
+                tokenOutMint2,
+                user: user.publicKey,
+            })
+            .signers([user])
+            .rpc();
+
+        const userTokenOut1BalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount1);
+        const userTokenOut2BalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount2);
+
+        // Should receive 80% of 0.99 ONyc in USDC with price 1.0 = 0.792 USDC
+        expect(userTokenOut1BalanceAfter).toBe(BigInt(792e3));
+        // Should receive 20% of 0.99 ONyc in rONyc with price 0.5 = 0.396 rONyc
+        expect(userTokenOut2BalanceAfter).toBe(BigInt(396e6));
+    })
+
 
     test("Take dual redemption offer with 0/100 ratio (all to token2) should succeed", async () => {
         // given - create tokens and set up vault
         const tokenInMint = testHelper.createMint(boss, BigInt(0), 9); // Standard 9 decimals
         const tokenOutMint1 = testHelper.createMint(boss, BigInt(0), 9);
         const tokenOutMint2 = testHelper.createMint(boss, BigInt(0), 9);
-        
+
         // Create user accounts and fund them
         const userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(1000000000000)); // 1000 tokens with 9 decimals
         const userTokenOutAccount1 = testHelper.createTokenAccount(tokenOutMint1, user.publicKey, BigInt(0));
         const userTokenOutAccount2 = testHelper.createTokenAccount(tokenOutMint2, user.publicKey, BigInt(0));
         const bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
-        
+
         // Set up vault with tokens
         testHelper.createTokenAccount(tokenOutMint1, boss, BigInt("1000000000000")); // 1000 tokens with 9 decimals
         testHelper.createTokenAccount(tokenOutMint2, boss, BigInt("1000000000000")); // 1000 tokens with 9 decimals
         const vaultTokenOutAccount1 = getAssociatedTokenAddressSync(tokenOutMint1, vaultAuthorityPda, true);
         const vaultTokenOutAccount2 = getAssociatedTokenAddressSync(tokenOutMint2, vaultAuthorityPda, true);
-        
+
         // Deposit tokens to vault
         await program.methods
             .vaultDeposit(new BN("1000000000000")) // 1000 tokens
@@ -181,7 +257,7 @@ describe("Take dual redemption offer", () => {
         const endTime = new BN(startTime.toNumber() + 3600);
 
         await program.methods
-            .makeDualRedemptionOffer(startTime, endTime, price1, price2, ratioBasisPoints)
+            .makeDualRedemptionOffer(startTime, endTime, price1, price2, ratioBasisPoints, new BN(0))
             .accounts({
                 tokenInMint,
                 tokenOutMint1,
@@ -217,9 +293,9 @@ describe("Take dual redemption offer", () => {
         await testHelper.expectTokenAccountAmountToBe(userTokenInAccount, BigInt("970000000000")); // 1000 - 30 = 970 (9 decimals)
         await testHelper.expectTokenAccountAmountToBe(userTokenOutAccount1, BigInt("0")); // Should get 0
         await testHelper.expectTokenAccountAmountToBe(userTokenOutAccount2, BigInt("20000000000")); // Should get 20 tokens (9 decimals)
-        
+
         await testHelper.expectTokenAccountAmountToBe(bossTokenInAccount, BigInt("30000000000")); // Should get 30 (9 decimals)
-        
+
         await testHelper.expectTokenAccountAmountToBe(vaultTokenOutAccount1, BigInt("1000000000000")); // Should remain 1000
         await testHelper.expectTokenAccountAmountToBe(vaultTokenOutAccount2, BigInt("980000000000")); // 1000 - 20 = 980 (9 decimals)
     });
@@ -229,19 +305,19 @@ describe("Take dual redemption offer", () => {
         const tokenInMint = testHelper.createMint(boss, BigInt(0), 9);
         const tokenOutMint1 = testHelper.createMint(boss, BigInt(0), 9);
         const tokenOutMint2 = testHelper.createMint(boss, BigInt(0), 9);
-        
+
         // Create user accounts and fund them
         const userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(500000000000)); // 500 tokens with 9 decimals
         const userTokenOutAccount1 = testHelper.createTokenAccount(tokenOutMint1, user.publicKey, BigInt(0));
         const userTokenOutAccount2 = testHelper.createTokenAccount(tokenOutMint2, user.publicKey, BigInt(0));
         const bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
-        
+
         // Set up vault with tokens
         testHelper.createTokenAccount(tokenOutMint1, boss, BigInt(1000000000000)); // 1000 tokens with 9 decimals
         testHelper.createTokenAccount(tokenOutMint2, boss, BigInt(1000000000000)); // 1000 tokens with 9 decimals
         const vaultTokenOutAccount1 = getAssociatedTokenAddressSync(tokenOutMint1, vaultAuthorityPda, true);
         const vaultTokenOutAccount2 = getAssociatedTokenAddressSync(tokenOutMint2, vaultAuthorityPda, true);
-        
+
         // Deposit tokens to vault
         await program.methods
             .vaultDeposit(new BN("1000000000000")) // 1000 tokens
@@ -267,7 +343,7 @@ describe("Take dual redemption offer", () => {
         const endTime = new BN(startTime.toNumber() + 3600);
 
         await program.methods
-            .makeDualRedemptionOffer(startTime, endTime, price1, price2, ratioBasisPoints)
+            .makeDualRedemptionOffer(startTime, endTime, price1, price2, ratioBasisPoints, new BN(0))
             .accounts({
                 tokenInMint,
                 tokenOutMint1,
@@ -303,9 +379,9 @@ describe("Take dual redemption offer", () => {
         await testHelper.expectTokenAccountAmountToBe(userTokenInAccount, BigInt("490000000000")); // 500 - 10
         await testHelper.expectTokenAccountAmountToBe(userTokenOutAccount1, BigInt("20000000000")); // Should get 20
         await testHelper.expectTokenAccountAmountToBe(userTokenOutAccount2, BigInt("0")); // Should get 0
-        
+
         await testHelper.expectTokenAccountAmountToBe(bossTokenInAccount, BigInt("10000000000")); // Should get 10
-        
+
         await testHelper.expectTokenAccountAmountToBe(vaultTokenOutAccount1, BigInt("980000000000")); // 1000 - 20 = 980
         await testHelper.expectTokenAccountAmountToBe(vaultTokenOutAccount2, BigInt("1000000000000")); // Should remain 1000
     });
@@ -315,12 +391,12 @@ describe("Take dual redemption offer", () => {
         const tokenInMint = testHelper.createMint(boss, BigInt(0), 9);
         const tokenOutMint1 = testHelper.createMint(boss, BigInt(0), 9);
         const tokenOutMint2 = testHelper.createMint(boss, BigInt(0), 6);
-        
+
         testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(100000000000)); // 100 tokens with 9 decimals
         testHelper.createTokenAccount(tokenOutMint1, user.publicKey, BigInt(0));
         testHelper.createTokenAccount(tokenOutMint2, user.publicKey, BigInt(0));
         testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
-        
+
         // Set up vault with tokens to avoid AccountNotInitialized
         testHelper.createTokenAccount(tokenOutMint1, boss, BigInt(1000000000000)); // 1000 tokens
         testHelper.createTokenAccount(tokenOutMint2, boss, BigInt(1000000000)); // 1000 tokens
@@ -361,12 +437,12 @@ describe("Take dual redemption offer", () => {
         const tokenInMint = testHelper.createMint(boss, BigInt(0), 9);
         const tokenOutMint1 = testHelper.createMint(boss, BigInt(0), 9);
         const tokenOutMint2 = testHelper.createMint(boss, BigInt(0), 6);
-        
+
         testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(100000000000)); // 100 tokens with 9 decimals
         testHelper.createTokenAccount(tokenOutMint1, user.publicKey, BigInt(0));
         testHelper.createTokenAccount(tokenOutMint2, user.publicKey, BigInt(0));
         testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
-        
+
         // Set up vault with tokens to avoid AccountNotInitialized
         testHelper.createTokenAccount(tokenOutMint1, boss, BigInt(1000000000000)); // 1000 tokens
         testHelper.createTokenAccount(tokenOutMint2, boss, BigInt(1000000000)); // 1000 tokens
@@ -392,7 +468,7 @@ describe("Take dual redemption offer", () => {
         const endTime = new BN(currentTime - 3600); // 1 hour ago (expired)
 
         await program.methods
-            .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(5000))
+            .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(5000), new BN(0))
             .accounts({
                 tokenInMint,
                 tokenOutMint1,
@@ -427,12 +503,12 @@ describe("Take dual redemption offer", () => {
         const correctTokenOutMint1 = testHelper.createMint(boss, BigInt(0), 9);
         const correctTokenOutMint2 = testHelper.createMint(boss, BigInt(0), 6);
         const wrongTokenInMint = testHelper.createMint(boss, BigInt(0), 9);
-        
+
         testHelper.createTokenAccount(wrongTokenInMint, user.publicKey, BigInt(100000000000)); // 100 tokens with 9 decimals
         testHelper.createTokenAccount(correctTokenOutMint1, user.publicKey, BigInt(0));
         testHelper.createTokenAccount(correctTokenOutMint2, user.publicKey, BigInt(0));
         testHelper.createTokenAccount(wrongTokenInMint, boss, BigInt(0));
-        
+
         // Set up vault with tokens to avoid AccountNotInitialized
         testHelper.createTokenAccount(correctTokenOutMint1, boss, BigInt(1000000000000)); // 1000 tokens
         testHelper.createTokenAccount(correctTokenOutMint2, boss, BigInt(1000000000)); // 1000 tokens
@@ -457,7 +533,7 @@ describe("Take dual redemption offer", () => {
         const endTime = new BN(startTime.toNumber() + 3600);
 
         await program.methods
-            .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(5000))
+            .makeDualRedemptionOffer(startTime, endTime, price1, price2, new BN(5000), new BN(0))
             .accounts({
                 tokenInMint: correctTokenInMint,
                 tokenOutMint1: correctTokenOutMint1,

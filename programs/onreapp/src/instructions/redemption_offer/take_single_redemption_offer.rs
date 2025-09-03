@@ -1,7 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::{SingleRedemptionOffer, SingleRedemptionOfferAccount};
 use crate::state::State;
-use crate::utils::{transfer_tokens, calculate_token_out_amount};
+use crate::utils::{calculate_fees, calculate_token_out_amount, transfer_tokens};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
@@ -28,6 +28,7 @@ pub struct TakeSingleRedemptionOfferEvent {
     pub offer_id: u64,
     pub token_in_amount: u64,
     pub token_out_amount: u64,
+    pub fee_amount: u64,
     pub user: Pubkey,
 }
 
@@ -108,7 +109,7 @@ pub struct TakeSingleRedemptionOffer<'info> {
 ///
 /// Allows a user to exchange token_in for token_out based on the offer's price.
 /// The price represents how much token_in is needed to get 1 token_out (with 9 decimal precision).
-/// 
+///
 /// Example: if price is 2000000000 (2.0), user needs 2 token_in to get 1 token_out.
 /// So providing 10 token_in gives 5 token_out.
 /// Formula: token_out_amount = (token_in_amount * 10^(token_out_decimals + 9)) / (price * 10^token_in_decimals)
@@ -127,34 +128,39 @@ pub fn take_single_redemption_offer(
 ) -> Result<()> {
     // Find the offer
     let offer = find_offer(&ctx, offer_id)?;
-    
+
     // Validate the offer
     validate_offer(&ctx, &offer)?;
-    
-    // Calculate token_out_amount
+
+    // Calculate fee amount in token_in tokens
+    let fee_amounts = calculate_fees(token_in_amount, offer.fee_basis_points)?;
+
+    // Calculate token_out_amount based on remaining amount after fee
     let token_out_amount = calculate_token_out_amount(
-        token_in_amount,
+        fee_amounts.remaining_token_in_amount,
         offer.price,
         ctx.accounts.token_in_mint.decimals,
         ctx.accounts.token_out_mint.decimals,
     )?;
-    
+
     // Execute transfers
     execute_transfers(&ctx, token_in_amount, token_out_amount)?;
-    
+
     msg!(
-        "Redemption offer taken - ID: {}, token_in: {}, token_out: {}, user: {}",
+        "Redemption offer taken - ID: {}, token_in: {}, fee: {}, token_out: {}, user: {}",
         offer_id,
         token_in_amount,
+        fee_amounts.fee_amount,
         token_out_amount,
         ctx.accounts.user.key()
     );
-    
+
     // Emit event
     emit!(TakeSingleRedemptionOfferEvent {
         offer_id,
         token_in_amount,
         token_out_amount,
+        fee_amount: fee_amounts.fee_amount,
         user: ctx.accounts.user.key(),
     });
 
@@ -166,9 +172,10 @@ fn find_offer(
     ctx: &Context<TakeSingleRedemptionOffer>,
     offer_id: u64,
 ) -> Result<SingleRedemptionOffer> {
-    if offer_id == 0 {
-        return Err(error!(TakeSingleRedemptionOfferErrorCode::OfferNotFound));
-    }
+    require!(
+        offer_id != 0,
+        TakeSingleRedemptionOfferErrorCode::OfferNotFound
+    );
 
     let single_redemption_offer_account = &ctx.accounts.single_redemption_offer_account.load()?;
 
@@ -188,48 +195,48 @@ fn validate_offer(
     offer: &SingleRedemptionOffer,
 ) -> Result<()> {
     // Validate token mints match the offer
-    if offer.token_in_mint != ctx.accounts.token_in_mint.key() {
-        return Err(error!(TakeSingleRedemptionOfferErrorCode::InvalidTokenInMint));
-    }
-    if offer.token_out_mint != ctx.accounts.token_out_mint.key() {
-        return Err(error!(TakeSingleRedemptionOfferErrorCode::InvalidTokenOutMint));
-    }
+    require!(
+        offer.token_in_mint == ctx.accounts.token_in_mint.key(),
+        TakeSingleRedemptionOfferErrorCode::InvalidTokenInMint
+    );
+    require!(
+        offer.token_out_mint == ctx.accounts.token_out_mint.key(),
+        TakeSingleRedemptionOfferErrorCode::InvalidTokenOutMint
+    );
 
     // Validate offer timing
     let current_time = Clock::get()?.unix_timestamp as u64;
-    if current_time < offer.start_time {
-        return Err(error!(TakeSingleRedemptionOfferErrorCode::OfferNotActive));
-    }
-    if current_time >= offer.end_time {
-        return Err(error!(TakeSingleRedemptionOfferErrorCode::OfferExpired));
-    }
-    
+    require!(
+        current_time >= offer.start_time,
+        TakeSingleRedemptionOfferErrorCode::OfferNotActive
+    );
+    require!(
+        current_time < offer.end_time,
+        TakeSingleRedemptionOfferErrorCode::OfferExpired
+    );
+
     Ok(())
 }
 
-
-/// Executes both token transfers (user to boss, vault to user)
+/// Executes token transfers (single transfer for total amount including fee)
 fn execute_transfers(
     ctx: &Context<TakeSingleRedemptionOffer>,
-    token_in_amount: u64,
+    total_token_in_amount: u64,
     token_out_amount: u64,
 ) -> Result<()> {
-    // Transfer token_in from user to boss
+    // Transfer total token_in from user to boss (includes fee)
     transfer_tokens(
         &ctx.accounts.token_program,
         &ctx.accounts.user_token_in_account,
         &ctx.accounts.boss_token_in_account,
         &ctx.accounts.user,
         None,
-        token_in_amount,
+        total_token_in_amount,
     )?;
-    
+
     // Transfer token_out from vault to user using vault authority
     let vault_authority_bump = ctx.bumps.vault_authority;
-    let vault_authority_seeds = &[
-        seeds::VAULT_AUTHORITY,
-        &[vault_authority_bump],
-    ];
+    let vault_authority_seeds = &[seeds::VAULT_AUTHORITY, &[vault_authority_bump]];
     let signer_seeds = &[vault_authority_seeds.as_slice()];
 
     transfer_tokens(
@@ -240,6 +247,6 @@ fn execute_transfers(
         Some(signer_seeds),
         token_out_amount,
     )?;
-    
+
     Ok(())
 }

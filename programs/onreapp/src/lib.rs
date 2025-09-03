@@ -90,9 +90,9 @@ pub mod onreapp {
     ///
     /// # Arguments
     /// - `ctx`: Context for `MakeBuyOffer`.
-    /// - `offer_id`: Unique ID for the offer.
-    pub fn make_buy_offer(ctx: Context<MakeBuyOffer>) -> Result<()> {
-        buy_offer::make_buy_offer(ctx)
+    /// - `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer.
+    pub fn make_buy_offer(ctx: Context<MakeBuyOffer>, fee_basis_points: u64) -> Result<()> {
+        buy_offer::make_buy_offer(ctx, fee_basis_points)
     }
 
     /// Creates a single redemption offer.
@@ -106,13 +106,15 @@ pub mod onreapp {
     /// - `start_time`: Unix timestamp for when the offer becomes active.
     /// - `end_time`: Unix timestamp for when the offer expires.
     /// - `price`: How much token_in needed for 1 token_out, with 9 decimal precision.
+    /// - `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer.
     pub fn make_single_redemption_offer(
         ctx: Context<MakeSingleRedemptionOffer>,
         start_time: u64,
         end_time: u64,
         price: u64,
+        fee_basis_points: u64,
     ) -> Result<()> {
-        redemption_offer::make_single_redemption_offer(ctx, start_time, end_time, price)
+        redemption_offer::make_single_redemption_offer(ctx, start_time, end_time, price, fee_basis_points)
     }
 
     /// Closes a single redemption offer.
@@ -164,6 +166,7 @@ pub mod onreapp {
     /// - `price_1`: Fixed price for token_out_1 with 9 decimal precision.
     /// - `price_2`: Fixed price for token_out_2 with 9 decimal precision.
     /// - `ratio_basis_points`: Ratio in basis points for token_out_1 (e.g., 8000 = 80% for token_out_1, 20% for token_out_2).
+    /// - `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer.
     pub fn make_dual_redemption_offer(
         ctx: Context<MakeDualRedemptionOffer>,
         start_time: u64,
@@ -171,6 +174,7 @@ pub mod onreapp {
         price_1: u64,
         price_2: u64,
         ratio_basis_points: u64,
+        fee_basis_points: u64,
     ) -> Result<()> {
         redemption_offer::make_dual_redemption_offer(
             ctx,
@@ -179,6 +183,7 @@ pub mod onreapp {
             price_1,
             price_2,
             ratio_basis_points,
+            fee_basis_points,
         )
     }
 

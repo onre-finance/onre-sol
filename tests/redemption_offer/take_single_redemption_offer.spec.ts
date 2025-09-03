@@ -15,6 +15,8 @@ describe("Take single redemption offer", () => {
     let user: any;
     let singleRedemptionOfferAccountPda: PublicKey;
     let vaultAuthorityPda: PublicKey;
+    let token9Mint: PublicKey;
+    let token6Mint: PublicKey;
 
     beforeEach(async () => {
         const programInfo: AddedProgram = {
@@ -50,7 +52,7 @@ describe("Take single redemption offer", () => {
 
         // Create some test tokens and deposit to vault for all tests to use
         // Token with 9 decimals - deposit 10,000 tokens
-        const token9Mint = testHelper.createMint(boss, BigInt(0), 9);
+        token9Mint = testHelper.createMint(boss, BigInt(0), 9);
         testHelper.createTokenAccount(token9Mint, boss, BigInt(10000e9));
         await program.methods
             .vaultDeposit(new BN("10000000000000")) // 10,000 tokens
@@ -61,7 +63,7 @@ describe("Take single redemption offer", () => {
             .rpc();
 
         // Token with 6 decimals - deposit 10,000 tokens  
-        const token6Mint = testHelper.createMint(boss, BigInt(0), 6);
+        token6Mint = testHelper.createMint(boss, BigInt(0), 6);
         testHelper.createTokenAccount(token6Mint, boss, BigInt(10000e6));
         await program.methods
             .vaultDeposit(new BN("10000000000")) // 10,000 tokens
@@ -70,16 +72,12 @@ describe("Take single redemption offer", () => {
                 state: testHelper.statePda,
             })
             .rpc();
-
-        // Store mints for tests to use
-        (global as any).testToken9Mint = token9Mint;
-        (global as any).testToken6Mint = token6Mint;
     });
 
     test("Take redemption offer with same decimals (9,9) should succeed", async () => {
         // given - use pre-deposited tokens
         const tokenInMint = testHelper.createMint(boss, BigInt(0), 9);
-        const tokenOutMint = (global as any).testToken9Mint; // Use pre-deposited token
+        const tokenOutMint = token9Mint; // Use pre-deposited token
 
         // Create user accounts and fund them
         const userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(1000e9)); // 1000 tokens
@@ -93,7 +91,7 @@ describe("Take single redemption offer", () => {
         const endTime = new BN(startTime.toNumber() + 3600);
 
         await program.methods
-            .makeSingleRedemptionOffer(startTime, endTime, price)
+            .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
             .accounts({
                 tokenInMint,
                 tokenOutMint,
@@ -132,6 +130,55 @@ describe("Take single redemption offer", () => {
         await testHelper.expectTokenAccountAmountToBe(vaultTokenOutAccount, BigInt("9995000000000"));
     });
 
+    test("Should calculate correct price with fee", async () => {
+        const currentTime = await testHelper.getCurrentClockTime();
+
+        const tokenInMint = token9Mint;
+        const tokenOutMint = token6Mint;
+
+        // Create a new buy offer
+        await testHelper.makeBuyOffer({
+            tokenInMint,
+            tokenOutMint,
+            feeBasisPoints: 100, // 1% fee
+        });
+
+        const offerId = new BN(1);
+        const startPrice = new BN(1e9);
+        const apr = new BN(36_500);
+        const priceFixDuration = new BN(86400);
+        const startTime = new BN(currentTime);
+
+        await testHelper.program.methods
+            .addBuyOfferVector(offerId, startTime, startPrice, apr, priceFixDuration)
+            .accounts({state: testHelper.statePda})
+            .rpc();
+
+        const userTokenInAccount = testHelper.createTokenAccount(token9Mint, user.publicKey, BigInt(10000e6));
+        const userTokenOutAccount = testHelper.createTokenAccount(token6Mint, user.publicKey, BigInt(0));
+
+        // Price in first interval should be: 1.0 * (1 + 0.0365 * (1 * 86400) / (365*24*3600))
+        // = 1.0 * (1 + 0.0365 * 1/365) = 1.0 * 1.0001 = 1.0001
+        const expectedTokenInAmount = new BN(1_000_100_000); // 1.0001 ONyc (9 decimals)
+
+        await testHelper.program.methods
+            .takeBuyOffer(offerId, expectedTokenInAmount)
+            .accounts({
+                state: testHelper.statePda,
+                boss: boss,
+                tokenInMint,
+                tokenOutMint,
+                user: user.publicKey,
+            })
+            .signers([user])
+            .rpc();
+
+        const userTokenOutBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+
+        // Should receive 0.9 token out
+        expect(userTokenOutBalanceAfter).toBe(BigInt(99e4));
+    })
+
     test("Take large redemption offer (20 million tokens) should succeed", async () => {
         // given - create tokens for large redemption
         const tokenInMint = testHelper.createMint(boss, BigInt(0), 9);
@@ -160,7 +207,7 @@ describe("Take single redemption offer", () => {
         const endTime = new BN(startTime.toNumber() + 3600);
 
         await program.methods
-            .makeSingleRedemptionOffer(startTime, endTime, price)
+            .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
             .accounts({
                 tokenInMint,
                 tokenOutMint,
@@ -228,7 +275,7 @@ describe("Take single redemption offer", () => {
         const endTime = new BN(startTime.toNumber() + 3600);
 
         await program.methods
-            .makeSingleRedemptionOffer(startTime, endTime, price)
+            .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
             .accounts({
                 tokenInMint,
                 tokenOutMint,
@@ -285,7 +332,7 @@ describe("Take single redemption offer", () => {
         const endTime = new BN(startTime.toNumber() + 3600);
 
         await program.methods
-            .makeSingleRedemptionOffer(startTime, endTime, price)
+            .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
             .accounts({
                 tokenInMint,
                 tokenOutMint,
@@ -342,7 +389,7 @@ describe("Take single redemption offer", () => {
         const endTime = new BN(startTime.toNumber() + 3600);
 
         await program.methods
-            .makeSingleRedemptionOffer(startTime, endTime, price)
+            .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
             .accounts({
                 tokenInMint,
                 tokenOutMint,
@@ -424,7 +471,7 @@ describe("Take single redemption offer", () => {
         const endTime = new BN(startTime.toNumber() + 3600);
 
         await program.methods
-            .makeSingleRedemptionOffer(startTime, endTime, price)
+            .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
             .accounts({
                 tokenInMint: correctTokenInMint,
                 tokenOutMint: correctTokenOutMint,
@@ -467,7 +514,7 @@ describe("Take single redemption offer", () => {
         const endTime = new BN(currentTime - 3600); // 1 hour ago (expired)
 
         await program.methods
-            .makeSingleRedemptionOffer(startTime, endTime, price)
+            .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
             .accounts({
                 tokenInMint,
                 tokenOutMint,
@@ -509,7 +556,7 @@ describe("Take single redemption offer", () => {
         const endTime = new BN(startTime.toNumber() + 3600);
 
         await program.methods
-            .makeSingleRedemptionOffer(startTime, endTime, price)
+            .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
             .accounts({
                 tokenInMint,
                 tokenOutMint,
@@ -557,7 +604,7 @@ describe("Take single redemption offer", () => {
 
         // Create the redemption offer
         await program.methods
-            .makeSingleRedemptionOffer(startTime, endTime, price)
+            .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
             .accounts({
                 tokenInMint: abcMint,
                 tokenOutMint: xyzMint,

@@ -1,6 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::DualRedemptionOfferAccount;
 use crate::state::State;
+use crate::utils::MAX_BASIS_POINTS;
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
 
@@ -13,6 +14,7 @@ pub struct DualRedemptionOfferMadeEvent {
     pub price_1: u64,
     pub price_2: u64,
     pub ratio_basis_points: u64,
+    pub fee_basis_points: u64,
     pub boss: Pubkey,
 }
 
@@ -62,10 +64,12 @@ pub struct MakeDualRedemptionOffer<'info> {
 /// - `price_1`: Fixed price for token_out_1 with 9 decimal precision (e.g., 1.5 = 1500000000).
 /// - `price_2`: Fixed price for token_out_2 with 9 decimal precision (e.g., 2.0 = 2000000000).
 /// - `ratio_basis_points`: Ratio in basis points for token_out_1 (e.g., 8000 = 80% for token_out_1, 20% for token_out_2).
+/// - `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer.
 ///
 /// # Errors
 /// - [`DualRedemptionOfferErrorCode::AccountFull`] if the DualRedemptionOfferAccount is full.
 /// - [`DualRedemptionOfferErrorCode::InvalidRatio`] if ratio_basis_points > 10000.
+/// - [`DualRedemptionOfferErrorCode::InvalidFee`] if fee_basis_points > 10000.
 pub fn make_dual_redemption_offer(
     ctx: Context<MakeDualRedemptionOffer>,
     start_time: u64,
@@ -73,11 +77,17 @@ pub fn make_dual_redemption_offer(
     price_1: u64,
     price_2: u64,
     ratio_basis_points: u64,
+    fee_basis_points: u64,
 ) -> Result<()> {
-    // Validate ratio is within valid range (0-10000 basis points = 0-100%)
-    if ratio_basis_points > 10000 {
-        return Err(error!(DualRedemptionOfferErrorCode::InvalidRatio));
-    }
+    // Validate basis points are within valid range (0-10000 basis points = 0-100%)
+    require!(
+        ratio_basis_points <= MAX_BASIS_POINTS,
+        DualRedemptionOfferErrorCode::InvalidRatio
+    );
+    require!(
+        fee_basis_points <= MAX_BASIS_POINTS,
+        DualRedemptionOfferErrorCode::InvalidFee
+    );
 
     let dual_redemption_offer_account =
         &mut ctx.accounts.dual_redemption_offer_account.load_mut()?;
@@ -99,6 +109,7 @@ pub fn make_dual_redemption_offer(
     dual_redemption_offer.price_1 = price_1;
     dual_redemption_offer.price_2 = price_2;
     dual_redemption_offer.ratio_basis_points = ratio_basis_points;
+    dual_redemption_offer.fee_basis_points = fee_basis_points;
     dual_redemption_offer.start_time = start_time;
     dual_redemption_offer.end_time = end_time;
 
@@ -112,13 +123,14 @@ pub fn make_dual_redemption_offer(
         end_time
     );
 
-    emit!(DualRedemptionOfferMadeEvent{
+    emit!(DualRedemptionOfferMadeEvent {
         offer_id,
         start_time,
         end_time,
         price_1,
         price_2,
         ratio_basis_points,
+        fee_basis_points,
         boss: ctx.accounts.boss.key(),
     });
 
@@ -134,4 +146,7 @@ pub enum DualRedemptionOfferErrorCode {
     /// Triggered when ratio_basis_points is greater than 10000.
     #[msg("Invalid ratio: ratio_basis_points must be <= 10000")]
     InvalidRatio,
+    /// Triggered when fee_basis_points is greater than 10000.
+    #[msg("Invalid fee: fee_basis_points must be <= 10000")]
+    InvalidFee,
 }
