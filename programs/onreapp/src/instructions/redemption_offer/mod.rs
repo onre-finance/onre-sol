@@ -1,6 +1,7 @@
 pub mod redemption_offer_state;
 pub mod make_single_redemption_offer;
 pub mod close_single_redemption_offer;
+pub mod update_single_redemption_offer_fee;
 pub mod take_single_redemption_offer;
 pub mod make_dual_redemption_offer;
 pub mod close_dual_redemption_offer;
@@ -9,6 +10,7 @@ pub mod take_dual_redemption_offer;
 pub use redemption_offer_state::*;
 pub use make_single_redemption_offer::*;
 pub use close_single_redemption_offer::*;
+pub use update_single_redemption_offer_fee::*;
 pub use take_single_redemption_offer::*;
 pub use make_dual_redemption_offer::*;
 pub use close_dual_redemption_offer::*;

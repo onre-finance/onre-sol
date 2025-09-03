@@ -4052,6 +4052,100 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "updateSingleRedemptionOfferFee",
+      "docs": [
+        "Updates the fee basis points for a single redemption offer.",
+        "",
+        "Delegates to `redemption_offer::update_single_redemption_offer_fee`.",
+        "Allows the boss to modify the fee charged when users take the single redemption offer.",
+        "Emits a `SingleRedemptionOfferFeeUpdatedEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `UpdateSingleRedemptionOfferFee`.",
+        "- `offer_id`: ID of the single redemption offer to update.",
+        "- `new_fee_basis_points`: New fee in basis points (0-10000)."
+      ],
+      "discriminator": [
+        23,
+        223,
+        126,
+        204,
+        144,
+        69,
+        122,
+        125
+      ],
+      "accounts": [
+        {
+          "name": "singleRedemptionOfferAccount",
+          "docs": [
+            "The single redemption offer account containing all single redemption offers"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  105,
+                  110,
+                  103,
+                  108,
+                  101,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the fee update (must be boss)."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        },
+        {
+          "name": "newFeeBasisPoints",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "vaultDeposit",
       "docs": [
         "Deposits tokens into the vault.",
@@ -4839,6 +4933,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "singleRedemptionOfferFeeUpdatedEvent",
+      "discriminator": [
+        78,
+        134,
+        217,
+        186,
+        10,
+        26,
+        233,
+        139
+      ]
+    },
+    {
       "name": "singleRedemptionOfferMadeEvent",
       "discriminator": [
         153,
@@ -4933,7 +5040,8 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "invalidBossAddress"
+      "name": "mathOverflow",
+      "msg": "Math overflow"
     }
   ],
   "types": [
@@ -5481,6 +5589,33 @@ export type Onreapp = {
           {
             "name": "counter",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "singleRedemptionOfferFeeUpdatedEvent",
+      "docs": [
+        "Event emitted when a single redemption offer's fee is updated."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "type": "u64"
+          },
+          {
+            "name": "oldFeeBasisPoints",
+            "type": "u64"
+          },
+          {
+            "name": "newFeeBasisPoints",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
           }
         ]
       }

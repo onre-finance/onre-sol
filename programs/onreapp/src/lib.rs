@@ -133,6 +133,24 @@ pub mod onreapp {
         redemption_offer::close_single_redemption_offer(ctx, offer_id)
     }
 
+    /// Updates the fee basis points for a single redemption offer.
+    ///
+    /// Delegates to `redemption_offer::update_single_redemption_offer_fee`.
+    /// Allows the boss to modify the fee charged when users take the single redemption offer.
+    /// Emits a `SingleRedemptionOfferFeeUpdatedEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `UpdateSingleRedemptionOfferFee`.
+    /// - `offer_id`: ID of the single redemption offer to update.
+    /// - `new_fee_basis_points`: New fee in basis points (0-10000).
+    pub fn update_single_redemption_offer_fee(
+        ctx: Context<UpdateSingleRedemptionOfferFee>,
+        offer_id: u64,
+        new_fee_basis_points: u64,
+    ) -> Result<()> {
+        redemption_offer::update_single_redemption_offer_fee(ctx, offer_id, new_fee_basis_points)
+    }
+
     /// Takes a single redemption offer.
     ///
     /// Delegates to `redemption_offer::take_single_redemption_offer`.
