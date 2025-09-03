@@ -117,7 +117,7 @@ describe("Take Buy Offer Permissionless", () => {
         it("Should successfully execute permissionless buy offer", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
-            // Add vector: start_price = 1.0 (1e9), APR = 3.65% (36500), duration = 1 day
+            // Add vector: base_price = 1.0 (1e9), APR = 3.65% (36500), duration = 1 day
             const startPrice = new BN(1e9);
             const apr = new BN(36_500);
             const priceFixDuration = new BN(86400);
@@ -446,7 +446,7 @@ describe("Take Buy Offer Permissionless", () => {
             await testHelper.program.methods
                 .addBuyOfferVector(
                     offerId,
-                    new BN(currentTime - 1000),
+                    new BN(currentTime + 1000),
                     new BN(1e9),
                     new BN(36_500),
                     new BN(86400)
@@ -458,13 +458,15 @@ describe("Take Buy Offer Permissionless", () => {
             await testHelper.program.methods
                 .addBuyOfferVector(
                     offerId,
-                    new BN(currentTime - 100),
+                    new BN(currentTime + 2000),
                     new BN(2e9), // Different start price
                     new BN(73_000), // Different APR (7.3%)
                     new BN(86400)
                 )
                 .accounts({state: testHelper.statePda})
                 .rpc();
+
+            await testHelper.advanceClockBy(2500);
 
             // Should use the second vector's pricing
             const expectedTokenInAmount = new BN(2_000_400);

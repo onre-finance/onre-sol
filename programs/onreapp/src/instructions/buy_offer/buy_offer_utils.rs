@@ -56,8 +56,8 @@ pub fn process_buy_offer_core(
     // Calculate current price with 9 decimals
     let current_price = calculate_current_price(
         active_vector.apr,
-        active_vector.start_price,
-        active_vector.start_time,
+        active_vector.base_price,
+        active_vector.base_time,
         active_vector.price_fix_duration,
     )?;
 
@@ -153,8 +153,8 @@ pub fn find_active_vector_at(offer: &BuyOffer, time: u64) -> Result<BuyOfferVect
         .vectors
         .iter()
         .filter(|vector| vector.vector_id != 0) // Only consider non-empty vectors
-        .filter(|vector| vector.valid_from <= time) // Only vectors that have started
-        .max_by_key(|vector| vector.valid_from) // Find latest valid_from in the past
+        .filter(|vector| vector.start_time <= time) // Only vectors that have started
+        .max_by_key(|vector| vector.start_time) // Find latest start_time in the past
         .ok_or(BuyOfferCoreError::NoActiveVector)?;
 
     Ok(*active_vector)
@@ -164,31 +164,31 @@ pub fn find_active_vector_at(offer: &BuyOffer, time: u64) -> Result<BuyOfferVect
 ///
 /// This function implements the discrete interval pricing model:
 /// - apr: Annual Percentage Rate scaled by 1_000_000 (e.g., 10.12% => 101_200)
-/// - start_price: starting price
-/// - start_time: epoch seconds when the price starts evolving
+/// - base_price: starting price
+/// - base_time: epoch seconds when the price starts evolving
 /// - price_fix_duration: duration (seconds) of each price-fix window; price is constant within a window
 ///
 /// Formula:
 ///   k = current interval
 ///   t = current time
 ///
-///   k = floor((t - start_time) / D)
+///   k = floor((t - base_time) / D)
 ///   P(t) = P0 * (1 + y * ((k + 1)*D) / S)
 /// where S = 365*24*3600, and y is yearly APR as a decimal.
 /// We compute this in fixed-point to avoid precision loss.
 ///
 /// # Arguments
 /// * `apr` - Annual Percentage Rate scaled by 1_000_000
-/// * `start_price` - Starting price
-/// * `start_time` - Unix timestamp when pricing starts
+/// * `base_price` - Starting price
+/// * `base_time` - Unix timestamp when pricing starts
 /// * `price_fix_duration` - Duration of each price interval in seconds
 ///
 /// # Returns
 /// The calculated current price
 pub fn calculate_current_price(
     apr: u64,
-    start_price: u64,
-    start_time: u64,
+    base_price: u64,
+    base_time: u64,
     price_fix_duration: u64,
 ) -> Result<u64> {
     const SCALE: u128 = 1_000_000; // because APR is scaled by 1_000_000
@@ -196,12 +196,9 @@ pub fn calculate_current_price(
 
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    require!(
-        start_time <= current_time,
-        BuyOfferCoreError::NoActiveVector
-    );
+    require!(base_time <= current_time, BuyOfferCoreError::NoActiveVector);
 
-    let elapsed_since_start = current_time.saturating_sub(start_time);
+    let elapsed_since_start = current_time.saturating_sub(base_time);
 
     // Calculate which price interval we're in (discrete intervals)
     let k = elapsed_since_start / price_fix_duration;
@@ -217,7 +214,7 @@ pub fn calculate_current_price(
     // With fixed-point:
     //   factor_num = SCALE*S + y_scaled*elapsed_effective
     //   factor_den = SCALE*S
-    //   price = start_price * factor_num / factor_den
+    //   price = base_price * factor_num / factor_den
     let factor_den = SCALE
         .checked_mul(S as u128)
         .expect("SCALE*S overflow (should not happen)");
@@ -228,8 +225,8 @@ pub fn calculate_current_price(
         .checked_add(y_part)
         .ok_or(BuyOfferCoreError::OverflowError)?;
 
-    // base price growth applied to start_price
-    let price_u128 = (start_price as u128)
+    // base price growth applied to base_price
+    let price_u128 = (base_price as u128)
         .checked_mul(factor_num)
         .ok_or(BuyOfferCoreError::OverflowError)?
         .checked_div(factor_den)

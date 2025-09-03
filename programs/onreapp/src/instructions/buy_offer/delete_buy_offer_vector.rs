@@ -1,8 +1,8 @@
 use super::buy_offer_state::{BuyOfferAccount, BuyOfferVector};
+use crate::constants::seeds;
 use crate::instructions::{find_active_vector_at, find_offer_mut};
 use crate::state::State;
 use anchor_lang::prelude::*;
-use crate::constants::seeds;
 
 /// Event emitted when a time vector is deleted from a buy offer.
 #[event]
@@ -66,7 +66,7 @@ pub fn delete_buy_offer_vector(
     let current_vector = find_active_vector_at(offer, Clock::get()?.unix_timestamp as u64);
 
     if current_vector.is_ok() {
-        let prev_vector = find_active_vector_at(offer, current_vector?.valid_from - 1);
+        let prev_vector = find_active_vector_at(offer, current_vector?.start_time - 1);
 
         if prev_vector.is_ok() {
             require!(

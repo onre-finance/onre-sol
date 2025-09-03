@@ -131,8 +131,8 @@
         "# Arguments",
         "- `ctx`: Context for `AddBuyOfferVector`.",
         "- `offer_id`: ID of the buy offer to add the vector to.",
-        "- `start_time`: Unix timestamp when the vector becomes active.",
-        "- `start_price`: Price at the beginning of the vector.",
+        "- `base_time`: Unix timestamp when the vector becomes active.",
+        "- `base_price`: Price at the beginning of the vector.",
         "- `apr`: Annual Percentage Rate (APR) (see BuyOfferVector::apr for details).",
         "- `price_fix_duration`: Duration in seconds for each price interval."
       ],
@@ -197,11 +197,11 @@
           "type": "u64"
         },
         {
-          "name": "start_time",
+          "name": "base_time",
           "type": "u64"
         },
         {
-          "name": "start_price",
+          "name": "base_price",
           "type": "u64"
         },
         {
@@ -1019,7 +1019,7 @@
         "Creates a buy offer.",
         "",
         "Delegates to `buy_offer::make_buy_offer`.",
-        "The price of the token_out changes over time based on `start_price`,",
+        "The price of the token_out changes over time based on `base_price`,",
         "`end_price`, and `price_fix_duration` within the offer's active time window.",
         "Emits a `BuyOfferMade` event upon success.",
         "",
@@ -4834,8 +4834,7 @@
   "errors": [
     {
       "code": 6000,
-      "name": "MathOverflow",
-      "msg": "Math overflow"
+      "name": "InvalidBossAddress"
     }
   ],
   "types": [
@@ -5001,15 +5000,15 @@
             "type": "u64"
           },
           {
-            "name": "valid_from",
-            "type": "u64"
-          },
-          {
             "name": "start_time",
             "type": "u64"
           },
           {
-            "name": "start_price",
+            "name": "base_time",
+            "type": "u64"
+          },
+          {
+            "name": "base_price",
             "type": "u64"
           },
           {
@@ -5058,11 +5057,11 @@
             "type": "u64"
           },
           {
-            "name": "valid_from",
+            "name": "base_time",
             "type": "u64"
           },
           {
-            "name": "start_price",
+            "name": "base_price",
             "type": "u64"
           },
           {
