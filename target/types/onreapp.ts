@@ -3972,6 +3972,86 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "updateBuyOfferFee",
+      "docs": [
+        "Updates the fee basis points for a buy offer.",
+        "",
+        "Delegates to `buy_offer::update_buy_offer_fee`.",
+        "Allows the boss to modify the fee charged when users take the buy offer.",
+        "Emits a `BuyOfferFeeUpdatedEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `UpdateBuyOfferFee`.",
+        "- `offer_id`: ID of the buy offer to update.",
+        "- `new_fee_basis_points`: New fee in basis points (0-10000)."
+      ],
+      "discriminator": [
+        252,
+        143,
+        152,
+        180,
+        66,
+        151,
+        46,
+        138
+      ],
+      "accounts": [
+        {
+          "name": "buyOfferAccount",
+          "docs": [
+            "The buy offer account containing all buy offers"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the fee update (must be boss)."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        },
+        {
+          "name": "newFeeBasisPoints",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "vaultDeposit",
       "docs": [
         "Deposits tokens into the vault.",
@@ -4655,6 +4735,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "buyOfferFeeUpdatedEvent",
+      "discriminator": [
+        252,
+        37,
+        39,
+        183,
+        62,
+        76,
+        251,
+        131
+      ]
+    },
+    {
       "name": "buyOfferMadeEvent",
       "discriminator": [
         76,
@@ -4962,6 +5055,33 @@ export type Onreapp = {
           {
             "name": "counter",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "buyOfferFeeUpdatedEvent",
+      "docs": [
+        "Event emitted when a buy offer's fee is updated."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "type": "u64"
+          },
+          {
+            "name": "oldFeeBasisPoints",
+            "type": "u64"
+          },
+          {
+            "name": "newFeeBasisPoints",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
           }
         ]
       }

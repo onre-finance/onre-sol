@@ -287,6 +287,24 @@ pub mod onreapp {
         buy_offer::delete_buy_offer_vector(ctx, offer_id, vector_id)
     }
 
+    /// Updates the fee basis points for a buy offer.
+    ///
+    /// Delegates to `buy_offer::update_buy_offer_fee`.
+    /// Allows the boss to modify the fee charged when users take the buy offer.
+    /// Emits a `BuyOfferFeeUpdatedEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `UpdateBuyOfferFee`.
+    /// - `offer_id`: ID of the buy offer to update.
+    /// - `new_fee_basis_points`: New fee in basis points (0-10000).
+    pub fn update_buy_offer_fee(
+        ctx: Context<UpdateBuyOfferFee>,
+        offer_id: u64,
+        new_fee_basis_points: u64,
+    ) -> Result<()> {
+        buy_offer::update_buy_offer_fee(ctx, offer_id, new_fee_basis_points)
+    }
+
     /// Takes a buy offer.
     ///
     /// Delegates to `buy_offer::take_buy_offer`.
