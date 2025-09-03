@@ -98,7 +98,7 @@ describe("Take Buy Offer", () => {
         it("Should calculate correct price in first interval", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
-            // Add vector: start_price = 1.0 (1e9), APR = 3.65% (36500), duration = 1 day
+            // Add vector: base_price = 1.0 (1e9), APR = 3.65% (36500), duration = 1 day
             const startPrice = new BN(1e9); // 1.0 with 9 decimals
             const apr = new BN(36_500); // 3.65% APR (scaled by 1M)
             const priceFixDuration = new BN(86400); // 1 day
@@ -284,7 +284,7 @@ describe("Take Buy Offer", () => {
             await testHelper.program.methods
                 .addBuyOfferVector(
                     offerId,
-                    new BN(currentTime - 1000),
+                    new BN(currentTime + 1000),
                     new BN(1e9),
                     new BN(36_500),
                     new BN(86400)
@@ -296,7 +296,7 @@ describe("Take Buy Offer", () => {
             await testHelper.program.methods
                 .addBuyOfferVector(
                     offerId,
-                    new BN(currentTime - 100),
+                    new BN(currentTime + 2000),
                     new BN(2e9), // Different start price
                     new BN(73_000), // Different APR (7.3%)
                     new BN(86400)
@@ -304,6 +304,8 @@ describe("Take Buy Offer", () => {
                 .accounts({state: testHelper.statePda})
                 .rpc();
 
+            await testHelper.advanceClockBy(2500);
+            
             // Should use the second vector's pricing
             // Price = 2.0 * (1 + 0.073 * 1/365) ≈ 2.0004
             const expectedTokenInAmount = new BN(2_000_400);

@@ -22,9 +22,9 @@ pub struct BuyOffer {
 #[derive(Default)]
 pub struct BuyOfferVector {
     pub vector_id: u64,
-    pub valid_from: u64,
     pub start_time: u64,
-    pub start_price: u64,
+    pub base_time: u64,
+    pub base_price: u64,
     /// Annual Percentage Rate (APR)
     ///
     /// APR represents the annualized rate of return for this buy offer.

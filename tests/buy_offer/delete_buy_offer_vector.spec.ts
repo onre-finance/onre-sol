@@ -211,7 +211,7 @@ describe("Delete Buy Offer Vector", () => {
         expect(vectorIds).toEqual([1, 3]);
 
         // Verify prices of remaining vectors
-        const vectorPrices = activeVectors.map(v => v.startPrice.toNumber()).sort();
+        const vectorPrices = activeVectors.map(v => v.basePrice.toNumber()).sort();
         expect(vectorPrices).toContain(1000000); // Vector 1
         expect(vectorPrices).toContain(3000000); // Vector 3
         expect(vectorPrices).not.toContain(2000000); // Vector 2 deleted

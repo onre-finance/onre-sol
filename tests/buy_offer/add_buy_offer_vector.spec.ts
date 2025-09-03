@@ -89,14 +89,14 @@ describe("Add Buy Offer Vector", () => {
 
         const vector = updatedOffer.vectors[0];
         expect(vector.vectorId.toString()).toBe("1");
-        expect(vector.startTime.toString()).toBe(startTime.toString());
-        expect(vector.validFrom.toString()).toBe(startTime.toString()); // valid_from should equal start_time when start_time is in future
-        expect(vector.startPrice.toString()).toBe(startPrice.toString());
+        expect(vector.baseTime.toString()).toBe(startTime.toString());
+        expect(vector.startTime.toString()).toBe(startTime.toString()); // start_time should equal base_time when base_time is in future
+        expect(vector.basePrice.toString()).toBe(startPrice.toString());
         expect(vector.apr.toString()).toBe(apr.toString());
         expect(vector.priceFixDuration.toString()).toBe(priceFixDuration.toString());
     });
 
-    it("Should calculate valid_from as current time when start_time is in the past", async () => {
+    it("Should calculate start_time as current time when base_time is in the past", async () => {
         await testHelper.makeBuyOffer({
             tokenInMint,
             tokenOutMint,
@@ -134,11 +134,11 @@ describe("Add Buy Offer Vector", () => {
         const updatedOffer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
         const vector = updatedOffer.vectors[0];
 
-        expect(vector.startTime.toString()).toBe(pastStartTime.toString());
-        // valid_from should be approximately current time (within a few seconds)
-        const validFromTime = parseInt(vector.validFrom.toString());
-        expect(validFromTime).toBeGreaterThanOrEqual(currentTime);
-        expect(validFromTime).toBeLessThanOrEqual(currentTime + 2); // Allow up to 2 seconds difference
+        expect(vector.baseTime.toString()).toBe(pastStartTime.toString());
+        // start_time should be approximately current time (within a few seconds)
+        const startTime = parseInt(vector.startTime.toString());
+        expect(startTime).toBeGreaterThanOrEqual(currentTime);
+        expect(startTime).toBeLessThanOrEqual(currentTime + 2); // Allow up to 2 seconds difference
     });
 
     it("Should auto-increment vector IDs correctly", async () => {
@@ -165,7 +165,7 @@ describe("Add Buy Offer Vector", () => {
             })
             .rpc();
 
-        // Add second vector (with later start_time)
+        // Add second vector (with later base_time)
         await testHelper.program.methods
             .addBuyOfferVector(
                 offerId,
@@ -225,7 +225,7 @@ describe("Add Buy Offer Vector", () => {
         ).rejects.toThrow("Invalid input: values cannot be zero");
     });
 
-    it("Should reject zero start_time", async () => {
+    it("Should reject zero base_time", async () => {
         const offerId = new BN(1);
         await testHelper.makeBuyOffer({
             tokenInMint,
@@ -236,7 +236,7 @@ describe("Add Buy Offer Vector", () => {
             testHelper.program.methods
                 .addBuyOfferVector(
                     offerId,
-                    new BN(0), // Invalid: zero start_time
+                    new BN(0), // Invalid: zero base_time
                     new BN(1000000),
                     new BN(5000),
                     new BN(3600)
@@ -248,7 +248,7 @@ describe("Add Buy Offer Vector", () => {
         ).rejects.toThrow("Invalid input: values cannot be zero");
     });
 
-    it("Should reject zero start_price", async () => {
+    it("Should reject zero base_price", async () => {
         const offerId = new BN(1);
         await testHelper.makeBuyOffer({
             tokenInMint,
@@ -262,7 +262,7 @@ describe("Add Buy Offer Vector", () => {
                 .addBuyOfferVector(
                     offerId,
                     new BN(currentTime + 1000),
-                    new BN(0), // Invalid: zero start_price
+                    new BN(0), // Invalid: zero base_price
                     new BN(5000),
                     new BN(3600)
                 )
@@ -332,7 +332,7 @@ describe("Add Buy Offer Vector", () => {
         ).rejects.toThrow("Invalid input: values cannot be zero");
     });
 
-    it("Should reject start_time before latest existing vector start_time", async () => {
+    it("Should reject base_time before latest existing vector base_time", async () => {
         const offerId = new BN(1);
         await testHelper.makeBuyOffer({
             tokenInMint,
@@ -355,12 +355,12 @@ describe("Add Buy Offer Vector", () => {
             })
             .rpc();
 
-        // Try to add vector with earlier start_time (should fail)
+        // Try to add vector with earlier base_time (should fail)
         await expect(
             testHelper.program.methods
                 .addBuyOfferVector(
                     offerId,
-                    new BN(currentTime + 1000), // Invalid: before previous start_time
+                    new BN(currentTime + 1000), // Invalid: before previous base_time
                     new BN(2000000),
                     new BN(7500),
                     new BN(1800)
@@ -369,10 +369,10 @@ describe("Add Buy Offer Vector", () => {
                     state: testHelper.statePda,
                 })
                 .rpc()
-        ).rejects.toThrow("Invalid time range: start_time must be after the latest existing vector");
+        ).rejects.toThrow("Invalid time range: base_time must be after the latest existing vector");
     });
 
-    it("Should reject start_time equal to latest existing vector start_time", async () => {
+    it("Should reject base_time equal to latest existing vector base_time", async () => {
         const offerId = new BN(1);
         await testHelper.makeBuyOffer({
             tokenInMint,
@@ -396,11 +396,11 @@ describe("Add Buy Offer Vector", () => {
             })
             .rpc();
 
-        // Add vector with same start_time (should fail)
+        // Add vector with same base_time (should fail)
         await expect(testHelper.program.methods
             .addBuyOfferVector(
                 offerId,
-                startTime, // Same start_time - should be allowed
+                startTime, // Same base_time - should be allowed
                 new BN(2000000),
                 new BN(7500),
                 new BN(1800)
@@ -408,7 +408,7 @@ describe("Add Buy Offer Vector", () => {
             .accounts({
                 state: testHelper.statePda,
             })
-            .rpc()).rejects.toThrow("Invalid time range: start_time must be after the latest existing vector.");
+            .rpc()).rejects.toThrow("Invalid time range: base_time must be after the latest existing vector.");
     });
 
     it("Should reject adding vector to non-existent offer", async () => {
@@ -518,7 +518,7 @@ describe("Add Buy Offer Vector", () => {
         const offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
         const vector = offer.vectors[0];
 
-        expect(vector.startPrice.toString()).toBe(largeStartPrice.toString());
+        expect(vector.basePrice.toString()).toBe(largeStartPrice.toString());
         expect(vector.apr.toString()).toBe(largeApr.toString());
     });
 
@@ -538,8 +538,8 @@ describe("Add Buy Offer Vector", () => {
         await testHelper.program.methods
             .addBuyOfferVector(
                 offerId,
-                new BN(1), // Minimum valid start_time
-                new BN(1), // Minimum valid start_price
+                new BN(1), // Minimum valid base_time
+                new BN(1), // Minimum valid base_price
                 new BN(1), // Minimum valid apr
                 new BN(1)  // Minimum valid price_fix_duration
             )
@@ -554,12 +554,12 @@ describe("Add Buy Offer Vector", () => {
         const vector = offer.vectors[0];
 
         expect(vector.vectorId.toString()).toBe("1");
-        expect(vector.startTime.toString()).toBe("1");
-        // valid_from should be current time since start_time=1 is in the past
+        expect(vector.baseTime.toString()).toBe("1");
+        // start_time should be current time since base_time=1 is in the past
         const currentTime = await testHelper.getCurrentClockTime();
-        const validFromTime = parseInt(vector.validFrom.toString());
-        expect(validFromTime).toBeGreaterThanOrEqual(currentTime);
-        expect(vector.startPrice.toString()).toBe("1");
+        const startTime = parseInt(vector.startTime.toString());
+        expect(startTime).toBeGreaterThanOrEqual(currentTime);
+        expect(vector.basePrice.toString()).toBe("1");
         expect(vector.apr.toString()).toBe("1");
         expect(vector.priceFixDuration.toString()).toBe("1");
     });
@@ -671,8 +671,8 @@ describe("Add Buy Offer Vector", () => {
         expect(offer2.vectors[0].vectorId.toString()).toBe("1");
 
         // Verify prices are correct for each offer
-        expect(offer1.vectors[0].startPrice.toString()).toBe("1000000");
-        expect(offer2.vectors[0].startPrice.toString()).toBe("3000000");
+        expect(offer1.vectors[0].basePrice.toString()).toBe("1000000");
+        expect(offer2.vectors[0].basePrice.toString()).toBe("3000000");
 
         // Verify APRs are correct
         expect(offer1.vectors[0].apr.toString()).toBe("5000"); // 50%
@@ -695,11 +695,11 @@ describe("Add Buy Offer Vector", () => {
 
         // Add 5 vectors: all in the future
         const vectors = [
-            {startTime: currentTime + 1000, price: 1000000},
-            {startTime: currentTime + 2000, price: 2000000},
-            {startTime: currentTime + 3000, price: 3000000},
-            {startTime: currentTime + 4000, price: 4000000},
-            {startTime: currentTime + 5000, price: 5000000},
+            {baseTime: currentTime + 1000, price: 1000000},
+            {baseTime: currentTime + 2000, price: 2000000},
+            {baseTime: currentTime + 3000, price: 3000000},
+            {baseTime: currentTime + 4000, price: 4000000},
+            {baseTime: currentTime + 5000, price: 5000000},
         ];
 
         // Add all vectors
@@ -707,7 +707,7 @@ describe("Add Buy Offer Vector", () => {
             await testHelper.program.methods
                 .addBuyOfferVector(
                     offerId,
-                    new BN(vectors[i].startTime),
+                    new BN(vectors[i].baseTime),
                     new BN(vectors[i].price),
                     new BN(5000), // 50% APR
                     new BN(3600)  // 1 hour duration
@@ -742,7 +742,7 @@ describe("Add Buy Offer Vector", () => {
             .rpc();
 
         // After cleanup, should only have:
-        // - Vector 4 (currently active - most recent valid_from <= current_time)
+        // - Vector 4 (currently active - most recent start_time <= current_time)
         // - Vector 3 (previously active - closest smaller vector_id to vector 3)
         // - Vector 5 (future vector - should be kept)
         // - Vector 6 (newly added future vector)
@@ -757,7 +757,7 @@ describe("Add Buy Offer Vector", () => {
 
         // Find vectors by their prices to identify them
         const remainingVectorIds = activeVectors.map(v => v.vectorId.toNumber()).sort();
-        const remainingPrices = activeVectors.map(v => v.startPrice.toNumber()).sort();
+        const remainingPrices = activeVectors.map(v => v.basePrice.toNumber()).sort();
 
         // Should have vectors 2, 3, 4, 5, and 6
         expect(remainingVectorIds).toEqual([3, 4, 5, 6]);

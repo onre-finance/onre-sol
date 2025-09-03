@@ -10,8 +10,8 @@ pub struct BuyOfferVectorAddedEvent {
     pub offer_id: u64,
     pub vector_id: u64,
     pub start_time: u64,
-    pub valid_from: u64,
-    pub start_price: u64,
+    pub base_time: u64,
+    pub base_price: u64,
     pub apr: u64,
     pub price_fix_duration: u64,
 }
@@ -43,21 +43,21 @@ pub struct AddBuyOfferVector<'info> {
 /// # Arguments
 /// - `ctx`: Context containing the accounts for the operation.
 /// - `offer_id`: ID of the buy offer to add the vector to.
-/// - `start_time`: Unix timestamp when the vector becomes active.
-/// - `start_price`: Price at the beginning of the vector.
+/// - `base_time`: Unix timestamp when the vector becomes active.
+/// - `base_price`: Price at the beginning of the vector.
 /// - `apr`: Annual Percentage Rate (APR) in basis points (see BuyOfferVector::apr for details).
 /// - `price_fix_duration`: Duration in seconds for each price interval.
 ///
 /// # Errors
 /// - [`AddBuyOfferVectorErrorCode::OfferNotFound`] if offer_id doesn't exist.
-/// - [`AddBuyOfferVectorErrorCode::InvalidTimeRange`] if start_time is before latest existing vector.
+/// - [`AddBuyOfferVectorErrorCode::InvalidTimeRange`] if base_time is before latest existing vector.
 /// - [`AddBuyOfferVectorErrorCode::ZeroValue`] if any value is zero.
 /// - [`AddBuyOfferVectorErrorCode::TooManyVectors`] if the offer already has MAX_SEGMENTS.
 pub fn add_buy_offer_vector(
     ctx: Context<AddBuyOfferVector>,
     offer_id: u64,
-    start_time: u64,
-    start_price: u64,
+    base_time: u64,
+    base_price: u64,
     apr: u64,
     price_fix_duration: u64,
 ) -> Result<()> {
@@ -65,12 +65,12 @@ pub fn add_buy_offer_vector(
 
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    validate_inputs(offer_id, start_time, start_price, price_fix_duration)?;
+    validate_inputs(offer_id, base_time, base_price, price_fix_duration)?;
 
     // Find the offer by offer_id
     let offer = find_offer_mut(buy_offer_account, offer_id)?;
 
-    // Validate start_time is not before the latest existing vector's start_time
+    // Validate base_time is not before the latest existing vector's base_time - only allow appending
     let latest_start_time = offer
         .vectors
         .iter()
@@ -80,16 +80,16 @@ pub fn add_buy_offer_vector(
         .unwrap_or(0);
 
     require!(
-        start_time > latest_start_time,
+        base_time > latest_start_time,
         AddBuyOfferVectorErrorCode::InvalidTimeRange
     );
 
     let next_vector_id = offer.counter + 1;
     offer.counter = next_vector_id;
 
-    // Calculate valid_from: max(start_time, current_time)
-    let valid_from = if start_time > current_time {
-        start_time
+    // Calculate start_time: max(base_time, current_time)
+    let start_time = if base_time > current_time {
+        base_time
     } else {
         current_time
     };
@@ -100,9 +100,9 @@ pub fn add_buy_offer_vector(
     // Create the new time vector
     let new_vector = BuyOfferVector {
         vector_id: next_vector_id,
-        valid_from,
         start_time,
-        start_price,
+        base_time,
+        base_price,
         apr,
         price_fix_duration,
     };
@@ -123,8 +123,8 @@ pub fn add_buy_offer_vector(
         offer_id,
         vector_id: next_vector_id,
         start_time,
-        valid_from,
-        start_price,
+        base_time,
+        base_price,
         apr,
         price_fix_duration,
     });
@@ -134,14 +134,14 @@ pub fn add_buy_offer_vector(
 
 fn validate_inputs(
     offer_id: u64,
-    start_time: u64,
-    start_price: u64,
+    base_time: u64,
+    base_price: u64,
     price_fix_duration: u64,
 ) -> Result<()> {
     // Validate input parameters
     require!(offer_id > 0, AddBuyOfferVectorErrorCode::ZeroValue);
-    require!(start_time > 0, AddBuyOfferVectorErrorCode::ZeroValue);
-    require!(start_price > 0, AddBuyOfferVectorErrorCode::ZeroValue);
+    require!(base_time > 0, AddBuyOfferVectorErrorCode::ZeroValue);
+    require!(base_price > 0, AddBuyOfferVectorErrorCode::ZeroValue);
     require!(
         price_fix_duration > 0,
         AddBuyOfferVectorErrorCode::ZeroValue
@@ -166,7 +166,7 @@ fn find_empty_vector_slot(vectors: &[BuyOfferVector; 10]) -> Result<usize> {
 /// - `current_time`: Current unix timestamp for determining active vector
 ///
 /// # Behavior
-/// - Finds the currently active vector (most recent valid_from <= current_time)
+/// - Finds the currently active vector (most recent start_time <= current_time)
 /// - Finds the previously active vector (closest smaller vector_id to active vector)
 /// - Deletes all other vectors by setting them to default (vector_id = 0)
 fn clean_old_vectors(offer: &mut BuyOffer, current_time: u64) -> Result<()> {
@@ -179,7 +179,7 @@ fn clean_old_vectors(offer: &mut BuyOffer, current_time: u64) -> Result<()> {
     };
 
     // Find previously active vector (closest smaller vector_id)
-    let prev_vector = find_active_vector_at(offer, active_vector?.valid_from - 1);
+    let prev_vector = find_active_vector_at(offer, active_vector?.start_time - 1);
 
     let prev_vector_id = match prev_vector {
         Ok(vector) => vector.vector_id,
@@ -204,8 +204,8 @@ fn clean_old_vectors(offer: &mut BuyOffer, current_time: u64) -> Result<()> {
 /// Error codes for add buy offer vector operations.
 #[error_code]
 pub enum AddBuyOfferVectorErrorCode {
-    /// Triggered when start_time is before the latest existing vector.
-    #[msg("Invalid time range: start_time must be after the latest existing vector")]
+    /// Triggered when base_time is before the latest existing vector.
+    #[msg("Invalid time range: base_time must be after the latest existing vector")]
     InvalidTimeRange,
 
     /// Triggered when any required value is zero.

@@ -84,7 +84,7 @@ pub mod onreapp {
     /// Creates a buy offer.
     ///
     /// Delegates to `buy_offer::make_buy_offer`.
-    /// The price of the token_out changes over time based on `start_price`,
+    /// The price of the token_out changes over time based on `base_price`,
     /// `end_price`, and `price_fix_duration` within the offer's active time window.
     /// Emits a `BuyOfferMade` event upon success.
     ///
@@ -246,23 +246,23 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `AddBuyOfferVector`.
     /// - `offer_id`: ID of the buy offer to add the vector to.
-    /// - `start_time`: Unix timestamp when the vector becomes active.
-    /// - `start_price`: Price at the beginning of the vector.
+    /// - `base_time`: Unix timestamp when the vector becomes active.
+    /// - `base_price`: Price at the beginning of the vector.
     /// - `apr`: Annual Percentage Rate (APR) (see BuyOfferVector::apr for details).
     /// - `price_fix_duration`: Duration in seconds for each price interval.
     pub fn add_buy_offer_vector(
         ctx: Context<AddBuyOfferVector>,
         offer_id: u64,
-        start_time: u64,
-        start_price: u64,
+        base_time: u64,
+        base_price: u64,
         apr: u64,
         price_fix_duration: u64,
     ) -> Result<()> {
         buy_offer::add_buy_offer_vector(
             ctx,
             offer_id,
-            start_time,
-            start_price,
+            base_time,
+            base_price,
             apr,
             price_fix_duration,
         )

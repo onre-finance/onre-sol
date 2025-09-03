@@ -137,8 +137,8 @@ export type Onreapp = {
         "# Arguments",
         "- `ctx`: Context for `AddBuyOfferVector`.",
         "- `offer_id`: ID of the buy offer to add the vector to.",
-        "- `start_time`: Unix timestamp when the vector becomes active.",
-        "- `start_price`: Price at the beginning of the vector.",
+        "- `base_time`: Unix timestamp when the vector becomes active.",
+        "- `base_price`: Price at the beginning of the vector.",
         "- `apr`: Annual Percentage Rate (APR) (see BuyOfferVector::apr for details).",
         "- `price_fix_duration`: Duration in seconds for each price interval."
       ],
@@ -203,11 +203,11 @@ export type Onreapp = {
           "type": "u64"
         },
         {
-          "name": "startTime",
+          "name": "baseTime",
           "type": "u64"
         },
         {
-          "name": "startPrice",
+          "name": "basePrice",
           "type": "u64"
         },
         {
@@ -1025,7 +1025,7 @@ export type Onreapp = {
         "Creates a buy offer.",
         "",
         "Delegates to `buy_offer::make_buy_offer`.",
-        "The price of the token_out changes over time based on `start_price`,",
+        "The price of the token_out changes over time based on `base_price`,",
         "`end_price`, and `price_fix_duration` within the offer's active time window.",
         "Emits a `BuyOfferMade` event upon success.",
         "",
@@ -4840,8 +4840,7 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "mathOverflow",
-      "msg": "Math overflow"
+      "name": "invalidBossAddress"
     }
   ],
   "types": [
@@ -5007,15 +5006,15 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "validFrom",
-            "type": "u64"
-          },
-          {
             "name": "startTime",
             "type": "u64"
           },
           {
-            "name": "startPrice",
+            "name": "baseTime",
+            "type": "u64"
+          },
+          {
+            "name": "basePrice",
             "type": "u64"
           },
           {
@@ -5064,11 +5063,11 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "validFrom",
+            "name": "baseTime",
             "type": "u64"
           },
           {
-            "name": "startPrice",
+            "name": "basePrice",
             "type": "u64"
           },
           {
