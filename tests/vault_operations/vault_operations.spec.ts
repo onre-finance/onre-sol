@@ -43,6 +43,17 @@ describe("Vault Operations", () => {
         }).rpc();
     });
 
+    test("Vaults are initialized correctly", async () => {
+        // Verify all vault authorities are initialized correctly
+        const buyOfferVaultAuthority = await program.account.buyOfferVaultAuthority.fetch(buyOfferVaultAuthorityPda);
+        const singleRedemptionVaultAuthority = await program.account.singleRedemptionVaultAuthority.fetch(singleRedemptionVaultAuthorityPda);
+        const dualRedemptionVaultAuthority = await program.account.dualRedemptionVaultAuthority.fetch(dualRedemptionVaultAuthorityPda);
+
+        expect(buyOfferVaultAuthority).toBeDefined();
+        expect(singleRedemptionVaultAuthority).toBeDefined();
+        expect(dualRedemptionVaultAuthority).toBeDefined();
+    })
+
     describe("Buy Offer Vault Operations", () => {
         test("Deposit tokens to buy offer vault should succeed", async () => {
             // given

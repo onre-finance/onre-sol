@@ -1,9 +1,9 @@
 use crate::constants::seeds;
-use crate::state::{State, BuyOfferVaultAuthority};
+use crate::state::{BuyOfferVaultAuthority, State};
 use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token, TokenAccount};
 use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 #[event]
 pub struct BuyOfferVaultWithdrawEvent {
@@ -73,12 +73,6 @@ pub struct BuyOfferVaultWithdraw<'info> {
 /// # Returns
 /// A `Result` indicating success or failure.
 pub fn buy_offer_vault_withdraw(ctx: Context<BuyOfferVaultWithdraw>, amount: u64) -> Result<()> {
-    let vault_token_account = &ctx.accounts.vault_token_account;
-    let boss_token_account = &ctx.accounts.boss_token_account;
-    let vault_authority = &ctx.accounts.vault_authority;
-    let token_program = &ctx.accounts.token_program;
-    let token_mint = &ctx.accounts.token_mint;
-
     // Create signer seeds for vault authority
     let vault_authority_seeds = &[
         seeds::BUY_OFFER_VAULT_AUTHORITY,
@@ -88,16 +82,16 @@ pub fn buy_offer_vault_withdraw(ctx: Context<BuyOfferVaultWithdraw>, amount: u64
 
     // Transfer tokens from vault to boss
     transfer_tokens(
-        token_program,
-        vault_token_account,
-        boss_token_account,
-        &vault_authority.to_account_info(),
+        &ctx.accounts.token_program,
+        &ctx.accounts.vault_token_account,
+        &ctx.accounts.boss_token_account,
+        &ctx.accounts.vault_authority.to_account_info(),
         Some(signer_seeds),
         amount,
     )?;
 
     emit!(BuyOfferVaultWithdrawEvent {
-        mint: token_mint.key(),
+        mint: ctx.accounts.token_mint.key(),
         amount,
         boss: ctx.accounts.boss.key(),
     });

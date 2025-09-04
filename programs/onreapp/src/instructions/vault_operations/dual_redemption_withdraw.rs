@@ -1,9 +1,9 @@
 use crate::constants::seeds;
-use crate::state::{State, DualRedemptionVaultAuthority};
+use crate::state::{DualRedemptionVaultAuthority, State};
 use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token, TokenAccount};
 use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 #[event]
 pub struct DualRedemptionVaultWithdrawEvent {
@@ -72,13 +72,10 @@ pub struct DualRedemptionVaultWithdraw<'info> {
 ///
 /// # Returns
 /// A `Result` indicating success or failure.
-pub fn dual_redemption_vault_withdraw(ctx: Context<DualRedemptionVaultWithdraw>, amount: u64) -> Result<()> {
-    let vault_token_account = &ctx.accounts.vault_token_account;
-    let boss_token_account = &ctx.accounts.boss_token_account;
-    let vault_authority = &ctx.accounts.vault_authority;
-    let token_program = &ctx.accounts.token_program;
-    let token_mint = &ctx.accounts.token_mint;
-
+pub fn dual_redemption_vault_withdraw(
+    ctx: Context<DualRedemptionVaultWithdraw>,
+    amount: u64,
+) -> Result<()> {
     // Create signer seeds for vault authority
     let vault_authority_seeds = &[
         seeds::DUAL_REDEMPTION_VAULT_AUTHORITY,
@@ -88,20 +85,23 @@ pub fn dual_redemption_vault_withdraw(ctx: Context<DualRedemptionVaultWithdraw>,
 
     // Transfer tokens from vault to boss
     transfer_tokens(
-        token_program,
-        vault_token_account,
-        boss_token_account,
-        &vault_authority.to_account_info(),
+        &ctx.accounts.token_program,
+        &ctx.accounts.vault_token_account,
+        &ctx.accounts.boss_token_account,
+        &ctx.accounts.vault_authority.to_account_info(),
         Some(signer_seeds),
         amount,
     )?;
 
     emit!(DualRedemptionVaultWithdrawEvent {
-        mint: token_mint.key(),
+        mint: ctx.accounts.token_mint.key(),
         amount,
         boss: ctx.accounts.boss.key(),
     });
 
-    msg!("Dual redemption vault withdraw successful: {} tokens", amount);
+    msg!(
+        "Dual redemption vault withdraw successful: {} tokens",
+        amount
+    );
     Ok(())
 }

@@ -74,26 +74,20 @@ pub struct BuyOfferVaultDeposit<'info> {
 /// # Returns
 /// A `Result` indicating success or failure.
 pub fn buy_offer_vault_deposit(ctx: Context<BuyOfferVaultDeposit>, amount: u64) -> Result<()> {
-    let boss_token_account = &ctx.accounts.boss_token_account;
-    let vault_token_account = &ctx.accounts.vault_token_account;
-    let boss = &ctx.accounts.boss;
-    let token_program = &ctx.accounts.token_program;
-    let token_mint = &ctx.accounts.token_mint;
-
     // Transfer tokens from boss to vault
     transfer_tokens(
-        token_program,
-        boss_token_account,
-        vault_token_account,
-        boss,
+        &ctx.accounts.token_program,
+        &ctx.accounts.boss_token_account,
+        &ctx.accounts.vault_token_account,
+        &ctx.accounts.boss,
         None,
         amount,
     )?;
 
     emit!(BuyOfferVaultDepositEvent {
-        mint: token_mint.key(),
+        mint: ctx.accounts.token_mint.key(),
         amount,
-        boss: boss.key(),
+        boss: ctx.accounts.boss.key(),
     });
 
     msg!("Buy offer vault deposit successful: {} tokens", amount);

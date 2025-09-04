@@ -1,9 +1,9 @@
 use crate::constants::seeds;
-use crate::state::{State, SingleRedemptionVaultAuthority};
+use crate::state::{SingleRedemptionVaultAuthority, State};
 use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token, TokenAccount};
 use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 #[event]
 pub struct SingleRedemptionVaultDepositEvent {
@@ -73,29 +73,29 @@ pub struct SingleRedemptionVaultDeposit<'info> {
 ///
 /// # Returns
 /// A `Result` indicating success or failure.
-pub fn single_redemption_vault_deposit(ctx: Context<SingleRedemptionVaultDeposit>, amount: u64) -> Result<()> {
-    let boss_token_account = &ctx.accounts.boss_token_account;
-    let vault_token_account = &ctx.accounts.vault_token_account;
-    let boss = &ctx.accounts.boss;
-    let token_program = &ctx.accounts.token_program;
-    let token_mint = &ctx.accounts.token_mint;
-
+pub fn single_redemption_vault_deposit(
+    ctx: Context<SingleRedemptionVaultDeposit>,
+    amount: u64,
+) -> Result<()> {
     // Transfer tokens from boss to vault
     transfer_tokens(
-        token_program,
-        boss_token_account,
-        vault_token_account,
-        boss,
+        &ctx.accounts.token_program,
+        &ctx.accounts.boss_token_account,
+        &ctx.accounts.vault_token_account,
+        &ctx.accounts.boss,
         None,
         amount,
     )?;
 
     emit!(SingleRedemptionVaultDepositEvent {
-        mint: token_mint.key(),
+        mint: ctx.accounts.token_mint.key(),
         amount,
-        boss: boss.key(),
+        boss: ctx.accounts.boss.key(),
     });
 
-    msg!("Single redemption vault deposit successful: {} tokens", amount);
+    msg!(
+        "Single redemption vault deposit successful: {} tokens",
+        amount
+    );
     Ok(())
 }
