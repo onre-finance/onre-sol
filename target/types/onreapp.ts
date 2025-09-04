@@ -3972,6 +3972,272 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "updateBuyOfferFee",
+      "docs": [
+        "Updates the fee basis points for a buy offer.",
+        "",
+        "Delegates to `buy_offer::update_buy_offer_fee`.",
+        "Allows the boss to modify the fee charged when users take the buy offer.",
+        "Emits a `BuyOfferFeeUpdatedEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `UpdateBuyOfferFee`.",
+        "- `offer_id`: ID of the buy offer to update.",
+        "- `new_fee_basis_points`: New fee in basis points (0-10000)."
+      ],
+      "discriminator": [
+        252,
+        143,
+        152,
+        180,
+        66,
+        151,
+        46,
+        138
+      ],
+      "accounts": [
+        {
+          "name": "buyOfferAccount",
+          "docs": [
+            "The buy offer account containing all buy offers"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the fee update (must be boss)."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        },
+        {
+          "name": "newFeeBasisPoints",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "updateDualRedemptionOfferFee",
+      "docs": [
+        "Updates the fee basis points for a dual redemption offer.",
+        "",
+        "Delegates to `redemption_offer::update_dual_redemption_offer_fee`.",
+        "Allows the boss to modify the fee charged when users take the dual redemption offer.",
+        "Emits a `DualRedemptionOfferFeeUpdatedEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `UpdateDualRedemptionOfferFee`.",
+        "- `offer_id`: ID of the dual redemption offer to update.",
+        "- `new_fee_basis_points`: New fee in basis points (0-10000)."
+      ],
+      "discriminator": [
+        210,
+        142,
+        144,
+        12,
+        75,
+        143,
+        89,
+        244
+      ],
+      "accounts": [
+        {
+          "name": "dualRedemptionOfferAccount",
+          "docs": [
+            "The dual redemption offer account containing all dual redemption offers"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  97,
+                  108,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the fee update (must be boss)."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        },
+        {
+          "name": "newFeeBasisPoints",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "updateSingleRedemptionOfferFee",
+      "docs": [
+        "Updates the fee basis points for a single redemption offer.",
+        "",
+        "Delegates to `redemption_offer::update_single_redemption_offer_fee`.",
+        "Allows the boss to modify the fee charged when users take the single redemption offer.",
+        "Emits a `SingleRedemptionOfferFeeUpdatedEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `UpdateSingleRedemptionOfferFee`.",
+        "- `offer_id`: ID of the single redemption offer to update.",
+        "- `new_fee_basis_points`: New fee in basis points (0-10000)."
+      ],
+      "discriminator": [
+        23,
+        223,
+        126,
+        204,
+        144,
+        69,
+        122,
+        125
+      ],
+      "accounts": [
+        {
+          "name": "singleRedemptionOfferAccount",
+          "docs": [
+            "The single redemption offer account containing all single redemption offers"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  105,
+                  110,
+                  103,
+                  108,
+                  101,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the fee update (must be boss)."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        },
+        {
+          "name": "newFeeBasisPoints",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "vaultDeposit",
       "docs": [
         "Deposits tokens into the vault.",
@@ -4655,6 +4921,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "buyOfferFeeUpdatedEvent",
+      "discriminator": [
+        252,
+        37,
+        39,
+        183,
+        62,
+        76,
+        251,
+        131
+      ]
+    },
+    {
       "name": "buyOfferMadeEvent",
       "discriminator": [
         76,
@@ -4733,6 +5012,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "dualRedemptionOfferFeeUpdatedEvent",
+      "discriminator": [
+        215,
+        203,
+        186,
+        157,
+        229,
+        205,
+        67,
+        46
+      ]
+    },
+    {
       "name": "dualRedemptionOfferMadeEvent",
       "discriminator": [
         197,
@@ -4743,6 +5035,19 @@ export type Onreapp = {
         78,
         44,
         238
+      ]
+    },
+    {
+      "name": "singleRedemptionOfferFeeUpdatedEvent",
+      "discriminator": [
+        78,
+        134,
+        217,
+        186,
+        10,
+        26,
+        233,
+        139
       ]
     },
     {
@@ -4840,7 +5145,8 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "invalidBossAddress"
+      "name": "mathOverflow",
+      "msg": "Math overflow"
     }
   ],
   "types": [
@@ -4962,6 +5268,33 @@ export type Onreapp = {
           {
             "name": "counter",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "buyOfferFeeUpdatedEvent",
+      "docs": [
+        "Event emitted when a buy offer's fee is updated."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "type": "u64"
+          },
+          {
+            "name": "oldFeeBasisPoints",
+            "type": "u64"
+          },
+          {
+            "name": "newFeeBasisPoints",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
           }
         ]
       }
@@ -5236,6 +5569,33 @@ export type Onreapp = {
       }
     },
     {
+      "name": "dualRedemptionOfferFeeUpdatedEvent",
+      "docs": [
+        "Event emitted when a dual redemption offer's fee is updated."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "type": "u64"
+          },
+          {
+            "name": "oldFeeBasisPoints",
+            "type": "u64"
+          },
+          {
+            "name": "newFeeBasisPoints",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "dualRedemptionOfferMadeEvent",
       "docs": [
         "Event emitted when a dual redemption offer is created."
@@ -5361,6 +5721,33 @@ export type Onreapp = {
           {
             "name": "counter",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "singleRedemptionOfferFeeUpdatedEvent",
+      "docs": [
+        "Event emitted when a single redemption offer's fee is updated."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "type": "u64"
+          },
+          {
+            "name": "oldFeeBasisPoints",
+            "type": "u64"
+          },
+          {
+            "name": "newFeeBasisPoints",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
           }
         ]
       }
