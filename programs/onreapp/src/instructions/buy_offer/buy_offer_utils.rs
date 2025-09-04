@@ -4,6 +4,9 @@ use crate::utils::{calculate_token_out_amount, transfer_tokens};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
+const SECONDS_IN_YEAR: u128 = 31_536_000;
+const APR_SCALE: u128 = 1_000_000; // because APR is scaled by 1_000_000
+
 /// Common error codes that can be used by both take_buy_offer instructions
 #[error_code]
 pub enum BuyOfferCoreError {
@@ -54,7 +57,7 @@ pub fn process_buy_offer_core(
     let active_vector = find_active_vector_at(&offer, current_time)?;
 
     // Calculate current price with 9 decimals
-    let current_price = calculate_current_price(
+    let current_price = calculate_current_step_price(
         active_vector.apr,
         active_vector.base_price,
         active_vector.base_time,
@@ -160,72 +163,39 @@ pub fn find_active_vector_at(offer: &BuyOffer, time: u64) -> Result<BuyOfferVect
     Ok(*active_vector)
 }
 
-/// Linear (uncompounded) price calculation with "price-fix" windows that snap to the END of the current window.
+/// Calculates the price for a pricing vector based on APR and elapsed time.
 ///
-/// This function implements the discrete interval pricing model:
-/// - apr: Annual Percentage Rate scaled by 1_000_000 (e.g., 10.12% => 101_200)
-/// - base_price: starting price
-/// - base_time: epoch seconds when the price starts evolving
-/// - price_fix_duration: duration (seconds) of each price-fix window; price is constant within a window
+/// This function implements the core linear price growth formula without discrete intervals.
+/// It computes a continuous price based on the APR (Annual Percentage Rate) and time elapsed.
 ///
-/// Formula:
-///   k = current interval
-///   t = current time
-///
-///   k = floor((t - base_time) / D)
-///   P(t) = P0 * (1 + y * ((k + 1)*D) / S)
-/// where S = 365*24*3600, and y is yearly APR as a decimal.
-/// We compute this in fixed-point to avoid precision loss.
+/// Formula: P(t) = P0 * (1 + y * elapsed_time / S)
+/// where S = 365*24*3600 (seconds per year), and y is yearly APR as a decimal.
+/// We compute this in fixed-point arithmetic to avoid precision loss.
 ///
 /// # Arguments
-/// * `apr` - Annual Percentage Rate scaled by 1_000_000
+/// * `apr` - Annual Percentage Rate scaled by 1_000_000 (e.g., 10.12% => 101_200)
 /// * `base_price` - Starting price
-/// * `base_time` - Unix timestamp when pricing starts
-/// * `price_fix_duration` - Duration of each price interval in seconds
+/// * `elapsed_time` - Time elapsed since base_time in seconds
 ///
 /// # Returns
-/// The calculated current price
-pub fn calculate_current_price(
-    apr: u64,
-    base_price: u64,
-    base_time: u64,
-    price_fix_duration: u64,
-) -> Result<u64> {
-    const SCALE: u128 = 1_000_000; // because APR is scaled by 1_000_000
-    const S: u64 = 365 * 24 * 3600; // seconds per year
-
-    let current_time = Clock::get()?.unix_timestamp as u64;
-
-    require!(base_time <= current_time, BuyOfferCoreError::NoActiveVector);
-
-    let elapsed_since_start = current_time.saturating_sub(base_time);
-
-    // Calculate which price interval we're in (discrete intervals)
-    let k = elapsed_since_start / price_fix_duration;
-
-    // elapsed_effective = (k + 1) * D  (end-of-current-interval snap)
-    let elapsed_effective = k
-        .checked_add(1)
-        .unwrap()
-        .checked_mul(price_fix_duration)
-        .ok_or(BuyOfferCoreError::OverflowError)?;
-
-    // Compute: price = P0 * (1 + y * elapsed_effective / S)
+/// The calculated price for the given elapsed time
+pub fn calculate_vector_price(apr: u64, base_price: u64, elapsed_time: u64) -> Result<u64> {
+    // Compute: price = P0 * (1 + y * elapsed_time / SECONDS_IN_YEAR)
     // With fixed-point:
-    //   factor_num = SCALE*S + y_scaled*elapsed_effective
-    //   factor_den = SCALE*S
-    //   price = base_price * factor_num / factor_den
-    let factor_den = SCALE
-        .checked_mul(S as u128)
+    //   factor_num = SCALE*SECONDS_IN_YEAR + APR*elapsed_time
+    //   factor_den = SCALE*SECONDS_IN_YEAR
+    //   price = base_price * (factor_num / factor_den)
+    let factor_den = APR_SCALE
+        .checked_mul(SECONDS_IN_YEAR)
         .expect("SCALE*S overflow (should not happen)");
     let y_part = (apr as u128)
-        .checked_mul(elapsed_effective as u128)
+        .checked_mul(elapsed_time as u128)
         .ok_or(BuyOfferCoreError::OverflowError)?;
     let factor_num = factor_den
         .checked_add(y_part)
         .ok_or(BuyOfferCoreError::OverflowError)?;
 
-    // base price growth applied to base_price
+    // price growth applied to base_price
     let price_u128 = (base_price as u128)
         .checked_mul(factor_num)
         .ok_or(BuyOfferCoreError::OverflowError)?
@@ -237,6 +207,53 @@ pub fn calculate_current_price(
     }
 
     Ok(price_u128 as u64)
+}
+
+/// Calculates the current price using discrete interval pricing with "price-fix" windows.
+///
+/// This function implements the discrete interval pricing model where prices are fixed
+/// within specific time windows and snap to the END of the current interval.
+/// It determines which interval we're currently in, then calculates the price at that interval.
+///
+/// - price_fix_duration: duration (seconds) of each price-fix window; price is constant within a window
+///
+/// Formula:
+///   k = current interval = floor((current_time - base_time) / price_fix_duration)
+///   elapsed_effective = (k + 1) * price_fix_duration  (snap to end of interval)
+///   P(t) = calculate_vector_price(apr, base_price, elapsed_effective)
+///
+/// # Arguments
+/// * `apr` - Annual Percentage Rate scaled by 1_000_000
+/// * `base_price` - Starting price
+/// * `base_time` - Unix timestamp when pricing starts
+/// * `price_fix_duration` - Duration of each price interval in seconds
+///
+/// # Returns
+/// The calculated current price at the discrete interval
+pub fn calculate_current_step_price(
+    apr: u64,
+    base_price: u64,
+    base_time: u64,
+    price_fix_duration: u64,
+) -> Result<u64> {
+    let current_time = Clock::get()?.unix_timestamp as u64;
+
+    require!(base_time <= current_time, BuyOfferCoreError::NoActiveVector);
+
+    let elapsed_since_start = current_time.saturating_sub(base_time);
+
+    // Calculate which price interval we're in (discrete intervals)
+    let current_step = elapsed_since_start / price_fix_duration;
+
+    // elapsed_effective = (k + 1) * D  (end-of-current-interval snap)
+    let step_end_time = current_step
+        .checked_add(1)
+        .unwrap()
+        .checked_mul(price_fix_duration)
+        .ok_or(BuyOfferCoreError::OverflowError)?;
+
+    // Use the vector price calculation with the effective elapsed time
+    calculate_vector_price(apr, base_price, step_end_time)
 }
 
 /// Execute direct token transfers: User → Boss, Vault → User
