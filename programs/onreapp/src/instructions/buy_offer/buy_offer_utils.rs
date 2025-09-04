@@ -5,7 +5,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
 const SECONDS_IN_YEAR: u128 = 31_536_000;
-const APR_SCALE: u128 = 1_000_000; // because APR is scaled by 1_000_000
+const APR_SCALE: u128 = 1_000_000;
 
 /// Common error codes that can be used by both take_buy_offer instructions
 #[error_code]
