@@ -43,7 +43,7 @@ pub struct TakeOfferOnePermissionless<'info> {
         associated_token::mint = offer.sell_token_mint,
         associated_token::authority = offer_token_authority,
     )]
-    pub offer_sell_token_account: Account<'info, TokenAccount>,
+    pub offer_sell_token_account: Box<Account<'info, TokenAccount>>,
 
     /// Offer's buy token 1 ATA, sends buy tokens to the intermediary account.
     #[account(
@@ -51,7 +51,7 @@ pub struct TakeOfferOnePermissionless<'info> {
         associated_token::mint = offer.buy_token_1.mint,
         associated_token::authority = offer_token_authority,
     )]
-    pub offer_buy_token_1_account: Account<'info, TokenAccount>,
+    pub offer_buy_token_1_account: Box<Account<'info, TokenAccount>>,
 
     /// User's sell token ATA, sends sell tokens to the intermediary account.
     /// Ensures mint matches the offer's sell token mint.
@@ -61,7 +61,7 @@ pub struct TakeOfferOnePermissionless<'info> {
         associated_token::authority = user,
         constraint = offer.sell_token_mint == user_sell_token_account.mint @ TakeOfferPermissionlessErrorCode::InvalidSellTokenMint
     )]
-    pub user_sell_token_account: Account<'info, TokenAccount>,
+    pub user_sell_token_account: Box<Account<'info, TokenAccount>>,
 
     /// User's buy token 1 ATA, receives buy tokens from the intermediary account.
     /// Ensures mint matches the offer's buy token 1 mint.
@@ -71,7 +71,7 @@ pub struct TakeOfferOnePermissionless<'info> {
         associated_token::authority = user,
         constraint = offer.buy_token_1.mint == buy_token_1_mint.key() @ TakeOfferPermissionlessErrorCode::InvalidBuyTokenMint
     )]
-    pub user_buy_token_1_account: Account<'info, TokenAccount>,
+    pub user_buy_token_1_account: Box<Account<'info, TokenAccount>>,
 
     /// Intermediary token account that temporarily holds buy tokens.
     /// This account is controlled by the program and is created once, then persists.
@@ -81,7 +81,7 @@ pub struct TakeOfferOnePermissionless<'info> {
         associated_token::mint = buy_token_1_mint,
         associated_token::authority = intermediary_authority,
     )]
-    pub intermediary_buy_token_account: Account<'info, TokenAccount>,
+    pub intermediary_buy_token_account: Box<Account<'info, TokenAccount>>,
 
     /// Intermediary token account that temporarily holds sell tokens.
     /// This account is controlled by the program and is created once, then persists.
@@ -91,7 +91,7 @@ pub struct TakeOfferOnePermissionless<'info> {
         associated_token::mint = sell_token_mint,
         associated_token::authority = intermediary_authority,
     )]
-    pub intermediary_sell_token_account: Account<'info, TokenAccount>,
+    pub intermediary_sell_token_account: Box<Account<'info, TokenAccount>>,
 
     /// The mint account for the buy token 1.
     #[account(constraint = buy_token_1_mint.key() == offer.buy_token_1.mint)]

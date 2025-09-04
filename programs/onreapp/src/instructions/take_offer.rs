@@ -48,7 +48,7 @@ pub struct TakeOfferOne<'info> {
         associated_token::mint = offer.sell_token_mint,
         associated_token::authority = offer_token_authority,
     )]
-    pub offer_sell_token_account: Account<'info, TokenAccount>,
+    pub offer_sell_token_account: Box<Account<'info, TokenAccount>>,
 
     /// Offer's buy token 1 ATA, sends buy tokens to the user.
     #[account(
@@ -56,7 +56,7 @@ pub struct TakeOfferOne<'info> {
         associated_token::mint = offer.buy_token_1.mint,
         associated_token::authority = offer_token_authority,
     )]
-    pub offer_buy_token_1_account: Account<'info, TokenAccount>,
+    pub offer_buy_token_1_account: Box<Account<'info, TokenAccount>>,
 
     /// User's sell token ATA, sends sell tokens to the offer.
     /// Ensures mint matches the offer's sell token mint.
@@ -66,7 +66,7 @@ pub struct TakeOfferOne<'info> {
         associated_token::authority = user,
         constraint = offer.sell_token_mint == user_sell_token_account.mint @ TakeOfferErrorCode::InvalidSellTokenMint
     )]
-    pub user_sell_token_account: Account<'info, TokenAccount>,
+    pub user_sell_token_account: Box<Account<'info, TokenAccount>>,
 
     /// User's buy token 1 ATA, receives buy tokens from the offer.
     /// Ensures mint matches the offer's buy token 1 mint.
@@ -76,7 +76,7 @@ pub struct TakeOfferOne<'info> {
         associated_token::authority = user,
         constraint = offer.buy_token_1.mint == user_buy_token_1_account.mint @ TakeOfferErrorCode::InvalidBuyTokenMint
     )]
-    pub user_buy_token_1_account: Account<'info, TokenAccount>,
+    pub user_buy_token_1_account: Box<Account<'info, TokenAccount>>,
 
     /// Derived PDA for token authority, controls offer token accounts.
     ///
@@ -249,7 +249,7 @@ pub struct TakeOfferTwo<'info> {
         associated_token::mint = offer.sell_token_mint,
         associated_token::authority = offer_token_authority,
   )]
-    pub offer_sell_token_account: Account<'info, TokenAccount>,
+    pub offer_sell_token_account: Box<Account<'info, TokenAccount>>,
 
     /// Offer's buy token 1 ATA, sends buy token 1 to the user.
     #[account(
@@ -257,7 +257,7 @@ pub struct TakeOfferTwo<'info> {
         associated_token::mint = offer.buy_token_1.mint,
         associated_token::authority = offer_token_authority,
   )]
-    pub offer_buy_token_1_account: Account<'info, TokenAccount>,
+    pub offer_buy_token_1_account: Box<Account<'info, TokenAccount>>,
 
     /// Offer's buy token 2 ATA, sends buy token 2 to the user.
     #[account(
@@ -265,7 +265,7 @@ pub struct TakeOfferTwo<'info> {
         associated_token::mint = offer.buy_token_2.mint,
         associated_token::authority = offer_token_authority,
   )]
-    pub offer_buy_token_2_account: Account<'info, TokenAccount>,
+    pub offer_buy_token_2_account: Box<Account<'info, TokenAccount>>,
 
     /// User's sell token account, sends sell tokens to the offer.
     /// Ensures mint matches the offer's sell token mint.
@@ -275,7 +275,7 @@ pub struct TakeOfferTwo<'info> {
         associated_token::authority = user,
         constraint = offer.sell_token_mint == user_sell_token_account.mint @ TakeOfferErrorCode::InvalidSellTokenMint
   )]
-    pub user_sell_token_account: Account<'info, TokenAccount>,
+    pub user_sell_token_account: Box<Account<'info, TokenAccount>>,
 
     /// User's buy token 1 ATA, receives buy token 1 from the offer.
     /// Ensures mint matches the offer's buy token 1 mint.
@@ -285,7 +285,7 @@ pub struct TakeOfferTwo<'info> {
         associated_token::authority = user,
         constraint = offer.buy_token_1.mint == user_buy_token_1_account.mint @ TakeOfferErrorCode::InvalidBuyTokenMint
   )]
-    pub user_buy_token_1_account: Account<'info, TokenAccount>,
+    pub user_buy_token_1_account: Box<Account<'info, TokenAccount>>,
 
     /// User's buy token 2 ATA, receives buy token 2 from the offer.
     /// Ensures mint matches the offer's buy token 2 mint.
@@ -295,7 +295,7 @@ pub struct TakeOfferTwo<'info> {
         associated_token::authority = user,
         constraint = offer.buy_token_2.mint == user_buy_token_2_account.mint @ TakeOfferErrorCode::InvalidBuyTokenMint
   )]
-    pub user_buy_token_2_account: Account<'info, TokenAccount>,
+    pub user_buy_token_2_account: Box<Account<'info, TokenAccount>>,
 
     /// Derived PDA for token authority, controls offer token accounts.
     ///
