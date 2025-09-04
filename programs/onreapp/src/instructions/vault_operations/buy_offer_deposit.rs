@@ -1,9 +1,9 @@
 use crate::constants::seeds;
-use crate::state::{State, BuyOfferVaultAuthority};
+use crate::state::{BuyOfferVaultAuthority, State};
 use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token, TokenAccount};
 use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 #[event]
 pub struct BuyOfferVaultDepositEvent {

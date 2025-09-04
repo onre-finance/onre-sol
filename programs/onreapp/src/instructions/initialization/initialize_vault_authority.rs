@@ -1,6 +1,8 @@
-use anchor_lang::prelude::*;
 use crate::constants::seeds;
-use crate::state::{State, BuyOfferVaultAuthority, SingleRedemptionVaultAuthority, DualRedemptionVaultAuthority};
+use crate::state::{
+    BuyOfferVaultAuthority, DualRedemptionVaultAuthority, SingleRedemptionVaultAuthority, State,
+};
+use anchor_lang::prelude::*;
 
 /// Account structure for initializing all vault authority accounts.
 ///
@@ -38,13 +40,13 @@ pub struct InitializeVaultAuthority<'info> {
     )]
     pub dual_redemption_vault_authority: Account<'info, DualRedemptionVaultAuthority>,
 
-    /// The signer authorizing the initialization, must be the boss.
-    #[account(mut)]
-    pub boss: Signer<'info>,
-
     /// Program state, ensures `boss` is authorized.
     #[account(has_one = boss)]
     pub state: Box<Account<'info, State>>,
+
+    /// The signer authorizing the initialization, must be the boss.
+    #[account(mut)]
+    pub boss: Signer<'info>,
 
     /// Solana System program for account creation and rent payment.
     pub system_program: Program<'info, System>,
@@ -61,8 +63,6 @@ pub struct InitializeVaultAuthority<'info> {
 /// # Returns
 /// A `Result` indicating success or failure.
 pub fn initialize_vault_authority(_ctx: Context<InitializeVaultAuthority>) -> Result<()> {
-    msg!("Buy offer vault authority initialized successfully");
-    msg!("Single redemption vault authority initialized successfully");
-    msg!("Dual redemption vault authority initialized successfully");
+    msg!("All vault authorities initialized successfully");
     Ok(())
 }

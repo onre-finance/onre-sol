@@ -1,16 +1,16 @@
-import { PublicKey } from "@solana/web3.js";
-import { ONREAPP_PROGRAM_ID, TestHelper } from "../test_helper";
-import { AddedProgram, startAnchor } from "solana-bankrun";
-import { Onreapp } from "../../target/types/onreapp";
-import { BankrunProvider } from "anchor-bankrun";
-import { BN, Program } from "@coral-xyz/anchor";
+import {PublicKey} from "@solana/web3.js";
+import {ONREAPP_PROGRAM_ID, TestHelper} from "../test_helper";
+import {AddedProgram, startAnchor} from "solana-bankrun";
+import {Onreapp} from "../../target/types/onreapp";
+import {BankrunProvider} from "anchor-bankrun";
+import {BN, Program} from "@coral-xyz/anchor";
 import idl from "../../target/idl/onreapp.json";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import {getAssociatedTokenAddressSync} from "@solana/spl-token";
 
 describe("Vault Operations", () => {
     let testHelper: TestHelper;
     let program: Program<Onreapp>;
-    
+
     let boss: PublicKey;
     let buyOfferVaultAuthorityPda: PublicKey;
     let singleRedemptionVaultAuthorityPda: PublicKey;
@@ -30,20 +30,16 @@ describe("Vault Operations", () => {
 
         testHelper = new TestHelper(context, program);
         boss = provider.wallet.publicKey;
-        
+
         // Get vault authority PDAs first
         [buyOfferVaultAuthorityPda] = PublicKey.findProgramAddressSync([Buffer.from('buy_offer_vault_authority')], ONREAPP_PROGRAM_ID);
         [singleRedemptionVaultAuthorityPda] = PublicKey.findProgramAddressSync([Buffer.from('single_redemption_vault_auth')], ONREAPP_PROGRAM_ID);
         [dualRedemptionVaultAuthorityPda] = PublicKey.findProgramAddressSync([Buffer.from('dual_redemption_vault_auth')], ONREAPP_PROGRAM_ID);
-        
+
         // Initialize program and vault authorities
-        await program.methods.initialize().accounts({ boss }).rpc();
-        await program.methods.initializeVaultAuthority().accounts({ 
+        await program.methods.initialize().accounts({boss}).rpc();
+        await program.methods.initializeVaultAuthority().accounts({
             state: testHelper.statePda,
-            buyOfferVaultAuthority: buyOfferVaultAuthorityPda,
-            singleRedemptionVaultAuthority: singleRedemptionVaultAuthorityPda,
-            dualRedemptionVaultAuthority: dualRedemptionVaultAuthorityPda,
-            boss
         }).rpc();
     });
 
@@ -78,7 +74,6 @@ describe("Vault Operations", () => {
                 program.methods.buyOfferVaultDeposit(depositAmount).accounts({
                     tokenMint: testTokenMint,
                     state: testHelper.statePda,
-                    boss: notBoss.publicKey,
                 }).signers([notBoss]).rpc()
             ).rejects.toThrow();
         });
@@ -115,7 +110,6 @@ describe("Vault Operations", () => {
                 program.methods.singleRedemptionVaultDeposit(depositAmount).accounts({
                     tokenMint: testTokenMint,
                     state: testHelper.statePda,
-                    boss: notBoss.publicKey,
                 }).signers([notBoss]).rpc()
             ).rejects.toThrow();
         });
@@ -152,7 +146,6 @@ describe("Vault Operations", () => {
                 program.methods.dualRedemptionVaultDeposit(depositAmount).accounts({
                     tokenMint: testTokenMint,
                     state: testHelper.statePda,
-                    boss: notBoss.publicKey,
                 }).signers([notBoss]).rpc()
             ).rejects.toThrow();
         });
@@ -163,11 +156,11 @@ describe("Vault Operations", () => {
             // given
             const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
             const testBossTokenAccount = testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
-            
+
             const buyOfferVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, buyOfferVaultAuthorityPda, true);
             const singleRedemptionVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, singleRedemptionVaultAuthorityPda, true);
             const dualRedemptionVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, dualRedemptionVaultAuthorityPda, true);
-            
+
             const depositAmount = new BN(100_000e9);
 
             // when - deposit to all three vaults
@@ -190,7 +183,7 @@ describe("Vault Operations", () => {
             await testHelper.expectTokenAccountAmountToBe(buyOfferVaultTokenAccount, BigInt(depositAmount.toString()));
             await testHelper.expectTokenAccountAmountToBe(singleRedemptionVaultTokenAccount, BigInt(depositAmount.toString()));
             await testHelper.expectTokenAccountAmountToBe(dualRedemptionVaultTokenAccount, BigInt(depositAmount.toString()));
-            
+
             // Verify boss balance decreased by total amount deposited
             const expectedBossBalance = BigInt(1_000_000e9 - (3 * 100_000e9));
             await testHelper.expectTokenAccountAmountToBe(testBossTokenAccount, expectedBossBalance);
@@ -200,10 +193,11 @@ describe("Vault Operations", () => {
             // given
             const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
             testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
-            
+
             const buyOfferVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, buyOfferVaultAuthorityPda, true);
             const singleRedemptionVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, singleRedemptionVaultAuthorityPda, true);
-            
+            const dualRedemptionVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, dualRedemptionVaultAuthorityPda, true);
+
             // when - only deposit to buy offer vault
             await program.methods.buyOfferVaultDeposit(new BN(100_000e9)).accounts({
                 tokenMint: testTokenMint,
@@ -212,14 +206,10 @@ describe("Vault Operations", () => {
 
             // then - only buy offer vault should have tokens
             await testHelper.expectTokenAccountAmountToBe(buyOfferVaultTokenAccount, BigInt(100_000e9));
-            
+
             // Other vault accounts shouldn't exist yet (or have 0 balance if they were created)
-            try {
-                const balance = await testHelper.getTokenAccountBalance(singleRedemptionVaultTokenAccount);
-                expect(balance).toBe(BigInt(0));
-            } catch {
-                // Account doesn't exist, which is expected
-            }
+            await expect(testHelper.getTokenAccountBalance(singleRedemptionVaultTokenAccount)).rejects.toThrow("Token account not found");
+            await expect(testHelper.getTokenAccountBalance(dualRedemptionVaultTokenAccount)).rejects.toThrow("Token account not found");
         });
     });
 
@@ -260,7 +250,6 @@ describe("Vault Operations", () => {
                     program.methods.buyOfferVaultWithdraw(withdrawAmount).accounts({
                         tokenMint: testTokenMint,
                         state: testHelper.statePda,
-                        boss: notBoss.publicKey,
                     }).signers([notBoss]).rpc()
                 ).rejects.toThrow();
             });
@@ -302,7 +291,6 @@ describe("Vault Operations", () => {
                     program.methods.singleRedemptionVaultWithdraw(withdrawAmount).accounts({
                         tokenMint: testTokenMint,
                         state: testHelper.statePda,
-                        boss: notBoss.publicKey,
                     }).signers([notBoss]).rpc()
                 ).rejects.toThrow();
             });
@@ -344,7 +332,6 @@ describe("Vault Operations", () => {
                     program.methods.dualRedemptionVaultWithdraw(withdrawAmount).accounts({
                         tokenMint: testTokenMint,
                         state: testHelper.statePda,
-                        boss: notBoss.publicKey,
                     }).signers([notBoss]).rpc()
                 ).rejects.toThrow();
             });
@@ -355,11 +342,11 @@ describe("Vault Operations", () => {
                 // given
                 const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
                 const testBossTokenAccount = testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
-                
+
                 const buyOfferVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, buyOfferVaultAuthorityPda, true);
                 const singleRedemptionVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, singleRedemptionVaultAuthorityPda, true);
                 const dualRedemptionVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, dualRedemptionVaultAuthorityPda, true);
-                
+
                 const depositAmount = new BN(100_000e9);
 
                 // when - deposit to all three vaults
@@ -402,7 +389,7 @@ describe("Vault Operations", () => {
                 await testHelper.expectTokenAccountAmountToBe(buyOfferVaultTokenAccount, BigInt(70_000e9)); // 100k - 30k
                 await testHelper.expectTokenAccountAmountToBe(singleRedemptionVaultTokenAccount, BigInt(50_000e9)); // 100k - 50k
                 await testHelper.expectTokenAccountAmountToBe(dualRedemptionVaultTokenAccount, BigInt(30_000e9)); // 100k - 70k
-                
+
                 // Verify boss balance (original - total deposited + total withdrawn)
                 // 1M - 300k + 150k = 850k
                 const expectedBossBalance = BigInt(1_000_000e9 - 3 * 100_000e9 + 30_000e9 + 50_000e9 + 70_000e9);

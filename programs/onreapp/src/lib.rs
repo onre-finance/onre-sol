@@ -77,7 +77,10 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `SingleRedemptionVaultDeposit`.
     /// - `amount`: Amount of tokens to deposit.
-    pub fn single_redemption_vault_deposit(ctx: Context<SingleRedemptionVaultDeposit>, amount: u64) -> Result<()> {
+    pub fn single_redemption_vault_deposit(
+        ctx: Context<SingleRedemptionVaultDeposit>,
+        amount: u64,
+    ) -> Result<()> {
         vault_operations::single_redemption_vault_deposit(ctx, amount)
     }
 
@@ -91,7 +94,10 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `DualRedemptionVaultDeposit`.
     /// - `amount`: Amount of tokens to deposit.
-    pub fn dual_redemption_vault_deposit(ctx: Context<DualRedemptionVaultDeposit>, amount: u64) -> Result<()> {
+    pub fn dual_redemption_vault_deposit(
+        ctx: Context<DualRedemptionVaultDeposit>,
+        amount: u64,
+    ) -> Result<()> {
         vault_operations::dual_redemption_vault_deposit(ctx, amount)
     }
 
@@ -105,7 +111,10 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `BuyOfferVaultWithdraw`.
     /// - `amount`: Amount of tokens to withdraw.
-    pub fn buy_offer_vault_withdraw(ctx: Context<BuyOfferVaultWithdraw>, amount: u64) -> Result<()> {
+    pub fn buy_offer_vault_withdraw(
+        ctx: Context<BuyOfferVaultWithdraw>,
+        amount: u64,
+    ) -> Result<()> {
         vault_operations::buy_offer_vault_withdraw(ctx, amount)
     }
 
@@ -119,7 +128,10 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `SingleRedemptionVaultWithdraw`.
     /// - `amount`: Amount of tokens to withdraw.
-    pub fn single_redemption_vault_withdraw(ctx: Context<SingleRedemptionVaultWithdraw>, amount: u64) -> Result<()> {
+    pub fn single_redemption_vault_withdraw(
+        ctx: Context<SingleRedemptionVaultWithdraw>,
+        amount: u64,
+    ) -> Result<()> {
         vault_operations::single_redemption_vault_withdraw(ctx, amount)
     }
 
@@ -133,7 +145,10 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `DualRedemptionVaultWithdraw`.
     /// - `amount`: Amount of tokens to withdraw.
-    pub fn dual_redemption_vault_withdraw(ctx: Context<DualRedemptionVaultWithdraw>, amount: u64) -> Result<()> {
+    pub fn dual_redemption_vault_withdraw(
+        ctx: Context<DualRedemptionVaultWithdraw>,
+        amount: u64,
+    ) -> Result<()> {
         vault_operations::dual_redemption_vault_withdraw(ctx, amount)
     }
 
