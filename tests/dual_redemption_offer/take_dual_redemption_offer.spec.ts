@@ -152,7 +152,7 @@ describe("Take dual redemption offer", () => {
 
         // Deposit tokens to vault
         await program.methods
-            .vaultDeposit(new BN("1000000000000")) // 1000 tokens with 9 decimals
+            .dualRedemptionVaultDeposit(new BN(1000e9)) // 1000 tokens with 9 decimals
             .accounts({
                 tokenMint: tokenOutMint1,
                 state: testHelper.statePda,
@@ -160,7 +160,7 @@ describe("Take dual redemption offer", () => {
             .rpc();
 
         await program.methods
-            .vaultDeposit(new BN("1000000000")) // 1000 tokens with 6 decimals
+            .dualRedemptionVaultDeposit(new BN("1000000000")) // 1000 tokens with 6 decimals
             .accounts({
                 tokenMint: tokenOutMint2,
                 state: testHelper.statePda,
@@ -231,7 +231,7 @@ describe("Take dual redemption offer", () => {
         testHelper.createTokenAccount(tokenOutMint2, boss, BigInt("1000000000000")); // 1000 tokens with 9 decimals
         const vaultTokenOutAccount1 = getAssociatedTokenAddressSync(tokenOutMint1, dualRedemptionVaultAuthorityPda, true);
         const vaultTokenOutAccount2 = getAssociatedTokenAddressSync(tokenOutMint2, dualRedemptionVaultAuthorityPda, true);
-        
+
         // Deposit tokens to vault
         await program.methods
             .dualRedemptionVaultDeposit(new BN("1000000000000")) // 1000 tokens
