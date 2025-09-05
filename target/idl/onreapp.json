@@ -3544,8 +3544,10 @@
         {
           "name": "token_out_mint",
           "docs": [
-            "The mint account for the output token (what user receives)"
-          ]
+            "The mint account for the output token (what user receives)",
+            "Must be mutable to allow minting when program has mint authority"
+          ],
+          "writable": true
         },
         {
           "name": "user_token_in_account",
@@ -3643,7 +3645,8 @@
         {
           "name": "user_token_out_account",
           "docs": [
-            "User's token_out account (destination of received tokens)"
+            "User's token_out account (destination of received tokens)",
+            "Uses init_if_needed to automatically create account if it doesn't exist"
           ],
           "writable": true,
           "pda": {
@@ -3827,11 +3830,47 @@
           }
         },
         {
+          "name": "mint_authority_pda",
+          "docs": [
+            "Optional mint authority PDA for direct minting (when program has mint authority)"
+          ],
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
+              }
+            ]
+          }
+        },
+        {
           "name": "vault_token_out_account",
           "docs": [
-            "Vault's token_out account (source of tokens to distribute to user)"
+            "Vault's token_out account (source of tokens to distribute to user)",
+            "Optional - only required when program doesn't have mint authority"
           ],
           "writable": true,
+          "optional": true,
           "pda": {
             "seeds": [
               {
@@ -3930,9 +3969,23 @@
         {
           "name": "token_program",
           "docs": [
-            "SPL Token program for token transfers"
+            "SPL Token program for token operations"
           ],
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program required for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [

@@ -1,6 +1,6 @@
 use crate::constants::seeds;
 use crate::instructions::{BuyOffer, BuyOfferAccount, BuyOfferVector};
-use crate::utils::{calculate_token_out_amount, transfer_tokens};
+use crate::utils::{calculate_token_out_amount, mint_or_transfer_tokens, transfer_tokens};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
@@ -360,6 +360,67 @@ pub fn execute_permissionless_transfers<'info>(
         user_token_out_account,
         permissionless_authority,
         Some(permissionless_signer_seeds),
+        token_out_amount,
+    )?;
+
+    Ok(())
+}
+
+/// Enhanced token distribution that supports both minting and vault transfers
+/// 
+/// This function replaces execute_direct_transfers with smart token distribution:
+/// 1. User pays token_in to boss (unchanged)
+/// 2. Program mints token_out to user (if has mint authority) OR transfers from vault (fallback)
+///
+/// # Arguments
+/// * `user` - The user taking the offer
+/// * `user_token_in_account` - User's input token account (source of payment)
+/// * `boss_token_in_account` - Boss's input token account (payment destination)
+/// * `token_out_mint` - The output token mint
+/// * `mint_authority_pda` - Optional mint authority PDA (for minting)
+/// * `vault_authority` - Vault authority PDA (for transfer fallback)
+/// * `vault_token_out_account` - Optional vault output token account (for transfer fallback)
+/// * `user_token_out_account` - User's output token account (token destination)
+/// * `token_program` - SPL Token program
+/// * `vault_authority_bump` - Bump seed for vault authority
+/// * `mint_authority_bump` - Optional bump seed for mint authority
+/// * `token_in_amount` - Amount user pays
+/// * `token_out_amount` - Amount user receives
+pub fn execute_token_distribution<'info>(
+    user: &Signer<'info>,
+    user_token_in_account: &Account<'info, TokenAccount>,
+    boss_token_in_account: &Account<'info, TokenAccount>,
+    token_out_mint: &Account<'info, Mint>,
+    mint_authority_pda: Option<&UncheckedAccount<'info>>,
+    vault_authority: &UncheckedAccount<'info>,
+    vault_token_out_account: Option<&Account<'info, TokenAccount>>,
+    user_token_out_account: &Account<'info, TokenAccount>,
+    token_program: &Program<'info, Token>,
+    vault_authority_bump: u8,
+    mint_authority_bump: Option<u8>,
+    token_in_amount: u64,
+    token_out_amount: u64,
+) -> Result<()> {
+    // Step 1: User pays token_in to boss (unchanged from current implementation)
+    transfer_tokens(
+        token_program,
+        user_token_in_account,
+        boss_token_in_account,
+        user,
+        None,
+        token_in_amount,
+    )?;
+
+    // Step 2: Distribute token_out to user (mint directly OR transfer from vault)
+    mint_or_transfer_tokens(
+        token_out_mint,
+        mint_authority_pda.map(|account| account.as_ref()),
+        vault_authority.as_ref(),
+        vault_token_out_account,
+        user_token_out_account,
+        token_program,
+        vault_authority_bump,
+        mint_authority_bump,
         token_out_amount,
     )?;
 

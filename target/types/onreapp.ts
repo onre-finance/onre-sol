@@ -3550,8 +3550,10 @@ export type Onreapp = {
         {
           "name": "tokenOutMint",
           "docs": [
-            "The mint account for the output token (what user receives)"
-          ]
+            "The mint account for the output token (what user receives)",
+            "Must be mutable to allow minting when program has mint authority"
+          ],
+          "writable": true
         },
         {
           "name": "userTokenInAccount",
@@ -3649,7 +3651,8 @@ export type Onreapp = {
         {
           "name": "userTokenOutAccount",
           "docs": [
-            "User's token_out account (destination of received tokens)"
+            "User's token_out account (destination of received tokens)",
+            "Uses init_if_needed to automatically create account if it doesn't exist"
           ],
           "writable": true,
           "pda": {
@@ -3833,11 +3836,47 @@ export type Onreapp = {
           }
         },
         {
+          "name": "mintAuthorityPda",
+          "docs": [
+            "Optional mint authority PDA for direct minting (when program has mint authority)"
+          ],
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ]
+          }
+        },
+        {
           "name": "vaultTokenOutAccount",
           "docs": [
-            "Vault's token_out account (source of tokens to distribute to user)"
+            "Vault's token_out account (source of tokens to distribute to user)",
+            "Optional - only required when program doesn't have mint authority"
           ],
           "writable": true,
+          "optional": true,
           "pda": {
             "seeds": [
               {
@@ -3936,9 +3975,23 @@ export type Onreapp = {
         {
           "name": "tokenProgram",
           "docs": [
-            "SPL Token program for token transfers"
+            "SPL Token program for token operations"
           ],
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program required for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [

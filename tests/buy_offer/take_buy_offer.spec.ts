@@ -1,4 +1,5 @@
 import {PublicKey} from "@solana/web3.js";
+import {ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID} from "@solana/spl-token";
 import {ONREAPP_PROGRAM_ID, TestHelper} from "../test_helper";
 import {AddedProgram, startAnchor} from "solana-bankrun";
 import {Onreapp} from "../../target/types/onreapp";
@@ -305,7 +306,7 @@ describe("Take Buy Offer", () => {
                 .rpc();
 
             await testHelper.advanceClockBy(2500);
-            
+
             // Should use the second vector's pricing
             // Price = 2.0 * (1 + 0.073 * 1/365) ≈ 2.0004
             const expectedTokenInAmount = new BN(2_000_400);
@@ -576,6 +577,310 @@ describe("Take Buy Offer", () => {
             // Should receive 1 token out
             const receivedTokens = userBalanceAfter - userBalanceBefore;
             expect(receivedTokens).toEqual(BigInt(1_000_000_000));
+        });
+    });
+
+    describe("Mint/Transfer Integration Tests", () => {
+        let mintAuthorityPda: PublicKey;
+
+        beforeEach(() => {
+            // Derive mint authority PDA for tokenOutMint
+            [mintAuthorityPda] = PublicKey.findProgramAddressSync(
+                [Buffer.from("mint_authority"), tokenOutMint.toBuffer()],
+                ONREAPP_PROGRAM_ID
+            );
+        });
+
+        describe("Vault Transfer (Fallback) Scenarios", () => {
+            it("Should successfully transfer tokens from vault when program lacks mint authority", async () => {
+                // Setup: Ensure program does NOT have mint authority (default state)
+                const currentTime = await testHelper.getCurrentClockTime();
+                const startPrice = new BN(1e9);
+                const apr = new BN(36_500);
+                const priceFixDuration = new BN(86400);
+                const startTime = new BN(currentTime);
+
+                await testHelper.program.methods
+                    .addBuyOfferVector(offerId, startTime, startPrice, apr, priceFixDuration)
+                    .accounts({state: testHelper.statePda})
+                    .rpc();
+
+                const tokenInAmount = new BN(1_000_000); // 1 USDC
+                const userTokenOutBalanceBefore = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+                const vaultBalanceBefore = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+
+                // Execute take_buy_offer without mint authority (should use vault transfer)
+                await testHelper.program.methods
+                    .takeBuyOffer(offerId, tokenInAmount)
+                    .accounts({
+                        state: testHelper.statePda,
+                        boss: boss,
+                        tokenInMint: tokenInMint,
+                        tokenOutMint: tokenOutMint,
+                        user: user.publicKey,
+                    })
+                    .signers([user])
+                    .rpc();
+
+                // Verify tokens were transferred from vault to user
+                const userTokenOutBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+                const vaultBalanceAfter = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+
+                const userReceived = userTokenOutBalanceAfter - userTokenOutBalanceBefore;
+                const vaultDeducted = vaultBalanceBefore - vaultBalanceAfter;
+
+                expect(userReceived).toBeGreaterThan(BigInt(990_000_000)); // ~1 token out (with some precision allowance)
+                expect(userReceived).toBeLessThanOrEqual(BigInt(1_000_000_000));
+                expect(vaultDeducted).toEqual(userReceived); // Vault should deduct exactly what user received
+            });
+        });
+
+        describe("Direct Minting Scenarios", () => {
+            beforeEach(async () => {
+                // Transfer mint authority from boss to program for tokenOutMint
+                await testHelper.program.methods
+                    .transferMintAuthorityToProgram()
+                    .accounts({
+                        state: testHelper.statePda,
+                        mint: tokenOutMint,
+                    })
+                    .rpc();
+            });
+
+            it("Should successfully mint tokens directly to user when program has mint authority", async () => {
+                const currentTime = await testHelper.getCurrentClockTime();
+                const startPrice = new BN(1e9);
+                const apr = new BN(36_500);
+                const priceFixDuration = new BN(86400);
+                const startTime = new BN(currentTime);
+
+                await testHelper.program.methods
+                    .addBuyOfferVector(offerId, startTime, startPrice, apr, priceFixDuration)
+                    .accounts({state: testHelper.statePda})
+                    .rpc();
+
+                const tokenInAmount = new BN(1_000_000); // 1 USDC
+
+                // Create a new user to avoid account creation conflicts
+                const newUser = testHelper.createUserAccount();
+                const newUserTokenInAccount = testHelper.createTokenAccount(tokenInMint, newUser.publicKey, BigInt(10_000e6), true);
+
+                const userTokenOutBalanceBefore = BigInt(0); // New account
+                const vaultBalanceBefore = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+
+                // Execute take_buy_offer with mint authority (should mint directly)
+                await testHelper.program.methods
+                    .takeBuyOffer(offerId, tokenInAmount)
+                    .accounts({
+                        boss: boss,
+                        state: testHelper.statePda,
+                        tokenInMint: tokenInMint,
+                        tokenOutMint: tokenOutMint,
+                        user: newUser.publicKey,
+                    })
+                    .signers([newUser])
+                    .rpc();
+
+                // Get the created user token out account
+                const [newUserTokenOutAccount] = PublicKey.findProgramAddressSync(
+                    [
+                        newUser.publicKey.toBuffer(),
+                        TOKEN_PROGRAM_ID.toBuffer(),
+                        tokenOutMint.toBuffer(),
+                    ],
+                    ASSOCIATED_TOKEN_PROGRAM_ID
+                );
+
+                // Verify tokens were minted to user (vault balance unchanged)
+                const userTokenOutBalanceAfter = await testHelper.getTokenAccountBalance(newUserTokenOutAccount);
+                const vaultBalanceAfter = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+
+                const userReceived = userTokenOutBalanceAfter - userTokenOutBalanceBefore;
+                const vaultChange = vaultBalanceAfter - vaultBalanceBefore;
+
+                expect(userReceived).toBeGreaterThan(BigInt(990_000_000)); // ~1 token out with price growth allowance
+                expect(userReceived).toBeLessThanOrEqual(BigInt(1_000_000_000));
+                expect(vaultChange).toEqual(BigInt(0)); // Vault unchanged
+            });
+
+            it("Should handle automatic token account creation when minting", async () => {
+                const currentTime = await testHelper.getCurrentClockTime();
+                const startPrice = new BN(2e9); // 2.0 price
+                const apr = new BN(0);
+                const priceFixDuration = new BN(86400);
+                const startTime = new BN(currentTime);
+
+                await testHelper.program.methods
+                    .addBuyOfferVector(offerId, startTime, startPrice, apr, priceFixDuration)
+                    .accounts({state: testHelper.statePda})
+                    .rpc();
+
+                const tokenInAmount = new BN(2_000_000); // 2 USDC for 1 token out
+                const freshUser = testHelper.createUserAccount();
+                const freshUserTokenInAccount = testHelper.createTokenAccount(tokenInMint, freshUser.publicKey, BigInt(10_000e6), true);
+
+                // Verify user token out account doesn't exist yet
+                const [expectedUserTokenOutAccount] = PublicKey.findProgramAddressSync(
+                    [
+                        freshUser.publicKey.toBuffer(),
+                        TOKEN_PROGRAM_ID.toBuffer(),
+                        tokenOutMint.toBuffer(),
+                    ],
+                    ASSOCIATED_TOKEN_PROGRAM_ID
+                );
+
+                let accountExists = true;
+                try {
+                    await testHelper.getTokenAccountBalance(expectedUserTokenOutAccount);
+                } catch {
+                    accountExists = false;
+                }
+                expect(accountExists).toBe(false);
+
+                // Execute take_buy_offer - should create account and mint tokens
+                await testHelper.program.methods
+                    .takeBuyOffer(offerId, tokenInAmount)
+                    .accounts({
+                        state: testHelper.statePda,
+                        boss: boss,
+                        tokenInMint: tokenInMint,
+                        tokenOutMint: tokenOutMint,
+                        user: freshUser.publicKey,
+                    })
+                    .signers([freshUser])
+                    .rpc();
+
+                // Verify account was created and tokens were minted
+                const userBalance = await testHelper.getTokenAccountBalance(expectedUserTokenOutAccount);
+                expect(userBalance).toEqual(BigInt(1_000_000_000)); // 1 token out
+            });
+        });
+
+        describe("Fallback Behavior", () => {
+            it("Should automatically fallback to vault transfer when mint authority is lost", async () => {
+                // First, give program mint authority
+                await testHelper.program.methods
+                    .transferMintAuthorityToProgram()
+                    .accounts({
+                        state: testHelper.statePda,
+                        mint: tokenOutMint,
+                    })
+                    .rpc();
+
+                // Then transfer it back to boss (simulating authority loss)
+                await testHelper.program.methods
+                    .transferMintAuthorityToBoss()
+                    .accounts({
+                        state: testHelper.statePda,
+                        mint: tokenOutMint,
+                    })
+                    .rpc();
+
+                const currentTime = await testHelper.getCurrentClockTime();
+                const startPrice = new BN(1e9);
+                const apr = new BN(0);
+                const priceFixDuration = new BN(86400);
+                const startTime = new BN(currentTime);
+
+                await testHelper.program.methods
+                    .addBuyOfferVector(offerId, startTime, startPrice, apr, priceFixDuration)
+                    .accounts({state: testHelper.statePda})
+                    .rpc();
+
+                const tokenInAmount = new BN(1_000_000);
+                const fallbackUser = testHelper.createUserAccount();
+                const fallbackUserTokenInAccount = testHelper.createTokenAccount(tokenInMint, fallbackUser.publicKey, BigInt(10_000e6), true);
+                const fallbackUserTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, fallbackUser.publicKey, BigInt(0), true);
+
+                const vaultBalanceBefore = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+
+                // Execute with mint authority PDA but program no longer has authority
+                // Should automatically fallback to vault transfer
+                await testHelper.program.methods
+                    .takeBuyOffer(offerId, tokenInAmount)
+                    .accounts({
+                        boss: boss,
+                        state: testHelper.statePda,
+                        tokenInMint: tokenInMint,
+                        tokenOutMint: tokenOutMint,
+                        user: fallbackUser.publicKey,
+                    })
+                    .signers([fallbackUser])
+                    .rpc();
+
+                // Verify vault transfer occurred (not minting)
+                const vaultBalanceAfter = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+                const userBalance = await testHelper.getTokenAccountBalance(fallbackUserTokenOutAccount);
+
+                expect(userBalance).toEqual(BigInt(1_000_000_000)); // User received tokens
+                expect(vaultBalanceAfter).toEqual(vaultBalanceBefore - BigInt(1_000_000_000)); // From vault
+            });
+        });
+
+        describe("Edge Cases", () => {
+            it("Should handle fee calculations correctly when minting", async () => {
+                // Create an offer with fees using testHelper
+                await testHelper.makeBuyOffer({
+                    tokenInMint,
+                    tokenOutMint,
+                    feeBasisPoints: 500 // 5% fee
+                });
+
+                // Transfer mint authority to program
+                await testHelper.program.methods
+                    .transferMintAuthorityToProgram()
+                    .accounts({
+                        state: testHelper.statePda,
+                        mint: tokenOutMint,
+                    })
+                    .rpc();
+
+                const currentTime = await testHelper.getCurrentClockTime();
+                const startPrice = new BN(1e9);
+                const apr = new BN(0);
+                const priceFixDuration = new BN(86400);
+                const startTime = new BN(currentTime);
+
+                await testHelper.program.methods
+                    .addBuyOfferVector(new BN(2), startTime, startPrice, apr, priceFixDuration)
+                    .accounts({state: testHelper.statePda})
+                    .rpc();
+
+                const tokenInAmount = new BN(1_050_000); // 1.05 USDC (includes 5% fee)
+                const feeUser = testHelper.createUserAccount();
+                const feeUserTokenInAccount = testHelper.createTokenAccount(tokenInMint, feeUser.publicKey, BigInt(10_000e6), true);
+
+                const bossBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+
+                await testHelper.program.methods
+                    .takeBuyOffer(new BN(2), tokenInAmount)
+                    .accounts({
+                        boss: boss,
+                        state: testHelper.statePda,
+                        tokenInMint: tokenInMint,
+                        tokenOutMint: tokenOutMint,
+                        user: feeUser.publicKey,
+                    })
+                    .signers([feeUser])
+                    .rpc();
+
+                // Verify boss received full payment including fee
+                const bossAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+                expect(bossAfter - bossBefore).toEqual(BigInt(1_050_000)); // Full amount with fee
+
+                // Verify user received correct token_out amount (based on net amount after fee)
+                const [feeUserTokenOutAccount] = PublicKey.findProgramAddressSync(
+                    [
+                        feeUser.publicKey.toBuffer(),
+                        TOKEN_PROGRAM_ID.toBuffer(),
+                        tokenOutMint.toBuffer(),
+                    ],
+                    ASSOCIATED_TOKEN_PROGRAM_ID
+                );
+
+                const userBalance = await testHelper.getTokenAccountBalance(feeUserTokenOutAccount);
+                expect(userBalance).toEqual(BigInt(997_500_000)); // 0.9975 token out (based on 0.9975 USDC after 5% fee)
+            });
         });
     });
 });

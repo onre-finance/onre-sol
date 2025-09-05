@@ -1,6 +1,6 @@
 use crate::constants::seeds;
-use crate::instructions::buy_offer::buy_offer_utils::{find_offer, process_buy_offer_core};
-use crate::instructions::{execute_direct_transfers, BuyOfferAccount};
+use crate::instructions::buy_offer::buy_offer_utils::{find_offer, process_buy_offer_core, execute_token_distribution};
+use crate::instructions::BuyOfferAccount;
 use crate::state::State;
 use crate::utils::{calculate_fees, u64_to_dec9};
 use anchor_lang::prelude::*;
@@ -61,6 +61,8 @@ pub struct TakeBuyOffer<'info> {
     pub token_in_mint: Box<Account<'info, Mint>>,
 
     /// The mint account for the output token (what user receives)
+    /// Must be mutable to allow minting when program has mint authority
+    #[account(mut)]
     pub token_out_mint: Box<Account<'info, Mint>>,
 
     /// User's token_in account (source of payment)
@@ -72,8 +74,10 @@ pub struct TakeBuyOffer<'info> {
     pub user_token_in_account: Box<Account<'info, TokenAccount>>,
 
     /// User's token_out account (destination of received tokens)
+    /// Uses init_if_needed to automatically create account if it doesn't exist
     #[account(
-        mut,
+        init_if_needed,
+        payer = user,
         associated_token::mint = token_out_mint,
         associated_token::authority = user
     )]
@@ -87,27 +91,44 @@ pub struct TakeBuyOffer<'info> {
     )]
     pub boss_token_in_account: Box<Account<'info, TokenAccount>>,
 
+    /// Optional mint authority PDA for direct minting (when program has mint authority)
+    /// CHECK: PDA derivation is validated through seeds constraint
+    #[account(
+        seeds = [seeds::MINT_AUTHORITY, token_out_mint.key().as_ref()],
+        bump
+    )]
+    pub mint_authority_pda: Option<UncheckedAccount<'info>>,
+
     /// Vault's token_out account (source of tokens to distribute to user)
+    /// Optional - only required when program doesn't have mint authority
     #[account(
         mut,
         associated_token::mint = token_out_mint,
         associated_token::authority = vault_authority
     )]
-    pub vault_token_out_account: Box<Account<'info, TokenAccount>>,
+    pub vault_token_out_account: Option<Box<Account<'info, TokenAccount>>>,
 
     /// The user taking the offer (must sign the transaction)
     #[account(mut)]
     pub user: Signer<'info>,
 
-    /// SPL Token program for token transfers
+    /// SPL Token program for token operations
     pub token_program: Program<'info, Token>,
+
+    /// Associated Token Program for automatic token account creation
+    pub associated_token_program: Program<'info, anchor_spl::associated_token::AssociatedToken>,
+
+    /// System program required for account creation
+    pub system_program: Program<'info, System>,
 }
 
-/// Main instruction handler for taking a buy offer
+/// Main instruction handler for taking a buy offer with mint/transfer flexibility
 ///
 /// This function allows users to accept a buy offer by paying the current market price
-/// in token_in to receive token_out from the vault. The price is calculated using a
-/// discrete interval pricing model with linear yield growth.
+/// in token_in to receive token_out. The price is calculated using a discrete interval 
+/// pricing model with linear yield growth. Token distribution uses smart logic:
+/// - If program has mint authority: mints token_out directly to user (more efficient)
+/// - If program lacks mint authority: transfers token_out from vault to user (fallback)
 ///
 /// # Arguments
 ///
@@ -121,20 +142,27 @@ pub struct TakeBuyOffer<'info> {
 /// 2. Find the currently active pricing vector
 /// 3. Calculate current price based on time elapsed and APR parameters
 /// 4. Calculate how many token_out to give for the provided token_in_amount
-/// 5. Execute atomic transfers: user → boss (token_in), vault → user (token_out)
-/// 6. Emit event with transaction details
+/// 5. Execute payment: user → boss (token_in)
+/// 6. Execute distribution: program mints token_out to user OR transfers from vault
+/// 7. Emit event with transaction details
+///
+/// # Account Requirements
+///
+/// * `mint_authority_pda` - Optional, required only if program should mint directly
+/// * `vault_token_out_account` - Optional, required only if program should transfer from vault
+/// * At least one of the above must be provided for token distribution
 ///
 /// # Returns
 ///
 /// * `Ok(())` - If the offer was successfully taken
-/// * `Err(_)` - If validation fails or transfers cannot be completed
+/// * `Err(_)` - If validation fails or token operations cannot be completed
 ///
 /// # Errors
 ///
 /// * `OfferNotFound` - The specified offer_id doesn't exist
 /// * `NoActiveVector` - No pricing vector is currently active  
 /// * `OverflowError` - Mathematical overflow in price calculations
-/// * Token transfer errors if insufficient balances or invalid accounts
+/// * Token operation errors if insufficient balances, invalid accounts, or missing mint authority
 pub fn take_buy_offer(
     ctx: Context<TakeBuyOffer>,
     offer_id: u64,
@@ -156,16 +184,19 @@ pub fn take_buy_offer(
         &ctx.accounts.token_out_mint,
     )?;
 
-    execute_direct_transfers(
+    execute_token_distribution(
         &ctx.accounts.user,
         &ctx.accounts.user_token_in_account,
         &ctx.accounts.boss_token_in_account,
+        &ctx.accounts.token_out_mint,
+        ctx.accounts.mint_authority_pda.as_ref(),
         &ctx.accounts.vault_authority,
-        &ctx.accounts.vault_token_out_account,
+        ctx.accounts.vault_token_out_account.as_deref(),
         &ctx.accounts.user_token_out_account,
         &ctx.accounts.token_program,
         ctx.bumps.vault_authority,
-        fee_amounts.remaining_token_in_amount,
+        ctx.bumps.mint_authority_pda,
+        token_in_amount, // Boss gets full amount including fee
         result.token_out_amount,
     )?;
 
