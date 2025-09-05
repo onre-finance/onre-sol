@@ -5941,6 +5941,194 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "transferMintAuthorityToBoss",
+      "docs": [
+        "Transfers mint authority from a program-derived PDA back to the boss.",
+        "",
+        "Delegates to `mint_authority::transfer_mint_authority_to_boss`.",
+        "Only the boss can call this instruction to recover mint authority for a specific token.",
+        "This serves as an emergency recovery mechanism.",
+        "Emits a `MintAuthorityTransferredToBossEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `TransferMintAuthorityToBoss`."
+      ],
+      "discriminator": [
+        197,
+        61,
+        42,
+        52,
+        70,
+        93,
+        30,
+        125
+      ],
+      "accounts": [
+        {
+          "name": "boss",
+          "docs": [
+            "The current boss account, must sign the transaction",
+            "Must match the boss stored in the program state"
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state containing the current boss public key"
+          ]
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The token mint whose authority will be transferred back to boss",
+            "Must currently have the program PDA as its mint authority"
+          ],
+          "writable": true
+        },
+        {
+          "name": "mintAuthorityPda",
+          "docs": [
+            "Program-derived account that currently holds mint authority",
+            "Must be derived from [MINT_AUTHORITY, mint_pubkey] and currently be the mint authority"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program for mint authority operations"
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "transferMintAuthorityToProgram",
+      "docs": [
+        "Transfers mint authority from the boss to a program-derived PDA.",
+        "",
+        "Delegates to `mint_authority::transfer_mint_authority_to_program`.",
+        "Only the boss can call this instruction to transfer mint authority for a specific token.",
+        "The PDA is derived from the mint address and can later be used to mint tokens.",
+        "Emits a `MintAuthorityTransferredToProgramEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `TransferMintAuthorityToProgram`."
+      ],
+      "discriminator": [
+        98,
+        112,
+        50,
+        135,
+        53,
+        6,
+        149,
+        232
+      ],
+      "accounts": [
+        {
+          "name": "boss",
+          "docs": [
+            "The current boss account, must sign the transaction",
+            "Must match the boss stored in the program state"
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state containing the current boss public key"
+          ]
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The token mint whose authority will be transferred",
+            "Must currently have the boss as its mint authority"
+          ],
+          "writable": true
+        },
+        {
+          "name": "mintAuthorityPda",
+          "docs": [
+            "Program-derived account that will become the new mint authority",
+            "Derived from [MINT_AUTHORITY, mint_pubkey] to ensure uniqueness per token"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program for mint authority operations"
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "updateBuyOfferFee",
       "docs": [
         "Updates the fee basis points for a buy offer.",
@@ -6507,6 +6695,32 @@ export type Onreapp = {
         30,
         207,
         113
+      ]
+    },
+    {
+      "name": "mintAuthorityTransferredToBossEvent",
+      "discriminator": [
+        86,
+        223,
+        255,
+        189,
+        210,
+        62,
+        212,
+        151
+      ]
+    },
+    {
+      "name": "mintAuthorityTransferredToProgramEvent",
+      "discriminator": [
+        237,
+        15,
+        101,
+        27,
+        85,
+        70,
+        173,
+        232
       ]
     },
     {
@@ -7199,6 +7413,70 @@ export type Onreapp = {
           },
           {
             "name": "boss",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mintAuthorityTransferredToBossEvent",
+      "docs": [
+        "Event emitted when mint authority is successfully transferred from program PDA back to boss"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "docs": [
+              "The mint whose authority was transferred"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "oldAuthority",
+            "docs": [
+              "The previous authority (program PDA)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "newAuthority",
+            "docs": [
+              "The new authority (boss)"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mintAuthorityTransferredToProgramEvent",
+      "docs": [
+        "Event emitted when mint authority is successfully transferred from boss to program PDA"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "docs": [
+              "The mint whose authority was transferred"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "oldAuthority",
+            "docs": [
+              "The previous authority (boss)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "newAuthority",
+            "docs": [
+              "The new authority (program PDA)"
+            ],
             "type": "pubkey"
           }
         ]

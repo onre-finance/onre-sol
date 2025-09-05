@@ -43,12 +43,12 @@ export class TestHelper {
     createMint(mintAuthority: PublicKey, supply: bigint = BigInt(100_000e9), decimals: number = 9, freezeAuthority: PublicKey = mintAuthority): PublicKey {
         const mintData = Buffer.alloc(MINT_SIZE);
         MintLayout.encode({
-            mintAuthorityOption: 0,
+            mintAuthorityOption: 1,  // 1 = Some(authority), 0 = None
             mintAuthority: mintAuthority,
             supply: supply,
             decimals: decimals,
             isInitialized: true,
-            freezeAuthorityOption: 0,
+            freezeAuthorityOption: 1,  // 1 = Some(authority), 0 = None
             freezeAuthority: freezeAuthority,
         }, mintData)
 
