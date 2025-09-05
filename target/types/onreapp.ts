@@ -221,6 +221,613 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "buyOfferVaultDeposit",
+      "docs": [
+        "Deposits tokens into the buy offer vault.",
+        "",
+        "Delegates to `vault_operations::buy_offer_vault_deposit`.",
+        "Transfers tokens from boss's account to buy offer vault's token account for the specified mint.",
+        "Creates vault token account if it doesn't exist using init_if_needed.",
+        "Only the boss can call this instruction.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `BuyOfferVaultDeposit`.",
+        "- `amount`: Amount of tokens to deposit."
+      ],
+      "discriminator": [
+        10,
+        253,
+        50,
+        184,
+        56,
+        17,
+        2,
+        50
+      ],
+      "accounts": [
+        {
+          "name": "vaultAuthority",
+          "docs": [
+            "The buy offer vault authority account that controls the vault token accounts."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenMint",
+          "docs": [
+            "The token mint for the deposit."
+          ]
+        },
+        {
+          "name": "bossTokenAccount",
+          "docs": [
+            "Boss's token account for the specific mint (source of tokens)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenAccount",
+          "docs": [
+            "Vault's token account for the specific mint (destination of tokens).",
+            "Uses init_if_needed to create the account if it doesn't exist."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the deposit, must be the boss."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program."
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token program."
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "buyOfferVaultWithdraw",
+      "docs": [
+        "Withdraws tokens from the buy offer vault.",
+        "",
+        "Delegates to `vault_operations::buy_offer_vault_withdraw`.",
+        "Transfers tokens from buy offer vault's token account to boss's account for the specified mint.",
+        "Creates boss token account if it doesn't exist using init_if_needed.",
+        "Only the boss can call this instruction.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `BuyOfferVaultWithdraw`.",
+        "- `amount`: Amount of tokens to withdraw."
+      ],
+      "discriminator": [
+        32,
+        40,
+        220,
+        58,
+        225,
+        251,
+        124,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "vaultAuthority",
+          "docs": [
+            "The buy offer vault authority account that controls the vault token accounts."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenMint",
+          "docs": [
+            "The token mint for the withdrawal."
+          ]
+        },
+        {
+          "name": "bossTokenAccount",
+          "docs": [
+            "Boss's token account for the specific mint (destination of tokens)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenAccount",
+          "docs": [
+            "Vault's token account for the specific mint (source of tokens)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the withdrawal, must be the boss."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program."
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token program."
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "closeBuyOffer",
       "docs": [
         "Closes a buy offer.",
@@ -570,6 +1177,615 @@ export type Onreapp = {
         },
         {
           "name": "vectorId",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "dualRedemptionVaultDeposit",
+      "docs": [
+        "Deposits tokens into the dual redemption vault.",
+        "",
+        "Delegates to `vault_operations::dual_redemption_vault_deposit`.",
+        "Transfers tokens from boss's account to dual redemption vault's token account for the specified mint.",
+        "Creates vault token account if it doesn't exist using init_if_needed.",
+        "Only the boss can call this instruction.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `DualRedemptionVaultDeposit`.",
+        "- `amount`: Amount of tokens to deposit."
+      ],
+      "discriminator": [
+        40,
+        38,
+        237,
+        177,
+        95,
+        79,
+        162,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "vaultAuthority",
+          "docs": [
+            "The dual redemption vault authority account that controls the vault token accounts."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  97,
+                  108,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenMint",
+          "docs": [
+            "The token mint for the deposit."
+          ]
+        },
+        {
+          "name": "bossTokenAccount",
+          "docs": [
+            "Boss's token account for the specific mint (source of tokens)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenAccount",
+          "docs": [
+            "Vault's token account for the specific mint (destination of tokens).",
+            "Uses init_if_needed to create the account if it doesn't exist."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the deposit, must be the boss."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program."
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token program."
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "dualRedemptionVaultWithdraw",
+      "docs": [
+        "Withdraws tokens from the dual redemption vault.",
+        "",
+        "Delegates to `vault_operations::dual_redemption_vault_withdraw`.",
+        "Transfers tokens from dual redemption vault's token account to boss's account for the specified mint.",
+        "Creates boss token account if it doesn't exist using init_if_needed.",
+        "Only the boss can call this instruction.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `DualRedemptionVaultWithdraw`.",
+        "- `amount`: Amount of tokens to withdraw."
+      ],
+      "discriminator": [
+        54,
+        69,
+        13,
+        189,
+        172,
+        165,
+        182,
+        145
+      ],
+      "accounts": [
+        {
+          "name": "vaultAuthority",
+          "docs": [
+            "The dual redemption vault authority account that controls the vault token accounts."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  97,
+                  108,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenMint",
+          "docs": [
+            "The token mint for the withdrawal."
+          ]
+        },
+        {
+          "name": "bossTokenAccount",
+          "docs": [
+            "Boss's token account for the specific mint (destination of tokens)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenAccount",
+          "docs": [
+            "Vault's token account for the specific mint (source of tokens)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the withdrawal, must be the boss."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program."
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token program."
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
           "type": "u64"
         }
       ]
@@ -962,9 +2178,9 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "vaultAuthority",
+          "name": "buyOfferVaultAuthority",
           "docs": [
-            "The vault authority account to initialize, rent paid by `boss`."
+            "The buy offer vault authority account to initialize, rent paid by `boss`."
           ],
           "writable": true,
           "pda": {
@@ -972,6 +2188,16 @@ export type Onreapp = {
               {
                 "kind": "const",
                 "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
                   118,
                   97,
                   117,
@@ -993,6 +2219,98 @@ export type Onreapp = {
           }
         },
         {
+          "name": "singleRedemptionVaultAuthority",
+          "docs": [
+            "The single redemption vault authority account to initialize, rent paid by `boss`."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  105,
+                  110,
+                  103,
+                  108,
+                  101,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "dualRedemptionVaultAuthority",
+          "docs": [
+            "The dual redemption vault authority account to initialize, rent paid by `boss`."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  97,
+                  108,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
           "name": "boss",
           "docs": [
             "The signer authorizing the initialization, must be the boss."
@@ -1001,12 +2319,6 @@ export type Onreapp = {
           "signer": true,
           "relations": [
             "state"
-          ]
-        },
-        {
-          "name": "state",
-          "docs": [
-            "Program state, ensures `boss` is authorized."
           ]
         },
         {
@@ -1513,6 +2825,619 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "singleRedemptionVaultDeposit",
+      "docs": [
+        "Deposits tokens into the single redemption vault.",
+        "",
+        "Delegates to `vault_operations::single_redemption_vault_deposit`.",
+        "Transfers tokens from boss's account to single redemption vault's token account for the specified mint.",
+        "Creates vault token account if it doesn't exist using init_if_needed.",
+        "Only the boss can call this instruction.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `SingleRedemptionVaultDeposit`.",
+        "- `amount`: Amount of tokens to deposit."
+      ],
+      "discriminator": [
+        114,
+        140,
+        19,
+        83,
+        244,
+        253,
+        166,
+        169
+      ],
+      "accounts": [
+        {
+          "name": "vaultAuthority",
+          "docs": [
+            "The single redemption vault authority account that controls the vault token accounts."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  105,
+                  110,
+                  103,
+                  108,
+                  101,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenMint",
+          "docs": [
+            "The token mint for the deposit."
+          ]
+        },
+        {
+          "name": "bossTokenAccount",
+          "docs": [
+            "Boss's token account for the specific mint (source of tokens)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenAccount",
+          "docs": [
+            "Vault's token account for the specific mint (destination of tokens).",
+            "Uses init_if_needed to create the account if it doesn't exist."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the deposit, must be the boss."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program."
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token program."
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "singleRedemptionVaultWithdraw",
+      "docs": [
+        "Withdraws tokens from the single redemption vault.",
+        "",
+        "Delegates to `vault_operations::single_redemption_vault_withdraw`.",
+        "Transfers tokens from single redemption vault's token account to boss's account for the specified mint.",
+        "Creates boss token account if it doesn't exist using init_if_needed.",
+        "Only the boss can call this instruction.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `SingleRedemptionVaultWithdraw`.",
+        "- `amount`: Amount of tokens to withdraw."
+      ],
+      "discriminator": [
+        195,
+        57,
+        229,
+        65,
+        216,
+        121,
+        237,
+        77
+      ],
+      "accounts": [
+        {
+          "name": "vaultAuthority",
+          "docs": [
+            "The single redemption vault authority account that controls the vault token accounts."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  105,
+                  110,
+                  103,
+                  108,
+                  101,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenMint",
+          "docs": [
+            "The token mint for the withdrawal."
+          ]
+        },
+        {
+          "name": "bossTokenAccount",
+          "docs": [
+            "Boss's token account for the specific mint (destination of tokens)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenAccount",
+          "docs": [
+            "Vault's token account for the specific mint (source of tokens)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the withdrawal, must be the boss."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program."
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token program."
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "takeBuyOffer",
       "docs": [
         "Takes a buy offer.",
@@ -1579,13 +3504,23 @@ export type Onreapp = {
         {
           "name": "vaultAuthority",
           "docs": [
-            "The vault authority PDA that controls vault token accounts"
+            "The buy offer vault authority PDA that controls vault token accounts"
           ],
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
                   118,
                   97,
                   117,
@@ -2085,13 +4020,23 @@ export type Onreapp = {
         {
           "name": "vaultAuthority",
           "docs": [
-            "The vault authority PDA that controls vault token accounts"
+            "The buy offer vault authority PDA that controls vault token accounts"
           ],
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
                   118,
                   97,
                   117,
@@ -2821,13 +4766,29 @@ export type Onreapp = {
         {
           "name": "vaultAuthority",
           "docs": [
-            "The vault authority that controls vault token accounts."
+            "The dual redemption vault authority that controls vault token accounts."
           ],
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
+                  100,
+                  117,
+                  97,
+                  108,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
                   118,
                   97,
                   117,
@@ -2837,12 +4798,7 @@ export type Onreapp = {
                   97,
                   117,
                   116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
+                  104
                 ]
               }
             ]
@@ -3533,13 +5489,31 @@ export type Onreapp = {
         {
           "name": "vaultAuthority",
           "docs": [
-            "The vault authority that controls vault token accounts."
+            "The single redemption vault authority that controls vault token accounts."
           ],
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
+                  115,
+                  105,
+                  110,
+                  103,
+                  108,
+                  101,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
                   118,
                   97,
                   117,
@@ -3549,12 +5523,7 @@ export type Onreapp = {
                   97,
                   117,
                   116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
+                  104
                 ]
               }
             ]
@@ -4236,581 +6205,6 @@ export type Onreapp = {
           "type": "u64"
         }
       ]
-    },
-    {
-      "name": "vaultDeposit",
-      "docs": [
-        "Deposits tokens into the vault.",
-        "",
-        "Delegates to `vault_operations::vault_deposit`.",
-        "Transfers tokens from boss's account to vault's token account for the specified mint.",
-        "Creates vault token account if it doesn't exist using init_if_needed.",
-        "Only the boss can call this instruction.",
-        "",
-        "# Arguments",
-        "- `ctx`: Context for `VaultDeposit`.",
-        "- `amount`: Amount of tokens to deposit."
-      ],
-      "discriminator": [
-        231,
-        150,
-        41,
-        113,
-        180,
-        104,
-        162,
-        120
-      ],
-      "accounts": [
-        {
-          "name": "vaultAuthority",
-          "docs": [
-            "The vault authority account that controls the vault token accounts."
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "tokenMint",
-          "docs": [
-            "The token mint for the deposit."
-          ]
-        },
-        {
-          "name": "bossTokenAccount",
-          "docs": [
-            "Boss's token account for the specific mint (source of tokens)."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "boss"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "vaultTokenAccount",
-          "docs": [
-            "Vault's token account for the specific mint (destination of tokens).",
-            "Uses init_if_needed to create the account if it doesn't exist."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "vaultAuthority"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "boss",
-          "docs": [
-            "The signer authorizing the deposit, must be the boss."
-          ],
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "state",
-          "docs": [
-            "Program state, ensures `boss` is authorized."
-          ]
-        },
-        {
-          "name": "tokenProgram",
-          "docs": [
-            "SPL Token program."
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "associatedTokenProgram",
-          "docs": [
-            "Associated Token program."
-          ],
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "systemProgram",
-          "docs": [
-            "Solana System program for account creation and rent payment."
-          ],
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "amount",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "vaultWithdraw",
-      "docs": [
-        "Withdraws tokens from the vault.",
-        "",
-        "Delegates to `vault_operations::vault_withdraw`.",
-        "Transfers tokens from vault's token account to boss's token account for the specified mint.",
-        "Both token accounts must already exist.",
-        "Only the boss can call this instruction.",
-        "",
-        "# Arguments",
-        "- `ctx`: Context for `VaultWithdraw`.",
-        "- `amount`: Amount of tokens to withdraw."
-      ],
-      "discriminator": [
-        98,
-        28,
-        187,
-        98,
-        87,
-        69,
-        46,
-        64
-      ],
-      "accounts": [
-        {
-          "name": "vaultAuthority",
-          "docs": [
-            "The vault authority account that controls the vault token accounts."
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "tokenMint",
-          "docs": [
-            "The token mint for the withdrawal."
-          ]
-        },
-        {
-          "name": "bossTokenAccount",
-          "docs": [
-            "Boss's token account for the specific mint (destination of tokens).",
-            "Must already exist - will fail if it doesn't."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "boss"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "vaultTokenAccount",
-          "docs": [
-            "Vault's token account for the specific mint (source of tokens).",
-            "Must already exist - will fail if it doesn't."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "vaultAuthority"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "boss",
-          "docs": [
-            "The signer authorizing the withdrawal, must be the boss."
-          ],
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "state",
-          "docs": [
-            "Program state, ensures `boss` is authorized."
-          ]
-        },
-        {
-          "name": "tokenProgram",
-          "docs": [
-            "SPL Token program."
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        }
-      ],
-      "args": [
-        {
-          "name": "amount",
-          "type": "u64"
-        }
-      ]
     }
   ],
   "accounts": [
@@ -4841,6 +6235,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "buyOfferVaultAuthority",
+      "discriminator": [
+        70,
+        15,
+        14,
+        126,
+        177,
+        79,
+        47,
+        20
+      ]
+    },
+    {
       "name": "dualRedemptionOfferAccount",
       "discriminator": [
         3,
@@ -4851,6 +6258,19 @@ export type Onreapp = {
         4,
         144,
         224
+      ]
+    },
+    {
+      "name": "dualRedemptionVaultAuthority",
+      "discriminator": [
+        174,
+        183,
+        201,
+        125,
+        54,
+        44,
+        191,
+        19
       ]
     },
     {
@@ -4880,6 +6300,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "singleRedemptionVaultAuthority",
+      "discriminator": [
+        141,
+        85,
+        209,
+        193,
+        148,
+        147,
+        166,
+        106
+      ]
+    },
+    {
       "name": "state",
       "discriminator": [
         216,
@@ -4890,19 +6323,6 @@ export type Onreapp = {
         75,
         182,
         177
-      ]
-    },
-    {
-      "name": "vaultAuthority",
-      "discriminator": [
-        132,
-        34,
-        187,
-        202,
-        202,
-        195,
-        211,
-        53
       ]
     }
   ],
@@ -4944,6 +6364,32 @@ export type Onreapp = {
         201,
         35,
         56
+      ]
+    },
+    {
+      "name": "buyOfferVaultDepositEvent",
+      "discriminator": [
+        94,
+        41,
+        43,
+        100,
+        208,
+        163,
+        218,
+        163
+      ]
+    },
+    {
+      "name": "buyOfferVaultWithdrawEvent",
+      "discriminator": [
+        249,
+        21,
+        100,
+        179,
+        132,
+        168,
+        118,
+        215
       ]
     },
     {
@@ -5038,6 +6484,32 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "dualRedemptionVaultDepositEvent",
+      "discriminator": [
+        210,
+        173,
+        133,
+        188,
+        191,
+        29,
+        53,
+        181
+      ]
+    },
+    {
+      "name": "dualRedemptionVaultWithdrawEvent",
+      "discriminator": [
+        56,
+        146,
+        166,
+        48,
+        99,
+        30,
+        207,
+        113
+      ]
+    },
+    {
       "name": "singleRedemptionOfferFeeUpdatedEvent",
       "discriminator": [
         78,
@@ -5061,6 +6533,32 @@ export type Onreapp = {
         20,
         189,
         216
+      ]
+    },
+    {
+      "name": "singleRedemptionVaultDepositEvent",
+      "discriminator": [
+        35,
+        57,
+        167,
+        176,
+        232,
+        185,
+        230,
+        235
+      ]
+    },
+    {
+      "name": "singleRedemptionVaultWithdrawEvent",
+      "discriminator": [
+        42,
+        33,
+        100,
+        219,
+        229,
+        49,
+        36,
+        176
       ]
     },
     {
@@ -5113,32 +6611,6 @@ export type Onreapp = {
         221,
         142,
         150
-      ]
-    },
-    {
-      "name": "vaultDepositEvent",
-      "discriminator": [
-        187,
-        186,
-        196,
-        189,
-        175,
-        44,
-        10,
-        64
-      ]
-    },
-    {
-      "name": "vaultWithdrawEvent",
-      "discriminator": [
-        192,
-        143,
-        53,
-        201,
-        67,
-        20,
-        212,
-        195
       ]
     }
   ],
@@ -5313,6 +6785,53 @@ export type Onreapp = {
           },
           {
             "name": "feeBasisPoints",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "buyOfferVaultAuthority",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "buyOfferVaultDepositEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "buyOfferVaultWithdrawEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
             "type": "u64"
           },
           {
@@ -5639,6 +7158,53 @@ export type Onreapp = {
       }
     },
     {
+      "name": "dualRedemptionVaultAuthority",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "dualRedemptionVaultDepositEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "dualRedemptionVaultWithdrawEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "permissionlessAccount",
       "type": {
         "kind": "struct",
@@ -5778,6 +7344,53 @@ export type Onreapp = {
           },
           {
             "name": "feeBasisPoints",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "singleRedemptionVaultAuthority",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "singleRedemptionVaultDepositEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "singleRedemptionVaultWithdrawEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
             "type": "u64"
           },
           {
@@ -5954,53 +7567,6 @@ export type Onreapp = {
           },
           {
             "name": "user",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "vaultAuthority",
-      "type": {
-        "kind": "struct",
-        "fields": []
-      }
-    },
-    {
-      "name": "vaultDepositEvent",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "mint",
-            "type": "pubkey"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "boss",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "vaultWithdrawEvent",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "mint",
-            "type": "pubkey"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "boss",
             "type": "pubkey"
           }
         ]

@@ -54,8 +54,8 @@ pub struct TakeSingleRedemptionOffer<'info> {
     /// CHECK: This account is validated through the constraint above
     pub boss: UncheckedAccount<'info>,
 
-    /// The vault authority that controls vault token accounts.
-    #[account(seeds = [seeds::VAULT_AUTHORITY], bump)]
+    /// The single redemption vault authority that controls vault token accounts.
+    #[account(seeds = [seeds::SINGLE_REDEMPTION_VAULT_AUTHORITY], bump)]
     /// CHECK: This is safe as it's a PDA used for signing
     pub vault_authority: UncheckedAccount<'info>,
 
@@ -236,7 +236,10 @@ fn execute_transfers(
 
     // Transfer token_out from vault to user using vault authority
     let vault_authority_bump = ctx.bumps.vault_authority;
-    let vault_authority_seeds = &[seeds::VAULT_AUTHORITY, &[vault_authority_bump]];
+    let vault_authority_seeds = &[
+        seeds::SINGLE_REDEMPTION_VAULT_AUTHORITY,
+        &[vault_authority_bump],
+    ];
     let signer_seeds = &[vault_authority_seeds.as_slice()];
 
     transfer_tokens(

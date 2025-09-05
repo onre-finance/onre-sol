@@ -1,40 +1,40 @@
 use crate::constants::seeds;
-use crate::state::{State, VaultAuthority};
+use crate::state::{SingleRedemptionVaultAuthority, State};
 use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
 #[event]
-pub struct VaultWithdrawEvent {
+pub struct SingleRedemptionVaultWithdrawEvent {
     pub mint: Pubkey,
     pub amount: u64,
     pub boss: Pubkey,
 }
 
-/// Account structure for withdrawing tokens from the vault.
+/// Account structure for withdrawing tokens from the single redemption vault.
 ///
 /// This struct defines the accounts required for the boss to withdraw tokens
-/// from the vault authority's token accounts.
+/// from the single redemption vault authority's token accounts.
 #[derive(Accounts)]
-pub struct VaultWithdraw<'info> {
-    /// The vault authority account that controls the vault token accounts.
-    #[account(seeds = [seeds::VAULT_AUTHORITY], bump)]
-    pub vault_authority: Account<'info, VaultAuthority>,
+pub struct SingleRedemptionVaultWithdraw<'info> {
+    /// The single redemption vault authority account that controls the vault token accounts.
+    #[account(seeds = [seeds::SINGLE_REDEMPTION_VAULT_AUTHORITY], bump)]
+    pub vault_authority: Account<'info, SingleRedemptionVaultAuthority>,
 
     /// The token mint for the withdrawal.
     pub token_mint: Box<Account<'info, Mint>>,
 
     /// Boss's token account for the specific mint (destination of tokens).
-    /// Must already exist - will fail if it doesn't.
     #[account(
-        mut,
+        init_if_needed,
+        payer = boss,
         associated_token::mint = token_mint,
         associated_token::authority = boss
     )]
     pub boss_token_account: Box<Account<'info, TokenAccount>>,
 
     /// Vault's token account for the specific mint (source of tokens).
-    /// Must already exist - will fail if it doesn't.
     #[account(
         mut,
         associated_token::mint = token_mint,
@@ -52,12 +52,18 @@ pub struct VaultWithdraw<'info> {
 
     /// SPL Token program.
     pub token_program: Program<'info, Token>,
+
+    /// Associated Token program.
+    pub associated_token_program: Program<'info, AssociatedToken>,
+
+    /// Solana System program for account creation and rent payment.
+    pub system_program: Program<'info, System>,
 }
 
-/// Withdraws tokens from the vault.
+/// Withdraws tokens from the single redemption vault.
 ///
-/// Transfers tokens from the vault's token account to the boss's token account
-/// for the specified mint. Both token accounts must already exist.
+/// Transfers tokens from the single redemption vault's token account to the boss's token account
+/// for the specified mint. Creates the boss token account if it doesn't exist.
 /// Only the boss can call this instruction.
 ///
 /// # Arguments
@@ -66,16 +72,18 @@ pub struct VaultWithdraw<'info> {
 ///
 /// # Returns
 /// A `Result` indicating success or failure.
-pub fn vault_withdraw(ctx: Context<VaultWithdraw>, amount: u64) -> Result<()> {
-    // Get vault authority bump for signing
-    let vault_authority_bump = ctx.bumps.vault_authority;
+pub fn single_redemption_vault_withdraw(
+    ctx: Context<SingleRedemptionVaultWithdraw>,
+    amount: u64,
+) -> Result<()> {
+    // Create signer seeds for vault authority
     let vault_authority_seeds = &[
-        seeds::VAULT_AUTHORITY,
-        &[vault_authority_bump],
+        seeds::SINGLE_REDEMPTION_VAULT_AUTHORITY,
+        &[ctx.bumps.vault_authority],
     ];
-    let signer_seeds = &[vault_authority_seeds.as_slice()];
+    let signer_seeds = &[&vault_authority_seeds[..]];
 
-    // Transfer tokens from vault to boss using vault authority as signer
+    // Transfer tokens from vault to boss
     transfer_tokens(
         &ctx.accounts.token_program,
         &ctx.accounts.vault_token_account,
@@ -85,17 +93,15 @@ pub fn vault_withdraw(ctx: Context<VaultWithdraw>, amount: u64) -> Result<()> {
         amount,
     )?;
 
-    msg!(
-        "Vault withdraw - mint: {}, amount: {}",
-        ctx.accounts.token_mint.key(),
-        amount
-    );
-
-    emit!(VaultWithdrawEvent {
+    emit!(SingleRedemptionVaultWithdrawEvent {
         mint: ctx.accounts.token_mint.key(),
         amount,
         boss: ctx.accounts.boss.key(),
     });
 
+    msg!(
+        "Single redemption vault withdraw successful: {} tokens",
+        amount
+    );
     Ok(())
 }

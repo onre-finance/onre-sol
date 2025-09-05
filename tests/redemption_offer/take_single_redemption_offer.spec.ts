@@ -14,7 +14,7 @@ describe("Take single redemption offer", () => {
     let boss: PublicKey;
     let user: any;
     let singleRedemptionOfferAccountPda: PublicKey;
-    let vaultAuthorityPda: PublicKey;
+    let singleRedemptionVaultAuthorityPda: PublicKey;
     let token9Mint: PublicKey;
     let token6Mint: PublicKey;
 
@@ -48,14 +48,14 @@ describe("Take single redemption offer", () => {
 
         // Get PDAs
         [singleRedemptionOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from('single_redemption_offers')], ONREAPP_PROGRAM_ID);
-        [vaultAuthorityPda] = PublicKey.findProgramAddressSync([Buffer.from('vault_authority')], ONREAPP_PROGRAM_ID);
+        [singleRedemptionVaultAuthorityPda] = PublicKey.findProgramAddressSync([Buffer.from('single_redemption_vault_auth')], ONREAPP_PROGRAM_ID);
 
         // Create some test tokens and deposit to vault for all tests to use
         // Token with 9 decimals - deposit 10,000 tokens
         token9Mint = testHelper.createMint(boss, BigInt(0), 9);
-        testHelper.createTokenAccount(token9Mint, boss, BigInt(10000e9));
+        testHelper.createTokenAccount(token9Mint, boss, BigInt(10_000e9));
         await program.methods
-            .vaultDeposit(new BN("10000000000000")) // 10,000 tokens
+            .singleRedemptionVaultDeposit(new BN(10_000e9)) // 10,000 tokens
             .accounts({
                 tokenMint: token9Mint,
                 state: testHelper.statePda,
@@ -64,9 +64,9 @@ describe("Take single redemption offer", () => {
 
         // Token with 6 decimals - deposit 10,000 tokens  
         token6Mint = testHelper.createMint(boss, BigInt(0), 6);
-        testHelper.createTokenAccount(token6Mint, boss, BigInt(10000e6));
+        testHelper.createTokenAccount(token6Mint, boss, BigInt(10_000e6));
         await program.methods
-            .vaultDeposit(new BN("10000000000")) // 10,000 tokens
+            .singleRedemptionVaultDeposit(new BN(10_000e6)) // 10,000 tokens
             .accounts({
                 tokenMint: token6Mint,
                 state: testHelper.statePda,
@@ -83,7 +83,7 @@ describe("Take single redemption offer", () => {
         const userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(1000e9)); // 1000 tokens
         const userTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, user.publicKey, BigInt(0));
         const bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
-        const vaultTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, vaultAuthorityPda, true);
+        const vaultTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, singleRedemptionVaultAuthorityPda, true);
 
         // Create redemption offer: price = 2.0 (2000000000 with 9 decimals)
         const price = new BN("2000000000"); // 2.0 * 10^9
@@ -131,38 +131,35 @@ describe("Take single redemption offer", () => {
     });
 
     test("Should calculate correct price with fee", async () => {
-        const currentTime = await testHelper.getCurrentClockTime();
-
         const tokenInMint = token9Mint;
         const tokenOutMint = token6Mint;
 
-        // Create a new buy offer
-        await testHelper.makeBuyOffer({
-            tokenInMint,
-            tokenOutMint,
-            feeBasisPoints: 100, // 1% fee
-        });
+        // Create a new redemption offer: price = 2.0 (with 9 decimals)
+        const offerId = 1;
+        const price = new BN(2e9);
+        const startTime = new BN(Math.floor(Date.now() / 1000) - 60); // Start 1 minute ago
+        const endTime = new BN(startTime.toNumber() + 3600);
+        const feeBasisPoints = new BN(100); // 1% fee
 
-        const offerId = new BN(1);
-        const startPrice = new BN(1e9);
-        const apr = new BN(36_500);
-        const priceFixDuration = new BN(86400);
-        const startTime = new BN(currentTime);
-
-        await testHelper.program.methods
-            .addBuyOfferVector(offerId, startTime, startPrice, apr, priceFixDuration)
-            .accounts({state: testHelper.statePda})
+        await program.methods
+            .makeSingleRedemptionOffer(startTime, endTime, price, feeBasisPoints)
+            .accounts({
+                tokenInMint,
+                tokenOutMint,
+                state: testHelper.statePda,
+            })
             .rpc();
 
-        const userTokenInAccount = testHelper.createTokenAccount(token9Mint, user.publicKey, BigInt(10000e6));
-        const userTokenOutAccount = testHelper.createTokenAccount(token6Mint, user.publicKey, BigInt(0));
+        const userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(1000e9));
+        const userTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, user.publicKey, BigInt(0));
+        const bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
+        const vaultTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, singleRedemptionVaultAuthorityPda, true);
 
-        // Price in first interval should be: 1.0 * (1 + 0.0365 * (1 * 86400) / (365*24*3600))
-        // = 1.0 * (1 + 0.0365 * 1/365) = 1.0 * 1.0001 = 1.0001
-        const expectedTokenInAmount = new BN(1_000_100_000); // 1.0001 ONyc (9 decimals)
+        // when - user takes offer: pays 10 token_in, pays 1% fee, should get 4.95 token_out (9.9 / 2 = 4.95)
+        const tokenInAmount = new BN(10e9); // 10 tokens with 9 decimals
 
         await testHelper.program.methods
-            .takeBuyOffer(offerId, expectedTokenInAmount)
+            .takeSingleRedemptionOffer(new BN(offerId), tokenInAmount)
             .accounts({
                 state: testHelper.statePda,
                 boss: boss,
@@ -173,10 +170,16 @@ describe("Take single redemption offer", () => {
             .signers([user])
             .rpc();
 
-        const userTokenOutBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+        // then - verify balances
+        // User should have: 1000 - 10 = 990 token_in, 0 + 4.95 = 4.95 token_out
+        await testHelper.expectTokenAccountAmountToBe(userTokenInAccount, BigInt(990e9));
+        await testHelper.expectTokenAccountAmountToBe(userTokenOutAccount, BigInt(4.95e6));
 
-        // Should receive 0.9 token out
-        expect(userTokenOutBalanceAfter).toBe(BigInt(99e4));
+        // Boss should have: 0 + 10 = 10 token_in
+        await testHelper.expectTokenAccountAmountToBe(bossTokenInAccount, BigInt(10e9));
+
+        // Vault should have: 10,000 - 4.95 = 9,996.05 token_out
+        await testHelper.expectTokenAccountAmountToBe(vaultTokenOutAccount, BigInt(9_995.05e6));
     })
 
     test("Take large redemption offer (20 million tokens) should succeed", async () => {
@@ -192,14 +195,14 @@ describe("Take single redemption offer", () => {
         // Deposit 20 million tokens to vault for this test
         testHelper.createTokenAccount(tokenOutMint, boss, BigInt(20_000_000e9)); // 20 million tokens
         await program.methods
-            .vaultDeposit(new BN("20000000000000000")) // 20 million tokens
+            .singleRedemptionVaultDeposit(new BN("20000000000000000")) // 20 million tokens
             .accounts({
                 tokenMint: tokenOutMint,
                 state: testHelper.statePda,
             })
             .rpc();
 
-        const vaultTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, vaultAuthorityPda, true);
+        const vaultTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, singleRedemptionVaultAuthorityPda, true);
 
         // Create redemption offer: price = 2.0 (user pays 2 tokens to get 1 token out)
         const price = new BN("2000000000"); // 2.0 * 10^9
@@ -258,11 +261,11 @@ describe("Take single redemption offer", () => {
 
         // Create boss token account for token_out and deposit to vault
         testHelper.createTokenAccount(tokenOutMint, boss, BigInt(500e9)); // 500 tokens
-        const vaultTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, vaultAuthorityPda, true);
+        const vaultTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, singleRedemptionVaultAuthorityPda, true);
 
         // Deposit tokens to vault
         await program.methods
-            .vaultDeposit(new BN("500000000000")) // 500 tokens
+            .singleRedemptionVaultDeposit(new BN("500000000000")) // 500 tokens
             .accounts({
                 tokenMint: tokenOutMint,
                 state: testHelper.statePda,
@@ -324,7 +327,7 @@ describe("Take single redemption offer", () => {
         const userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(1000e9)); // 1000 tokens
         const userTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, user.publicKey, BigInt(0));
         const bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
-        const vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, vaultAuthorityPda, BigInt(500e6), true); // 500 tokens
+        const vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, singleRedemptionVaultAuthorityPda, BigInt(500e6), true); // 500 tokens
 
         // Create redemption offer: price = 0.5 (500000000 with 9 decimals)
         const price = new BN("500000000"); // 0.5 * 10^9
@@ -381,7 +384,7 @@ describe("Take single redemption offer", () => {
         const userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(1000e9)); // 1000 tokens
         const userTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, user.publicKey, BigInt(0));
         const bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
-        const vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, vaultAuthorityPda, BigInt(500e9), true); // 500 tokens
+        const vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, singleRedemptionVaultAuthorityPda, BigInt(500e9), true); // 500 tokens
 
         // Create redemption offer: price = 1.5 (1500000000 with 9 decimals)
         const price = new BN("1500000000"); // 1.5 * 10^9
@@ -436,7 +439,7 @@ describe("Take single redemption offer", () => {
         testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(100e9));
         testHelper.createTokenAccount(tokenOutMint, user.publicKey, BigInt(0));
         testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
-        testHelper.createTokenAccount(tokenOutMint, vaultAuthorityPda, BigInt(100e9), true);
+        testHelper.createTokenAccount(tokenOutMint, singleRedemptionVaultAuthorityPda, BigInt(100e9), true);
 
         // when/then - try to take non-existent offer
         await expect(
@@ -461,7 +464,7 @@ describe("Take single redemption offer", () => {
         const wrongTokenInMint = testHelper.createMint(boss, BigInt(0), 9);
 
         testHelper.createTokenAccount(correctTokenInMint, boss, BigInt(0));
-        testHelper.createTokenAccount(correctTokenOutMint, vaultAuthorityPda, BigInt(100e9), true);
+        testHelper.createTokenAccount(correctTokenOutMint, singleRedemptionVaultAuthorityPda, BigInt(100e9), true);
         testHelper.createTokenAccount(wrongTokenInMint, user.publicKey, BigInt(100e9));
         testHelper.createTokenAccount(correctTokenOutMint, user.publicKey, BigInt(0));
         testHelper.createTokenAccount(wrongTokenInMint, boss, BigInt(0));
@@ -506,7 +509,7 @@ describe("Take single redemption offer", () => {
         testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(100e9));
         testHelper.createTokenAccount(tokenOutMint, user.publicKey, BigInt(0));
         testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
-        testHelper.createTokenAccount(tokenOutMint, vaultAuthorityPda, BigInt(100e9), true);
+        testHelper.createTokenAccount(tokenOutMint, singleRedemptionVaultAuthorityPda, BigInt(100e9), true);
 
         const price = new BN("1000000000");
         const currentTime = Math.floor(Date.now() / 1000);
@@ -549,7 +552,7 @@ describe("Take single redemption offer", () => {
         testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(1000e9));
         testHelper.createTokenAccount(tokenOutMint, user.publicKey, BigInt(0));
         testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
-        testHelper.createTokenAccount(tokenOutMint, vaultAuthorityPda, BigInt(1e9), true); // Only 1 token in vault
+        testHelper.createTokenAccount(tokenOutMint, singleRedemptionVaultAuthorityPda, BigInt(1e9), true); // Only 1 token in vault
 
         const price = new BN("1000000000"); // Price = 1.0
         const startTime = new BN(Math.floor(Date.now() / 1000) - 60); // Start 1 minute ago
@@ -595,7 +598,7 @@ describe("Take single redemption offer", () => {
         testHelper.createTokenAccount(abcMint, user.publicKey, BigInt(10000)); // 10.000 ABC
         testHelper.createTokenAccount(xyzMint, user.publicKey, BigInt(0));      // 0 XYZ initially
         testHelper.createTokenAccount(abcMint, boss, BigInt(0));               // Boss receives ABC
-        testHelper.createTokenAccount(xyzMint, vaultAuthorityPda, BigInt(10000000), true); // Vault has 10,000.000 XYZ
+        testHelper.createTokenAccount(xyzMint, singleRedemptionVaultAuthorityPda, BigInt(10000000), true); // Vault has 10,000.000 XYZ
 
         // Price: 0.8123123123 * 10^9 = 812312312.3 -> 812312312 (truncated)
         const price = new BN(812312312);

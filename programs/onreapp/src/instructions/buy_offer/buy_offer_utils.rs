@@ -280,7 +280,7 @@ pub fn execute_direct_transfers<'info>(
     )?;
 
     // Transfer token_out from vault to user using vault authority
-    let vault_authority_seeds = &[seeds::VAULT_AUTHORITY, &[vault_authority_bump]];
+    let vault_authority_seeds = &[seeds::BUY_OFFER_VAULT_AUTHORITY, &[vault_authority_bump]];
     let signer_seeds = &[vault_authority_seeds.as_slice()];
 
     transfer_tokens(
@@ -320,7 +320,7 @@ pub fn execute_permissionless_transfers<'info>(
         &[seeds::PERMISSIONLESS_1, &[permissionless_authority_bump]];
     let permissionless_signer_seeds = &[permissionless_authority_seeds.as_slice()];
 
-    let vault_authority_seeds = &[seeds::VAULT_AUTHORITY, &[vault_authority_bump]];
+    let vault_authority_seeds = &[seeds::BUY_OFFER_VAULT_AUTHORITY, &[vault_authority_bump]];
     let vault_signer_seeds = &[vault_authority_seeds.as_slice()];
 
     // 1. Transfer token_in from user to permissionless intermediary

@@ -15,7 +15,7 @@ describe("Take Buy Offer Permissionless", () => {
     let userTokenInAccount: PublicKey;
     let userTokenOutAccount: PublicKey;
     let bossTokenInAccount: PublicKey;
-    let vaultAuthorityPda: PublicKey;
+    let buyOfferVaultAuthorityPda: PublicKey;
     let vaultTokenOutAccount: PublicKey;
     let permissionlessAuthorityPda: PublicKey;
     let permissionlessTokenInAccount: PublicKey;
@@ -73,8 +73,8 @@ describe("Take Buy Offer Permissionless", () => {
             })
             .rpc();
 
-        [vaultAuthorityPda] = PublicKey.findProgramAddressSync(
-            [Buffer.from("vault_authority")],
+        [buyOfferVaultAuthorityPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("buy_offer_vault_authority")],
             ONREAPP_PROGRAM_ID
         );
 
@@ -98,14 +98,14 @@ describe("Take Buy Offer Permissionless", () => {
         bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
 
         // Create vault and permissionless intermediary accounts
-        vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, vaultAuthorityPda, BigInt(0), true);
+        vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, buyOfferVaultAuthorityPda, BigInt(0), true);
         permissionlessTokenInAccount = testHelper.createTokenAccount(tokenInMint, permissionlessAuthorityPda, BigInt(0), true);
         permissionlessTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, permissionlessAuthorityPda, BigInt(0), true);
 
         // Fund vault
         const bossTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, boss, BigInt(10_000e9));
         await testHelper.program.methods
-            .vaultDeposit(new BN(5_000e9))
+            .buyOfferVaultDeposit(new BN(5_000e9))
             .accounts({
                 state: testHelper.statePda,
                 tokenMint: tokenOutMint,
@@ -714,7 +714,7 @@ describe("Take Buy Offer Permissionless", () => {
             // Add more funding to vault for large transaction
             const bossTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, boss, BigInt(50_000e9));
             await testHelper.program.methods
-                .vaultDeposit(new BN(25_000e9))
+                .buyOfferVaultDeposit(new BN(25_000e9))
                 .accounts({
                     state: testHelper.statePda,
                     tokenMint: tokenOutMint,
