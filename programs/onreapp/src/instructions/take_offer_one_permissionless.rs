@@ -1,7 +1,8 @@
-use crate::state::{Offer, PermissionlessAccount};
+use crate::state::Offer;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Transfer, Mint};
 use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token::{self, Mint, Token, Transfer};
+use anchor_spl::token_interface::TokenAccount as InterfaceTokenAccount;
 
 /// Event emitted when an offer with one buy token is taken via permissionless route.
 #[event]
@@ -35,7 +36,7 @@ pub struct TakeOfferOnePermissionless<'info> {
     #[account(
         constraint = offer.buy_token_2.mint == Pubkey::default() @ TakeOfferPermissionlessErrorCode::InvalidTakeOffer
     )]
-    pub offer: Account<'info, Offer>,
+    pub offer: Box<Account<'info, Offer>>,
 
     /// Offer's sell token ATA, receives the user's sell tokens.
     #[account(
@@ -43,7 +44,7 @@ pub struct TakeOfferOnePermissionless<'info> {
         associated_token::mint = offer.sell_token_mint,
         associated_token::authority = offer_token_authority,
     )]
-    pub offer_sell_token_account: Box<Account<'info, TokenAccount>>,
+    pub offer_sell_token_account: Box<InterfaceAccount<'info, InterfaceTokenAccount>>,
 
     /// Offer's buy token 1 ATA, sends buy tokens to the intermediary account.
     #[account(
@@ -51,7 +52,7 @@ pub struct TakeOfferOnePermissionless<'info> {
         associated_token::mint = offer.buy_token_1.mint,
         associated_token::authority = offer_token_authority,
     )]
-    pub offer_buy_token_1_account: Box<Account<'info, TokenAccount>>,
+    pub offer_buy_token_1_account: Box<InterfaceAccount<'info, InterfaceTokenAccount>>,
 
     /// User's sell token ATA, sends sell tokens to the intermediary account.
     /// Ensures mint matches the offer's sell token mint.
@@ -61,7 +62,7 @@ pub struct TakeOfferOnePermissionless<'info> {
         associated_token::authority = user,
         constraint = offer.sell_token_mint == user_sell_token_account.mint @ TakeOfferPermissionlessErrorCode::InvalidSellTokenMint
     )]
-    pub user_sell_token_account: Box<Account<'info, TokenAccount>>,
+    pub user_sell_token_account: Box<InterfaceAccount<'info, InterfaceTokenAccount>>,
 
     /// User's buy token 1 ATA, receives buy tokens from the intermediary account.
     /// Ensures mint matches the offer's buy token 1 mint.
@@ -71,35 +72,33 @@ pub struct TakeOfferOnePermissionless<'info> {
         associated_token::authority = user,
         constraint = offer.buy_token_1.mint == buy_token_1_mint.key() @ TakeOfferPermissionlessErrorCode::InvalidBuyTokenMint
     )]
-    pub user_buy_token_1_account: Box<Account<'info, TokenAccount>>,
+    pub user_buy_token_1_account: Box<InterfaceAccount<'info, InterfaceTokenAccount>>,
 
     /// Intermediary token account that temporarily holds buy tokens.
-    /// This account is controlled by the program and is created once, then persists.
+    /// This account is controlled by the program and must be pre-initialized.
     #[account(
-        init_if_needed,
-        payer = user,
+        mut,
         associated_token::mint = buy_token_1_mint,
         associated_token::authority = intermediary_authority,
     )]
-    pub intermediary_buy_token_account: Box<Account<'info, TokenAccount>>,
+    pub intermediary_buy_token_account: Box<InterfaceAccount<'info, InterfaceTokenAccount>>,
 
     /// Intermediary token account that temporarily holds sell tokens.
-    /// This account is controlled by the program and is created once, then persists.
+    /// This account is controlled by the program and must be pre-initialized.
     #[account(
-        init_if_needed,
-        payer = user,
+        mut,
         associated_token::mint = sell_token_mint,
         associated_token::authority = intermediary_authority,
     )]
-    pub intermediary_sell_token_account: Box<Account<'info, TokenAccount>>,
+    pub intermediary_sell_token_account: Box<InterfaceAccount<'info, InterfaceTokenAccount>>,
 
     /// The mint account for the buy token 1.
     #[account(constraint = buy_token_1_mint.key() == offer.buy_token_1.mint)]
-    pub buy_token_1_mint: Account<'info, Mint>,
+    pub buy_token_1_mint: Box<Account<'info, Mint>>,
 
     /// The mint account for the sell token.
     #[account(constraint = sell_token_mint.key() == offer.sell_token_mint)]
-    pub sell_token_mint: Account<'info, Mint>,
+    pub sell_token_mint: Box<Account<'info, Mint>>,
 
     /// Derived PDA for offer token authority, controls offer token accounts.
     /// CHECK: This account is validated by the seed derivation.
@@ -116,7 +115,7 @@ pub struct TakeOfferOnePermissionless<'info> {
         seeds = [b"permissionless-1"],
         bump
     )]
-    pub intermediary_authority: Account<'info, PermissionlessAccount>,
+    pub intermediary_authority: AccountInfo<'info>,
 
     /// The user taking the offer, signs the transaction and pays for account creation.
     #[account(mut)]
@@ -150,32 +149,41 @@ pub struct TakeOfferOnePermissionless<'info> {
 ///
 /// # Errors
 /// - [`TakeOfferPermissionlessErrorCode::InvalidCurrentTime`] if the current time is outside the offer's active period.
-fn calculate_current_sell_amount(
-    offer: &Offer
-) -> Result<u64> {
+fn calculate_current_sell_amount(offer: &Offer) -> Result<u64> {
     let current_time = Clock::get()?.unix_timestamp as u64;
-    
+
     require!(
         current_time >= offer.offer_start_time && current_time < offer.offer_end_time,
         TakeOfferPermissionlessErrorCode::InvalidCurrentTime
     );
 
-    let total_duration = offer.offer_end_time.checked_sub(offer.offer_start_time).unwrap();
-    let number_of_intervals = total_duration.checked_div(offer.price_fix_duration).unwrap();
+    let total_duration = offer
+        .offer_end_time
+        .checked_sub(offer.offer_start_time)
+        .unwrap();
+    let number_of_intervals = total_duration
+        .checked_div(offer.price_fix_duration)
+        .unwrap();
     let current_interval = current_time
         .checked_sub(offer.offer_start_time)
         .unwrap()
         .checked_div(offer.price_fix_duration)
         .unwrap();
 
-    let sell_token_amount_per_interval = offer.sell_token_end_amount
+    let sell_token_amount_per_interval = offer
+        .sell_token_end_amount
         .checked_sub(offer.sell_token_start_amount)
         .unwrap()
         .checked_div(number_of_intervals)
         .unwrap();
 
-    let sell_token_current_amount = offer.sell_token_start_amount
-        .checked_add(sell_token_amount_per_interval.checked_mul(current_interval + 1).unwrap())
+    let sell_token_current_amount = offer
+        .sell_token_start_amount
+        .checked_add(
+            sell_token_amount_per_interval
+                .checked_mul(current_interval + 1)
+                .unwrap(),
+        )
         .unwrap();
 
     Ok(sell_token_current_amount)
@@ -217,7 +225,9 @@ fn calculate_buy_amount(
         .checked_div(offer_sell_token_amount as u128)
         .ok_or(TakeOfferPermissionlessErrorCode::CalculationOverflow)?;
     if result > u64::MAX as u128 {
-        return Err(error!(TakeOfferPermissionlessErrorCode::CalculationOverflow));
+        return Err(error!(
+            TakeOfferPermissionlessErrorCode::CalculationOverflow
+        ));
     }
     if result == 0 {
         return Err(error!(TakeOfferPermissionlessErrorCode::ZeroBuyTokenAmount));
@@ -241,19 +251,22 @@ fn calculate_buy_amount(
 /// - [`TakeOfferPermissionlessErrorCode::ZeroBuyTokenAmount`] if the calculated buy token amount is zero.
 pub fn take_offer_one_permissionless(
     ctx: Context<TakeOfferOnePermissionless>,
-    sell_token_amount: u64
+    sell_token_amount: u64,
 ) -> Result<()> {
     let offer = &ctx.accounts.offer;
 
     let current_sell_token_amount = calculate_current_sell_amount(&offer).unwrap();
-    msg!("Calculated current sell token amount: {}", current_sell_token_amount);
+    msg!(
+        "Calculated current sell token amount: {}",
+        current_sell_token_amount
+    );
 
     let buy_token_1_amount = calculate_buy_amount(
         sell_token_amount,
         offer.buy_token_1.amount,
         current_sell_token_amount,
     )?;
-    
+
     msg!("Calculated buy token 1 amount: {}", buy_token_1_amount);
     require!(
         ctx.accounts.offer_buy_token_1_account.amount >= buy_token_1_amount,
@@ -266,13 +279,19 @@ pub fn take_offer_one_permissionless(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
                 from: ctx.accounts.user_sell_token_account.to_account_info(),
-                to: ctx.accounts.intermediary_sell_token_account.to_account_info(),
+                to: ctx
+                    .accounts
+                    .intermediary_sell_token_account
+                    .to_account_info(),
                 authority: ctx.accounts.user.to_account_info(),
             },
         ),
         sell_token_amount,
     )?;
-    msg!("Transferring {} sell tokens from user to intermediary", sell_token_amount);
+    msg!(
+        "Transferring {} sell tokens from user to intermediary",
+        sell_token_amount
+    );
 
     // Step 2: Transfer sell tokens from intermediary account to offer
     let intermediary_seeds = &[
@@ -285,7 +304,10 @@ pub fn take_offer_one_permissionless(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
-                from: ctx.accounts.intermediary_sell_token_account.to_account_info(),
+                from: ctx
+                    .accounts
+                    .intermediary_sell_token_account
+                    .to_account_info(),
                 to: ctx.accounts.offer_sell_token_account.to_account_info(),
                 authority: ctx.accounts.intermediary_authority.to_account_info(),
             },
@@ -293,7 +315,10 @@ pub fn take_offer_one_permissionless(
         ),
         sell_token_amount,
     )?;
-    msg!("Transferring {} sell tokens from intermediary to offer", sell_token_amount);
+    msg!(
+        "Transferring {} sell tokens from intermediary to offer",
+        sell_token_amount
+    );
 
     // Step 3: Transfer buy tokens from offer to intermediary account
     let offer_id_bytes = &offer.offer_id.to_le_bytes();
@@ -309,21 +334,30 @@ pub fn take_offer_one_permissionless(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
                 from: ctx.accounts.offer_buy_token_1_account.to_account_info(),
-                to: ctx.accounts.intermediary_buy_token_account.to_account_info(),
+                to: ctx
+                    .accounts
+                    .intermediary_buy_token_account
+                    .to_account_info(),
                 authority: ctx.accounts.offer_token_authority.to_account_info(),
             },
             offer_signer_seeds,
         ),
         buy_token_1_amount,
     )?;
-    msg!("Transferring {} buy tokens from offer to intermediary account", buy_token_1_amount);
+    msg!(
+        "Transferring {} buy tokens from offer to intermediary account",
+        buy_token_1_amount
+    );
 
     // Step 4: Transfer buy tokens from intermediary account to user
     token::transfer(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
-                from: ctx.accounts.intermediary_buy_token_account.to_account_info(),
+                from: ctx
+                    .accounts
+                    .intermediary_buy_token_account
+                    .to_account_info(),
                 to: ctx.accounts.user_buy_token_1_account.to_account_info(),
                 authority: ctx.accounts.intermediary_authority.to_account_info(),
             },
@@ -331,14 +365,18 @@ pub fn take_offer_one_permissionless(
         ),
         buy_token_1_amount,
     )?;
-    msg!("Transferring {} buy tokens from intermediary to user", buy_token_1_amount);
+    msg!(
+        "Transferring {} buy tokens from intermediary to user",
+        buy_token_1_amount
+    );
 
     emit!(OfferTakenOnePermissionless {
         offer_id: offer.offer_id,
         user: ctx.accounts.user.key(),
         sell_token_amount,
         buy_token_1_amount,
-        remaining_buy_token_amount: ctx.accounts.offer_buy_token_1_account.amount - buy_token_1_amount,
+        remaining_buy_token_amount: ctx.accounts.offer_buy_token_1_account.amount
+            - buy_token_1_amount,
         intermediary_account: ctx.accounts.intermediary_buy_token_account.key(),
     });
 
