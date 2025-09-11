@@ -3374,7 +3374,7 @@ export type OnreApp = {
           "name": "intermediaryBuyTokenAccount",
           "docs": [
             "Intermediary token account that temporarily holds buy tokens.",
-            "This account is controlled by the program and is created once, then persists."
+            "This account is controlled by the program and must be pre-initialized."
           ],
           "writable": true,
           "pda": {
@@ -3468,7 +3468,7 @@ export type OnreApp = {
           "name": "intermediarySellTokenAccount",
           "docs": [
             "Intermediary token account that temporarily holds sell tokens.",
-            "This account is controlled by the program and is created once, then persists."
+            "This account is controlled by the program and must be pre-initialized."
           ],
           "writable": true,
           "pda": {
