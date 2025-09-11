@@ -1,0 +1,13 @@
+# rustfmt.toml
+
+# Set the maximum line width.
+max_width = 180
+
+# Reorder module declarations alphabetically.
+reorder_modules = true
+
+# Use field init shorthand when possible.
+use_field_init_shorthand = true
+
+# Use tabs instead of spaces for indentation.
+hard_tabs = false
