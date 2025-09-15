@@ -18,13 +18,15 @@ export class OnreProgram {
         adminStatePda: PublicKey;
         dualRedemptionOfferAccountPda: PublicKey;
         dualRedemptionVaultAuthorityPda: PublicKey;
+        mintAuthorityPda: PublicKey;
     } = {
         buyOfferAccountPda: PublicKey.findProgramAddressSync([Buffer.from("buy_offers")], PROGRAM_ID)[0],
         buyOfferVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("buy_offer_vault_authority")], PROGRAM_ID)[0],
         permissionlessVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], PROGRAM_ID)[0],
         adminStatePda: PublicKey.findProgramAddressSync([Buffer.from("admin_state")], PROGRAM_ID)[0],
         dualRedemptionOfferAccountPda: PublicKey.findProgramAddressSync([Buffer.from("dual_redemption_offers")], PROGRAM_ID)[0],
-        dualRedemptionVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("dual_redemption_vault_auth")], PROGRAM_ID)[0]
+        dualRedemptionVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("dual_redemption_vault_auth")], PROGRAM_ID)[0],
+        mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], PROGRAM_ID)[0]
     };
 
     constructor(context: ProgramTestContext) {
@@ -231,24 +233,34 @@ export class OnreProgram {
             .rpc();
     }
 
-    async transferMintAuthorityToProgram(params: { mint: PublicKey }) {
-        await this.program.methods
+    async transferMintAuthorityToProgram(params: { mint: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods
             .transferMintAuthorityToProgram()
             .accounts({
                 state: this.statePda,
                 mint: params.mint
-            })
-            .rpc();
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
     }
 
-    async transferMintAuthorityToBoss(params: { mint: PublicKey }) {
-        await this.program.methods
+    async transferMintAuthorityToBoss(params: { mint: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods
             .transferMintAuthorityToBoss()
             .accounts({
                 state: this.statePda,
                 mint: params.mint
-            })
-            .rpc();
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
     }
 
     async initializeAdminState() {
