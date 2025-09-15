@@ -223,7 +223,7 @@ pub fn take_buy_offer_permissionless(
             seeds::PERMISSIONLESS_1,
             &[ctx.bumps.permissionless_authority],
         ]]),
-        token_in_burn_signer_seeds: Some(&[&[
+        vault_authority_signer_seeds: Some(&[&[
             seeds::BUY_OFFER_VAULT_AUTHORITY,
             &[ctx.bumps.vault_authority],
         ]]),
@@ -237,10 +237,6 @@ pub fn take_buy_offer_permissionless(
         token_out_authority: &ctx.accounts.vault_authority,
         token_out_source_account: &ctx.accounts.vault_token_out_account,
         token_out_destination_account: &ctx.accounts.permissionless_token_out_account,
-        token_out_signer_seeds: Some(&[&[
-            seeds::BUY_OFFER_VAULT_AUTHORITY,
-            &[ctx.bumps.vault_authority],
-        ]]),
         mint_authority_pda: &ctx.accounts.mint_authority_pda,
         mint_authority_bump: &[ctx.bumps.mint_authority_pda],
     })?;

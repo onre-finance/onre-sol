@@ -186,7 +186,7 @@ pub struct ExecTokenOpsParams<'a, 'info> {
     pub token_in_amount: u64,
     pub token_in_authority: &'a AccountInfo<'info>,
     pub token_in_source_signer_seeds: Option<&'a [&'a [&'a [u8]]]>,
-    pub token_in_burn_signer_seeds: Option<&'a [&'a [&'a [u8]]]>,
+    pub vault_authority_signer_seeds: Option<&'a [&'a [&'a [u8]]]>,
     pub token_in_source_account: &'a Account<'info, TokenAccount>,
     pub token_in_destination_account: &'a Account<'info, TokenAccount>,
     pub token_in_burn_account: &'a Account<'info, TokenAccount>,
@@ -197,7 +197,6 @@ pub struct ExecTokenOpsParams<'a, 'info> {
     pub token_out_authority: &'a UncheckedAccount<'info>,
     pub token_out_source_account: &'a Account<'info, TokenAccount>,
     pub token_out_destination_account: &'a Account<'info, TokenAccount>,
-    pub token_out_signer_seeds: Option<&'a [&'a [&'a [u8]]]>,
     pub mint_authority_pda: &'a AccountInfo<'info>,
     pub mint_authority_bump: &'a [u8],
 }
@@ -236,7 +235,7 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
             params.token_in_mint,
             params.token_in_burn_account,
             params.token_in_burn_authority,
-            params.token_in_burn_signer_seeds.unwrap(),
+            params.vault_authority_signer_seeds.unwrap(),
             params.token_in_amount,
         )?;
     }
@@ -260,7 +259,7 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
             params.token_out_source_account,
             params.token_out_destination_account,
             params.token_out_authority,
-            params.token_out_signer_seeds,
+            params.vault_authority_signer_seeds,
             params.token_out_amount,
         )?;
     }
