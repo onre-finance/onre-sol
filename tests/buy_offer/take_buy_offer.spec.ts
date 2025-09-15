@@ -1,4 +1,4 @@
-import { PublicKey } from "@solana/web3.js";
+import { Keypair, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { TestHelper } from "../test_helper";
 import { OnreProgram } from "../onre_program.ts";
@@ -8,7 +8,7 @@ describe("Take Buy Offer", () => {
     let program: OnreProgram;
     let tokenInMint: PublicKey;
     let tokenOutMint: PublicKey;
-    let user: any;
+    let user: Keypair;
     let userTokenInAccount: PublicKey;
     let userTokenOutAccount: PublicKey;
     let bossTokenInAccount: PublicKey;
