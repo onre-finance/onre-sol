@@ -1,7 +1,9 @@
 use crate::constants::seeds;
 use crate::instructions::{SingleRedemptionOffer, SingleRedemptionOfferAccount};
 use crate::state::State;
-use crate::utils::{calculate_fees, calculate_token_out_amount, transfer_tokens};
+use crate::utils::{
+    calculate_fees, calculate_token_out_amount, execute_token_operations, ExecTokenOpsParams,
+};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
@@ -37,7 +39,6 @@ pub struct TakeSingleRedemptionOfferEvent {
 /// This struct defines the accounts required for a user to take a redemption offer.
 /// The user provides token_in and receives token_out based on the offer's price.
 #[derive(Accounts)]
-#[instruction(offer_id: u64)]
 pub struct TakeSingleRedemptionOffer<'info> {
     /// The single redemption offer account containing all offers.
     #[account(mut, seeds = [seeds::SINGLE_REDEMPTION_OFFERS], bump)]
@@ -60,10 +61,12 @@ pub struct TakeSingleRedemptionOffer<'info> {
     pub vault_authority: UncheckedAccount<'info>,
 
     /// The token mint for token_in.
-    pub token_in_mint: Box<Account<'info, Mint>>,
+    /// Must be mutable to allow burning when program has mint authority
+    #[account(mut)]
+    pub token_in_mint: Account<'info, Mint>,
 
     /// The token mint for token_out.
-    pub token_out_mint: Box<Account<'info, Mint>>,
+    pub token_out_mint: Account<'info, Mint>,
 
     /// User's token_in account (source of payment).
     #[account(
@@ -71,7 +74,7 @@ pub struct TakeSingleRedemptionOffer<'info> {
         associated_token::mint = token_in_mint,
         associated_token::authority = user
     )]
-    pub user_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub user_token_in_account: Account<'info, TokenAccount>,
 
     /// User's token_out account (destination of tokens).
     #[account(
@@ -79,15 +82,31 @@ pub struct TakeSingleRedemptionOffer<'info> {
         associated_token::mint = token_out_mint,
         associated_token::authority = user
     )]
-    pub user_token_out_account: Box<Account<'info, TokenAccount>>,
+    pub user_token_out_account: Account<'info, TokenAccount>,
 
-    /// Boss's token_in account (destination of payment).
+    /// Optional mint authority PDA for direct burning (when program has mint authority)
+    /// CHECK: PDA derivation is validated through seeds constraint
+    #[account(
+        seeds = [seeds::MINT_AUTHORITY],
+        bump
+    )]
+    pub mint_authority_pda: UncheckedAccount<'info>,
+
+    /// Boss's token_in account (destination of payment when no mint authority).
     #[account(
         mut,
         associated_token::mint = token_in_mint,
         associated_token::authority = boss
     )]
-    pub boss_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub boss_token_in_account: Account<'info, TokenAccount>,
+
+    /// Optional vault token_in account (for burning when program has mint authority).
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = vault_authority
+    )]
+    pub vault_token_in_account: Account<'info, TokenAccount>,
 
     /// Vault's token_out account (source of tokens to give).
     #[account(
@@ -95,7 +114,7 @@ pub struct TakeSingleRedemptionOffer<'info> {
         associated_token::mint = token_out_mint,
         associated_token::authority = vault_authority
     )]
-    pub vault_token_out_account: Box<Account<'info, TokenAccount>>,
+    pub vault_token_out_account: Account<'info, TokenAccount>,
 
     /// The user taking the offer.
     #[account(mut)]
@@ -143,8 +162,35 @@ pub fn take_single_redemption_offer(
         ctx.accounts.token_out_mint.decimals,
     )?;
 
-    // Execute transfers
-    execute_transfers(&ctx, token_in_amount, token_out_amount)?;
+    // Execute token operations (transfer + burn for token_in, transfer for token_out)
+    execute_token_operations(ExecTokenOpsParams {
+        token_program: &ctx.accounts.token_program,
+        // Token in params
+        token_in_mint: &ctx.accounts.token_in_mint,
+        token_in_amount, // Includes fee
+        token_in_authority: &ctx.accounts.user,
+        token_in_source_signer_seeds: None,
+        token_in_burn_signer_seeds: Some(&[&[
+            seeds::SINGLE_REDEMPTION_VAULT_AUTHORITY,
+            &[ctx.bumps.vault_authority],
+        ]]),
+        token_in_source_account: &ctx.accounts.user_token_in_account,
+        token_in_destination_account: &ctx.accounts.boss_token_in_account,
+        token_in_burn_account: &ctx.accounts.vault_token_in_account,
+        token_in_burn_authority: &ctx.accounts.vault_authority,
+        // Token out params
+        token_out_mint: &ctx.accounts.token_out_mint,
+        token_out_amount,
+        token_out_authority: &ctx.accounts.vault_authority,
+        token_out_source_account: &ctx.accounts.vault_token_out_account,
+        token_out_destination_account: &ctx.accounts.user_token_out_account,
+        token_out_signer_seeds: Some(&[&[
+            seeds::SINGLE_REDEMPTION_VAULT_AUTHORITY,
+            &[ctx.bumps.vault_authority],
+        ]]),
+        mint_authority_pda: &ctx.accounts.mint_authority_pda,
+        mint_authority_bump: &[ctx.bumps.mint_authority_pda],
+    })?;
 
     msg!(
         "Redemption offer taken - ID: {}, token_in: {}, fee: {}, token_out: {}, user: {}",
@@ -218,38 +264,57 @@ fn validate_offer(
     Ok(())
 }
 
-/// Executes token transfers (single transfer for total amount including fee)
-fn execute_transfers(
-    ctx: &Context<TakeSingleRedemptionOffer>,
-    total_token_in_amount: u64,
-    token_out_amount: u64,
-) -> Result<()> {
-    // Transfer total token_in from user to boss (includes fee)
-    transfer_tokens(
-        &ctx.accounts.token_program,
-        &ctx.accounts.user_token_in_account,
-        &ctx.accounts.boss_token_in_account,
-        &ctx.accounts.user,
-        None,
-        total_token_in_amount,
-    )?;
-
-    // Transfer token_out from vault to user using vault authority
-    let vault_authority_bump = ctx.bumps.vault_authority;
-    let vault_authority_seeds = &[
-        seeds::SINGLE_REDEMPTION_VAULT_AUTHORITY,
-        &[vault_authority_bump],
-    ];
-    let signer_seeds = &[vault_authority_seeds.as_slice()];
-
-    transfer_tokens(
-        &ctx.accounts.token_program,
-        &ctx.accounts.vault_token_out_account,
-        &ctx.accounts.user_token_out_account,
-        &ctx.accounts.vault_authority,
-        Some(signer_seeds),
-        token_out_amount,
-    )?;
-
-    Ok(())
-}
+// /// Executes token operations with transfer + burn logic for token_in
+// ///
+// /// This function handles both token_in (transfer + optional burn) and token_out (transfer from vault):
+// /// 1. Token_in: Always transfer from user to boss, then optionally burn from boss if program has mint authority
+// /// 2. Token_out: Always transfer from vault to user (unchanged from current implementation)
+// fn execute_token_operations(
+//     ctx: &Context<TakeSingleRedemptionOffer>,
+//     token_in_amount: u64,
+//     token_out_amount: u64,
+// ) -> Result<()> {
+//     let vault_authority_bump = ctx.bumps.vault_authority;
+//     let vault_authority_seeds = &[
+//         seeds::SINGLE_REDEMPTION_VAULT_AUTHORITY,
+//         &[vault_authority_bump],
+//     ];
+//     let signer_seeds = &[vault_authority_seeds.as_slice()];
+//
+//     // Step 1: Transfer token_in from user to program vault
+//     transfer_tokens(
+//         &ctx.accounts.token_program,
+//         &ctx.accounts.user_token_in_account,
+//         &ctx.accounts.vault_token_in_account,
+//         &ctx.accounts.user,
+//         None, // User-signed transfer
+//         token_in_amount,
+//     )?;
+//
+//     // Step 2: Transfer token_out from vault to user
+//     transfer_tokens(
+//         &ctx.accounts.token_program,
+//         &ctx.accounts.vault_token_out_account,
+//         &ctx.accounts.user_token_out_account,
+//         &ctx.accounts.vault_authority,
+//         Some(signer_seeds),
+//         token_out_amount,
+//     )?;
+//
+//     // Step 3 (optional): Burn token_in from vault if program has mint authority
+//     if program_controls_mint(
+//         &ctx.accounts.token_in_mint,
+//         &ctx.accounts.mint_authority_pda.to_account_info(),
+//     ) {
+//         burn_tokens(
+//             &ctx.accounts.token_program,
+//             &ctx.accounts.token_in_mint,
+//             &ctx.accounts.vault_token_in_account,
+//             &ctx.accounts.vault_authority,
+//             signer_seeds,
+//             token_in_amount,
+//         )?;
+//     }
+//
+//     Ok(())
+// }

@@ -3,7 +3,8 @@ use crate::instructions::DualRedemptionOfferAccount;
 use crate::state::State;
 use crate::utils::MAX_BASIS_POINTS;
 use anchor_lang::prelude::*;
-use anchor_spl::token::Mint;
+use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 /// Event emitted when a dual redemption offer is created.
 #[event]
@@ -31,8 +32,23 @@ pub struct MakeDualRedemptionOffer<'info> {
     #[account(mut, seeds = [seeds::DUAL_REDEMPTION_OFFERS], bump)]
     pub dual_redemption_offer_account: AccountLoader<'info, DualRedemptionOfferAccount>,
 
+    /// The single redemption vault authority that controls vault token accounts.
+    #[account(seeds = [seeds::DUAL_REDEMPTION_VAULT_AUTHORITY], bump)]
+    /// CHECK: This is safe as it's a PDA used for signing
+    pub vault_authority: UncheckedAccount<'info>,
+
     /// Mint of the token_in for the offer.
     pub token_in_mint: Box<Account<'info, Mint>>,
+
+    /// Vault token_in account, used to transfer tokens to a program owned account for burning
+    /// when program has mint authority.
+    #[account(
+        init_if_needed,
+        payer = boss,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = vault_authority
+    )]
+    pub vault_token_in_account: Account<'info, TokenAccount>,
 
     /// Mint of the first token_out for the offer.
     pub token_out_mint_1: Box<Account<'info, Mint>>,
@@ -47,6 +63,12 @@ pub struct MakeDualRedemptionOffer<'info> {
     /// The signer funding and authorizing the offer creation.
     #[account(mut)]
     pub boss: Signer<'info>,
+
+    /// SPL Token program for token transfers
+    pub token_program: Program<'info, Token>,
+
+    /// Associated Token Program for automatic token account creation
+    pub associated_token_program: Program<'info, AssociatedToken>,
 
     /// Solana System program for account creation and rent payment.
     pub system_program: Program<'info, System>,

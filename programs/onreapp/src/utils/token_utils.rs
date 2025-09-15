@@ -1,5 +1,7 @@
+use crate::constants::seeds;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount, Transfer};
+use anchor_lang::solana_program::program_option::COption;
+use anchor_spl::token::{self, Burn, Mint, MintTo, Token, TokenAccount, Transfer};
 
 pub const MAX_BASIS_POINTS: u64 = 10000;
 
@@ -148,81 +150,128 @@ pub fn mint_tokens<'info>(
     token::mint_to(mint_ctx, amount)
 }
 
-/// Enhanced token distribution function that mints directly or falls back to vault transfer
-///
-/// This function implements the core logic for buy offer token distribution:
-/// 1. Checks if the program has mint authority for the token
-/// 2. If yes: Mints tokens directly to user (more efficient)
-/// 3. If no: Transfers tokens from vault to user (fallback)
+/// Burns tokens from a user account using user authority
 ///
 /// # Arguments
-/// * `token_out_mint` - The mint for the output token
-/// * `mint_authority_pda` - Optional mint authority PDA (if program has authority)
-/// * `vault_authority` - Vault authority PDA (for transfer fallback)
-/// * `vault_token_out_account` - Optional vault token account (for transfer fallback)
-/// * `user_token_out_account` - User's destination token account
-/// * `token_program` - SPL Token program
-/// * `vault_authority_bump` - Bump seed for vault authority
-/// * `mint_authority_bump` - Optional bump seed for mint authority
-/// * `token_out_amount` - Amount of tokens to distribute
-///
-/// # Returns
-/// * `Ok(())` if tokens were successfully distributed (either minted or transferred)
-/// * `Err(_)` if both mint and transfer attempts fail
-pub fn mint_or_transfer_tokens<'info>(
-    token_out_mint: &Account<'info, Mint>,
-    mint_authority_pda: Option<&AccountInfo<'info>>,
-    vault_authority: &AccountInfo<'info>,
-    vault_token_out_account: Option<&Account<'info, TokenAccount>>,
-    user_token_out_account: &Account<'info, TokenAccount>,
+/// * `token_program` - The SPL Token program
+/// * `mint` - The token mint to burn from
+/// * `from_account` - Source token account to burn from
+/// * `authority` - The burn authority (the token account owner)
+/// * `signer_seeds` - Optional PDA seeds for program-signed burning (None for user-signed)
+/// * `amount` - Amount of tokens to burn
+pub fn burn_tokens<'info>(
     token_program: &Program<'info, Token>,
-    vault_authority_bump: u8,
-    mint_authority_bump: Option<u8>,
-    token_out_amount: u64,
+    mint: &Account<'info, Mint>,
+    from_account: &Account<'info, TokenAccount>,
+    authority: &AccountInfo<'info>,
+    signer_seeds: &[&[&[u8]]],
+    amount: u64,
 ) -> Result<()> {
-    use crate::constants::seeds;
+    let burn_accounts = Burn {
+        mint: mint.to_account_info(),
+        from: from_account.to_account_info(),
+        authority: authority.to_account_info(),
+    };
 
-    // Check if program has mint authority and all required accounts are present
-    if let (Some(mint_authority), Some(bump)) = (mint_authority_pda, mint_authority_bump) {
-        // Verify that the program actually holds the mint authority
-        let expected_authority = mint_authority.key();
-        match token_out_mint.mint_authority {
-            anchor_lang::solana_program::program_option::COption::Some(current_authority) => {
-                if current_authority == expected_authority {
-                    // Program has mint authority - mint directly to user
-                    let mint_key = token_out_mint.key();
-                    let authority_seeds = &[seeds::MINT_AUTHORITY, mint_key.as_ref(), &[bump]];
-                    let signer_seeds = &[authority_seeds.as_slice()];
+    let burn_ctx =
+        CpiContext::new_with_signer(token_program.to_account_info(), burn_accounts, signer_seeds);
 
-                    return mint_tokens(
-                        token_program,
-                        token_out_mint,
-                        user_token_out_account,
-                        mint_authority,
-                        signer_seeds,
-                        token_out_amount,
-                    );
-                }
-            }
-            _ => {} // No mint authority or different authority - fall through to transfer
-        }
+    token::burn(burn_ctx, amount)
+}
+
+pub struct ExecTokenOpsParams<'a, 'info> {
+    pub token_program: &'a Program<'info, Token>,
+    // Token in params
+    pub token_in_mint: &'a Account<'info, Mint>,
+    pub token_in_amount: u64,
+    pub token_in_authority: &'a AccountInfo<'info>,
+    pub token_in_source_signer_seeds: Option<&'a [&'a [&'a [u8]]]>,
+    pub token_in_burn_signer_seeds: Option<&'a [&'a [&'a [u8]]]>,
+    pub token_in_source_account: &'a Account<'info, TokenAccount>,
+    pub token_in_destination_account: &'a Account<'info, TokenAccount>,
+    pub token_in_burn_account: &'a Account<'info, TokenAccount>,
+    pub token_in_burn_authority: &'a AccountInfo<'info>,
+    // Token out params
+    pub token_out_mint: &'a Account<'info, Mint>,
+    pub token_out_amount: u64,
+    pub token_out_authority: &'a UncheckedAccount<'info>,
+    pub token_out_source_account: &'a Account<'info, TokenAccount>,
+    pub token_out_destination_account: &'a Account<'info, TokenAccount>,
+    pub token_out_signer_seeds: Option<&'a [&'a [&'a [u8]]]>,
+    pub mint_authority_pda: &'a AccountInfo<'info>,
+    pub mint_authority_bump: &'a [u8],
+}
+
+/// Executes token operations for exchanging token_in for a single token_out.
+///
+/// If the program has mint authority for token_in, it transfers tokens from user to program vault
+/// and burns them. Otherwise, it transfers directly to the boss.
+///
+/// If the program has mint authority for token_out, it mints directly to the user. Otherwise,
+/// it transfers tokens from the vault to the user.
+pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
+    // Step 1: User pays token_in
+    let controls_token_in_mint =
+        program_controls_mint(params.token_in_mint, params.mint_authority_pda);
+    let token_in_destination = if controls_token_in_mint {
+        // transfer to program owned PDA for burning
+        params.token_in_burn_account
+    } else {
+        // transfer directly to boss/intermediary account (in permissionless flow)
+        params.token_in_destination_account
+    };
+
+    transfer_tokens(
+        params.token_program,
+        params.token_in_source_account,
+        token_in_destination,
+        params.token_in_authority,
+        params.token_in_source_signer_seeds,
+        params.token_in_amount,
+    )?;
+
+    if controls_token_in_mint {
+        burn_tokens(
+            params.token_program,
+            params.token_in_mint,
+            params.token_in_burn_account,
+            params.token_in_burn_authority,
+            params.token_in_burn_signer_seeds.unwrap(),
+            params.token_in_amount,
+        )?;
     }
 
-    // Fallback: Transfer from vault to user
-    if let Some(vault_account) = vault_token_out_account {
-        let vault_authority_seeds = &[seeds::BUY_OFFER_VAULT_AUTHORITY, &[vault_authority_bump]];
-        let signer_seeds = &[vault_authority_seeds.as_slice()];
+    // Step 2: Program distributes token_out
+    if program_controls_mint(params.token_out_mint, params.mint_authority_pda) {
+        let mint_authority_seeds = &[seeds::MINT_AUTHORITY, params.mint_authority_bump];
+        let mint_authority_signer_seeds = &[mint_authority_seeds.as_slice()];
 
-        return transfer_tokens(
-            token_program,
-            vault_account,
-            user_token_out_account,
-            vault_authority,
-            Some(signer_seeds),
-            token_out_amount,
-        );
+        mint_tokens(
+            params.token_program,
+            params.token_out_mint,
+            params.token_out_destination_account,
+            params.mint_authority_pda,
+            mint_authority_signer_seeds,
+            params.token_out_amount,
+        )?;
+    } else {
+        transfer_tokens(
+            params.token_program,
+            params.token_out_source_account,
+            params.token_out_destination_account,
+            params.token_out_authority,
+            params.token_out_signer_seeds,
+            params.token_out_amount,
+        )?;
     }
 
-    // This should never happen if account validation is correct
-    err!(TokenUtilsErrorCode::MathOverflow) // Reusing existing error for simplicity
+    Ok(())
+}
+
+/// Returns true iff `mint.mint_authority == Some(mint_authority_pda.key())`.
+pub fn program_controls_mint<'info>(
+    mint: &Account<'info, Mint>,
+    mint_authority_pda: &AccountInfo<'info>,
+) -> bool {
+    matches!(mint.mint_authority, COption::Some(pk) if pk == mint_authority_pda.key())
 }

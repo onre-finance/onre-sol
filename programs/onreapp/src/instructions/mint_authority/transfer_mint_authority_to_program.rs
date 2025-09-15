@@ -67,7 +67,7 @@ pub struct TransferMintAuthorityToProgram<'info> {
     /// Derived from [MINT_AUTHORITY, mint_pubkey] to ensure uniqueness per token
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
-        seeds = [seeds::MINT_AUTHORITY, mint.key().as_ref()],
+        seeds = [seeds::MINT_AUTHORITY],
         bump
     )]
     pub mint_authority_pda: UncheckedAccount<'info>,

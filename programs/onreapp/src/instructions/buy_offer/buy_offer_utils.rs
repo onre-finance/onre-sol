@@ -1,6 +1,6 @@
 use crate::constants::seeds;
 use crate::instructions::{BuyOffer, BuyOfferAccount, BuyOfferVector};
-use crate::utils::{calculate_token_out_amount, mint_or_transfer_tokens, transfer_tokens};
+use crate::utils::{calculate_fees, calculate_token_out_amount, transfer_tokens};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
@@ -21,7 +21,9 @@ pub enum BuyOfferCoreError {
 /// Result structure for the core buy offer processing
 pub struct BuyOfferProcessResult {
     pub current_price: u64,
+    pub token_in_amount: u64,
     pub token_out_amount: u64,
+    pub fee_amount: u64,
 }
 
 /// Core processing logic shared between both take_buy_offer instructions
@@ -45,6 +47,7 @@ pub fn process_buy_offer_core(
     offer_account: &BuyOfferAccount,
     offer_id: u64,
     token_in_amount: u64,
+    fee_basis_points: u64,
     token_in_mint: &Account<Mint>,
     token_out_mint: &Account<Mint>,
 ) -> Result<BuyOfferProcessResult> {
@@ -64,9 +67,11 @@ pub fn process_buy_offer_core(
         active_vector.price_fix_duration,
     )?;
 
+    let fee_amounts = calculate_fees(token_in_amount, fee_basis_points)?;
+
     // Calculate how many token_out to give for the provided token_in_amount
     let token_out_amount = calculate_token_out_amount(
-        token_in_amount,
+        fee_amounts.remaining_token_in_amount,
         current_price,
         token_in_mint.decimals,
         token_out_mint.decimals,
@@ -74,7 +79,9 @@ pub fn process_buy_offer_core(
 
     Ok(BuyOfferProcessResult {
         current_price,
+        token_in_amount: fee_amounts.remaining_token_in_amount,
         token_out_amount,
+        fee_amount: fee_amounts.fee_amount,
     })
 }
 
@@ -360,67 +367,6 @@ pub fn execute_permissionless_transfers<'info>(
         user_token_out_account,
         permissionless_authority,
         Some(permissionless_signer_seeds),
-        token_out_amount,
-    )?;
-
-    Ok(())
-}
-
-/// Enhanced token distribution that supports both minting and vault transfers
-/// 
-/// This function replaces execute_direct_transfers with smart token distribution:
-/// 1. User pays token_in to boss (unchanged)
-/// 2. Program mints token_out to user (if has mint authority) OR transfers from vault (fallback)
-///
-/// # Arguments
-/// * `user` - The user taking the offer
-/// * `user_token_in_account` - User's input token account (source of payment)
-/// * `boss_token_in_account` - Boss's input token account (payment destination)
-/// * `token_out_mint` - The output token mint
-/// * `mint_authority_pda` - Optional mint authority PDA (for minting)
-/// * `vault_authority` - Vault authority PDA (for transfer fallback)
-/// * `vault_token_out_account` - Optional vault output token account (for transfer fallback)
-/// * `user_token_out_account` - User's output token account (token destination)
-/// * `token_program` - SPL Token program
-/// * `vault_authority_bump` - Bump seed for vault authority
-/// * `mint_authority_bump` - Optional bump seed for mint authority
-/// * `token_in_amount` - Amount user pays
-/// * `token_out_amount` - Amount user receives
-pub fn execute_token_distribution<'info>(
-    user: &Signer<'info>,
-    user_token_in_account: &Account<'info, TokenAccount>,
-    boss_token_in_account: &Account<'info, TokenAccount>,
-    token_out_mint: &Account<'info, Mint>,
-    mint_authority_pda: Option<&UncheckedAccount<'info>>,
-    vault_authority: &UncheckedAccount<'info>,
-    vault_token_out_account: Option<&Account<'info, TokenAccount>>,
-    user_token_out_account: &Account<'info, TokenAccount>,
-    token_program: &Program<'info, Token>,
-    vault_authority_bump: u8,
-    mint_authority_bump: Option<u8>,
-    token_in_amount: u64,
-    token_out_amount: u64,
-) -> Result<()> {
-    // Step 1: User pays token_in to boss (unchanged from current implementation)
-    transfer_tokens(
-        token_program,
-        user_token_in_account,
-        boss_token_in_account,
-        user,
-        None,
-        token_in_amount,
-    )?;
-
-    // Step 2: Distribute token_out to user (mint directly OR transfer from vault)
-    mint_or_transfer_tokens(
-        token_out_mint,
-        mint_authority_pda.map(|account| account.as_ref()),
-        vault_authority.as_ref(),
-        vault_token_out_account,
-        user_token_out_account,
-        token_program,
-        vault_authority_bump,
-        mint_authority_bump,
         token_out_amount,
     )?;
 

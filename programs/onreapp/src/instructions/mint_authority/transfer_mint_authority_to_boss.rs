@@ -71,7 +71,7 @@ pub struct TransferMintAuthorityToBoss<'info> {
     /// Must be derived from [MINT_AUTHORITY, mint_pubkey] and currently be the mint authority
     /// CHECK: PDA derivation is validated by seeds constraint, authority is validated by mint constraint
     #[account(
-        seeds = [seeds::MINT_AUTHORITY, mint.key().as_ref()],
+        seeds = [seeds::MINT_AUTHORITY],
         bump
     )]
     pub mint_authority_pda: UncheckedAccount<'info>,
@@ -102,14 +102,8 @@ pub struct TransferMintAuthorityToBoss<'info> {
 /// # Events
 /// Emits `MintAuthorityTransferredToBossEvent` on success
 pub fn transfer_mint_authority_to_boss(ctx: Context<TransferMintAuthorityToBoss>) -> Result<()> {
-    let mint_key = ctx.accounts.mint.key();
-
     // Construct PDA signer seeds for authorization
-    let seeds = &[
-        seeds::MINT_AUTHORITY,
-        mint_key.as_ref(),
-        &[ctx.bumps.mint_authority_pda],
-    ];
+    let seeds = &[seeds::MINT_AUTHORITY, &[ctx.bumps.mint_authority_pda]];
     let signer_seeds = &[seeds.as_slice()];
 
     // Transfer mint authority from program PDA back to boss using program signature

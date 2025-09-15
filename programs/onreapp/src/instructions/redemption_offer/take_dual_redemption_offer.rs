@@ -63,6 +63,8 @@ pub struct TakeDualRedemptionOffer<'info> {
     pub vault_authority: UncheckedAccount<'info>,
 
     /// The token mint for token_in.
+    /// Must be mutable to allow burning when program has mint authority
+    #[account(mut)]
     pub token_in_mint: Box<Account<'info, Mint>>,
 
     /// The token mint for token_out_1.
@@ -95,13 +97,29 @@ pub struct TakeDualRedemptionOffer<'info> {
     )]
     pub user_token_out_2_account: Box<Account<'info, TokenAccount>>,
 
-    /// Boss's token_in account (destination of payment).
+    /// Optional mint authority PDA for direct burning (when program has mint authority)
+    /// CHECK: PDA derivation is validated through seeds constraint
+    #[account(
+        seeds = [seeds::MINT_AUTHORITY],
+        bump
+    )]
+    pub mint_authority_pda: Option<UncheckedAccount<'info>>,
+
+    /// Boss's token_in account (destination of payment when no mint authority).
     #[account(
         mut,
         associated_token::mint = token_in_mint,
         associated_token::authority = boss
     )]
     pub boss_token_in_account: Box<Account<'info, TokenAccount>>,
+
+    /// Optional vault token_in account (for burning when program has mint authority).
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = vault_authority
+    )]
+    pub vault_token_in_account: Option<Box<Account<'info, TokenAccount>>>,
 
     /// Vault's token_out_1 account (source of token_out_1 to give).
     #[account(
@@ -169,8 +187,8 @@ pub fn take_dual_redemption_offer(
         ctx.accounts.token_out_mint_2.decimals,
     )?;
 
-    // Execute transfers
-    execute_transfers(
+    // Execute token operations (burn or transfer for token_in, transfers for token_out_1 and token_out_2)
+    execute_token_operations(
         &ctx,
         token_in_amount,
         token_out_1_amount,
@@ -309,8 +327,12 @@ fn calculate_token_out_amounts(
     Ok((token_out_1_amount, token_out_2_amount))
 }
 
-/// Executes all token transfers (single transfer for total amount including fee)
-fn execute_transfers(
+/// Executes token operations with transfer + burn logic for token_in
+///
+/// This function handles token_in (transfer + optional burn) and both token_out transfers:
+/// 1. Token_in: Always transfer from user to boss, then optionally burn from boss if program has mint authority
+/// 2. Token_out_1 and token_out_2: Always transfer from vault to user (unchanged from current implementation)
+fn execute_token_operations(
     ctx: &Context<TakeDualRedemptionOffer>,
     total_token_in_amount: u64,
     token_out_1_amount: u64,

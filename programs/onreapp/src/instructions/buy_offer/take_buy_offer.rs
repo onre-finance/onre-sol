@@ -1,10 +1,11 @@
 use crate::constants::seeds;
-use crate::instructions::buy_offer::buy_offer_utils::{find_offer, process_buy_offer_core, execute_token_distribution};
+use crate::instructions::buy_offer::buy_offer_utils::{find_offer, process_buy_offer_core};
 use crate::instructions::BuyOfferAccount;
 use crate::state::State;
-use crate::utils::{calculate_fees, u64_to_dec9};
+use crate::utils::{execute_token_operations, u64_to_dec9, ExecTokenOpsParams};
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
 /// Error codes specific to the take_buy_offer instruction
@@ -21,7 +22,7 @@ pub enum TakeBuyOfferErrorCode {
 pub struct TakeBuyOfferEvent {
     /// The ID of the buy offer that was taken
     pub offer_id: u64,
-    /// Amount of token_in paid by the user (including fee)
+    /// Amount of token_in paid by the user (excluding fee)
     pub token_in_amount: u64,
     /// Amount of token_out received by the user
     pub token_out_amount: u64,
@@ -42,7 +43,7 @@ pub struct TakeBuyOffer<'info> {
     pub buy_offer_account: AccountLoader<'info, BuyOfferAccount>,
 
     /// Program state account containing the boss public key
-    pub state: Box<Account<'info, State>>,
+    pub state: Account<'info, State>,
 
     /// The boss account that receives token_in payments
     /// Must match the boss stored in the program state
@@ -57,13 +58,29 @@ pub struct TakeBuyOffer<'info> {
     /// CHECK: This is safe as it's a PDA used for signing
     pub vault_authority: UncheckedAccount<'info>,
 
+    /// Vault's token_in account, used for burning tokens when program has mint authority
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = vault_authority
+    )]
+    pub vault_token_in_account: Account<'info, TokenAccount>,
+
+    /// Vault's token_out account (source of tokens to distribute to user)
+    #[account(
+        mut,
+        associated_token::mint = token_out_mint,
+        associated_token::authority = vault_authority
+    )]
+    pub vault_token_out_account: Account<'info, TokenAccount>,
+
     /// The mint account for the input token (what user pays)
-    pub token_in_mint: Box<Account<'info, Mint>>,
+    pub token_in_mint: Account<'info, Mint>,
 
     /// The mint account for the output token (what user receives)
     /// Must be mutable to allow minting when program has mint authority
     #[account(mut)]
-    pub token_out_mint: Box<Account<'info, Mint>>,
+    pub token_out_mint: Account<'info, Mint>,
 
     /// User's token_in account (source of payment)
     #[account(
@@ -71,7 +88,7 @@ pub struct TakeBuyOffer<'info> {
         associated_token::mint = token_in_mint,
         associated_token::authority = user
     )]
-    pub user_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub user_token_in_account: Account<'info, TokenAccount>,
 
     /// User's token_out account (destination of received tokens)
     /// Uses init_if_needed to automatically create account if it doesn't exist
@@ -81,7 +98,7 @@ pub struct TakeBuyOffer<'info> {
         associated_token::mint = token_out_mint,
         associated_token::authority = user
     )]
-    pub user_token_out_account: Box<Account<'info, TokenAccount>>,
+    pub user_token_out_account: Account<'info, TokenAccount>,
 
     /// Boss's token_in account (destination of user's payment)
     #[account(
@@ -89,24 +106,15 @@ pub struct TakeBuyOffer<'info> {
         associated_token::mint = token_in_mint,
         associated_token::authority = boss
     )]
-    pub boss_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub boss_token_in_account: Account<'info, TokenAccount>,
 
-    /// Optional mint authority PDA for direct minting (when program has mint authority)
+    /// Mint authority PDA for direct minting (when program has mint authority)
     /// CHECK: PDA derivation is validated through seeds constraint
     #[account(
-        seeds = [seeds::MINT_AUTHORITY, token_out_mint.key().as_ref()],
+        seeds = [seeds::MINT_AUTHORITY],
         bump
     )]
-    pub mint_authority_pda: Option<UncheckedAccount<'info>>,
-
-    /// Vault's token_out account (source of tokens to distribute to user)
-    /// Optional - only required when program doesn't have mint authority
-    #[account(
-        mut,
-        associated_token::mint = token_out_mint,
-        associated_token::authority = vault_authority
-    )]
-    pub vault_token_out_account: Option<Box<Account<'info, TokenAccount>>>,
+    pub mint_authority_pda: UncheckedAccount<'info>,
 
     /// The user taking the offer (must sign the transaction)
     #[account(mut)]
@@ -116,7 +124,7 @@ pub struct TakeBuyOffer<'info> {
     pub token_program: Program<'info, Token>,
 
     /// Associated Token Program for automatic token account creation
-    pub associated_token_program: Program<'info, anchor_spl::associated_token::AssociatedToken>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 
     /// System program required for account creation
     pub system_program: Program<'info, System>,
@@ -125,7 +133,7 @@ pub struct TakeBuyOffer<'info> {
 /// Main instruction handler for taking a buy offer with mint/transfer flexibility
 ///
 /// This function allows users to accept a buy offer by paying the current market price
-/// in token_in to receive token_out. The price is calculated using a discrete interval 
+/// in token_in to receive token_out. The price is calculated using a discrete interval
 /// pricing model with linear yield growth. Token distribution uses smart logic:
 /// - If program has mint authority: mints token_out directly to user (more efficient)
 /// - If program lacks mint authority: transfers token_out from vault to user (fallback)
@@ -173,38 +181,50 @@ pub fn take_buy_offer(
     // Find the offer to get fee information
     let offer = find_offer(&offer_account, offer_id)?;
 
-    let fee_amounts = calculate_fees(token_in_amount, offer.fee_basis_points)?;
-
     // Use shared core processing logic for main exchange amount
     let result = process_buy_offer_core(
         &offer_account,
         offer_id,
-        fee_amounts.remaining_token_in_amount,
+        token_in_amount,
+        offer.fee_basis_points,
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
     )?;
 
-    execute_token_distribution(
-        &ctx.accounts.user,
-        &ctx.accounts.user_token_in_account,
-        &ctx.accounts.boss_token_in_account,
-        &ctx.accounts.token_out_mint,
-        ctx.accounts.mint_authority_pda.as_ref(),
-        &ctx.accounts.vault_authority,
-        ctx.accounts.vault_token_out_account.as_deref(),
-        &ctx.accounts.user_token_out_account,
-        &ctx.accounts.token_program,
-        ctx.bumps.vault_authority,
-        ctx.bumps.mint_authority_pda,
-        token_in_amount, // Boss gets full amount including fee
-        result.token_out_amount,
-    )?;
+    execute_token_operations(ExecTokenOpsParams {
+        token_program: &ctx.accounts.token_program,
+        // Token in params
+        token_in_mint: &ctx.accounts.token_in_mint,
+        token_in_amount, // Includes fee
+        token_in_authority: &ctx.accounts.user,
+        token_in_source_signer_seeds: None,
+        token_in_burn_signer_seeds: Some(&[&[
+            seeds::BUY_OFFER_VAULT_AUTHORITY,
+            &[ctx.bumps.vault_authority],
+        ]]),
+        token_in_source_account: &ctx.accounts.user_token_in_account,
+        token_in_destination_account: &ctx.accounts.boss_token_in_account,
+        token_in_burn_account: &ctx.accounts.vault_token_in_account,
+        token_in_burn_authority: &ctx.accounts.vault_authority,
+        // Token out params
+        token_out_mint: &ctx.accounts.token_out_mint,
+        token_out_amount: result.token_out_amount,
+        token_out_authority: &ctx.accounts.vault_authority,
+        token_out_source_account: &ctx.accounts.vault_token_out_account,
+        token_out_destination_account: &ctx.accounts.user_token_out_account,
+        token_out_signer_seeds: Some(&[&[
+            seeds::BUY_OFFER_VAULT_AUTHORITY,
+            &[ctx.bumps.vault_authority],
+        ]]),
+        mint_authority_pda: &ctx.accounts.mint_authority_pda,
+        mint_authority_bump: &[ctx.bumps.mint_authority_pda],
+    })?;
 
     msg!(
-        "Buy offer taken - ID: {}, token_in: {}, fee: {}, token_out: {}, user: {}, price: {}",
+        "Buy offer taken - ID: {}, token_in(excluding fee): {}, fee: {}, token_out: {}, user: {}, price: {}",
         offer_id,
-        token_in_amount,
-        fee_amounts.fee_amount,
+        result.token_in_amount,
+        result.fee_amount,
         result.token_out_amount,
         ctx.accounts.user.key,
         u64_to_dec9(result.current_price)
@@ -212,9 +232,9 @@ pub fn take_buy_offer(
 
     emit!(TakeBuyOfferEvent {
         offer_id,
-        token_in_amount,
+        token_in_amount: result.token_in_amount,
         token_out_amount: result.token_out_amount,
-        fee_amount: fee_amounts.fee_amount,
+        fee_amount: result.fee_amount,
         user: ctx.accounts.user.key(),
     });
 
