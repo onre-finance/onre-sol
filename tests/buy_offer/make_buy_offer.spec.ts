@@ -1,119 +1,100 @@
-import {PublicKey} from "@solana/web3.js";
-import {ONREAPP_PROGRAM_ID, TestHelper} from "../test_helper";
-import {AddedProgram, startAnchor} from "solana-bankrun";
-import {Onreapp} from "../../target/types/onreapp";
-import {BankrunProvider} from "anchor-bankrun";
-import {Program} from "@coral-xyz/anchor";
-import idl from "../../target/idl/onreapp.json";
+import { PublicKey } from "@solana/web3.js";
+import { TestHelper } from "../test_helper";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { OnreProgram } from "../onre_program.ts";
 
 const MAX_BUY_OFFERS = 10;
 
 describe("Make buy offer", () => {
     let testHelper: TestHelper;
+    let program: OnreProgram;
 
     let tokenInMint: PublicKey;
     let tokenOutMint: PublicKey;
 
-    let boss: PublicKey;
-
     beforeEach(async () => {
-        const programInfo: AddedProgram = {
-            programId: ONREAPP_PROGRAM_ID,
-            name: "onreapp"
-        };
-
-        const workspace = process.cwd();
-        const context = await startAnchor(workspace, [programInfo], []);
-
-        const provider = new BankrunProvider(context);
-        const program = new Program<Onreapp>(
-            idl,
-            provider
-        );
-
-        testHelper = new TestHelper(context, program);
-
-        boss = provider.wallet.publicKey;
+        testHelper = await TestHelper.create();
+        program = new OnreProgram(testHelper.context);
 
         // Create mints
-        tokenInMint = testHelper.createMint(boss, BigInt(100_000e9), 9);
-        tokenOutMint = testHelper.createMint(boss, BigInt(100_000e9), 9);
+        tokenInMint = testHelper.createMint(9);
+        tokenOutMint = testHelper.createMint(9);
 
-        await program.methods.initialize().accounts({boss}).rpc();
-        await program.methods.initializeOffers().accounts({
-            state: testHelper.statePda
-        }).rpc();
+        await program.initialize();
+        await program.initializeOffers();
     });
 
     test("Make a buy offer should succeed", async () => {
         // when
-        await testHelper.makeBuyOffer({
+        const feeBasisPoints = 500; // 5% fee
+        await program.makeBuyOffer({
             tokenInMint,
-            tokenOutMint
+            tokenOutMint,
+            feeBasisPoints
         });
 
         // then
-        const [buyOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from("buy_offers")], ONREAPP_PROGRAM_ID);
-        const buyOfferAccountData = await testHelper.program.account.buyOfferAccount.fetch(buyOfferAccountPda);
+        const buyOfferAccount = await program.getBuyOfferAccount();
 
-        expect(buyOfferAccountData.counter.toNumber()).toBe(1);
+        expect(buyOfferAccount.counter.toNumber()).toBe(1);
 
-        const firstOffer = buyOfferAccountData.offers[0];
+        const firstOffer = buyOfferAccount.offers[0];
         expect(firstOffer.offerId.toNumber()).toBe(1);
         expect(firstOffer.tokenInMint.toString()).toBe(tokenInMint.toString());
         expect(firstOffer.tokenOutMint.toString()).toBe(tokenOutMint.toString());
     });
 
     test("Make multiple offers should succeed", async () => {
-        // given
-        const [buyOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from("buy_offers")], ONREAPP_PROGRAM_ID);
-        const initialData = await testHelper.program.account.buyOfferAccount.fetch(buyOfferAccountPda);
-        const initialCounter = initialData.counter.toNumber();
-
         // when
         // make first offer
-        const token1In = testHelper.createMint(boss, BigInt(100_000e9), 9);
-        const token1Out = testHelper.createMint(boss, BigInt(100_000e9), 9);
+        const token1In = testHelper.createMint(9);
+        const token1Out = testHelper.createMint(9);
 
-        await testHelper.makeBuyOffer({
+        await program.makeBuyOffer({
             tokenInMint: token1In,
             tokenOutMint: token1Out
         });
 
-        const token2In = testHelper.createMint(boss, BigInt(100_000e9), 9);
-        const token2Out = testHelper.createMint(boss, BigInt(100_000e9), 9);
+        const token2In = testHelper.createMint(9);
+        const token2Out = testHelper.createMint(9);
 
         // make second offer
-        await testHelper.makeBuyOffer({
+        await program.makeBuyOffer({
             tokenInMint: token2In,
             tokenOutMint: token2Out
         });
 
         // then
-        const buyOfferAccountData = await testHelper.program.account.buyOfferAccount.fetch(buyOfferAccountPda);
+        let buyOfferAccount = await program.getBuyOfferAccount();
 
-        expect(buyOfferAccountData.counter.toNumber()).toBe(initialCounter + 2);
+        expect(buyOfferAccount.counter.toNumber()).toBe(2);
 
         // Find offers by their auto-generated IDs
-        const firstOffer = buyOfferAccountData.offers.find(offer =>
-            offer.tokenInMint.toString() === token1In.toString() &&
-            offer.offerId.toNumber() > initialCounter
-        );
+        const firstOffer = await program.getOffer(1);
         expect(firstOffer).toBeDefined();
-        expect(firstOffer!.offerId.toNumber()).toBe(initialCounter + 1);
         expect(firstOffer!.tokenOutMint.toString()).toBe(token1Out.toString());
 
-        const secondOffer = buyOfferAccountData.offers.find(offer =>
-            offer.tokenInMint.toString() === token2In.toString()
-        );
+        const secondOffer = await program.getOffer(2);
         expect(secondOffer).toBeDefined();
-        expect(secondOffer!.offerId.toNumber()).toBe(initialCounter + 2);
         expect(secondOffer!.tokenOutMint.toString()).toBe(token2Out.toString());
+    });
+
+    test("Make an offer should initialize vault token_in account", async () => {
+        // when
+        await program.makeBuyOffer({
+            tokenInMint,
+            tokenOutMint
+        });
+
+        // then
+        await expect(testHelper.getAccount(
+            getAssociatedTokenAddressSync(tokenInMint, program.pdas.buyOfferVaultAuthorityPda, true))
+        ).resolves.toBeDefined();
     });
 
     test("Make an offer with invalid token mints should fail", async () => {
         // when
-        await expect(testHelper.makeBuyOffer({
+        await expect(program.makeBuyOffer({
             tokenInMint: new PublicKey(0),
             tokenOutMint: new PublicKey(0)
         })).rejects.toThrow();
@@ -123,25 +104,33 @@ describe("Make buy offer", () => {
         // Create MAX_BUY_OFFERS offers
         for (let i = 0; i < MAX_BUY_OFFERS; i++) {
             // Create unique mints for each offer to avoid duplicate transaction issues
-            const uniqueTokenIn = testHelper.createMint(boss, BigInt(100_000e9), 9);
-            const uniqueTokenOut = testHelper.createMint(boss, BigInt(100_000e9), 9);
+            const uniqueTokenIn = testHelper.createMint(9);
+            const uniqueTokenOut = testHelper.createMint(9);
 
-            await testHelper.makeBuyOffer({
+            await program.makeBuyOffer({
                 tokenInMint: uniqueTokenIn,
                 tokenOutMint: uniqueTokenOut
             });
         }
 
         // Verify array is full
-        const [buyOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from("buy_offers")], ONREAPP_PROGRAM_ID);
-        const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOfferAccountPda);
+        const buyOfferAccount = await program.getBuyOfferAccount();
         const activeOffers = buyOfferAccount.offers.filter(offer => offer.offerId.toNumber() > 0).length;
         expect(activeOffers).toBe(MAX_BUY_OFFERS);
 
         // when - try to make one more offer (should fail)
-        await expect(testHelper.makeBuyOffer({
+        await expect(program.makeBuyOffer({
             tokenInMint,
             tokenOutMint
         })).rejects.toThrow("Buy offer account is full, cannot create more offers");
+    });
+
+    test("Should reject when called by non-boss", async () => {
+        // Create a buy offer first
+        await expect(program.makeBuyOffer({
+            tokenInMint,
+            tokenOutMint,
+            signer: testHelper.createUserAccount()
+        })).rejects.toThrow("unknown signer");
     });
 });

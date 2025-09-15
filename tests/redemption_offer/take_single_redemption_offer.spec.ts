@@ -1,11 +1,11 @@
-import {PublicKey} from "@solana/web3.js";
-import {ONREAPP_PROGRAM_ID, TestHelper} from "../test_helper";
-import {AddedProgram, startAnchor} from "solana-bankrun";
-import {Onreapp} from "../../target/types/onreapp";
-import {BankrunProvider} from "anchor-bankrun";
-import {BN, Program} from "@coral-xyz/anchor";
+import { PublicKey } from "@solana/web3.js";
+import { ONREAPP_PROGRAM_ID, TestHelper } from "../test_helper";
+import { AddedProgram, startAnchor } from "solana-bankrun";
+import { Onreapp } from "../../target/types/onreapp";
+import { BankrunProvider } from "anchor-bankrun";
+import { BN, Program } from "@coral-xyz/anchor";
 import idl from "../../target/idl/onreapp.json";
-import {getAssociatedTokenAddressSync} from "@solana/spl-token";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 describe("Take single redemption offer", () => {
     let testHelper: TestHelper;
@@ -21,7 +21,7 @@ describe("Take single redemption offer", () => {
     beforeEach(async () => {
         const programInfo: AddedProgram = {
             programId: ONREAPP_PROGRAM_ID,
-            name: "onreapp",
+            name: "onreapp"
         };
 
         const workspace = process.cwd();
@@ -30,7 +30,7 @@ describe("Take single redemption offer", () => {
         const provider = new BankrunProvider(context);
         program = new Program<Onreapp>(
             idl,
-            provider,
+            provider
         );
 
         testHelper = new TestHelper(context, program);
@@ -38,7 +38,7 @@ describe("Take single redemption offer", () => {
         user = testHelper.createUserAccount();
 
         // Initialize program, offers, and vault authority
-        await program.methods.initialize().accounts({boss}).rpc();
+        await program.methods.initialize().accounts({ boss }).rpc();
         await program.methods.initializeOffers().accounts({
             state: testHelper.statePda
         }).rpc();
@@ -47,8 +47,8 @@ describe("Take single redemption offer", () => {
         }).rpc();
 
         // Get PDAs
-        [singleRedemptionOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from('single_redemption_offers')], ONREAPP_PROGRAM_ID);
-        [singleRedemptionVaultAuthorityPda] = PublicKey.findProgramAddressSync([Buffer.from('single_redemption_vault_auth')], ONREAPP_PROGRAM_ID);
+        [singleRedemptionOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from("single_redemption_offers")], ONREAPP_PROGRAM_ID);
+        [singleRedemptionVaultAuthorityPda] = PublicKey.findProgramAddressSync([Buffer.from("single_redemption_vault_auth")], ONREAPP_PROGRAM_ID);
 
         // Create some test tokens and deposit to vault for all tests to use
         // Token with 9 decimals - deposit 10,000 tokens
@@ -58,7 +58,7 @@ describe("Take single redemption offer", () => {
             .singleRedemptionVaultDeposit(new BN(10_000e9)) // 10,000 tokens
             .accounts({
                 tokenMint: token9Mint,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -69,7 +69,7 @@ describe("Take single redemption offer", () => {
             .singleRedemptionVaultDeposit(new BN(10_000e6)) // 10,000 tokens
             .accounts({
                 tokenMint: token6Mint,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
     });
@@ -95,7 +95,7 @@ describe("Take single redemption offer", () => {
             .accounts({
                 tokenInMint,
                 tokenOutMint,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -113,7 +113,7 @@ describe("Take single redemption offer", () => {
                 tokenOutMint,
                 state: testHelper.statePda,
                 boss,
-                user: user.publicKey,
+                user: user.publicKey
             })
             .signers([user])
             .rpc();
@@ -146,7 +146,7 @@ describe("Take single redemption offer", () => {
             .accounts({
                 tokenInMint,
                 tokenOutMint,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -165,7 +165,7 @@ describe("Take single redemption offer", () => {
                 boss: boss,
                 tokenInMint,
                 tokenOutMint,
-                user: user.publicKey,
+                user: user.publicKey
             })
             .signers([user])
             .rpc();
@@ -180,7 +180,7 @@ describe("Take single redemption offer", () => {
 
         // Vault should have: 10,000 - 4.95 = 9,996.05 token_out
         await testHelper.expectTokenAccountAmountToBe(vaultTokenOutAccount, BigInt(9_995.05e6));
-    })
+    });
 
     test("Take large redemption offer (20 million tokens) should succeed", async () => {
         // given - create tokens for large redemption
@@ -198,7 +198,7 @@ describe("Take single redemption offer", () => {
             .singleRedemptionVaultDeposit(new BN("20000000000000000")) // 20 million tokens
             .accounts({
                 tokenMint: tokenOutMint,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -214,7 +214,7 @@ describe("Take single redemption offer", () => {
             .accounts({
                 tokenInMint,
                 tokenOutMint,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -232,7 +232,7 @@ describe("Take single redemption offer", () => {
                 tokenOutMint,
                 state: testHelper.statePda,
                 boss,
-                user: user.publicKey,
+                user: user.publicKey
             })
             .signers([user])
             .rpc();
@@ -268,7 +268,7 @@ describe("Take single redemption offer", () => {
             .singleRedemptionVaultDeposit(new BN("500000000000")) // 500 tokens
             .accounts({
                 tokenMint: tokenOutMint,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -282,7 +282,7 @@ describe("Take single redemption offer", () => {
             .accounts({
                 tokenInMint,
                 tokenOutMint,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -301,7 +301,7 @@ describe("Take single redemption offer", () => {
                 tokenOutMint,
                 state: testHelper.statePda,
                 boss,
-                user: user.publicKey,
+                user: user.publicKey
             })
             .signers([user])
             .rpc();
@@ -339,7 +339,7 @@ describe("Take single redemption offer", () => {
             .accounts({
                 tokenInMint,
                 tokenOutMint,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -358,7 +358,7 @@ describe("Take single redemption offer", () => {
                 tokenOutMint,
                 state: testHelper.statePda,
                 boss,
-                user: user.publicKey,
+                user: user.publicKey
             })
             .signers([user])
             .rpc();
@@ -396,7 +396,7 @@ describe("Take single redemption offer", () => {
             .accounts({
                 tokenInMint,
                 tokenOutMint,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -414,7 +414,7 @@ describe("Take single redemption offer", () => {
                 tokenOutMint,
                 state: testHelper.statePda,
                 boss,
-                user: user.publicKey,
+                user: user.publicKey
             })
             .signers([user])
             .rpc();
@@ -440,6 +440,7 @@ describe("Take single redemption offer", () => {
         testHelper.createTokenAccount(tokenOutMint, user.publicKey, BigInt(0));
         testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
         testHelper.createTokenAccount(tokenOutMint, singleRedemptionVaultAuthorityPda, BigInt(100e9), true);
+        testHelper.createTokenAccount(tokenInMint, singleRedemptionVaultAuthorityPda, BigInt(0), true);
 
         // when/then - try to take non-existent offer
         await expect(
@@ -450,7 +451,7 @@ describe("Take single redemption offer", () => {
                     tokenOutMint,
                     state: testHelper.statePda,
                     boss,
-                    user: user.publicKey,
+                    user: user.publicKey
                 })
                 .signers([user])
                 .rpc()
@@ -464,6 +465,7 @@ describe("Take single redemption offer", () => {
         const wrongTokenInMint = testHelper.createMint(boss, BigInt(0), 9);
 
         testHelper.createTokenAccount(correctTokenInMint, boss, BigInt(0));
+        testHelper.createTokenAccount(wrongTokenInMint, singleRedemptionVaultAuthorityPda, BigInt(0), true);
         testHelper.createTokenAccount(correctTokenOutMint, singleRedemptionVaultAuthorityPda, BigInt(100e9), true);
         testHelper.createTokenAccount(wrongTokenInMint, user.publicKey, BigInt(100e9));
         testHelper.createTokenAccount(correctTokenOutMint, user.publicKey, BigInt(0));
@@ -478,7 +480,7 @@ describe("Take single redemption offer", () => {
             .accounts({
                 tokenInMint: correctTokenInMint,
                 tokenOutMint: correctTokenOutMint,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -494,7 +496,7 @@ describe("Take single redemption offer", () => {
                     tokenOutMint: correctTokenOutMint,
                     state: testHelper.statePda,
                     boss,
-                    user: user.publicKey,
+                    user: user.publicKey
                 })
                 .signers([user])
                 .rpc()
@@ -521,7 +523,7 @@ describe("Take single redemption offer", () => {
             .accounts({
                 tokenInMint,
                 tokenOutMint,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -537,7 +539,7 @@ describe("Take single redemption offer", () => {
                     tokenOutMint,
                     state: testHelper.statePda,
                     boss,
-                    user: user.publicKey,
+                    user: user.publicKey
                 })
                 .signers([user])
                 .rpc()
@@ -563,7 +565,7 @@ describe("Take single redemption offer", () => {
             .accounts({
                 tokenInMint,
                 tokenOutMint,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -579,7 +581,7 @@ describe("Take single redemption offer", () => {
                     tokenOutMint,
                     state: testHelper.statePda,
                     boss,
-                    user: user.publicKey,
+                    user: user.publicKey
                 })
                 .signers([user])
                 .rpc()
@@ -611,7 +613,7 @@ describe("Take single redemption offer", () => {
             .accounts({
                 tokenInMint: abcMint,
                 tokenOutMint: xyzMint,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -637,7 +639,7 @@ describe("Take single redemption offer", () => {
                 tokenOutMint: xyzMint,
                 state: testHelper.statePda,
                 boss,
-                user: user.publicKey,
+                user: user.publicKey
             })
             .signers([user])
             .rpc();
@@ -672,5 +674,292 @@ describe("Take single redemption offer", () => {
 
         // Allow for small rounding errors due to truncation
         expect(Math.abs(reversedAbc - 1000)).toBeLessThanOrEqual(1);
+    });
+
+    describe("Burn/Transfer Integration Tests", () => {
+        let mintAuthorityPda: PublicKey;
+        let tokenInMint: PublicKey;
+        let tokenOutMint: PublicKey;
+
+        beforeEach(() => {
+            // Create fresh token mints for each test
+            tokenInMint = testHelper.createMint(boss, BigInt(1000e9), 9);
+            tokenOutMint = testHelper.createMint(boss, BigInt(1000e9), 9);
+
+            // Derive mint authority PDA for tokenInMint
+            [mintAuthorityPda] = PublicKey.findProgramAddressSync(
+                [Buffer.from("mint_authority"), tokenInMint.toBuffer()],
+                ONREAPP_PROGRAM_ID
+            );
+        });
+
+        describe("Token Transfer (Fallback) Scenarios", () => {
+            it("Should successfully transfer tokens to boss when program lacks mint authority", async () => {
+                // Setup: Ensure program does NOT have mint authority (default state)
+                const userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(1000e9));
+                const userTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, user.publicKey, BigInt(0));
+                const bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
+                const vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, singleRedemptionVaultAuthorityPda, BigInt(500e9), true);
+                const vaultTokenInAccount = testHelper.createTokenAccount(tokenInMint, singleRedemptionVaultAuthorityPda, BigInt(500e9), true);
+
+                // Create redemption offer
+                const price = new BN(1e9); // 1:1 price
+                const startTime = new BN(Math.floor(Date.now() / 1000) - 60);
+                const endTime = new BN(startTime.toNumber() + 3600);
+
+                await program.methods
+                    .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
+                    .accounts({ tokenInMint, tokenOutMint, state: testHelper.statePda })
+                    .rpc();
+
+                const redemptionOfferAccountData = await program.account.singleRedemptionOfferAccount.fetch(singleRedemptionOfferAccountPda);
+                const offerId = redemptionOfferAccountData.counter.toNumber();
+
+                const tokenInAmount = new BN(100e9); // 100 tokens
+                const vaultInBefore = await testHelper.getTokenAccountBalance(vaultTokenInAccount);
+                const userInBefore = await testHelper.getTokenAccountBalance(userTokenInAccount);
+                const vaultOutBefore = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+                const bossInBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+
+                // Execute take_single_redemption_offer (should transfer to boss, not burn)
+                await program.methods
+                    .takeSingleRedemptionOffer(new BN(offerId), tokenInAmount)
+                    .accounts({
+                        boss: boss,
+                        state: testHelper.statePda,
+                        tokenInMint,
+                        tokenOutMint,
+                        user: user.publicKey
+                    })
+                    .signers([user])
+                    .rpc();
+
+                // Verify token_in was transferred to boss (not burned)
+                const vaultInAfter = await testHelper.getTokenAccountBalance(vaultTokenInAccount);
+                const userInAfter = await testHelper.getTokenAccountBalance(userTokenInAccount);
+                const vaultOutAfter = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+                const bossInAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+
+                const bossReceived = bossInAfter - bossInBefore;
+                const userPaid = userInBefore - userInAfter;
+                const vaultDeducted = vaultOutBefore - vaultOutAfter;
+
+                expect(bossReceived).toEqual(BigInt(100e9)); // Boss received tokens
+                expect(userPaid).toEqual(BigInt(100e9)); // User paid tokens
+                expect(vaultDeducted).toEqual(BigInt(100e9)); // Vault provided tokens
+                expect(vaultInAfter).toEqual(vaultInBefore); // Vault did not receive any tokens
+            });
+        });
+
+        describe("Token Burning Scenarios", () => {
+            beforeEach(async () => {
+                // Transfer mint authority from boss to program for tokenInMint
+                await testHelper.program.methods
+                    .transferMintAuthorityToProgram()
+                    .accounts({
+                        state: testHelper.statePda,
+                        mint: tokenInMint
+                    })
+                    .rpc();
+            });
+
+            it("Should successfully burn tokens when program has mint authority", async () => {
+                const userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(1000e9));
+                const userTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, user.publicKey, BigInt(0));
+                // Create boss token account for fallback (even though burning will be used)
+                const bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
+                // Create vault token account for burning
+                const vaultTokenInAccount = testHelper.createTokenAccount(tokenInMint, singleRedemptionVaultAuthorityPda, BigInt(0), true);
+                const vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, singleRedemptionVaultAuthorityPda, BigInt(500e9), true);
+
+                // Create redemption offer
+                const price = new BN(1e9); // 1:1 price
+                const startTime = new BN(Math.floor(Date.now() / 1000) - 60);
+                const endTime = new BN(startTime.toNumber() + 3600);
+
+                await program.methods
+                    .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
+                    .accounts({ tokenInMint, tokenOutMint, state: testHelper.statePda })
+                    .rpc();
+
+                const redemptionOfferAccountData = await program.account.singleRedemptionOfferAccount.fetch(singleRedemptionOfferAccountPda);
+                const offerId = redemptionOfferAccountData.counter.toNumber();
+
+                const tokenInAmount = new BN(100e9); // 100 tokens
+
+                // Get initial mint supply
+                const mintInfoBefore = await testHelper.getMintInfo(tokenInMint);
+                const userInBefore = await testHelper.getTokenAccountBalance(userTokenInAccount);
+                const bossBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+                const vaultOutBefore = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+
+                // Execute take_single_redemption_offer (should burn tokens)
+                await program.methods
+                    .takeSingleRedemptionOffer(new BN(offerId), tokenInAmount)
+                    .accounts({
+                        boss: boss,
+                        state: testHelper.statePda,
+                        tokenInMint,
+                        tokenOutMint,
+                        user: user.publicKey
+                    })
+                    .signers([user])
+                    .rpc();
+
+                // Verify tokens were burned (supply reduced)
+                const mintInfoAfter = await testHelper.getMintInfo(tokenInMint);
+                const userInAfter = await testHelper.getTokenAccountBalance(userTokenInAccount);
+                const bossAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+                const vaultInAfter = await testHelper.getTokenAccountBalance(vaultTokenInAccount);
+                const vaultOutAfter = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+
+                const supplyBurned = mintInfoBefore.supply - mintInfoAfter.supply;
+                const userPaid = userInBefore - userInAfter;
+                const bossReceived = bossAfter - bossBefore;
+                const vaultInReceived = vaultInAfter; // Should be 0 after burning
+                const vaultOutDeducted = vaultOutBefore - vaultOutAfter;
+
+                expect(supplyBurned).toEqual(BigInt(100e9)); // Tokens were burned
+                expect(userPaid).toEqual(BigInt(100e9)); // User paid tokens
+                expect(bossReceived).toEqual(BigInt(0)); // Boss received nothing (tokens burned)
+                expect(vaultInReceived).toEqual(BigInt(0)); // Vault token_in account is empty after burning
+                expect(vaultOutDeducted).toEqual(BigInt(100e9)); // Vault provided tokens
+
+                // User received correct amount of token_out
+                const userOutAfter = await testHelper.getTokenAccountBalance(testHelper.getAssociatedTokenAccount(tokenOutMint, user.publicKey));
+                expect(userOutAfter).toEqual(BigInt(100e9)); // 1:1 exchange
+            });
+
+            it("Should handle fee calculations correctly when burning", async () => {
+                const userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(1000e9));
+                const userTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, user.publicKey, BigInt(0));
+                // Create boss token account for fallback (even though burning will be used)
+                const bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
+                // Create vault token account for burning
+                const vaultTokenInAccount = testHelper.createTokenAccount(tokenInMint, singleRedemptionVaultAuthorityPda, BigInt(0), true);
+                const vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, singleRedemptionVaultAuthorityPda, BigInt(500e9), true);
+
+                // Create redemption offer with 5% fee
+                const price = new BN(1e9); // 1:1 price
+                const feeBasisPoints = new BN(500); // 5% fee
+                const startTime = new BN(Math.floor(Date.now() / 1000) - 60);
+                const endTime = new BN(startTime.toNumber() + 3600);
+
+                await program.methods
+                    .makeSingleRedemptionOffer(startTime, endTime, price, feeBasisPoints)
+                    .accounts({ tokenInMint, tokenOutMint, state: testHelper.statePda })
+                    .rpc();
+
+                const redemptionOfferAccountData = await program.account.singleRedemptionOfferAccount.fetch(singleRedemptionOfferAccountPda);
+                const offerId = redemptionOfferAccountData.counter.toNumber();
+
+                const tokenInAmount = new BN(100e9); // 100 tokens
+
+                // Get initial mint supply
+                const mintInfoBefore = await testHelper.getMintInfo(tokenInMint);
+                const userInBefore = await testHelper.getTokenAccountBalance(userTokenInAccount);
+                const bossBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+
+                // Execute take_single_redemption_offer
+                await program.methods
+                    .takeSingleRedemptionOffer(new BN(offerId), tokenInAmount)
+                    .accounts({
+                        boss: boss,
+                        state: testHelper.statePda,
+                        tokenInMint,
+                        tokenOutMint,
+                        user: user.publicKey
+                    })
+                    .signers([user])
+                    .rpc();
+
+                // Verify all 100 tokens were burned (full amount including fee)
+                const mintInfoAfter = await testHelper.getMintInfo(tokenInMint);
+                const userInAfter = await testHelper.getTokenAccountBalance(userTokenInAccount);
+                const bossAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+
+                const supplyBurned = mintInfoBefore.supply - mintInfoAfter.supply;
+                const userPaid = userInBefore - userInAfter;
+                const bossReceived = bossAfter - bossBefore;
+
+                expect(supplyBurned).toEqual(BigInt(100e9)); // Full amount burned
+                expect(userPaid).toEqual(BigInt(100e9)); // User paid full amount
+                expect(bossReceived).toEqual(BigInt(0)); // Boss received nothing (tokens burned)
+
+                // User received tokens based on amount after fee: 95 tokens out
+                const userOutAfter = await testHelper.getTokenAccountBalance(testHelper.getAssociatedTokenAccount(tokenOutMint, user.publicKey));
+                expect(userOutAfter).toEqual(BigInt(95e9)); // 95 tokens (after 5% fee)
+            });
+        });
+
+        describe("Fallback Behavior", () => {
+            it("Should automatically fallback to boss transfer when mint authority is lost", async () => {
+                // First, give program mint authority
+                await testHelper.program.methods
+                    .transferMintAuthorityToProgram()
+                    .accounts({
+                        state: testHelper.statePda,
+                        mint: tokenInMint
+                    })
+                    .rpc();
+
+                // Then transfer it back to boss (simulating authority loss)
+                await testHelper.program.methods
+                    .transferMintAuthorityToBoss()
+                    .accounts({
+                        state: testHelper.statePda,
+                        mint: tokenInMint
+                    })
+                    .rpc();
+
+                const userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(1000e9));
+                const userTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, user.publicKey, BigInt(0));
+                const bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, boss, BigInt(0));
+                const vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, singleRedemptionVaultAuthorityPda, BigInt(500e9), true);
+                const vaultTokenInAccount = testHelper.createTokenAccount(tokenInMint, singleRedemptionVaultAuthorityPda, BigInt(500e9), true);
+
+                // Create redemption offer
+                const price = new BN(1e9);
+                const startTime = new BN(Math.floor(Date.now() / 1000) - 60);
+                const endTime = new BN(startTime.toNumber() + 3600);
+
+                await program.methods
+                    .makeSingleRedemptionOffer(startTime, endTime, price, new BN(0))
+                    .accounts({ tokenInMint, tokenOutMint, state: testHelper.statePda })
+                    .rpc();
+
+                const redemptionOfferAccountData = await program.account.singleRedemptionOfferAccount.fetch(singleRedemptionOfferAccountPda);
+                const offerId = redemptionOfferAccountData.counter.toNumber();
+
+                const tokenInAmount = new BN(100e9);
+
+                const mintInfoBefore = await testHelper.getMintInfo(tokenInMint);
+                const bossBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+
+                // Execute with mint authority PDA but program no longer has authority
+                // Should automatically fallback to boss transfer
+                await program.methods
+                    .takeSingleRedemptionOffer(new BN(offerId), tokenInAmount)
+                    .accounts({
+                        boss: boss,
+                        state: testHelper.statePda,
+                        tokenInMint,
+                        tokenOutMint,
+                        user: user.publicKey
+                    })
+                    .signers([user])
+                    .rpc();
+
+                // Verify boss transfer occurred (not burning)
+                const mintInfoAfter = await testHelper.getMintInfo(tokenInMint);
+                const bossAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+
+                const supplyChange = mintInfoBefore.supply - mintInfoAfter.supply;
+                const bossReceived = bossAfter - bossBefore;
+
+                expect(supplyChange).toEqual(BigInt(0)); // No burning occurred
+                expect(bossReceived).toEqual(BigInt(100e9)); // Boss received tokens via transfer
+            });
+        });
     });
 });

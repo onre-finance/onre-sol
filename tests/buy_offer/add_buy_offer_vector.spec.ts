@@ -1,91 +1,57 @@
-import {PublicKey} from "@solana/web3.js";
-import {ONREAPP_PROGRAM_ID, TestHelper} from "../test_helper";
-import {AddedProgram, startAnchor} from "solana-bankrun";
-import {Onreapp} from "../../target/types/onreapp";
-import {BankrunProvider} from "anchor-bankrun";
-import {BN, Program} from "@coral-xyz/anchor";
-import idl from "../../target/idl/onreapp.json";
+import { PublicKey } from "@solana/web3.js";
+import { TestHelper } from "../test_helper";
+import { BN } from "@coral-xyz/anchor";
+import { OnreProgram } from "../onre_program.ts";
 
 const MAX_SEGMENTS = 10;
 
 describe("Add Buy Offer Vector", () => {
     let testHelper: TestHelper;
+    let program: OnreProgram;
+
     let tokenInMint: PublicKey;
     let tokenOutMint: PublicKey;
-    let boss: PublicKey;
 
     beforeEach(async () => {
-        const programInfo: AddedProgram = {
-            programId: ONREAPP_PROGRAM_ID,
-            name: "onreapp",
-        };
-
-        const workspace = process.cwd();
-        const context = await startAnchor(workspace, [programInfo], []);
-
-        const provider = new BankrunProvider(context);
-        const program = new Program<Onreapp>(
-            idl,
-            provider,
-        );
-
-        testHelper = new TestHelper(context, program);
-        boss = provider.wallet.publicKey;
+        testHelper = await TestHelper.create();
+        program = new OnreProgram(testHelper.context);
 
         // Create mints
-        tokenInMint = testHelper.createMint(boss, BigInt(100_000e9), 9);
-        tokenOutMint = testHelper.createMint(boss, BigInt(100_000e9), 9);
+        tokenInMint = testHelper.createMint(9);
+        tokenOutMint = testHelper.createMint(9);
 
         // Initialize program and offers
-        await program.methods.initialize().accounts({boss}).rpc();
-        await program.methods.initializeOffers().accounts({
-            state: testHelper.statePda
-        }).rpc();
+        await program.initialize();
+        await program.initializeOffers();
     });
 
     it("Should create a buy offer and add a time vector", async () => {
         // First create a buy offer using testHelper
-        await testHelper.makeBuyOffer({
+        await program.makeBuyOffer({
             tokenInMint,
-            tokenOutMint,
+            tokenOutMint
         });
 
-        // Derive the buy offers account PDA
-        const [buyOffersPda] = PublicKey.findProgramAddressSync(
-            [Buffer.from("buy_offers")],
-            ONREAPP_PROGRAM_ID
-        );
-
         // Get the first offer (auto-generated ID)
-        const buyOfferAccountBefore = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
-        const offer = buyOfferAccountBefore.offers.find(o => o.offerId.toNumber() !== 0);
-        const offerId = offer.offerId;
+        const offerId = 1;
 
-        // Now add a time vector to the offer
+        // Add a time vector to the offer
         const currentTime = await testHelper.getCurrentClockTime();
-        const startTime = new BN(currentTime + 3600); // 1 hour in future
-        const startPrice = new BN(1000000); // 1 token
-        const apr = new BN(5000);    // 50% APR (5000/10000)
-        const priceFixDuration = new BN(3600); // 1 hour
+        const startTime = currentTime + 3600; // 1 hour in future
+        const startPrice = 1000000; // 1 token
+        const apr = 5000;    // 50% APR (5000/10000)
+        const priceFixDuration = 3600; // 1 hour
 
-        const tx = await testHelper.program.methods
-            .addBuyOfferVector(
-                offerId,
-                startTime,
-                startPrice,
-                apr,
-                priceFixDuration
-            )
-            .accounts({
-                state: testHelper.statePda,
-            })
-            .rpc();
+        await program.addBuyOfferVector({
+            offerId,
+            startTime,
+            startPrice,
+            apr,
+            priceFixDuration
+        });
 
         // Verify the time vector was added
-        const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
-
-        const updatedOffer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
-        expect(updatedOffer.offerId.toString()).toBe(offerId.toString());
+        const updatedOffer = await program.getOffer(offerId);
 
         const vector = updatedOffer.vectors[0];
         expect(vector.vectorId.toString()).toBe("1");
@@ -97,410 +63,278 @@ describe("Add Buy Offer Vector", () => {
     });
 
     it("Should calculate start_time as current time when base_time is in the past", async () => {
-        await testHelper.makeBuyOffer({
+        await program.makeBuyOffer({
             tokenInMint,
-            tokenOutMint,
+            tokenOutMint
         });
 
-        const [buyOffersPda] = PublicKey.findProgramAddressSync(
-            [Buffer.from("buy_offers")],
-            ONREAPP_PROGRAM_ID
-        );
-
-        const buyOfferAccountBefore = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
-        const offer = buyOfferAccountBefore.offers.find(o => o.offerId.toNumber() !== 0);
-        const offerId = offer.offerId;
-
+        const offerId = 1;
         const currentTime = await testHelper.getCurrentClockTime();
-        const pastStartTime = new BN(currentTime - 3600); // 1 hour ago
-        const startPrice = new BN(1000000);
-        const apr = new BN(2500); // 25% APR
-        const priceFixDuration = new BN(1800);
 
-        await testHelper.program.methods
-            .addBuyOfferVector(
-                offerId,
-                pastStartTime,
-                startPrice,
-                apr,
-                priceFixDuration
-            )
-            .accounts({
-                state: testHelper.statePda,
-            })
-            .rpc();
+        await program.addBuyOfferVector({
+            offerId,
+            startTime: currentTime - 3600, // 1 hour ago,
+            startPrice: 1000000,
+            apr: 250000, // 25% APR
+            priceFixDuration: 1000
+        });
 
-        const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
-        const updatedOffer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
+        const updatedOffer = await program.getOffer(offerId);
         const vector = updatedOffer.vectors[0];
 
-        expect(vector.baseTime.toString()).toBe(pastStartTime.toString());
-        // start_time should be approximately current time (within a few seconds)
-        const startTime = parseInt(vector.startTime.toString());
-        expect(startTime).toBeGreaterThanOrEqual(currentTime);
-        expect(startTime).toBeLessThanOrEqual(currentTime + 2); // Allow up to 2 seconds difference
+        expect(vector.baseTime.toString()).toBe((currentTime - 3600).toString());
+        expect(vector.startTime.toNumber()).toBe(currentTime);
     });
 
     it("Should auto-increment vector IDs correctly", async () => {
-        const offerId = new BN(1);
+        const offerId = 1;
         // Create buy offer
-        await testHelper.makeBuyOffer({
+        await program.makeBuyOffer({
             tokenInMint,
-            tokenOutMint,
+            tokenOutMint
         });
 
         const currentTime = await testHelper.getCurrentClockTime();
 
         // Add first vector
-        await testHelper.program.methods
-            .addBuyOfferVector(
-                offerId,
-                new BN(currentTime + 1000),
-                new BN(1000000),
-                new BN(5000),
-                new BN(3600)
-            )
-            .accounts({
-                state: testHelper.statePda,
-            })
-            .rpc();
+        await program.addBuyOfferVector({
+            offerId,
+            startTime: currentTime + 1000,
+            startPrice: 1000000,
+            apr: 5000,
+            priceFixDuration: 3600
+        });
 
         // Add second vector (with later base_time)
-        await testHelper.program.methods
-            .addBuyOfferVector(
-                offerId,
-                new BN(currentTime + 3000),
-                new BN(2000000),
-                new BN(7500),
-                new BN(1800)
-            )
-            .accounts({
-                state: testHelper.statePda,
-            })
-            .rpc();
+        await program.addBuyOfferVector({
+            offerId,
+            startTime: currentTime + 3000,
+            startPrice: 2000000,
+            apr: 7500,
+            priceFixDuration: 1800
+        });
 
         // Add third vector
-        await testHelper.program.methods
-            .addBuyOfferVector(
-                offerId,
-                new BN(currentTime + 5000),
-                new BN(3000000),
-                new BN(1000),
-                new BN(900)
-            )
-            .accounts({
-                state: testHelper.statePda,
-            })
-            .rpc();
+        await program.addBuyOfferVector({
+            offerId,
+            startTime: currentTime + 5000,
+            startPrice: 3000000,
+            apr: 1000,
+            priceFixDuration: 900
+        });
 
         // Verify vectors have correct auto-incremented IDs
-        const [buyOffersPda] = PublicKey.findProgramAddressSync(
-            [Buffer.from("buy_offers")],
-            ONREAPP_PROGRAM_ID
-        );
-        const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
-        const offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
+        const offer = await program.getOffer(offerId);
 
         expect(offer.vectors[0].vectorId.toString()).toBe("1");
         expect(offer.vectors[1].vectorId.toString()).toBe("2");
         expect(offer.vectors[2].vectorId.toString()).toBe("3");
     });
 
-    it("Should reject zero offer_id", async () => {
+    it("Should reject invalid parameters", async () => {
         const currentTime = await testHelper.getCurrentClockTime();
-
-        await expect(
-            testHelper.program.methods
-                .addBuyOfferVector(
-                    new BN(0), // Invalid: zero offer_id
-                    new BN(currentTime + 1000),
-                    new BN(1000000),
-                    new BN(5000),
-                    new BN(3600)
-                )
-                .accounts({
-                    state: testHelper.statePda,
-                })
-                .rpc()
-        ).rejects.toThrow("Invalid input: values cannot be zero");
-    });
-
-    it("Should reject zero base_time", async () => {
-        const offerId = new BN(1);
-        await testHelper.makeBuyOffer({
+        const offerId = 1;
+        await program.makeBuyOffer({
             tokenInMint,
-            tokenOutMint,
+            tokenOutMint
         });
 
         await expect(
-            testHelper.program.methods
-                .addBuyOfferVector(
-                    offerId,
-                    new BN(0), // Invalid: zero base_time
-                    new BN(1000000),
-                    new BN(5000),
-                    new BN(3600)
-                )
-                .accounts({
-                    state: testHelper.statePda,
-                })
-                .rpc()
+            program.addBuyOfferVector({
+                offerId: 0, // Invalid: zero offer_id
+                startTime: currentTime + 1000,
+                startPrice: 1000000,
+                apr: 5000,
+                priceFixDuration: 3600
+            })
         ).rejects.toThrow("Invalid input: values cannot be zero");
-    });
-
-    it("Should reject zero base_price", async () => {
-        const offerId = new BN(1);
-        await testHelper.makeBuyOffer({
-            tokenInMint,
-            tokenOutMint,
-        });
-
-        const currentTime = await testHelper.getCurrentClockTime();
 
         await expect(
-            testHelper.program.methods
-                .addBuyOfferVector(
-                    offerId,
-                    new BN(currentTime + 1000),
-                    new BN(0), // Invalid: zero base_price
-                    new BN(5000),
-                    new BN(3600)
-                )
-                .accounts({
-                    state: testHelper.statePda,
-                })
-                .rpc()
+            program.addBuyOfferVector({
+                offerId,
+                startTime: 0, // Invalid: zero base_time
+                startPrice: 1000000,
+                apr: 5000,
+                priceFixDuration: 3600
+            })
+        ).rejects.toThrow("Invalid input: values cannot be zero");
+
+        await expect(
+            program.addBuyOfferVector({
+                offerId,
+                startTime: currentTime,
+                startPrice: 0, // Invalid: zero base_price
+                apr: 5000,
+                priceFixDuration: 3600
+            })
+        ).rejects.toThrow("Invalid input: values cannot be zero");
+
+        await expect(
+            program.addBuyOfferVector({
+                offerId,
+                startTime: currentTime,
+                startPrice: 1000000,
+                apr: 5000,
+                priceFixDuration: 0 // Invalid: zero price_fix_duration
+            })
         ).rejects.toThrow("Invalid input: values cannot be zero");
     });
 
     it("Should allow zero apr", async () => {
-        const offerId = new BN(1);
-        await testHelper.makeBuyOffer({
+        const offerId = 1;
+        await program.makeBuyOffer({
             tokenInMint,
-            tokenOutMint,
+            tokenOutMint
         });
 
         const currentTime = await testHelper.getCurrentClockTime();
 
-        await testHelper.program.methods
-            .addBuyOfferVector(
+        await program
+            .addBuyOfferVector({
                 offerId,
-                new BN(currentTime + 1000),
-                new BN(1000000),
-                new BN(0), // Invalid: zero apr
-                new BN(3600)
-            )
-            .accounts({
-                state: testHelper.statePda,
-            })
-            .rpc();
+                startTime: currentTime + 1000,
+                startPrice: 1000000,
+                apr: 0, // Zero APR
+                priceFixDuration: 3600
+            });
 
         // Verify vector was added correctly
-        const [buyOffersPda] = PublicKey.findProgramAddressSync(
-            [Buffer.from("buy_offers")],
-            ONREAPP_PROGRAM_ID
-        );
-        const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
-        const offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
+        const offer = await program.getOffer(offerId);
         const vector = offer.vectors[0];
 
         expect(vector.apr.toString()).toBe("0");
     });
 
-    it("Should reject zero price_fix_duration", async () => {
-        const offerId = new BN(1);
-        await testHelper.makeBuyOffer({
+    it("Should reject start_time before latest existing vector start_time", async () => {
+        const offerId = 1;
+        await program.makeBuyOffer({
             tokenInMint,
-            tokenOutMint,
-        });
-
-        const currentTime = await testHelper.getCurrentClockTime();
-
-        await expect(
-            testHelper.program.methods
-                .addBuyOfferVector(
-                    offerId,
-                    new BN(currentTime + 1000),
-                    new BN(1000000),
-                    new BN(5000),
-                    new BN(0) // Invalid: zero price_fix_duration
-                )
-                .accounts({
-                    state: testHelper.statePda,
-                })
-                .rpc()
-        ).rejects.toThrow("Invalid input: values cannot be zero");
-    });
-
-    it("Should reject base_time before latest existing vector base_time", async () => {
-        const offerId = new BN(1);
-        await testHelper.makeBuyOffer({
-            tokenInMint,
-            tokenOutMint,
+            tokenOutMint
         });
 
         const currentTime = await testHelper.getCurrentClockTime();
 
         // Add first vector
-        await testHelper.program.methods
-            .addBuyOfferVector(
-                offerId,
-                new BN(currentTime + 2000),
-                new BN(1000000),
-                new BN(5000),
-                new BN(3600)
-            )
-            .accounts({
-                state: testHelper.statePda,
-            })
-            .rpc();
+        await program.addBuyOfferVector({
+            offerId,
+            startTime: currentTime + 2000,
+            startPrice: 1000000,
+            apr: 5000,
+            priceFixDuration: 3600
+        });
 
         // Try to add vector with earlier base_time (should fail)
         await expect(
-            testHelper.program.methods
-                .addBuyOfferVector(
-                    offerId,
-                    new BN(currentTime + 1000), // Invalid: before previous base_time
-                    new BN(2000000),
-                    new BN(7500),
-                    new BN(1800)
-                )
-                .accounts({
-                    state: testHelper.statePda,
-                })
-                .rpc()
+            program.addBuyOfferVector({
+                offerId,
+                startTime: currentTime + 1000, // Invalid: before previous start_time
+                startPrice: 2000000,
+                apr: 7500,
+                priceFixDuration: 1800
+            })
         ).rejects.toThrow("Invalid time range: base_time must be after the latest existing vector");
     });
 
-    it("Should reject base_time equal to latest existing vector base_time", async () => {
-        const offerId = new BN(1);
-        await testHelper.makeBuyOffer({
+    it("Should reject start_time equal to latest existing vector start_time", async () => {
+        const offerId = 1;
+        await program.makeBuyOffer({
             tokenInMint,
-            tokenOutMint,
+            tokenOutMint
         });
 
         const currentTime = await testHelper.getCurrentClockTime();
-        const startTime = new BN(currentTime + 2000);
+        const startTime = currentTime + 2000;
 
         // Add first vector
-        await testHelper.program.methods
-            .addBuyOfferVector(
-                offerId,
-                startTime,
-                new BN(1000000),
-                new BN(5000),
-                new BN(3600)
-            )
-            .accounts({
-                state: testHelper.statePda,
-            })
-            .rpc();
+        await program.addBuyOfferVector({
+            offerId,
+            startTime,
+            startPrice: 1000000,
+            apr: 5000,
+            priceFixDuration: 3600
+        });
 
-        // Add vector with same base_time (should fail)
-        await expect(testHelper.program.methods
-            .addBuyOfferVector(
+        // Add vector with same start_time (should fail)
+        await expect(program
+            .addBuyOfferVector({
                 offerId,
-                startTime, // Same base_time - should be allowed
-                new BN(2000000),
-                new BN(7500),
-                new BN(1800)
-            )
-            .accounts({
-                state: testHelper.statePda,
-            })
-            .rpc()).rejects.toThrow("Invalid time range: base_time must be after the latest existing vector.");
+                startTime, // Same start_time - should be allowed
+                startPrice: 2000000,
+                apr: 7500,
+                priceFixDuration: 1800
+            }))
+            .rejects.toThrow("Invalid time range: base_time must be after the latest existing vector.");
     });
 
     it("Should reject adding vector to non-existent offer", async () => {
-        const nonExistentOfferId = new BN(999999);
+        const nonExistentOfferId = 999999;
         const currentTime = await testHelper.getCurrentClockTime();
 
         await expect(
-            testHelper.program.methods
-                .addBuyOfferVector(
-                    nonExistentOfferId,
-                    new BN(currentTime + 1000),
-                    new BN(1000000),
-                    new BN(5000),
-                    new BN(3600)
-                )
-                .accounts({
-                    state: testHelper.statePda,
-                })
-                .rpc()
+            program.addBuyOfferVector({
+                offerId: nonExistentOfferId,
+                startTime: currentTime + 1000,
+                startPrice: 1000000,
+                apr: 5000,
+                priceFixDuration: 3600
+            })
         ).rejects.toThrow("Offer not found");
     });
 
     it("Should reject when offer has maximum vectors", async () => {
-        const offerId = new BN(1);
-        await testHelper.makeBuyOffer({
+        const offerId = 1;
+        await program.makeBuyOffer({
             tokenInMint,
-            tokenOutMint,
+            tokenOutMint
         });
 
         const currentTime = await testHelper.getCurrentClockTime();
         const vectorTimeOffset = 1000;
-        const startPrice = new BN(1000000);
-        const apr = new BN(5000);
-        const priceFixDuration = new BN(3600);
+        const startPrice = 1000000;
+        const apr = 5000;
+        const priceFixDuration = 3600;
 
         // Add maximum number of vectors
         for (let i = 1; i <= MAX_SEGMENTS; i++) {
-            const vectorStartTime = new BN(currentTime + (i * vectorTimeOffset));
+            const vectorStartTime = currentTime + (i * vectorTimeOffset);
 
-            await testHelper.program.methods
-                .addBuyOfferVector(
-                    offerId,
-                    vectorStartTime,
-                    startPrice,
-                    apr,
-                    priceFixDuration
-                )
-                .accounts({
-                    state: testHelper.statePda,
-                })
-                .rpc();
+            await program.addBuyOfferVector({
+                offerId,
+                startTime: vectorStartTime,
+                startPrice,
+                apr,
+                priceFixDuration
+            });
         }
 
         // Try to add one more vector (should fail)
-        const vectorStartTime = new BN(currentTime + ((MAX_SEGMENTS + 1) * vectorTimeOffset));
+        const vectorStartTime = currentTime + ((MAX_SEGMENTS + 1) * vectorTimeOffset);
 
         await expect(
-            testHelper.program.methods
-                .addBuyOfferVector(
-                    offerId,
-                    vectorStartTime,
-                    startPrice,
-                    apr,
-                    priceFixDuration
-                )
-                .accounts({
-                    state: testHelper.statePda,
-                })
-                .rpc()
+            program.addBuyOfferVector({
+                offerId,
+                startTime: vectorStartTime,
+                startPrice,
+                apr,
+                priceFixDuration
+            })
         ).rejects.toThrow("Cannot add more vectors: maximum limit reached");
     });
 
     it("Should handle large price and apr values correctly", async () => {
         const offerId = new BN(1);
-        await testHelper.makeBuyOffer({
+        await program.makeBuyOffer({
             tokenInMint,
-            tokenOutMint,
+            tokenOutMint
         });
-
-        // Derive the buy offers account PDA
-        const [buyOffersPda] = PublicKey.findProgramAddressSync(
-            [Buffer.from("buy_offers")],
-            ONREAPP_PROGRAM_ID
-        );
 
         const currentTime = await testHelper.getCurrentClockTime();
 
         // Use large values
         const largeStartPrice = new BN("999999999999999999"); // Large u64 value
-        const largeApr = new BN("999999"); // 99.9999% APR (9999/10000)
+        const largeApr = new BN(999999); // 99.9999% APR (9999/10000)
 
-        await testHelper.program.methods
+        await program.program.methods
             .addBuyOfferVector(
                 offerId,
                 new BN(currentTime + 1000),
@@ -509,13 +343,12 @@ describe("Add Buy Offer Vector", () => {
                 new BN(3600)
             )
             .accounts({
-                state: testHelper.statePda,
+                state: program.statePda
             })
             .rpc();
 
         // Verify the vector was added with large values
-        const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
-        const offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
+        const offer = await program.getOffer(offerId.toNumber());
         const vector = offer.vectors[0];
 
         expect(vector.basePrice.toString()).toBe(largeStartPrice.toString());
@@ -523,34 +356,22 @@ describe("Add Buy Offer Vector", () => {
     });
 
     it("Should handle minimum valid values (1 for all fields)", async () => {
-        const offerId = new BN(1);
-        await testHelper.makeBuyOffer({
+        const offerId = 1;
+        await program.makeBuyOffer({
             tokenInMint,
-            tokenOutMint,
+            tokenOutMint
         });
 
-        // Derive the buy offers account PDA
-        const [buyOffersPda] = PublicKey.findProgramAddressSync(
-            [Buffer.from("buy_offers")],
-            ONREAPP_PROGRAM_ID
-        );
-
-        await testHelper.program.methods
-            .addBuyOfferVector(
-                offerId,
-                new BN(1), // Minimum valid base_time
-                new BN(1), // Minimum valid base_price
-                new BN(1), // Minimum valid apr
-                new BN(1)  // Minimum valid price_fix_duration
-            )
-            .accounts({
-                state: testHelper.statePda,
-            })
-            .rpc();
+        await program.addBuyOfferVector({
+            offerId,
+            startTime: 1, // Minimum valid start_time
+            startPrice: 1, // Minimum valid start_price
+            apr: 0, // Minimum valid apr
+            priceFixDuration: 1  // Minimum valid price_fix_duration
+        });
 
         // Verify the vector was added
-        const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
-        const offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
+        const offer = await program.getOffer(offerId);
         const vector = offer.vectors[0];
 
         expect(vector.vectorId.toString()).toBe("1");
@@ -560,108 +381,79 @@ describe("Add Buy Offer Vector", () => {
         const startTime = parseInt(vector.startTime.toString());
         expect(startTime).toBeGreaterThanOrEqual(currentTime);
         expect(vector.basePrice.toString()).toBe("1");
-        expect(vector.apr.toString()).toBe("1");
+        expect(vector.apr.toString()).toBe("0");
         expect(vector.priceFixDuration.toString()).toBe("1");
     });
 
     it("Should reject when called by non-boss", async () => {
-        const offerId = new BN(1);
-        await testHelper.makeBuyOffer({
+        const offerId = 1;
+        await program.makeBuyOffer({
             tokenInMint,
-            tokenOutMint,
+            tokenOutMint
         });
 
         const notBoss = testHelper.createUserAccount();
         const currentTime = await testHelper.getCurrentClockTime();
 
-        await expect(
-            testHelper.program.methods
-                .addBuyOfferVector(
-                    offerId,
-                    new BN(currentTime + 1000),
-                    new BN(1000000),
-                    new BN(5000),
-                    new BN(3600)
-                )
-                .accountsPartial({
-                    state: testHelper.statePda,
-                    boss: notBoss.publicKey,
-                })
-                .signers([notBoss])
-                .rpc()
+        await expect(program.addBuyOfferVector({
+                offerId,
+                startTime: currentTime + 1000,
+                startPrice: 1000000,
+                apr: 5000,
+                priceFixDuration: 3600,
+                signer: notBoss
+            })
         ).rejects.toThrow(); // Should fail due to boss constraint
     });
 
     it("Should handle vectors added to multiple different offers", async () => {
-        const offer1Id = new BN(1);
-        const offer2Id = new BN(2);
+        const offer1Id = 1;
+        const offer2Id = 2;
 
         // Create two offers
-        await testHelper.makeBuyOffer({
+        await program.makeBuyOffer({
             tokenInMint,
-            tokenOutMint,
+            tokenOutMint
         });
 
-        const token2In = testHelper.createMint(boss, BigInt(100_000e9), 9);
-        const token2Out = testHelper.createMint(boss, BigInt(100_000e9), 9);
+        const token2In = testHelper.createMint(9);
+        const token2Out = testHelper.createMint(9);
 
-        await testHelper.makeBuyOffer({
+        await program.makeBuyOffer({
             tokenInMint: token2In,
-            tokenOutMint: token2Out,
+            tokenOutMint: token2Out
         });
-
-        // Derive the buy offers account PDA
-        const [buyOffersPda] = PublicKey.findProgramAddressSync(
-            [Buffer.from("buy_offers")],
-            ONREAPP_PROGRAM_ID
-        );
 
         const currentTime = await testHelper.getCurrentClockTime();
 
         // Add vectors to both offers
-        await testHelper.program.methods
-            .addBuyOfferVector(
-                offer1Id,
-                new BN(currentTime + 1000),
-                new BN(1000000),
-                new BN(5000),
-                new BN(3600)
-            )
-            .accounts({
-                state: testHelper.statePda,
-            })
-            .rpc();
+        await program.addBuyOfferVector({
+            offerId: offer1Id,
+            startTime: currentTime + 1000,
+            startPrice: 1000000,
+            apr: 5000,
+            priceFixDuration: 3600
+        });
 
-        await testHelper.program.methods
-            .addBuyOfferVector(
-                offer2Id,
-                new BN(currentTime + 1000),
-                new BN(3000000),
-                new BN(7500),
-                new BN(1800)
-            )
-            .accounts({
-                state: testHelper.statePda,
-            })
-            .rpc();
+        await program.addBuyOfferVector({
+            offerId: offer2Id,
+            startTime: currentTime + 1000,
+            startPrice: 3000000,
+            apr: 7500,
+            priceFixDuration: 1800
+        });
 
-        await testHelper.program.methods
-            .addBuyOfferVector(
-                offer1Id,
-                new BN(currentTime + 3000),
-                new BN(2000000),
-                new BN(2500),
-                new BN(3600)
-            )
-            .accounts({
-                state: testHelper.statePda,
-            })
-            .rpc();
+        await program.addBuyOfferVector({
+            offerId: offer1Id,
+            startTime: currentTime + 3000,
+            startPrice: 2000000,
+            apr: 2500,
+            priceFixDuration: 3600
+        });
 
         // Verify each offer has its own vector ID sequence
-        const buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
-        const offer1 = buyOfferAccount.offers.find(o => o.offerId.eq(offer1Id));
-        const offer2 = buyOfferAccount.offers.find(o => o.offerId.eq(offer2Id));
+        const offer1 = await program.getOffer(offer1Id);
+        const offer2 = await program.getOffer(offer2Id);
 
         // Offer 1 should have vectors 1 and 2
         expect(offer1.vectors[0].vectorId.toString()).toBe("1");
@@ -680,47 +472,35 @@ describe("Add Buy Offer Vector", () => {
     });
 
     it("Should clean old past vectors, keeping only current active and previous active", async () => {
-        const offerId = new BN(1);
-        await testHelper.makeBuyOffer({
+        const offerId = 1;
+        await program.makeBuyOffer({
             tokenInMint,
-            tokenOutMint,
+            tokenOutMint
         });
-
-        const [buyOffersPda] = PublicKey.findProgramAddressSync(
-            [Buffer.from("buy_offers")],
-            ONREAPP_PROGRAM_ID
-        );
-
         const currentTime = await testHelper.getCurrentClockTime();
 
         // Add 5 vectors: all in the future
         const vectors = [
-            {baseTime: currentTime + 1000, price: 1000000},
-            {baseTime: currentTime + 2000, price: 2000000},
-            {baseTime: currentTime + 3000, price: 3000000},
-            {baseTime: currentTime + 4000, price: 4000000},
-            {baseTime: currentTime + 5000, price: 5000000},
+            { startTime: currentTime + 1000, price: 1000000 },
+            { startTime: currentTime + 2000, price: 2000000 },
+            { startTime: currentTime + 3000, price: 3000000 },
+            { startTime: currentTime + 4000, price: 4000000 },
+            { startTime: currentTime + 5000, price: 5000000 }
         ];
 
         // Add all vectors
         for (let i = 0; i < vectors.length; i++) {
-            await testHelper.program.methods
-                .addBuyOfferVector(
-                    offerId,
-                    new BN(vectors[i].baseTime),
-                    new BN(vectors[i].price),
-                    new BN(5000), // 50% APR
-                    new BN(3600)  // 1 hour duration
-                )
-                .accounts({
-                    state: testHelper.statePda,
-                })
-                .rpc();
+            await program.addBuyOfferVector({
+                offerId,
+                startTime: vectors[i].startTime,
+                startPrice: vectors[i].price,
+                apr: 5000, // 0.5% APR
+                priceFixDuration: 3600  // 1 hour duration
+            });
         }
 
         // Verify all 5 vectors were added
-        let buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
-        let offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
+        let offer = await program.getOffer(offerId);
         let activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
         expect(activeVectors.length).toBe(5);
 
@@ -728,18 +508,13 @@ describe("Add Buy Offer Vector", () => {
         await testHelper.advanceClockBy(4500);
 
         // Add another vector to trigger cleanup
-        await testHelper.program.methods
-            .addBuyOfferVector(
-                offerId,
-                new BN(currentTime + 6000), // Vector 6 (future)
-                new BN(6000000),
-                new BN(5000),
-                new BN(3600)
-            )
-            .accounts({
-                state: testHelper.statePda,
-            })
-            .rpc();
+        await program.addBuyOfferVector({
+            offerId,
+            startTime: currentTime + 6000, // Vector 6 (future)
+            startPrice: 6000000,
+            apr: 5000,
+            priceFixDuration: 3600
+        });
 
         // After cleanup, should only have:
         // - Vector 4 (currently active - most recent start_time <= current_time)
@@ -747,9 +522,7 @@ describe("Add Buy Offer Vector", () => {
         // - Vector 5 (future vector - should be kept)
         // - Vector 6 (newly added future vector)
         // Vector 1 and 2 should be deleted (oldest past vector)
-
-        buyOfferAccount = await testHelper.program.account.buyOfferAccount.fetch(buyOffersPda);
-        offer = buyOfferAccount.offers.find(o => o.offerId.eq(offerId));
+        offer = await program.getOffer(offerId);
         activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
 
         // Should have exactly 4 vectors remaining (deleted vector 1 and 2)

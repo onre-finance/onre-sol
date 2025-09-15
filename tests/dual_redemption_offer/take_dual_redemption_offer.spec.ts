@@ -1,11 +1,11 @@
-import {PublicKey} from "@solana/web3.js";
-import {ONREAPP_PROGRAM_ID, TestHelper} from "../test_helper";
-import {AddedProgram, startAnchor} from "solana-bankrun";
-import {Onreapp} from "../../target/types/onreapp";
-import {BankrunProvider} from "anchor-bankrun";
-import {BN, Program} from "@coral-xyz/anchor";
+import { PublicKey } from "@solana/web3.js";
+import { ONREAPP_PROGRAM_ID, TestHelper } from "../test_helper";
+import { AddedProgram, startAnchor } from "solana-bankrun";
+import { Onreapp } from "../../target/types/onreapp";
+import { BankrunProvider } from "anchor-bankrun";
+import { BN, Program } from "@coral-xyz/anchor";
 import idl from "../../target/idl/onreapp.json";
-import {getAssociatedTokenAddressSync} from "@solana/spl-token";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 describe("Take dual redemption offer", () => {
     let testHelper: TestHelper;
@@ -19,7 +19,7 @@ describe("Take dual redemption offer", () => {
     beforeEach(async () => {
         const programInfo: AddedProgram = {
             programId: ONREAPP_PROGRAM_ID,
-            name: "onreapp",
+            name: "onreapp"
         };
 
         const workspace = process.cwd();
@@ -28,7 +28,7 @@ describe("Take dual redemption offer", () => {
         const provider = new BankrunProvider(context);
         program = new Program<Onreapp>(
             idl,
-            provider,
+            provider
         );
 
         testHelper = new TestHelper(context, program);
@@ -36,7 +36,7 @@ describe("Take dual redemption offer", () => {
         user = testHelper.createUserAccount();
 
         // Initialize program, offers, and vault authority
-        await program.methods.initialize().accounts({boss}).rpc();
+        await program.methods.initialize().accounts({ boss }).rpc();
         await program.methods.initializeOffers().accounts({
             state: testHelper.statePda
         }).rpc();
@@ -45,8 +45,8 @@ describe("Take dual redemption offer", () => {
         }).rpc();
 
         // Get PDAs
-        [dualRedemptionOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from('dual_redemption_offers')], ONREAPP_PROGRAM_ID);
-        [dualRedemptionVaultAuthorityPda] = PublicKey.findProgramAddressSync([Buffer.from('dual_redemption_vault_auth')], ONREAPP_PROGRAM_ID);
+        [dualRedemptionOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from("dual_redemption_offers")], ONREAPP_PROGRAM_ID);
+        [dualRedemptionVaultAuthorityPda] = PublicKey.findProgramAddressSync([Buffer.from("dual_redemption_vault_auth")], ONREAPP_PROGRAM_ID);
     });
 
     test("Take dual redemption offer with 80/20 ratio should succeed", async () => {
@@ -72,7 +72,7 @@ describe("Take dual redemption offer", () => {
             .dualRedemptionVaultDeposit(new BN("1000000000000")) // 1000 tokens with 9 decimals
             .accounts({
                 tokenMint: tokenOutMint1,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -80,7 +80,7 @@ describe("Take dual redemption offer", () => {
             .dualRedemptionVaultDeposit(new BN("1000000000")) // 1000 tokens with 6 decimals
             .accounts({
                 tokenMint: tokenOutMint2,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -97,7 +97,7 @@ describe("Take dual redemption offer", () => {
                 tokenInMint,
                 tokenOutMint1,
                 tokenOutMint2,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -119,7 +119,7 @@ describe("Take dual redemption offer", () => {
                 tokenOutMint2,
                 state: testHelper.statePda,
                 boss,
-                user: user.publicKey,
+                user: user.publicKey
             })
             .signers([user])
             .rpc();
@@ -155,7 +155,7 @@ describe("Take dual redemption offer", () => {
             .dualRedemptionVaultDeposit(new BN(1000e9)) // 1000 tokens with 9 decimals
             .accounts({
                 tokenMint: tokenOutMint1,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -163,7 +163,7 @@ describe("Take dual redemption offer", () => {
             .dualRedemptionVaultDeposit(new BN("1000000000")) // 1000 tokens with 6 decimals
             .accounts({
                 tokenMint: tokenOutMint2,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -181,7 +181,7 @@ describe("Take dual redemption offer", () => {
                 tokenInMint,
                 tokenOutMint1,
                 tokenOutMint2,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -199,7 +199,7 @@ describe("Take dual redemption offer", () => {
                 tokenInMint,
                 tokenOutMint1,
                 tokenOutMint2,
-                user: user.publicKey,
+                user: user.publicKey
             })
             .signers([user])
             .rpc();
@@ -211,7 +211,7 @@ describe("Take dual redemption offer", () => {
         expect(userTokenOut1BalanceAfter).toBe(BigInt(792e3));
         // Should receive 20% of 0.99 ONyc in rONyc with price 0.5 = 0.396 rONyc
         expect(userTokenOut2BalanceAfter).toBe(BigInt(396e6));
-    })
+    });
 
 
     test("Take dual redemption offer with 0/100 ratio (all to token2) should succeed", async () => {
@@ -237,7 +237,7 @@ describe("Take dual redemption offer", () => {
             .dualRedemptionVaultDeposit(new BN("1000000000000")) // 1000 tokens
             .accounts({
                 tokenMint: tokenOutMint1,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -245,7 +245,7 @@ describe("Take dual redemption offer", () => {
             .dualRedemptionVaultDeposit(new BN("1000000000000")) // 1000 tokens with 9 decimals
             .accounts({
                 tokenMint: tokenOutMint2,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -262,7 +262,7 @@ describe("Take dual redemption offer", () => {
                 tokenInMint,
                 tokenOutMint1,
                 tokenOutMint2,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -284,7 +284,7 @@ describe("Take dual redemption offer", () => {
                 tokenOutMint2,
                 state: testHelper.statePda,
                 boss,
-                user: user.publicKey,
+                user: user.publicKey
             })
             .signers([user])
             .rpc();
@@ -323,7 +323,7 @@ describe("Take dual redemption offer", () => {
             .dualRedemptionVaultDeposit(new BN("1000000000000")) // 1000 tokens
             .accounts({
                 tokenMint: tokenOutMint1,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -331,7 +331,7 @@ describe("Take dual redemption offer", () => {
             .dualRedemptionVaultDeposit(new BN("1000000000000")) // 1000 tokens with 9 decimals
             .accounts({
                 tokenMint: tokenOutMint2,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -348,7 +348,7 @@ describe("Take dual redemption offer", () => {
                 tokenInMint,
                 tokenOutMint1,
                 tokenOutMint2,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -370,7 +370,7 @@ describe("Take dual redemption offer", () => {
                 tokenOutMint2,
                 state: testHelper.statePda,
                 boss,
-                user: user.publicKey,
+                user: user.publicKey
             })
             .signers([user])
             .rpc();
@@ -404,14 +404,31 @@ describe("Take dual redemption offer", () => {
             .dualRedemptionVaultDeposit(new BN("1000000000000"))
             .accounts({
                 tokenMint: tokenOutMint1,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
         await program.methods
             .dualRedemptionVaultDeposit(new BN("1000000000"))
             .accounts({
                 tokenMint: tokenOutMint2,
-                state: testHelper.statePda,
+                state: testHelper.statePda
+            })
+            .rpc();
+
+        // Create dual redemption offer so vault is initialized
+        const price1 = new BN("500000000"); // 0.5 * 10^9
+        const price2 = new BN("2000000000"); // 2.0 * 10^9
+        const ratioBasisPoints = new BN(10000); // 100% for token_out_1, 0% for token_out_2
+        const startTime = new BN(Math.floor(Date.now() / 1000) - 60);
+        const endTime = new BN(startTime.toNumber() + 3600);
+
+        await program.methods
+            .makeDualRedemptionOffer(startTime, endTime, price1, price2, ratioBasisPoints, new BN(0))
+            .accounts({
+                tokenInMint,
+                tokenOutMint1,
+                tokenOutMint2,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -425,7 +442,7 @@ describe("Take dual redemption offer", () => {
                     tokenOutMint2,
                     state: testHelper.statePda,
                     boss,
-                    user: user.publicKey,
+                    user: user.publicKey
                 })
                 .signers([user])
                 .rpc()
@@ -450,14 +467,14 @@ describe("Take dual redemption offer", () => {
             .dualRedemptionVaultDeposit(new BN("1000000000000"))
             .accounts({
                 tokenMint: tokenOutMint1,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
         await program.methods
             .dualRedemptionVaultDeposit(new BN("1000000000"))
             .accounts({
                 tokenMint: tokenOutMint2,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -473,7 +490,7 @@ describe("Take dual redemption offer", () => {
                 tokenInMint,
                 tokenOutMint1,
                 tokenOutMint2,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -490,7 +507,7 @@ describe("Take dual redemption offer", () => {
                     tokenOutMint2,
                     state: testHelper.statePda,
                     boss,
-                    user: user.publicKey,
+                    user: user.publicKey
                 })
                 .signers([user])
                 .rpc()
@@ -516,14 +533,14 @@ describe("Take dual redemption offer", () => {
             .dualRedemptionVaultDeposit(new BN("1000000000000"))
             .accounts({
                 tokenMint: correctTokenOutMint1,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
         await program.methods
             .dualRedemptionVaultDeposit(new BN("1000000000"))
             .accounts({
                 tokenMint: correctTokenOutMint2,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -538,7 +555,7 @@ describe("Take dual redemption offer", () => {
                 tokenInMint: correctTokenInMint,
                 tokenOutMint1: correctTokenOutMint1,
                 tokenOutMint2: correctTokenOutMint2,
-                state: testHelper.statePda,
+                state: testHelper.statePda
             })
             .rpc();
 
@@ -555,10 +572,10 @@ describe("Take dual redemption offer", () => {
                     tokenOutMint2: correctTokenOutMint2,
                     state: testHelper.statePda,
                     boss,
-                    user: user.publicKey,
+                    user: user.publicKey
                 })
                 .signers([user])
                 .rpc()
-        ).rejects.toThrow("Invalid token in mint");
+        ).rejects.toThrow("AccountNotInitialized");
     });
 });

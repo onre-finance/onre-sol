@@ -1,7 +1,5 @@
-import {Clock, ProgramTestContext} from "solana-bankrun"
-import {Onreapp} from "../target/types/onreapp"
-import {BN, Program} from "@coral-xyz/anchor"
-import {Keypair, PublicKey, SystemProgram} from "@solana/web3.js";
+import { AddedProgram, Clock, ProgramTestContext, startAnchor } from "solana-bankrun";
+import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import {
     ACCOUNT_SIZE,
     AccountLayout,
@@ -17,50 +15,63 @@ export const INITIAL_LAMPORTS = 1_000_000_000; // 1 SOL
 
 export class TestHelper {
     context: ProgramTestContext;
-    program: Program<Onreapp>;
 
-    // accounts
-    statePda: PublicKey;
-
-    constructor(context: ProgramTestContext, program: Program<Onreapp>) {
+    private constructor(context: ProgramTestContext) {
         this.context = context;
-        this.program = program;
-        [this.statePda] = PublicKey.findProgramAddressSync([Buffer.from('state')], ONREAPP_PROGRAM_ID);
     }
 
+    static async create() {
+        const programInfo: AddedProgram = {
+            programId: ONREAPP_PROGRAM_ID,
+            name: "onreapp"
+        };
+        const context = await startAnchor(process.cwd(), [programInfo], []);
+
+        return new TestHelper(context);
+    }
+
+    getBoss(): PublicKey {
+        return this.context.payer.publicKey;
+    }
+
+    // Account helper functions
     createUserAccount(): Keypair {
         const user = Keypair.generate();
         this.context.setAccount(user.publicKey, {
             executable: false,
             data: new Uint8Array([]),
             lamports: INITIAL_LAMPORTS,
-            owner: SystemProgram.programId,
+            owner: SystemProgram.programId
         });
 
         return user;
     }
 
-    createMint(mintAuthority: PublicKey, supply: bigint = BigInt(100_000e9), decimals: number = 9, freezeAuthority: PublicKey = mintAuthority): PublicKey {
+    createMint(decimals: number, mintAuthority: PublicKey = null, freezeAuthority: PublicKey = mintAuthority): PublicKey {
+        if (!mintAuthority) {
+            mintAuthority = this.getBoss();
+            freezeAuthority = this.getBoss();
+        }
         const mintData = Buffer.alloc(MINT_SIZE);
         MintLayout.encode({
             mintAuthorityOption: 1,  // 1 = Some(authority), 0 = None
             mintAuthority: mintAuthority,
-            supply: supply,
+            supply: BigInt(0),
             decimals: decimals,
             isInitialized: true,
             freezeAuthorityOption: 1,  // 1 = Some(authority), 0 = None
-            freezeAuthority: freezeAuthority,
-        }, mintData)
+            freezeAuthority: freezeAuthority
+        }, mintData);
 
         const mintAddress = PublicKey.unique();
         this.context.setAccount(mintAddress, {
             executable: false,
             data: mintData,
             lamports: INITIAL_LAMPORTS,
-            owner: TOKEN_PROGRAM_ID,
+            owner: TOKEN_PROGRAM_ID
         });
 
-        return mintAddress
+        return mintAddress;
     };
 
     createTokenAccount(mint: PublicKey, owner: PublicKey, amount: bigint, allowOwnerOffCurve: boolean = false): PublicKey {
@@ -76,7 +87,7 @@ export class TestHelper {
             isNative: BigInt(0),
             delegatedAmount: BigInt(0),
             closeAuthorityOption: 0,
-            closeAuthority: PublicKey.default,
+            closeAuthority: PublicKey.default
         }, tokenAccountData);
 
         const tokenAccountAddress = getAssociatedTokenAddressSync(mint, owner, allowOwnerOffCurve);
@@ -85,117 +96,47 @@ export class TestHelper {
             executable: false,
             data: tokenAccountData,
             lamports: INITIAL_LAMPORTS,
-            owner: TOKEN_PROGRAM_ID,
+            owner: TOKEN_PROGRAM_ID
         });
 
         return tokenAccountAddress;
     }
 
-    createBuyOfferAccounts(
-        tokenInMint: PublicKey,
-        offerTokenInAmount: bigint = BigInt(0),
-        tokenOutMint: PublicKey,
-        offerTokenOutAmount: bigint = BigInt(0),
-        boss: PublicKey,
-        bossTokenInAmount: bigint = BigInt(0),
-    ): BuyOfferAccounts {
-        const [buyOfferAccountPda] = PublicKey.findProgramAddressSync([Buffer.from('buy_offers_v2')], ONREAPP_PROGRAM_ID);
-        const [offerAuthority] = PublicKey.findProgramAddressSync([Buffer.from('offer_authority')], ONREAPP_PROGRAM_ID);
-        const offerTokenInPda = this.createTokenAccount(tokenInMint, offerAuthority, offerTokenInAmount, true);
-        const offerTokenOutPda = this.createTokenAccount(tokenOutMint, offerAuthority, offerTokenOutAmount, true);
-        const bossTokenInAccount = this.createTokenAccount(tokenInMint, boss, bossTokenInAmount);
-
-        return {
-            offerAuthority,
-            buyOfferAccountPda,
-            offerTokenInPda,
-            offerTokenOutPda,
-            bossTokenInAccount,
-        }
+    getAssociatedTokenAccount(mint: PublicKey, owner: PublicKey): PublicKey {
+        return getAssociatedTokenAddressSync(mint, owner);
     }
 
-    createOneTokenOfferAccounts(
-        sellTokenMint: PublicKey,
-        offerSellTokenAmount: bigint = BigInt(0),
-        buyTokenMint: PublicKey,
-        offerBuyTokenAmount: bigint = BigInt(0),
-        boss: PublicKey,
-        bossBuyTokenAmount: bigint = BigInt(0),
-    ): OfferOneTokenAccounts {
-        const offerId = new BN(PublicKey.unique().toBytes());
-        const [offerAuthority] = PublicKey.findProgramAddressSync([Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)], ONREAPP_PROGRAM_ID);
-        const [offerPda] = PublicKey.findProgramAddressSync([Buffer.from('offer'), offerId.toArrayLike(Buffer, 'le', 8)], ONREAPP_PROGRAM_ID);
-        const offerSellTokenPda = this.createTokenAccount(sellTokenMint, offerAuthority, offerSellTokenAmount, true);
-        const offerBuyTokenPda = this.createTokenAccount(buyTokenMint, offerAuthority, offerBuyTokenAmount, true);
-        const bossBuyTokenAccount = this.createTokenAccount(buyTokenMint, boss, bossBuyTokenAmount);
-
-        return {
-            offerId,
-            offerAuthority,
-            offerPda,
-            offerSellTokenPda,
-            offerBuyTokenPda,
-            bossBuyTokenAccount,
-        }
+    async getTokenAccountBalance(tokenAccount: PublicKey): Promise<bigint> {
+        const tokenAccountData = await this.getAccount(tokenAccount);
+        return tokenAccountData.amount;
     }
 
-    createTwoTokenOfferAccounts(
-        sellTokenMint: PublicKey,
-        offerSellTokenAmount: bigint = BigInt(0),
-        buyToken1Mint: PublicKey,
-        offerBuyToken1Amount: bigint = BigInt(0),
-        buyToken2Mint: PublicKey,
-        offerBuyToken2Amount: bigint = BigInt(0),
-        boss: PublicKey,
-        bossBuyTokenAmount1: bigint = BigInt(0),
-        bossBuyTokenAmount2: bigint = BigInt(0),
-    ): OfferTwoTokenAccounts {
-        const offerId = new BN(PublicKey.unique().toBytes());
-        const [offerAuthority] = PublicKey.findProgramAddressSync([Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)], ONREAPP_PROGRAM_ID);
-        const [offerPda] = PublicKey.findProgramAddressSync([Buffer.from('offer'), offerId.toArrayLike(Buffer, 'le', 8)], ONREAPP_PROGRAM_ID);
-        const offerSellTokenPda = this.createTokenAccount(sellTokenMint, offerAuthority, offerSellTokenAmount, true);
-        const offerBuyToken1Pda = this.createTokenAccount(buyToken1Mint, offerAuthority, offerBuyToken1Amount, true);
-        const offerBuyToken2Pda = this.createTokenAccount(buyToken2Mint, offerAuthority, offerBuyToken2Amount, true);
-        const bossBuyTokenAccount1 = this.createTokenAccount(buyToken1Mint, boss, bossBuyTokenAmount1);
-        const bossBuyTokenAccount2 = this.createTokenAccount(buyToken2Mint, boss, bossBuyTokenAmount2);
-
-        return {
-            offerId,
-            offerAuthority,
-            offerPda,
-            offerSellTokenPda,
-            offerBuyToken1Pda,
-            offerBuyToken2Pda,
-            bossBuyTokenAccount1,
-            bossBuyTokenAccount2,
+    async getAccount(accountAddress: PublicKey) {
+        const account = await this.context.banksClient.getAccount(accountAddress);
+        if (!account) {
+            throw new Error("Token account not found");
         }
+
+        return AccountLayout.decode(account.data); // TODO: Check if works with mint accounts as well
+    }
+
+    async getMintInfo(mint: PublicKey): Promise<{ supply: bigint, decimals: number, mintAuthority: PublicKey | null }> {
+        const account = await this.context.banksClient.getAccount(mint);
+        if (!account) {
+            throw new Error("Mint account not found");
+        }
+        const mintData = MintLayout.decode(account.data);
+        return {
+            supply: mintData.supply,
+            decimals: mintData.decimals,
+            mintAuthority: mintData.mintAuthorityOption === 1 ? mintData.mintAuthority : null
+        };
     }
 
     async expectTokenAccountAmountToBe(tokenAccount: PublicKey, amount: bigint) {
         const account = await this.context.banksClient.getAccount(tokenAccount);
         const tokenAccountData = AccountLayout.decode(account!.data);
         expect(tokenAccountData.amount).toBe(amount);
-    }
-
-    async getTokenAccountBalance(tokenAccount: PublicKey): Promise<bigint> {
-        const account = await this.context.banksClient.getAccount(tokenAccount);
-        if (!account) {
-            throw new Error("Token account not found");
-        }
-        const tokenAccountData = AccountLayout.decode(account.data);
-        return tokenAccountData.amount;
-    }
-
-    async makeBuyOffer(params: MakeBuyOfferParams) {
-        const feeBasisPoints = params.feeBasisPoints ?? 0;
-        return await this.program.methods
-            .makeBuyOffer(new BN(feeBasisPoints))
-            .accounts({
-                tokenInMint: params.tokenInMint,
-                tokenOutMint: params.tokenOutMint,
-                state: this.statePda,
-            })
-            .rpc();
     }
 
     async getCurrentClockTime() {
@@ -211,42 +152,9 @@ export class TestHelper {
                 clock.epochStartTimestamp,
                 clock.epoch,
                 clock.leaderScheduleEpoch,
-                clock.unixTimestamp + BigInt(seconds),
+                clock.unixTimestamp + BigInt(seconds)
             )
-        )
+        );
     }
 }
 
-type BuyOfferAccounts = {
-    offerAuthority: PublicKey;
-    buyOfferAccountPda: PublicKey;
-    offerTokenInPda: PublicKey;
-    offerTokenOutPda: PublicKey;
-    bossTokenInAccount: PublicKey;
-}
-
-type OfferOneTokenAccounts = {
-    offerId: BN;
-    offerAuthority: PublicKey;
-    offerPda: PublicKey;
-    offerSellTokenPda: PublicKey;
-    offerBuyTokenPda: PublicKey;
-    bossBuyTokenAccount: PublicKey;
-}
-
-type OfferTwoTokenAccounts = {
-    offerId: BN;
-    offerAuthority: PublicKey;
-    offerPda: PublicKey;
-    offerSellTokenPda: PublicKey;
-    offerBuyToken1Pda: PublicKey;
-    offerBuyToken2Pda: PublicKey;
-    bossBuyTokenAccount1: PublicKey;
-    bossBuyTokenAccount2: PublicKey;
-}
-
-type MakeBuyOfferParams = {
-    tokenInMint: PublicKey;
-    tokenOutMint: PublicKey;
-    feeBasisPoints?: number;
-}
