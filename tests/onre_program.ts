@@ -15,10 +15,12 @@ export class OnreProgram {
         buyOfferAccountPda: PublicKey;
         buyOfferVaultAuthorityPda: PublicKey;
         permissionlessVaultAuthorityPda: PublicKey;
+        adminStatePda: PublicKey;
     } = {
         buyOfferAccountPda: PublicKey.findProgramAddressSync([Buffer.from("buy_offers")], PROGRAM_ID)[0],
         buyOfferVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("buy_offer_vault_authority")], PROGRAM_ID)[0],
-        permissionlessVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], PROGRAM_ID)[0]
+        permissionlessVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], PROGRAM_ID)[0],
+        adminStatePda: PublicKey.findProgramAddressSync([Buffer.from("admin_state")], PROGRAM_ID)[0]
     };
 
     constructor(context: ProgramTestContext) {
@@ -235,6 +237,39 @@ export class OnreProgram {
             .rpc();
     }
 
+    async initializeAdminState() {
+        await this.program.methods
+            .initializeAdminState()
+            .accounts({
+                state: this.statePda
+            })
+            .rpc();
+    }
+
+    async addAdmin(params: { admin: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods
+            .addAdmin(params.admin)
+            .accounts({});
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
+    async removeAdmin(params: { admin: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods
+            .removeAdmin(params.admin)
+            .accounts({});
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
     // Accounts
     async getBuyOfferAccount() {
         const buyOfferAccountPda = this.pdas.buyOfferAccountPda;
@@ -244,6 +279,10 @@ export class OnreProgram {
     async getOffer(offerId: number) {
         const buyOfferAccount = await this.getBuyOfferAccount();
         return buyOfferAccount.offers.find(offer => offer.offerId.toNumber() === offerId);
+    }
+
+    async getAdminState() {
+        return await this.program.account.adminState.fetch(this.pdas.adminStatePda);
     }
 
 }

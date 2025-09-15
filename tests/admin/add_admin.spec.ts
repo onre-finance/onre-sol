@@ -1,54 +1,31 @@
 import { PublicKey, Keypair } from "@solana/web3.js";
-import { ONREAPP_PROGRAM_ID, TestHelper } from "../test_helper";
-import { AddedProgram, startAnchor } from "solana-bankrun";
-import { Onreapp } from "../../target/types/onreapp";
-import { BankrunProvider } from "anchor-bankrun";
-import { Program } from "@coral-xyz/anchor";
-import idl from "../../target/idl/onreapp.json";
+import { TestHelper } from "../test_helper";
+import { OnreProgram } from "../onre_program.ts";
 
 describe("Add Admin", () => {
     let testHelper: TestHelper;
-    let program: Program<Onreapp>;
-    let boss: PublicKey;
-    let adminStatePda: PublicKey;
+    let program: OnreProgram;
     let nonBoss: Keypair;
     let newAdmin: Keypair;
 
     beforeEach(async () => {
-        const programInfo: AddedProgram = {
-            programId: ONREAPP_PROGRAM_ID,
-            name: "onreapp"
-        };
+        testHelper = await TestHelper.create();
+        program = new OnreProgram(testHelper.context);
 
-        const workspace = process.cwd();
-        const context = await startAnchor(workspace, [programInfo], []);
-
-        const provider = new BankrunProvider(context);
-        program = new Program<Onreapp>(idl, provider);
-        testHelper = new TestHelper(context, program);
-
-        boss = provider.wallet.publicKey;
         nonBoss = testHelper.createUserAccount();
         newAdmin = testHelper.createUserAccount();
 
-        [adminStatePda] = PublicKey.findProgramAddressSync(
-            [Buffer.from("admin_state")],
-            ONREAPP_PROGRAM_ID
-        );
-
         // Initialize state and admin state
-        await program.methods.initialize().accounts({ boss }).rpc();
-        await program.methods.initializeAdminState().accounts({
-            state: testHelper.statePda
-        }).rpc();
+        await program.initialize();
+        await program.initializeAdminState();
     });
 
     test("Boss can add a new admin successfully", async () => {
         // when
-        await program.methods.addAdmin(newAdmin.publicKey).rpc();
+        await program.addAdmin({ admin: newAdmin.publicKey });
 
         // then
-        const adminStateAccount = await program.account.adminState.fetch(adminStatePda);
+        const adminStateAccount = await program.getAdminState();
         expect(adminStateAccount.admins).toContainEqual(newAdmin.publicKey);
         const activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
         expect(activeAdmins).toHaveLength(1);
@@ -57,17 +34,17 @@ describe("Add Admin", () => {
     test("Non-boss cannot add admin - should fail", async () => {
         // when & then
         await expect(
-            program.methods.addAdmin(newAdmin.publicKey).signers([nonBoss]).rpc()
+            program.addAdmin({ admin: newAdmin.publicKey, signer: nonBoss })
         ).rejects.toThrow();
     });
 
     test("Cannot add the same admin twice", async () => {
         // given
-        await program.methods.addAdmin(newAdmin.publicKey).rpc();
+        await program.addAdmin({ admin: newAdmin.publicKey });
 
         // when & then
         await expect(
-            program.methods.addAdmin(newAdmin.publicKey).rpc()
+            program.addAdmin({ admin: newAdmin.publicKey })
         ).rejects.toThrow();
     });
 
@@ -77,17 +54,17 @@ describe("Add Admin", () => {
         for (let i = 0; i < 20; i++) {
             const admin = testHelper.createUserAccount();
             admins.push(admin);
-            await program.methods.addAdmin(admin.publicKey).rpc();
+            await program.addAdmin({ admin: admin.publicKey });
         }
 
         // when & then - try to add 21st admin
         const extraAdmin = testHelper.createUserAccount();
         await expect(
-            program.methods.addAdmin(extraAdmin.publicKey).rpc()
+            program.addAdmin({ admin: extraAdmin.publicKey })
         ).rejects.toThrow();
 
         // verify we still have exactly 20 admins
-        const adminStateAccount = await program.account.adminState.fetch(adminStatePda);
+        const adminStateAccount = await program.getAdminState();
         const activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
         expect(activeAdmins).toHaveLength(20);
     });
@@ -99,12 +76,12 @@ describe("Add Admin", () => {
         const admin3 = testHelper.createUserAccount();
 
         // when
-        await program.methods.addAdmin(admin1.publicKey).rpc();
-        await program.methods.addAdmin(admin2.publicKey).rpc();
-        await program.methods.addAdmin(admin3.publicKey).rpc();
+        await program.addAdmin({ admin: admin1.publicKey });
+        await program.addAdmin({ admin: admin2.publicKey });
+        await program.addAdmin({ admin: admin3.publicKey });
 
         // then
-        const adminStateAccount = await program.account.adminState.fetch(adminStatePda);
+        const adminStateAccount = await program.getAdminState();
         expect(adminStateAccount.admins).toContainEqual(admin1.publicKey);
         expect(adminStateAccount.admins).toContainEqual(admin2.publicKey);
         expect(adminStateAccount.admins).toContainEqual(admin3.publicKey);
@@ -114,11 +91,11 @@ describe("Add Admin", () => {
 
     test("Boss can add themselves as admin", async () => {
         // when
-        await program.methods.addAdmin(boss).rpc();
+        await program.addAdmin({ admin: testHelper.getBoss() });
 
         // then
-        const adminStateAccount = await program.account.adminState.fetch(adminStatePda);
-        expect(adminStateAccount.admins).toContainEqual(boss);
+        const adminStateAccount = await program.getAdminState();
+        expect(adminStateAccount.admins).toContainEqual(testHelper.getBoss());
         const activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
         expect(activeAdmins).toHaveLength(1);
     });
