@@ -1,20 +1,27 @@
-import { PublicKey } from "@solana/web3.js";
+import { Keypair, PublicKey } from "@solana/web3.js";
 import { TestHelper } from "../test_helper";
 import { OnreProgram } from "../onre_program.ts";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 describe("Take Buy Offer Permissionless", () => {
     let testHelper: TestHelper;
     let program: OnreProgram;
+
     let tokenInMint: PublicKey;
     let tokenOutMint: PublicKey;
-    let user: any;
+
+    let user: Keypair;
+
     let userTokenInAccount: PublicKey;
     let userTokenOutAccount: PublicKey;
+
     let bossTokenInAccount: PublicKey;
+
     let vaultTokenOutAccount: PublicKey;
-    let permissionlessAuthorityPda: PublicKey;
+
     let permissionlessTokenInAccount: PublicKey;
     let permissionlessTokenOutAccount: PublicKey;
+
     let offerId: number;
 
     beforeEach(async () => {
@@ -43,11 +50,11 @@ describe("Take Buy Offer Permissionless", () => {
             accountName: "test-account"
         });
 
-        // Create user accounts
+        // Create token accounts
         user = testHelper.createUserAccount();
         userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(10_000e6), true);
-        userTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, user.publicKey, BigInt(0), true);
         bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, testHelper.getBoss(), BigInt(0));
+        userTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, user.publicKey);
 
         // Create vault and permissionless intermediary accounts
         vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, program.pdas.buyOfferVaultAuthorityPda, BigInt(0), true);
@@ -75,7 +82,7 @@ describe("Take Buy Offer Permissionless", () => {
                 priceFixDuration: 86400
             });
 
-            const expectedTokenInAmount = 1_000_100; // 1.0001 USDC
+            const expectedTokenInAmount = 1.0001e6; // 1.0001 USDC
 
             // Execute permissionless buy offer
             await program.takeBuyOfferPermissionless({
@@ -107,7 +114,6 @@ describe("Take Buy Offer Permissionless", () => {
 
             // Get balances before transaction
             const userTokenInBefore = await testHelper.getTokenAccountBalance(userTokenInAccount);
-            const userTokenOutBefore = await testHelper.getTokenAccountBalance(userTokenOutAccount);
             const bossTokenInBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
             const vaultTokenOutBefore = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
             const permissionlessTokenInBefore = await testHelper.getTokenAccountBalance(permissionlessTokenInAccount);
@@ -131,8 +137,8 @@ describe("Take Buy Offer Permissionless", () => {
             const permissionlessTokenOutAfter = await testHelper.getTokenAccountBalance(permissionlessTokenOutAccount);
 
             // Verify all transfers
-            // expect(userTokenInBefore - userTokenInAfter).toBe(BigInt(tokenInAmount)); // User paid token_in
-            expect(userTokenOutAfter - userTokenOutBefore).toBe(BigInt(1e9)); // User received token_out
+            expect(userTokenInBefore - userTokenInAfter).toBe(BigInt(tokenInAmount)); // User paid token_in
+            expect(userTokenOutAfter).toBe(BigInt(1e9)); // User received token_out
             expect(bossTokenInAfter - bossTokenInBefore).toBe(BigInt(tokenInAmount)); // Boss received token_in
             expect(vaultTokenOutBefore - vaultTokenOutAfter).toBe(BigInt(1e9)); // Vault gave token_out
 
@@ -157,11 +163,6 @@ describe("Take Buy Offer Permissionless", () => {
             // Create second user for direct comparison
             const user2 = testHelper.createUserAccount();
             const user2TokenInAccount = testHelper.createTokenAccount(tokenInMint, user2.publicKey, BigInt(10_000e6), true);
-            const user2TokenOutAccount = testHelper.createTokenAccount(tokenOutMint, user2.publicKey, BigInt(0), true);
-
-            // Execute both transactions at the same time
-            const user1BalanceBefore = await testHelper.getTokenAccountBalance(userTokenOutAccount);
-            const user2BalanceBefore = await testHelper.getTokenAccountBalance(user2TokenOutAccount);
 
             // Execute permissionless flow
             await program.takeBuyOfferPermissionless({
@@ -183,14 +184,57 @@ describe("Take Buy Offer Permissionless", () => {
                 signer: user2
             });
 
+            const user2TokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, user.publicKey);
+
             const user1BalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
             const user2BalanceAfter = await testHelper.getTokenAccountBalance(user2TokenOutAccount);
 
             // Both should receive identical amounts
-            const user1Received = user1BalanceAfter - user1BalanceBefore;
-            const user2Received = user2BalanceAfter - user2BalanceBefore;
-            expect(user1Received).toBe(user2Received);
+            expect(user1BalanceAfter).toBe(user2BalanceAfter);
         });
+
+        it("Should leave intermediary accounts with zero balance after large transaction", async () => {
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            // Add more funding to vault for large transaction
+            const bossTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(50_000e9));
+            await program.buyOfferVaultDeposit({
+                amount: 25_000e9,
+                tokenMint: tokenOutMint
+            });
+
+            await program.addBuyOfferVector({
+                offerId,
+                startTime: currentTime,
+                startPrice: 1e9,
+                apr: 36_500,
+                priceFixDuration: 86400
+            });
+
+            // Large transaction
+            const largeTokenInAmount = 5_000_500_000; // 5000.5 USDC
+
+            await program.takeBuyOfferPermissionless({
+                offerId,
+                tokenInAmount: largeTokenInAmount,
+                tokenInMint,
+                tokenOutMint,
+                user: user.publicKey,
+                signer: user
+            });
+
+            // Verify intermediary accounts are empty
+            const permissionlessTokenInBalance = await testHelper.getTokenAccountBalance(permissionlessTokenInAccount);
+            const permissionlessTokenOutBalance = await testHelper.getTokenAccountBalance(permissionlessTokenOutAccount);
+
+            expect(permissionlessTokenInBalance).toBe(BigInt(0));
+            expect(permissionlessTokenOutBalance).toBe(BigInt(0));
+
+            // Verify user received the expected large amount
+            const userTokenOutBalance = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+            expect(userTokenOutBalance).toBeGreaterThanOrEqual(BigInt(5000e9)); // Should receive ~5000 tokens
+        });
+
     });
 
     describe("Price Calculation Tests", () => {
@@ -205,9 +249,7 @@ describe("Take Buy Offer Permissionless", () => {
                 priceFixDuration: 86400
             });
 
-            const expectedTokenInAmount = 1_000_100; // 1.0001 USDC
-
-            const userTokenOutBalanceBefore = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+            const expectedTokenInAmount = 1.0001e6; // 1.0001 USDC
 
             await program.takeBuyOfferPermissionless({
                 offerId,
@@ -221,7 +263,7 @@ describe("Take Buy Offer Permissionless", () => {
             const userTokenOutBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
             // Should receive 1 token out (1e9)
-            expect(userTokenOutBalanceAfter - userTokenOutBalanceBefore).toBe(BigInt(1e9));
+            expect(userTokenOutBalanceAfter).toBe(BigInt(1e9));
         });
 
         it("Should calculate correct price with fee", async () => {
@@ -324,9 +366,7 @@ describe("Take Buy Offer Permissionless", () => {
             // Advance to second interval
             await testHelper.advanceClockBy(86_400); // 1 day
 
-            const expectedTokenInAmount = 1_000_200; // 1.0002 USDC
-
-            const userBalanceBefore = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+            const expectedTokenInAmount = 1.0002e6; // 1.0002 USDC
 
             await program.takeBuyOfferPermissionless({
                 offerId,
@@ -340,7 +380,7 @@ describe("Take Buy Offer Permissionless", () => {
             const userBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
             // Should receive 1 token out
-            expect(userBalanceAfter - userBalanceBefore).toBe(BigInt(1e9));
+            expect(userBalanceAfter).toBe(BigInt(1e9));
         });
 
         it("Should use most recent active vector", async () => {
@@ -367,9 +407,7 @@ describe("Take Buy Offer Permissionless", () => {
             await testHelper.advanceClockBy(2500);
 
             // Should use the second vector's pricing
-            const expectedTokenInAmount = 2_000_400;
-
-            const userBalanceBefore = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+            const expectedTokenInAmount = 2.0004e6;
 
             await program.takeBuyOfferPermissionless({
                 offerId,
@@ -383,7 +421,7 @@ describe("Take Buy Offer Permissionless", () => {
             const userBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
             // Should receive 1 token out
-            expect(userBalanceAfter - userBalanceBefore).toBe(BigInt(1e9));
+            expect(userBalanceAfter).toBe(BigInt(1e9));
         });
     });
 
@@ -481,83 +519,6 @@ describe("Take Buy Offer Permissionless", () => {
         });
     });
 
-    describe("Permissionless-Specific Tests", () => {
-        it("Should maintain precision through 4-step transfer with different decimals", async () => {
-            const currentTime = await testHelper.getCurrentClockTime();
-
-            // Use a more complex price to test precision
-            await program.addBuyOfferVector({
-                offerId,
-                startTime: currentTime,
-                startPrice: 1_234_567_890, // 1.23456789 with 9 decimals
-                apr: 45_670, // 4.567% yearly APR
-                priceFixDuration: 86400
-            });
-
-            const tokenInAmount = 1_234_688; // Calculated amount in USDC (6 decimals)
-
-            const userTokenOutBefore = await testHelper.getTokenAccountBalance(userTokenOutAccount);
-
-            await program.takeBuyOfferPermissionless({
-                offerId,
-                tokenInAmount,
-                tokenInMint,
-                tokenOutMint,
-                user: user.publicKey,
-                signer: user
-            });
-
-            const userTokenOutAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
-
-            // Should receive close to 1 token out with proper precision handling
-            const receivedTokens = userTokenOutAfter - userTokenOutBefore;
-            expect(receivedTokens).toBeGreaterThan(BigInt(990_000_000)); // Allow for small rounding
-            expect(receivedTokens).toBeLessThan(BigInt(1_010_000_000));
-        });
-
-        it("Should leave intermediary accounts with zero balance after large transaction", async () => {
-            const currentTime = await testHelper.getCurrentClockTime();
-
-            // Add more funding to vault for large transaction
-            const bossTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(50_000e9));
-            await program.buyOfferVaultDeposit({
-                amount: 25_000e9,
-                tokenMint: tokenOutMint
-            });
-
-            await program.addBuyOfferVector({
-                offerId,
-                startTime: currentTime,
-                startPrice: 1e9,
-                apr: 36_500,
-                priceFixDuration: 86400
-            });
-
-            // Large transaction
-            const largeTokenInAmount = 5_000_500_000; // 5000.5 USDC
-
-            await program.takeBuyOfferPermissionless({
-                offerId,
-                tokenInAmount: largeTokenInAmount,
-                tokenInMint,
-                tokenOutMint,
-                user: user.publicKey,
-                signer: user
-            });
-
-            // Verify intermediary accounts are empty
-            const permissionlessTokenInBalance = await testHelper.getTokenAccountBalance(permissionlessTokenInAccount);
-            const permissionlessTokenOutBalance = await testHelper.getTokenAccountBalance(permissionlessTokenOutAccount);
-
-            expect(permissionlessTokenInBalance).toBe(BigInt(0));
-            expect(permissionlessTokenOutBalance).toBe(BigInt(0));
-
-            // Verify user received the expected large amount
-            const userTokenOutBalance = await testHelper.getTokenAccountBalance(userTokenOutAccount);
-            expect(userTokenOutBalance).toBeGreaterThanOrEqual(BigInt(5000e9)); // Should receive ~5000 tokens
-        });
-    });
-
     describe("Edge Cases", () => {
         it("Should handle zero APR (fixed price) correctly", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
@@ -575,8 +536,6 @@ describe("Take Buy Offer Permissionless", () => {
 
             const expectedTokenInAmount = 1_000_000; // Exactly 1.0 USDC
 
-            const userBalanceBefore = await testHelper.getTokenAccountBalance(userTokenOutAccount);
-
             await program.takeBuyOfferPermissionless({
                 offerId,
                 tokenInAmount: expectedTokenInAmount,
@@ -588,8 +547,7 @@ describe("Take Buy Offer Permissionless", () => {
 
             const userBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
-            const receivedTokens = userBalanceAfter - userBalanceBefore;
-            expect(receivedTokens).toEqual(BigInt(1_000_000_000));
+            expect(userBalanceAfter).toEqual(BigInt(1_000_000_000));
         });
 
         it("Should handle high APR over long time period with precision", async () => {
@@ -608,8 +566,6 @@ describe("Take Buy Offer Permissionless", () => {
 
             const expectedTokenInAmount = 1_366_000;
 
-            const userBalanceBefore = await testHelper.getTokenAccountBalance(userTokenOutAccount);
-
             await program.takeBuyOfferPermissionless({
                 offerId,
                 tokenInAmount: expectedTokenInAmount,
@@ -621,8 +577,244 @@ describe("Take Buy Offer Permissionless", () => {
 
             const userBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
-            const receivedTokens = userBalanceAfter - userBalanceBefore;
-            expect(receivedTokens).toEqual(BigInt(1_000_000_000));
+            expect(userBalanceAfter).toEqual(BigInt(1_000_000_000));
         });
     });
+
+    describe("Mint/Transfer Integration Tests", () => {
+        describe("Program lacks mint authority tests", () => {
+            it("Should transfer token_out tokens from vault to user when program lacks mint authority", async () => {
+                const currentTime = await testHelper.getCurrentClockTime();
+
+                await program.addBuyOfferVector({
+                    offerId,
+                    startTime: currentTime,
+                    startPrice: 1e9,
+                    apr: 36_500,
+                    priceFixDuration: 86400
+                });
+
+                const tokenInAmount = 1.0001e6;
+                const vaultBalanceBefore = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+
+                // Execute take_buy_offer without mint authority (should use vault transfer)
+                await program.takeBuyOfferPermissionless({
+                    offerId,
+                    tokenInAmount,
+                    tokenInMint,
+                    tokenOutMint,
+                    user: user.publicKey,
+                    signer: user
+                });
+
+                // Verify tokens were transferred from vault to user
+                const userReceived = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+                const vaultBalanceAfter = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+                const intermediaryTokenInBalance = await testHelper.getTokenAccountBalance(permissionlessTokenInAccount);
+                const intermediaryTokenOutBalance = await testHelper.getTokenAccountBalance(permissionlessTokenOutAccount);
+
+                const vaultDeducted = vaultBalanceBefore - vaultBalanceAfter;
+
+                expect(userReceived).toBe(BigInt(1e9));
+                expect(vaultDeducted).toBe(BigInt(1e9));
+                expect(intermediaryTokenInBalance).toBe(BigInt(0));
+                expect(intermediaryTokenOutBalance).toBe(BigInt(0));
+            });
+
+            it("Should transfer token_in tokens from user to boss when program lacks mint authority", async () => {
+                const currentTime = await testHelper.getCurrentClockTime();
+
+                await program.addBuyOfferVector({
+                    offerId,
+                    startTime: currentTime,
+                    startPrice: 1e9,
+                    apr: 36_500,
+                    priceFixDuration: 86400
+                });
+
+                const tokenInAmount = 1.0001e6;
+                const bossTokenInBalanceBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+                const userTokenInBalanceBefore = await testHelper.getTokenAccountBalance(userTokenInAccount);
+
+                // Execute take_buy_offer without mint authority (should use vault transfer)
+                await program.takeBuyOffer({
+                    offerId,
+                    tokenInAmount,
+                    tokenInMint,
+                    tokenOutMint,
+                    user: user.publicKey,
+                    signer: user
+                });
+
+                // Verify tokens were transferred from vault to user
+                const bossTokenInBalanceAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+                const userTokenInBalanceAfter = await testHelper.getTokenAccountBalance(userTokenInAccount);
+                const intermediaryTokenInBalance = await testHelper.getTokenAccountBalance(permissionlessTokenInAccount);
+                const intermediaryTokenOutBalance = await testHelper.getTokenAccountBalance(permissionlessTokenOutAccount);
+
+                const bossReceived = bossTokenInBalanceAfter - bossTokenInBalanceBefore;
+                const userPaid = userTokenInBalanceBefore - userTokenInBalanceAfter;
+
+                expect(bossReceived).toBe(BigInt(1.0001e6));
+                expect(userPaid).toBe(BigInt(1.0001e6));
+                expect(intermediaryTokenInBalance).toBe(BigInt(0));
+                expect(intermediaryTokenOutBalance).toBe(BigInt(0));
+            });
+        });
+
+        describe("Program has mint authority tests", () => {
+            it("Should mint token_out tokens directly to user when program has mint authority", async () => {
+                // Transfer mint authority from boss to program for tokenOutMint
+                await program.transferMintAuthorityToProgram({
+                    mint: tokenOutMint
+                });
+
+                const currentTime = await testHelper.getCurrentClockTime();
+
+                await program.addBuyOfferVector({
+                    offerId,
+                    startTime: currentTime,
+                    startPrice: 1e9,
+                    apr: 36_500,
+                    priceFixDuration: 86400
+                });
+
+                const tokenInAmount = 1.0001e6;
+
+                const vaultBalanceBefore = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+                const bossTokenInBalanceBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+
+                // Execute take_buy_offer with mint authority (should mint directly)
+                await program.takeBuyOffer({
+                    offerId,
+                    tokenInAmount,
+                    tokenInMint,
+                    tokenOutMint,
+                    user: user.publicKey,
+                    signer: user
+                });
+
+                // Verify tokens were minted to user (vault balance unchanged)
+                const userTokenOutBalance = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+                const vaultBalanceAfter = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+                const bossTokenInBalanceAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+                const intermediaryTokenInBalance = await testHelper.getTokenAccountBalance(permissionlessTokenInAccount);
+                const intermediaryTokenOutBalance = await testHelper.getTokenAccountBalance(permissionlessTokenOutAccount);
+
+                const vaultChange = vaultBalanceAfter - vaultBalanceBefore;
+                const bossTokenInChange = bossTokenInBalanceAfter - bossTokenInBalanceBefore;
+
+                expect(userTokenOutBalance).toBe(BigInt(1e9)); // Should receive 1 token out
+                expect(bossTokenInChange).toBe(BigInt(tokenInAmount)); // token_in tokens are transferred to boss
+                expect(vaultChange).toEqual(BigInt(0)); // Vault unchanged
+                expect(intermediaryTokenInBalance).toBe(BigInt(0));
+                expect(intermediaryTokenOutBalance).toBe(BigInt(0));
+            });
+
+            it("Should burn token_out tokens when program has mint authority", async () => {
+                // Transfer mint authority from boss to program for tokenOutMint
+                await program.transferMintAuthorityToProgram({
+                    mint: tokenInMint
+                });
+
+                const currentTime = await testHelper.getCurrentClockTime();
+
+                await program.addBuyOfferVector({
+                    offerId,
+                    startTime: currentTime,
+                    startPrice: 1e9,
+                    apr: 0,
+                    priceFixDuration: 86400
+                });
+
+                const tokenInAmount = 1.0001e6;
+
+                const bossTokenInBalanceBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+                const vaultTokenInAccount = getAssociatedTokenAddressSync(tokenInMint, program.pdas.buyOfferVaultAuthorityPda, true);
+                const vaultBalanceBefore = await testHelper.getTokenAccountBalance(vaultTokenInAccount);
+
+                // Execute take_buy_offer with mint authority (should mint directly)
+                await program.takeBuyOffer({
+                    offerId,
+                    tokenInAmount,
+                    tokenInMint,
+                    tokenOutMint,
+                    user: user.publicKey,
+                    signer: user
+                });
+
+                // Verify token_in tokens were burned (boss account balance unchanged)
+                const bossTokenInBalanceAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+                const vaultBalanceAfter = await testHelper.getTokenAccountBalance(vaultTokenInAccount);
+                const userTokenOutBalance = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+                const intermediaryTokenInBalance = await testHelper.getTokenAccountBalance(permissionlessTokenInAccount);
+                const intermediaryTokenOutBalance = await testHelper.getTokenAccountBalance(permissionlessTokenOutAccount);
+
+                const vaultChange = vaultBalanceAfter - vaultBalanceBefore;
+                const bossChange = bossTokenInBalanceAfter - bossTokenInBalanceBefore;
+
+                expect(userTokenOutBalance).toBeGreaterThan(BigInt(1e9)); // Should receive 1 token out
+                expect(bossChange).toEqual(BigInt(0)); // Boss unchanged
+                expect(vaultChange).toEqual(BigInt(0)); // Vault unchanged
+                expect(intermediaryTokenInBalance).toBe(BigInt(0));
+                expect(intermediaryTokenOutBalance).toBe(BigInt(0));
+            });
+        });
+
+        describe("Edge Cases", () => {
+            it("Should handle fee calculations correctly when minting", async () => {
+                // Create an offer with fees
+                await program.makeBuyOffer({
+                    tokenInMint,
+                    tokenOutMint,
+                    feeBasisPoints: 500 // 5% fee
+                });
+
+                // Transfer mint authority to program
+                await program.transferMintAuthorityToProgram({
+                    mint: tokenOutMint
+                });
+
+                const currentTime = await testHelper.getCurrentClockTime();
+
+                await program.addBuyOfferVector({
+                    offerId: 2,
+                    startTime: currentTime,
+                    startPrice: 1e9,
+                    apr: 0,
+                    priceFixDuration: 86400
+                });
+
+                const tokenInAmount = 1_050_000; // 1.05 USDC (includes 5% fee)
+                const feeUser = testHelper.createUserAccount();
+                const feeUserTokenInAccount = testHelper.createTokenAccount(tokenInMint, feeUser.publicKey, BigInt(10_000e6), true);
+
+                const bossBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+
+                await program.takeBuyOffer({
+                    offerId: 2,
+                    tokenInAmount,
+                    tokenInMint,
+                    tokenOutMint,
+                    user: feeUser.publicKey,
+                    signer: feeUser
+                });
+
+                // Verify boss received full payment including fee
+                const bossAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+                expect(bossAfter - bossBefore).toEqual(BigInt(1_050_000)); // Full amount with fee
+
+                // Verify user received correct token_out amount (based on net amount after fee)
+                const feeUserTokenOutAccount = getAssociatedTokenAddressSync(
+                    tokenOutMint,
+                    feeUser.publicKey,
+                    true
+                );
+
+                const userBalance = await testHelper.getTokenAccountBalance(feeUserTokenOutAccount);
+                expect(userBalance).toEqual(BigInt(997_500_000)); // 0.9975 token out (based on 0.9975 USDC after 5% fee)
+            });
+        });
+    });
+
 });

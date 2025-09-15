@@ -56,8 +56,9 @@ describe("Take Buy Offer", () => {
         // Create and fund vault
         vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, program.pdas.buyOfferVaultAuthorityPda, BigInt(0), true);
         vaultTokenInAccount = testHelper.createTokenAccount(tokenInMint, program.pdas.buyOfferVaultAuthorityPda, BigInt(0), true);
-        testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(10_000e9));
 
+        // Fund vault
+        testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(10_000e9));
         await program.buyOfferVaultDeposit({
             amount: 5_000e9,
             tokenMint: tokenOutMint
