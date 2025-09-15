@@ -56,7 +56,7 @@ export class TestHelper {
         MintLayout.encode({
             mintAuthorityOption: 1,  // 1 = Some(authority), 0 = None
             mintAuthority: mintAuthority,
-            supply: BigInt(0),
+            supply: BigInt(999_999_999 * 10 ** decimals),
             decimals: decimals,
             isInitialized: true,
             freezeAuthorityOption: 1,  // 1 = Some(authority), 0 = None

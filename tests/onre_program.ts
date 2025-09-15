@@ -18,6 +18,8 @@ export class OnreProgram {
         adminStatePda: PublicKey;
         dualRedemptionOfferAccountPda: PublicKey;
         dualRedemptionVaultAuthorityPda: PublicKey;
+        singleRedemptionOfferAccountPda: PublicKey;
+        singleRedemptionVaultAuthorityPda: PublicKey;
         mintAuthorityPda: PublicKey;
     } = {
         buyOfferAccountPda: PublicKey.findProgramAddressSync([Buffer.from("buy_offers")], PROGRAM_ID)[0],
@@ -26,6 +28,8 @@ export class OnreProgram {
         adminStatePda: PublicKey.findProgramAddressSync([Buffer.from("admin_state")], PROGRAM_ID)[0],
         dualRedemptionOfferAccountPda: PublicKey.findProgramAddressSync([Buffer.from("dual_redemption_offers")], PROGRAM_ID)[0],
         dualRedemptionVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("dual_redemption_vault_auth")], PROGRAM_ID)[0],
+        singleRedemptionOfferAccountPda: PublicKey.findProgramAddressSync([Buffer.from("single_redemption_offers")], PROGRAM_ID)[0],
+        singleRedemptionVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("single_redemption_vault_auth")], PROGRAM_ID)[0],
         mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], PROGRAM_ID)[0]
     };
 
@@ -207,6 +211,16 @@ export class OnreProgram {
     async buyOfferVaultDeposit(params: { amount: number, tokenMint: PublicKey }) {
         await this.program.methods
             .buyOfferVaultDeposit(new BN(params.amount))
+            .accounts({
+                state: this.statePda,
+                tokenMint: params.tokenMint
+            })
+            .rpc();
+    }
+
+    async singleRedemptionVaultDeposit(params: { amount: number, tokenMint: PublicKey }) {
+        await this.program.methods
+            .singleRedemptionVaultDeposit(new BN(params.amount))
             .accounts({
                 state: this.statePda,
                 tokenMint: params.tokenMint
@@ -409,6 +423,100 @@ export class OnreProgram {
     async getDualRedemptionOffer(offerId: number) {
         const dualRedemptionOfferAccount = await this.getDualRedemptionOfferAccount();
         return dualRedemptionOfferAccount.offers.find(offer => offer.offerId.toNumber() === offerId);
+    }
+
+    // Single Redemption Offer methods
+    async makeSingleRedemptionOffer(params: {
+        startTime: number;
+        endTime: number;
+        price: number;
+        feeBasisPoints?: number;
+        tokenInMint: PublicKey;
+        tokenOutMint: PublicKey;
+        signer?: Keypair;
+    }) {
+        const feeBasisPoints = params.feeBasisPoints ?? 0;
+        const tx = this.program.methods
+            .makeSingleRedemptionOffer(
+                new BN(params.startTime),
+                new BN(params.endTime),
+                new BN(params.price),
+                new BN(feeBasisPoints)
+            )
+            .accounts({
+                tokenInMint: params.tokenInMint,
+                tokenOutMint: params.tokenOutMint,
+                state: this.statePda
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
+    async closeSingleRedemptionOffer(params: { offerId: number, signer?: Keypair }) {
+        const tx = this.program.methods
+            .closeSingleRedemptionOffer(new BN(params.offerId))
+            .accounts({
+                state: this.statePda
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
+    async updateSingleRedemptionOfferFee(params: { offerId: number, newFee: number, signer?: Keypair }) {
+        const tx = this.program.methods
+            .updateSingleRedemptionOfferFee(new BN(params.offerId), new BN(params.newFee))
+            .accounts({
+                state: this.statePda
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
+    async takeSingleRedemptionOffer(params: {
+        offerId: number;
+        tokenInAmount: number;
+        tokenInMint: PublicKey;
+        tokenOutMint: PublicKey;
+        user: PublicKey;
+        signer?: Keypair;
+    }) {
+        const tx = this.program.methods
+            .takeSingleRedemptionOffer(new BN(params.offerId), new BN(params.tokenInAmount))
+            .accounts({
+                state: this.statePda,
+                boss: this.program.provider.publicKey,
+                tokenInMint: params.tokenInMint,
+                tokenOutMint: params.tokenOutMint,
+                user: params.user
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
+    // Single Redemption Offer Account getters
+    async getSingleRedemptionOfferAccount() {
+        return await this.program.account.singleRedemptionOfferAccount.fetch(this.pdas.singleRedemptionOfferAccountPda);
+    }
+
+    async getSingleRedemptionOffer(offerId: number) {
+        const singleRedemptionOfferAccount = await this.getSingleRedemptionOfferAccount();
+        return singleRedemptionOfferAccount.offers.find(offer => offer.offerId.toNumber() === offerId);
     }
 
 }

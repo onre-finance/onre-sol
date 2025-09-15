@@ -5,6 +5,7 @@ use crate::utils::{
     calculate_fees, calculate_token_out_amount, execute_token_operations, ExecTokenOpsParams,
 };
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
 #[error_code]
@@ -78,7 +79,8 @@ pub struct TakeSingleRedemptionOffer<'info> {
 
     /// User's token_out account (destination of tokens).
     #[account(
-        mut,
+        init_if_needed,
+        payer = user,
         associated_token::mint = token_out_mint,
         associated_token::authority = user
     )]
@@ -122,6 +124,12 @@ pub struct TakeSingleRedemptionOffer<'info> {
 
     /// SPL Token program.
     pub token_program: Program<'info, Token>,
+
+    /// Associated Token Program for automatic token account creation
+    pub associated_token_program: Program<'info, AssociatedToken>,
+
+    /// System program required for account creation
+    pub system_program: Program<'info, System>,
 }
 
 /// Takes a single redemption offer.

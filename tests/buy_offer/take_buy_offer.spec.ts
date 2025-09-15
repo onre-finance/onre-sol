@@ -40,15 +40,15 @@ describe("Take Buy Offer", () => {
         // Initialize vault authority
         await program.initializeVaultAuthority();
 
-        // Create user accounts
+        // Create token accounts
         user = testHelper.createUserAccount();
         userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(10_000e6), true);
-        userTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, user.publicKey, BigInt(0), true);
         bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, testHelper.getBoss(), BigInt(0));
+        userTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, user.publicKey);
 
         // Create and fund vault
         vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, program.pdas.buyOfferVaultAuthorityPda, BigInt(0), true);
-        const bossTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(10_000e9));
+        testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(10_000e9));
 
         await program.buyOfferVaultDeposit({
             amount: 5_000e9,
