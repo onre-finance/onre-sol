@@ -208,34 +208,94 @@ export class OnreProgram {
             .rpc();
     }
 
-    async buyOfferVaultDeposit(params: { amount: number, tokenMint: PublicKey }) {
-        await this.program.methods
+    async buyOfferVaultDeposit(params: { amount: number, tokenMint: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods
             .buyOfferVaultDeposit(new BN(params.amount))
             .accounts({
                 state: this.statePda,
                 tokenMint: params.tokenMint
-            })
-            .rpc();
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
     }
 
-    async singleRedemptionVaultDeposit(params: { amount: number, tokenMint: PublicKey }) {
-        await this.program.methods
+    async singleRedemptionVaultDeposit(params: { amount: number, tokenMint: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods
             .singleRedemptionVaultDeposit(new BN(params.amount))
             .accounts({
                 state: this.statePda,
                 tokenMint: params.tokenMint
-            })
-            .rpc();
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
     }
 
-    async dualRedemptionVaultDeposit(params: { amount: number, tokenMint: PublicKey }) {
-        await this.program.methods
+    async dualRedemptionVaultDeposit(params: { amount: number, tokenMint: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods
             .dualRedemptionVaultDeposit(new BN(params.amount))
             .accounts({
                 state: this.statePda,
                 tokenMint: params.tokenMint
-            })
-            .rpc();
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
+    async buyOfferVaultWithdraw(params: { amount: number, tokenMint: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods
+            .buyOfferVaultWithdraw(new BN(params.amount))
+            .accounts({
+                state: this.statePda,
+                tokenMint: params.tokenMint
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
+    async singleRedemptionVaultWithdraw(params: { amount: number, tokenMint: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods
+            .singleRedemptionVaultWithdraw(new BN(params.amount))
+            .accounts({
+                state: this.statePda,
+                tokenMint: params.tokenMint
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
+    async dualRedemptionVaultWithdraw(params: { amount: number, tokenMint: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods
+            .dualRedemptionVaultWithdraw(new BN(params.amount))
+            .accounts({
+                state: this.statePda,
+                tokenMint: params.tokenMint
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
     }
 
     async initializePermissionlessAccount(params: { accountName: string }) {
