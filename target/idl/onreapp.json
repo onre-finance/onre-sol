@@ -5541,14 +5541,18 @@
         {
           "name": "token_out_mint_1",
           "docs": [
-            "The token mint for token_out_1."
-          ]
+            "The token mint for token_out_1.",
+            "Must be mutable to allow minting when program has mint authority"
+          ],
+          "writable": true
         },
         {
           "name": "token_out_mint_2",
           "docs": [
-            "The token mint for token_out_2."
-          ]
+            "The token mint for token_out_2.",
+            "Must be mutable to allow minting when program has mint authority"
+          ],
+          "writable": true
         },
         {
           "name": "user_token_in_account",
@@ -5834,7 +5838,6 @@
           "docs": [
             "Optional mint authority PDA for direct burning (when program has mint authority)"
           ],
-          "optional": true,
           "pda": {
             "seeds": [
               {
@@ -5958,7 +5961,6 @@
             "Optional vault token_in account (for burning when program has mint authority)."
           ],
           "writable": true,
-          "optional": true,
           "pda": {
             "seeds": [
               {
@@ -6246,6 +6248,20 @@
             "SPL Token program."
           ],
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program required for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [

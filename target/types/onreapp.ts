@@ -5547,14 +5547,18 @@ export type Onreapp = {
         {
           "name": "tokenOutMint1",
           "docs": [
-            "The token mint for token_out_1."
-          ]
+            "The token mint for token_out_1.",
+            "Must be mutable to allow minting when program has mint authority"
+          ],
+          "writable": true
         },
         {
           "name": "tokenOutMint2",
           "docs": [
-            "The token mint for token_out_2."
-          ]
+            "The token mint for token_out_2.",
+            "Must be mutable to allow minting when program has mint authority"
+          ],
+          "writable": true
         },
         {
           "name": "userTokenInAccount",
@@ -5840,7 +5844,6 @@ export type Onreapp = {
           "docs": [
             "Optional mint authority PDA for direct burning (when program has mint authority)"
           ],
-          "optional": true,
           "pda": {
             "seeds": [
               {
@@ -5964,7 +5967,6 @@ export type Onreapp = {
             "Optional vault token_in account (for burning when program has mint authority)."
           ],
           "writable": true,
-          "optional": true,
           "pda": {
             "seeds": [
               {
@@ -6252,6 +6254,20 @@ export type Onreapp = {
             "SPL Token program."
           ],
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program required for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [

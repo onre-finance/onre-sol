@@ -1,8 +1,12 @@
 use crate::constants::seeds;
 use crate::instructions::{DualRedemptionOffer, DualRedemptionOfferAccount};
 use crate::state::State;
-use crate::utils::{calculate_fees, calculate_token_out_amount, transfer_tokens, MAX_BASIS_POINTS};
+use crate::utils::{
+    burn_tokens, calculate_fees, calculate_token_out_amount, mint_tokens, program_controls_mint,
+    transfer_tokens, MAX_BASIS_POINTS,
+};
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
 #[error_code]
@@ -68,9 +72,13 @@ pub struct TakeDualRedemptionOffer<'info> {
     pub token_in_mint: Box<Account<'info, Mint>>,
 
     /// The token mint for token_out_1.
+    /// Must be mutable to allow minting when program has mint authority
+    #[account(mut)]
     pub token_out_mint_1: Box<Account<'info, Mint>>,
 
     /// The token mint for token_out_2.
+    /// Must be mutable to allow minting when program has mint authority
+    #[account(mut)]
     pub token_out_mint_2: Box<Account<'info, Mint>>,
 
     /// User's token_in account (source of payment).
@@ -83,7 +91,8 @@ pub struct TakeDualRedemptionOffer<'info> {
 
     /// User's token_out_1 account (destination of token_out_1).
     #[account(
-        mut,
+        init_if_needed,
+        payer = user,
         associated_token::mint = token_out_mint_1,
         associated_token::authority = user
     )]
@@ -91,7 +100,8 @@ pub struct TakeDualRedemptionOffer<'info> {
 
     /// User's token_out_2 account (destination of token_out_2).
     #[account(
-        mut,
+        init_if_needed,
+        payer = user,
         associated_token::mint = token_out_mint_2,
         associated_token::authority = user
     )]
@@ -103,7 +113,7 @@ pub struct TakeDualRedemptionOffer<'info> {
         seeds = [seeds::MINT_AUTHORITY],
         bump
     )]
-    pub mint_authority_pda: Option<UncheckedAccount<'info>>,
+    pub mint_authority_pda: UncheckedAccount<'info>,
 
     /// Boss's token_in account (destination of payment when no mint authority).
     #[account(
@@ -119,7 +129,7 @@ pub struct TakeDualRedemptionOffer<'info> {
         associated_token::mint = token_in_mint,
         associated_token::authority = vault_authority
     )]
-    pub vault_token_in_account: Option<Box<Account<'info, TokenAccount>>>,
+    pub vault_token_in_account: Box<Account<'info, TokenAccount>>,
 
     /// Vault's token_out_1 account (source of token_out_1 to give).
     #[account(
@@ -143,6 +153,12 @@ pub struct TakeDualRedemptionOffer<'info> {
 
     /// SPL Token program.
     pub token_program: Program<'info, Token>,
+
+    /// Associated Token Program for automatic token account creation
+    pub associated_token_program: Program<'info, AssociatedToken>,
+
+    /// System program required for account creation
+    pub system_program: Program<'info, System>,
 }
 
 /// Takes a dual redemption offer.
@@ -338,43 +354,97 @@ fn execute_token_operations(
     token_out_1_amount: u64,
     token_out_2_amount: u64,
 ) -> Result<()> {
-    // Transfer total token_in from user to boss (includes fee)
+    // Step 1: User pays token_in
+    let controls_token_in_mint = program_controls_mint(
+        &ctx.accounts.token_in_mint,
+        &ctx.accounts.mint_authority_pda,
+    );
+    let token_in_destination = if controls_token_in_mint {
+        // transfer to program owned PDA for burning
+        &ctx.accounts.vault_token_in_account
+    } else {
+        // transfer directly to boss/intermediary account (in permissionless flow)
+        &ctx.accounts.boss_token_in_account
+    };
+
+    // Transfer total token_in from user to boss/vault (includes fee)
     transfer_tokens(
         &ctx.accounts.token_program,
         &ctx.accounts.user_token_in_account,
-        &ctx.accounts.boss_token_in_account,
+        token_in_destination,
         &ctx.accounts.user,
         None,
         total_token_in_amount,
     )?;
 
-    // Prepare vault authority seeds for signing transfers from vault
-    let vault_authority_bump = ctx.bumps.vault_authority;
-    let vault_authority_seeds = &[
-        seeds::DUAL_REDEMPTION_VAULT_AUTHORITY,
-        &[vault_authority_bump],
-    ];
-    let signer_seeds = &[vault_authority_seeds.as_slice()];
+    // (Optional) Step 2: Burn token_in from vault if program has mint authority
+    if controls_token_in_mint {
+        burn_tokens(
+            &ctx.accounts.token_program,
+            &ctx.accounts.token_in_mint,
+            &ctx.accounts.vault_token_in_account,
+            &ctx.accounts.vault_authority,
+            &[&[
+                seeds::DUAL_REDEMPTION_VAULT_AUTHORITY,
+                &[ctx.bumps.vault_authority],
+            ]],
+            total_token_in_amount,
+        )?;
+    }
 
-    // Transfer token_out_1 from vault to user using vault authority
-    transfer_tokens(
-        &ctx.accounts.token_program,
-        &ctx.accounts.vault_token_out_1_account,
-        &ctx.accounts.user_token_out_1_account,
-        &ctx.accounts.vault_authority,
-        Some(signer_seeds),
-        token_out_1_amount,
-    )?;
+    // Step 3: Mint or transfer token_out_1 tokens
+    if program_controls_mint(
+        &ctx.accounts.token_out_mint_1,
+        &ctx.accounts.mint_authority_pda,
+    ) {
+        mint_tokens(
+            &ctx.accounts.token_program,
+            &ctx.accounts.token_out_mint_1,
+            &ctx.accounts.user_token_out_1_account,
+            &ctx.accounts.mint_authority_pda,
+            &[&[seeds::MINT_AUTHORITY, &[ctx.bumps.mint_authority_pda]]],
+            token_out_1_amount,
+        )?;
+    } else {
+        transfer_tokens(
+            &ctx.accounts.token_program,
+            &ctx.accounts.vault_token_out_1_account,
+            &ctx.accounts.user_token_out_1_account,
+            &ctx.accounts.vault_authority,
+            Some(&[&[
+                seeds::DUAL_REDEMPTION_VAULT_AUTHORITY,
+                &[ctx.bumps.vault_authority],
+            ]]),
+            token_out_1_amount,
+        )?;
+    }
 
-    // Transfer token_out_2 from vault to user using vault authority
-    transfer_tokens(
-        &ctx.accounts.token_program,
-        &ctx.accounts.vault_token_out_2_account,
-        &ctx.accounts.user_token_out_2_account,
-        &ctx.accounts.vault_authority,
-        Some(signer_seeds),
-        token_out_2_amount,
-    )?;
+    // Step 4: Mint or transfer token_out_2 tokens
+    if program_controls_mint(
+        &ctx.accounts.token_out_mint_2,
+        &ctx.accounts.mint_authority_pda,
+    ) {
+        mint_tokens(
+            &ctx.accounts.token_program,
+            &ctx.accounts.token_out_mint_2,
+            &ctx.accounts.user_token_out_2_account,
+            &ctx.accounts.mint_authority_pda,
+            &[&[seeds::MINT_AUTHORITY, &[ctx.bumps.mint_authority_pda]]],
+            token_out_2_amount,
+        )?;
+    } else {
+        transfer_tokens(
+            &ctx.accounts.token_program,
+            &ctx.accounts.vault_token_out_2_account,
+            &ctx.accounts.user_token_out_2_account,
+            &ctx.accounts.vault_authority,
+            Some(&[&[
+                seeds::DUAL_REDEMPTION_VAULT_AUTHORITY,
+                &[ctx.bumps.vault_authority],
+            ]]),
+            token_out_2_amount,
+        )?;
+    }
 
     Ok(())
 }

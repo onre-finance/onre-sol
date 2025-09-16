@@ -467,7 +467,7 @@ describe("Take Buy Offer", () => {
         });
     });
 
-    describe("Mint/Transfer Integration Tests", () => {
+    describe("Mint/Burn Integration Tests", () => {
         describe("Program lacks mint authority tests", () => {
             it("Should transfer token_out tokens from vault to user when program lacks mint authority", async () => {
                 const currentTime = await testHelper.getCurrentClockTime();
