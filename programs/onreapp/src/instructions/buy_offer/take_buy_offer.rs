@@ -1,5 +1,5 @@
 use crate::constants::seeds;
-use crate::instructions::buy_offer::buy_offer_utils::{find_offer, process_buy_offer_core};
+use crate::instructions::buy_offer::buy_offer_utils::process_buy_offer_core;
 use crate::instructions::BuyOfferAccount;
 use crate::state::State;
 use crate::utils::{execute_token_operations, u64_to_dec9, ExecTokenOpsParams};
@@ -43,7 +43,7 @@ pub struct TakeBuyOffer<'info> {
     pub buy_offer_account: AccountLoader<'info, BuyOfferAccount>,
 
     /// Program state account containing the boss public key
-    pub state: Account<'info, State>,
+    pub state: Box<Account<'info, State>>,
 
     /// The boss account that receives token_in payments
     /// Must match the boss stored in the program state
@@ -64,7 +64,7 @@ pub struct TakeBuyOffer<'info> {
         associated_token::mint = token_in_mint,
         associated_token::authority = vault_authority
     )]
-    pub vault_token_in_account: Account<'info, TokenAccount>,
+    pub vault_token_in_account: Box<Account<'info, TokenAccount>>,
 
     /// Vault's token_out account (source of tokens to distribute to user)
     #[account(
@@ -72,17 +72,17 @@ pub struct TakeBuyOffer<'info> {
         associated_token::mint = token_out_mint,
         associated_token::authority = vault_authority
     )]
-    pub vault_token_out_account: Account<'info, TokenAccount>,
+    pub vault_token_out_account: Box<Account<'info, TokenAccount>>,
 
     /// The mint account for the input token (what user pays)
     /// Must be mutable to allow burning when program has mint authority
     #[account(mut)]
-    pub token_in_mint: Account<'info, Mint>,
+    pub token_in_mint: Box<Account<'info, Mint>>,
 
     /// The mint account for the output token (what user receives)
     /// Must be mutable to allow minting when program has mint authority
     #[account(mut)]
-    pub token_out_mint: Account<'info, Mint>,
+    pub token_out_mint: Box<Account<'info, Mint>>,
 
     /// User's token_in account (source of payment)
     #[account(
@@ -90,7 +90,7 @@ pub struct TakeBuyOffer<'info> {
         associated_token::mint = token_in_mint,
         associated_token::authority = user
     )]
-    pub user_token_in_account: Account<'info, TokenAccount>,
+    pub user_token_in_account: Box<Account<'info, TokenAccount>>,
 
     /// User's token_out account (destination of received tokens)
     /// Uses init_if_needed to automatically create account if it doesn't exist
@@ -100,7 +100,7 @@ pub struct TakeBuyOffer<'info> {
         associated_token::mint = token_out_mint,
         associated_token::authority = user
     )]
-    pub user_token_out_account: Account<'info, TokenAccount>,
+    pub user_token_out_account: Box<Account<'info, TokenAccount>>,
 
     /// Boss's token_in account (destination of user's payment)
     #[account(
@@ -108,7 +108,7 @@ pub struct TakeBuyOffer<'info> {
         associated_token::mint = token_in_mint,
         associated_token::authority = boss
     )]
-    pub boss_token_in_account: Account<'info, TokenAccount>,
+    pub boss_token_in_account: Box<Account<'info, TokenAccount>>,
 
     /// Mint authority PDA for direct minting (when program has mint authority)
     /// CHECK: PDA derivation is validated through seeds constraint
@@ -180,15 +180,11 @@ pub fn take_buy_offer(
 ) -> Result<()> {
     let offer_account = ctx.accounts.buy_offer_account.load()?;
 
-    // Find the offer to get fee information
-    let offer = find_offer(&offer_account, offer_id)?;
-
     // Use shared core processing logic for main exchange amount
     let result = process_buy_offer_core(
         &offer_account,
         offer_id,
         token_in_amount,
-        offer.fee_basis_points,
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
     )?;

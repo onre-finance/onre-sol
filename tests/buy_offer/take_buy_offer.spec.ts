@@ -400,6 +400,84 @@ describe("Take Buy Offer", () => {
     });
 
     describe("Edge Cases", () => {
+        it("Should not allow take buy offer when offerId and token_in_mint don't match", async () => {
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            await program.addBuyOfferVector({
+                offerId,
+                startTime: currentTime,
+                startPrice: 1e9, // 1 USDC per ONyc
+                apr: 0, // Zero APR for fixed price
+                priceFixDuration: 86400
+            });
+
+            const usdgTokenMint = testHelper.createMint(6);
+            testHelper.createTokenAccount(usdgTokenMint, testHelper.getBoss(), BigInt(0));
+            testHelper.createTokenAccount(usdgTokenMint, user.publicKey, BigInt(10_000e9));
+
+            // create a valid offer with different mints
+            await program.makeBuyOffer({
+                tokenInMint: usdgTokenMint,
+                tokenOutMint
+            });
+
+            await program.addBuyOfferVector({
+                offerId: 2,
+                startTime: currentTime,
+                startPrice: 0.5e9, // 0.5 USDG per ONyc
+                apr: 0, // Zero APR for fixed price
+                priceFixDuration: 86400
+            });
+
+            await expect(program.takeBuyOffer({
+                offerId: 2, // Offer ID of the USDG offer with better price
+                tokenInAmount: 1e6, // 1 USDG, should get 2 ONyc
+                tokenInMint, // Token in mint of the original offer (USDC)
+                tokenOutMint, // Token out mint (ONyc)
+                user: user.publicKey,
+                signer: user
+            })).rejects.toThrow("InvalidTokenInMint");
+        });
+
+        it("Should not allow take buy offer when offerId and token_out_mint don't match", async () => {
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            await program.addBuyOfferVector({
+                offerId,
+                startTime: currentTime,
+                startPrice: 1e9, // 1 USDC per ONyc
+                apr: 0, // Zero APR for fixed price
+                priceFixDuration: 86400
+            });
+
+            const rONycMint = testHelper.createMint(9);
+            testHelper.createTokenAccount(rONycMint, testHelper.getBoss(), BigInt(0));
+            testHelper.createTokenAccount(rONycMint, user.publicKey, BigInt(10_000e9));
+
+            // create a valid offer with different mints
+            await program.makeBuyOffer({
+                tokenInMint,
+                tokenOutMint: rONycMint
+            });
+
+            await program.addBuyOfferVector({
+                offerId: 2,
+                startTime: currentTime,
+                startPrice: 0.5e9, // 0.5 USDG per ONyc
+                apr: 0, // Zero APR for fixed price
+                priceFixDuration: 86400
+            });
+
+            await expect(program.takeBuyOffer({
+                offerId: 2, // Offer ID of the USDG offer with better price
+                tokenInAmount: 1e6, // 1 USDG, should get 2 ONyc
+                tokenInMint, // Token in mint of the original offer (USDC)
+                tokenOutMint, // Token out mint (ONyc)
+                user: user.publicKey,
+                signer: user
+            })).rejects.toThrow("InvalidTokenOutMint");
+        });
+
         it("Should handle zero APR (fixed price) correctly", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 

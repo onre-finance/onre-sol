@@ -16,6 +16,10 @@ pub enum BuyOfferCoreError {
     NoActiveVector,
     #[msg("Overflow error")]
     OverflowError,
+    #[msg("Invalid token in mint")]
+    InvalidTokenInMint,
+    #[msg("Invalid token out mint")]
+    InvalidTokenOutMint,
 }
 
 /// Result structure for the core buy offer processing
@@ -47,7 +51,6 @@ pub fn process_buy_offer_core(
     offer_account: &BuyOfferAccount,
     offer_id: u64,
     token_in_amount: u64,
-    fee_basis_points: u64,
     token_in_mint: &Account<Mint>,
     token_out_mint: &Account<Mint>,
 ) -> Result<BuyOfferProcessResult> {
@@ -55,6 +58,15 @@ pub fn process_buy_offer_core(
 
     // Find the offer
     let offer = find_offer(offer_account, offer_id)?;
+
+    require!(
+        offer.token_in_mint == token_in_mint.key(),
+        BuyOfferCoreError::InvalidTokenInMint
+    );
+    require!(
+        offer.token_out_mint == token_out_mint.key(),
+        BuyOfferCoreError::InvalidTokenOutMint
+    );
 
     // Find the currently active pricing vector
     let active_vector = find_active_vector_at(&offer, current_time)?;
@@ -67,7 +79,7 @@ pub fn process_buy_offer_core(
         active_vector.price_fix_duration,
     )?;
 
-    let fee_amounts = calculate_fees(token_in_amount, fee_basis_points)?;
+    let fee_amounts = calculate_fees(token_in_amount, offer.fee_basis_points)?;
 
     // Calculate how many token_out to give for the provided token_in_amount
     let token_out_amount = calculate_token_out_amount(
