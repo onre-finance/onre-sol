@@ -197,7 +197,7 @@ pub fn take_buy_offer(
         token_program: &ctx.accounts.token_program,
         // Token in params
         token_in_mint: &ctx.accounts.token_in_mint,
-        token_in_amount, // Includes fee
+        token_in_amount, // Including fee
         token_in_authority: &ctx.accounts.user,
         token_in_source_signer_seeds: None,
         vault_authority_signer_seeds: Some(&[&[

@@ -16,6 +16,7 @@ describe("Take Buy Offer", () => {
     let userTokenOutAccount: PublicKey;
 
     let bossTokenInAccount: PublicKey;
+    let bossTokenOutAccount: PublicKey;
 
     let vaultTokenOutAccount: PublicKey;
     let vaultTokenInAccount: PublicKey;
@@ -52,6 +53,7 @@ describe("Take Buy Offer", () => {
         userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(10_000e6), true);
         bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, testHelper.getBoss(), BigInt(0));
         userTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, user.publicKey);
+        bossTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, testHelper.getBoss());
 
         // Create and fund vault
         vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, program.pdas.buyOfferVaultAuthorityPda, BigInt(0), true);
@@ -480,7 +482,11 @@ describe("Take Buy Offer", () => {
                 });
 
                 const tokenInAmount = 1.0001e6;
-                const vaultBalanceBefore = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+
+                const mintInfoBefore = await testHelper.getMintInfo(tokenInMint);
+                // Token out before
+                const bossTokenOutBalanceBefore = await testHelper.getTokenAccountBalance(bossTokenOutAccount);
+                const vaultTokenOutBalanceBefore = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
 
                 // Execute take_buy_offer without mint authority (should use vault transfer)
                 await program.takeBuyOffer({
@@ -492,14 +498,22 @@ describe("Take Buy Offer", () => {
                     signer: user
                 });
 
-                // Verify tokens were transferred from vault to user
-                const userReceived = await testHelper.getTokenAccountBalance(userTokenOutAccount);
-                const vaultBalanceAfter = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+                const mintInfoAfter = await testHelper.getMintInfo(tokenInMint);
+                // Token out after
+                const userTokenOutBalance = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+                const bossTokenOutBalanceAfter = await testHelper.getTokenAccountBalance(bossTokenOutAccount);
+                const vaultTokenOutBalanceAfter = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
 
-                const vaultDeducted = vaultBalanceBefore - vaultBalanceAfter;
+                // Verify token changes
+                const supplyBurned = mintInfoBefore.supply - mintInfoAfter.supply;
+                const userReceived = userTokenOutBalance;
+                const vaultDeducted = vaultTokenOutBalanceBefore - vaultTokenOutBalanceAfter;
+                const bossPaid = bossTokenOutBalanceAfter - bossTokenOutBalanceBefore;
 
-                expect(userReceived).toBe(BigInt(1e9));
-                expect(vaultDeducted).toBe(BigInt(1e9));
+                expect(supplyBurned).toBe(BigInt(0)); // No supply burned
+                expect(userReceived).toBe(BigInt(1e9)); // Should receive 1 token out
+                expect(vaultDeducted).toBe(BigInt(1e9)); // Vault gave token_out
+                expect(bossPaid).toEqual(BigInt(0)); // Boss no change (transferred from vault)
             });
 
             it("Should transfer token_in tokens from user to boss when program lacks mint authority", async () => {
@@ -514,8 +528,12 @@ describe("Take Buy Offer", () => {
                 });
 
                 const tokenInAmount = 1.0001e6;
-                const bossTokenInBalanceBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+
+                const mintInfoBefore = await testHelper.getMintInfo(tokenInMint);
+                // Token in before
                 const userTokenInBalanceBefore = await testHelper.getTokenAccountBalance(userTokenInAccount);
+                const bossTokenInBalanceBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+                const vaultTokenInBalanceBefore = await testHelper.getTokenAccountBalance(vaultTokenInAccount);
 
                 // Execute take_buy_offer without mint authority (should use vault transfer)
                 await program.takeBuyOffer({
@@ -527,15 +545,22 @@ describe("Take Buy Offer", () => {
                     signer: user
                 });
 
-                // Verify tokens were transferred from vault to user
-                const bossTokenInBalanceAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+                const mintInfoAfter = await testHelper.getMintInfo(tokenInMint);
+                // Token in after
                 const userTokenInBalanceAfter = await testHelper.getTokenAccountBalance(userTokenInAccount);
+                const bossTokenInBalanceAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+                const vaultTokenInBalanceAfter = await testHelper.getTokenAccountBalance(vaultTokenInAccount);
 
-                const bossReceived = bossTokenInBalanceAfter - bossTokenInBalanceBefore;
+                // Verify token changes
+                const supplyBurned = mintInfoBefore.supply - mintInfoAfter.supply;
                 const userPaid = userTokenInBalanceBefore - userTokenInBalanceAfter;
+                const vaultReceived = vaultTokenInBalanceAfter - vaultTokenInBalanceBefore;
+                const bossReceived = bossTokenInBalanceAfter - bossTokenInBalanceBefore;
 
-                expect(bossReceived).toBe(BigInt(1.0001e6));
-                expect(userPaid).toBe(BigInt(1.0001e6));
+                expect(supplyBurned).toBe(BigInt(0)); // No supply burned
+                expect(userPaid).toBe(BigInt(tokenInAmount)); // User paid token_in amount
+                expect(vaultReceived).toBe(BigInt(0)); // Vault received no tokens (transferred to boss)
+                expect(bossReceived).toEqual(BigInt(tokenInAmount)); // Boss received token_in tokens
             });
         });
 
@@ -558,8 +583,10 @@ describe("Take Buy Offer", () => {
 
                 const tokenInAmount = 1.0001e6;
 
-                const vaultBalanceBefore = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
-                const bossTokenInBalanceBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+                const mintInfoBefore = await testHelper.getMintInfo(tokenInMint);
+                // Token out before
+                const bossTokenOutBalanceBefore = await testHelper.getTokenAccountBalance(bossTokenOutAccount);
+                const vaultTokenOutBalanceBefore = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
 
                 // Execute take_buy_offer with mint authority (should mint directly)
                 await program.takeBuyOffer({
@@ -571,20 +598,25 @@ describe("Take Buy Offer", () => {
                     signer: user
                 });
 
-                // Verify tokens were minted to user (vault balance unchanged)
+                const mintInfoAfter = await testHelper.getMintInfo(tokenInMint);
+                // Token out after
                 const userTokenOutBalance = await testHelper.getTokenAccountBalance(userTokenOutAccount);
-                const vaultBalanceAfter = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
-                const bossTokenInBalanceAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+                const bossTokenOutBalanceAfter = await testHelper.getTokenAccountBalance(bossTokenOutAccount);
+                const vaultTokenOutBalanceAfter = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
 
-                const vaultChange = vaultBalanceAfter - vaultBalanceBefore;
-                const bossTokenInChange = bossTokenInBalanceAfter - bossTokenInBalanceBefore;
+                // Verify token changes
+                const supplyBurned = mintInfoBefore.supply - mintInfoAfter.supply;
+                const userReceived = userTokenOutBalance;
+                const vaultDeducted = vaultTokenOutBalanceBefore - vaultTokenOutBalanceAfter;
+                const bossPaid = bossTokenOutBalanceAfter - bossTokenOutBalanceBefore;
 
-                expect(userTokenOutBalance).toBe(BigInt(1e9)); // Should receive 1 token out
-                expect(bossTokenInChange).toBe(BigInt(tokenInAmount)); // token_in tokens are transferred to boss
-                expect(vaultChange).toEqual(BigInt(0)); // Vault unchanged
+                expect(supplyBurned).toBe(BigInt(0)); // No supply burned
+                expect(userReceived).toBe(BigInt(1e9)); // Should receive 1 token out
+                expect(vaultDeducted).toBe(BigInt(0)); // No change to Vault (tokens were minted)
+                expect(bossPaid).toEqual(BigInt(0)); // Boss no change (tokens were minted)
             });
 
-            it("Should burn token_out tokens when program has mint authority", async () => {
+            it("Should burn token_in tokens when program has mint authority", async () => {
                 // Transfer mint authority from boss to program for tokenOutMint
                 await program.transferMintAuthorityToProgram({
                     mint: tokenInMint
@@ -600,10 +632,13 @@ describe("Take Buy Offer", () => {
                     priceFixDuration: 86400
                 });
 
-                const tokenInAmount = 1.0001e6;
+                const tokenInAmount = 1e6;
 
+                const mintInfoBefore = await testHelper.getMintInfo(tokenInMint);
+                // Token in before
+                const userTokenInBalanceBefore = await testHelper.getTokenAccountBalance(userTokenInAccount);
                 const bossTokenInBalanceBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
-                const vaultBalanceBefore = await testHelper.getTokenAccountBalance(vaultTokenInAccount);
+                const vaultTokenInBalanceBefore = await testHelper.getTokenAccountBalance(vaultTokenInAccount);
 
                 // Execute take_buy_offer with mint authority (should mint directly)
                 await program.takeBuyOffer({
@@ -616,17 +651,21 @@ describe("Take Buy Offer", () => {
                 });
 
                 // Verify token_in tokens were burned (boss account balance unchanged)
+                const mintInfoAfter = await testHelper.getMintInfo(tokenInMint);
+                // Token in after
+                const userTokenInBalanceAfter = await testHelper.getTokenAccountBalance(userTokenInAccount);
                 const bossTokenInBalanceAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
-                const vaultBalanceAfter = await testHelper.getTokenAccountBalance(vaultTokenInAccount);
-                const userTokenOutBalance = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+                const vaultTokenInBalanceAfter = await testHelper.getTokenAccountBalance(vaultTokenInAccount);
 
-                const vaultChange = vaultBalanceAfter - vaultBalanceBefore;
-                const bossChange = bossTokenInBalanceAfter - bossTokenInBalanceBefore;
+                const supplyBurned = mintInfoBefore.supply - mintInfoAfter.supply;
+                const userPaid = userTokenInBalanceBefore - userTokenInBalanceAfter;
+                const vaultReceived = vaultTokenInBalanceAfter - vaultTokenInBalanceBefore;
+                const bossReceived = bossTokenInBalanceAfter - bossTokenInBalanceBefore;
 
-                expect(userTokenOutBalance).toBeGreaterThan(BigInt(1e9)); // Should receive 1 token out
-                expect(bossChange).toEqual(BigInt(0)); // Boss unchanged
-                expect(vaultChange).toEqual(BigInt(0)); // Vault unchanged
-
+                expect(supplyBurned).toBe(BigInt(tokenInAmount));
+                expect(userPaid).toBe(BigInt(tokenInAmount)); // User paid token_in amount
+                expect(vaultReceived).toBe(BigInt(0)); // Vault received no tokens (burned)
+                expect(bossReceived).toEqual(BigInt(0)); // Boss received no tokens (burned)
             });
         });
 

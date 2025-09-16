@@ -92,6 +92,8 @@ pub struct TakeBuyOfferPermissionless<'info> {
     pub permissionless_token_out_account: Account<'info, TokenAccount>,
 
     /// The mint account for the input token (what user pays)
+    /// Must be mutable to allow burning when program has mint authority
+    #[account(mut)]
     pub token_in_mint: Account<'info, Mint>,
 
     /// The mint account for the output token (what user receives)
@@ -217,7 +219,7 @@ pub fn take_buy_offer_permissionless(
         token_program: &ctx.accounts.token_program,
         // Token in params
         token_in_mint: &ctx.accounts.token_in_mint,
-        token_in_amount: result.token_in_amount,
+        token_in_amount, // Including fee
         token_in_authority: &ctx.accounts.permissionless_authority,
         token_in_source_signer_seeds: Some(&[&[
             seeds::PERMISSIONLESS_1,

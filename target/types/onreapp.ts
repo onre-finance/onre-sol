@@ -5055,8 +5055,10 @@ export type Onreapp = {
         {
           "name": "tokenInMint",
           "docs": [
-            "The mint account for the input token (what user pays)"
-          ]
+            "The mint account for the input token (what user pays)",
+            "Must be mutable to allow burning when program has mint authority"
+          ],
+          "writable": true
         },
         {
           "name": "tokenOutMint",
