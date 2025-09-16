@@ -53,16 +53,15 @@ describe("Take Buy Offer", () => {
         userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(10_000e6), true);
         bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, testHelper.getBoss(), BigInt(0));
         userTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, user.publicKey);
-        bossTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, testHelper.getBoss());
+        bossTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(10_000e9));
 
         // Create and fund vault
-        vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, program.pdas.buyOfferVaultAuthorityPda, BigInt(0), true);
         vaultTokenInAccount = testHelper.createTokenAccount(tokenInMint, program.pdas.buyOfferVaultAuthorityPda, BigInt(0), true);
+        vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, program.pdas.buyOfferVaultAuthorityPda, BigInt(0), true);
 
         // Fund vault
-        testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(10_000e9));
         await program.buyOfferVaultDeposit({
-            amount: 5_000e9,
+            amount: 10_000e9,
             tokenMint: tokenOutMint
         });
     });
@@ -344,8 +343,8 @@ describe("Take Buy Offer", () => {
                 priceFixDuration: 86400
             });
 
-            // This would require giving out 10,000 tokens for 10 USDC, but vault only has 5,000
-            const tokenInAmount = 10e6; // 10 USDC
+            // This would require giving out 20,000 tokens for 20 USDC, but vault only has 10,000
+            const tokenInAmount = 20e6; // 10 USDC
 
             await expect(
                 program.takeBuyOffer({

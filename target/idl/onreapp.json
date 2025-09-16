@@ -6392,8 +6392,10 @@
         {
           "name": "token_out_mint",
           "docs": [
-            "The token mint for token_out."
-          ]
+            "The token mint for token_out.",
+            "Must be mutable to allow minting when program has mint authority"
+          ],
+          "writable": true
         },
         {
           "name": "user_token_in_account",

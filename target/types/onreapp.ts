@@ -6398,8 +6398,10 @@ export type Onreapp = {
         {
           "name": "tokenOutMint",
           "docs": [
-            "The token mint for token_out."
-          ]
+            "The token mint for token_out.",
+            "Must be mutable to allow minting when program has mint authority"
+          ],
+          "writable": true
         },
         {
           "name": "userTokenInAccount",

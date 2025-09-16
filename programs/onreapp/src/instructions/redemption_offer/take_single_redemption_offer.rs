@@ -67,6 +67,8 @@ pub struct TakeSingleRedemptionOffer<'info> {
     pub token_in_mint: Account<'info, Mint>,
 
     /// The token mint for token_out.
+    /// Must be mutable to allow minting when program has mint authority
+    #[account(mut)]
     pub token_out_mint: Account<'info, Mint>,
 
     /// User's token_in account (source of payment).
