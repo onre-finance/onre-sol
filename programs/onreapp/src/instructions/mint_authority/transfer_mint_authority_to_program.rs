@@ -53,7 +53,7 @@ pub struct TransferMintAuthorityToProgram<'info> {
 
     /// Program state containing the current boss public key
     #[account(has_one = boss)]
-    pub state: Box<Account<'info, State>>,
+    pub state: Account<'info, State>,
 
     /// The token mint whose authority will be transferred
     /// Must currently have the boss as its mint authority

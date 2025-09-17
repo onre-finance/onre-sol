@@ -64,12 +64,12 @@ pub struct TakeSingleRedemptionOffer<'info> {
     /// The token mint for token_in.
     /// Must be mutable to allow burning when program has mint authority
     #[account(mut)]
-    pub token_in_mint: Account<'info, Mint>,
+    pub token_in_mint: Box<Account<'info, Mint>>,
 
     /// The token mint for token_out.
     /// Must be mutable to allow minting when program has mint authority
     #[account(mut)]
-    pub token_out_mint: Account<'info, Mint>,
+    pub token_out_mint: Box<Account<'info, Mint>>,
 
     /// User's token_in account (source of payment).
     #[account(
@@ -77,7 +77,7 @@ pub struct TakeSingleRedemptionOffer<'info> {
         associated_token::mint = token_in_mint,
         associated_token::authority = user
     )]
-    pub user_token_in_account: Account<'info, TokenAccount>,
+    pub user_token_in_account: Box<Account<'info, TokenAccount>>,
 
     /// User's token_out account (destination of tokens).
     #[account(
@@ -86,7 +86,7 @@ pub struct TakeSingleRedemptionOffer<'info> {
         associated_token::mint = token_out_mint,
         associated_token::authority = user
     )]
-    pub user_token_out_account: Account<'info, TokenAccount>,
+    pub user_token_out_account: Box<Account<'info, TokenAccount>>,
 
     /// Optional mint authority PDA for direct burning (when program has mint authority)
     /// CHECK: PDA derivation is validated through seeds constraint
@@ -102,7 +102,7 @@ pub struct TakeSingleRedemptionOffer<'info> {
         associated_token::mint = token_in_mint,
         associated_token::authority = boss
     )]
-    pub boss_token_in_account: Account<'info, TokenAccount>,
+    pub boss_token_in_account: Box<Account<'info, TokenAccount>>,
 
     /// Optional vault token_in account (for burning when program has mint authority).
     #[account(
@@ -110,7 +110,7 @@ pub struct TakeSingleRedemptionOffer<'info> {
         associated_token::mint = token_in_mint,
         associated_token::authority = vault_authority
     )]
-    pub vault_token_in_account: Account<'info, TokenAccount>,
+    pub vault_token_in_account: Box<Account<'info, TokenAccount>>,
 
     /// Vault's token_out account (source of tokens to give).
     #[account(
@@ -118,7 +118,7 @@ pub struct TakeSingleRedemptionOffer<'info> {
         associated_token::mint = token_out_mint,
         associated_token::authority = vault_authority
     )]
-    pub vault_token_out_account: Account<'info, TokenAccount>,
+    pub vault_token_out_account: Box<Account<'info, TokenAccount>>,
 
     /// The user taking the offer.
     #[account(mut)]

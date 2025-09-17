@@ -25,7 +25,7 @@ pub struct UpdateSingleRedemptionOfferFee<'info> {
 
     /// Program state, ensures `boss` is authorized.
     #[account(has_one = boss)]
-    pub state: Box<Account<'info, State>>,
+    pub state: Account<'info, State>,
 
     /// The signer authorizing the fee update (must be boss).
     #[account(mut)]
@@ -52,7 +52,9 @@ pub fn update_single_redemption_offer_fee(
 ) -> Result<()> {
     // Validate offer_id is not zero
     if offer_id == 0 {
-        return Err(error!(UpdateSingleRedemptionOfferFeeErrorCode::OfferNotFound));
+        return Err(error!(
+            UpdateSingleRedemptionOfferFeeErrorCode::OfferNotFound
+        ));
     }
 
     // Validate fee is within valid range (0-10000 basis points = 0-100%)
@@ -61,7 +63,8 @@ pub fn update_single_redemption_offer_fee(
         UpdateSingleRedemptionOfferFeeErrorCode::InvalidFee
     );
 
-    let single_redemption_offer_account = &mut ctx.accounts.single_redemption_offer_account.load_mut()?;
+    let single_redemption_offer_account =
+        &mut ctx.accounts.single_redemption_offer_account.load_mut()?;
 
     // Find the offer by offer_id
     let offer_index = single_redemption_offer_account

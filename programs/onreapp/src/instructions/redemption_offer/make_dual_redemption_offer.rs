@@ -48,7 +48,7 @@ pub struct MakeDualRedemptionOffer<'info> {
         associated_token::mint = token_in_mint,
         associated_token::authority = vault_authority
     )]
-    pub vault_token_in_account: Account<'info, TokenAccount>,
+    pub vault_token_in_account: Box<Account<'info, TokenAccount>>,
 
     /// Mint of the first token_out for the offer.
     pub token_out_mint_1: Box<Account<'info, Mint>>,

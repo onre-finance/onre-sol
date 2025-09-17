@@ -25,7 +25,7 @@ pub struct UpdateDualRedemptionOfferFee<'info> {
 
     /// Program state, ensures `boss` is authorized.
     #[account(has_one = boss)]
-    pub state: Box<Account<'info, State>>,
+    pub state: Account<'info, State>,
 
     /// The signer authorizing the fee update (must be boss).
     #[account(mut)]
@@ -61,7 +61,8 @@ pub fn update_dual_redemption_offer_fee(
         UpdateDualRedemptionOfferFeeErrorCode::InvalidFee
     );
 
-    let dual_redemption_offer_account = &mut ctx.accounts.dual_redemption_offer_account.load_mut()?;
+    let dual_redemption_offer_account =
+        &mut ctx.accounts.dual_redemption_offer_account.load_mut()?;
 
     // Find the offer by offer_id
     let offer_index = dual_redemption_offer_account
