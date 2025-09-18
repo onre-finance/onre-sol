@@ -398,41 +398,8 @@ export type Onreapp = {
                 "path": "vaultAuthority"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "tokenProgram"
               },
               {
                 "kind": "account",
@@ -498,9 +465,8 @@ export type Onreapp = {
         {
           "name": "tokenProgram",
           "docs": [
-            "SPL Token program."
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+            "Token program."
+          ]
         },
         {
           "name": "associatedTokenProgram",
@@ -608,41 +574,8 @@ export type Onreapp = {
                 "path": "boss"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "tokenProgram"
               },
               {
                 "kind": "account",
@@ -801,9 +734,8 @@ export type Onreapp = {
         {
           "name": "tokenProgram",
           "docs": [
-            "SPL Token program."
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+            "Token program."
+          ]
         },
         {
           "name": "associatedTokenProgram",
@@ -1360,41 +1292,8 @@ export type Onreapp = {
                 "path": "vaultAuthority"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "tokenProgram"
               },
               {
                 "kind": "account",
@@ -1460,9 +1359,8 @@ export type Onreapp = {
         {
           "name": "tokenProgram",
           "docs": [
-            "SPL Token program."
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+            "Token program."
+          ]
         },
         {
           "name": "associatedTokenProgram",
@@ -1571,41 +1469,8 @@ export type Onreapp = {
                 "path": "boss"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "tokenProgram"
               },
               {
                 "kind": "account",
@@ -1764,9 +1629,8 @@ export type Onreapp = {
         {
           "name": "tokenProgram",
           "docs": [
-            "SPL Token program."
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+            "Token program."
+          ]
         },
         {
           "name": "associatedTokenProgram",
@@ -2429,6 +2293,9 @@ export type Onreapp = {
           ]
         },
         {
+          "name": "tokenInProgram"
+        },
+        {
           "name": "vaultTokenInAccount",
           "docs": [
             "Vault token_in account, used to transfer tokens to a program owned account for burning",
@@ -2442,41 +2309,8 @@ export type Onreapp = {
                 "path": "vaultAuthority"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "tokenInProgram"
               },
               {
                 "kind": "account",
@@ -2544,13 +2378,6 @@ export type Onreapp = {
           "relations": [
             "state"
           ]
-        },
-        {
-          "name": "tokenProgram",
-          "docs": [
-            "SPL Token program for token transfers"
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
           "name": "associatedTokenProgram",
@@ -2690,6 +2517,9 @@ export type Onreapp = {
           ]
         },
         {
+          "name": "tokenInProgram"
+        },
+        {
           "name": "vaultTokenInAccount",
           "docs": [
             "Vault token_in account, used to transfer tokens to a program owned account for burning",
@@ -2703,41 +2533,8 @@ export type Onreapp = {
                 "path": "vaultAuthority"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "tokenInProgram"
               },
               {
                 "kind": "account",
@@ -2811,13 +2608,6 @@ export type Onreapp = {
           "relations": [
             "state"
           ]
-        },
-        {
-          "name": "tokenProgram",
-          "docs": [
-            "SPL Token program for token transfers"
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
           "name": "associatedTokenProgram",
@@ -2978,6 +2768,9 @@ export type Onreapp = {
           ]
         },
         {
+          "name": "tokenInProgram"
+        },
+        {
           "name": "vaultTokenInAccount",
           "docs": [
             "Vault token_in account, used to transfer tokens to a program owned account for burning",
@@ -2991,41 +2784,8 @@ export type Onreapp = {
                 "path": "vaultAuthority"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "tokenInProgram"
               },
               {
                 "kind": "account",
@@ -3093,13 +2853,6 @@ export type Onreapp = {
           "relations": [
             "state"
           ]
-        },
-        {
-          "name": "tokenProgram",
-          "docs": [
-            "SPL Token program for token transfers"
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
           "name": "associatedTokenProgram",
@@ -3453,41 +3206,8 @@ export type Onreapp = {
                 "path": "vaultAuthority"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "tokenProgram"
               },
               {
                 "kind": "account",
@@ -3553,9 +3273,8 @@ export type Onreapp = {
         {
           "name": "tokenProgram",
           "docs": [
-            "SPL Token program."
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+            "Token program."
+          ]
         },
         {
           "name": "associatedTokenProgram",
@@ -3666,41 +3385,8 @@ export type Onreapp = {
                 "path": "boss"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "tokenProgram"
               },
               {
                 "kind": "account",
@@ -3860,8 +3546,7 @@ export type Onreapp = {
           "name": "tokenProgram",
           "docs": [
             "SPL Token program."
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          ]
         },
         {
           "name": "associatedTokenProgram",
@@ -4184,12 +3869,18 @@ export type Onreapp = {
           "writable": true
         },
         {
+          "name": "tokenInProgram"
+        },
+        {
           "name": "tokenOutMint",
           "docs": [
             "The mint account for the output token (what user receives)",
             "Must be mutable to allow minting when program has mint authority"
           ],
           "writable": true
+        },
+        {
+          "name": "tokenOutProgram"
         },
         {
           "name": "userTokenInAccount",
@@ -4298,41 +3989,8 @@ export type Onreapp = {
                 "path": "user"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "tokenOutProgram"
               },
               {
                 "kind": "account",
@@ -4507,13 +4165,6 @@ export type Onreapp = {
           ],
           "writable": true,
           "signer": true
-        },
-        {
-          "name": "tokenProgram",
-          "docs": [
-            "SPL Token program for token operations"
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
           "name": "associatedTokenProgram",
@@ -5061,12 +4712,18 @@ export type Onreapp = {
           "writable": true
         },
         {
+          "name": "tokenInProgram"
+        },
+        {
           "name": "tokenOutMint",
           "docs": [
             "The mint account for the output token (what user receives)",
             "Must be mutable to allow minting when program has mint authority"
           ],
           "writable": true
+        },
+        {
+          "name": "tokenOutProgram"
         },
         {
           "name": "userTokenInAccount",
@@ -5174,41 +4831,8 @@ export type Onreapp = {
                 "path": "user"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "tokenOutProgram"
               },
               {
                 "kind": "account",
@@ -5385,13 +5009,6 @@ export type Onreapp = {
           "signer": true
         },
         {
-          "name": "tokenProgram",
-          "docs": [
-            "SPL Token program for token transfers"
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
           "name": "associatedTokenProgram",
           "docs": [
             "Associated Token Program for automatic token account creation"
@@ -5545,6 +5162,9 @@ export type Onreapp = {
           "writable": true
         },
         {
+          "name": "tokenInProgram"
+        },
+        {
           "name": "tokenOutMint1",
           "docs": [
             "The token mint for token_out_1.",
@@ -5553,12 +5173,18 @@ export type Onreapp = {
           "writable": true
         },
         {
+          "name": "tokenOutProgram1"
+        },
+        {
           "name": "tokenOutMint2",
           "docs": [
             "The token mint for token_out_2.",
             "Must be mutable to allow minting when program has mint authority"
           ],
           "writable": true
+        },
+        {
+          "name": "tokenOutProgram2"
         },
         {
           "name": "userTokenInAccount",
@@ -5666,41 +5292,8 @@ export type Onreapp = {
                 "path": "user"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "tokenOutProgram1"
               },
               {
                 "kind": "account",
@@ -5759,41 +5352,8 @@ export type Onreapp = {
                 "path": "user"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "tokenOutProgram2"
               },
               {
                 "kind": "account",
@@ -6249,13 +5809,6 @@ export type Onreapp = {
           "signer": true
         },
         {
-          "name": "tokenProgram",
-          "docs": [
-            "SPL Token program."
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
           "name": "associatedTokenProgram",
           "docs": [
             "Associated Token Program for automatic token account creation"
@@ -6412,12 +5965,18 @@ export type Onreapp = {
           "writable": true
         },
         {
+          "name": "tokenInProgram"
+        },
+        {
           "name": "tokenOutMint",
           "docs": [
             "The token mint for token_out.",
             "Must be mutable to allow minting when program has mint authority"
           ],
           "writable": true
+        },
+        {
+          "name": "tokenOutProgram"
         },
         {
           "name": "userTokenInAccount",
@@ -6525,41 +6084,8 @@ export type Onreapp = {
                 "path": "user"
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                "kind": "account",
+                "path": "tokenOutProgram"
               },
               {
                 "kind": "account",
@@ -6920,13 +6446,6 @@ export type Onreapp = {
           ],
           "writable": true,
           "signer": true
-        },
-        {
-          "name": "tokenProgram",
-          "docs": [
-            "SPL Token program."
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
           "name": "associatedTokenProgram",

@@ -3,7 +3,7 @@ use crate::state::{BuyOfferVaultAuthority, State};
 use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 #[event]
 pub struct BuyOfferVaultWithdrawEvent {
@@ -23,24 +23,25 @@ pub struct BuyOfferVaultWithdraw<'info> {
     pub vault_authority: Account<'info, BuyOfferVaultAuthority>,
 
     /// The token mint for the withdrawal.
-    pub token_mint: Box<Account<'info, Mint>>,
+    pub token_mint: Box<InterfaceAccount<'info, Mint>>,
 
     /// Boss's token account for the specific mint (destination of tokens).
     #[account(
         init_if_needed,
         payer = boss,
         associated_token::mint = token_mint,
-        associated_token::authority = boss
+        associated_token::authority = boss,
+        associated_token::token_program = token_program
     )]
-    pub boss_token_account: Box<Account<'info, TokenAccount>>,
+    pub boss_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Vault's token account for the specific mint (source of tokens).
     #[account(
         mut,
         associated_token::mint = token_mint,
-        associated_token::authority = vault_authority
+        associated_token::authority = vault_authority,
     )]
-    pub vault_token_account: Box<Account<'info, TokenAccount>>,
+    pub vault_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The signer authorizing the withdrawal, must be the boss.
     #[account(mut)]
@@ -50,8 +51,8 @@ pub struct BuyOfferVaultWithdraw<'info> {
     #[account(has_one = boss)]
     pub state: Box<Account<'info, State>>,
 
-    /// SPL Token program.
-    pub token_program: Program<'info, Token>,
+    /// Token program.
+    pub token_program: Interface<'info, TokenInterface>,
 
     /// Associated Token program.
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -82,6 +83,7 @@ pub fn buy_offer_vault_withdraw(ctx: Context<BuyOfferVaultWithdraw>, amount: u64
 
     // Transfer tokens from vault to boss
     transfer_tokens(
+        &ctx.accounts.token_mint,
         &ctx.accounts.token_program,
         &ctx.accounts.vault_token_account,
         &ctx.accounts.boss_token_account,

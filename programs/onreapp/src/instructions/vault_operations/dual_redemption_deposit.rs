@@ -3,7 +3,7 @@ use crate::state::{DualRedemptionVaultAuthority, State};
 use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 #[event]
 pub struct DualRedemptionVaultDepositEvent {
@@ -23,15 +23,15 @@ pub struct DualRedemptionVaultDeposit<'info> {
     pub vault_authority: Account<'info, DualRedemptionVaultAuthority>,
 
     /// The token mint for the deposit.
-    pub token_mint: Box<Account<'info, Mint>>,
+    pub token_mint: Box<InterfaceAccount<'info, Mint>>,
 
     /// Boss's token account for the specific mint (source of tokens).
     #[account(
         mut,
         associated_token::mint = token_mint,
-        associated_token::authority = boss
+        associated_token::authority = boss,
     )]
-    pub boss_token_account: Box<Account<'info, TokenAccount>>,
+    pub boss_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Vault's token account for the specific mint (destination of tokens).
     /// Uses init_if_needed to create the account if it doesn't exist.
@@ -39,9 +39,10 @@ pub struct DualRedemptionVaultDeposit<'info> {
         init_if_needed,
         payer = boss,
         associated_token::mint = token_mint,
-        associated_token::authority = vault_authority
+        associated_token::authority = vault_authority,
+        associated_token::token_program = token_program
     )]
-    pub vault_token_account: Box<Account<'info, TokenAccount>>,
+    pub vault_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The signer authorizing the deposit, must be the boss.
     #[account(mut)]
@@ -51,8 +52,8 @@ pub struct DualRedemptionVaultDeposit<'info> {
     #[account(has_one = boss)]
     pub state: Box<Account<'info, State>>,
 
-    /// SPL Token program.
-    pub token_program: Program<'info, Token>,
+    /// Token program.
+    pub token_program: Interface<'info, TokenInterface>,
 
     /// Associated Token program.
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -79,6 +80,7 @@ pub fn dual_redemption_vault_deposit(
 ) -> Result<()> {
     // Transfer tokens from boss to vault
     transfer_tokens(
+        &ctx.accounts.token_mint,
         &ctx.accounts.token_program,
         &ctx.accounts.boss_token_account,
         &ctx.accounts.vault_token_account,

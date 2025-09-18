@@ -6,6 +6,7 @@ import {
     getAssociatedTokenAddressSync,
     MINT_SIZE,
     MintLayout,
+    TOKEN_2022_PROGRAM_ID,
     TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
 import idl from "../target/idl/onreapp.json";
@@ -47,7 +48,11 @@ export class TestHelper {
         return user;
     }
 
-    createMint(decimals: number, mintAuthority: PublicKey = null, freezeAuthority: PublicKey = mintAuthority): PublicKey {
+    createMint2022(decimals: number, mintAuthority: PublicKey = null, freezeAuthority: PublicKey = mintAuthority): PublicKey {
+        return this.createMint(decimals, mintAuthority, freezeAuthority, TOKEN_2022_PROGRAM_ID);
+    }
+
+    createMint(decimals: number, mintAuthority: PublicKey = null, freezeAuthority: PublicKey = mintAuthority, owner: PublicKey = TOKEN_PROGRAM_ID): PublicKey {
         if (!mintAuthority) {
             mintAuthority = this.getBoss();
             freezeAuthority = this.getBoss();
@@ -68,7 +73,7 @@ export class TestHelper {
             executable: false,
             data: mintData,
             lamports: INITIAL_LAMPORTS,
-            owner: TOKEN_PROGRAM_ID
+            owner
         });
 
         return mintAddress;

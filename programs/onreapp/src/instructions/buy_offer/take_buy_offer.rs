@@ -6,7 +6,7 @@ use crate::utils::{execute_token_operations, u64_to_dec9, ExecTokenOpsParams};
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 /// Error codes specific to the take_buy_offer instruction
 #[error_code]
@@ -62,35 +62,37 @@ pub struct TakeBuyOffer<'info> {
     #[account(
         mut,
         associated_token::mint = token_in_mint,
-        associated_token::authority = vault_authority
+        associated_token::authority = vault_authority,
     )]
-    pub vault_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub vault_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Vault's token_out account (source of tokens to distribute to user)
     #[account(
         mut,
         associated_token::mint = token_out_mint,
-        associated_token::authority = vault_authority
+        associated_token::authority = vault_authority,
     )]
-    pub vault_token_out_account: Box<Account<'info, TokenAccount>>,
+    pub vault_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The mint account for the input token (what user pays)
     /// Must be mutable to allow burning when program has mint authority
     #[account(mut)]
-    pub token_in_mint: Box<Account<'info, Mint>>,
+    pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub token_in_program: Interface<'info, TokenInterface>,
 
     /// The mint account for the output token (what user receives)
     /// Must be mutable to allow minting when program has mint authority
     #[account(mut)]
-    pub token_out_mint: Box<Account<'info, Mint>>,
+    pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub token_out_program: Interface<'info, TokenInterface>,
 
     /// User's token_in account (source of payment)
     #[account(
         mut,
         associated_token::mint = token_in_mint,
-        associated_token::authority = user
+        associated_token::authority = user,
     )]
-    pub user_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub user_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// User's token_out account (destination of received tokens)
     /// Uses init_if_needed to automatically create account if it doesn't exist
@@ -98,17 +100,18 @@ pub struct TakeBuyOffer<'info> {
         init_if_needed,
         payer = user,
         associated_token::mint = token_out_mint,
-        associated_token::authority = user
+        associated_token::authority = user,
+        associated_token::token_program = token_out_program
     )]
-    pub user_token_out_account: Box<Account<'info, TokenAccount>>,
+    pub user_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Boss's token_in account (destination of user's payment)
     #[account(
         mut,
         associated_token::mint = token_in_mint,
-        associated_token::authority = boss
+        associated_token::authority = boss,
     )]
-    pub boss_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Mint authority PDA for direct minting (when program has mint authority)
     /// CHECK: PDA derivation is validated through seeds constraint
@@ -121,9 +124,6 @@ pub struct TakeBuyOffer<'info> {
     /// The user taking the offer (must sign the transaction)
     #[account(mut)]
     pub user: Signer<'info>,
-
-    /// SPL Token program for token operations
-    pub token_program: Program<'info, Token>,
 
     /// Associated Token Program for automatic token account creation
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -190,8 +190,8 @@ pub fn take_buy_offer(
     )?;
 
     execute_token_operations(ExecTokenOpsParams {
-        token_program: &ctx.accounts.token_program,
         // Token in params
+        token_in_program: &ctx.accounts.token_in_program,
         token_in_mint: &ctx.accounts.token_in_mint,
         token_in_amount, // Including fee
         token_in_authority: &ctx.accounts.user,
@@ -205,6 +205,7 @@ pub fn take_buy_offer(
         token_in_burn_account: &ctx.accounts.vault_token_in_account,
         token_in_burn_authority: &ctx.accounts.vault_authority,
         // Token out params
+        token_out_program: &ctx.accounts.token_out_program,
         token_out_mint: &ctx.accounts.token_out_mint,
         token_out_amount: result.token_out_amount,
         token_out_authority: &ctx.accounts.vault_authority,
