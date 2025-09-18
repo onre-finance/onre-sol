@@ -30,6 +30,7 @@ pub struct BuyOfferVaultDeposit<'info> {
         mut,
         associated_token::mint = token_mint,
         associated_token::authority = boss,
+        associated_token::token_program = token_program
     )]
     pub boss_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 

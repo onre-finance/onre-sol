@@ -59,6 +59,7 @@ pub struct TakeBuyOfferPermissionless<'info> {
         mut,
         associated_token::mint = token_in_mint,
         associated_token::authority = vault_authority,
+        associated_token::token_program = token_in_program
     )]
     pub vault_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -67,6 +68,7 @@ pub struct TakeBuyOfferPermissionless<'info> {
         mut,
         associated_token::mint = token_out_mint,
         associated_token::authority = vault_authority,
+        associated_token::token_program = token_out_program
     )]
     pub vault_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -80,6 +82,7 @@ pub struct TakeBuyOfferPermissionless<'info> {
         mut,
         associated_token::mint = token_in_mint,
         associated_token::authority = permissionless_authority,
+        associated_token::token_program = token_in_program
     )]
     pub permissionless_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -88,6 +91,7 @@ pub struct TakeBuyOfferPermissionless<'info> {
         mut,
         associated_token::mint = token_out_mint,
         associated_token::authority = permissionless_authority,
+        associated_token::token_program = token_out_program
     )]
     pub permissionless_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -108,6 +112,7 @@ pub struct TakeBuyOfferPermissionless<'info> {
         mut,
         associated_token::mint = token_in_mint,
         associated_token::authority = user,
+        associated_token::token_program = token_in_program
     )]
     pub user_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -126,6 +131,7 @@ pub struct TakeBuyOfferPermissionless<'info> {
         mut,
         associated_token::mint = token_in_mint,
         associated_token::authority = boss,
+        associated_token::token_program = token_in_program
     )]
     pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 

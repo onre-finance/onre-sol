@@ -1,5 +1,5 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { TestHelper } from "../test_helper";
 import { OnreProgram } from "../onre_program.ts";
 
@@ -384,6 +384,81 @@ describe("Take Buy Offer", () => {
                 tokenOutMint,
                 user: user.publicKey,
                 signer: user
+            });
+
+            const userTokenInAfter = await testHelper.getTokenAccountBalance(userTokenInAccount);
+            const userTokenOutAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+            const bossTokenInAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+            const vaultTokenOutAfter = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+
+            // Verify transfers
+            expect(userTokenInBefore - userTokenInAfter).toBe(BigInt(tokenInAmount));
+            expect(userTokenOutAfter).toBe(BigInt(1e9));
+            expect(bossTokenInAfter - bossTokenInBefore).toBe(BigInt(tokenInAmount));
+            expect(vaultTokenOutBefore - vaultTokenOutAfter).toBe(BigInt(1e9));
+        });
+
+        it("Should correctly transfer Token2022 tokens between accounts", async () => {
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            // Create mints with different decimals to test precision handling
+            const tokenInMint = testHelper.createMint2022(6); // USDC-like (6 decimals)
+            const tokenOutMint = testHelper.createMint2022(9); // ONyc-like (9 decimals)
+
+            // Create a buy offer
+            await program.makeBuyOffer({
+                tokenInMint,
+                tokenOutMint,
+                tokenInProgram: TOKEN_2022_PROGRAM_ID
+            });
+
+            const buyOfferAccount = await program.getBuyOfferAccount();
+            const offerId = buyOfferAccount.counter.toNumber();
+
+            // Create token accounts
+            const user = testHelper.createUserAccount();
+            const userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(10_000e6), false, TOKEN_2022_PROGRAM_ID);
+            const bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, testHelper.getBoss(), BigInt(0), false, TOKEN_2022_PROGRAM_ID);
+            const userTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, user.publicKey, false, TOKEN_2022_PROGRAM_ID);
+            const bossTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(10_000e9), false, TOKEN_2022_PROGRAM_ID);
+
+            // Create and fund vault
+            const vaultTokenInAccount = testHelper.createTokenAccount(tokenInMint, program.pdas.buyOfferVaultAuthorityPda, BigInt(0), true, TOKEN_2022_PROGRAM_ID);
+            const vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, program.pdas.buyOfferVaultAuthorityPda, BigInt(0), true, TOKEN_2022_PROGRAM_ID);
+
+            // Fund vault
+            await program.buyOfferVaultDeposit({
+                amount: 10_000e9,
+                tokenMint: tokenOutMint,
+                tokenProgram: TOKEN_2022_PROGRAM_ID
+            });
+
+            await program.addBuyOfferVector({
+                offerId,
+                startTime: currentTime,
+                startPrice: 1e9,
+                apr: 36_500,
+                priceFixDuration: 86400
+            });
+
+            const tokenInAmount = 1_000_100;
+
+            const userTokenInBefore = await testHelper.getTokenAccountBalance(userTokenInAccount);
+            const bossTokenInBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+            const vaultTokenOutBefore = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+
+            console.log("Vault authority:", program.pdas.buyOfferVaultAuthorityPda.toBase58());
+            console.log("Token out mint:", tokenOutMint.toBase58());
+            console.log("Vault token_out(" + vaultTokenOutAccount.toBase58() + ") balance before: ", vaultTokenOutBefore);
+            await program.takeBuyOffer({
+                offerId,
+                tokenInAmount,
+                tokenInMint,
+                tokenOutMint,
+                user: user.publicKey,
+                signer: user,
+                tokenInProgram: TOKEN_2022_PROGRAM_ID,
+                tokenOutProgram: TOKEN_2022_PROGRAM_ID
             });
 
             const userTokenInAfter = await testHelper.getTokenAccountBalance(userTokenInAccount);

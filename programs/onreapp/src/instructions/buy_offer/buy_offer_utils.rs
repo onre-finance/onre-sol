@@ -1,5 +1,5 @@
 use crate::instructions::{BuyOffer, BuyOfferAccount, BuyOfferVector};
-use crate::utils::{calculate_fees, calculate_token_out_amount, transfer_tokens};
+use crate::utils::{calculate_fees, calculate_token_out_amount};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
 

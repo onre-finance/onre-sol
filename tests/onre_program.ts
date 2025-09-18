@@ -354,12 +354,13 @@ export class OnreProgram {
             .rpc();
     }
 
-    async transferMintAuthorityToProgram(params: { mint: PublicKey, signer?: Keypair }) {
+    async transferMintAuthorityToProgram(params: { mint: PublicKey, signer?: Keypair, tokenProgram?: PublicKey }) {
         const tx = this.program.methods
             .transferMintAuthorityToProgram()
             .accounts({
                 state: this.statePda,
-                mint: params.mint
+                mint: params.mint,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
 
         if (params.signer) {
@@ -369,12 +370,13 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async transferMintAuthorityToBoss(params: { mint: PublicKey, signer?: Keypair }) {
+    async transferMintAuthorityToBoss(params: { mint: PublicKey, signer?: Keypair, tokenProgram?: PublicKey }) {
         const tx = this.program.methods
             .transferMintAuthorityToBoss()
             .accounts({
                 state: this.statePda,
-                mint: params.mint
+                mint: params.mint,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
 
         if (params.signer) {

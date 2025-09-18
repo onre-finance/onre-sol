@@ -79,7 +79,7 @@ export class TestHelper {
         return mintAddress;
     };
 
-    createTokenAccount(mint: PublicKey, owner: PublicKey, amount: bigint, allowOwnerOffCurve: boolean = false): PublicKey {
+    createTokenAccount(mint: PublicKey, owner: PublicKey, amount: bigint, allowOwnerOffCurve: boolean = false, programId: PublicKey = TOKEN_PROGRAM_ID): PublicKey {
         const tokenAccountData = Buffer.alloc(ACCOUNT_SIZE);
         AccountLayout.encode({
             mint: mint,
@@ -95,20 +95,16 @@ export class TestHelper {
             closeAuthority: PublicKey.default
         }, tokenAccountData);
 
-        const tokenAccountAddress = getAssociatedTokenAddressSync(mint, owner, allowOwnerOffCurve);
+        const tokenAccountAddress = getAssociatedTokenAddressSync(mint, owner, allowOwnerOffCurve, programId);
 
         this.context.setAccount(tokenAccountAddress, {
             executable: false,
             data: tokenAccountData,
             lamports: INITIAL_LAMPORTS,
-            owner: TOKEN_PROGRAM_ID
+            owner: programId
         });
 
         return tokenAccountAddress;
-    }
-
-    getAssociatedTokenAccount(mint: PublicKey, owner: PublicKey): PublicKey {
-        return getAssociatedTokenAddressSync(mint, owner);
     }
 
     async getTokenAccountBalance(tokenAccount: PublicKey): Promise<bigint> {
