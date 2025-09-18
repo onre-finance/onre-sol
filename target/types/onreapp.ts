@@ -2383,10 +2383,144 @@ export type Onreapp = {
           }
         },
         {
+          "name": "vaultAuthority",
+          "docs": [
+            "The buy offer vault authority PDA that controls vault token accounts"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "tokenInMint",
           "docs": [
             "Mint of the token_in for the offer."
           ]
+        },
+        {
+          "name": "vaultTokenInAccount",
+          "docs": [
+            "Vault token_in account, used to transfer tokens to a program owned account for burning",
+            "when program has mint authority."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
         },
         {
           "name": "tokenOutMint",
@@ -2410,6 +2544,20 @@ export type Onreapp = {
           "relations": [
             "state"
           ]
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program for token transfers"
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         },
         {
           "name": "systemProgram",
@@ -2495,10 +2643,145 @@ export type Onreapp = {
           }
         },
         {
+          "name": "vaultAuthority",
+          "docs": [
+            "The single redemption vault authority that controls vault token accounts."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  97,
+                  108,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "tokenInMint",
           "docs": [
             "Mint of the token_in for the offer."
           ]
+        },
+        {
+          "name": "vaultTokenInAccount",
+          "docs": [
+            "Vault token_in account, used to transfer tokens to a program owned account for burning",
+            "when program has mint authority."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
         },
         {
           "name": "tokenOutMint1",
@@ -2528,6 +2811,20 @@ export type Onreapp = {
           "relations": [
             "state"
           ]
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program for token transfers"
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         },
         {
           "name": "systemProgram",
@@ -2632,10 +2929,147 @@ export type Onreapp = {
           }
         },
         {
+          "name": "vaultAuthority",
+          "docs": [
+            "The single redemption vault authority that controls vault token accounts."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  105,
+                  110,
+                  103,
+                  108,
+                  101,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "tokenInMint",
           "docs": [
             "Mint of the token_in for the offer."
           ]
+        },
+        {
+          "name": "vaultTokenInAccount",
+          "docs": [
+            "Vault token_in account, used to transfer tokens to a program owned account for burning",
+            "when program has mint authority."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
         },
         {
           "name": "tokenOutMint",
@@ -2659,6 +3093,20 @@ export type Onreapp = {
           "relations": [
             "state"
           ]
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program for token transfers"
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         },
         {
           "name": "systemProgram",
@@ -3542,16 +3990,206 @@ export type Onreapp = {
           }
         },
         {
+          "name": "vaultTokenInAccount",
+          "docs": [
+            "Vault's token_in account, used for burning tokens when program has mint authority"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenOutAccount",
+          "docs": [
+            "Vault's token_out account (source of tokens to distribute to user)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
           "name": "tokenInMint",
           "docs": [
-            "The mint account for the input token (what user pays)"
-          ]
+            "The mint account for the input token (what user pays)",
+            "Must be mutable to allow burning when program has mint authority"
+          ],
+          "writable": true
         },
         {
           "name": "tokenOutMint",
           "docs": [
-            "The mint account for the output token (what user receives)"
-          ]
+            "The mint account for the output token (what user receives)",
+            "Must be mutable to allow minting when program has mint authority"
+          ],
+          "writable": true
         },
         {
           "name": "userTokenInAccount",
@@ -3649,7 +4287,8 @@ export type Onreapp = {
         {
           "name": "userTokenOutAccount",
           "docs": [
-            "User's token_out account (destination of received tokens)"
+            "User's token_out account (destination of received tokens)",
+            "Uses init_if_needed to automatically create account if it doesn't exist"
           ],
           "writable": true,
           "pda": {
@@ -3833,9 +4472,280 @@ export type Onreapp = {
           }
         },
         {
+          "name": "mintAuthorityPda",
+          "docs": [
+            "Mint authority PDA for direct minting (when program has mint authority)"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "docs": [
+            "The user taking the offer (must sign the transaction)"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program for token operations"
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program required for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        },
+        {
+          "name": "tokenInAmount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "takeBuyOfferPermissionless",
+      "docs": [
+        "Takes a buy offer using permissionless flow with intermediary accounts.",
+        "",
+        "Delegates to `buy_offer::take_buy_offer_permissionless`.",
+        "Similar to take_buy_offer but routes token transfers through intermediary accounts",
+        "owned by the program instead of direct user-to-boss and vault-to-user transfers.",
+        "Emits a `TakeBuyOfferPermissionlessEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `TakeBuyOfferPermissionless`.",
+        "- `offer_id`: ID of the offer to take.",
+        "- `token_in_amount`: Amount of token_in to provide."
+      ],
+      "discriminator": [
+        209,
+        116,
+        84,
+        124,
+        15,
+        126,
+        86,
+        66
+      ],
+      "accounts": [
+        {
+          "name": "buyOfferAccount",
+          "docs": [
+            "The buy offer account containing all active buy offers"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing the boss public key"
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account that receives token_in payments",
+            "Must match the boss stored in the program state"
+          ],
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "vaultAuthority",
+          "docs": [
+            "The buy offer vault authority PDA that controls vault token accounts"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vaultTokenInAccount",
+          "docs": [
+            "Vault's token_in account, used for burning tokens when program has mint authority"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
           "name": "vaultTokenOutAccount",
           "docs": [
-            "Vault's token_out account (source of tokens to distribute to user)"
+            "Vault's token_out account (source of tokens to distribute, when program doesn't have mint authority)"
           ],
           "writable": true,
           "pda": {
@@ -3926,138 +4836,6 @@ export type Onreapp = {
           }
         },
         {
-          "name": "user",
-          "docs": [
-            "The user taking the offer (must sign the transaction)"
-          ],
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "tokenProgram",
-          "docs": [
-            "SPL Token program for token transfers"
-          ],
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        }
-      ],
-      "args": [
-        {
-          "name": "offerId",
-          "type": "u64"
-        },
-        {
-          "name": "tokenInAmount",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "takeBuyOfferPermissionless",
-      "docs": [
-        "Takes a buy offer using permissionless flow with intermediary accounts.",
-        "",
-        "Delegates to `buy_offer::take_buy_offer_permissionless`.",
-        "Similar to take_buy_offer but routes token transfers through intermediary accounts",
-        "owned by the program instead of direct user-to-boss and vault-to-user transfers.",
-        "Emits a `TakeBuyOfferPermissionlessEvent` upon success.",
-        "",
-        "# Arguments",
-        "- `ctx`: Context for `TakeBuyOfferPermissionless`.",
-        "- `offer_id`: ID of the offer to take.",
-        "- `token_in_amount`: Amount of token_in to provide."
-      ],
-      "discriminator": [
-        209,
-        116,
-        84,
-        124,
-        15,
-        126,
-        86,
-        66
-      ],
-      "accounts": [
-        {
-          "name": "buyOfferAccount",
-          "docs": [
-            "The buy offer account containing all active buy offers"
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  98,
-                  117,
-                  121,
-                  95,
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  115
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "state",
-          "docs": [
-            "Program state account containing the boss public key"
-          ]
-        },
-        {
-          "name": "boss",
-          "docs": [
-            "The boss account that receives token_in payments",
-            "Must match the boss stored in the program state"
-          ]
-        },
-        {
-          "name": "vaultAuthority",
-          "docs": [
-            "The buy offer vault authority PDA that controls vault token accounts"
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  98,
-                  117,
-                  121,
-                  95,
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
           "name": "permissionlessAuthority",
           "docs": [
             "The permissionless authority PDA that controls intermediary token accounts"
@@ -4089,16 +4867,206 @@ export type Onreapp = {
           }
         },
         {
+          "name": "permissionlessTokenInAccount",
+          "docs": [
+            "Permissionless intermediary token_in account (temporary holding for token_in)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "permissionlessAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "permissionlessTokenOutAccount",
+          "docs": [
+            "Permissionless intermediary token_out account (temporary holding for token_out)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "permissionlessAuthority"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
           "name": "tokenInMint",
           "docs": [
-            "The mint account for the input token (what user pays)"
-          ]
+            "The mint account for the input token (what user pays)",
+            "Must be mutable to allow burning when program has mint authority"
+          ],
+          "writable": true
         },
         {
           "name": "tokenOutMint",
           "docs": [
-            "The mint account for the output token (what user receives)"
-          ]
+            "The mint account for the output token (what user receives)",
+            "Must be mutable to allow minting when program has mint authority"
+          ],
+          "writable": true
         },
         {
           "name": "userTokenInAccount",
@@ -4380,282 +5348,32 @@ export type Onreapp = {
           }
         },
         {
-          "name": "vaultTokenOutAccount",
+          "name": "mintAuthorityPda",
           "docs": [
-            "Vault's token_out account (source of tokens to distribute)"
+            "Mint authority PDA for direct minting (when program has mint authority)"
           ],
-          "writable": true,
           "pda": {
             "seeds": [
               {
-                "kind": "account",
-                "path": "vaultAuthority"
-              },
-              {
                 "kind": "const",
                 "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
+                  109,
+                  105,
+                  110,
+                  116,
                   95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
                 ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutMint"
               }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "permissionlessTokenInAccount",
-          "docs": [
-            "Permissionless intermediary token_in account (temporary holding for token_in)"
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "permissionlessAuthority"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "permissionlessTokenOutAccount",
-          "docs": [
-            "Permissionless intermediary token_out account (temporary holding for token_out)"
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "permissionlessAuthority"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
+            ]
           }
         },
         {
@@ -4672,6 +5390,20 @@ export type Onreapp = {
             "SPL Token program for token transfers"
           ],
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program required for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
@@ -4807,20 +5539,26 @@ export type Onreapp = {
         {
           "name": "tokenInMint",
           "docs": [
-            "The token mint for token_in."
-          ]
+            "The token mint for token_in.",
+            "Must be mutable to allow burning when program has mint authority"
+          ],
+          "writable": true
         },
         {
           "name": "tokenOutMint1",
           "docs": [
-            "The token mint for token_out_1."
-          ]
+            "The token mint for token_out_1.",
+            "Must be mutable to allow minting when program has mint authority"
+          ],
+          "writable": true
         },
         {
           "name": "tokenOutMint2",
           "docs": [
-            "The token mint for token_out_2."
-          ]
+            "The token mint for token_out_2.",
+            "Must be mutable to allow minting when program has mint authority"
+          ],
+          "writable": true
         },
         {
           "name": "userTokenInAccount",
@@ -5102,9 +5840,38 @@ export type Onreapp = {
           }
         },
         {
+          "name": "mintAuthorityPda",
+          "docs": [
+            "Optional mint authority PDA for direct burning (when program has mint authority)"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "bossTokenInAccount",
           "docs": [
-            "Boss's token_in account (destination of payment)."
+            "Boss's token_in account (destination of payment when no mint authority)."
           ],
           "writable": true,
           "pda": {
@@ -5112,6 +5879,99 @@ export type Onreapp = {
               {
                 "kind": "account",
                 "path": "boss"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenInAccount",
+          "docs": [
+            "Optional vault token_in account (for burning when program has mint authority)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultAuthority"
               },
               {
                 "kind": "const",
@@ -5394,6 +6254,20 @@ export type Onreapp = {
             "SPL Token program."
           ],
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program required for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
@@ -5532,14 +6406,18 @@ export type Onreapp = {
         {
           "name": "tokenInMint",
           "docs": [
-            "The token mint for token_in."
-          ]
+            "The token mint for token_in.",
+            "Must be mutable to allow burning when program has mint authority"
+          ],
+          "writable": true
         },
         {
           "name": "tokenOutMint",
           "docs": [
-            "The token mint for token_out."
-          ]
+            "The token mint for token_out.",
+            "Must be mutable to allow minting when program has mint authority"
+          ],
+          "writable": true
         },
         {
           "name": "userTokenInAccount",
@@ -5728,9 +6606,38 @@ export type Onreapp = {
           }
         },
         {
+          "name": "mintAuthorityPda",
+          "docs": [
+            "Optional mint authority PDA for direct burning (when program has mint authority)"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "bossTokenInAccount",
           "docs": [
-            "Boss's token_in account (destination of payment)."
+            "Boss's token_in account (destination of payment when no mint authority)."
           ],
           "writable": true,
           "pda": {
@@ -5738,6 +6645,99 @@ export type Onreapp = {
               {
                 "kind": "account",
                 "path": "boss"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenInAccount",
+          "docs": [
+            "Optional vault token_in account (for burning when program has mint authority)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultAuthority"
               },
               {
                 "kind": "const",
@@ -5927,6 +6927,20 @@ export type Onreapp = {
             "SPL Token program."
           ],
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program required for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
@@ -5939,6 +6953,186 @@ export type Onreapp = {
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "transferMintAuthorityToBoss",
+      "docs": [
+        "Transfers mint authority from a program-derived PDA back to the boss.",
+        "",
+        "Delegates to `mint_authority::transfer_mint_authority_to_boss`.",
+        "Only the boss can call this instruction to recover mint authority for a specific token.",
+        "This serves as an emergency recovery mechanism.",
+        "Emits a `MintAuthorityTransferredToBossEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `TransferMintAuthorityToBoss`."
+      ],
+      "discriminator": [
+        197,
+        61,
+        42,
+        52,
+        70,
+        93,
+        30,
+        125
+      ],
+      "accounts": [
+        {
+          "name": "boss",
+          "docs": [
+            "The current boss account, must sign the transaction",
+            "Must match the boss stored in the program state"
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state containing the current boss public key"
+          ]
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The token mint whose authority will be transferred back to boss",
+            "Must currently have the program PDA as its mint authority"
+          ],
+          "writable": true
+        },
+        {
+          "name": "mintAuthorityPda",
+          "docs": [
+            "Program-derived account that currently holds mint authority",
+            "Must be derived from [MINT_AUTHORITY, mint_pubkey] and currently be the mint authority"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program for mint authority operations"
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "transferMintAuthorityToProgram",
+      "docs": [
+        "Transfers mint authority from the boss to a program-derived PDA.",
+        "",
+        "Delegates to `mint_authority::transfer_mint_authority_to_program`.",
+        "Only the boss can call this instruction to transfer mint authority for a specific token.",
+        "The PDA is derived from the mint address and can later be used to mint tokens.",
+        "Emits a `MintAuthorityTransferredToProgramEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `TransferMintAuthorityToProgram`."
+      ],
+      "discriminator": [
+        98,
+        112,
+        50,
+        135,
+        53,
+        6,
+        149,
+        232
+      ],
+      "accounts": [
+        {
+          "name": "boss",
+          "docs": [
+            "The current boss account, must sign the transaction",
+            "Must match the boss stored in the program state"
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state containing the current boss public key"
+          ]
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The token mint whose authority will be transferred",
+            "Must currently have the boss as its mint authority"
+          ],
+          "writable": true
+        },
+        {
+          "name": "mintAuthorityPda",
+          "docs": [
+            "Program-derived account that will become the new mint authority",
+            "Derived from [MINT_AUTHORITY, mint_pubkey] to ensure uniqueness per token"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program for mint authority operations"
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
     },
     {
       "name": "updateBuyOfferFee",
@@ -6507,6 +7701,32 @@ export type Onreapp = {
         30,
         207,
         113
+      ]
+    },
+    {
+      "name": "mintAuthorityTransferredToBossEvent",
+      "discriminator": [
+        86,
+        223,
+        255,
+        189,
+        210,
+        62,
+        212,
+        151
+      ]
+    },
+    {
+      "name": "mintAuthorityTransferredToProgramEvent",
+      "discriminator": [
+        237,
+        15,
+        101,
+        27,
+        85,
+        70,
+        173,
+        232
       ]
     },
     {
@@ -7205,6 +8425,70 @@ export type Onreapp = {
       }
     },
     {
+      "name": "mintAuthorityTransferredToBossEvent",
+      "docs": [
+        "Event emitted when mint authority is successfully transferred from program PDA back to boss"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "docs": [
+              "The mint whose authority was transferred"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "oldAuthority",
+            "docs": [
+              "The previous authority (program PDA)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "newAuthority",
+            "docs": [
+              "The new authority (boss)"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mintAuthorityTransferredToProgramEvent",
+      "docs": [
+        "Event emitted when mint authority is successfully transferred from boss to program PDA"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "docs": [
+              "The mint whose authority was transferred"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "oldAuthority",
+            "docs": [
+              "The previous authority (boss)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "newAuthority",
+            "docs": [
+              "The new authority (program PDA)"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "permissionlessAccount",
       "type": {
         "kind": "struct",
@@ -7438,7 +8722,7 @@ export type Onreapp = {
           {
             "name": "tokenInAmount",
             "docs": [
-              "Amount of token_in paid by the user (including fee)"
+              "Amount of token_in paid by the user (excluding fee)"
             ],
             "type": "u64"
           },

@@ -1,199 +1,185 @@
-import {PublicKey} from "@solana/web3.js";
-import {ONREAPP_PROGRAM_ID, TestHelper} from "../test_helper";
-import {AddedProgram, startAnchor} from "solana-bankrun";
-import {Onreapp} from "../../target/types/onreapp";
-import {BankrunProvider} from "anchor-bankrun";
-import {BN, Program} from "@coral-xyz/anchor";
-import idl from "../../target/idl/onreapp.json";
-import {getAssociatedTokenAddressSync} from "@solana/spl-token";
+import { PublicKey } from "@solana/web3.js";
+import { TestHelper } from "../test_helper";
+import { OnreProgram } from "../onre_program.ts";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 describe("Vault Operations", () => {
     let testHelper: TestHelper;
-    let program: Program<Onreapp>;
+    let program: OnreProgram;
 
     let boss: PublicKey;
-    let buyOfferVaultAuthorityPda: PublicKey;
-    let singleRedemptionVaultAuthorityPda: PublicKey;
-    let dualRedemptionVaultAuthorityPda: PublicKey;
 
     beforeEach(async () => {
-        const programInfo: AddedProgram = {
-            programId: ONREAPP_PROGRAM_ID,
-            name: "onreapp",
-        };
-
-        const workspace = process.cwd();
-        const context = await startAnchor(workspace, [programInfo], []);
-
-        const provider = new BankrunProvider(context);
-        program = new Program<Onreapp>(idl, provider);
-
-        testHelper = new TestHelper(context, program);
-        boss = provider.wallet.publicKey;
-
-        // Get vault authority PDAs first
-        [buyOfferVaultAuthorityPda] = PublicKey.findProgramAddressSync([Buffer.from('buy_offer_vault_authority')], ONREAPP_PROGRAM_ID);
-        [singleRedemptionVaultAuthorityPda] = PublicKey.findProgramAddressSync([Buffer.from('single_redemption_vault_auth')], ONREAPP_PROGRAM_ID);
-        [dualRedemptionVaultAuthorityPda] = PublicKey.findProgramAddressSync([Buffer.from('dual_redemption_vault_auth')], ONREAPP_PROGRAM_ID);
+        testHelper = await TestHelper.create();
+        program = new OnreProgram(testHelper.context);
+        boss = testHelper.getBoss();
 
         // Initialize program and vault authorities
-        await program.methods.initialize().accounts({boss}).rpc();
-        await program.methods.initializeVaultAuthority().accounts({
-            state: testHelper.statePda,
-        }).rpc();
+        await program.initialize();
+        await program.initializeVaultAuthority();
     });
 
     test("Vaults are initialized correctly", async () => {
         // Verify all vault authorities are initialized correctly
-        const buyOfferVaultAuthority = await program.account.buyOfferVaultAuthority.fetch(buyOfferVaultAuthorityPda);
-        const singleRedemptionVaultAuthority = await program.account.singleRedemptionVaultAuthority.fetch(singleRedemptionVaultAuthorityPda);
-        const dualRedemptionVaultAuthority = await program.account.dualRedemptionVaultAuthority.fetch(dualRedemptionVaultAuthorityPda);
+        const buyOfferVaultAuthority = await program.program.account.buyOfferVaultAuthority.fetch(program.pdas.buyOfferVaultAuthorityPda);
+        const singleRedemptionVaultAuthority = await program.program.account.singleRedemptionVaultAuthority.fetch(program.pdas.singleRedemptionVaultAuthorityPda);
+        const dualRedemptionVaultAuthority = await program.program.account.dualRedemptionVaultAuthority.fetch(program.pdas.dualRedemptionVaultAuthorityPda);
 
         expect(buyOfferVaultAuthority).toBeDefined();
         expect(singleRedemptionVaultAuthority).toBeDefined();
         expect(dualRedemptionVaultAuthority).toBeDefined();
-    })
+    });
 
     describe("Buy Offer Vault Operations", () => {
         test("Deposit tokens to buy offer vault should succeed", async () => {
             // given
-            const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+            const testTokenMint = testHelper.createMint(9);
             const testBossTokenAccount = testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
-            const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, buyOfferVaultAuthorityPda, true);
-            const depositAmount = new BN(100_000e9);
+            const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.buyOfferVaultAuthorityPda, true);
+            const depositAmount = 100_000e9;
 
             // when
-            await program.methods.buyOfferVaultDeposit(depositAmount).accounts({
-                tokenMint: testTokenMint,
-                state: testHelper.statePda,
-            }).rpc();
+            await program.buyOfferVaultDeposit({
+                amount: depositAmount,
+                tokenMint: testTokenMint
+            });
 
             // then
-            await testHelper.expectTokenAccountAmountToBe(testVaultTokenAccount, BigInt(depositAmount.toString()));
+            await testHelper.expectTokenAccountAmountToBe(testVaultTokenAccount, BigInt(depositAmount));
             const expectedBossBalance = BigInt(1_000_000e9 - 100_000e9);
             await testHelper.expectTokenAccountAmountToBe(testBossTokenAccount, expectedBossBalance);
         });
 
         test("Non-boss cannot deposit to buy offer vault", async () => {
             // given
-            const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+            const testTokenMint = testHelper.createMint(9);
+            testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
+
             const notBoss = testHelper.createUserAccount();
-            const depositAmount = new BN(10_000e9);
+            testHelper.createTokenAccount(testTokenMint, notBoss.publicKey, BigInt(1_000_000e9));
+            const depositAmount = 10_000e9;
 
             // when & then
             await expect(
-                program.methods.buyOfferVaultDeposit(depositAmount).accounts({
+                program.buyOfferVaultDeposit({
+                    amount: depositAmount,
                     tokenMint: testTokenMint,
-                    state: testHelper.statePda,
-                }).signers([notBoss]).rpc()
-            ).rejects.toThrow();
+                    signer: notBoss
+                })
+            ).rejects.toThrow("unknown signer");
         });
     });
 
     describe("Single Redemption Vault Operations", () => {
         test("Deposit tokens to single redemption vault should succeed", async () => {
             // given
-            const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+            const testTokenMint = testHelper.createMint(9);
             const testBossTokenAccount = testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
-            const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, singleRedemptionVaultAuthorityPda, true);
-            const depositAmount = new BN(200_000e9);
+            const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.singleRedemptionVaultAuthorityPda, true);
+            const depositAmount = 200_000e9;
 
             // when
-            await program.methods.singleRedemptionVaultDeposit(depositAmount).accounts({
-                tokenMint: testTokenMint,
-                state: testHelper.statePda,
-            }).rpc();
+            await program.singleRedemptionVaultDeposit({
+                amount: depositAmount,
+                tokenMint: testTokenMint
+            });
 
             // then
-            await testHelper.expectTokenAccountAmountToBe(testVaultTokenAccount, BigInt(depositAmount.toString()));
+            await testHelper.expectTokenAccountAmountToBe(testVaultTokenAccount, BigInt(depositAmount));
             const expectedBossBalance = BigInt(1_000_000e9 - 200_000e9);
             await testHelper.expectTokenAccountAmountToBe(testBossTokenAccount, expectedBossBalance);
         });
 
         test("Non-boss cannot deposit to single redemption vault", async () => {
             // given
-            const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+            const testTokenMint = testHelper.createMint(9);
+            testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
             const notBoss = testHelper.createUserAccount();
-            const depositAmount = new BN(10_000e9);
+            testHelper.createTokenAccount(testTokenMint, notBoss.publicKey, BigInt(1_000_000e9));
+            const depositAmount = 10_000e9;
 
             // when & then
             await expect(
-                program.methods.singleRedemptionVaultDeposit(depositAmount).accounts({
+                program.singleRedemptionVaultDeposit({
+                    amount: depositAmount,
                     tokenMint: testTokenMint,
-                    state: testHelper.statePda,
-                }).signers([notBoss]).rpc()
-            ).rejects.toThrow();
+                    signer: notBoss
+                })
+            ).rejects.toThrow("unknown signer");
         });
     });
 
     describe("Dual Redemption Vault Operations", () => {
         test("Deposit tokens to dual redemption vault should succeed", async () => {
             // given
-            const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+            const testTokenMint = testHelper.createMint(9);
             const testBossTokenAccount = testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
-            const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, dualRedemptionVaultAuthorityPda, true);
-            const depositAmount = new BN(300_000e9);
+            const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.dualRedemptionVaultAuthorityPda, true);
+            const depositAmount = 300_000e9;
 
             // when
-            await program.methods.dualRedemptionVaultDeposit(depositAmount).accounts({
-                tokenMint: testTokenMint,
-                state: testHelper.statePda,
-            }).rpc();
+            await program.dualRedemptionVaultDeposit({
+                amount: depositAmount,
+                tokenMint: testTokenMint
+            });
 
             // then
-            await testHelper.expectTokenAccountAmountToBe(testVaultTokenAccount, BigInt(depositAmount.toString()));
+            await testHelper.expectTokenAccountAmountToBe(testVaultTokenAccount, BigInt(depositAmount));
             const expectedBossBalance = BigInt(1_000_000e9 - 300_000e9);
             await testHelper.expectTokenAccountAmountToBe(testBossTokenAccount, expectedBossBalance);
         });
 
         test("Non-boss cannot deposit to dual redemption vault", async () => {
             // given
-            const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+            const testTokenMint = testHelper.createMint(9);
+            testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
             const notBoss = testHelper.createUserAccount();
-            const depositAmount = new BN(10_000e9);
+            testHelper.createTokenAccount(testTokenMint, notBoss.publicKey, BigInt(1_000_000e9));
+            const depositAmount = 10_000e9;
 
             // when & then
             await expect(
-                program.methods.dualRedemptionVaultDeposit(depositAmount).accounts({
+                program.dualRedemptionVaultDeposit({
+                    amount: depositAmount,
                     tokenMint: testTokenMint,
-                    state: testHelper.statePda,
-                }).signers([notBoss]).rpc()
-            ).rejects.toThrow();
+                    signer: notBoss
+                })
+            ).rejects.toThrow("unknown signer");
         });
     });
 
     describe("Multiple Vault Types", () => {
         test("Can deposit to all three vault types with same token", async () => {
             // given
-            const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+            const testTokenMint = testHelper.createMint(9);
             const testBossTokenAccount = testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
 
-            const buyOfferVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, buyOfferVaultAuthorityPda, true);
-            const singleRedemptionVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, singleRedemptionVaultAuthorityPda, true);
-            const dualRedemptionVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, dualRedemptionVaultAuthorityPda, true);
+            const buyOfferVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.buyOfferVaultAuthorityPda, true);
+            const singleRedemptionVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.singleRedemptionVaultAuthorityPda, true);
+            const dualRedemptionVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.dualRedemptionVaultAuthorityPda, true);
 
-            const depositAmount = new BN(100_000e9);
+            const depositAmount = 100_000e9;
 
             // when - deposit to all three vaults
-            await program.methods.buyOfferVaultDeposit(depositAmount).accounts({
-                tokenMint: testTokenMint,
-                state: testHelper.statePda,
-            }).rpc();
+            await program.buyOfferVaultDeposit({
+                amount: depositAmount,
+                tokenMint: testTokenMint
+            });
 
-            await program.methods.singleRedemptionVaultDeposit(depositAmount).accounts({
-                tokenMint: testTokenMint,
-                state: testHelper.statePda,
-            }).rpc();
+            await program.singleRedemptionVaultDeposit({
+                amount: depositAmount,
+                tokenMint: testTokenMint
+            });
 
-            await program.methods.dualRedemptionVaultDeposit(depositAmount).accounts({
-                tokenMint: testTokenMint,
-                state: testHelper.statePda,
-            }).rpc();
+            await program.dualRedemptionVaultDeposit({
+                amount: depositAmount,
+                tokenMint: testTokenMint
+            });
 
             // then - verify all vault accounts have correct balances
-            await testHelper.expectTokenAccountAmountToBe(buyOfferVaultTokenAccount, BigInt(depositAmount.toString()));
-            await testHelper.expectTokenAccountAmountToBe(singleRedemptionVaultTokenAccount, BigInt(depositAmount.toString()));
-            await testHelper.expectTokenAccountAmountToBe(dualRedemptionVaultTokenAccount, BigInt(depositAmount.toString()));
+            await testHelper.expectTokenAccountAmountToBe(buyOfferVaultTokenAccount, BigInt(depositAmount));
+            await testHelper.expectTokenAccountAmountToBe(singleRedemptionVaultTokenAccount, BigInt(depositAmount));
+            await testHelper.expectTokenAccountAmountToBe(dualRedemptionVaultTokenAccount, BigInt(depositAmount));
 
             // Verify boss balance decreased by total amount deposited
             const expectedBossBalance = BigInt(1_000_000e9 - (3 * 100_000e9));
@@ -202,18 +188,18 @@ describe("Vault Operations", () => {
 
         test("Vaults are isolated - deposits don't affect other vault types", async () => {
             // given
-            const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+            const testTokenMint = testHelper.createMint(9);
             testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
 
-            const buyOfferVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, buyOfferVaultAuthorityPda, true);
-            const singleRedemptionVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, singleRedemptionVaultAuthorityPda, true);
-            const dualRedemptionVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, dualRedemptionVaultAuthorityPda, true);
+            const buyOfferVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.buyOfferVaultAuthorityPda, true);
+            const singleRedemptionVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.singleRedemptionVaultAuthorityPda, true);
+            const dualRedemptionVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.dualRedemptionVaultAuthorityPda, true);
 
             // when - only deposit to buy offer vault
-            await program.methods.buyOfferVaultDeposit(new BN(100_000e9)).accounts({
-                tokenMint: testTokenMint,
-                state: testHelper.statePda,
-            }).rpc();
+            await program.buyOfferVaultDeposit({
+                amount: 100_000e9,
+                tokenMint: testTokenMint
+            });
 
             // then - only buy offer vault should have tokens
             await testHelper.expectTokenAccountAmountToBe(buyOfferVaultTokenAccount, BigInt(100_000e9));
@@ -228,22 +214,22 @@ describe("Vault Operations", () => {
         describe("Buy Offer Vault Withdrawals", () => {
             test("Withdraw tokens from buy offer vault should succeed", async () => {
                 // given - deposit tokens first
-                const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+                const testTokenMint = testHelper.createMint(9);
                 const testBossTokenAccount = testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
-                const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, buyOfferVaultAuthorityPda, true);
-                const depositAmount = new BN(100_000e9);
+                const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.buyOfferVaultAuthorityPda, true);
+                const depositAmount = 100_000e9;
 
-                await program.methods.buyOfferVaultDeposit(depositAmount).accounts({
-                    tokenMint: testTokenMint,
-                    state: testHelper.statePda,
-                }).rpc();
+                await program.buyOfferVaultDeposit({
+                    amount: depositAmount,
+                    tokenMint: testTokenMint
+                });
 
                 // when - withdraw some tokens
-                const withdrawAmount = new BN(50_000e9);
-                await program.methods.buyOfferVaultWithdraw(withdrawAmount).accounts({
-                    tokenMint: testTokenMint,
-                    state: testHelper.statePda,
-                }).rpc();
+                const withdrawAmount = 50_000e9;
+                await program.buyOfferVaultWithdraw({
+                    amount: withdrawAmount,
+                    tokenMint: testTokenMint
+                });
 
                 // then - verify balances
                 await testHelper.expectTokenAccountAmountToBe(testVaultTokenAccount, BigInt(50_000e9)); // 100k - 50k
@@ -252,39 +238,40 @@ describe("Vault Operations", () => {
 
             test("Non-boss cannot withdraw from buy offer vault", async () => {
                 // given
-                const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+                const testTokenMint = testHelper.createMint(9);
                 const notBoss = testHelper.createUserAccount();
-                const withdrawAmount = new BN(10_000e9);
+                const withdrawAmount = 10_000e9;
 
                 // when & then
                 await expect(
-                    program.methods.buyOfferVaultWithdraw(withdrawAmount).accounts({
+                    program.buyOfferVaultWithdraw({
+                        amount: withdrawAmount,
                         tokenMint: testTokenMint,
-                        state: testHelper.statePda,
-                    }).signers([notBoss]).rpc()
-                ).rejects.toThrow();
+                        signer: notBoss
+                    })
+                ).rejects.toThrow("unknown signer");
             });
         });
 
         describe("Single Redemption Vault Withdrawals", () => {
             test("Withdraw tokens from single redemption vault should succeed", async () => {
                 // given - deposit tokens first
-                const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+                const testTokenMint = testHelper.createMint(9);
                 const testBossTokenAccount = testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
-                const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, singleRedemptionVaultAuthorityPda, true);
-                const depositAmount = new BN(200_000e9);
+                const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.singleRedemptionVaultAuthorityPda, true);
+                const depositAmount = 200_000e9;
 
-                await program.methods.singleRedemptionVaultDeposit(depositAmount).accounts({
-                    tokenMint: testTokenMint,
-                    state: testHelper.statePda,
-                }).rpc();
+                await program.singleRedemptionVaultDeposit({
+                    amount: depositAmount,
+                    tokenMint: testTokenMint
+                });
 
                 // when - withdraw some tokens
-                const withdrawAmount = new BN(75_000e9);
-                await program.methods.singleRedemptionVaultWithdraw(withdrawAmount).accounts({
-                    tokenMint: testTokenMint,
-                    state: testHelper.statePda,
-                }).rpc();
+                const withdrawAmount = 75_000e9;
+                await program.singleRedemptionVaultWithdraw({
+                    amount: withdrawAmount,
+                    tokenMint: testTokenMint
+                });
 
                 // then - verify balances
                 await testHelper.expectTokenAccountAmountToBe(testVaultTokenAccount, BigInt(125_000e9)); // 200k - 75k
@@ -293,39 +280,40 @@ describe("Vault Operations", () => {
 
             test("Non-boss cannot withdraw from single redemption vault", async () => {
                 // given
-                const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+                const testTokenMint = testHelper.createMint(9);
                 const notBoss = testHelper.createUserAccount();
-                const withdrawAmount = new BN(10_000e9);
+                const withdrawAmount = 10_000e9;
 
                 // when & then
                 await expect(
-                    program.methods.singleRedemptionVaultWithdraw(withdrawAmount).accounts({
+                    program.singleRedemptionVaultWithdraw({
+                        amount: withdrawAmount,
                         tokenMint: testTokenMint,
-                        state: testHelper.statePda,
-                    }).signers([notBoss]).rpc()
-                ).rejects.toThrow();
+                        signer: notBoss
+                    })
+                ).rejects.toThrow("unknown signer");
             });
         });
 
         describe("Dual Redemption Vault Withdrawals", () => {
             test("Withdraw tokens from dual redemption vault should succeed", async () => {
                 // given - deposit tokens first
-                const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+                const testTokenMint = testHelper.createMint(9);
                 const testBossTokenAccount = testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
-                const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, dualRedemptionVaultAuthorityPda, true);
-                const depositAmount = new BN(300_000e9);
+                const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.dualRedemptionVaultAuthorityPda, true);
+                const depositAmount = 300_000e9;
 
-                await program.methods.dualRedemptionVaultDeposit(depositAmount).accounts({
-                    tokenMint: testTokenMint,
-                    state: testHelper.statePda,
-                }).rpc();
+                await program.dualRedemptionVaultDeposit({
+                    amount: depositAmount,
+                    tokenMint: testTokenMint
+                });
 
                 // when - withdraw some tokens
-                const withdrawAmount = new BN(100_000e9);
-                await program.methods.dualRedemptionVaultWithdraw(withdrawAmount).accounts({
-                    tokenMint: testTokenMint,
-                    state: testHelper.statePda,
-                }).rpc();
+                const withdrawAmount = 100_000e9;
+                await program.dualRedemptionVaultWithdraw({
+                    amount: withdrawAmount,
+                    tokenMint: testTokenMint
+                });
 
                 // then - verify balances
                 await testHelper.expectTokenAccountAmountToBe(testVaultTokenAccount, BigInt(200_000e9)); // 300k - 100k
@@ -334,67 +322,68 @@ describe("Vault Operations", () => {
 
             test("Non-boss cannot withdraw from dual redemption vault", async () => {
                 // given
-                const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+                const testTokenMint = testHelper.createMint(9);
                 const notBoss = testHelper.createUserAccount();
-                const withdrawAmount = new BN(10_000e9);
+                const withdrawAmount = 10_000e9;
 
                 // when & then
                 await expect(
-                    program.methods.dualRedemptionVaultWithdraw(withdrawAmount).accounts({
+                    program.dualRedemptionVaultWithdraw({
+                        amount: withdrawAmount,
                         tokenMint: testTokenMint,
-                        state: testHelper.statePda,
-                    }).signers([notBoss]).rpc()
-                ).rejects.toThrow();
+                        signer: notBoss
+                    })
+                ).rejects.toThrow("unknown signer");
             });
         });
 
         describe("Combined Deposit and Withdraw Operations", () => {
             test("Can deposit to all vaults and withdraw from each independently", async () => {
                 // given
-                const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+                const testTokenMint = testHelper.createMint(9);
                 const testBossTokenAccount = testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
 
-                const buyOfferVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, buyOfferVaultAuthorityPda, true);
-                const singleRedemptionVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, singleRedemptionVaultAuthorityPda, true);
-                const dualRedemptionVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, dualRedemptionVaultAuthorityPda, true);
+                const buyOfferVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.buyOfferVaultAuthorityPda, true);
+                const singleRedemptionVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.singleRedemptionVaultAuthorityPda, true);
+                const dualRedemptionVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.dualRedemptionVaultAuthorityPda, true);
 
-                const depositAmount = new BN(100_000e9);
+                const depositAmount = 100_000e9;
 
                 // when - deposit to all three vaults
-                await program.methods.buyOfferVaultDeposit(depositAmount).accounts({
-                    tokenMint: testTokenMint,
-                    state: testHelper.statePda,
-                }).rpc();
+                await program.buyOfferVaultDeposit({
+                    amount: depositAmount,
+                    tokenMint: testTokenMint
+                });
 
-                await program.methods.singleRedemptionVaultDeposit(depositAmount).accounts({
-                    tokenMint: testTokenMint,
-                    state: testHelper.statePda,
-                }).rpc();
+                await program.singleRedemptionVaultDeposit({
+                    amount: depositAmount,
+                    tokenMint: testTokenMint
+                });
 
-                await program.methods.dualRedemptionVaultDeposit(depositAmount).accounts({
-                    tokenMint: testTokenMint,
-                    state: testHelper.statePda,
-                }).rpc();
+                await program.dualRedemptionVaultDeposit({
+                    amount: depositAmount,
+                    tokenMint: testTokenMint
+                });
 
                 // then - withdraw different amounts from each vault
-                const withdrawAmount1 = new BN(30_000e9);
-                const withdrawAmount2 = new BN(50_000e9);
-                const withdrawAmount3 = new BN(70_000e9);
+                const withdrawAmount1 = 30_000e9;
+                const withdrawAmount2 = 50_000e9;
+                const withdrawAmount3 = 70_000e9;
 
-                await program.methods.buyOfferVaultWithdraw(withdrawAmount1).accounts({
-                    tokenMint: testTokenMint,
-                    state: testHelper.statePda,
-                }).rpc();
+                await program.buyOfferVaultWithdraw({
+                    amount: withdrawAmount1,
+                    tokenMint: testTokenMint
+                });
 
-                await program.methods.singleRedemptionVaultWithdraw(withdrawAmount2).accounts({
-                    tokenMint: testTokenMint,
-                    state: testHelper.statePda,
-                }).rpc();
+                await program.singleRedemptionVaultWithdraw({
+                    amount: withdrawAmount2,
+                    tokenMint: testTokenMint
+                });
 
-                await program.methods.dualRedemptionVaultWithdraw(withdrawAmount3).accounts({
-                    tokenMint: testTokenMint,
-                    state: testHelper.statePda,
-                }).rpc();
+                await program.dualRedemptionVaultWithdraw({
+                    amount: withdrawAmount3,
+                    tokenMint: testTokenMint
+                });
 
                 // verify final vault balances
                 await testHelper.expectTokenAccountAmountToBe(buyOfferVaultTokenAccount, BigInt(70_000e9)); // 100k - 30k
@@ -409,22 +398,22 @@ describe("Vault Operations", () => {
 
             test("Cannot withdraw more than vault balance", async () => {
                 // given - small deposit
-                const testTokenMint = testHelper.createMint(boss, BigInt(0), 9);
+                const testTokenMint = testHelper.createMint(9);
                 testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
-                const depositAmount = new BN(10_000e9);
+                const depositAmount = 10_000e9;
 
-                await program.methods.buyOfferVaultDeposit(depositAmount).accounts({
-                    tokenMint: testTokenMint,
-                    state: testHelper.statePda,
-                }).rpc();
+                await program.buyOfferVaultDeposit({
+                    amount: depositAmount,
+                    tokenMint: testTokenMint
+                });
 
                 // when & then - attempt to withdraw more than deposited
-                const withdrawAmount = new BN(20_000e9);
+                const withdrawAmount = 20_000e9;
                 await expect(
-                    program.methods.buyOfferVaultWithdraw(withdrawAmount).accounts({
-                        tokenMint: testTokenMint,
-                        state: testHelper.statePda,
-                    }).rpc()
+                    program.buyOfferVaultWithdraw({
+                        amount: withdrawAmount,
+                        tokenMint: testTokenMint
+                    })
                 ).rejects.toThrow();
             });
         });

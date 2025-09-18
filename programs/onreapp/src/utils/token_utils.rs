@@ -1,5 +1,7 @@
+use crate::constants::seeds;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use anchor_lang::solana_program::program_option::COption;
+use anchor_spl::token::{self, Burn, Mint, MintTo, Token, TokenAccount, Transfer};
 
 pub const MAX_BASIS_POINTS: u64 = 10000;
 
@@ -18,31 +20,6 @@ pub enum TokenUtilsErrorCode {
 /// * `authority` - The authority that can transfer from the source account
 /// * `signer_seeds` - Optional PDA seeds for program-signed transfers (None for user-signed)
 /// * `amount` - Amount of tokens to transfer
-///
-/// # Examples
-/// ```rust
-/// // Regular user-signed transfer
-/// transfer_tokens(
-///     &ctx.accounts.token_program,
-///     &ctx.accounts.user_token_account,
-///     &ctx.accounts.recipient_account,
-///     &ctx.accounts.user,
-///     None,
-///     amount,
-/// )?;
-///
-/// // PDA-signed transfer
-/// let authority_seeds = &[seeds::VAULT_AUTHORITY, &[bump]];
-/// let signer_seeds = &[authority_seeds.as_slice()];
-/// transfer_tokens(
-///     &ctx.accounts.token_program,
-///     &ctx.accounts.vault_account,
-///     &ctx.accounts.user_account,
-///     &ctx.accounts.vault_authority,
-///     Some(signer_seeds),
-///     amount,
-/// )?;
-/// ```
 pub fn transfer_tokens<'info>(
     token_program: &Program<'info, Token>,
     from_account: &Account<'info, TokenAccount>,
@@ -142,4 +119,158 @@ pub fn calculate_fees(token_in_amount: u64, fee_basis_points: u64) -> Result<Cal
         fee_amount,
         remaining_token_in_amount,
     })
+}
+
+/// Mint tokens directly to a destination account using program authority
+///
+/// # Arguments
+/// * `token_program` - The SPL Token program
+/// * `mint` - The token mint to mint from
+/// * `to_account` - Destination token account
+/// * `authority` - The mint authority (must be a PDA with signing capability)
+/// * `signer_seeds` - PDA seeds for program-signed minting
+/// * `amount` - Amount of tokens to mint
+pub fn mint_tokens<'info>(
+    token_program: &Program<'info, Token>,
+    mint: &Account<'info, Mint>,
+    to_account: &Account<'info, TokenAccount>,
+    authority: &AccountInfo<'info>,
+    signer_seeds: &[&[&[u8]]],
+    amount: u64,
+) -> Result<()> {
+    let mint_accounts = MintTo {
+        mint: mint.to_account_info(),
+        to: to_account.to_account_info(),
+        authority: authority.to_account_info(),
+    };
+
+    let mint_ctx =
+        CpiContext::new_with_signer(token_program.to_account_info(), mint_accounts, signer_seeds);
+
+    token::mint_to(mint_ctx, amount)
+}
+
+/// Burns tokens from a user account using user authority
+///
+/// # Arguments
+/// * `token_program` - The SPL Token program
+/// * `mint` - The token mint to burn from
+/// * `from_account` - Source token account to burn from
+/// * `authority` - The burn authority (the token account owner)
+/// * `signer_seeds` - Optional PDA seeds for program-signed burning (None for user-signed)
+/// * `amount` - Amount of tokens to burn
+pub fn burn_tokens<'info>(
+    token_program: &Program<'info, Token>,
+    mint: &Account<'info, Mint>,
+    from_account: &Account<'info, TokenAccount>,
+    authority: &AccountInfo<'info>,
+    signer_seeds: &[&[&[u8]]],
+    amount: u64,
+) -> Result<()> {
+    let burn_accounts = Burn {
+        mint: mint.to_account_info(),
+        from: from_account.to_account_info(),
+        authority: authority.to_account_info(),
+    };
+
+    let burn_ctx =
+        CpiContext::new_with_signer(token_program.to_account_info(), burn_accounts, signer_seeds);
+
+    token::burn(burn_ctx, amount)
+}
+
+pub struct ExecTokenOpsParams<'a, 'info> {
+    pub token_program: &'a Program<'info, Token>,
+    // Token in params
+    pub token_in_mint: &'a Account<'info, Mint>,
+    pub token_in_amount: u64,
+    pub token_in_authority: &'a AccountInfo<'info>,
+    pub token_in_source_signer_seeds: Option<&'a [&'a [&'a [u8]]]>,
+    pub vault_authority_signer_seeds: Option<&'a [&'a [&'a [u8]]]>,
+    pub token_in_source_account: &'a Account<'info, TokenAccount>,
+    pub token_in_destination_account: &'a Account<'info, TokenAccount>,
+    pub token_in_burn_account: &'a Account<'info, TokenAccount>,
+    pub token_in_burn_authority: &'a AccountInfo<'info>,
+    // Token out params
+    pub token_out_mint: &'a Account<'info, Mint>,
+    pub token_out_amount: u64,
+    pub token_out_authority: &'a UncheckedAccount<'info>,
+    pub token_out_source_account: &'a Account<'info, TokenAccount>,
+    pub token_out_destination_account: &'a Account<'info, TokenAccount>,
+    pub mint_authority_pda: &'a AccountInfo<'info>,
+    pub mint_authority_bump: &'a [u8],
+}
+
+/// Executes token operations for exchanging token_in for a single token_out.
+///
+/// If the program has mint authority for token_in, it transfers tokens from user to program vault
+/// and burns them. Otherwise, it transfers directly to the boss.
+///
+/// If the program has mint authority for token_out, it mints directly to the user. Otherwise,
+/// it transfers tokens from the vault to the user.
+pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
+    // Step 1: User pays token_in
+    let controls_token_in_mint =
+        program_controls_mint(params.token_in_mint, params.mint_authority_pda);
+    let token_in_destination = if controls_token_in_mint {
+        // transfer to program owned PDA for burning
+        params.token_in_burn_account
+    } else {
+        // transfer directly to boss/intermediary account (in permissionless flow)
+        params.token_in_destination_account
+    };
+
+    transfer_tokens(
+        params.token_program,
+        params.token_in_source_account,
+        token_in_destination,
+        params.token_in_authority,
+        params.token_in_source_signer_seeds,
+        params.token_in_amount,
+    )?;
+
+    if controls_token_in_mint {
+        burn_tokens(
+            params.token_program,
+            params.token_in_mint,
+            params.token_in_burn_account,
+            params.token_in_burn_authority,
+            params.vault_authority_signer_seeds.unwrap(),
+            params.token_in_amount,
+        )?;
+    }
+
+    // Step 2: Program distributes token_out
+    if program_controls_mint(params.token_out_mint, params.mint_authority_pda) {
+        let mint_authority_seeds = &[seeds::MINT_AUTHORITY, params.mint_authority_bump];
+        let mint_authority_signer_seeds = &[mint_authority_seeds.as_slice()];
+
+        mint_tokens(
+            params.token_program,
+            params.token_out_mint,
+            params.token_out_destination_account,
+            params.mint_authority_pda,
+            mint_authority_signer_seeds,
+            params.token_out_amount,
+        )?;
+    } else {
+        transfer_tokens(
+            params.token_program,
+            params.token_out_source_account,
+            params.token_out_destination_account,
+            params.token_out_authority,
+            params.vault_authority_signer_seeds,
+            params.token_out_amount,
+        )?;
+    }
+
+    Ok(())
+}
+
+/// Returns true iff `mint.mint_authority == Some(mint_authority_pda.key())`.
+pub fn program_controls_mint<'info>(
+    mint: &Account<'info, Mint>,
+    mint_authority_pda: &AccountInfo<'info>,
+) -> bool {
+    matches!(mint.mint_authority, COption::Some(pk) if pk == mint_authority_pda.key())
 }

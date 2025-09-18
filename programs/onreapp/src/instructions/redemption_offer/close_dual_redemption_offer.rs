@@ -1,6 +1,6 @@
+use crate::constants::seeds;
 use crate::instructions::DualRedemptionOfferAccount;
 use crate::state::State;
-use crate::constants::seeds;
 use anchor_lang::prelude::*;
 
 #[error_code]
@@ -31,7 +31,7 @@ pub struct CloseDualRedemptionOffer<'info> {
 
     /// Program state, ensures `boss` is authorized.
     #[account(has_one = boss)]
-    pub state: Box<Account<'info, State>>,
+    pub state: Account<'info, State>,
 
     /// Solana System program for account creation and rent payment.
     pub system_program: Program<'info, System>,
@@ -51,11 +51,15 @@ pub struct CloseDualRedemptionOffer<'info> {
 ///
 /// # Returns
 /// A `Result` indicating success or failure.
-pub fn close_dual_redemption_offer(ctx: Context<CloseDualRedemptionOffer>, offer_id: u64) -> Result<()> {
+pub fn close_dual_redemption_offer(
+    ctx: Context<CloseDualRedemptionOffer>,
+    offer_id: u64,
+) -> Result<()> {
     if offer_id == 0 {
         return Err(error!(CloseDualRedemptionOfferErrorCode::OfferNotFound));
     }
-    let dual_redemption_offer_account = &mut ctx.accounts.dual_redemption_offer_account.load_mut()?;
+    let dual_redemption_offer_account =
+        &mut ctx.accounts.dual_redemption_offer_account.load_mut()?;
 
     let offer_index = dual_redemption_offer_account
         .offers

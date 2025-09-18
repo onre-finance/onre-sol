@@ -1,10 +1,10 @@
 import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, BN, Program } from "@coral-xyz/anchor";
-import { PublicKey } from "@solana/web3.js";
-import { OnreApp } from "../target/types/onre_app";
-import idl from "../target/idl/onre_app.json"; // assert { type: 'json' };
+import {AnchorProvider, BN, Program} from "@coral-xyz/anchor";
+import {PublicKey} from "@solana/web3.js";
+import {Onreapp} from "../target/types/onreapp";
+import idl from "../target/idl/onreapp.json"; // assert { type: 'json' };
 
-export const RPC_URL = process.env.SOL_MAINNET_RPC_URL || "";
+export const RPC_URL = process.env.SOL_MAINNET_RPC_URL || "https://api.mainnet-beta.solana.com";
 // export const RPC_URL = "http://localhost:8899";
 
 export const PROGRAM_ID = new PublicKey("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe"); // PROD
@@ -15,7 +15,7 @@ export async function initProgram() {
     const connection = new anchor.web3.Connection(RPC_URL);
     const wallet = new anchor.Wallet(anchor.web3.Keypair.generate());
     const provider = new AnchorProvider(connection, wallet);
-    const program = new Program<OnreApp>(idl as OnreApp, provider);
+    const program = new Program<Onreapp>(idl as Onreapp, provider);
 
     anchor.setProvider(provider);
 

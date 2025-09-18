@@ -26,7 +26,7 @@ pub struct UpdateBuyOfferFee<'info> {
 
     /// Program state, ensures `boss` is authorized.
     #[account(has_one = boss)]
-    pub state: Box<Account<'info, State>>,
+    pub state: Account<'info, State>,
 
     /// The signer authorizing the fee update (must be boss).
     #[account(mut)]

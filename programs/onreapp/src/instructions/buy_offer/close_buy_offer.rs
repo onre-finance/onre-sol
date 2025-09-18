@@ -22,7 +22,7 @@ pub struct CloseBuyOffer<'info> {
 
     /// Program state, ensures `boss` is authorized.
     #[account(has_one = boss)]
-    pub state: Box<Account<'info, State>>,
+    pub state: Account<'info, State>,
 
     /// Solana System program for account creation and rent payment.
     pub system_program: Program<'info, System>,

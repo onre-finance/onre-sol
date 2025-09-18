@@ -27,7 +27,7 @@ pub struct CloseSingleRedemptionOffer<'info> {
 
     /// Program state, ensures `boss` is authorized.
     #[account(has_one = boss)]
-    pub state: Box<Account<'info, State>>,
+    pub state: Account<'info, State>,
 
     /// Solana System program for account creation and rent payment.
     pub system_program: Program<'info, System>,
@@ -47,11 +47,15 @@ pub struct CloseSingleRedemptionOffer<'info> {
 ///
 /// # Returns
 /// A `Result` indicating success or failure.
-pub fn close_single_redemption_offer(ctx: Context<CloseSingleRedemptionOffer>, offer_id: u64) -> Result<()> {
+pub fn close_single_redemption_offer(
+    ctx: Context<CloseSingleRedemptionOffer>,
+    offer_id: u64,
+) -> Result<()> {
     if offer_id == 0 {
         return Err(error!(CloseSingleRedemptionOfferErrorCode::OfferNotFound));
     }
-    let single_redemption_offer_account = &mut ctx.accounts.single_redemption_offer_account.load_mut()?;
+    let single_redemption_offer_account =
+        &mut ctx.accounts.single_redemption_offer_account.load_mut()?;
 
     let offer_index = single_redemption_offer_account
         .offers

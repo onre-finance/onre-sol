@@ -506,4 +506,34 @@ pub mod onreapp {
     pub fn remove_admin(ctx: Context<RemoveAdmin>, admin_to_remove: Pubkey) -> Result<()> {
         admin::remove_admin(ctx, admin_to_remove)
     }
+
+    /// Transfers mint authority from the boss to a program-derived PDA.
+    ///
+    /// Delegates to `mint_authority::transfer_mint_authority_to_program`.
+    /// Only the boss can call this instruction to transfer mint authority for a specific token.
+    /// The PDA is derived from the mint address and can later be used to mint tokens.
+    /// Emits a `MintAuthorityTransferredToProgramEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `TransferMintAuthorityToProgram`.
+    pub fn transfer_mint_authority_to_program(
+        ctx: Context<TransferMintAuthorityToProgram>,
+    ) -> Result<()> {
+        mint_authority::transfer_mint_authority_to_program(ctx)
+    }
+
+    /// Transfers mint authority from a program-derived PDA back to the boss.
+    ///
+    /// Delegates to `mint_authority::transfer_mint_authority_to_boss`.
+    /// Only the boss can call this instruction to recover mint authority for a specific token.
+    /// This serves as an emergency recovery mechanism.
+    /// Emits a `MintAuthorityTransferredToBossEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `TransferMintAuthorityToBoss`.
+    pub fn transfer_mint_authority_to_boss(
+        ctx: Context<TransferMintAuthorityToBoss>,
+    ) -> Result<()> {
+        mint_authority::transfer_mint_authority_to_boss(ctx)
+    }
 }

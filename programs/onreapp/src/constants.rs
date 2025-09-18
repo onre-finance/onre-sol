@@ -26,4 +26,7 @@ pub mod seeds {
 
     /// Seed for the admin state account
     pub const ADMIN_STATE: &[u8] = b"admin_state";
+
+    /// Seed for mint authority PDA accounts
+    pub const MINT_AUTHORITY: &[u8] = b"mint_authority";
 }

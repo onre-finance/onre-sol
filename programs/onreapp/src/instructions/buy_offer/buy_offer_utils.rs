@@ -1,6 +1,6 @@
 use crate::constants::seeds;
 use crate::instructions::{BuyOffer, BuyOfferAccount, BuyOfferVector};
-use crate::utils::{calculate_token_out_amount, transfer_tokens};
+use crate::utils::{calculate_fees, calculate_token_out_amount, transfer_tokens};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
@@ -16,12 +16,18 @@ pub enum BuyOfferCoreError {
     NoActiveVector,
     #[msg("Overflow error")]
     OverflowError,
+    #[msg("Invalid token in mint")]
+    InvalidTokenInMint,
+    #[msg("Invalid token out mint")]
+    InvalidTokenOutMint,
 }
 
 /// Result structure for the core buy offer processing
 pub struct BuyOfferProcessResult {
     pub current_price: u64,
+    pub token_in_amount: u64,
     pub token_out_amount: u64,
+    pub fee_amount: u64,
 }
 
 /// Core processing logic shared between both take_buy_offer instructions
@@ -53,6 +59,15 @@ pub fn process_buy_offer_core(
     // Find the offer
     let offer = find_offer(offer_account, offer_id)?;
 
+    require!(
+        offer.token_in_mint == token_in_mint.key(),
+        BuyOfferCoreError::InvalidTokenInMint
+    );
+    require!(
+        offer.token_out_mint == token_out_mint.key(),
+        BuyOfferCoreError::InvalidTokenOutMint
+    );
+
     // Find the currently active pricing vector
     let active_vector = find_active_vector_at(&offer, current_time)?;
 
@@ -64,9 +79,11 @@ pub fn process_buy_offer_core(
         active_vector.price_fix_duration,
     )?;
 
+    let fee_amounts = calculate_fees(token_in_amount, offer.fee_basis_points)?;
+
     // Calculate how many token_out to give for the provided token_in_amount
     let token_out_amount = calculate_token_out_amount(
-        token_in_amount,
+        fee_amounts.remaining_token_in_amount,
         current_price,
         token_in_mint.decimals,
         token_out_mint.decimals,
@@ -74,7 +91,9 @@ pub fn process_buy_offer_core(
 
     Ok(BuyOfferProcessResult {
         current_price,
+        token_in_amount: fee_amounts.remaining_token_in_amount,
         token_out_amount,
+        fee_amount: fee_amounts.fee_amount,
     })
 }
 

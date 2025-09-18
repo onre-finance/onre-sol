@@ -1,12 +1,11 @@
 use crate::constants::seeds;
-use crate::instructions::buy_offer::buy_offer_utils::{
-    execute_permissionless_transfers, process_buy_offer_core,
-};
-use crate::instructions::{find_offer, BuyOfferAccount};
+use crate::instructions::buy_offer::buy_offer_utils::process_buy_offer_core;
+use crate::instructions::BuyOfferAccount;
 use crate::state::State;
-use crate::utils::{calculate_fees, u64_to_dec9};
+use crate::utils::{execute_token_operations, transfer_tokens, u64_to_dec9, ExecTokenOpsParams};
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
 /// Error codes specific to the take_buy_offer_permissionless instruction
@@ -42,13 +41,11 @@ pub struct TakeBuyOfferPermissionless<'info> {
     pub buy_offer_account: AccountLoader<'info, BuyOfferAccount>,
 
     /// Program state account containing the boss public key
+    #[account(has_one = boss)]
     pub state: Box<Account<'info, State>>,
 
     /// The boss account that receives token_in payments
     /// Must match the boss stored in the program state
-    #[account(
-        constraint = boss.key() == state.boss @ TakeBuyOfferPermissionlessErrorCode::InvalidBoss
-    )]
     /// CHECK: This account is validated through the constraint above
     pub boss: UncheckedAccount<'info>,
 
@@ -57,48 +54,26 @@ pub struct TakeBuyOfferPermissionless<'info> {
     /// CHECK: This is safe as it's a PDA used for signing
     pub vault_authority: UncheckedAccount<'info>,
 
-    /// The permissionless authority PDA that controls intermediary token accounts
-    #[account(seeds = [seeds::PERMISSIONLESS_1], bump)]
-    /// CHECK: This is safe as it's a PDA used for signing
-    pub permissionless_authority: UncheckedAccount<'info>,
-
-    /// The mint account for the input token (what user pays)
-    pub token_in_mint: Box<Account<'info, Mint>>,
-
-    /// The mint account for the output token (what user receives)
-    pub token_out_mint: Box<Account<'info, Mint>>,
-
-    /// User's token_in account (source of payment)
+    /// Vault's token_in account, used for burning tokens when program has mint authority
     #[account(
         mut,
         associated_token::mint = token_in_mint,
-        associated_token::authority = user
+        associated_token::authority = vault_authority
     )]
-    pub user_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub vault_token_in_account: Box<Account<'info, TokenAccount>>,
 
-    /// User's token_out account (destination of received tokens)
-    #[account(
-        mut,
-        associated_token::mint = token_out_mint,
-        associated_token::authority = user
-    )]
-    pub user_token_out_account: Box<Account<'info, TokenAccount>>,
-
-    /// Boss's token_in account (final destination of user's payment)
-    #[account(
-        mut,
-        associated_token::mint = token_in_mint,
-        associated_token::authority = boss
-    )]
-    pub boss_token_in_account: Box<Account<'info, TokenAccount>>,
-
-    /// Vault's token_out account (source of tokens to distribute)
+    /// Vault's token_out account (source of tokens to distribute, when program doesn't have mint authority)
     #[account(
         mut,
         associated_token::mint = token_out_mint,
         associated_token::authority = vault_authority
     )]
     pub vault_token_out_account: Box<Account<'info, TokenAccount>>,
+
+    /// The permissionless authority PDA that controls intermediary token accounts
+    #[account(seeds = [seeds::PERMISSIONLESS_1], bump)]
+    /// CHECK: This is safe as it's a PDA used for signing
+    pub permissionless_authority: UncheckedAccount<'info>,
 
     /// Permissionless intermediary token_in account (temporary holding for token_in)
     #[account(
@@ -116,12 +91,61 @@ pub struct TakeBuyOfferPermissionless<'info> {
     )]
     pub permissionless_token_out_account: Box<Account<'info, TokenAccount>>,
 
+    /// The mint account for the input token (what user pays)
+    /// Must be mutable to allow burning when program has mint authority
+    #[account(mut)]
+    pub token_in_mint: Box<Account<'info, Mint>>,
+
+    /// The mint account for the output token (what user receives)
+    /// Must be mutable to allow minting when program has mint authority
+    #[account(mut)]
+    pub token_out_mint: Box<Account<'info, Mint>>,
+
+    /// User's token_in account (source of payment)
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = user
+    )]
+    pub user_token_in_account: Box<Account<'info, TokenAccount>>,
+
+    /// User's token_out account (destination of received tokens)
+    #[account(
+        init_if_needed,
+        payer = user,
+        associated_token::mint = token_out_mint,
+        associated_token::authority = user
+    )]
+    pub user_token_out_account: Box<Account<'info, TokenAccount>>,
+
+    /// Boss's token_in account (final destination of user's payment)
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = boss
+    )]
+    pub boss_token_in_account: Box<Account<'info, TokenAccount>>,
+
+    /// Mint authority PDA for direct minting (when program has mint authority)
+    /// CHECK: PDA derivation is validated through seeds constraint
+    #[account(
+        seeds = [seeds::MINT_AUTHORITY],
+        bump
+    )]
+    pub mint_authority_pda: UncheckedAccount<'info>,
+
     /// The user taking the offer (must sign the transaction)
     #[account(mut)]
     pub user: Signer<'info>,
 
     /// SPL Token program for token transfers
     pub token_program: Program<'info, Token>,
+
+    /// Associated Token Program for automatic token account creation
+    pub associated_token_program: Program<'info, AssociatedToken>,
+
+    /// System program required for account creation
+    pub system_program: Program<'info, System>,
 }
 
 /// Main instruction handler for taking a buy offer via permissionless flow
@@ -166,43 +190,72 @@ pub fn take_buy_offer_permissionless(
 ) -> Result<()> {
     let offer_account = ctx.accounts.buy_offer_account.load_mut()?;
 
-    // Find the offer to get fee information
-    let offer = find_offer(&offer_account, offer_id)?;
-
-    let fee_amounts = calculate_fees(token_in_amount, offer.fee_basis_points)?;
-
     // Use shared core processing logic
     let result = process_buy_offer_core(
         &offer_account,
         offer_id,
-        fee_amounts.remaining_token_in_amount,
+        token_in_amount,
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
     )?;
 
-    // Execute permissionless transfers
-    execute_permissionless_transfers(
-        &ctx.accounts.user,
+    // 1. Transfer token_in from user to permissionless intermediary
+    transfer_tokens(
+        &ctx.accounts.token_program,
         &ctx.accounts.user_token_in_account,
-        &ctx.accounts.boss_token_in_account,
-        &ctx.accounts.vault_authority,
-        &ctx.accounts.vault_token_out_account,
+        &ctx.accounts.permissionless_token_in_account,
+        &ctx.accounts.user,
+        None,
+        token_in_amount,
+    )?;
+    msg!("Transferred token_in from user to permissionless intermediary");
+
+    // 2. Execute token operations (transfer + burn for token_in, transfer for token_out)
+    execute_token_operations(ExecTokenOpsParams {
+        token_program: &ctx.accounts.token_program,
+        // Token in params
+        token_in_mint: &ctx.accounts.token_in_mint,
+        token_in_amount, // Including fee
+        token_in_authority: &ctx.accounts.permissionless_authority,
+        token_in_source_signer_seeds: Some(&[&[
+            seeds::PERMISSIONLESS_1,
+            &[ctx.bumps.permissionless_authority],
+        ]]),
+        vault_authority_signer_seeds: Some(&[&[
+            seeds::BUY_OFFER_VAULT_AUTHORITY,
+            &[ctx.bumps.vault_authority],
+        ]]),
+        token_in_source_account: &ctx.accounts.permissionless_token_in_account,
+        token_in_destination_account: &ctx.accounts.boss_token_in_account,
+        token_in_burn_account: &ctx.accounts.vault_token_in_account,
+        token_in_burn_authority: &ctx.accounts.vault_authority,
+        // Token out params
+        token_out_mint: &ctx.accounts.token_out_mint,
+        token_out_amount: result.token_out_amount,
+        token_out_authority: &ctx.accounts.vault_authority,
+        token_out_source_account: &ctx.accounts.vault_token_out_account,
+        token_out_destination_account: &ctx.accounts.permissionless_token_out_account,
+        mint_authority_pda: &ctx.accounts.mint_authority_pda,
+        mint_authority_bump: &[ctx.bumps.mint_authority_pda],
+    })?;
+
+    transfer_tokens(
+        &ctx.accounts.token_program,
+        &ctx.accounts.permissionless_token_out_account,
         &ctx.accounts.user_token_out_account,
         &ctx.accounts.permissionless_authority,
-        &ctx.accounts.permissionless_token_in_account,
-        &ctx.accounts.permissionless_token_out_account,
-        &ctx.accounts.token_program,
-        ctx.bumps.vault_authority,
-        ctx.bumps.permissionless_authority,
-        fee_amounts.remaining_token_in_amount,
+        Some(&[&[
+            seeds::PERMISSIONLESS_1,
+            &[ctx.bumps.permissionless_authority],
+        ]]),
         result.token_out_amount,
     )?;
 
     msg!(
-        "Buy offer taken (permissionless) - ID: {}, token_in: {}, fee: {}, token_out: {}, user: {}, price: {}",
+        "Buy offer taken (permissionless) - ID: {}, token_in(excluding fee): {}, fee: {}, token_out: {}, user: {}, price: {}",
         offer_id,
-        token_in_amount,
-        fee_amounts.fee_amount,
+        result.token_in_amount,
+        result.fee_amount,
         result.token_out_amount,
         ctx.accounts.user.key,
         u64_to_dec9(result.current_price)
@@ -210,9 +263,9 @@ pub fn take_buy_offer_permissionless(
 
     emit!(TakeBuyOfferPermissionlessEvent {
         offer_id,
-        token_in_amount,
+        token_in_amount: result.token_in_amount,
         token_out_amount: result.token_out_amount,
-        fee_amount: fee_amounts.fee_amount,
+        fee_amount: result.fee_amount,
         user: ctx.accounts.user.key(),
     });
 

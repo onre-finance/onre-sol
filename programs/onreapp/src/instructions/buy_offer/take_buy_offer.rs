@@ -1,10 +1,11 @@
 use crate::constants::seeds;
-use crate::instructions::buy_offer::buy_offer_utils::{find_offer, process_buy_offer_core};
-use crate::instructions::{execute_direct_transfers, BuyOfferAccount};
+use crate::instructions::buy_offer::buy_offer_utils::process_buy_offer_core;
+use crate::instructions::BuyOfferAccount;
 use crate::state::State;
-use crate::utils::{calculate_fees, u64_to_dec9};
+use crate::utils::{execute_token_operations, u64_to_dec9, ExecTokenOpsParams};
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
 /// Error codes specific to the take_buy_offer instruction
@@ -21,7 +22,7 @@ pub enum TakeBuyOfferErrorCode {
 pub struct TakeBuyOfferEvent {
     /// The ID of the buy offer that was taken
     pub offer_id: u64,
-    /// Amount of token_in paid by the user (including fee)
+    /// Amount of token_in paid by the user (excluding fee)
     pub token_in_amount: u64,
     /// Amount of token_out received by the user
     pub token_out_amount: u64,
@@ -57,10 +58,30 @@ pub struct TakeBuyOffer<'info> {
     /// CHECK: This is safe as it's a PDA used for signing
     pub vault_authority: UncheckedAccount<'info>,
 
+    /// Vault's token_in account, used for burning tokens when program has mint authority
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = vault_authority
+    )]
+    pub vault_token_in_account: Box<Account<'info, TokenAccount>>,
+
+    /// Vault's token_out account (source of tokens to distribute to user)
+    #[account(
+        mut,
+        associated_token::mint = token_out_mint,
+        associated_token::authority = vault_authority
+    )]
+    pub vault_token_out_account: Box<Account<'info, TokenAccount>>,
+
     /// The mint account for the input token (what user pays)
+    /// Must be mutable to allow burning when program has mint authority
+    #[account(mut)]
     pub token_in_mint: Box<Account<'info, Mint>>,
 
     /// The mint account for the output token (what user receives)
+    /// Must be mutable to allow minting when program has mint authority
+    #[account(mut)]
     pub token_out_mint: Box<Account<'info, Mint>>,
 
     /// User's token_in account (source of payment)
@@ -72,8 +93,10 @@ pub struct TakeBuyOffer<'info> {
     pub user_token_in_account: Box<Account<'info, TokenAccount>>,
 
     /// User's token_out account (destination of received tokens)
+    /// Uses init_if_needed to automatically create account if it doesn't exist
     #[account(
-        mut,
+        init_if_needed,
+        payer = user,
         associated_token::mint = token_out_mint,
         associated_token::authority = user
     )]
@@ -87,27 +110,35 @@ pub struct TakeBuyOffer<'info> {
     )]
     pub boss_token_in_account: Box<Account<'info, TokenAccount>>,
 
-    /// Vault's token_out account (source of tokens to distribute to user)
+    /// Mint authority PDA for direct minting (when program has mint authority)
+    /// CHECK: PDA derivation is validated through seeds constraint
     #[account(
-        mut,
-        associated_token::mint = token_out_mint,
-        associated_token::authority = vault_authority
+        seeds = [seeds::MINT_AUTHORITY],
+        bump
     )]
-    pub vault_token_out_account: Box<Account<'info, TokenAccount>>,
+    pub mint_authority_pda: UncheckedAccount<'info>,
 
     /// The user taking the offer (must sign the transaction)
     #[account(mut)]
     pub user: Signer<'info>,
 
-    /// SPL Token program for token transfers
+    /// SPL Token program for token operations
     pub token_program: Program<'info, Token>,
+
+    /// Associated Token Program for automatic token account creation
+    pub associated_token_program: Program<'info, AssociatedToken>,
+
+    /// System program required for account creation
+    pub system_program: Program<'info, System>,
 }
 
-/// Main instruction handler for taking a buy offer
+/// Main instruction handler for taking a buy offer with mint/transfer flexibility
 ///
 /// This function allows users to accept a buy offer by paying the current market price
-/// in token_in to receive token_out from the vault. The price is calculated using a
-/// discrete interval pricing model with linear yield growth.
+/// in token_in to receive token_out. The price is calculated using a discrete interval
+/// pricing model with linear yield growth. Token distribution uses smart logic:
+/// - If program has mint authority: mints token_out directly to user (more efficient)
+/// - If program lacks mint authority: transfers token_out from vault to user (fallback)
 ///
 /// # Arguments
 ///
@@ -121,20 +152,27 @@ pub struct TakeBuyOffer<'info> {
 /// 2. Find the currently active pricing vector
 /// 3. Calculate current price based on time elapsed and APR parameters
 /// 4. Calculate how many token_out to give for the provided token_in_amount
-/// 5. Execute atomic transfers: user → boss (token_in), vault → user (token_out)
-/// 6. Emit event with transaction details
+/// 5. Execute payment: user → boss (token_in)
+/// 6. Execute distribution: program mints token_out to user OR transfers from vault
+/// 7. Emit event with transaction details
+///
+/// # Account Requirements
+///
+/// * `mint_authority_pda` - Optional, required only if program should mint directly
+/// * `vault_token_out_account` - Optional, required only if program should transfer from vault
+/// * At least one of the above must be provided for token distribution
 ///
 /// # Returns
 ///
 /// * `Ok(())` - If the offer was successfully taken
-/// * `Err(_)` - If validation fails or transfers cannot be completed
+/// * `Err(_)` - If validation fails or token operations cannot be completed
 ///
 /// # Errors
 ///
 /// * `OfferNotFound` - The specified offer_id doesn't exist
 /// * `NoActiveVector` - No pricing vector is currently active  
 /// * `OverflowError` - Mathematical overflow in price calculations
-/// * Token transfer errors if insufficient balances or invalid accounts
+/// * Token operation errors if insufficient balances, invalid accounts, or missing mint authority
 pub fn take_buy_offer(
     ctx: Context<TakeBuyOffer>,
     offer_id: u64,
@@ -142,38 +180,45 @@ pub fn take_buy_offer(
 ) -> Result<()> {
     let offer_account = ctx.accounts.buy_offer_account.load()?;
 
-    // Find the offer to get fee information
-    let offer = find_offer(&offer_account, offer_id)?;
-
-    let fee_amounts = calculate_fees(token_in_amount, offer.fee_basis_points)?;
-
     // Use shared core processing logic for main exchange amount
     let result = process_buy_offer_core(
         &offer_account,
         offer_id,
-        fee_amounts.remaining_token_in_amount,
+        token_in_amount,
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
     )?;
 
-    execute_direct_transfers(
-        &ctx.accounts.user,
-        &ctx.accounts.user_token_in_account,
-        &ctx.accounts.boss_token_in_account,
-        &ctx.accounts.vault_authority,
-        &ctx.accounts.vault_token_out_account,
-        &ctx.accounts.user_token_out_account,
-        &ctx.accounts.token_program,
-        ctx.bumps.vault_authority,
-        fee_amounts.remaining_token_in_amount,
-        result.token_out_amount,
-    )?;
+    execute_token_operations(ExecTokenOpsParams {
+        token_program: &ctx.accounts.token_program,
+        // Token in params
+        token_in_mint: &ctx.accounts.token_in_mint,
+        token_in_amount, // Including fee
+        token_in_authority: &ctx.accounts.user,
+        token_in_source_signer_seeds: None,
+        vault_authority_signer_seeds: Some(&[&[
+            seeds::BUY_OFFER_VAULT_AUTHORITY,
+            &[ctx.bumps.vault_authority],
+        ]]),
+        token_in_source_account: &ctx.accounts.user_token_in_account,
+        token_in_destination_account: &ctx.accounts.boss_token_in_account,
+        token_in_burn_account: &ctx.accounts.vault_token_in_account,
+        token_in_burn_authority: &ctx.accounts.vault_authority,
+        // Token out params
+        token_out_mint: &ctx.accounts.token_out_mint,
+        token_out_amount: result.token_out_amount,
+        token_out_authority: &ctx.accounts.vault_authority,
+        token_out_source_account: &ctx.accounts.vault_token_out_account,
+        token_out_destination_account: &ctx.accounts.user_token_out_account,
+        mint_authority_pda: &ctx.accounts.mint_authority_pda,
+        mint_authority_bump: &[ctx.bumps.mint_authority_pda],
+    })?;
 
     msg!(
-        "Buy offer taken - ID: {}, token_in: {}, fee: {}, token_out: {}, user: {}, price: {}",
+        "Buy offer taken - ID: {}, token_in(excluding fee): {}, fee: {}, token_out: {}, user: {}, price: {}",
         offer_id,
-        token_in_amount,
-        fee_amounts.fee_amount,
+        result.token_in_amount,
+        result.fee_amount,
         result.token_out_amount,
         ctx.accounts.user.key,
         u64_to_dec9(result.current_price)
@@ -181,9 +226,9 @@ pub fn take_buy_offer(
 
     emit!(TakeBuyOfferEvent {
         offer_id,
-        token_in_amount,
+        token_in_amount: result.token_in_amount,
         token_out_amount: result.token_out_amount,
-        fee_amount: fee_amounts.fee_amount,
+        fee_amount: result.fee_amount,
         user: ctx.accounts.user.key(),
     });
 
