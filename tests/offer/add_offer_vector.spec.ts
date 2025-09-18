@@ -5,7 +5,7 @@ import { OnreProgram } from "../onre_program.ts";
 
 const MAX_SEGMENTS = 10;
 
-describe("Add Buy Offer Vector", () => {
+describe("Add Offer Vector", () => {
     let testHelper: TestHelper;
     let program: OnreProgram;
 
@@ -25,9 +25,9 @@ describe("Add Buy Offer Vector", () => {
         await program.initializeOffers();
     });
 
-    it("Should create a buy offer and add a time vector", async () => {
-        // First create a buy offer using testHelper
-        await program.makeBuyOffer({
+    it("Should create an offer and add a time vector", async () => {
+        // First create a offer using testHelper
+        await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
@@ -42,7 +42,7 @@ describe("Add Buy Offer Vector", () => {
         const apr = 5000;    // 50% APR (5000/10000)
         const priceFixDuration = 3600; // 1 hour
 
-        await program.addBuyOfferVector({
+        await program.addOfferVector({
             offerId,
             startTime,
             startPrice,
@@ -63,7 +63,7 @@ describe("Add Buy Offer Vector", () => {
     });
 
     it("Should calculate start_time as current time when base_time is in the past", async () => {
-        await program.makeBuyOffer({
+        await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
@@ -71,7 +71,7 @@ describe("Add Buy Offer Vector", () => {
         const offerId = 1;
         const currentTime = await testHelper.getCurrentClockTime();
 
-        await program.addBuyOfferVector({
+        await program.addOfferVector({
             offerId,
             startTime: currentTime - 3600, // 1 hour ago,
             startPrice: 1000000,
@@ -88,8 +88,8 @@ describe("Add Buy Offer Vector", () => {
 
     it("Should auto-increment vector IDs correctly", async () => {
         const offerId = 1;
-        // Create buy offer
-        await program.makeBuyOffer({
+        // Create offer
+        await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
@@ -97,7 +97,7 @@ describe("Add Buy Offer Vector", () => {
         const currentTime = await testHelper.getCurrentClockTime();
 
         // Add first vector
-        await program.addBuyOfferVector({
+        await program.addOfferVector({
             offerId,
             startTime: currentTime + 1000,
             startPrice: 1000000,
@@ -106,7 +106,7 @@ describe("Add Buy Offer Vector", () => {
         });
 
         // Add second vector (with later base_time)
-        await program.addBuyOfferVector({
+        await program.addOfferVector({
             offerId,
             startTime: currentTime + 3000,
             startPrice: 2000000,
@@ -115,7 +115,7 @@ describe("Add Buy Offer Vector", () => {
         });
 
         // Add third vector
-        await program.addBuyOfferVector({
+        await program.addOfferVector({
             offerId,
             startTime: currentTime + 5000,
             startPrice: 3000000,
@@ -134,13 +134,13 @@ describe("Add Buy Offer Vector", () => {
     it("Should reject invalid parameters", async () => {
         const currentTime = await testHelper.getCurrentClockTime();
         const offerId = 1;
-        await program.makeBuyOffer({
+        await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
 
         await expect(
-            program.addBuyOfferVector({
+            program.addOfferVector({
                 offerId: 0, // Invalid: zero offer_id
                 startTime: currentTime + 1000,
                 startPrice: 1000000,
@@ -150,7 +150,7 @@ describe("Add Buy Offer Vector", () => {
         ).rejects.toThrow("Invalid input: values cannot be zero");
 
         await expect(
-            program.addBuyOfferVector({
+            program.addOfferVector({
                 offerId,
                 startTime: 0, // Invalid: zero base_time
                 startPrice: 1000000,
@@ -160,7 +160,7 @@ describe("Add Buy Offer Vector", () => {
         ).rejects.toThrow("Invalid input: values cannot be zero");
 
         await expect(
-            program.addBuyOfferVector({
+            program.addOfferVector({
                 offerId,
                 startTime: currentTime,
                 startPrice: 0, // Invalid: zero base_price
@@ -170,7 +170,7 @@ describe("Add Buy Offer Vector", () => {
         ).rejects.toThrow("Invalid input: values cannot be zero");
 
         await expect(
-            program.addBuyOfferVector({
+            program.addOfferVector({
                 offerId,
                 startTime: currentTime,
                 startPrice: 1000000,
@@ -182,7 +182,7 @@ describe("Add Buy Offer Vector", () => {
 
     it("Should allow zero apr", async () => {
         const offerId = 1;
-        await program.makeBuyOffer({
+        await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
@@ -190,7 +190,7 @@ describe("Add Buy Offer Vector", () => {
         const currentTime = await testHelper.getCurrentClockTime();
 
         await program
-            .addBuyOfferVector({
+            .addOfferVector({
                 offerId,
                 startTime: currentTime + 1000,
                 startPrice: 1000000,
@@ -207,7 +207,7 @@ describe("Add Buy Offer Vector", () => {
 
     it("Should reject start_time before latest existing vector start_time", async () => {
         const offerId = 1;
-        await program.makeBuyOffer({
+        await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
@@ -215,7 +215,7 @@ describe("Add Buy Offer Vector", () => {
         const currentTime = await testHelper.getCurrentClockTime();
 
         // Add first vector
-        await program.addBuyOfferVector({
+        await program.addOfferVector({
             offerId,
             startTime: currentTime + 2000,
             startPrice: 1000000,
@@ -225,7 +225,7 @@ describe("Add Buy Offer Vector", () => {
 
         // Try to add vector with earlier base_time (should fail)
         await expect(
-            program.addBuyOfferVector({
+            program.addOfferVector({
                 offerId,
                 startTime: currentTime + 1000, // Invalid: before previous start_time
                 startPrice: 2000000,
@@ -237,7 +237,7 @@ describe("Add Buy Offer Vector", () => {
 
     it("Should reject start_time equal to latest existing vector start_time", async () => {
         const offerId = 1;
-        await program.makeBuyOffer({
+        await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
@@ -246,7 +246,7 @@ describe("Add Buy Offer Vector", () => {
         const startTime = currentTime + 2000;
 
         // Add first vector
-        await program.addBuyOfferVector({
+        await program.addOfferVector({
             offerId,
             startTime,
             startPrice: 1000000,
@@ -256,7 +256,7 @@ describe("Add Buy Offer Vector", () => {
 
         // Add vector with same start_time (should fail)
         await expect(program
-            .addBuyOfferVector({
+            .addOfferVector({
                 offerId,
                 startTime, // Same start_time - should be allowed
                 startPrice: 2000000,
@@ -271,7 +271,7 @@ describe("Add Buy Offer Vector", () => {
         const currentTime = await testHelper.getCurrentClockTime();
 
         await expect(
-            program.addBuyOfferVector({
+            program.addOfferVector({
                 offerId: nonExistentOfferId,
                 startTime: currentTime + 1000,
                 startPrice: 1000000,
@@ -283,7 +283,7 @@ describe("Add Buy Offer Vector", () => {
 
     it("Should reject when offer has maximum vectors", async () => {
         const offerId = 1;
-        await program.makeBuyOffer({
+        await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
@@ -298,7 +298,7 @@ describe("Add Buy Offer Vector", () => {
         for (let i = 1; i <= MAX_SEGMENTS; i++) {
             const vectorStartTime = currentTime + (i * vectorTimeOffset);
 
-            await program.addBuyOfferVector({
+            await program.addOfferVector({
                 offerId,
                 startTime: vectorStartTime,
                 startPrice,
@@ -311,7 +311,7 @@ describe("Add Buy Offer Vector", () => {
         const vectorStartTime = currentTime + ((MAX_SEGMENTS + 1) * vectorTimeOffset);
 
         await expect(
-            program.addBuyOfferVector({
+            program.addOfferVector({
                 offerId,
                 startTime: vectorStartTime,
                 startPrice,
@@ -323,7 +323,7 @@ describe("Add Buy Offer Vector", () => {
 
     it("Should handle large price and apr values correctly", async () => {
         const offerId = new BN(1);
-        await program.makeBuyOffer({
+        await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
@@ -335,7 +335,7 @@ describe("Add Buy Offer Vector", () => {
         const largeApr = new BN(999999); // 99.9999% APR (9999/10000)
 
         await program.program.methods
-            .addBuyOfferVector(
+            .addOfferVector(
                 offerId,
                 new BN(currentTime + 1000),
                 largeStartPrice,
@@ -357,12 +357,12 @@ describe("Add Buy Offer Vector", () => {
 
     it("Should handle minimum valid values (1 for all fields)", async () => {
         const offerId = 1;
-        await program.makeBuyOffer({
+        await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
 
-        await program.addBuyOfferVector({
+        await program.addOfferVector({
             offerId,
             startTime: 1, // Minimum valid start_time
             startPrice: 1, // Minimum valid start_price
@@ -387,7 +387,7 @@ describe("Add Buy Offer Vector", () => {
 
     it("Should reject when called by non-boss", async () => {
         const offerId = 1;
-        await program.makeBuyOffer({
+        await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
@@ -395,7 +395,7 @@ describe("Add Buy Offer Vector", () => {
         const notBoss = testHelper.createUserAccount();
         const currentTime = await testHelper.getCurrentClockTime();
 
-        await expect(program.addBuyOfferVector({
+        await expect(program.addOfferVector({
                 offerId,
                 startTime: currentTime + 1000,
                 startPrice: 1000000,
@@ -411,7 +411,7 @@ describe("Add Buy Offer Vector", () => {
         const offer2Id = 2;
 
         // Create two offers
-        await program.makeBuyOffer({
+        await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
@@ -419,7 +419,7 @@ describe("Add Buy Offer Vector", () => {
         const token2In = testHelper.createMint(9);
         const token2Out = testHelper.createMint(9);
 
-        await program.makeBuyOffer({
+        await program.makeOffer({
             tokenInMint: token2In,
             tokenOutMint: token2Out
         });
@@ -427,7 +427,7 @@ describe("Add Buy Offer Vector", () => {
         const currentTime = await testHelper.getCurrentClockTime();
 
         // Add vectors to both offers
-        await program.addBuyOfferVector({
+        await program.addOfferVector({
             offerId: offer1Id,
             startTime: currentTime + 1000,
             startPrice: 1000000,
@@ -435,7 +435,7 @@ describe("Add Buy Offer Vector", () => {
             priceFixDuration: 3600
         });
 
-        await program.addBuyOfferVector({
+        await program.addOfferVector({
             offerId: offer2Id,
             startTime: currentTime + 1000,
             startPrice: 3000000,
@@ -443,7 +443,7 @@ describe("Add Buy Offer Vector", () => {
             priceFixDuration: 1800
         });
 
-        await program.addBuyOfferVector({
+        await program.addOfferVector({
             offerId: offer1Id,
             startTime: currentTime + 3000,
             startPrice: 2000000,
@@ -473,7 +473,7 @@ describe("Add Buy Offer Vector", () => {
 
     it("Should clean old past vectors, keeping only current active and previous active", async () => {
         const offerId = 1;
-        await program.makeBuyOffer({
+        await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
@@ -490,7 +490,7 @@ describe("Add Buy Offer Vector", () => {
 
         // Add all vectors
         for (let i = 0; i < vectors.length; i++) {
-            await program.addBuyOfferVector({
+            await program.addOfferVector({
                 offerId,
                 startTime: vectors[i].startTime,
                 startPrice: vectors[i].price,
@@ -508,7 +508,7 @@ describe("Add Buy Offer Vector", () => {
         await testHelper.advanceClockBy(4500);
 
         // Add another vector to trigger cleanup
-        await program.addBuyOfferVector({
+        await program.addOfferVector({
             offerId,
             startTime: currentTime + 6000, // Vector 6 (future)
             startPrice: 6000000,

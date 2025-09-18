@@ -1,6 +1,6 @@
 use crate::constants::seeds;
-use crate::instructions::buy_offer::buy_offer_utils::process_buy_offer_core;
-use crate::instructions::BuyOfferAccount;
+use crate::instructions::offer::offer_utils::process_offer_core;
+use crate::instructions::OfferAccount;
 use crate::state::State;
 use crate::utils::{execute_token_operations, transfer_tokens, u64_to_dec9, ExecTokenOpsParams};
 use anchor_lang::prelude::*;
@@ -8,17 +8,17 @@ use anchor_lang::Accounts;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
-/// Error codes specific to the take_buy_offer_permissionless instruction
+/// Error codes specific to the take_offer_permissionless instruction
 #[error_code]
-pub enum TakeBuyOfferPermissionlessErrorCode {
+pub enum TakeOfferPermissionlessErrorCode {
     #[msg("Invalid boss account")]
     InvalidBoss,
 }
 
-/// Event emitted when a buy offer is successfully taken via permissionless flow
+/// Event emitted when a offer is successfully taken via permissionless flow
 #[event]
-pub struct TakeBuyOfferPermissionlessEvent {
-    /// The ID of the buy offer that was taken
+pub struct TakeOfferPermissionlessEvent {
+    /// The ID of the offer that was taken
     pub offer_id: u64,
     /// Amount of token_in paid by the user
     pub token_in_amount: u64,
@@ -30,15 +30,15 @@ pub struct TakeBuyOfferPermissionlessEvent {
     pub user: Pubkey,
 }
 
-/// Accounts required for taking a buy offer via permissionless flow
+/// Accounts required for taking a offer via permissionless flow
 ///
-/// This struct defines all the accounts needed to execute a take_buy_offer_permissionless instruction,
+/// This struct defines all the accounts needed to execute a take_offer_permissionless instruction,
 /// including intermediary accounts owned by the program for routing token transfers.
 #[derive(Accounts)]
-pub struct TakeBuyOfferPermissionless<'info> {
-    /// The buy offer account containing all active buy offers
-    #[account(mut, seeds = [seeds::BUY_OFFERS], bump)]
-    pub buy_offer_account: AccountLoader<'info, BuyOfferAccount>,
+pub struct TakeOfferPermissionless<'info> {
+    /// The offer account containing all active offers
+    #[account(mut, seeds = [seeds::OFFERS], bump)]
+    pub offer_account: AccountLoader<'info, OfferAccount>,
 
     /// Program state account containing the boss public key
     #[account(has_one = boss)]
@@ -49,8 +49,8 @@ pub struct TakeBuyOfferPermissionless<'info> {
     /// CHECK: This account is validated through the constraint above
     pub boss: UncheckedAccount<'info>,
 
-    /// The buy offer vault authority PDA that controls vault token accounts
-    #[account(seeds = [seeds::BUY_OFFER_VAULT_AUTHORITY], bump)]
+    /// The offer vault authority PDA that controls vault token accounts
+    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
     /// CHECK: This is safe as it's a PDA used for signing
     pub vault_authority: UncheckedAccount<'info>,
 
@@ -154,9 +154,9 @@ pub struct TakeBuyOfferPermissionless<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Main instruction handler for taking a buy offer via permissionless flow
+/// Main instruction handler for taking a offer via permissionless flow
 ///
-/// This function allows users to accept a buy offer using intermediary accounts owned by the program.
+/// This function allows users to accept a offer using intermediary accounts owned by the program.
 /// Instead of direct transfers, tokens are routed through permissionless intermediary accounts:
 /// 1. User → Permissionless intermediary (token_in)
 /// 2. Permissionless intermediary → Boss (token_in)
@@ -166,12 +166,12 @@ pub struct TakeBuyOfferPermissionless<'info> {
 /// # Arguments
 ///
 /// * `ctx` - The instruction context containing all required accounts
-/// * `offer_id` - The unique ID of the buy offer to take
+/// * `offer_id` - The unique ID of the offer to take
 /// * `token_in_amount` - The amount of token_in the user is willing to pay
 ///
 /// # Process Flow
 ///
-/// 1. Load and validate the buy offer exists
+/// 1. Load and validate the offer exists
 /// 2. Find the currently active pricing vector
 /// 3. Calculate current price based on time elapsed and APR parameters
 /// 4. Calculate how many token_out to give for the provided token_in_amount
@@ -189,15 +189,15 @@ pub struct TakeBuyOfferPermissionless<'info> {
 /// * `NoActiveVector` - No pricing vector is currently active  
 /// * `OverflowError` - Mathematical overflow in price calculations
 /// * Token transfer errors if insufficient balances or invalid accounts
-pub fn take_buy_offer_permissionless(
-    ctx: Context<TakeBuyOfferPermissionless>,
+pub fn take_offer_permissionless(
+    ctx: Context<TakeOfferPermissionless>,
     offer_id: u64,
     token_in_amount: u64,
 ) -> Result<()> {
-    let offer_account = ctx.accounts.buy_offer_account.load_mut()?;
+    let offer_account = ctx.accounts.offer_account.load_mut()?;
 
     // Use shared core processing logic
-    let result = process_buy_offer_core(
+    let result = process_offer_core(
         &offer_account,
         offer_id,
         token_in_amount,
@@ -229,7 +229,7 @@ pub fn take_buy_offer_permissionless(
             &[ctx.bumps.permissionless_authority],
         ]]),
         vault_authority_signer_seeds: Some(&[&[
-            seeds::BUY_OFFER_VAULT_AUTHORITY,
+            seeds::OFFER_VAULT_AUTHORITY,
             &[ctx.bumps.vault_authority],
         ]]),
         token_in_source_account: &ctx.accounts.permissionless_token_in_account,
@@ -261,7 +261,7 @@ pub fn take_buy_offer_permissionless(
     )?;
 
     msg!(
-        "Buy offer taken (permissionless) - ID: {}, token_in(excluding fee): {}, fee: {}, token_out: {}, user: {}, price: {}",
+        "Offer taken (permissionless) - ID: {}, token_in(excluding fee): {}, fee: {}, token_out: {}, user: {}, price: {}",
         offer_id,
         result.token_in_amount,
         result.fee_amount,
@@ -270,7 +270,7 @@ pub fn take_buy_offer_permissionless(
         u64_to_dec9(result.current_price)
     );
 
-    emit!(TakeBuyOfferPermissionlessEvent {
+    emit!(TakeOfferPermissionlessEvent {
         offer_id,
         token_in_amount: result.token_in_amount,
         token_out_amount: result.token_out_amount,

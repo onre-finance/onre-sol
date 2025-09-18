@@ -2,25 +2,13 @@
 pub mod seeds {
     /// Seed for the program state account
     pub const STATE: &[u8] = b"state";
-    
-    /// Seed for the buy offers account
-    pub const BUY_OFFERS: &[u8] = b"buy_offers";
-    
-    /// Seed for the single redemption offers account
-    pub const SINGLE_REDEMPTION_OFFERS: &[u8] = b"single_redemption_offers";
-    
-    /// Seed for the dual redemption offers account
-    pub const DUAL_REDEMPTION_OFFERS: &[u8] = b"dual_redemption_offers";
-    
-    /// Seed for the buy offer vault authority account
-    pub const BUY_OFFER_VAULT_AUTHORITY: &[u8] = b"buy_offer_vault_authority";
-    
-    /// Seed for the single redemption vault authority account
-    pub const SINGLE_REDEMPTION_VAULT_AUTHORITY: &[u8] = b"single_redemption_vault_auth";
-    
-    /// Seed for the dual redemption vault authority account
-    pub const DUAL_REDEMPTION_VAULT_AUTHORITY: &[u8] = b"dual_redemption_vault_auth";
-    
+
+    /// Seed for the offers account
+    pub const OFFERS: &[u8] = b"offers";
+
+    /// Seed for the offer vault authority account
+    pub const OFFER_VAULT_AUTHORITY: &[u8] = b"offer_vault_authority";
+
     /// Seed for the permissionless intermediary authority account
     pub const PERMISSIONLESS_1: &[u8] = b"permissionless-1";
 

@@ -1,4 +1,4 @@
-use super::buy_offer_state::BuyOfferAccount;
+use super::offer_state::OfferAccount;
 use crate::constants::seeds;
 use crate::state::State;
 use crate::utils::MAX_BASIS_POINTS;
@@ -6,29 +6,29 @@ use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
-/// Event emitted when a buy offer is created.
+/// Event emitted when an offer is created.
 #[event]
-pub struct BuyOfferMadeEvent {
+pub struct OfferMadeEvent {
     pub offer_id: u64,
     pub fee_basis_points: u64,
     pub boss: Pubkey,
 }
 
-/// Account structure for creating a buy offer.
+/// Account structure for creating an offer.
 ///
-/// This struct defines the accounts required to initialize a buy offer where the boss provides
+/// This struct defines the accounts required to initialize an offer where the boss provides
 /// token_in in exchange for token_out. The price can change dynamically over the offer's duration.
 ///
 /// # Preconditions
 /// - All Associated Token Accounts (ATAs) must be initialized prior to execution.
 #[derive(Accounts)]
-pub struct MakeBuyOffer<'info> {
-    /// The buy offer account within the BuyOfferAccount, rent paid by `boss`. Already initialized in initialize.
-    #[account(mut, seeds = [seeds::BUY_OFFERS], bump)]
-    pub buy_offer_account: AccountLoader<'info, BuyOfferAccount>,
+pub struct MakeOffer<'info> {
+    /// The offer account within the OfferAccount, rent paid by `boss`. Already initialized in initialize.
+    #[account(mut, seeds = [seeds::OFFERS], bump)]
+    pub offer_account: AccountLoader<'info, OfferAccount>,
 
-    /// The buy offer vault authority PDA that controls vault token accounts
-    #[account(seeds = [seeds::BUY_OFFER_VAULT_AUTHORITY], bump)]
+    /// The offer vault authority PDA that controls vault token accounts
+    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
     /// CHECK: This is safe as it's a PDA used for signing
     pub vault_authority: UncheckedAccount<'info>,
 
@@ -65,9 +65,9 @@ pub struct MakeBuyOffer<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Creates a buy offer.
+/// Creates an offer.
 ///
-/// Initializes a buy offer where the boss provides token_in in exchange for token_out.
+/// Initializes an offer where the boss provides token_in in exchange for token_out.
 /// The price of the token_out can change dynamically over the offer's duration.
 ///
 /// # Arguments
@@ -75,38 +75,38 @@ pub struct MakeBuyOffer<'info> {
 /// - `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer.
 ///
 /// # Errors
-/// - [`MakeBuyOfferErrorCode::AccountFull`] if the BuyOfferAccount is full.
-/// - [`MakeBuyOfferErrorCode::InvalidFee`] if fee_basis_points > 10000.
-pub fn make_buy_offer(ctx: Context<MakeBuyOffer>, fee_basis_points: u64) -> Result<()> {
+/// - [`MakeOfferErrorCode::AccountFull`] if the OfferAccount is full.
+/// - [`MakeOfferErrorCode::InvalidFee`] if fee_basis_points > 10000.
+pub fn make_offer(ctx: Context<MakeOffer>, fee_basis_points: u64) -> Result<()> {
     // Validate fee is within valid range (0-10000 basis points = 0-100%)
     require!(
         fee_basis_points <= MAX_BASIS_POINTS,
-        MakeBuyOfferErrorCode::InvalidFee
+        MakeOfferErrorCode::InvalidFee
     );
 
-    let buy_offer_account = &mut ctx.accounts.buy_offer_account.load_mut()?;
+    let offer_account = &mut ctx.accounts.offer_account.load_mut()?;
 
     // Find the next available slot
-    let slot_index = buy_offer_account
+    let slot_index = offer_account
         .offers
         .iter()
         .position(|offer| offer.offer_id == 0)
-        .ok_or(MakeBuyOfferErrorCode::AccountFull)?;
+        .ok_or(MakeOfferErrorCode::AccountFull)?;
 
     // Get the next offer ID and update counter
-    let offer_id = buy_offer_account.counter.saturating_add(1);
-    buy_offer_account.counter = offer_id;
+    let offer_id = offer_account.counter.saturating_add(1);
+    offer_account.counter = offer_id;
 
-    // Create the buy offer
-    let buy_offer = &mut buy_offer_account.offers[slot_index];
-    buy_offer.offer_id = offer_id;
-    buy_offer.token_in_mint = ctx.accounts.token_in_mint.key();
-    buy_offer.token_out_mint = ctx.accounts.token_out_mint.key();
-    buy_offer.fee_basis_points = fee_basis_points;
+    // Create the offer
+    let offer = &mut offer_account.offers[slot_index];
+    offer.offer_id = offer_id;
+    offer.token_in_mint = ctx.accounts.token_in_mint.key();
+    offer.token_out_mint = ctx.accounts.token_out_mint.key();
+    offer.fee_basis_points = fee_basis_points;
 
-    msg!("Buy offer created with ID: {}", offer_id);
+    msg!("Offer created with ID: {}", offer_id);
 
-    emit!(BuyOfferMadeEvent {
+    emit!(OfferMadeEvent {
         offer_id,
         fee_basis_points,
         boss: ctx.accounts.boss.key(),
@@ -115,11 +115,11 @@ pub fn make_buy_offer(ctx: Context<MakeBuyOffer>, fee_basis_points: u64) -> Resu
     Ok(())
 }
 
-/// Error codes for buy offer creation operations.
+/// Error codes for offer creation operations.
 #[error_code]
-pub enum MakeBuyOfferErrorCode {
-    /// Triggered when the BuyOfferAccount is full.
-    #[msg("Buy offer account is full, cannot create more offers")]
+pub enum MakeOfferErrorCode {
+    /// Triggered when the OfferAccount is full.
+    #[msg("Offer account is full, cannot create more offers")]
     AccountFull,
     /// Triggered when fee_basis_points is greater than 10000.
     #[msg("Invalid fee: fee_basis_points must be <= 10000")]

@@ -1,7 +1,5 @@
 use crate::constants::seeds;
-use crate::state::{
-    BuyOfferVaultAuthority, DualRedemptionVaultAuthority, SingleRedemptionVaultAuthority, State,
-};
+use crate::state::{OfferVaultAuthority, State};
 use anchor_lang::prelude::*;
 
 /// Account structure for initializing all vault authority accounts.
@@ -14,31 +12,11 @@ pub struct InitializeVaultAuthority<'info> {
     #[account(
         init,
         payer = boss,
-        space = 8 + BuyOfferVaultAuthority::INIT_SPACE,
-        seeds = [seeds::BUY_OFFER_VAULT_AUTHORITY],
+        space = 8 + OfferVaultAuthority::INIT_SPACE,
+        seeds = [seeds::OFFER_VAULT_AUTHORITY],
         bump
     )]
-    pub buy_offer_vault_authority: Account<'info, BuyOfferVaultAuthority>,
-
-    /// The single redemption vault authority account to initialize, rent paid by `boss`.
-    #[account(
-        init,
-        payer = boss,
-        space = 8 + SingleRedemptionVaultAuthority::INIT_SPACE,
-        seeds = [seeds::SINGLE_REDEMPTION_VAULT_AUTHORITY],
-        bump
-    )]
-    pub single_redemption_vault_authority: Account<'info, SingleRedemptionVaultAuthority>,
-
-    /// The dual redemption vault authority account to initialize, rent paid by `boss`.
-    #[account(
-        init,
-        payer = boss,
-        space = 8 + DualRedemptionVaultAuthority::INIT_SPACE,
-        seeds = [seeds::DUAL_REDEMPTION_VAULT_AUTHORITY],
-        bump
-    )]
-    pub dual_redemption_vault_authority: Account<'info, DualRedemptionVaultAuthority>,
+    pub buy_offer_vault_authority: Account<'info, OfferVaultAuthority>,
 
     /// Program state, ensures `boss` is authorized.
     #[account(has_one = boss)]

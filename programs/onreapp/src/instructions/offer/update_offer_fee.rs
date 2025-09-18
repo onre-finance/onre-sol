@@ -1,28 +1,28 @@
-use super::buy_offer_state::BuyOfferAccount;
+use super::offer_state::OfferAccount;
 use crate::constants::seeds;
 use crate::instructions::find_offer_mut;
 use crate::state::State;
 use crate::utils::MAX_BASIS_POINTS;
 use anchor_lang::prelude::*;
 
-/// Event emitted when a buy offer's fee is updated.
+/// Event emitted when a offer's fee is updated.
 #[event]
-pub struct BuyOfferFeeUpdatedEvent {
+pub struct OfferFeeUpdatedEvent {
     pub offer_id: u64,
     pub old_fee_basis_points: u64,
     pub new_fee_basis_points: u64,
     pub boss: Pubkey,
 }
 
-/// Account structure for updating a buy offer's fee.
+/// Account structure for updating a offer's fee.
 ///
-/// This struct defines the accounts required to update the fee basis points of an existing buy offer.
+/// This struct defines the accounts required to update the fee basis points of an existing offer.
 /// Only the boss can update offer fees.
 #[derive(Accounts)]
-pub struct UpdateBuyOfferFee<'info> {
-    /// The buy offer account containing all buy offers
-    #[account(mut, seeds = [seeds::BUY_OFFERS], bump)]
-    pub buy_offer_account: AccountLoader<'info, BuyOfferAccount>,
+pub struct UpdateOfferFee<'info> {
+    /// The offer account containing all offers
+    #[account(mut, seeds = [seeds::OFFERS], bump)]
+    pub offer_account: AccountLoader<'info, OfferAccount>,
 
     /// Program state, ensures `boss` is authorized.
     #[account(has_one = boss)]
@@ -33,35 +33,35 @@ pub struct UpdateBuyOfferFee<'info> {
     pub boss: Signer<'info>,
 }
 
-/// Updates the fee basis points for an existing buy offer.
+/// Updates the fee basis points for an existing offer.
 ///
-/// Allows the boss to modify the fee charged when users take the buy offer.
+/// Allows the boss to modify the fee charged when users take the offer.
 /// The fee is specified in basis points (e.g., 500 = 5%).
 ///
 /// # Arguments
 /// - `ctx`: Context containing the accounts for the operation.
-/// - `offer_id`: ID of the buy offer to update.
+/// - `offer_id`: ID of the offer to update.
 /// - `new_fee_basis_points`: New fee in basis points (0-10000).
 ///
 /// # Errors
-/// - [`UpdateBuyOfferFeeErrorCode::OfferNotFound`] if offer_id doesn't exist.
-/// - [`UpdateBuyOfferFeeErrorCode::InvalidFee`] if fee_basis_points > 10000.
-pub fn update_buy_offer_fee(
-    ctx: Context<UpdateBuyOfferFee>,
+/// - [`UpdateOfferFeeErrorCode::OfferNotFound`] if offer_id doesn't exist.
+/// - [`UpdateOfferFeeErrorCode::InvalidFee`] if fee_basis_points > 10000.
+pub fn update_offer_fee(
+    ctx: Context<UpdateOfferFee>,
     offer_id: u64,
     new_fee_basis_points: u64,
 ) -> Result<()> {
     // Validate fee is within valid range (0-10000 basis points = 0-100%)
     require!(
         new_fee_basis_points <= MAX_BASIS_POINTS,
-        UpdateBuyOfferFeeErrorCode::InvalidFee
+        UpdateOfferFeeErrorCode::InvalidFee
     );
 
-    let buy_offer_account = &mut ctx.accounts.buy_offer_account.load_mut()?;
+    let offer_account = &mut ctx.accounts.offer_account.load_mut()?;
 
     // Find the offer by offer_id
-    let offer = find_offer_mut(buy_offer_account, offer_id)
-        .map_err(|_| UpdateBuyOfferFeeErrorCode::OfferNotFound)?;
+    let offer = find_offer_mut(offer_account, offer_id)
+        .map_err(|_| UpdateOfferFeeErrorCode::OfferNotFound)?;
 
     // Store old fee for event
     let old_fee_basis_points = offer.fee_basis_points;
@@ -70,13 +70,13 @@ pub fn update_buy_offer_fee(
     offer.fee_basis_points = new_fee_basis_points;
 
     msg!(
-        "Buy offer fee updated for ID: {}, old fee: {}, new fee: {}",
+        "Offer fee updated for ID: {}, old fee: {}, new fee: {}",
         offer_id,
         old_fee_basis_points,
         new_fee_basis_points
     );
 
-    emit!(BuyOfferFeeUpdatedEvent {
+    emit!(OfferFeeUpdatedEvent {
         offer_id,
         old_fee_basis_points,
         new_fee_basis_points,
@@ -86,9 +86,9 @@ pub fn update_buy_offer_fee(
     Ok(())
 }
 
-/// Error codes for update buy offer fee operations.
+/// Error codes for update offer fee operations.
 #[error_code]
-pub enum UpdateBuyOfferFeeErrorCode {
+pub enum UpdateOfferFeeErrorCode {
     /// Triggered when the offer_id doesn't exist.
     #[msg("Offer not found")]
     OfferNotFound,

@@ -1,26 +1,26 @@
 use crate::constants::seeds;
-use crate::state::{SingleRedemptionVaultAuthority, State};
+use crate::state::{OfferVaultAuthority, State};
 use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 #[event]
-pub struct SingleRedemptionVaultDepositEvent {
+pub struct OfferVaultDepositEvent {
     pub mint: Pubkey,
     pub amount: u64,
     pub boss: Pubkey,
 }
 
-/// Account structure for depositing tokens to the single redemption vault.
+/// Account structure for depositing tokens to the offer vault.
 ///
 /// This struct defines the accounts required for the boss to deposit tokens
-/// into the single redemption vault authority's token accounts.
+/// into the offer vault authority's token accounts.
 #[derive(Accounts)]
-pub struct SingleRedemptionVaultDeposit<'info> {
-    /// The single redemption vault authority account that controls the vault token accounts.
-    #[account(seeds = [seeds::SINGLE_REDEMPTION_VAULT_AUTHORITY], bump)]
-    pub vault_authority: Account<'info, SingleRedemptionVaultAuthority>,
+pub struct OfferVaultDeposit<'info> {
+    /// The offer vault authority account that controls the vault token accounts.
+    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
+    pub vault_authority: Account<'info, OfferVaultAuthority>,
 
     /// The token mint for the deposit.
     pub token_mint: Box<InterfaceAccount<'info, Mint>>,
@@ -30,6 +30,7 @@ pub struct SingleRedemptionVaultDeposit<'info> {
         mut,
         associated_token::mint = token_mint,
         associated_token::authority = boss,
+        associated_token::token_program = token_program
     )]
     pub boss_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -62,9 +63,9 @@ pub struct SingleRedemptionVaultDeposit<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Deposits tokens into the single redemption vault.
+/// Deposits tokens into the offer vault.
 ///
-/// Transfers tokens from the boss's token account to the single redemption vault's token account
+/// Transfers tokens from the boss's token account to the offer vault's token account
 /// for the specified mint. Creates the vault token account if it doesn't exist.
 /// Only the boss can call this instruction.
 ///
@@ -74,10 +75,7 @@ pub struct SingleRedemptionVaultDeposit<'info> {
 ///
 /// # Returns
 /// A `Result` indicating success or failure.
-pub fn single_redemption_vault_deposit(
-    ctx: Context<SingleRedemptionVaultDeposit>,
-    amount: u64,
-) -> Result<()> {
+pub fn offer_vault_deposit(ctx: Context<OfferVaultDeposit>, amount: u64) -> Result<()> {
     // Transfer tokens from boss to vault
     transfer_tokens(
         &ctx.accounts.token_mint,
@@ -89,15 +87,12 @@ pub fn single_redemption_vault_deposit(
         amount,
     )?;
 
-    emit!(SingleRedemptionVaultDepositEvent {
+    emit!(OfferVaultDepositEvent {
         mint: ctx.accounts.token_mint.key(),
         amount,
         boss: ctx.accounts.boss.key(),
     });
 
-    msg!(
-        "Single redemption vault deposit successful: {} tokens",
-        amount
-    );
+    msg!("Offer vault deposit successful: {} tokens", amount);
     Ok(())
 }

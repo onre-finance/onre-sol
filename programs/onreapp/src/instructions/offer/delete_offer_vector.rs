@@ -1,25 +1,25 @@
-use super::buy_offer_state::{BuyOfferAccount, BuyOfferVector};
+use super::offer_state::{OfferAccount, OfferVector};
 use crate::constants::seeds;
 use crate::instructions::{find_active_vector_at, find_offer_mut};
 use crate::state::State;
 use anchor_lang::prelude::*;
 
-/// Event emitted when a time vector is deleted from a buy offer.
+/// Event emitted when a time vector is deleted from a offer.
 #[event]
-pub struct BuyOfferVectorDeletedEvent {
+pub struct OfferVectorDeletedEvent {
     pub offer_id: u64,
     pub vector_id: u64,
 }
 
-/// Account structure for deleting a time vector from a buy offer.
+/// Account structure for deleting a time vector from an offer.
 ///
-/// This struct defines the accounts required to delete a time vector from an existing buy offer.
+/// This struct defines the accounts required to delete a time vector from an existing offer.
 /// Only the boss can delete time vectors from offers.
 #[derive(Accounts)]
-pub struct DeleteBuyOfferVector<'info> {
-    /// The buy offer account containing all buy offers
-    #[account(mut, seeds = [seeds::BUY_OFFERS], bump)]
-    pub buy_offer_account: AccountLoader<'info, BuyOfferAccount>,
+pub struct DeleteOfferVector<'info> {
+    /// The offer account containing all offers
+    #[account(mut, seeds = [seeds::OFFERS], bump)]
+    pub offer_account: AccountLoader<'info, OfferAccount>,
 
     /// Program state, ensures `boss` is authorized.
     #[account(has_one = boss)]
@@ -30,35 +30,32 @@ pub struct DeleteBuyOfferVector<'info> {
     pub boss: Signer<'info>,
 }
 
-/// Deletes a time vector from an existing buy offer.
+/// Deletes a time vector from an existing offer.
 ///
 /// Removes the specified time vector by setting it to default values.
 /// The vector is identified by both offer_id and vector_id.
 ///
 /// # Arguments
 /// - `ctx`: Context containing the accounts for the operation.
-/// - `offer_id`: ID of the buy offer containing the vector to delete.
+/// - `offer_id`: ID of the offer containing the vector to delete.
 /// - `vector_id`: ID of the vector to delete.
 ///
 /// # Errors
-/// - [`DeleteBuyOfferVectorErrorCode::OfferNotFound`] if offer_id is 0 or doesn't exist.
-/// - [`DeleteBuyOfferVectorErrorCode::VectorNotFound`] if vector_id is 0 or doesn't exist in the offer.
-pub fn delete_buy_offer_vector(
-    ctx: Context<DeleteBuyOfferVector>,
+/// - [`DeleteOfferVectorErrorCode::OfferNotFound`] if offer_id is 0 or doesn't exist.
+/// - [`DeleteOfferVectorErrorCode::VectorNotFound`] if vector_id is 0 or doesn't exist in the offer.
+pub fn delete_offer_vector(
+    ctx: Context<DeleteOfferVector>,
     offer_id: u64,
     vector_id: u64,
 ) -> Result<()> {
-    let buy_offer_account = &mut ctx.accounts.buy_offer_account.load_mut()?;
+    let offer_account = &mut ctx.accounts.offer_account.load_mut()?;
 
     // Validate inputs
-    require!(offer_id != 0, DeleteBuyOfferVectorErrorCode::OfferNotFound);
-    require!(
-        vector_id != 0,
-        DeleteBuyOfferVectorErrorCode::VectorNotFound
-    );
+    require!(offer_id != 0, DeleteOfferVectorErrorCode::OfferNotFound);
+    require!(vector_id != 0, DeleteOfferVectorErrorCode::VectorNotFound);
 
     // Find the offer by offer_id
-    let offer = find_offer_mut(buy_offer_account, offer_id)?;
+    let offer = find_offer_mut(offer_account, offer_id)?;
 
     // Find and delete the vector by vector_id
     let vector_index = find_vector_index_by_id(&offer.vectors, vector_id)?;
@@ -71,21 +68,21 @@ pub fn delete_buy_offer_vector(
         if prev_vector.is_ok() {
             require!(
                 prev_vector?.vector_id != vector_id,
-                DeleteBuyOfferVectorErrorCode::CannotDeletePreviousVector
+                DeleteOfferVectorErrorCode::CannotDeletePreviousVector
             );
         }
     }
 
     // Delete the vector by setting it to default
-    offer.vectors[vector_index] = BuyOfferVector::default();
+    offer.vectors[vector_index] = OfferVector::default();
 
     msg!(
-        "Time vector deleted from buy offer ID: {}, vector ID: {}",
+        "Time vector deleted from offer ID: {}, vector ID: {}",
         offer_id,
         vector_id
     );
 
-    emit!(BuyOfferVectorDeletedEvent {
+    emit!(OfferVectorDeletedEvent {
         offer_id,
         vector_id,
     });
@@ -94,18 +91,18 @@ pub fn delete_buy_offer_vector(
 }
 
 /// Finds the index of a vector by its ID in the vectors array.
-fn find_vector_index_by_id(vectors: &[BuyOfferVector; 10], vector_id: u64) -> Result<usize> {
+fn find_vector_index_by_id(vectors: &[OfferVector; 10], vector_id: u64) -> Result<usize> {
     vectors
         .iter()
         .position(|vector| vector.vector_id == vector_id && vector.vector_id != 0)
-        .ok_or(DeleteBuyOfferVectorErrorCode::VectorNotFound.into())
+        .ok_or(DeleteOfferVectorErrorCode::VectorNotFound.into())
 }
 
-/// Error codes for delete buy offer vector operations.
+/// Error codes for delete offer vector operations.
 #[error_code]
-pub enum DeleteBuyOfferVectorErrorCode {
+pub enum DeleteOfferVectorErrorCode {
     /// Triggered when the specified offer_id is 0 or not found.
-    #[msg("Buy offer with the specified ID was not found")]
+    #[msg("Offer with the specified ID was not found")]
     OfferNotFound,
 
     /// Triggered when the specified vector_id is 0 or not found in the offer.
