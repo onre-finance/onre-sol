@@ -3,6 +3,9 @@ pub mod seeds {
     /// Seed for the program state account
     pub const STATE: &[u8] = b"state";
 
+    /// Seed for the kill switch account
+    pub const KILL_SWITCH_STATE: &[u8] = b"kill_switch";
+
     /// Seed for the offers account
     pub const OFFERS: &[u8] = b"offers";
 

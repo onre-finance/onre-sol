@@ -18,12 +18,14 @@ export class OnreProgram {
         permissionlessVaultAuthorityPda: PublicKey;
         adminStatePda: PublicKey;
         mintAuthorityPda: PublicKey;
+        killSwitchStatePda: PublicKey;
     } = {
         offerAccountPda: PublicKey.findProgramAddressSync([Buffer.from("offers")], PROGRAM_ID)[0],
         offerVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("offer_vault_authority")], PROGRAM_ID)[0],
         permissionlessVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], PROGRAM_ID)[0],
         adminStatePda: PublicKey.findProgramAddressSync([Buffer.from("admin_state")], PROGRAM_ID)[0],
-        mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], PROGRAM_ID)[0]
+        mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], PROGRAM_ID)[0],
+        killSwitchStatePda: PublicKey.findProgramAddressSync([Buffer.from("kill_switch")], PROGRAM_ID)[0]
     };
 
     constructor(context: ProgramTestContext) {
@@ -327,6 +329,29 @@ export class OnreProgram {
         await tx.rpc();
     }
 
+    async initializeKillSwitchState() {
+        await this.program.methods
+            .initializeKillSwitchState()
+            .accounts({
+                state: this.statePda
+            })
+            .rpc();
+    }
+
+    async killSwitch(params: { enable: boolean, signer?: Keypair }) {
+        const tx = this.program.methods
+            .killSwitch(params.enable)
+            .accounts({
+                signer: params.signer ? params.signer.publicKey : this.program.provider.publicKey
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
     // Accounts
     async getOfferAccount() {
         const offerAccountPda = this.pdas.offerAccountPda;
@@ -340,5 +365,9 @@ export class OnreProgram {
 
     async getAdminState() {
         return await this.program.account.adminState.fetch(this.pdas.adminStatePda);
+    }
+
+    async getKillSwitchState() {
+        return await this.program.account.killSwitchState.fetch(this.pdas.killSwitchStatePda);
     }
 }

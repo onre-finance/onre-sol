@@ -3,6 +3,7 @@ use crate::instructions::offer::offer_utils::process_offer_core;
 use crate::instructions::OfferAccount;
 use crate::state::State;
 use crate::utils::{execute_token_operations, u64_to_dec9, ExecTokenOpsParams};
+use crate::kill_switch::KillSwitchState;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::associated_token::AssociatedToken;
@@ -15,6 +16,8 @@ pub enum TakeOfferErrorCode {
     InvalidBoss,
     #[msg("Math overflow")]
     MathOverflow,
+    #[msg("Kill switch is activated")]
+    KillSwitchActivated,
 }
 
 /// Event emitted when an offer is successfully taken
@@ -124,6 +127,13 @@ pub struct TakeOffer<'info> {
         bump
     )]
     pub mint_authority_pda: UncheckedAccount<'info>,
+
+    #[account(
+        seeds = [seeds::KILL_SWITCH_STATE],
+        bump,
+        constraint = kill_switch_state.is_killed == false @ TakeOfferErrorCode::KillSwitchActivated
+    )]
+    pub kill_switch_state: Box<Account<'info, KillSwitchState>>,
 
     /// The user taking the offer (must sign the transaction)
     #[account(mut)]

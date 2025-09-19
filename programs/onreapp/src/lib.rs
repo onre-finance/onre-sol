@@ -296,4 +296,33 @@ pub mod onreapp {
     ) -> Result<()> {
         mint_authority::transfer_mint_authority_to_boss(ctx)
     }
+
+    /// Initializes the kill switch state.
+    ///
+    /// Delegates to `initialization::initialize_kill_switch_state` to set up the kill switch state account.
+    /// The kill switch is initialized in the disabled (false) state by default.
+    /// Only the boss can call this instruction to create the kill switch state account.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `InitializeKillSwitchState`.
+    pub fn initialize_kill_switch_state(ctx: Context<InitializeKillSwitchState>) -> Result<()> {
+        initialization::initialize_kill_switch_state(ctx)
+    }
+
+    /// Enables or disables the kill switch.
+    ///
+    /// Delegates to `kill_switch::kill_switch` to change the kill switch state.
+    /// When enabled (true), the kill switch can halt critical program operations.
+    /// When disabled (false), normal program operations can proceed.
+    ///
+    /// Access control:
+    /// - Both boss and admins can enable the kill switch
+    /// - Only the boss can disable the kill switch
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `KillSwitch`.
+    /// - `enable`: True to enable the kill switch, false to disable it.
+    pub fn kill_switch(ctx: Context<KillSwitch>, enable: bool) -> Result<()> {
+        kill_switch::kill_switch(ctx, enable)
+    }
 }
