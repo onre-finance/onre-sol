@@ -1,4 +1,4 @@
-use crate::instructions::{BuyOffer, BuyOfferAccount, BuyOfferVector};
+use crate::instructions::{Offer, OfferAccount, OfferVector};
 use crate::utils::{calculate_fees, calculate_token_out_amount};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
@@ -6,9 +6,9 @@ use anchor_spl::token_interface::Mint;
 const SECONDS_IN_YEAR: u128 = 31_536_000;
 const APR_SCALE: u128 = 1_000_000;
 
-/// Common error codes that can be used by both take_buy_offer instructions
+/// Common error codes that can be used by both take_offer instructions
 #[error_code]
-pub enum BuyOfferCoreError {
+pub enum OfferCoreError {
     #[msg("Offer not found")]
     OfferNotFound,
     #[msg("No active vector")]
@@ -21,15 +21,15 @@ pub enum BuyOfferCoreError {
     InvalidTokenOutMint,
 }
 
-/// Result structure for the core buy offer processing
-pub struct BuyOfferProcessResult {
+/// Result structure for the core offer processing
+pub struct OfferProcessResult {
     pub current_price: u64,
     pub token_in_amount: u64,
     pub token_out_amount: u64,
     pub fee_amount: u64,
 }
 
-/// Core processing logic shared between both take_buy_offer instructions
+/// Core processing logic shared between both take_offer instructions
 ///
 /// This function handles all the common validation and calculation logic:
 /// 1. Find and validate the offer exists
@@ -38,21 +38,21 @@ pub struct BuyOfferProcessResult {
 /// 4. Calculate token_out_amount based on price and decimals
 ///
 /// # Arguments
-/// * `offer_account` - The loaded buy offer account
+/// * `offer_account` - The loaded offer account
 /// * `offer_id` - The ID of the offer to process
 /// * `token_in_amount` - Amount of token_in being provided
 /// * `token_in_mint` - The token_in mint for decimal information
 /// * `token_out_mint` - The token_out mint for decimal information
 ///
 /// # Returns
-/// A `BuyOfferProcessResult` containing the calculated price and token_out_amount
-pub fn process_buy_offer_core(
-    offer_account: &BuyOfferAccount,
+/// A `OfferProcessResult` containing the calculated price and token_out_amount
+pub fn process_offer_core(
+    offer_account: &OfferAccount,
     offer_id: u64,
     token_in_amount: u64,
     token_in_mint: &InterfaceAccount<Mint>,
     token_out_mint: &InterfaceAccount<Mint>,
-) -> Result<BuyOfferProcessResult> {
+) -> Result<OfferProcessResult> {
     let current_time = Clock::get()?.unix_timestamp as u64;
 
     // Find the offer
@@ -60,11 +60,11 @@ pub fn process_buy_offer_core(
 
     require!(
         offer.token_in_mint == token_in_mint.key(),
-        BuyOfferCoreError::InvalidTokenInMint
+        OfferCoreError::InvalidTokenInMint
     );
     require!(
         offer.token_out_mint == token_out_mint.key(),
-        BuyOfferCoreError::InvalidTokenOutMint
+        OfferCoreError::InvalidTokenOutMint
     );
 
     // Find the currently active pricing vector
@@ -88,7 +88,7 @@ pub fn process_buy_offer_core(
         token_out_mint.decimals,
     )?;
 
-    Ok(BuyOfferProcessResult {
+    Ok(OfferProcessResult {
         current_price,
         token_in_amount: fee_amounts.remaining_token_in_amount,
         token_out_amount,
@@ -96,87 +96,87 @@ pub fn process_buy_offer_core(
     })
 }
 
-/// Finds a buy offer by ID in the offer account
+/// Finds a offer by ID in the offer account
 ///
 /// # Arguments
-/// * `offer_account` - The buy offer account containing all offers
+/// * `offer_account` - The offer account containing all offers
 /// * `offer_id` - The ID of the offer to find
 ///
 /// # Returns
-/// The found `BuyOffer` or an error if not found
-pub fn find_offer(offer_account: &BuyOfferAccount, offer_id: u64) -> Result<BuyOffer> {
+/// The found `Offer` or an error if not found
+pub fn find_offer(offer_account: &OfferAccount, offer_id: u64) -> Result<Offer> {
     if offer_id == 0 {
-        return Err(error!(BuyOfferCoreError::OfferNotFound));
+        return Err(error!(OfferCoreError::OfferNotFound));
     }
 
     let offer = offer_account
         .offers
         .iter()
         .find(|offer| offer.offer_id == offer_id)
-        .ok_or(BuyOfferCoreError::OfferNotFound)?;
+        .ok_or(OfferCoreError::OfferNotFound)?;
 
     Ok(*offer)
 }
 
-/// Finds a mutable reference to buy offer by ID in the offer account
+/// Finds a mutable reference to offer by ID in the offer account
 ///
 /// # Arguments
-/// * `offer_account` - The buy offer account containing all offers
+/// * `offer_account` - The offer account containing all offers
 /// * `offer_id` - The ID of the offer to find
 ///
 /// # Returns
-/// The found `BuyOffer` or an error if not found
-pub fn find_offer_mut(offer_account: &mut BuyOfferAccount, offer_id: u64) -> Result<&mut BuyOffer> {
+/// The found `Offer` or an error if not found
+pub fn find_offer_mut(offer_account: &mut OfferAccount, offer_id: u64) -> Result<&mut Offer> {
     if offer_id == 0 {
-        return Err(error!(BuyOfferCoreError::OfferNotFound));
+        return Err(error!(OfferCoreError::OfferNotFound));
     }
 
     let offer = offer_account
         .offers
         .iter_mut()
         .find(|offer| offer.offer_id == offer_id)
-        .ok_or(BuyOfferCoreError::OfferNotFound)?;
+        .ok_or(OfferCoreError::OfferNotFound)?;
 
     Ok(offer)
 }
 
-/// Finds a buy offer index by ID in the offer account
+/// Finds a offer index by ID in the offer account
 ///
 /// # Arguments
-/// * `offer_account` - The buy offer account containing all offers
+/// * `offer_account` - The offer account containing all offers
 /// * `offer_id` - The ID of the offer to find
 ///
 /// # Returns
-/// The found `BuyOffer` or an error if not found
-pub fn find_offer_index(offer_account: &BuyOfferAccount, offer_id: u64) -> Result<usize> {
+/// The found `Offer` or an error if not found
+pub fn find_offer_index(offer_account: &OfferAccount, offer_id: u64) -> Result<usize> {
     if offer_id == 0 {
-        return Err(error!(BuyOfferCoreError::OfferNotFound));
+        return Err(error!(OfferCoreError::OfferNotFound));
     }
 
     let offer_id = offer_account
         .offers
         .iter()
         .position(|offer| offer.offer_id == offer_id)
-        .ok_or(BuyOfferCoreError::OfferNotFound)?;
+        .ok_or(OfferCoreError::OfferNotFound)?;
 
     Ok(offer_id)
 }
 
-/// Finds the currently active vector for a buy offer
+/// Finds the currently active vector for an offer
 ///
 /// # Arguments
-/// * `offer` - The buy offer to search for an active vector
+/// * `offer` - The offer to search for an active vector
 ///
 /// # Returns
-/// The active `BuyOfferVector` or an error if none is active
-pub fn find_active_vector_at(offer: &BuyOffer, time: u64) -> Result<BuyOfferVector> {
+/// The active `OfferVector` or an error if none is active
+pub fn find_active_vector_at(offer: &Offer, time: u64) -> Result<OfferVector> {
     let active_vector = offer
         .vectors
         .iter()
         .filter(|vector| vector.vector_id != 0) // Only consider non-empty vectors
         .filter(|vector| vector.start_time <= time) // Only vectors that have started
         .max_by_key(|vector| vector.start_time) // Find latest start_time in the past
-        .ok_or(BuyOfferCoreError::NoActiveVector)?;
+        .ok_or(OfferCoreError::NoActiveVector)?;
 
     Ok(*active_vector)
 }
@@ -208,20 +208,20 @@ pub fn calculate_vector_price(apr: u64, base_price: u64, elapsed_time: u64) -> R
         .expect("SCALE*S overflow (should not happen)");
     let y_part = (apr as u128)
         .checked_mul(elapsed_time as u128)
-        .ok_or(BuyOfferCoreError::OverflowError)?;
+        .ok_or(OfferCoreError::OverflowError)?;
     let factor_num = factor_den
         .checked_add(y_part)
-        .ok_or(BuyOfferCoreError::OverflowError)?;
+        .ok_or(OfferCoreError::OverflowError)?;
 
     // price growth applied to base_price
     let price_u128 = (base_price as u128)
         .checked_mul(factor_num)
-        .ok_or(BuyOfferCoreError::OverflowError)?
+        .ok_or(OfferCoreError::OverflowError)?
         .checked_div(factor_den)
-        .ok_or(BuyOfferCoreError::OverflowError)?;
+        .ok_or(OfferCoreError::OverflowError)?;
 
     if price_u128 > u64::MAX as u128 {
-        return Err(error!(BuyOfferCoreError::OverflowError));
+        return Err(error!(OfferCoreError::OverflowError));
     }
 
     Ok(price_u128 as u64)
@@ -256,7 +256,7 @@ pub fn calculate_current_step_price(
 ) -> Result<u64> {
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    require!(base_time <= current_time, BuyOfferCoreError::NoActiveVector);
+    require!(base_time <= current_time, OfferCoreError::NoActiveVector);
 
     let elapsed_since_start = current_time.saturating_sub(base_time);
 
@@ -268,7 +268,7 @@ pub fn calculate_current_step_price(
         .checked_add(1)
         .unwrap()
         .checked_mul(price_fix_duration)
-        .ok_or(BuyOfferCoreError::OverflowError)?;
+        .ok_or(OfferCoreError::OverflowError)?;
 
     // Use the vector price calculation with the effective elapsed time
     calculate_vector_price(apr, base_price, step_end_time)

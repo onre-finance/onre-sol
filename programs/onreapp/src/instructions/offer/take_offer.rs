@@ -1,6 +1,6 @@
 use crate::constants::seeds;
-use crate::instructions::buy_offer::buy_offer_utils::process_buy_offer_core;
-use crate::instructions::BuyOfferAccount;
+use crate::instructions::offer::offer_utils::process_offer_core;
+use crate::instructions::OfferAccount;
 use crate::state::State;
 use crate::utils::{execute_token_operations, u64_to_dec9, ExecTokenOpsParams};
 use anchor_lang::prelude::*;
@@ -8,19 +8,19 @@ use anchor_lang::Accounts;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
-/// Error codes specific to the take_buy_offer instruction
+/// Error codes specific to the take_offer instruction
 #[error_code]
-pub enum TakeBuyOfferErrorCode {
+pub enum TakeOfferErrorCode {
     #[msg("Invalid boss account")]
     InvalidBoss,
     #[msg("Math overflow")]
     MathOverflow,
 }
 
-/// Event emitted when a buy offer is successfully taken
+/// Event emitted when an offer is successfully taken
 #[event]
-pub struct TakeBuyOfferEvent {
-    /// The ID of the buy offer that was taken
+pub struct TakeOfferEvent {
+    /// The ID of the offer that was taken
     pub offer_id: u64,
     /// Amount of token_in paid by the user (excluding fee)
     pub token_in_amount: u64,
@@ -32,15 +32,15 @@ pub struct TakeBuyOfferEvent {
     pub user: Pubkey,
 }
 
-/// Accounts required for taking a buy offer
+/// Accounts required for taking an offer
 ///
-/// This struct defines all the accounts needed to execute a take_buy_offer instruction,
+/// This struct defines all the accounts needed to execute a take_offer instruction,
 /// including validation constraints to ensure security and proper authorization.
 #[derive(Accounts)]
-pub struct TakeBuyOffer<'info> {
-    /// The buy offer account containing all active buy offers
-    #[account(mut, seeds = [seeds::BUY_OFFERS], bump)]
-    pub buy_offer_account: AccountLoader<'info, BuyOfferAccount>,
+pub struct TakeOffer<'info> {
+    /// The offer account containing all active offers
+    #[account(mut, seeds = [seeds::OFFERS], bump)]
+    pub offer_account: AccountLoader<'info, OfferAccount>,
 
     /// Program state account containing the boss public key
     pub state: Box<Account<'info, State>>,
@@ -48,13 +48,13 @@ pub struct TakeBuyOffer<'info> {
     /// The boss account that receives token_in payments
     /// Must match the boss stored in the program state
     #[account(
-        constraint = boss.key() == state.boss @ TakeBuyOfferErrorCode::InvalidBoss
+        constraint = boss.key() == state.boss @ TakeOfferErrorCode::InvalidBoss
     )]
     /// CHECK: This account is validated through the constraint above
     pub boss: UncheckedAccount<'info>,
 
-    /// The buy offer vault authority PDA that controls vault token accounts
-    #[account(seeds = [seeds::BUY_OFFER_VAULT_AUTHORITY], bump)]
+    /// The offer vault authority PDA that controls vault token accounts
+    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
     /// CHECK: This is safe as it's a PDA used for signing
     pub vault_authority: UncheckedAccount<'info>,
 
@@ -136,9 +136,9 @@ pub struct TakeBuyOffer<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Main instruction handler for taking a buy offer with mint/transfer flexibility
+/// Main instruction handler for taking an offer with mint/transfer flexibility
 ///
-/// This function allows users to accept a buy offer by paying the current market price
+/// This function allows users to accept an offer by paying the current market price
 /// in token_in to receive token_out. The price is calculated using a discrete interval
 /// pricing model with linear yield growth. Token distribution uses smart logic:
 /// - If program has mint authority: mints token_out directly to user (more efficient)
@@ -147,12 +147,12 @@ pub struct TakeBuyOffer<'info> {
 /// # Arguments
 ///
 /// * `ctx` - The instruction context containing all required accounts
-/// * `offer_id` - The unique ID of the buy offer to take
+/// * `offer_id` - The unique ID of the offer to take
 /// * `token_in_amount` - The amount of token_in the user is willing to pay
 ///
 /// # Process Flow
 ///
-/// 1. Load and validate the buy offer exists
+/// 1. Load and validate the offer exists
 /// 2. Find the currently active pricing vector
 /// 3. Calculate current price based on time elapsed and APR parameters
 /// 4. Calculate how many token_out to give for the provided token_in_amount
@@ -177,15 +177,11 @@ pub struct TakeBuyOffer<'info> {
 /// * `NoActiveVector` - No pricing vector is currently active  
 /// * `OverflowError` - Mathematical overflow in price calculations
 /// * Token operation errors if insufficient balances, invalid accounts, or missing mint authority
-pub fn take_buy_offer(
-    ctx: Context<TakeBuyOffer>,
-    offer_id: u64,
-    token_in_amount: u64,
-) -> Result<()> {
-    let offer_account = ctx.accounts.buy_offer_account.load()?;
+pub fn take_offer(ctx: Context<TakeOffer>, offer_id: u64, token_in_amount: u64) -> Result<()> {
+    let offer_account = ctx.accounts.offer_account.load()?;
 
     // Use shared core processing logic for main exchange amount
-    let result = process_buy_offer_core(
+    let result = process_offer_core(
         &offer_account,
         offer_id,
         token_in_amount,
@@ -201,7 +197,7 @@ pub fn take_buy_offer(
         token_in_authority: &ctx.accounts.user,
         token_in_source_signer_seeds: None,
         vault_authority_signer_seeds: Some(&[&[
-            seeds::BUY_OFFER_VAULT_AUTHORITY,
+            seeds::OFFER_VAULT_AUTHORITY,
             &[ctx.bumps.vault_authority],
         ]]),
         token_in_source_account: &ctx.accounts.user_token_in_account,
@@ -220,7 +216,7 @@ pub fn take_buy_offer(
     })?;
 
     msg!(
-        "Buy offer taken - ID: {}, token_in(excluding fee): {}, fee: {}, token_out: {}, user: {}, price: {}",
+        "Offer taken - ID: {}, token_in(+fee): {}(+{}), token_out: {}, user: {}, price: {}",
         offer_id,
         result.token_in_amount,
         result.fee_amount,
@@ -229,7 +225,7 @@ pub fn take_buy_offer(
         u64_to_dec9(result.current_price)
     );
 
-    emit!(TakeBuyOfferEvent {
+    emit!(TakeOfferEvent {
         offer_id,
         token_in_amount: result.token_in_amount,
         token_out_amount: result.token_out_amount,

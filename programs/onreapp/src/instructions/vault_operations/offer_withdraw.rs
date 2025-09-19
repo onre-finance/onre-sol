@@ -1,26 +1,26 @@
 use crate::constants::seeds;
-use crate::state::{DualRedemptionVaultAuthority, State};
+use crate::state::{OfferVaultAuthority, State};
 use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 #[event]
-pub struct DualRedemptionVaultWithdrawEvent {
+pub struct OfferVaultWithdrawEvent {
     pub mint: Pubkey,
     pub amount: u64,
     pub boss: Pubkey,
 }
 
-/// Account structure for withdrawing tokens from the dual redemption vault.
+/// Account structure for withdrawing tokens from the offer vault.
 ///
 /// This struct defines the accounts required for the boss to withdraw tokens
-/// from the dual redemption vault authority's token accounts.
+/// from the offer vault authority's token accounts.
 #[derive(Accounts)]
-pub struct DualRedemptionVaultWithdraw<'info> {
-    /// The dual redemption vault authority account that controls the vault token accounts.
-    #[account(seeds = [seeds::DUAL_REDEMPTION_VAULT_AUTHORITY], bump)]
-    pub vault_authority: Account<'info, DualRedemptionVaultAuthority>,
+pub struct OfferVaultWithdraw<'info> {
+    /// The offer vault authority account that controls the vault token accounts.
+    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
+    pub vault_authority: Account<'info, OfferVaultAuthority>,
 
     /// The token mint for the withdrawal.
     pub token_mint: Box<InterfaceAccount<'info, Mint>>,
@@ -61,9 +61,9 @@ pub struct DualRedemptionVaultWithdraw<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Withdraws tokens from the dual redemption vault.
+/// Withdraws tokens from the offer vault.
 ///
-/// Transfers tokens from the dual redemption vault's token account to the boss's token account
+/// Transfers tokens from the offer vault's token account to the boss's token account
 /// for the specified mint. Creates the boss token account if it doesn't exist.
 /// Only the boss can call this instruction.
 ///
@@ -73,15 +73,9 @@ pub struct DualRedemptionVaultWithdraw<'info> {
 ///
 /// # Returns
 /// A `Result` indicating success or failure.
-pub fn dual_redemption_vault_withdraw(
-    ctx: Context<DualRedemptionVaultWithdraw>,
-    amount: u64,
-) -> Result<()> {
+pub fn offer_vault_withdraw(ctx: Context<OfferVaultWithdraw>, amount: u64) -> Result<()> {
     // Create signer seeds for vault authority
-    let vault_authority_seeds = &[
-        seeds::DUAL_REDEMPTION_VAULT_AUTHORITY,
-        &[ctx.bumps.vault_authority],
-    ];
+    let vault_authority_seeds = &[seeds::OFFER_VAULT_AUTHORITY, &[ctx.bumps.vault_authority]];
     let signer_seeds = &[&vault_authority_seeds[..]];
 
     // Transfer tokens from vault to boss
@@ -95,15 +89,12 @@ pub fn dual_redemption_vault_withdraw(
         amount,
     )?;
 
-    emit!(DualRedemptionVaultWithdrawEvent {
+    emit!(OfferVaultWithdrawEvent {
         mint: ctx.accounts.token_mint.key(),
         amount,
         boss: ctx.accounts.boss.key(),
     });
 
-    msg!(
-        "Dual redemption vault withdraw successful: {} tokens",
-        amount
-    );
+    msg!("Offer vault withdraw successful: {} tokens", amount);
     Ok(())
 }

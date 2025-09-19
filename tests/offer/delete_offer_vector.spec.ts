@@ -2,7 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 import { TestHelper } from "../test_helper";
 import { OnreProgram } from "../onre_program.ts";
 
-describe("Delete Buy Offer Vector", () => {
+describe("Delete Offer Vector", () => {
     let testHelper: TestHelper;
     let program: OnreProgram;
 
@@ -22,11 +22,11 @@ describe("Delete Buy Offer Vector", () => {
         await program.initializeOffers();
     });
 
-    it("Should delete an existing vector from a buy offer", async () => {
+    it("Should delete an existing vector from an offer", async () => {
         const offerId = 1;
 
-        // Create a buy offer
-        await program.makeBuyOffer({
+        // Create an offer
+        await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
@@ -34,7 +34,7 @@ describe("Delete Buy Offer Vector", () => {
         const currentTime = await testHelper.getCurrentClockTime();
 
         // Add a vector to the offer
-        await program.addBuyOfferVector({
+        await program.addOfferVector({
             offerId,
             startTime: currentTime + 1000,
             startPrice: 1000000,
@@ -49,7 +49,7 @@ describe("Delete Buy Offer Vector", () => {
         expect(activeVectors[0].vectorId.toNumber()).toBe(1);
 
         // Delete the vector
-        await program.deleteBuyOfferVector({
+        await program.deleteOfferVector({
             offerId,
             vectorId: 1
         });
@@ -62,24 +62,24 @@ describe("Delete Buy Offer Vector", () => {
 
     it("Should fail when offer_id is zero", async () => {
         await expect(
-            program.deleteBuyOfferVector({
+            program.deleteOfferVector({
                 offerId: 0,
                 vectorId: 1
             })
-        ).rejects.toThrow("Buy offer with the specified ID was not found");
+        ).rejects.toThrow("Offer with the specified ID was not found");
     });
 
     it("Should fail when vector_id is zero", async () => {
         const offerId = 1;
 
-        // Create a buy offer
-        await program.makeBuyOffer({
+        // Create an offer
+        await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
 
         await expect(
-            program.deleteBuyOfferVector({
+            program.deleteOfferVector({
                 offerId,
                 vectorId: 0
             })
@@ -90,7 +90,7 @@ describe("Delete Buy Offer Vector", () => {
         const nonExistentOfferId = 999;
 
         await expect(
-            program.deleteBuyOfferVector({
+            program.deleteOfferVector({
                 offerId: nonExistentOfferId,
                 vectorId: 1
             })
@@ -100,14 +100,14 @@ describe("Delete Buy Offer Vector", () => {
     it("Should fail when vector doesn't exist in the offer", async () => {
         const offerId = 1;
 
-        // Create a buy offer
-        await program.makeBuyOffer({
+        // Create an offer
+        await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
 
         await expect(
-            program.deleteBuyOfferVector({
+            program.deleteOfferVector({
                 offerId,
                 vectorId: 999
             })
@@ -117,8 +117,8 @@ describe("Delete Buy Offer Vector", () => {
     it("Should delete specific vector while keeping others", async () => {
         const offerId = 1;
 
-        // Create a buy offer
-        await program.makeBuyOffer({
+        // Create an offer
+        await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
@@ -127,7 +127,7 @@ describe("Delete Buy Offer Vector", () => {
 
         // Add three vectors
         for (let i = 1; i <= 3; i++) {
-            await program.addBuyOfferVector({
+            await program.addOfferVector({
                 offerId,
                 startTime: currentTime + (i * 1000),
                 startPrice: i * 1000000,
@@ -142,7 +142,7 @@ describe("Delete Buy Offer Vector", () => {
         expect(activeVectors.length).toBe(3);
 
         // Delete the middle vector (vector_id = 2)
-        await program.deleteBuyOfferVector({
+        await program.deleteOfferVector({
             offerId,
             vectorId: 2
         });
@@ -165,8 +165,8 @@ describe("Delete Buy Offer Vector", () => {
     it("Should reject when called by non-boss", async () => {
         const offerId = 1;
 
-        // Create a buy offer
-        await program.makeBuyOffer({
+        // Create an offer
+        await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
@@ -174,7 +174,7 @@ describe("Delete Buy Offer Vector", () => {
         const currentTime = await testHelper.getCurrentClockTime();
 
         // Add a vector
-        await program.addBuyOfferVector({
+        await program.addOfferVector({
             offerId,
             startTime: currentTime + 1000,
             startPrice: 1000000,
@@ -185,7 +185,7 @@ describe("Delete Buy Offer Vector", () => {
         const notBoss = testHelper.createUserAccount();
 
         await expect(
-            program.deleteBuyOfferVector({
+            program.deleteOfferVector({
                 offerId,
                 vectorId: 1,
                 signer: notBoss
@@ -197,8 +197,8 @@ describe("Delete Buy Offer Vector", () => {
         it("Should prevent deletion of previously active vector", async () => {
             const offerId = 1;
 
-            // Create a buy offer
-            await program.makeBuyOffer({
+            // Create an offer
+            await program.makeOffer({
                 tokenInMint,
                 tokenOutMint
             });
@@ -207,7 +207,7 @@ describe("Delete Buy Offer Vector", () => {
 
             // Add only 2 vectors in the future to keep it simple
             // Vector 1: will become previous active
-            await program.addBuyOfferVector({
+            await program.addOfferVector({
                 offerId,
                 startTime: currentTime + 100, // 100 seconds in future
                 startPrice: 1000000,
@@ -216,7 +216,7 @@ describe("Delete Buy Offer Vector", () => {
             });
 
             // Vector 2: will become currently active
-            await program.addBuyOfferVector({
+            await program.addOfferVector({
                 offerId,
                 startTime: currentTime + 200, // 200 seconds in future
                 startPrice: 2000000,
@@ -235,7 +235,7 @@ describe("Delete Buy Offer Vector", () => {
 
             // Now try to delete vector 1 (previous active) - should fail
             await expect(
-                program.deleteBuyOfferVector({
+                program.deleteOfferVector({
                     offerId,
                     vectorId: 1
                 })
@@ -245,8 +245,8 @@ describe("Delete Buy Offer Vector", () => {
         it("Should allow deletion of current active vector", async () => {
             const offerId = 1;
 
-            // Create a buy offer
-            await program.makeBuyOffer({
+            // Create an offer
+            await program.makeOffer({
                 tokenInMint,
                 tokenOutMint
             });
@@ -254,7 +254,7 @@ describe("Delete Buy Offer Vector", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             // Add vectors in the future
-            await program.addBuyOfferVector({
+            await program.addOfferVector({
                 offerId,
                 startTime: currentTime + 10, // 10 seconds in future
                 startPrice: 1000000,
@@ -262,7 +262,7 @@ describe("Delete Buy Offer Vector", () => {
                 priceFixDuration: 3600
             });
 
-            await program.addBuyOfferVector({
+            await program.addOfferVector({
                 offerId,
                 startTime: currentTime + 20, // 20 seconds in future
                 startPrice: 2000000,
@@ -274,7 +274,7 @@ describe("Delete Buy Offer Vector", () => {
             await testHelper.advanceClockBy(25);
 
             // Delete the current active vector (vector_id = 2) - should succeed
-            await program.deleteBuyOfferVector({
+            await program.deleteOfferVector({
                 offerId,
                 vectorId: 2
             });
@@ -290,8 +290,8 @@ describe("Delete Buy Offer Vector", () => {
         it("Should allow deletion of future vector", async () => {
             const offerId = 1;
 
-            // Create a buy offer
-            await program.makeBuyOffer({
+            // Create an offer
+            await program.makeOffer({
                 tokenInMint,
                 tokenOutMint
             });
@@ -299,7 +299,7 @@ describe("Delete Buy Offer Vector", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             // Add vectors in the future
-            await program.addBuyOfferVector({
+            await program.addOfferVector({
                 offerId,
                 startTime: currentTime + 10, // 10 seconds in future
                 startPrice: 1000000,
@@ -307,7 +307,7 @@ describe("Delete Buy Offer Vector", () => {
                 priceFixDuration: 3600
             });
 
-            await program.addBuyOfferVector({
+            await program.addOfferVector({
                 offerId,
                 startTime: currentTime + 20, // 20 seconds in future
                 startPrice: 2000000,
@@ -315,7 +315,7 @@ describe("Delete Buy Offer Vector", () => {
                 priceFixDuration: 3600
             });
 
-            await program.addBuyOfferVector({
+            await program.addOfferVector({
                 offerId,
                 startTime: currentTime + 30, // 30 seconds in future
                 startPrice: 3000000,
@@ -327,7 +327,7 @@ describe("Delete Buy Offer Vector", () => {
             await testHelper.advanceClockBy(25);
 
             // Delete the future vector (vector_id = 3) - should succeed
-            await program.deleteBuyOfferVector({
+            await program.deleteOfferVector({
                 offerId,
                 vectorId: 3
             });
@@ -344,8 +344,8 @@ describe("Delete Buy Offer Vector", () => {
         it("Should allow deletion when there's only one vector (no previous vector)", async () => {
             const offerId = 1;
 
-            // Create a buy offer
-            await program.makeBuyOffer({
+            // Create an offer
+            await program.makeOffer({
                 tokenInMint,
                 tokenOutMint
             });
@@ -353,7 +353,7 @@ describe("Delete Buy Offer Vector", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             // Add only one vector in the future
-            await program.addBuyOfferVector({
+            await program.addOfferVector({
                 offerId,
                 startTime: currentTime + 10, // 10 seconds in future
                 startPrice: 1000000,
@@ -365,7 +365,7 @@ describe("Delete Buy Offer Vector", () => {
             await testHelper.advanceClockBy(15);
 
             // Delete the only vector - should succeed (no previous vector exists)
-            await program.deleteBuyOfferVector({
+            await program.deleteOfferVector({
                 offerId,
                 vectorId: 1
             });
@@ -380,8 +380,8 @@ describe("Delete Buy Offer Vector", () => {
         it("Should allow deletion of past vectors that are not previously active", async () => {
             const offerId = 1;
 
-            // Create a buy offer
-            await program.makeBuyOffer({
+            // Create an offer
+            await program.makeOffer({
                 tokenInMint,
                 tokenOutMint
             });
@@ -390,7 +390,7 @@ describe("Delete Buy Offer Vector", () => {
 
             // Add 4 vectors in the future to create a sequence
             // Vector 1: will be old past vector (deletable)
-            await program.addBuyOfferVector({
+            await program.addOfferVector({
                 offerId,
                 startTime: currentTime + 100, // 100 seconds in future
                 startPrice: 1000000,
@@ -399,7 +399,7 @@ describe("Delete Buy Offer Vector", () => {
             });
 
             // Vector 2: will be old past vector (deletable)
-            await program.addBuyOfferVector({
+            await program.addOfferVector({
                 offerId,
                 startTime: currentTime + 200, // 200 seconds in future
                 startPrice: 2000000,
@@ -408,7 +408,7 @@ describe("Delete Buy Offer Vector", () => {
             });
 
             // Vector 3: will become previously active (protected)
-            await program.addBuyOfferVector({
+            await program.addOfferVector({
                 offerId,
                 startTime: currentTime + 300, // 300 seconds in future
                 startPrice: 3000000,
@@ -417,7 +417,7 @@ describe("Delete Buy Offer Vector", () => {
             });
 
             // Vector 4: will become currently active
-            await program.addBuyOfferVector({
+            await program.addOfferVector({
                 offerId,
                 startTime: currentTime + 400, // 400 seconds in future
                 startPrice: 4000000,
@@ -435,7 +435,7 @@ describe("Delete Buy Offer Vector", () => {
             expect(activeVectors.length).toBe(4);
 
             // Try to delete vector 1 (old past vector, not previously active) - should succeed
-            await program.deleteBuyOfferVector({
+            await program.deleteOfferVector({
                 offerId,
                 vectorId: 1
             });
@@ -448,7 +448,7 @@ describe("Delete Buy Offer Vector", () => {
             expect(activeVectors.map(v => v.vectorId.toNumber()).sort()).toEqual([2, 3, 4]);
 
             // Try to delete vector 2 (another old past vector, not previously active) - should succeed
-            await program.deleteBuyOfferVector({
+            await program.deleteOfferVector({
                 offerId,
                 vectorId: 2
             });
@@ -462,7 +462,7 @@ describe("Delete Buy Offer Vector", () => {
 
             // Try to delete vector 3 (previously active) - should fail
             await expect(
-                program.deleteBuyOfferVector({
+                program.deleteOfferVector({
                     offerId,
                     vectorId: 3
                 })
@@ -472,8 +472,8 @@ describe("Delete Buy Offer Vector", () => {
         it("Should allow deletion when all vectors are in the future (no active vector)", async () => {
             const offerId = 1;
 
-            // Create a buy offer
-            await program.makeBuyOffer({
+            // Create an offer
+            await program.makeOffer({
                 tokenInMint,
                 tokenOutMint
             });
@@ -481,7 +481,7 @@ describe("Delete Buy Offer Vector", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             // Add vectors that are all in the future
-            await program.addBuyOfferVector({
+            await program.addOfferVector({
                 offerId,
                 startTime: currentTime + 100, // 100 seconds in future
                 startPrice: 1000000,
@@ -489,7 +489,7 @@ describe("Delete Buy Offer Vector", () => {
                 priceFixDuration: 3600
             });
 
-            await program.addBuyOfferVector({
+            await program.addOfferVector({
                 offerId,
                 startTime: currentTime + 200, // 200 seconds in future
                 startPrice: 2000000,
@@ -498,7 +498,7 @@ describe("Delete Buy Offer Vector", () => {
             });
 
             // Delete the first future vector - should succeed (no active vector means no previous vector)
-            await program.deleteBuyOfferVector({
+            await program.deleteOfferVector({
                 offerId,
                 vectorId: 1
             });

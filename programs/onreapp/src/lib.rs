@@ -38,10 +38,10 @@ pub mod utils;
 pub mod onreapp {
     use super::*;
 
-    /// Initializes the buy offers account.
+    /// Initializes the offers account.
     ///
-    /// Delegates to `buy_offer::initialize_offers`.
-    /// Only the boss can call this instruction to create the buy offers account.
+    /// Delegates to `offer::initialize_offers`.
+    /// Only the boss can call this instruction to create the offers account.
     ///
     /// # Arguments
     /// - `ctx`: Context for `InitializeOffers`.
@@ -53,319 +53,83 @@ pub mod onreapp {
         initialize_vault_authority::initialize_vault_authority(ctx)
     }
 
-    /// Deposits tokens into the buy offer vault.
+    /// Deposits tokens into the offer vault.
     ///
-    /// Delegates to `vault_operations::buy_offer_vault_deposit`.
-    /// Transfers tokens from boss's account to buy offer vault's token account for the specified mint.
+    /// Delegates to `vault_operations::offer_vault_deposit`.
+    /// Transfers tokens from boss's account to offer vault's token account for the specified mint.
     /// Creates vault token account if it doesn't exist using init_if_needed.
     /// Only the boss can call this instruction.
     ///
     /// # Arguments
-    /// - `ctx`: Context for `BuyOfferVaultDeposit`.
+    /// - `ctx`: Context for `OfferVaultDeposit`.
     /// - `amount`: Amount of tokens to deposit.
-    pub fn buy_offer_vault_deposit(ctx: Context<BuyOfferVaultDeposit>, amount: u64) -> Result<()> {
-        vault_operations::buy_offer_vault_deposit(ctx, amount)
+    pub fn offer_vault_deposit(ctx: Context<OfferVaultDeposit>, amount: u64) -> Result<()> {
+        vault_operations::offer_vault_deposit(ctx, amount)
     }
 
-    /// Deposits tokens into the single redemption vault.
+    /// Withdraws tokens from the offer vault.
     ///
-    /// Delegates to `vault_operations::single_redemption_vault_deposit`.
-    /// Transfers tokens from boss's account to single redemption vault's token account for the specified mint.
-    /// Creates vault token account if it doesn't exist using init_if_needed.
-    /// Only the boss can call this instruction.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `SingleRedemptionVaultDeposit`.
-    /// - `amount`: Amount of tokens to deposit.
-    pub fn single_redemption_vault_deposit(
-        ctx: Context<SingleRedemptionVaultDeposit>,
-        amount: u64,
-    ) -> Result<()> {
-        vault_operations::single_redemption_vault_deposit(ctx, amount)
-    }
-
-    /// Deposits tokens into the dual redemption vault.
-    ///
-    /// Delegates to `vault_operations::dual_redemption_vault_deposit`.
-    /// Transfers tokens from boss's account to dual redemption vault's token account for the specified mint.
-    /// Creates vault token account if it doesn't exist using init_if_needed.
-    /// Only the boss can call this instruction.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `DualRedemptionVaultDeposit`.
-    /// - `amount`: Amount of tokens to deposit.
-    pub fn dual_redemption_vault_deposit(
-        ctx: Context<DualRedemptionVaultDeposit>,
-        amount: u64,
-    ) -> Result<()> {
-        vault_operations::dual_redemption_vault_deposit(ctx, amount)
-    }
-
-    /// Withdraws tokens from the buy offer vault.
-    ///
-    /// Delegates to `vault_operations::buy_offer_vault_withdraw`.
-    /// Transfers tokens from buy offer vault's token account to boss's account for the specified mint.
+    /// Delegates to `vault_operations::offer_vault_withdraw`.
+    /// Transfers tokens from offer vault's token account to boss's account for the specified mint.
     /// Creates boss token account if it doesn't exist using init_if_needed.
     /// Only the boss can call this instruction.
     ///
     /// # Arguments
-    /// - `ctx`: Context for `BuyOfferVaultWithdraw`.
+    /// - `ctx`: Context for `OfferVaultWithdraw`.
     /// - `amount`: Amount of tokens to withdraw.
-    pub fn buy_offer_vault_withdraw(
-        ctx: Context<BuyOfferVaultWithdraw>,
-        amount: u64,
-    ) -> Result<()> {
-        vault_operations::buy_offer_vault_withdraw(ctx, amount)
+    pub fn offer_vault_withdraw(ctx: Context<OfferVaultWithdraw>, amount: u64) -> Result<()> {
+        vault_operations::offer_vault_withdraw(ctx, amount)
     }
 
-    /// Withdraws tokens from the single redemption vault.
+    /// Creates an offer.
     ///
-    /// Delegates to `vault_operations::single_redemption_vault_withdraw`.
-    /// Transfers tokens from single redemption vault's token account to boss's account for the specified mint.
-    /// Creates boss token account if it doesn't exist using init_if_needed.
-    /// Only the boss can call this instruction.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `SingleRedemptionVaultWithdraw`.
-    /// - `amount`: Amount of tokens to withdraw.
-    pub fn single_redemption_vault_withdraw(
-        ctx: Context<SingleRedemptionVaultWithdraw>,
-        amount: u64,
-    ) -> Result<()> {
-        vault_operations::single_redemption_vault_withdraw(ctx, amount)
-    }
-
-    /// Withdraws tokens from the dual redemption vault.
-    ///
-    /// Delegates to `vault_operations::dual_redemption_vault_withdraw`.
-    /// Transfers tokens from dual redemption vault's token account to boss's account for the specified mint.
-    /// Creates boss token account if it doesn't exist using init_if_needed.
-    /// Only the boss can call this instruction.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `DualRedemptionVaultWithdraw`.
-    /// - `amount`: Amount of tokens to withdraw.
-    pub fn dual_redemption_vault_withdraw(
-        ctx: Context<DualRedemptionVaultWithdraw>,
-        amount: u64,
-    ) -> Result<()> {
-        vault_operations::dual_redemption_vault_withdraw(ctx, amount)
-    }
-
-    /// Creates a buy offer.
-    ///
-    /// Delegates to `buy_offer::make_buy_offer`.
+    /// Delegates to `offer::make_offer`.
     /// The price of the token_out changes over time based on `base_price`,
     /// `end_price`, and `price_fix_duration` within the offer's active time window.
-    /// Emits a `BuyOfferMade` event upon success.
+    /// Emits a `OfferMade` event upon success.
     ///
     /// # Arguments
-    /// - `ctx`: Context for `MakeBuyOffer`.
+    /// - `ctx`: Context for `MakeOffer`.
     /// - `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer.
-    pub fn make_buy_offer(ctx: Context<MakeBuyOffer>, fee_basis_points: u64) -> Result<()> {
-        buy_offer::make_buy_offer(ctx, fee_basis_points)
+    pub fn make_offer(ctx: Context<MakeOffer>, fee_basis_points: u64) -> Result<()> {
+        offer::make_offer(ctx, fee_basis_points)
     }
 
-    /// Creates a single redemption offer.
+    /// Closes a offer.
     ///
-    /// Delegates to `redemption_offer::make_single_redemption_offer`.
-    /// Creates an offer where users can exchange token_in for token_out at a fixed price.
-    /// Emits a `SingleRedemptionOfferMadeEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `MakeSingleRedemptionOffer`.
-    /// - `start_time`: Unix timestamp for when the offer becomes active.
-    /// - `end_time`: Unix timestamp for when the offer expires.
-    /// - `price`: How much token_in needed for 1 token_out, with 9 decimal precision.
-    /// - `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer.
-    pub fn make_single_redemption_offer(
-        ctx: Context<MakeSingleRedemptionOffer>,
-        start_time: u64,
-        end_time: u64,
-        price: u64,
-        fee_basis_points: u64,
-    ) -> Result<()> {
-        redemption_offer::make_single_redemption_offer(ctx, start_time, end_time, price, fee_basis_points)
-    }
-
-    /// Closes a single redemption offer.
-    ///
-    /// Delegates to `redemption_offer::close_single_redemption_offer`.
-    /// Removes the offer from the single redemption offers account and clears its data.
-    /// Emits a `CloseSingleRedemptionOfferEvent` upon success.
+    /// Delegates to `offer::close_offer`.
+    /// Removes the offer from the offers account and clears its data.
+    /// Emits a `CloseOfferEvent` upon success.
     ///
     /// # Arguments
-    /// - `ctx`: Context for `CloseSingleRedemptionOffer`.
+    /// - `ctx`: Context for `CloseOffer`.
     /// - `offer_id`: ID of the offer to close.
-    pub fn close_single_redemption_offer(
-        ctx: Context<CloseSingleRedemptionOffer>,
-        offer_id: u64,
-    ) -> Result<()> {
-        redemption_offer::close_single_redemption_offer(ctx, offer_id)
+    pub fn close_offer(ctx: Context<CloseOffer>, offer_id: u64) -> Result<()> {
+        offer::close_offer(ctx, offer_id)
     }
 
-    /// Updates the fee basis points for a single redemption offer.
+    /// Adds a time vector to an existing offer.
     ///
-    /// Delegates to `redemption_offer::update_single_redemption_offer_fee`.
-    /// Allows the boss to modify the fee charged when users take the single redemption offer.
-    /// Emits a `SingleRedemptionOfferFeeUpdatedEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `UpdateSingleRedemptionOfferFee`.
-    /// - `offer_id`: ID of the single redemption offer to update.
-    /// - `new_fee_basis_points`: New fee in basis points (0-10000).
-    pub fn update_single_redemption_offer_fee(
-        ctx: Context<UpdateSingleRedemptionOfferFee>,
-        offer_id: u64,
-        new_fee_basis_points: u64,
-    ) -> Result<()> {
-        redemption_offer::update_single_redemption_offer_fee(ctx, offer_id, new_fee_basis_points)
-    }
-
-    /// Updates the fee basis points for a dual redemption offer.
-    ///
-    /// Delegates to `redemption_offer::update_dual_redemption_offer_fee`.
-    /// Allows the boss to modify the fee charged when users take the dual redemption offer.
-    /// Emits a `DualRedemptionOfferFeeUpdatedEvent` upon success.
+    /// Delegates to `offer::add_offer_time_vector`.
+    /// Creates a new time vector with auto-generated vector_id for the specified offer.
+    /// Emits a `OfferVectorAdded` event upon success.
     ///
     /// # Arguments
-    /// - `ctx`: Context for `UpdateDualRedemptionOfferFee`.
-    /// - `offer_id`: ID of the dual redemption offer to update.
-    /// - `new_fee_basis_points`: New fee in basis points (0-10000).
-    pub fn update_dual_redemption_offer_fee(
-        ctx: Context<UpdateDualRedemptionOfferFee>,
-        offer_id: u64,
-        new_fee_basis_points: u64,
-    ) -> Result<()> {
-        redemption_offer::update_dual_redemption_offer_fee(ctx, offer_id, new_fee_basis_points)
-    }
-
-    /// Takes a single redemption offer.
-    ///
-    /// Delegates to `redemption_offer::take_single_redemption_offer`.
-    /// Allows a user to exchange token_in for token_out based on the offer's price.
-    /// Price is stored with token_in_decimals precision. Anyone can take the offer.
-    /// Emits a `TakeSingleRedemptionOfferEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `TakeSingleRedemptionOffer`.
-    /// - `offer_id`: ID of the offer to take.
-    /// - `token_in_amount`: Amount of token_in to provide.
-    pub fn take_single_redemption_offer(
-        ctx: Context<TakeSingleRedemptionOffer>,
-        offer_id: u64,
-        token_in_amount: u64,
-    ) -> Result<()> {
-        redemption_offer::take_single_redemption_offer(ctx, offer_id, token_in_amount)
-    }
-
-    /// Creates a dual redemption offer.
-    ///
-    /// Delegates to `redemption_offer::make_dual_redemption_offer`.
-    /// Creates an offer where users can exchange token_in for two different token_out at fixed prices.
-    /// The ratio_basis_points determines the split between the two output tokens.
-    /// Emits a `DualRedemptionOfferMadeEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `MakeDualRedemptionOffer`.
-    /// - `start_time`: Unix timestamp for when the offer becomes active.
-    /// - `end_time`: Unix timestamp for when the offer expires.
-    /// - `price_1`: Fixed price for token_out_1 with 9 decimal precision.
-    /// - `price_2`: Fixed price for token_out_2 with 9 decimal precision.
-    /// - `ratio_basis_points`: Ratio in basis points for token_out_1 (e.g., 8000 = 80% for token_out_1, 20% for token_out_2).
-    /// - `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer.
-    pub fn make_dual_redemption_offer(
-        ctx: Context<MakeDualRedemptionOffer>,
-        start_time: u64,
-        end_time: u64,
-        price_1: u64,
-        price_2: u64,
-        ratio_basis_points: u64,
-        fee_basis_points: u64,
-    ) -> Result<()> {
-        redemption_offer::make_dual_redemption_offer(
-            ctx,
-            start_time,
-            end_time,
-            price_1,
-            price_2,
-            ratio_basis_points,
-            fee_basis_points,
-        )
-    }
-
-    /// Closes a dual redemption offer.
-    ///
-    /// Delegates to `redemption_offer::close_dual_redemption_offer`.
-    /// Removes the offer from the dual redemption offers account and clears its data.
-    /// Only the boss can close dual redemption offers.
-    /// Emits a `CloseDualRedemptionOfferEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `CloseDualRedemptionOffer`.
-    /// - `offer_id`: ID of the offer to close.
-    pub fn close_dual_redemption_offer(
-        ctx: Context<CloseDualRedemptionOffer>,
-        offer_id: u64,
-    ) -> Result<()> {
-        redemption_offer::close_dual_redemption_offer(ctx, offer_id)
-    }
-
-    /// Takes a dual redemption offer.
-    ///
-    /// Delegates to `redemption_offer::take_dual_redemption_offer`.
-    /// Allows a user to exchange token_in for token_out_1 and token_out_2 based on the offer's prices and ratio.
-    /// The ratio_basis_points determines how the token_in amount is split between the two output tokens.
-    /// Anyone can take the offer as long as it's active and vault has sufficient balances.
-    /// Emits a `TakeDualRedemptionOfferEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `TakeDualRedemptionOffer`.
-    /// - `offer_id`: ID of the offer to take.
-    /// - `token_in_amount`: Amount of token_in to provide.
-    pub fn take_dual_redemption_offer(
-        ctx: Context<TakeDualRedemptionOffer>,
-        offer_id: u64,
-        token_in_amount: u64,
-    ) -> Result<()> {
-        redemption_offer::take_dual_redemption_offer(ctx, offer_id, token_in_amount)
-    }
-
-    /// Closes a buy offer.
-    ///
-    /// Delegates to `buy_offer::close_buy_offer`.
-    /// Removes the offer from the buy offers account and clears its data.
-    /// Emits a `CloseBuyOfferEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `CloseBuyOffer`.
-    /// - `offer_id`: ID of the offer to close.
-    pub fn close_buy_offer(ctx: Context<CloseBuyOffer>, offer_id: u64) -> Result<()> {
-        buy_offer::close_buy_offer(ctx, offer_id)
-    }
-
-    /// Adds a time vector to an existing buy offer.
-    ///
-    /// Delegates to `buy_offer::add_buy_offer_time_vector`.
-    /// Creates a new time vector with auto-generated vector_id for the specified buy offer.
-    /// Emits a `BuyOfferVectorAdded` event upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `AddBuyOfferVector`.
-    /// - `offer_id`: ID of the buy offer to add the vector to.
+    /// - `ctx`: Context for `AddOfferVector`.
+    /// - `offer_id`: ID of the offer to add the vector to.
     /// - `base_time`: Unix timestamp when the vector becomes active.
     /// - `base_price`: Price at the beginning of the vector.
-    /// - `apr`: Annual Percentage Rate (APR) (see BuyOfferVector::apr for details).
+    /// - `apr`: Annual Percentage Rate (APR) (see OfferVector::apr for details).
     /// - `price_fix_duration`: Duration in seconds for each price interval.
-    pub fn add_buy_offer_vector(
-        ctx: Context<AddBuyOfferVector>,
+    pub fn add_offer_vector(
+        ctx: Context<AddOfferVector>,
         offer_id: u64,
         base_time: u64,
         base_price: u64,
         apr: u64,
         price_fix_duration: u64,
     ) -> Result<()> {
-        buy_offer::add_buy_offer_vector(
+        offer::add_offer_vector(
             ctx,
             offer_id,
             base_time,
@@ -375,78 +139,74 @@ pub mod onreapp {
         )
     }
 
-    /// Deletes a time vector from a buy offer.
+    /// Deletes a time vector from an offer.
     ///
-    /// Delegates to `buy_offer::delete_buy_offer_vector`.
-    /// Removes the specified time vector from the buy offer by setting it to default values.
+    /// Delegates to `offer::delete_offer_vector`.
+    /// Removes the specified time vector from the offer by setting it to default values.
     /// Only the boss can delete time vectors from offers.
-    /// Emits a `BuyOfferVectorDeleted` event upon success.
+    /// Emits a `OfferVectorDeleted` event upon success.
     ///
     /// # Arguments
-    /// - `ctx`: Context for `DeleteBuyOfferVector`.
-    /// - `offer_id`: ID of the buy offer containing the vector to delete.
+    /// - `ctx`: Context for `DeleteOfferVector`.
+    /// - `offer_id`: ID of the offer containing the vector to delete.
     /// - `vector_id`: ID of the vector to delete.
-    pub fn delete_buy_offer_vector(
-        ctx: Context<DeleteBuyOfferVector>,
+    pub fn delete_offer_vector(
+        ctx: Context<DeleteOfferVector>,
         offer_id: u64,
         vector_id: u64,
     ) -> Result<()> {
-        buy_offer::delete_buy_offer_vector(ctx, offer_id, vector_id)
+        offer::delete_offer_vector(ctx, offer_id, vector_id)
     }
 
-    /// Updates the fee basis points for a buy offer.
+    /// Updates the fee basis points for an offer.
     ///
-    /// Delegates to `buy_offer::update_buy_offer_fee`.
-    /// Allows the boss to modify the fee charged when users take the buy offer.
-    /// Emits a `BuyOfferFeeUpdatedEvent` upon success.
+    /// Delegates to `offer::update_offer_fee`.
+    /// Allows the boss to modify the fee charged when users take the offer.
+    /// Emits a `OfferFeeUpdatedEvent` upon success.
     ///
     /// # Arguments
-    /// - `ctx`: Context for `UpdateBuyOfferFee`.
-    /// - `offer_id`: ID of the buy offer to update.
+    /// - `ctx`: Context for `UpdateOfferFee`.
+    /// - `offer_id`: ID of the offer to update.
     /// - `new_fee_basis_points`: New fee in basis points (0-10000).
-    pub fn update_buy_offer_fee(
-        ctx: Context<UpdateBuyOfferFee>,
+    pub fn update_offer_fee(
+        ctx: Context<UpdateOfferFee>,
         offer_id: u64,
         new_fee_basis_points: u64,
     ) -> Result<()> {
-        buy_offer::update_buy_offer_fee(ctx, offer_id, new_fee_basis_points)
+        offer::update_offer_fee(ctx, offer_id, new_fee_basis_points)
     }
 
-    /// Takes a buy offer.
+    /// Takes a offer.
     ///
-    /// Delegates to `buy_offer::take_buy_offer`.
+    /// Delegates to `offer::take_offer`.
     /// Allows a user to exchange token_in for token_out based on the offer's dynamic price.
-    /// Emits a `TakeBuyOfferEvent` upon success.
+    /// Emits a `TakeOfferEvent` upon success.
     ///
     /// # Arguments
-    /// - `ctx`: Context for `TakeBuyOffer`.
+    /// - `ctx`: Context for `TakeOffer`.
     /// - `offer_id`: ID of the offer to take.
     /// - `token_in_amount`: Amount of token_in to provide.
-    pub fn take_buy_offer(
-        ctx: Context<TakeBuyOffer>,
-        offer_id: u64,
-        token_in_amount: u64,
-    ) -> Result<()> {
-        buy_offer::take_buy_offer(ctx, offer_id, token_in_amount)
+    pub fn take_offer(ctx: Context<TakeOffer>, offer_id: u64, token_in_amount: u64) -> Result<()> {
+        offer::take_offer(ctx, offer_id, token_in_amount)
     }
 
-    /// Takes a buy offer using permissionless flow with intermediary accounts.
+    /// Takes a offer using permissionless flow with intermediary accounts.
     ///
-    /// Delegates to `buy_offer::take_buy_offer_permissionless`.
-    /// Similar to take_buy_offer but routes token transfers through intermediary accounts
+    /// Delegates to `offer::take_offer_permissionless`.
+    /// Similar to take_offer but routes token transfers through intermediary accounts
     /// owned by the program instead of direct user-to-boss and vault-to-user transfers.
-    /// Emits a `TakeBuyOfferPermissionlessEvent` upon success.
+    /// Emits a `TakeOfferPermissionlessEvent` upon success.
     ///
     /// # Arguments
-    /// - `ctx`: Context for `TakeBuyOfferPermissionless`.
+    /// - `ctx`: Context for `TakeOfferPermissionless`.
     /// - `offer_id`: ID of the offer to take.
     /// - `token_in_amount`: Amount of token_in to provide.
-    pub fn take_buy_offer_permissionless(
-        ctx: Context<TakeBuyOfferPermissionless>,
+    pub fn take_offer_permissionless(
+        ctx: Context<TakeOfferPermissionless>,
         offer_id: u64,
         token_in_amount: u64,
     ) -> Result<()> {
-        buy_offer::take_buy_offer_permissionless(ctx, offer_id, token_in_amount)
+        offer::take_offer_permissionless(ctx, offer_id, token_in_amount)
     }
 
     /// Initializes the program state.

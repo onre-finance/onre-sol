@@ -1,33 +1,33 @@
 use anchor_lang::prelude::*;
 
 const MAX_VECTORS: usize = 10;
-pub const MAX_BUY_OFFERS: usize = 10;
+pub const MAX_OFFERS: usize = 10;
 
-/// Buy offer struct for token exchange with dynamic pricing
+/// Offer struct for token exchange with dynamic pricing
 #[zero_copy]
 #[repr(C)]
 #[derive(Default)]
-pub struct BuyOffer {
+pub struct Offer {
     pub offer_id: u64,
     pub token_in_mint: Pubkey,
     pub token_out_mint: Pubkey,
-    pub vectors: [BuyOfferVector; MAX_VECTORS],
+    pub vectors: [OfferVector; MAX_VECTORS],
     pub counter: u64,
     pub fee_basis_points: u64,
 }
 
-/// Time vector for buy offers with pricing information
+/// Time vector for offers with pricing information
 #[zero_copy]
 #[repr(C)]
 #[derive(Default)]
-pub struct BuyOfferVector {
+pub struct OfferVector {
     pub vector_id: u64,
     pub start_time: u64,
     pub base_time: u64,
     pub base_price: u64,
     /// Annual Percentage Rate (APR)
     ///
-    /// APR represents the annualized rate of return for this buy offer.
+    /// APR represents the annualized rate of return for this offer.
     /// It is scaled by 1,000,000 for precision (6 decimal places).
     ///
     /// Examples:
@@ -41,10 +41,10 @@ pub struct BuyOfferVector {
     pub price_fix_duration: u64,
 }
 
-/// Account holding MAX_BUY_OFFERS BuyOffer instances
+/// Account holding MAX_OFFERS Offer instances
 #[account(zero_copy)]
 #[repr(C)]
-pub struct BuyOfferAccount {
-    pub offers: [BuyOffer; MAX_BUY_OFFERS],
+pub struct OfferAccount {
+    pub offers: [Offer; MAX_OFFERS],
     pub counter: u64,
 }
