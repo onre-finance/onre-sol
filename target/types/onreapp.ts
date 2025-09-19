@@ -508,6 +508,83 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "initializeKillSwitchState",
+      "docs": [
+        "Initializes the kill switch state.",
+        "",
+        "Delegates to `initialization::initialize_kill_switch_state` to set up the kill switch state account.",
+        "The kill switch is initialized in the disabled (false) state by default.",
+        "Only the boss can call this instruction to create the kill switch state account.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `InitializeKillSwitchState`."
+      ],
+      "discriminator": [
+        254,
+        35,
+        214,
+        241,
+        136,
+        217,
+        22,
+        155
+      ],
+      "accounts": [
+        {
+          "name": "killSwitchState",
+          "docs": [
+            "Program authority account to be initialized."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  105,
+                  108,
+                  108,
+                  95,
+                  115,
+                  119,
+                  105,
+                  116,
+                  99,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss paying for account creation and authorizing the initialization."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "initializeOffers",
       "docs": [
         "Initializes the offers account.",
@@ -742,6 +819,110 @@ export type Onreapp = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "killSwitch",
+      "docs": [
+        "Enables or disables the kill switch.",
+        "",
+        "Delegates to `kill_switch::kill_switch` to change the kill switch state.",
+        "When enabled (true), the kill switch can halt critical program operations.",
+        "When disabled (false), normal program operations can proceed.",
+        "",
+        "Access control:",
+        "- Both boss and admins can enable the kill switch",
+        "- Only the boss can disable the kill switch",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `KillSwitch`.",
+        "- `enable`: True to enable the kill switch, false to disable it."
+      ],
+      "discriminator": [
+        189,
+        76,
+        222,
+        157,
+        130,
+        131,
+        241,
+        144
+      ],
+      "accounts": [
+        {
+          "name": "killSwitchState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  105,
+                  108,
+                  108,
+                  95,
+                  115,
+                  119,
+                  105,
+                  116,
+                  99,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "adminState",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  100,
+                  109,
+                  105,
+                  110,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "signer",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "enable",
+          "type": "bool"
+        }
+      ]
     },
     {
       "name": "makeOffer",
@@ -2025,6 +2206,29 @@ export type Onreapp = {
           }
         },
         {
+          "name": "killSwitchState",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  105,
+                  108,
+                  108,
+                  95,
+                  115,
+                  119,
+                  105,
+                  116,
+                  99,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "user",
           "docs": [
             "The user taking the offer (must sign the transaction)"
@@ -2661,6 +2865,29 @@ export type Onreapp = {
           }
         },
         {
+          "name": "killSwitchState",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  105,
+                  108,
+                  108,
+                  95,
+                  115,
+                  119,
+                  105,
+                  116,
+                  99,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "user",
           "docs": [
             "The user taking the offer (must sign the transaction)"
@@ -2964,6 +3191,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "killSwitchState",
+      "discriminator": [
+        254,
+        243,
+        235,
+        232,
+        86,
+        55,
+        45,
+        62
+      ]
+    },
+    {
       "name": "offerAccount",
       "discriminator": [
         152,
@@ -3236,6 +3476,18 @@ export type Onreapp = {
           {
             "name": "boss",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "killSwitchState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "isKilled",
+            "type": "bool"
           }
         ]
       }
