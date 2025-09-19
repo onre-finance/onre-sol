@@ -1,6 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import { TestHelper } from "../test_helper";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { OnreProgram } from "../onre_program.ts";
 
 const MAX_BUY_OFFERS = 10;
@@ -132,5 +132,48 @@ describe("Make buy offer", () => {
             tokenOutMint,
             signer: testHelper.createUserAccount()
         })).rejects.toThrow("unknown signer");
+    });
+
+    test("Should accept Token2022 as token_in_mint", async () => {
+        // Create a Token2022 mint
+        const token2022Mint = testHelper.createMint2022(9);
+
+        // when
+        await program.makeBuyOffer({
+            tokenInMint: token2022Mint,
+            tokenOutMint,
+            tokenInProgram: TOKEN_2022_PROGRAM_ID
+        });
+
+        // then
+        const buyOfferAccount = await program.getBuyOfferAccount();
+
+        expect(buyOfferAccount.counter.toNumber()).toBe(1);
+
+        const firstOffer = buyOfferAccount.offers[0];
+        expect(firstOffer.offerId.toNumber()).toBe(1);
+        expect(firstOffer.tokenInMint.toString()).toBe(token2022Mint.toString());
+        expect(firstOffer.tokenOutMint.toString()).toBe(tokenOutMint.toString());
+    });
+
+    test("Should accept Token2022 as token_out_mint", async () => {
+        // Create a Token2022 mint
+        const token2022Mint = testHelper.createMint2022(9);
+
+        // when
+        await program.makeBuyOffer({
+            tokenInMint,
+            tokenOutMint: token2022Mint
+        });
+
+        // then
+        const buyOfferAccount = await program.getBuyOfferAccount();
+
+        expect(buyOfferAccount.counter.toNumber()).toBe(1);
+
+        const firstOffer = buyOfferAccount.offers[0];
+        expect(firstOffer.offerId.toNumber()).toBe(1);
+        expect(firstOffer.tokenInMint.toString()).toBe(tokenInMint.toString());
+        expect(firstOffer.tokenOutMint.toString()).toBe(token2022Mint.toString());
     });
 });

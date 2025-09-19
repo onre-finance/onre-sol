@@ -7,7 +7,7 @@ use crate::utils::{
 };
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 #[error_code]
 pub enum TakeDualRedemptionOfferErrorCode {
@@ -44,7 +44,6 @@ pub struct TakeDualRedemptionOfferEvent {
 /// This struct defines the accounts required for a user to take a dual redemption offer.
 /// The user provides token_in and receives token_out_1 and token_out_2 based on the offer's prices and ratio.
 #[derive(Accounts)]
-#[instruction(offer_id: u64)]
 pub struct TakeDualRedemptionOffer<'info> {
     /// The dual redemption offer account containing all offers.
     #[account(mut, seeds = [seeds::DUAL_REDEMPTION_OFFERS], bump)]
@@ -69,17 +68,20 @@ pub struct TakeDualRedemptionOffer<'info> {
     /// The token mint for token_in.
     /// Must be mutable to allow burning when program has mint authority
     #[account(mut)]
-    pub token_in_mint: Box<Account<'info, Mint>>,
+    pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub token_in_program: Interface<'info, TokenInterface>,
 
     /// The token mint for token_out_1.
     /// Must be mutable to allow minting when program has mint authority
     #[account(mut)]
-    pub token_out_mint_1: Box<Account<'info, Mint>>,
+    pub token_out_mint_1: Box<InterfaceAccount<'info, Mint>>,
+    pub token_out_program_1: Interface<'info, TokenInterface>,
 
     /// The token mint for token_out_2.
     /// Must be mutable to allow minting when program has mint authority
     #[account(mut)]
-    pub token_out_mint_2: Box<Account<'info, Mint>>,
+    pub token_out_mint_2: Box<InterfaceAccount<'info, Mint>>,
+    pub token_out_program_2: Interface<'info, TokenInterface>,
 
     /// User's token_in account (source of payment).
     #[account(
@@ -87,25 +89,27 @@ pub struct TakeDualRedemptionOffer<'info> {
         associated_token::mint = token_in_mint,
         associated_token::authority = user
     )]
-    pub user_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub user_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// User's token_out_1 account (destination of token_out_1).
     #[account(
         init_if_needed,
         payer = user,
         associated_token::mint = token_out_mint_1,
-        associated_token::authority = user
+        associated_token::authority = user,
+        associated_token::token_program = token_out_program_1
     )]
-    pub user_token_out_1_account: Box<Account<'info, TokenAccount>>,
+    pub user_token_out_1_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// User's token_out_2 account (destination of token_out_2).
     #[account(
         init_if_needed,
         payer = user,
         associated_token::mint = token_out_mint_2,
-        associated_token::authority = user
+        associated_token::authority = user,
+        associated_token::token_program = token_out_program_2
     )]
-    pub user_token_out_2_account: Box<Account<'info, TokenAccount>>,
+    pub user_token_out_2_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Optional mint authority PDA for direct burning (when program has mint authority)
     /// CHECK: PDA derivation is validated through seeds constraint
@@ -121,7 +125,7 @@ pub struct TakeDualRedemptionOffer<'info> {
         associated_token::mint = token_in_mint,
         associated_token::authority = boss
     )]
-    pub boss_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Optional vault token_in account (for burning when program has mint authority).
     #[account(
@@ -129,7 +133,7 @@ pub struct TakeDualRedemptionOffer<'info> {
         associated_token::mint = token_in_mint,
         associated_token::authority = vault_authority
     )]
-    pub vault_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub vault_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Vault's token_out_1 account (source of token_out_1 to give).
     #[account(
@@ -137,7 +141,7 @@ pub struct TakeDualRedemptionOffer<'info> {
         associated_token::mint = token_out_mint_1,
         associated_token::authority = vault_authority
     )]
-    pub vault_token_out_1_account: Box<Account<'info, TokenAccount>>,
+    pub vault_token_out_1_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Vault's token_out_2 account (source of token_out_2 to give).
     #[account(
@@ -145,14 +149,11 @@ pub struct TakeDualRedemptionOffer<'info> {
         associated_token::mint = token_out_mint_2,
         associated_token::authority = vault_authority
     )]
-    pub vault_token_out_2_account: Box<Account<'info, TokenAccount>>,
+    pub vault_token_out_2_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The user taking the offer.
     #[account(mut)]
     pub user: Signer<'info>,
-
-    /// SPL Token program.
-    pub token_program: Program<'info, Token>,
 
     /// Associated Token Program for automatic token account creation
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -369,7 +370,8 @@ fn execute_token_operations(
 
     // Transfer total token_in from user to boss/vault (includes fee)
     transfer_tokens(
-        &ctx.accounts.token_program,
+        &ctx.accounts.token_in_mint,
+        &ctx.accounts.token_in_program,
         &ctx.accounts.user_token_in_account,
         token_in_destination,
         &ctx.accounts.user,
@@ -380,7 +382,7 @@ fn execute_token_operations(
     // (Optional) Step 2: Burn token_in from vault if program has mint authority
     if controls_token_in_mint {
         burn_tokens(
-            &ctx.accounts.token_program,
+            &ctx.accounts.token_in_program,
             &ctx.accounts.token_in_mint,
             &ctx.accounts.vault_token_in_account,
             &ctx.accounts.vault_authority,
@@ -398,7 +400,7 @@ fn execute_token_operations(
         &ctx.accounts.mint_authority_pda,
     ) {
         mint_tokens(
-            &ctx.accounts.token_program,
+            &ctx.accounts.token_out_program_1,
             &ctx.accounts.token_out_mint_1,
             &ctx.accounts.user_token_out_1_account,
             &ctx.accounts.mint_authority_pda,
@@ -407,7 +409,8 @@ fn execute_token_operations(
         )?;
     } else {
         transfer_tokens(
-            &ctx.accounts.token_program,
+            &ctx.accounts.token_out_mint_1,
+            &ctx.accounts.token_out_program_1,
             &ctx.accounts.vault_token_out_1_account,
             &ctx.accounts.user_token_out_1_account,
             &ctx.accounts.vault_authority,
@@ -425,7 +428,7 @@ fn execute_token_operations(
         &ctx.accounts.mint_authority_pda,
     ) {
         mint_tokens(
-            &ctx.accounts.token_program,
+            &ctx.accounts.token_out_program_2,
             &ctx.accounts.token_out_mint_2,
             &ctx.accounts.user_token_out_2_account,
             &ctx.accounts.mint_authority_pda,
@@ -434,7 +437,8 @@ fn execute_token_operations(
         )?;
     } else {
         transfer_tokens(
-            &ctx.accounts.token_program,
+            &ctx.accounts.token_out_mint_2,
+            &ctx.accounts.token_out_program_2,
             &ctx.accounts.vault_token_out_2_account,
             &ctx.accounts.user_token_out_2_account,
             &ctx.accounts.vault_authority,

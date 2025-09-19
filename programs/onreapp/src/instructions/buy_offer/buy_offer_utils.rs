@@ -1,8 +1,7 @@
-use crate::constants::seeds;
 use crate::instructions::{BuyOffer, BuyOfferAccount, BuyOfferVector};
-use crate::utils::{calculate_fees, calculate_token_out_amount, transfer_tokens};
+use crate::utils::{calculate_fees, calculate_token_out_amount};
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token_interface::Mint;
 
 const SECONDS_IN_YEAR: u128 = 31_536_000;
 const APR_SCALE: u128 = 1_000_000;
@@ -51,8 +50,8 @@ pub fn process_buy_offer_core(
     offer_account: &BuyOfferAccount,
     offer_id: u64,
     token_in_amount: u64,
-    token_in_mint: &Account<Mint>,
-    token_out_mint: &Account<Mint>,
+    token_in_mint: &InterfaceAccount<Mint>,
+    token_out_mint: &InterfaceAccount<Mint>,
 ) -> Result<BuyOfferProcessResult> {
     let current_time = Clock::get()?.unix_timestamp as u64;
 
@@ -273,114 +272,4 @@ pub fn calculate_current_step_price(
 
     // Use the vector price calculation with the effective elapsed time
     calculate_vector_price(apr, base_price, step_end_time)
-}
-
-/// Execute direct token transfers: User → Boss, Vault → User
-pub fn execute_direct_transfers<'info>(
-    user: &Signer<'info>,
-    user_token_in_account: &Account<'info, TokenAccount>,
-    boss_token_in_account: &Account<'info, TokenAccount>,
-    vault_authority: &UncheckedAccount<'info>,
-    vault_token_out_account: &Account<'info, TokenAccount>,
-    user_token_out_account: &Account<'info, TokenAccount>,
-    token_program: &Program<'info, Token>,
-    vault_authority_bump: u8,
-    token_in_amount: u64,
-    token_out_amount: u64,
-) -> Result<()> {
-    // Transfer token_in from user to boss
-    transfer_tokens(
-        token_program,
-        user_token_in_account,
-        boss_token_in_account,
-        user,
-        None,
-        token_in_amount,
-    )?;
-
-    // Transfer token_out from vault to user using vault authority
-    let vault_authority_seeds = &[seeds::BUY_OFFER_VAULT_AUTHORITY, &[vault_authority_bump]];
-    let signer_seeds = &[vault_authority_seeds.as_slice()];
-
-    transfer_tokens(
-        token_program,
-        vault_token_out_account,
-        user_token_out_account,
-        vault_authority,
-        Some(signer_seeds),
-        token_out_amount,
-    )?;
-
-    Ok(())
-}
-
-/// Execute permissionless token transfers through intermediary accounts
-/// 1. User → Permissionless intermediary (token_in)
-/// 2. Permissionless intermediary → Boss (token_in)
-/// 3. Vault → Permissionless intermediary (token_out)
-/// 4. Permissionless intermediary → User (token_out)
-pub fn execute_permissionless_transfers<'info>(
-    user: &Signer<'info>,
-    user_token_in_account: &Account<'info, TokenAccount>,
-    boss_token_in_account: &Account<'info, TokenAccount>,
-    vault_authority: &UncheckedAccount<'info>,
-    vault_token_out_account: &Account<'info, TokenAccount>,
-    user_token_out_account: &Account<'info, TokenAccount>,
-    permissionless_authority: &UncheckedAccount<'info>,
-    permissionless_token_in_account: &Account<'info, TokenAccount>,
-    permissionless_token_out_account: &Account<'info, TokenAccount>,
-    token_program: &Program<'info, Token>,
-    vault_authority_bump: u8,
-    permissionless_authority_bump: u8,
-    token_in_amount: u64,
-    token_out_amount: u64,
-) -> Result<()> {
-    let permissionless_authority_seeds =
-        &[seeds::PERMISSIONLESS_1, &[permissionless_authority_bump]];
-    let permissionless_signer_seeds = &[permissionless_authority_seeds.as_slice()];
-
-    let vault_authority_seeds = &[seeds::BUY_OFFER_VAULT_AUTHORITY, &[vault_authority_bump]];
-    let vault_signer_seeds = &[vault_authority_seeds.as_slice()];
-
-    // 1. Transfer token_in from user to permissionless intermediary
-    transfer_tokens(
-        token_program,
-        user_token_in_account,
-        permissionless_token_in_account,
-        user,
-        None,
-        token_in_amount,
-    )?;
-
-    // 2. Transfer token_in from permissionless intermediary to boss
-    transfer_tokens(
-        token_program,
-        permissionless_token_in_account,
-        boss_token_in_account,
-        permissionless_authority,
-        Some(permissionless_signer_seeds),
-        token_in_amount,
-    )?;
-
-    // 3. Transfer token_out from vault to permissionless intermediary
-    transfer_tokens(
-        token_program,
-        vault_token_out_account,
-        permissionless_token_out_account,
-        vault_authority,
-        Some(vault_signer_seeds),
-        token_out_amount,
-    )?;
-
-    // 4. Transfer token_out from permissionless intermediary to user
-    transfer_tokens(
-        token_program,
-        permissionless_token_out_account,
-        user_token_out_account,
-        permissionless_authority,
-        Some(permissionless_signer_seeds),
-        token_out_amount,
-    )?;
-
-    Ok(())
 }

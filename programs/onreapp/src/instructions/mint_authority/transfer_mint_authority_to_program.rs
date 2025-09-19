@@ -2,7 +2,8 @@ use crate::constants::seeds;
 use crate::state::State;
 use anchor_lang::prelude::*;
 use anchor_spl::token::spl_token::instruction::AuthorityType;
-use anchor_spl::token::{set_authority, Mint, SetAuthority, Token};
+use anchor_spl::token::{set_authority, SetAuthority};
+use anchor_spl::token_interface::{Mint, TokenInterface};
 
 /// This module handles transferring mint authority from the boss account to a program-derived PDA.
 ///
@@ -61,7 +62,7 @@ pub struct TransferMintAuthorityToProgram<'info> {
         mut,
         constraint = mint.mint_authority.unwrap() == boss.key() @ TransferMintAuthorityToProgramErrorCode::BossNotMintAuthority
     )]
-    pub mint: Account<'info, Mint>,
+    pub mint: InterfaceAccount<'info, Mint>,
 
     /// Program-derived account that will become the new mint authority
     /// Derived from [MINT_AUTHORITY, mint_pubkey] to ensure uniqueness per token
@@ -73,7 +74,7 @@ pub struct TransferMintAuthorityToProgram<'info> {
     pub mint_authority_pda: UncheckedAccount<'info>,
 
     /// SPL Token program for mint authority operations
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 /// Transfers mint authority from the boss account to a program-derived PDA

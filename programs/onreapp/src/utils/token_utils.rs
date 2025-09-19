@@ -1,7 +1,10 @@
 use crate::constants::seeds;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program_option::COption;
-use anchor_spl::token::{self, Burn, Mint, MintTo, Token, TokenAccount, Transfer};
+use anchor_spl::token_interface;
+use anchor_spl::token_interface::{
+    BurnChecked, Mint, MintToChecked, TokenAccount, TokenInterface, TransferChecked,
+};
 
 pub const MAX_BASIS_POINTS: u64 = 10000;
 
@@ -21,27 +24,29 @@ pub enum TokenUtilsErrorCode {
 /// * `signer_seeds` - Optional PDA seeds for program-signed transfers (None for user-signed)
 /// * `amount` - Amount of tokens to transfer
 pub fn transfer_tokens<'info>(
-    token_program: &Program<'info, Token>,
-    from_account: &Account<'info, TokenAccount>,
-    to_account: &Account<'info, TokenAccount>,
+    mint: &InterfaceAccount<'info, Mint>,
+    token_program: &Interface<'info, TokenInterface>,
+    from_account: &InterfaceAccount<'info, TokenAccount>,
+    to_account: &InterfaceAccount<'info, TokenAccount>,
     authority: &AccountInfo<'info>,
     signer_seeds: Option<&[&[&[u8]]]>,
     amount: u64,
 ) -> Result<()> {
-    let transfer_accounts = Transfer {
+    let transfer_accounts = TransferChecked {
+        mint: mint.to_account_info(),
         from: from_account.to_account_info(),
         to: to_account.to_account_info(),
         authority: authority.to_account_info(),
     };
 
-    let transfer_ctx = match signer_seeds {
+    let cpi_context = match signer_seeds {
         Some(seeds) => {
             CpiContext::new_with_signer(token_program.to_account_info(), transfer_accounts, seeds)
         }
         None => CpiContext::new(token_program.to_account_info(), transfer_accounts),
     };
 
-    token::transfer(transfer_ctx, amount)
+    token_interface::transfer_checked(cpi_context, amount, mint.decimals)
 }
 
 /// Calculates token_out_amount based on token_in_amount, price, and decimals.
@@ -131,14 +136,14 @@ pub fn calculate_fees(token_in_amount: u64, fee_basis_points: u64) -> Result<Cal
 /// * `signer_seeds` - PDA seeds for program-signed minting
 /// * `amount` - Amount of tokens to mint
 pub fn mint_tokens<'info>(
-    token_program: &Program<'info, Token>,
-    mint: &Account<'info, Mint>,
-    to_account: &Account<'info, TokenAccount>,
+    token_program: &Interface<'info, TokenInterface>,
+    mint: &InterfaceAccount<'info, Mint>,
+    to_account: &InterfaceAccount<'info, TokenAccount>,
     authority: &AccountInfo<'info>,
     signer_seeds: &[&[&[u8]]],
     amount: u64,
 ) -> Result<()> {
-    let mint_accounts = MintTo {
+    let mint_accounts = MintToChecked {
         mint: mint.to_account_info(),
         to: to_account.to_account_info(),
         authority: authority.to_account_info(),
@@ -147,7 +152,7 @@ pub fn mint_tokens<'info>(
     let mint_ctx =
         CpiContext::new_with_signer(token_program.to_account_info(), mint_accounts, signer_seeds);
 
-    token::mint_to(mint_ctx, amount)
+    token_interface::mint_to_checked(mint_ctx, amount, mint.decimals)
 }
 
 /// Burns tokens from a user account using user authority
@@ -160,43 +165,44 @@ pub fn mint_tokens<'info>(
 /// * `signer_seeds` - Optional PDA seeds for program-signed burning (None for user-signed)
 /// * `amount` - Amount of tokens to burn
 pub fn burn_tokens<'info>(
-    token_program: &Program<'info, Token>,
-    mint: &Account<'info, Mint>,
-    from_account: &Account<'info, TokenAccount>,
+    token_program: &Interface<'info, TokenInterface>,
+    mint: &InterfaceAccount<'info, Mint>,
+    from_account: &InterfaceAccount<'info, TokenAccount>,
     authority: &AccountInfo<'info>,
     signer_seeds: &[&[&[u8]]],
     amount: u64,
 ) -> Result<()> {
-    let burn_accounts = Burn {
+    let burn_accounts = BurnChecked {
         mint: mint.to_account_info(),
         from: from_account.to_account_info(),
         authority: authority.to_account_info(),
     };
 
-    let burn_ctx =
+    let cpi_context =
         CpiContext::new_with_signer(token_program.to_account_info(), burn_accounts, signer_seeds);
 
-    token::burn(burn_ctx, amount)
+    token_interface::burn_checked(cpi_context, amount, mint.decimals)
 }
 
 pub struct ExecTokenOpsParams<'a, 'info> {
-    pub token_program: &'a Program<'info, Token>,
+    pub token_in_program: &'a Interface<'info, TokenInterface>,
+    pub token_out_program: &'a Interface<'info, TokenInterface>,
     // Token in params
-    pub token_in_mint: &'a Account<'info, Mint>,
+    pub token_in_mint: &'a InterfaceAccount<'info, Mint>,
     pub token_in_amount: u64,
     pub token_in_authority: &'a AccountInfo<'info>,
     pub token_in_source_signer_seeds: Option<&'a [&'a [&'a [u8]]]>,
     pub vault_authority_signer_seeds: Option<&'a [&'a [&'a [u8]]]>,
-    pub token_in_source_account: &'a Account<'info, TokenAccount>,
-    pub token_in_destination_account: &'a Account<'info, TokenAccount>,
-    pub token_in_burn_account: &'a Account<'info, TokenAccount>,
+    pub token_in_source_account: &'a InterfaceAccount<'info, TokenAccount>,
+    pub token_in_destination_account: &'a InterfaceAccount<'info, TokenAccount>,
+    pub token_in_burn_account: &'a InterfaceAccount<'info, TokenAccount>,
     pub token_in_burn_authority: &'a AccountInfo<'info>,
     // Token out params
-    pub token_out_mint: &'a Account<'info, Mint>,
+    pub token_out_mint: &'a InterfaceAccount<'info, Mint>,
     pub token_out_amount: u64,
     pub token_out_authority: &'a UncheckedAccount<'info>,
-    pub token_out_source_account: &'a Account<'info, TokenAccount>,
-    pub token_out_destination_account: &'a Account<'info, TokenAccount>,
+    pub token_out_source_account: &'a InterfaceAccount<'info, TokenAccount>,
+    pub token_out_destination_account: &'a InterfaceAccount<'info, TokenAccount>,
     pub mint_authority_pda: &'a AccountInfo<'info>,
     pub mint_authority_bump: &'a [u8],
 }
@@ -221,7 +227,8 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
     };
 
     transfer_tokens(
-        params.token_program,
+        params.token_in_mint,
+        params.token_in_program,
         params.token_in_source_account,
         token_in_destination,
         params.token_in_authority,
@@ -231,7 +238,7 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
 
     if controls_token_in_mint {
         burn_tokens(
-            params.token_program,
+            params.token_in_program,
             params.token_in_mint,
             params.token_in_burn_account,
             params.token_in_burn_authority,
@@ -246,7 +253,7 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
         let mint_authority_signer_seeds = &[mint_authority_seeds.as_slice()];
 
         mint_tokens(
-            params.token_program,
+            params.token_out_program,
             params.token_out_mint,
             params.token_out_destination_account,
             params.mint_authority_pda,
@@ -255,7 +262,8 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
         )?;
     } else {
         transfer_tokens(
-            params.token_program,
+            params.token_out_mint,
+            params.token_out_program,
             params.token_out_source_account,
             params.token_out_destination_account,
             params.token_out_authority,
@@ -269,7 +277,7 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
 
 /// Returns true iff `mint.mint_authority == Some(mint_authority_pda.key())`.
 pub fn program_controls_mint<'info>(
-    mint: &Account<'info, Mint>,
+    mint: &InterfaceAccount<'info, Mint>,
     mint_authority_pda: &AccountInfo<'info>,
 ) -> bool {
     matches!(mint.mint_authority, COption::Some(pk) if pk == mint_authority_pda.key())

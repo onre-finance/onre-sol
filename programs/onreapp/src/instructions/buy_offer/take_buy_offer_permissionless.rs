@@ -6,7 +6,7 @@ use crate::utils::{execute_token_operations, transfer_tokens, u64_to_dec9, ExecT
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 /// Error codes specific to the take_buy_offer_permissionless instruction
 #[error_code]
@@ -58,17 +58,19 @@ pub struct TakeBuyOfferPermissionless<'info> {
     #[account(
         mut,
         associated_token::mint = token_in_mint,
-        associated_token::authority = vault_authority
+        associated_token::authority = vault_authority,
+        associated_token::token_program = token_in_program
     )]
-    pub vault_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub vault_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Vault's token_out account (source of tokens to distribute, when program doesn't have mint authority)
     #[account(
         mut,
         associated_token::mint = token_out_mint,
-        associated_token::authority = vault_authority
+        associated_token::authority = vault_authority,
+        associated_token::token_program = token_out_program
     )]
-    pub vault_token_out_account: Box<Account<'info, TokenAccount>>,
+    pub vault_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The permissionless authority PDA that controls intermediary token accounts
     #[account(seeds = [seeds::PERMISSIONLESS_1], bump)]
@@ -79,52 +81,59 @@ pub struct TakeBuyOfferPermissionless<'info> {
     #[account(
         mut,
         associated_token::mint = token_in_mint,
-        associated_token::authority = permissionless_authority
+        associated_token::authority = permissionless_authority,
+        associated_token::token_program = token_in_program
     )]
-    pub permissionless_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub permissionless_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Permissionless intermediary token_out account (temporary holding for token_out)
     #[account(
         mut,
         associated_token::mint = token_out_mint,
-        associated_token::authority = permissionless_authority
+        associated_token::authority = permissionless_authority,
+        associated_token::token_program = token_out_program
     )]
-    pub permissionless_token_out_account: Box<Account<'info, TokenAccount>>,
+    pub permissionless_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The mint account for the input token (what user pays)
     /// Must be mutable to allow burning when program has mint authority
     #[account(mut)]
-    pub token_in_mint: Box<Account<'info, Mint>>,
+    pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub token_in_program: Interface<'info, TokenInterface>,
 
     /// The mint account for the output token (what user receives)
     /// Must be mutable to allow minting when program has mint authority
     #[account(mut)]
-    pub token_out_mint: Box<Account<'info, Mint>>,
+    pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub token_out_program: Interface<'info, TokenInterface>,
 
     /// User's token_in account (source of payment)
     #[account(
         mut,
         associated_token::mint = token_in_mint,
-        associated_token::authority = user
+        associated_token::authority = user,
+        associated_token::token_program = token_in_program
     )]
-    pub user_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub user_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// User's token_out account (destination of received tokens)
     #[account(
         init_if_needed,
         payer = user,
         associated_token::mint = token_out_mint,
-        associated_token::authority = user
+        associated_token::authority = user,
+        associated_token::token_program = token_out_program
     )]
-    pub user_token_out_account: Box<Account<'info, TokenAccount>>,
+    pub user_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Boss's token_in account (final destination of user's payment)
     #[account(
         mut,
         associated_token::mint = token_in_mint,
-        associated_token::authority = boss
+        associated_token::authority = boss,
+        associated_token::token_program = token_in_program
     )]
-    pub boss_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Mint authority PDA for direct minting (when program has mint authority)
     /// CHECK: PDA derivation is validated through seeds constraint
@@ -137,9 +146,6 @@ pub struct TakeBuyOfferPermissionless<'info> {
     /// The user taking the offer (must sign the transaction)
     #[account(mut)]
     pub user: Signer<'info>,
-
-    /// SPL Token program for token transfers
-    pub token_program: Program<'info, Token>,
 
     /// Associated Token Program for automatic token account creation
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -201,7 +207,8 @@ pub fn take_buy_offer_permissionless(
 
     // 1. Transfer token_in from user to permissionless intermediary
     transfer_tokens(
-        &ctx.accounts.token_program,
+        &ctx.accounts.token_in_mint,
+        &ctx.accounts.token_in_program,
         &ctx.accounts.user_token_in_account,
         &ctx.accounts.permissionless_token_in_account,
         &ctx.accounts.user,
@@ -212,8 +219,8 @@ pub fn take_buy_offer_permissionless(
 
     // 2. Execute token operations (transfer + burn for token_in, transfer for token_out)
     execute_token_operations(ExecTokenOpsParams {
-        token_program: &ctx.accounts.token_program,
         // Token in params
+        token_in_program: &ctx.accounts.token_in_program,
         token_in_mint: &ctx.accounts.token_in_mint,
         token_in_amount, // Including fee
         token_in_authority: &ctx.accounts.permissionless_authority,
@@ -230,6 +237,7 @@ pub fn take_buy_offer_permissionless(
         token_in_burn_account: &ctx.accounts.vault_token_in_account,
         token_in_burn_authority: &ctx.accounts.vault_authority,
         // Token out params
+        token_out_program: &ctx.accounts.token_out_program,
         token_out_mint: &ctx.accounts.token_out_mint,
         token_out_amount: result.token_out_amount,
         token_out_authority: &ctx.accounts.vault_authority,
@@ -240,7 +248,8 @@ pub fn take_buy_offer_permissionless(
     })?;
 
     transfer_tokens(
-        &ctx.accounts.token_program,
+        &ctx.accounts.token_out_mint,
+        &ctx.accounts.token_out_program,
         &ctx.accounts.permissionless_token_out_account,
         &ctx.accounts.user_token_out_account,
         &ctx.accounts.permissionless_authority,

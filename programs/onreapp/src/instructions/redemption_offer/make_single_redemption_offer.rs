@@ -4,7 +4,7 @@ use crate::state::State;
 use crate::utils::MAX_BASIS_POINTS;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 /// Event emitted when a single redemption offer is created.
 #[event]
@@ -36,7 +36,8 @@ pub struct MakeSingleRedemptionOffer<'info> {
     pub vault_authority: UncheckedAccount<'info>,
 
     /// Mint of the token_in for the offer.
-    pub token_in_mint: Box<Account<'info, Mint>>,
+    pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub token_in_program: Interface<'info, TokenInterface>,
 
     /// Vault token_in account, used to transfer tokens to a program owned account for burning
     /// when program has mint authority.
@@ -44,12 +45,13 @@ pub struct MakeSingleRedemptionOffer<'info> {
         init_if_needed,
         payer = boss,
         associated_token::mint = token_in_mint,
-        associated_token::authority = vault_authority
+        associated_token::authority = vault_authority,
+        associated_token::token_program = token_in_program
     )]
-    pub vault_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub vault_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Mint of the token_out for the offer.
-    pub token_out_mint: Box<Account<'info, Mint>>,
+    pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
 
     /// Program state, ensures `boss` is authorized.
     #[account(has_one = boss)]
@@ -58,9 +60,6 @@ pub struct MakeSingleRedemptionOffer<'info> {
     /// The signer funding and authorizing the offer creation.
     #[account(mut)]
     pub boss: Signer<'info>,
-
-    /// SPL Token program for token transfers
-    pub token_program: Program<'info, Token>,
 
     /// Associated Token Program for automatic token account creation
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -147,4 +146,6 @@ pub enum SingleRedemptionOfferErrorCode {
     /// Triggered when fee_basis_points is greater than 10000.
     #[msg("Invalid fee: fee_basis_points must be <= 10000")]
     InvalidFee,
+    #[msg("Invalid token program")]
+    InvalidTokenProgram,
 }

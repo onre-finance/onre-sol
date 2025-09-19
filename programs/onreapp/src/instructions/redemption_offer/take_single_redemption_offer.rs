@@ -6,7 +6,7 @@ use crate::utils::{
 };
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 #[error_code]
 pub enum TakeSingleRedemptionOfferErrorCode {
@@ -64,12 +64,14 @@ pub struct TakeSingleRedemptionOffer<'info> {
     /// The token mint for token_in.
     /// Must be mutable to allow burning when program has mint authority
     #[account(mut)]
-    pub token_in_mint: Box<Account<'info, Mint>>,
+    pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub token_in_program: Interface<'info, TokenInterface>,
 
     /// The token mint for token_out.
     /// Must be mutable to allow minting when program has mint authority
     #[account(mut)]
-    pub token_out_mint: Box<Account<'info, Mint>>,
+    pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub token_out_program: Interface<'info, TokenInterface>,
 
     /// User's token_in account (source of payment).
     #[account(
@@ -77,16 +79,17 @@ pub struct TakeSingleRedemptionOffer<'info> {
         associated_token::mint = token_in_mint,
         associated_token::authority = user
     )]
-    pub user_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub user_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// User's token_out account (destination of tokens).
     #[account(
         init_if_needed,
         payer = user,
         associated_token::mint = token_out_mint,
-        associated_token::authority = user
+        associated_token::authority = user,
+        associated_token::token_program = token_out_program
     )]
-    pub user_token_out_account: Box<Account<'info, TokenAccount>>,
+    pub user_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Optional mint authority PDA for direct burning (when program has mint authority)
     /// CHECK: PDA derivation is validated through seeds constraint
@@ -102,7 +105,7 @@ pub struct TakeSingleRedemptionOffer<'info> {
         associated_token::mint = token_in_mint,
         associated_token::authority = boss
     )]
-    pub boss_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Optional vault token_in account (for burning when program has mint authority).
     #[account(
@@ -110,7 +113,7 @@ pub struct TakeSingleRedemptionOffer<'info> {
         associated_token::mint = token_in_mint,
         associated_token::authority = vault_authority
     )]
-    pub vault_token_in_account: Box<Account<'info, TokenAccount>>,
+    pub vault_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Vault's token_out account (source of tokens to give).
     #[account(
@@ -118,14 +121,11 @@ pub struct TakeSingleRedemptionOffer<'info> {
         associated_token::mint = token_out_mint,
         associated_token::authority = vault_authority
     )]
-    pub vault_token_out_account: Box<Account<'info, TokenAccount>>,
+    pub vault_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The user taking the offer.
     #[account(mut)]
     pub user: Signer<'info>,
-
-    /// SPL Token program.
-    pub token_program: Program<'info, Token>,
 
     /// Associated Token Program for automatic token account creation
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -174,8 +174,8 @@ pub fn take_single_redemption_offer(
 
     // Execute token operations (transfer + burn for token_in, transfer for token_out)
     execute_token_operations(ExecTokenOpsParams {
-        token_program: &ctx.accounts.token_program,
         // Token in params
+        token_in_program: &ctx.accounts.token_in_program,
         token_in_mint: &ctx.accounts.token_in_mint,
         token_in_amount, // Includes fee
         token_in_authority: &ctx.accounts.user,
@@ -189,6 +189,7 @@ pub fn take_single_redemption_offer(
         token_in_burn_account: &ctx.accounts.vault_token_in_account,
         token_in_burn_authority: &ctx.accounts.vault_authority,
         // Token out params
+        token_out_program: &ctx.accounts.token_out_program,
         token_out_mint: &ctx.accounts.token_out_mint,
         token_out_amount,
         token_out_authority: &ctx.accounts.vault_authority,

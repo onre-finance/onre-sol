@@ -6,6 +6,7 @@ import {
     getAssociatedTokenAddressSync,
     MINT_SIZE,
     MintLayout,
+    TOKEN_2022_PROGRAM_ID,
     TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
 import idl from "../target/idl/onreapp.json";
@@ -47,7 +48,11 @@ export class TestHelper {
         return user;
     }
 
-    createMint(decimals: number, mintAuthority: PublicKey = null, freezeAuthority: PublicKey = mintAuthority): PublicKey {
+    createMint2022(decimals: number, mintAuthority: PublicKey = null, freezeAuthority: PublicKey = mintAuthority): PublicKey {
+        return this.createMint(decimals, mintAuthority, freezeAuthority, TOKEN_2022_PROGRAM_ID);
+    }
+
+    createMint(decimals: number, mintAuthority: PublicKey = null, freezeAuthority: PublicKey = mintAuthority, owner: PublicKey = TOKEN_PROGRAM_ID): PublicKey {
         if (!mintAuthority) {
             mintAuthority = this.getBoss();
             freezeAuthority = this.getBoss();
@@ -68,13 +73,13 @@ export class TestHelper {
             executable: false,
             data: mintData,
             lamports: INITIAL_LAMPORTS,
-            owner: TOKEN_PROGRAM_ID
+            owner
         });
 
         return mintAddress;
     };
 
-    createTokenAccount(mint: PublicKey, owner: PublicKey, amount: bigint, allowOwnerOffCurve: boolean = false): PublicKey {
+    createTokenAccount(mint: PublicKey, owner: PublicKey, amount: bigint, allowOwnerOffCurve: boolean = false, programId: PublicKey = TOKEN_PROGRAM_ID): PublicKey {
         const tokenAccountData = Buffer.alloc(ACCOUNT_SIZE);
         AccountLayout.encode({
             mint: mint,
@@ -90,20 +95,16 @@ export class TestHelper {
             closeAuthority: PublicKey.default
         }, tokenAccountData);
 
-        const tokenAccountAddress = getAssociatedTokenAddressSync(mint, owner, allowOwnerOffCurve);
+        const tokenAccountAddress = getAssociatedTokenAddressSync(mint, owner, allowOwnerOffCurve, programId);
 
         this.context.setAccount(tokenAccountAddress, {
             executable: false,
             data: tokenAccountData,
             lamports: INITIAL_LAMPORTS,
-            owner: TOKEN_PROGRAM_ID
+            owner: programId
         });
 
         return tokenAccountAddress;
-    }
-
-    getAssociatedTokenAccount(mint: PublicKey, owner: PublicKey): PublicKey {
-        return getAssociatedTokenAddressSync(mint, owner);
     }
 
     async getTokenAccountBalance(tokenAccount: PublicKey): Promise<bigint> {

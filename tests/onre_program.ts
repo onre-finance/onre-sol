@@ -6,6 +6,7 @@ import idl from "../target/idl/onreapp.json";
 import { BankrunProvider } from "anchor-bankrun";
 import { ProgramTestContext } from "solana-bankrun";
 import { PROGRAM_ID } from "../scripts/script-commons.ts";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 export class OnreProgram {
     program: Program<Onreapp>;
@@ -64,12 +65,14 @@ export class OnreProgram {
         tokenOutMint: PublicKey;
         feeBasisPoints?: number;
         signer?: Keypair;
+        tokenInProgram?: PublicKey;
     }) {
         const feeBasisPoints = params.feeBasisPoints ?? 0;
         const tx = this.program.methods
             .makeBuyOffer(new BN(feeBasisPoints))
             .accounts({
                 tokenInMint: params.tokenInMint,
+                tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
                 tokenOutMint: params.tokenOutMint,
                 state: this.statePda
             });
@@ -156,7 +159,9 @@ export class OnreProgram {
         tokenInMint: PublicKey,
         tokenOutMint: PublicKey,
         user: PublicKey,
-        signer?: Keypair
+        signer?: Keypair,
+        tokenInProgram?: PublicKey,
+        tokenOutProgram?: PublicKey
     }) {
         const tx = this.program.methods
             .takeBuyOffer(new BN(params.offerId), new BN(params.tokenInAmount))
@@ -165,7 +170,9 @@ export class OnreProgram {
                 boss: this.program.provider.publicKey,
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
-                user: params.user
+                user: params.user,
+                tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
+                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID
             });
 
         if (params.signer) {
@@ -181,7 +188,9 @@ export class OnreProgram {
         tokenInMint: PublicKey,
         tokenOutMint: PublicKey,
         user: PublicKey,
-        signer?: Keypair
+        signer?: Keypair,
+        tokenInProgram?: PublicKey,
+        tokenOutProgram?: PublicKey
     }) {
         const tx = this.program.methods
             .takeBuyOfferPermissionless(new BN(params.offerId), new BN(params.tokenInAmount))
@@ -189,7 +198,9 @@ export class OnreProgram {
                 state: this.statePda,
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
-                user: params.user
+                user: params.user,
+                tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
+                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID
             });
 
         if (params.signer) {
@@ -208,12 +219,18 @@ export class OnreProgram {
             .rpc();
     }
 
-    async buyOfferVaultDeposit(params: { amount: number, tokenMint: PublicKey, signer?: Keypair }) {
+    async buyOfferVaultDeposit(params: {
+        amount: number,
+        tokenMint: PublicKey,
+        signer?: Keypair,
+        tokenProgram?: PublicKey
+    }) {
         const tx = this.program.methods
             .buyOfferVaultDeposit(new BN(params.amount))
             .accounts({
                 state: this.statePda,
-                tokenMint: params.tokenMint
+                tokenMint: params.tokenMint,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
 
         if (params.signer) {
@@ -223,12 +240,18 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async singleRedemptionVaultDeposit(params: { amount: number, tokenMint: PublicKey, signer?: Keypair }) {
+    async singleRedemptionVaultDeposit(params: {
+        amount: number,
+        tokenMint: PublicKey,
+        signer?: Keypair,
+        tokenProgram?: PublicKey
+    }) {
         const tx = this.program.methods
             .singleRedemptionVaultDeposit(new BN(params.amount))
             .accounts({
                 state: this.statePda,
-                tokenMint: params.tokenMint
+                tokenMint: params.tokenMint,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
 
         if (params.signer) {
@@ -238,12 +261,18 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async dualRedemptionVaultDeposit(params: { amount: number, tokenMint: PublicKey, signer?: Keypair }) {
+    async dualRedemptionVaultDeposit(params: {
+        amount: number,
+        tokenMint: PublicKey,
+        signer?: Keypair,
+        tokenProgram?: PublicKey
+    }) {
         const tx = this.program.methods
             .dualRedemptionVaultDeposit(new BN(params.amount))
             .accounts({
                 state: this.statePda,
-                tokenMint: params.tokenMint
+                tokenMint: params.tokenMint,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
 
         if (params.signer) {
@@ -253,12 +282,18 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async buyOfferVaultWithdraw(params: { amount: number, tokenMint: PublicKey, signer?: Keypair }) {
+    async buyOfferVaultWithdraw(params: {
+        amount: number,
+        tokenMint: PublicKey,
+        signer?: Keypair,
+        tokenProgram?: PublicKey
+    }) {
         const tx = this.program.methods
             .buyOfferVaultWithdraw(new BN(params.amount))
             .accounts({
                 state: this.statePda,
-                tokenMint: params.tokenMint
+                tokenMint: params.tokenMint,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
 
         if (params.signer) {
@@ -268,12 +303,18 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async singleRedemptionVaultWithdraw(params: { amount: number, tokenMint: PublicKey, signer?: Keypair }) {
+    async singleRedemptionVaultWithdraw(params: {
+        amount: number,
+        tokenMint: PublicKey,
+        signer?: Keypair,
+        tokenProgram?: PublicKey
+    }) {
         const tx = this.program.methods
             .singleRedemptionVaultWithdraw(new BN(params.amount))
             .accounts({
                 state: this.statePda,
-                tokenMint: params.tokenMint
+                tokenMint: params.tokenMint,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
 
         if (params.signer) {
@@ -283,12 +324,18 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async dualRedemptionVaultWithdraw(params: { amount: number, tokenMint: PublicKey, signer?: Keypair }) {
+    async dualRedemptionVaultWithdraw(params: {
+        amount: number,
+        tokenMint: PublicKey,
+        signer?: Keypair,
+        tokenProgram?: PublicKey
+    }) {
         const tx = this.program.methods
             .dualRedemptionVaultWithdraw(new BN(params.amount))
             .accounts({
                 state: this.statePda,
-                tokenMint: params.tokenMint
+                tokenMint: params.tokenMint,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
 
         if (params.signer) {
@@ -307,12 +354,13 @@ export class OnreProgram {
             .rpc();
     }
 
-    async transferMintAuthorityToProgram(params: { mint: PublicKey, signer?: Keypair }) {
+    async transferMintAuthorityToProgram(params: { mint: PublicKey, signer?: Keypair, tokenProgram?: PublicKey }) {
         const tx = this.program.methods
             .transferMintAuthorityToProgram()
             .accounts({
                 state: this.statePda,
-                mint: params.mint
+                mint: params.mint,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
 
         if (params.signer) {
@@ -322,12 +370,13 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async transferMintAuthorityToBoss(params: { mint: PublicKey, signer?: Keypair }) {
+    async transferMintAuthorityToBoss(params: { mint: PublicKey, signer?: Keypair, tokenProgram?: PublicKey }) {
         const tx = this.program.methods
             .transferMintAuthorityToBoss()
             .accounts({
                 state: this.statePda,
-                mint: params.mint
+                mint: params.mint,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
 
         if (params.signer) {
@@ -381,6 +430,7 @@ export class OnreProgram {
         tokenOutMint1: PublicKey;
         tokenOutMint2: PublicKey;
         signer?: Keypair;
+        tokenInProgram?: PublicKey;
     }) {
         const feeBasisPoints = params.feeBasisPoints ?? 0;
         const tx = this.program.methods
@@ -396,7 +446,8 @@ export class OnreProgram {
                 tokenInMint: params.tokenInMint,
                 tokenOutMint1: params.tokenOutMint1,
                 tokenOutMint2: params.tokenOutMint2,
-                state: this.statePda
+                state: this.statePda,
+                tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID
             });
 
         if (params.signer) {
@@ -442,6 +493,9 @@ export class OnreProgram {
         tokenOutMint2: PublicKey;
         user: PublicKey;
         signer?: Keypair;
+        tokenInProgram?: PublicKey;
+        tokenOutProgram1?: PublicKey;
+        tokenOutProgram2?: PublicKey;
     }) {
         const tx = this.program.methods
             .takeDualRedemptionOffer(new BN(params.offerId), new BN(params.tokenInAmount))
@@ -451,6 +505,9 @@ export class OnreProgram {
                 tokenInMint: params.tokenInMint,
                 tokenOutMint1: params.tokenOutMint1,
                 tokenOutMint2: params.tokenOutMint2,
+                tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
+                tokenOutProgram1: params.tokenOutProgram1 ?? TOKEN_PROGRAM_ID,
+                tokenOutProgram2: params.tokenOutProgram2 ?? TOKEN_PROGRAM_ID,
                 user: params.user
             });
 
@@ -494,6 +551,7 @@ export class OnreProgram {
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
         signer?: Keypair;
+        tokenInProgram?: PublicKey;
     }) {
         const feeBasisPoints = params.feeBasisPoints ?? 0;
         const tx = this.program.methods
@@ -506,7 +564,8 @@ export class OnreProgram {
             .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
-                state: this.statePda
+                state: this.statePda,
+                tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID
             });
 
         if (params.signer) {
@@ -551,6 +610,8 @@ export class OnreProgram {
         tokenOutMint: PublicKey;
         user: PublicKey;
         signer?: Keypair;
+        tokenInProgram?: PublicKey;
+        tokenOutProgram?: PublicKey;
     }) {
         const tx = this.program.methods
             .takeSingleRedemptionOffer(new BN(params.offerId), new BN(params.tokenInAmount))
@@ -559,6 +620,8 @@ export class OnreProgram {
                 boss: this.program.provider.publicKey,
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
+                tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
+                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
                 user: params.user
             });
 
