@@ -297,18 +297,6 @@ pub mod onreapp {
         mint_authority::transfer_mint_authority_to_boss(ctx)
     }
 
-    /// Initializes the kill switch state.
-    ///
-    /// Delegates to `initialization::initialize_kill_switch_state` to set up the kill switch state account.
-    /// The kill switch is initialized in the disabled (false) state by default.
-    /// Only the boss can call this instruction to create the kill switch state account.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `InitializeKillSwitchState`.
-    pub fn initialize_kill_switch_state(ctx: Context<InitializeKillSwitchState>) -> Result<()> {
-        initialization::initialize_kill_switch_state(ctx)
-    }
-
     /// Enables or disables the kill switch.
     ///
     /// Delegates to `kill_switch::kill_switch` to change the kill switch state.
@@ -324,5 +312,21 @@ pub mod onreapp {
     /// - `enable`: True to enable the kill switch, false to disable it.
     pub fn kill_switch(ctx: Context<KillSwitch>, enable: bool) -> Result<()> {
         kill_switch::kill_switch(ctx, enable)
+    }
+
+    /// Migrates the State account to include the new is_killed field.
+    ///
+    /// This instruction is required after deploying the updated program that includes
+    /// the is_killed field in the State struct. It reallocates the account to the new size
+    /// and initializes the kill switch to disabled (false) by default.
+    ///
+    /// # Security
+    /// - Only the boss can perform this migration
+    /// - The migration can only be performed once (subsequent calls will fail due to size constraints)
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `MigrateState`.
+    pub fn migrate_state(ctx: Context<MigrateState>) -> Result<()> {
+        migration::migrate_state(ctx)
     }
 }

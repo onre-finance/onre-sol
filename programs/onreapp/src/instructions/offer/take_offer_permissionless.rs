@@ -1,6 +1,6 @@
 use crate::constants::seeds;
 use crate::instructions::offer::offer_utils::process_offer_core;
-use crate::instructions::{KillSwitchState, OfferAccount};
+use crate::instructions::OfferAccount;
 use crate::state::State;
 use crate::utils::{execute_token_operations, transfer_tokens, u64_to_dec9, ExecTokenOpsParams};
 use anchor_lang::prelude::*;
@@ -43,7 +43,10 @@ pub struct TakeOfferPermissionless<'info> {
     pub offer_account: AccountLoader<'info, OfferAccount>,
 
     /// Program state account containing the boss public key
-    #[account(has_one = boss)]
+    #[account(
+        has_one = boss,
+        constraint = state.is_killed == false @ TakeOfferPermissionlessErrorCode::KillSwitchActivated
+    )]
     pub state: Box<Account<'info, State>>,
 
     /// The boss account that receives token_in payments
@@ -144,13 +147,6 @@ pub struct TakeOfferPermissionless<'info> {
         bump
     )]
     pub mint_authority_pda: UncheckedAccount<'info>,
-
-    #[account(
-        seeds = [seeds::KILL_SWITCH_STATE],
-        bump,
-        constraint = kill_switch_state.is_killed == false @ TakeOfferPermissionlessErrorCode::KillSwitchActivated
-    )]
-    pub kill_switch_state: Box<Account<'info, KillSwitchState>>,
 
     /// The user taking the offer (must sign the transaction)
     #[account(mut)]

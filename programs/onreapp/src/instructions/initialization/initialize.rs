@@ -42,9 +42,10 @@ pub struct Initialize<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Initializes the program state with the boss’s public key.
+/// Initializes the program state with the boss's public key and kill switch disabled.
 ///
-/// Sets the `boss` field in the `state` account to the signer’s key if it’s not already set.
+/// Sets the `boss` field in the `state` account to the signer's key if it's not already set.
+/// Initializes the kill switch to disabled (false) by default.
 /// The account is created as a PDA with the seed `"state"`.
 ///
 /// # Arguments
@@ -58,6 +59,7 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         return err!(InitializeErrorCode::BossAlreadySet);
     }
     state.boss = ctx.accounts.boss.key();
+    state.is_killed = false; // Initialize kill switch as disabled
 
     Ok(())
 }

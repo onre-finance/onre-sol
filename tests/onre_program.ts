@@ -352,6 +352,21 @@ export class OnreProgram {
         await tx.rpc();
     }
 
+    async migrateState(params?: { signer?: Keypair }) {
+        const tx = this.program.methods
+            .migrateState()
+            .accounts({
+                state: this.statePda,
+                boss: params?.signer ? params.signer.publicKey : this.program.provider.publicKey
+            });
+
+        if (params?.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
     // Accounts
     async getOfferAccount() {
         const offerAccountPda = this.pdas.offerAccountPda;
@@ -363,11 +378,17 @@ export class OnreProgram {
         return offerAccount.offers.find(offer => offer.offerId.toNumber() === offerId);
     }
 
+    async getState() {
+        return await this.program.account.state.fetch(this.statePda);
+    }
+
     async getAdminState() {
         return await this.program.account.adminState.fetch(this.pdas.adminStatePda);
     }
 
     async getKillSwitchState() {
-        return await this.program.account.killSwitchState.fetch(this.pdas.killSwitchStatePda);
+        // Kill switch state is now part of the main State account
+        const state = await this.getState();
+        return { isKilled: state.isKilled };
     }
 }

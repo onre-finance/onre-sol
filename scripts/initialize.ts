@@ -10,7 +10,7 @@ import { initProgram, PROGRAM_ID, RPC_URL } from "./script-commons";
 // TEST & local
 const BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC"); // DEV Squad
 
-async function createMakeOfferOneTransaction() {
+async function initialize() {
     const connection = new anchor.web3.Connection(RPC_URL);
     const program = await initProgram();
 
@@ -46,7 +46,7 @@ async function createMakeOfferOneTransaction() {
 
 async function main() {
     try {
-        await createMakeOfferOneTransaction();
+        await initialize();
     } catch (error) {
         console.error("Failed to create initialize transaction:", error);
     }

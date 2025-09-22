@@ -508,83 +508,6 @@ export type Onreapp = {
       "args": []
     },
     {
-      "name": "initializeKillSwitchState",
-      "docs": [
-        "Initializes the kill switch state.",
-        "",
-        "Delegates to `initialization::initialize_kill_switch_state` to set up the kill switch state account.",
-        "The kill switch is initialized in the disabled (false) state by default.",
-        "Only the boss can call this instruction to create the kill switch state account.",
-        "",
-        "# Arguments",
-        "- `ctx`: Context for `InitializeKillSwitchState`."
-      ],
-      "discriminator": [
-        254,
-        35,
-        214,
-        241,
-        136,
-        217,
-        22,
-        155
-      ],
-      "accounts": [
-        {
-          "name": "killSwitchState",
-          "docs": [
-            "Program authority account to be initialized."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  107,
-                  105,
-                  108,
-                  108,
-                  95,
-                  115,
-                  119,
-                  105,
-                  116,
-                  99,
-                  104
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "state",
-          "docs": [
-            "Program state, ensures `boss` is authorized."
-          ]
-        },
-        {
-          "name": "boss",
-          "docs": [
-            "The boss paying for account creation and authorizing the initialization."
-          ],
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "systemProgram",
-          "docs": [
-            "Solana System program for account creation."
-          ],
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "initializeOffers",
       "docs": [
         "Initializes the offers account.",
@@ -849,30 +772,6 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "killSwitchState",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  107,
-                  105,
-                  108,
-                  108,
-                  95,
-                  115,
-                  119,
-                  105,
-                  116,
-                  99,
-                  104
-                ]
-              }
-            ]
-          }
-        },
-        {
           "name": "adminState",
           "pda": {
             "seeds": [
@@ -897,6 +796,7 @@ export type Onreapp = {
         },
         {
           "name": "state",
+          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -1121,6 +1021,52 @@ export type Onreapp = {
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "migrateState",
+      "docs": [
+        "Migrates the State account to include the new is_killed field.",
+        "",
+        "This instruction is required after deploying the updated program that includes",
+        "the is_killed field in the State struct. It reallocates the account to the new size",
+        "and initializes the kill switch to disabled (false) by default.",
+        "",
+        "# Security",
+        "- Only the boss can perform this migration",
+        "- The migration can only be performed once (subsequent calls will fail due to size constraints)",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `MigrateState`."
+      ],
+      "discriminator": [
+        34,
+        189,
+        226,
+        222,
+        218,
+        156,
+        19,
+        213
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss who is authorized to perform the migration"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     },
     {
       "name": "offerVaultDeposit",
@@ -2206,29 +2152,6 @@ export type Onreapp = {
           }
         },
         {
-          "name": "killSwitchState",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  107,
-                  105,
-                  108,
-                  108,
-                  95,
-                  115,
-                  119,
-                  105,
-                  116,
-                  99,
-                  104
-                ]
-              }
-            ]
-          }
-        },
-        {
           "name": "user",
           "docs": [
             "The user taking the offer (must sign the transaction)"
@@ -2865,29 +2788,6 @@ export type Onreapp = {
           }
         },
         {
-          "name": "killSwitchState",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  107,
-                  105,
-                  108,
-                  108,
-                  95,
-                  115,
-                  119,
-                  105,
-                  116,
-                  99,
-                  104
-                ]
-              }
-            ]
-          }
-        },
-        {
           "name": "user",
           "docs": [
             "The user taking the offer (must sign the transaction)"
@@ -3191,19 +3091,6 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "killSwitchState",
-      "discriminator": [
-        254,
-        243,
-        235,
-        232,
-        86,
-        55,
-        45,
-        62
-      ]
-    },
-    {
       "name": "offerAccount",
       "discriminator": [
         152,
@@ -3476,18 +3363,6 @@ export type Onreapp = {
           {
             "name": "boss",
             "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "killSwitchState",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "isKilled",
-            "type": "bool"
           }
         ]
       }
@@ -3861,10 +3736,11 @@ export type Onreapp = {
       "docs": [
         "Represents the program state in the Onre App program.",
         "",
-        "Stores the current boss's public key, used for authorization across instructions.",
+        "Stores the current boss's public key and kill switch state, used for authorization across instructions.",
         "",
         "# Fields",
-        "- `boss`: Public key of the current boss, set via `initialize` and updated via `set_boss`."
+        "- `boss`: Public key of the current boss, set via `initialize` and updated via `set_boss`.",
+        "- `is_killed`: Kill switch state - when true, certain operations are disabled for emergency purposes."
       ],
       "type": {
         "kind": "struct",
@@ -3872,6 +3748,10 @@ export type Onreapp = {
           {
             "name": "boss",
             "type": "pubkey"
+          },
+          {
+            "name": "isKilled",
+            "type": "bool"
           }
         ]
       }

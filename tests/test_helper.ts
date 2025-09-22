@@ -157,5 +157,9 @@ export class TestHelper {
             )
         );
     }
+
+    async getAccountInfo(publicKey: PublicKey) {
+        return await this.context.banksClient.getAccount(publicKey);
+    }
 }
 

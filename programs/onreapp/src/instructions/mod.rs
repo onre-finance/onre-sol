@@ -5,6 +5,7 @@ pub mod offer;
 pub mod boss;
 pub mod vault_operations;
 pub mod kill_switch;
+pub mod migration;
 
 pub use admin::*;
 pub use initialization::*;
@@ -13,3 +14,4 @@ pub use offer::*;
 pub use boss::*;
 pub use vault_operations::*;
 pub use kill_switch::*;
+pub use migration::*;
