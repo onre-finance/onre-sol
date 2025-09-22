@@ -347,4 +347,19 @@ pub mod onreapp {
     pub fn get_apy(ctx: Context<GetAPY>, offer_id: u64) -> Result<u64> {
         market_info::get_apy(ctx, offer_id)
     }
+
+    /// Gets the NAV adjustment (price change) for a specific offer.
+    ///
+    /// Delegates to `market_info::get_nav_adjustment`.
+    /// This is a read-only instruction that calculates the price difference
+    /// between the current vector and the previous vector at the current time.
+    /// Returns a signed integer representing the price change.
+    /// Emits a `GetNavAdjustmentEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `GetNavAdjustment`.
+    /// - `offer_id`: ID of the offer to get the NAV adjustment for.
+    pub fn get_nav_adjustment(ctx: Context<GetNavAdjustment>, offer_id: u64) -> Result<i64> {
+        market_info::get_nav_adjustment(ctx, offer_id)
+    }
 }

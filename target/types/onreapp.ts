@@ -456,6 +456,62 @@ export type Onreapp = {
       "returns": "u64"
     },
     {
+      "name": "getNavAdjustment",
+      "docs": [
+        "Gets the NAV adjustment (price change) for a specific offer.",
+        "",
+        "Delegates to `market_info::get_nav_adjustment`.",
+        "This is a read-only instruction that calculates the price difference",
+        "between the current vector and the previous vector at the current time.",
+        "Returns a signed integer representing the price change.",
+        "Emits a `GetNavAdjustmentEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `GetNavAdjustment`.",
+        "- `offer_id`: ID of the offer to get the NAV adjustment for."
+      ],
+      "discriminator": [
+        70,
+        198,
+        229,
+        129,
+        238,
+        233,
+        143,
+        94
+      ],
+      "accounts": [
+        {
+          "name": "offerAccount",
+          "docs": [
+            "The offer account containing all active offers"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        }
+      ],
+      "returns": "i64"
+    },
+    {
       "name": "initialize",
       "docs": [
         "Initializes the program state.",
@@ -3144,6 +3200,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "getNavAdjustmentEvent",
+      "discriminator": [
+        22,
+        137,
+        159,
+        134,
+        238,
+        37,
+        111,
+        158
+      ]
+    },
+    {
       "name": "mintAuthorityTransferredToBossEvent",
       "discriminator": [
         86,
@@ -3388,6 +3457,54 @@ export type Onreapp = {
             "name": "timestamp",
             "docs": [
               "Unix timestamp when the price was calculated"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "getNavAdjustmentEvent",
+      "docs": [
+        "Event emitted when get_nav_adjustment is called"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "docs": [
+              "The ID of the offer"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "currentPrice",
+            "docs": [
+              "Current price from the active vector"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "previousPrice",
+            "docs": [
+              "Previous price from the previous vector (if any)"
+            ],
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "adjustment",
+            "docs": [
+              "Price adjustment (current - previous), signed value"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "docs": [
+              "Unix timestamp when the adjustment was calculated"
             ],
             "type": "u64"
           }
