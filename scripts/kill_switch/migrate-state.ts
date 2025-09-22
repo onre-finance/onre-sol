@@ -10,20 +10,18 @@ import { initProgram, PROGRAM_ID, RPC_URL } from "../script-commons";
 // TEST & local
 const BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC"); // DEV Squad
 
-export async function createKillSwitchTransaction(enable: boolean): Promise<string> {
+async function createMigrateStateTransaction(): Promise<string> {
     const connection = new anchor.web3.Connection(RPC_URL);
     const program = await initProgram();
 
     const [statePda] = PublicKey.findProgramAddressSync([Buffer.from("state")], PROGRAM_ID);
-    const [adminStatePda] = PublicKey.findProgramAddressSync([Buffer.from("admin_state")], PROGRAM_ID);
 
     try {
         const tx = await program.methods
-            .killSwitch(enable)
+            .migrateState()
             .accountsPartial({
-                adminState: adminStatePda,
                 state: statePda,
-                signer: BOSS,
+                boss: BOSS,
             })
             .transaction();
 
@@ -36,14 +34,22 @@ export async function createKillSwitchTransaction(enable: boolean): Promise<stri
         });
 
         const base58Tx = bs58.encode(serializedTx);
-        const action = enable ? "Enable" : "Disable";
-        console.log(`Kill Switch ${action} Transaction (Base58):`);
+        console.log("Migrate State Transaction (Base58):");
         console.log(base58Tx);
 
         return base58Tx;
     } catch (error) {
-        const action = enable ? "enable" : "disable";
-        console.error(`Error creating kill switch ${action} transaction:`, error);
+        console.error("Error creating migrate state transaction:", error);
         throw error;
     }
 }
+
+async function main() {
+    try {
+        await createMigrateStateTransaction();
+    } catch (error) {
+        console.error("Failed to create migrate state transaction:", error);
+    }
+}
+
+main();
