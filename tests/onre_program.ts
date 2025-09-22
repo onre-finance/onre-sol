@@ -351,6 +351,34 @@ export class OnreProgram {
         await tx.rpc();
     }
 
+    async getNAV(params: { offerId: number }): Promise<number> {
+        try {
+            // First try with view() for the return value
+            const response: BN = await this.program.methods
+                .getNav(new BN(params.offerId))
+                .accounts({
+                    offerAccount: this.pdas.offerAccountPda
+                })
+                .signers([this.program.provider.wallet.payer])
+                .view();
+
+            return response.toNumber();
+        } catch (error) {
+            // If view() fails with the null data error, try rpc() to get proper error messages
+            // Use rpc() to get the proper anchor error
+            await this.program.methods
+                .getNav(new BN(params.offerId))
+                .accounts({
+                    offerAccount: this.pdas.offerAccountPda
+                })
+                .signers([this.program.provider.wallet.payer])
+                .rpc();
+
+            // If rpc doesn't throw, something unexpected happened
+            throw new Error("Unexpected success from rpc after view failure");
+        }
+    }
+
     // Accounts
     async getOfferAccount() {
         const offerAccountPda = this.pdas.offerAccountPda;

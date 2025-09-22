@@ -1,5 +1,6 @@
 pub mod admin;
 pub mod initialization;
+pub mod market_info;
 pub mod mint_authority;
 pub mod offer;
 pub mod boss;
@@ -9,6 +10,7 @@ pub mod migration;
 
 pub use admin::*;
 pub use initialization::*;
+pub use market_info::*;
 pub use mint_authority::*;
 pub use offer::*;
 pub use boss::*;

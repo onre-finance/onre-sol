@@ -33,7 +33,6 @@ pub struct Initialize<'info> {
     )]
     pub state: Account<'info, State>,
 
-
     /// The signer funding and authorizing the state initialization, becomes the boss.
     #[account(mut)]
     pub boss: Signer<'info>,

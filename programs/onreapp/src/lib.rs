@@ -319,4 +319,18 @@ pub mod onreapp {
     pub fn migrate_state(ctx: Context<MigrateState>) -> Result<()> {
         migration::migrate_state(ctx)
     }
+
+    /// Gets the current NAV (price) for a specific offer.
+    ///
+    /// Delegates to `market_info::get_nav`.
+    /// This is a read-only instruction that calculates and returns the current price
+    /// for an offer based on its time vectors and APR parameters.
+    /// Emits a `GetNAVEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `GetNAV`.
+    /// - `offer_id`: ID of the offer to get the current price for.
+    pub fn get_nav(ctx: Context<GetNAV>, offer_id: u64) -> Result<u64> {
+        market_info::get_nav(ctx, offer_id)
+    }
 }

@@ -346,6 +346,61 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "getNav",
+      "docs": [
+        "Gets the current NAV (price) for a specific offer.",
+        "",
+        "Delegates to `market_info::get_nav`.",
+        "This is a read-only instruction that calculates and returns the current price",
+        "for an offer based on its time vectors and APR parameters.",
+        "Emits a `GetNAVEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `GetNAV`.",
+        "- `offer_id`: ID of the offer to get the current price for."
+      ],
+      "discriminator": [
+        200,
+        89,
+        76,
+        53,
+        215,
+        218,
+        63,
+        21
+      ],
+      "accounts": [
+        {
+          "name": "offerAccount",
+          "docs": [
+            "The offer account containing all active offers"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        }
+      ],
+      "returns": "u64"
+    },
+    {
       "name": "initialize",
       "docs": [
         "Initializes the program state.",
@@ -3008,6 +3063,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "getNavEvent",
+      "discriminator": [
+        112,
+        70,
+        141,
+        221,
+        181,
+        134,
+        99,
+        92
+      ]
+    },
+    {
       "name": "mintAuthorityTransferredToBossEvent",
       "discriminator": [
         86,
@@ -3183,6 +3251,38 @@ export type Onreapp = {
           {
             "name": "boss",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "getNavEvent",
+      "docs": [
+        "Event emitted when get_NAV is called"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "docs": [
+              "The ID of the offer"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "currentPrice",
+            "docs": [
+              "Current price for the offer"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "docs": [
+              "Unix timestamp when the price was calculated"
+            ],
+            "type": "u64"
           }
         ]
       }
