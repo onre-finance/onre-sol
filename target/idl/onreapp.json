@@ -340,6 +340,61 @@
       ]
     },
     {
+      "name": "get_apy",
+      "docs": [
+        "Gets the current APY (Annual Percentage Yield) for a specific offer.",
+        "",
+        "Delegates to `market_info::get_apy`.",
+        "This is a read-only instruction that calculates and returns the current APY",
+        "by converting the stored APR using daily compounding formula.",
+        "Emits a `GetAPYEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `GetAPY`.",
+        "- `offer_id`: ID of the offer to get the APY for."
+      ],
+      "discriminator": [
+        194,
+        123,
+        183,
+        54,
+        181,
+        74,
+        194,
+        97
+      ],
+      "accounts": [
+        {
+          "name": "offer_account",
+          "docs": [
+            "The offer account containing all active offers"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "offer_id",
+          "type": "u64"
+        }
+      ],
+      "returns": "u64"
+    },
+    {
       "name": "get_nav",
       "docs": [
         "Gets the current NAV (price) for a specific offer.",
@@ -3057,6 +3112,19 @@
       ]
     },
     {
+      "name": "GetAPYEvent",
+      "discriminator": [
+        235,
+        74,
+        195,
+        163,
+        16,
+        198,
+        159,
+        61
+      ]
+    },
+    {
       "name": "GetNAVEvent",
       "discriminator": [
         112,
@@ -3245,6 +3313,45 @@
           {
             "name": "boss",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GetAPYEvent",
+      "docs": [
+        "Event emitted when get_APY is called"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offer_id",
+            "docs": [
+              "The ID of the offer"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "apy",
+            "docs": [
+              "Current APY for the offer (scaled by 1_000_000)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "apr",
+            "docs": [
+              "APR used for calculation (scaled by 1_000_000)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "docs": [
+              "Unix timestamp when the APY was calculated"
+            ],
+            "type": "u64"
           }
         ]
       }

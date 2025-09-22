@@ -333,4 +333,18 @@ pub mod onreapp {
     pub fn get_nav(ctx: Context<GetNAV>, offer_id: u64) -> Result<u64> {
         market_info::get_nav(ctx, offer_id)
     }
+
+    /// Gets the current APY (Annual Percentage Yield) for a specific offer.
+    ///
+    /// Delegates to `market_info::get_apy`.
+    /// This is a read-only instruction that calculates and returns the current APY
+    /// by converting the stored APR using daily compounding formula.
+    /// Emits a `GetAPYEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `GetAPY`.
+    /// - `offer_id`: ID of the offer to get the APY for.
+    pub fn get_apy(ctx: Context<GetAPY>, offer_id: u64) -> Result<u64> {
+        market_info::get_apy(ctx, offer_id)
+    }
 }
