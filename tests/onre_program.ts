@@ -6,7 +6,7 @@ import idl from "../target/idl/onreapp.json";
 import { BankrunProvider } from "anchor-bankrun";
 import { ProgramTestContext } from "solana-bankrun";
 import { PROGRAM_ID } from "../scripts/script-commons.ts";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 export class OnreProgram {
     program: Program<Onreapp>;
@@ -426,6 +426,38 @@ export class OnreProgram {
                 .getNavAdjustment(new BN(params.offerId))
                 .accounts({
                     offerAccount: this.pdas.offerAccountPda
+                })
+                .signers([this.program.provider.wallet.payer])
+                .rpc();
+
+            // If rpc doesn't throw, something unexpected happened
+            throw new Error("Unexpected success from rpc after view failure");
+        }
+    }
+
+    async getTVL(params: { offerId: number, tokenOutMint: PublicKey, tokenOutProgram?: PublicKey }): Promise<BN> {
+        const tokenOutProgram = params.tokenOutProgram ?? TOKEN_PROGRAM_ID;
+        try {
+            // First try with view() for the return value
+            return await this.program.methods
+                .getTvl(new BN(params.offerId))
+                .accounts({
+                    tokenOutMint: params.tokenOutMint,
+                    tokenOutProgram: tokenOutProgram,
+                    vaultTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, this.pdas.offerVaultAuthorityPda, true, tokenOutProgram)
+                })
+                .signers([this.program.provider.wallet.payer])
+                .view();
+        } catch (error) {
+            console.log(error);
+            // If view() fails with the null data error, try rpc() to get proper error messages
+            // Use rpc() to get the proper anchor error
+            await this.program.methods
+                .getTvl(new BN(params.offerId))
+                .accounts({
+                    tokenOutMint: params.tokenOutMint,
+                    tokenOutProgram: tokenOutProgram,
+                    vaultTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, this.pdas.offerVaultAuthorityPda, true, tokenOutProgram)
                 })
                 .signers([this.program.provider.wallet.payer])
                 .rpc();

@@ -330,6 +330,9 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `GetNAV`.
     /// - `offer_id`: ID of the offer to get the current price for.
+    ///
+    /// # Returns
+    /// - `Ok(current_price)`: The calculated current price (mantissa) for the offer with scale=9
     pub fn get_nav(ctx: Context<GetNAV>, offer_id: u64) -> Result<u64> {
         market_info::get_nav(ctx, offer_id)
     }
@@ -344,6 +347,9 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `GetAPY`.
     /// - `offer_id`: ID of the offer to get the APY for.
+    ///
+    /// # Returns
+    /// - `Ok(apy)`: The calculated APY scaled by 1_000_000 (returns the mantissa, with scale=6)
     pub fn get_apy(ctx: Context<GetAPY>, offer_id: u64) -> Result<u64> {
         market_info::get_apy(ctx, offer_id)
     }
@@ -359,7 +365,29 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `GetNavAdjustment`.
     /// - `offer_id`: ID of the offer to get the NAV adjustment for.
+    ///
+    /// # Returns
+    /// - `Ok(adjustment)`: The calculated price adjustment (current - previous) as a signed integer,
+    /// returns the mantissa with scale=9
     pub fn get_nav_adjustment(ctx: Context<GetNavAdjustment>, offer_id: u64) -> Result<i64> {
         market_info::get_nav_adjustment(ctx, offer_id)
+    }
+
+    /// Gets the current TVL (Total Value Locked) for a specific offer with 9 decimal precision
+    ///
+    /// Delegates to `market_info::get_tvl`.
+    /// This is a read-only instruction that calculates and returns the current TVL
+    /// for an offer based on the token_out supply and current NAV (price).
+    /// TVL = token_out_supply * current_NAV
+    /// Emits a `GetTVLEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `GetTVL`.
+    /// - `offer_id`: ID of the offer to get the TVL for.
+    ///
+    /// # Returns
+    /// - `Ok(tvl)`: The calculated TVL (mantissa) for the offer with scale=9
+    pub fn get_tvl(ctx: Context<GetTVL>, offer_id: u64) -> Result<u64> {
+        market_info::get_tvl(ctx, offer_id)
     }
 }

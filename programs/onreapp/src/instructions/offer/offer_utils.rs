@@ -166,6 +166,7 @@ pub fn find_offer_index(offer_account: &OfferAccount, offer_id: u64) -> Result<u
 ///
 /// # Arguments
 /// * `offer` - The offer to search for an active vector
+/// * `time` - The time to check for an active vector
 ///
 /// # Returns
 /// The active `OfferVector` or an error if none is active

@@ -512,6 +512,113 @@ export type Onreapp = {
       "returns": "i64"
     },
     {
+      "name": "getTvl",
+      "docs": [
+        "Gets the current TVL (Total Value Locked) for a specific offer.",
+        "",
+        "Delegates to `market_info::get_tvl`.",
+        "This is a read-only instruction that calculates and returns the current TVL",
+        "for an offer based on the token_out supply and current NAV (price).",
+        "TVL = token_out_supply * current_NAV",
+        "Emits a `GetTVLEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `GetTVL`.",
+        "- `offer_id`: ID of the offer to get the TVL for."
+      ],
+      "discriminator": [
+        88,
+        225,
+        219,
+        204,
+        86,
+        91,
+        184,
+        51
+      ],
+      "accounts": [
+        {
+          "name": "offerAccount",
+          "docs": [
+            "The offer account containing all active offers"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenOutMint",
+          "docs": [
+            "The token_out mint account to get supply information"
+          ]
+        },
+        {
+          "name": "vaultAuthority",
+          "docs": [
+            "The offer vault authority PDA that controls vault token accounts"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vaultTokenOutAccount",
+          "docs": [
+            "The token_out account to exclude from supply"
+          ]
+        },
+        {
+          "name": "tokenOutProgram"
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        }
+      ],
+      "returns": "u64"
+    },
+    {
       "name": "initialize",
       "docs": [
         "Initializes the program state.",
@@ -3213,6 +3320,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "getTvlEvent",
+      "discriminator": [
+        12,
+        82,
+        39,
+        27,
+        40,
+        162,
+        216,
+        88
+      ]
+    },
+    {
       "name": "mintAuthorityTransferredToBossEvent",
       "discriminator": [
         86,
@@ -3505,6 +3625,52 @@ export type Onreapp = {
             "name": "timestamp",
             "docs": [
               "Unix timestamp when the adjustment was calculated"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "getTvlEvent",
+      "docs": [
+        "Event emitted when get_TVL is called"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "docs": [
+              "The ID of the offer"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tvl",
+            "docs": [
+              "Current TVL for the offer"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "currentPrice",
+            "docs": [
+              "Current price used for TVL calculation"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tokenSupply",
+            "docs": [
+              "Token supply used for TVL calculation"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "docs": [
+              "Unix timestamp when the TVL was calculated"
             ],
             "type": "u64"
           }
