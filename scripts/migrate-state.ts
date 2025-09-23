@@ -2,7 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
 
-import { initProgram, PROGRAM_ID, RPC_URL } from "../script-commons";
+import { initProgram, PROGRAM_ID, RPC_URL } from "./script-commons";
 
 // PROD
 // const BOSS = new PublicKey("45YnzauhsBM8CpUz96Djf8UG5vqq2Dua62wuW9H3jaJ5"); // WARN: SQUAD MAIN ACCOUNT!!!

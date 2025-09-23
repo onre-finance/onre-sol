@@ -15,10 +15,8 @@ describe("Kill Switch Enable", () => {
         nonBoss = testHelper.createUserAccount();
         admin = testHelper.createUserAccount();
 
-        // Initialize required states
+        // Initialize required states (admin and kill switch state now part of main state)
         await program.initialize();
-        await program.initializeAdminState();
-        await program.initializeKillSwitchState();
 
         // Add an admin for testing admin privileges
         await program.addAdmin({ admin: admin.publicKey });
@@ -29,8 +27,8 @@ describe("Kill Switch Enable", () => {
         await program.killSwitch({ enable: true });
 
         // then
-        const killSwitchState = await program.getKillSwitchState();
-        expect(killSwitchState.isKilled).toBe(true);
+        const state = await program.getState();
+        expect(state.isKilled).toBe(true);
     });
 
     test("Admin can enable kill switch successfully", async () => {
@@ -38,8 +36,8 @@ describe("Kill Switch Enable", () => {
         await program.killSwitch({ enable: true, signer: admin });
 
         // then
-        const killSwitchState = await program.getKillSwitchState();
-        expect(killSwitchState.isKilled).toBe(true);
+        const state = await program.getState();
+        expect(state.isKilled).toBe(true);
     });
 
     test("Non-boss and non-admin cannot enable kill switch - should fail", async () => {
@@ -85,15 +83,15 @@ describe("Kill Switch Enable", () => {
         await program.killSwitch({ enable: true, signer: admin });
 
         // then - should be enabled
-        let killSwitchState = await program.getKillSwitchState();
-        expect(killSwitchState.isKilled).toBe(true);
+        let state = await program.getState();
+        expect(state.isKilled).toBe(true);
 
         // when - boss disables then second admin enables
         await program.killSwitch({ enable: false });
         await program.killSwitch({ enable: true, signer: admin2 });
 
         // then - should be enabled again
-        killSwitchState = await program.getKillSwitchState();
-        expect(killSwitchState.isKilled).toBe(true);
+        state = await program.getState();
+        expect(state.isKilled).toBe(true);
     });
 });

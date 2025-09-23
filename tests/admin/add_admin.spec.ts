@@ -15,9 +15,8 @@ describe("Add Admin", () => {
         nonBoss = testHelper.createUserAccount();
         newAdmin = testHelper.createUserAccount();
 
-        // Initialize state and admin state
+        // Initialize state (includes admin array initialization)
         await program.initialize();
-        await program.initializeAdminState();
     });
 
     test("Boss can add a new admin successfully", async () => {
@@ -25,9 +24,9 @@ describe("Add Admin", () => {
         await program.addAdmin({ admin: newAdmin.publicKey });
 
         // then
-        const adminStateAccount = await program.getAdminState();
-        expect(adminStateAccount.admins).toContainEqual(newAdmin.publicKey);
-        const activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
+        const state = await program.getState();
+        expect(state.admins).toContainEqual(newAdmin.publicKey);
+        const activeAdmins = state.admins.filter(admin => !admin.equals(PublicKey.default));
         expect(activeAdmins).toHaveLength(1);
     });
 
@@ -64,8 +63,8 @@ describe("Add Admin", () => {
         ).rejects.toThrow();
 
         // verify we still have exactly 20 admins
-        const adminStateAccount = await program.getAdminState();
-        const activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
+        const state = await program.getState();
+        const activeAdmins = state.admins.filter(admin => !admin.equals(PublicKey.default));
         expect(activeAdmins).toHaveLength(20);
     });
 
@@ -81,11 +80,11 @@ describe("Add Admin", () => {
         await program.addAdmin({ admin: admin3.publicKey });
 
         // then
-        const adminStateAccount = await program.getAdminState();
-        expect(adminStateAccount.admins).toContainEqual(admin1.publicKey);
-        expect(adminStateAccount.admins).toContainEqual(admin2.publicKey);
-        expect(adminStateAccount.admins).toContainEqual(admin3.publicKey);
-        const activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
+        const state = await program.getState();
+        expect(state.admins).toContainEqual(admin1.publicKey);
+        expect(state.admins).toContainEqual(admin2.publicKey);
+        expect(state.admins).toContainEqual(admin3.publicKey);
+        const activeAdmins = state.admins.filter(admin => !admin.equals(PublicKey.default));
         expect(activeAdmins).toHaveLength(3);
     });
 
@@ -94,9 +93,9 @@ describe("Add Admin", () => {
         await program.addAdmin({ admin: testHelper.getBoss() });
 
         // then
-        const adminStateAccount = await program.getAdminState();
-        expect(adminStateAccount.admins).toContainEqual(testHelper.getBoss());
-        const activeAdmins = adminStateAccount.admins.filter(admin => !admin.equals(PublicKey.default));
+        const state = await program.getState();
+        expect(state.admins).toContainEqual(testHelper.getBoss());
+        const activeAdmins = state.admins.filter(admin => !admin.equals(PublicKey.default));
         expect(activeAdmins).toHaveLength(1);
     });
 });

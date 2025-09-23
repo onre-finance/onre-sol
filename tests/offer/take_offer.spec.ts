@@ -34,7 +34,7 @@ describe("Take Offer", () => {
         // Initialize program and offers
         await program.initialize();
         await program.initializeOffers();
-        await program.initializeKillSwitchState();
+        // Kill switch state is now part of the main state - no separate initialization needed
 
         // Create an offer
         await program.makeOffer({
@@ -880,8 +880,7 @@ describe("Take Offer", () => {
 
     describe("Kill Switch Tests", () => {
         it("Should reject take_offer when kill switch is enabled", async () => {
-            // Initialize admin state and add an admin
-            await program.initializeAdminState();
+            // Add an admin (admin state is now part of main state)
             const admin = testHelper.createUserAccount();
             await program.addAdmin({ admin: admin.publicKey });
 
@@ -899,8 +898,8 @@ describe("Take Offer", () => {
             await program.killSwitch({ enable: true, signer: admin });
 
             // Verify kill switch is enabled
-            const killSwitchState = await program.getKillSwitchState();
-            expect(killSwitchState.isKilled).toBe(true);
+            const state = await program.getState();
+            expect(state.isKilled).toBe(true);
 
             // Try to take offer - should fail
             await expect(
@@ -916,8 +915,7 @@ describe("Take Offer", () => {
         });
 
         it("Should allow take_offer when kill switch is disabled", async () => {
-            // Initialize admin state and add an admin
-            await program.initializeAdminState();
+            // Add an admin (admin state is now part of main state)
             const admin = testHelper.createUserAccount();
             await program.addAdmin({ admin: admin.publicKey });
 
@@ -936,8 +934,8 @@ describe("Take Offer", () => {
             await program.killSwitch({ enable: false }); // Only boss can disable
 
             // Verify kill switch is disabled
-            const killSwitchState = await program.getKillSwitchState();
-            expect(killSwitchState.isKilled).toBe(false);
+            const state = await program.getState();
+            expect(state.isKilled).toBe(false);
 
             // Take offer - should succeed
             await program.takeOffer({

@@ -1,15 +1,10 @@
 use anchor_lang::prelude::*;
 
 use crate::constants::seeds;
-use crate::state::{AdminState, State};
+use crate::state::State;
 
 #[derive(Accounts)]
 pub struct KillSwitch<'info> {
-    #[account(
-        seeds = [seeds::ADMIN_STATE],
-        bump,
-    )]
-    pub admin_state: Box<Account<'info, AdminState>>,
     #[account(
         mut,
         seeds = [seeds::STATE],
@@ -22,10 +17,9 @@ pub struct KillSwitch<'info> {
 pub fn kill_switch(ctx: Context<KillSwitch>, enable: bool) -> Result<()> {
     let state = &mut ctx.accounts.state;
     let signer = &ctx.accounts.signer;
-    let admin_state = &ctx.accounts.admin_state;
 
     let boss_signed = state.boss.key() == signer.key() && signer.is_signer;
-    let admin_signed = admin_state.admins.contains(signer.key) && signer.is_signer;
+    let admin_signed = state.admins.contains(signer.key) && signer.is_signer;
 
     if enable {
         require!(boss_signed || admin_signed, ErrorCode::UnauthorizedToEnable);

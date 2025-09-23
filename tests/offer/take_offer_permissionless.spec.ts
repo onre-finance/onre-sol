@@ -51,7 +51,7 @@ describe("Take Offer Permissionless", () => {
         await program.initializePermissionlessAccount({
             accountName: "test-account"
         });
-        await program.initializeKillSwitchState();
+        // Kill switch state is now part of the main state - no separate initialization needed
 
         // Create token accounts
         user = testHelper.createUserAccount();
@@ -852,8 +852,7 @@ describe("Take Offer Permissionless", () => {
 
     describe("Kill Switch Tests", () => {
         it("Should reject take_offer_permissionless when kill switch is enabled", async () => {
-            // Initialize admin state and add an admin
-            await program.initializeAdminState();
+            // Add an admin (admin state is now part of main state)
             const admin = testHelper.createUserAccount();
             await program.addAdmin({ admin: admin.publicKey });
 
@@ -871,8 +870,8 @@ describe("Take Offer Permissionless", () => {
             await program.killSwitch({ enable: true, signer: admin });
 
             // Verify kill switch is enabled
-            const killSwitchState = await program.getKillSwitchState();
-            expect(killSwitchState.isKilled).toBe(true);
+            const state = await program.getState();
+            expect(state.isKilled).toBe(true);
 
             // Try to take offer permissionless - should fail
             await expect(
@@ -888,8 +887,7 @@ describe("Take Offer Permissionless", () => {
         });
 
         it("Should allow take_offer_permissionless when kill switch is disabled", async () => {
-            // Initialize admin state and add an admin
-            await program.initializeAdminState();
+            // Add an admin (admin state is now part of main state)
             const admin = testHelper.createUserAccount();
             await program.addAdmin({ admin: admin.publicKey });
 
@@ -908,8 +906,8 @@ describe("Take Offer Permissionless", () => {
             await program.killSwitch({ enable: false }); // Only boss can disable
 
             // Verify kill switch is disabled
-            const killSwitchState = await program.getKillSwitchState();
-            expect(killSwitchState.isKilled).toBe(false);
+            const state = await program.getState();
+            expect(state.isKilled).toBe(false);
 
             // Take offer permissionless - should succeed
             await program.takeOfferPermissionless({

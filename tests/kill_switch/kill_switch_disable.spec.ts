@@ -15,10 +15,8 @@ describe("Kill Switch Disable", () => {
         nonBoss = testHelper.createUserAccount();
         admin = testHelper.createUserAccount();
 
-        // Initialize required states
+        // Initialize required states (admin and kill switch state now part of main state)
         await program.initialize();
-        await program.initializeAdminState();
-        await program.initializeKillSwitchState();
 
         // Add an admin for testing admin privileges
         await program.addAdmin({ admin: admin.publicKey });
@@ -29,20 +27,20 @@ describe("Kill Switch Disable", () => {
 
     test("Boss can disable kill switch successfully", async () => {
         // given - kill switch is enabled
-        const initialState = await program.getKillSwitchState();
+        const initialState = await program.getState();
         expect(initialState.isKilled).toBe(true);
 
         // when
         await program.killSwitch({ enable: false });
 
         // then
-        const finalState = await program.getKillSwitchState();
+        const finalState = await program.getState();
         expect(finalState.isKilled).toBe(false);
     });
 
     test("Admin cannot disable kill switch - should fail", async () => {
         // given - kill switch is enabled
-        const initialState = await program.getKillSwitchState();
+        const initialState = await program.getState();
         expect(initialState.isKilled).toBe(true);
 
         // when & then
@@ -51,13 +49,13 @@ describe("Kill Switch Disable", () => {
         ).rejects.toThrow("Only boss can disable the kill switch");
 
         // verify kill switch is still enabled
-        const finalState = await program.getKillSwitchState();
+        const finalState = await program.getState();
         expect(finalState.isKilled).toBe(true);
     });
 
     test("Non-boss and non-admin cannot disable kill switch - should fail", async () => {
         // given - kill switch is enabled
-        const initialState = await program.getKillSwitchState();
+        const initialState = await program.getState();
         expect(initialState.isKilled).toBe(true);
 
         // when & then
@@ -66,34 +64,34 @@ describe("Kill Switch Disable", () => {
         ).rejects.toThrow("Only boss can disable the kill switch");
 
         // verify kill switch is still enabled
-        const finalState = await program.getKillSwitchState();
+        const finalState = await program.getState();
         expect(finalState.isKilled).toBe(true);
     });
 
     test("Can disable kill switch when already enabled", async () => {
         // given - kill switch is enabled
-        const initialState = await program.getKillSwitchState();
+        const initialState = await program.getState();
         expect(initialState.isKilled).toBe(true);
 
         // when
         await program.killSwitch({ enable: false });
 
         // then
-        const finalState = await program.getKillSwitchState();
+        const finalState = await program.getState();
         expect(finalState.isKilled).toBe(false);
     });
 
     test("Boss can disable kill switch after admin enabled it", async () => {
         // given - kill switch is already enabled from beforeEach
         // verify it's enabled
-        const initialState = await program.getKillSwitchState();
+        const initialState = await program.getState();
         expect(initialState.isKilled).toBe(true);
 
         // when - boss disables
         await program.killSwitch({ enable: false });
 
         // then
-        const finalState = await program.getKillSwitchState();
+        const finalState = await program.getState();
         expect(finalState.isKilled).toBe(false);
     });
 
@@ -110,7 +108,7 @@ describe("Kill Switch Disable", () => {
         await program.killSwitch({ enable: false });
 
         // then
-        const finalState = await program.getKillSwitchState();
+        const finalState = await program.getState();
         expect(finalState.isKilled).toBe(false);
     });
 });

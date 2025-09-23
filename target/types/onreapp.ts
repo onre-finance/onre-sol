@@ -43,7 +43,7 @@ export type Onreapp = {
     {
       "name": "addAdmin",
       "docs": [
-        "Adds a new admin to the admin state.",
+        "Adds a new admin to the state.",
         "",
         "Delegates to `admin::add_admin` to add a new admin to the admin list.",
         "Only the boss can call this instruction to add new admins.",
@@ -63,34 +63,8 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "adminState",
-          "docs": [
-            "Admin state account containing the list of admins."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  100,
-                  109,
-                  105,
-                  110,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
           "name": "state",
+          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -433,81 +407,6 @@ export type Onreapp = {
       "args": []
     },
     {
-      "name": "initializeAdminState",
-      "docs": [
-        "Initializes the admin state.",
-        "",
-        "Delegates to `initialize_admin_state::initialize_admin_state` to set up the admin state account.",
-        "Only the boss can call this instruction to create the admin state account.",
-        "# Arguments",
-        "- `ctx`: Context for `InitializeAdminState`."
-      ],
-      "discriminator": [
-        143,
-        116,
-        15,
-        14,
-        59,
-        122,
-        82,
-        86
-      ],
-      "accounts": [
-        {
-          "name": "adminState",
-          "docs": [
-            "Program authority account to be initialized."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  100,
-                  109,
-                  105,
-                  110,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "state",
-          "docs": [
-            "Program state, ensures `boss` is authorized."
-          ]
-        },
-        {
-          "name": "boss",
-          "docs": [
-            "The boss paying for account creation and authorizing the initialization."
-          ],
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "systemProgram",
-          "docs": [
-            "Solana System program for account creation."
-          ],
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "initializeOffers",
       "docs": [
         "Initializes the offers account.",
@@ -771,29 +670,6 @@ export type Onreapp = {
         144
       ],
       "accounts": [
-        {
-          "name": "adminState",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  100,
-                  109,
-                  105,
-                  110,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
         {
           "name": "state",
           "writable": true,
@@ -1569,7 +1445,7 @@ export type Onreapp = {
     {
       "name": "removeAdmin",
       "docs": [
-        "Removes an admin from the admin state.",
+        "Removes an admin from the state.",
         "",
         "Delegates to `admin::remove_admin` to remove an admin from the admin list.",
         "Only the boss can call this instruction to remove admins.",
@@ -1589,34 +1465,8 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "adminState",
-          "docs": [
-            "Admin state account containing the list of admins."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  100,
-                  109,
-                  105,
-                  110,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
           "name": "state",
+          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -3078,19 +2928,6 @@ export type Onreapp = {
   ],
   "accounts": [
     {
-      "name": "adminState",
-      "discriminator": [
-        190,
-        42,
-        124,
-        96,
-        242,
-        52,
-        141,
-        28
-      ]
-    },
-    {
       "name": "offerAccount",
       "discriminator": [
         152,
@@ -3309,23 +3146,6 @@ export type Onreapp = {
     }
   ],
   "types": [
-    {
-      "name": "adminState",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "admins",
-            "type": {
-              "array": [
-                "pubkey",
-                20
-              ]
-            }
-          }
-        ]
-      }
-    },
     {
       "name": "bossUpdated",
       "docs": [
@@ -3736,11 +3556,12 @@ export type Onreapp = {
       "docs": [
         "Represents the program state in the Onre App program.",
         "",
-        "Stores the current boss's public key and kill switch state, used for authorization across instructions.",
+        "Stores the current boss's public key, kill switch state, and admin list used for authorization across instructions.",
         "",
         "# Fields",
         "- `boss`: Public key of the current boss, set via `initialize` and updated via `set_boss`.",
-        "- `is_killed`: Kill switch state - when true, certain operations are disabled for emergency purposes."
+        "- `is_killed`: Kill switch state - when true, certain operations are disabled for emergency purposes.",
+        "- `admins`: Array of admin public keys who can enable the kill switch."
       ],
       "type": {
         "kind": "struct",
@@ -3752,6 +3573,15 @@ export type Onreapp = {
           {
             "name": "isKilled",
             "type": "bool"
+          },
+          {
+            "name": "admins",
+            "type": {
+              "array": [
+                "pubkey",
+                20
+              ]
+            }
           }
         ]
       }

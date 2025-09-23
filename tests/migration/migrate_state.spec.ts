@@ -65,8 +65,7 @@ describe("Migrate State", () => {
         // given - migrate state first
         await program.migrateState();
 
-        // Initialize admin state for kill switch functionality
-        await program.initializeAdminState();
+        // Admin state is now part of the main state - no separate initialization needed
         const admin = testHelper.createUserAccount();
         await program.addAdmin({ admin: admin.publicKey });
 
@@ -98,32 +97,38 @@ describe("Migrate State", () => {
         const finalSize = migratedAccountInfo.data.length;
 
         expect(finalSize).toBe(initialSize); // Size should be the same for new deployments
-        expect(finalSize).toBe(41); // 8 bytes discriminator + 32 bytes boss + 1 byte is_killed
+        expect(finalSize).toBe(681); // 8 bytes discriminator + 32 bytes boss + 1 byte is_killed + (20 * 32) bytes admins
     });
 
-    test("Migration preserves kill switch state when enabled before migration", async () => {
-        // given - initialize admin state and enable kill switch before migration
-        await program.initializeAdminState();
-        const admin = testHelper.createUserAccount();
-        await program.addAdmin({ admin: admin.publicKey });
-
-        // Enable kill switch before migration
-        await program.killSwitch({ enable: true, signer: admin });
-
-        // Verify kill switch is enabled before migration
-        const stateBefore = await program.getState();
-        expect(stateBefore.isKilled).toBe(true);
+    test("Migration initializes kill switch to disabled and admins to empty", async () => {
+        // given - state already initialized with boss
+        const originalBoss = testHelper.getBoss();
 
         // when - migrate state
         await program.migrateState();
 
-        // then - kill switch state should be preserved
+        // then - migration should initialize kill switch as disabled and admins as empty
         const stateAfter = await program.getState();
-        expect(stateAfter.boss).toEqual(testHelper.getBoss());
-        expect(stateAfter.isKilled).toBe(true); // Should still be enabled after migration
+        expect(stateAfter.boss).toEqual(originalBoss);
+        expect(stateAfter.isKilled).toBe(false); // Should be initialized to false
 
-        // Also verify kill switch functionality still works after migration
-        await program.killSwitch({ enable: false }); // Only boss can disable
+        // All admin slots should be empty (default PublicKey)
+        for (const admin of stateAfter.admins) {
+            expect(admin.toString()).toBe(PublicKey.default.toString());
+        }
+
+        // Verify kill switch functionality works after migration
+        // First add an admin
+        const admin = testHelper.createUserAccount();
+        await program.addAdmin({ admin: admin.publicKey });
+
+        // Enable kill switch
+        await program.killSwitch({ enable: true, signer: admin });
+        const enabledState = await program.getState();
+        expect(enabledState.isKilled).toBe(true);
+
+        // Disable kill switch (only boss can disable)
+        await program.killSwitch({ enable: false });
         const finalState = await program.getState();
         expect(finalState.isKilled).toBe(false);
     });

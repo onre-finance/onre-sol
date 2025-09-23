@@ -12,49 +12,53 @@ describe("Initialize Kill Switch", () => {
         program = new OnreProgram(testHelper.context);
 
         nonBoss = testHelper.createUserAccount();
-
-        // Initialize state first
-        await program.initialize();
     });
 
-    test("Boss can initialize kill switch state successfully", async () => {
+    test("Kill switch is initialized with correct default values when state is initialized", async () => {
         // when
-        await program.initializeKillSwitchState();
+        await program.initialize();
 
         // then
-        const killSwitchState = await program.getKillSwitchState();
-        expect(killSwitchState.isKilled).toBe(false);
+        const state = await program.getState();
+        expect(state.isKilled).toBe(false);
+        expect(state.boss.toString()).toBe(testHelper.getBoss().toString());
     });
 
-    test("Non-boss cannot initialize kill switch state - should fail", async () => {
-        // when & then
+    test("Non-boss signer cannot initialize state with boss account mismatch - should fail", async () => {
+        // when & then - try to initialize with nonBoss signing but boss account set to different pubkey
         await expect(
             program.program.methods
-                .initializeKillSwitchState()
+                .initialize()
                 .accounts({
-                    state: program.statePda,
+                    boss: testHelper.getBoss(), // boss account is the real boss
+                    systemProgram: PublicKey.default,
                 })
-                .signers([nonBoss])
+                .signers([nonBoss]) // but nonBoss is trying to sign
                 .rpc()
         ).rejects.toThrow();
     });
 
-    test("Cannot initialize kill switch state twice", async () => {
+    test("Cannot initialize state twice", async () => {
         // given
-        await program.initializeKillSwitchState();
+        await program.initialize();
 
         // when & then
         await expect(
-            program.initializeKillSwitchState()
+            program.initialize()
         ).rejects.toThrow();
     });
 
-    test("Kill switch state is initialized with correct default values", async () => {
+    test("State is initialized with correct default values including kill switch", async () => {
         // when
-        await program.initializeKillSwitchState();
+        await program.initialize();
 
         // then
-        const killSwitchState = await program.getKillSwitchState();
-        expect(killSwitchState.isKilled).toBe(false);
+        const state = await program.getState();
+        expect(state.isKilled).toBe(false);
+        expect(state.boss.toString()).toBe(testHelper.getBoss().toString());
+        // All admin slots should be empty (default PublicKey)
+        for (const admin of state.admins) {
+            expect(admin.toString()).toBe(PublicKey.default.toString());
+        }
     });
 });

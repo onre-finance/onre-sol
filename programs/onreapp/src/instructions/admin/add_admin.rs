@@ -1,19 +1,12 @@
-use crate::state::{AdminState, State, MAX_ADMINS};
+use crate::state::{State, MAX_ADMINS};
 use crate::constants::seeds;
 use anchor_lang::prelude::*;
 
 /// Account structure for adding a new admin.
 #[derive(Accounts)]
 pub struct AddAdmin<'info> {
-    /// Admin state account containing the list of admins.
     #[account(
         mut,
-        seeds = [seeds::ADMIN_STATE],
-        bump
-    )]
-    pub admin_state: Account<'info, AdminState>,
-
-    #[account(
         has_one = boss,
         seeds = [seeds::STATE],
         bump
@@ -25,28 +18,28 @@ pub struct AddAdmin<'info> {
     pub boss: Signer<'info>,
 }
 
-/// Adds a new admin to the admin state.
+/// Adds a new admin to the state.
 ///
 /// # Arguments
 /// - `ctx`: Context containing the accounts for adding an admin.
 /// - `new_admin`: Public key of the new admin to be added.
 ///
 /// # Errors
-/// - [`AddAdminErrorCode::CallerNotAdmin`] if the caller is not in the admin list.
 /// - [`AddAdminErrorCode::AdminAlreadyExists`] if the admin is already in the list.
+/// - [`AddAdminErrorCode::MaxAdminsReached`] if the maximum number of admins is reached.
 pub fn add_admin(ctx: Context<AddAdmin>, new_admin: Pubkey) -> Result<()> {
-    let admin_state = &mut ctx.accounts.admin_state;
+    let state = &mut ctx.accounts.state;
 
     // Check if admin already exists
     require!(
-        !admin_state.admins.contains(&new_admin),
+        !state.admins.contains(&new_admin),
         AddAdminErrorCode::AdminAlreadyExists
     );
 
     // Find first empty slot
     for i in 0..MAX_ADMINS {
-        if admin_state.admins[i] == Pubkey::default() {
-            admin_state.admins[i] = new_admin;
+        if state.admins[i] == Pubkey::default() {
+            state.admins[i] = new_admin;
             return Ok(());
         }
     }

@@ -16,16 +16,12 @@ export class OnreProgram {
         offerAccountPda: PublicKey;
         offerVaultAuthorityPda: PublicKey;
         permissionlessVaultAuthorityPda: PublicKey;
-        adminStatePda: PublicKey;
         mintAuthorityPda: PublicKey;
-        killSwitchStatePda: PublicKey;
     } = {
         offerAccountPda: PublicKey.findProgramAddressSync([Buffer.from("offers")], PROGRAM_ID)[0],
         offerVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("offer_vault_authority")], PROGRAM_ID)[0],
         permissionlessVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], PROGRAM_ID)[0],
-        adminStatePda: PublicKey.findProgramAddressSync([Buffer.from("admin_state")], PROGRAM_ID)[0],
-        mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], PROGRAM_ID)[0],
-        killSwitchStatePda: PublicKey.findProgramAddressSync([Buffer.from("kill_switch")], PROGRAM_ID)[0]
+        mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], PROGRAM_ID)[0]
     };
 
     constructor(context: ProgramTestContext) {
@@ -296,19 +292,13 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async initializeAdminState() {
-        await this.program.methods
-            .initializeAdminState()
-            .accounts({
-                state: this.statePda
-            })
-            .rpc();
-    }
-
     async addAdmin(params: { admin: PublicKey, signer?: Keypair }) {
         const tx = this.program.methods
             .addAdmin(params.admin)
-            .accounts({});
+            .accounts({
+                state: this.statePda,
+                boss: this.program.provider.publicKey // Always the actual boss from state
+            });
 
         if (params.signer) {
             tx.signers([params.signer]);
@@ -320,22 +310,16 @@ export class OnreProgram {
     async removeAdmin(params: { admin: PublicKey, signer?: Keypair }) {
         const tx = this.program.methods
             .removeAdmin(params.admin)
-            .accounts({});
+            .accounts({
+                state: this.statePda,
+                boss: this.program.provider.publicKey // Always the actual boss from state
+            });
 
         if (params.signer) {
             tx.signers([params.signer]);
         }
 
         await tx.rpc();
-    }
-
-    async initializeKillSwitchState() {
-        await this.program.methods
-            .initializeKillSwitchState()
-            .accounts({
-                state: this.statePda
-            })
-            .rpc();
     }
 
     async killSwitch(params: { enable: boolean, signer?: Keypair }) {
@@ -380,10 +364,6 @@ export class OnreProgram {
 
     async getState() {
         return await this.program.account.state.fetch(this.statePda);
-    }
-
-    async getAdminState() {
-        return await this.program.account.adminState.fetch(this.pdas.adminStatePda);
     }
 
     async getKillSwitchState() {
