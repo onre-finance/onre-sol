@@ -1,53 +1,25 @@
-import * as anchor from '@coral-xyz/anchor';
-import { PublicKey } from '@solana/web3.js';
-import bs58 from 'bs58';
-
-import { getBossAccount, initProgram, PROGRAM_ID, RPC_URL } from './script-commons';
+import { ScriptHelper } from "../utils/script-helper";
 
 async function createInitializeVaultTransaction() {
-    const program = await initProgram();
-    const connection = new anchor.web3.Connection(RPC_URL);
+    const helper = await ScriptHelper.create();
 
-    const [statePda] = PublicKey.findProgramAddressSync([Buffer.from('state')], PROGRAM_ID);
-    const [vaultAuthorityPda] = PublicKey.findProgramAddressSync([Buffer.from('vault_authority')], PROGRAM_ID);
+    console.log("Creating initialize vault authority transaction...");
 
-    const BOSS = await getBossAccount(program);
-    console.log('BOSS:', BOSS.toBase58());
-    console.log('State PDA:', statePda.toBase58());
-    console.log('Vault Authority PDA:', vaultAuthorityPda.toBase58());
-    console.log('Program ID:', PROGRAM_ID.toBase58());
-
-    console.log('Initializing vault authority...');
+    const boss = await helper.getBoss();
+    console.log("Boss:", boss.toBase58());
+    console.log("State PDA:", helper.statePda.toBase58());
+    console.log("Offer Vault Authority PDA:", helper.pdas.offerVaultAuthorityPda.toBase58());
 
     try {
-        const tx = await program.methods
-            .initializeVaultAuthority()
-            .accountsPartial({
-                state: statePda,
-                vaultAuthority: vaultAuthorityPda,
-                boss: BOSS,
-            })
-            .transaction();
+        const tx = await helper.buildInitializeVaultAuthorityTransaction();
 
-        tx.feePayer = BOSS;
-        tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+        console.log("\nThis transaction will initialize:");
+        console.log("- Offer vault authority PDA for managing program-owned token accounts");
+        console.log("- Required for offer vault deposit/withdraw operations");
 
-        const serializedTx = tx.serialize({
-            requireAllSignatures: false,
-            verifySignatures: false,
-        });
-
-        const base58Tx = bs58.encode(serializedTx);
-        console.log('Initialize Vault Authority Transaction (Base58):');
-        console.log(base58Tx);
-
-        console.log('\nThis transaction will initialize:');
-        console.log('- Vault authority PDA for managing program-owned token accounts');
-        console.log('- Required for vault deposit/withdraw operations');
-
-        return base58Tx;
+        return helper.printTransaction(tx, "Initialize Vault Authority Transaction");
     } catch (error) {
-        console.error('Error creating initialize vault transaction:', error);
+        console.error("Error creating transaction:", error);
         throw error;
     }
 }
@@ -56,7 +28,7 @@ async function main() {
     try {
         await createInitializeVaultTransaction();
     } catch (error) {
-        console.error('Failed to create initialize vault transaction:', error);
+        console.error("Failed to create initialize vault transaction:", error);
     }
 }
 

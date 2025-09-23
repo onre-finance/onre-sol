@@ -1,43 +1,25 @@
-import * as anchor from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
-import bs58 from "bs58";
+import { ScriptHelper, BOSS_DEV } from "../utils/script-helper";
 
-import { initProgram, PROGRAM_ID, RPC_URL } from "../utils/script-commons";
+// Use DEV Squad for initialization
+const BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC"); // DEV Squad
 
-// PROD
-// const BOSS = new PublicKey("45YnzauhsBM8CpUz96Djf8UG5vqq2Dua62wuW9H3jaJ5"); // WARN: SQUAD MAIN ACCOUNT!!!
+async function createInitializeTransaction() {
+    const helper = await ScriptHelper.create();
 
-// TEST & local
-const BOSS = new PublicKey("9tTUg7r9ftofzoPXKeUPB35oN4Lm8KkrVDVQbbM7Xzxx"); // DEV Squad
-
-async function initialize() {
-    const connection = new anchor.web3.Connection(RPC_URL);
-    const program = await initProgram();
-
-    const [statePda] = PublicKey.findProgramAddressSync([Buffer.from("state")], PROGRAM_ID);
+    console.log("Creating initialize transaction...");
+    console.log("Boss (DEV Squad):", BOSS.toBase58());
 
     try {
-        const tx = await program.methods
+        const tx = await helper.program.methods
             .initialize()
-            .accountsPartial({
-                state: statePda,
+            .accounts({
                 boss: BOSS,
             })
             .transaction();
 
-        tx.feePayer = BOSS;
-        tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-
-        const serializedTx = tx.serialize({
-            requireAllSignatures: false,
-            verifySignatures: false,
-        });
-
-        const base58Tx = bs58.encode(serializedTx);
-        console.log("Make Initialize Transaction (Base58):");
-        console.log(base58Tx);
-
-        return base58Tx;
+        const preparedTx = await helper.prepareTransaction(tx);
+        return helper.printTransaction(preparedTx, "Initialize Transaction");
     } catch (error) {
         console.error("Error creating transaction:", error);
         throw error;
@@ -46,10 +28,10 @@ async function initialize() {
 
 async function main() {
     try {
-        await initialize();
+        await createInitializeTransaction();
     } catch (error) {
         console.error("Failed to create initialize transaction:", error);
     }
 }
 
-main();
+await main();

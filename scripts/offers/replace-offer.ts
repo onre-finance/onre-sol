@@ -1,117 +1,63 @@
-import * as anchor from '@coral-xyz/anchor';
-import {
-    createAssociatedTokenAccountInstruction,
-    getAssociatedTokenAddressSync,
-    TOKEN_PROGRAM_ID,
-} from '@solana/spl-token';
-import bs58 from 'bs58';
-import { BN } from 'bn.js';
-
-import { getBossAccount, getOffer, initProgram, PROGRAM_ID, RPC_URL } from './script-commons';
 import { PublicKey } from '@solana/web3.js';
+import { ScriptHelper } from '../utils/script-helper';
 
-async function createMakeOfferOneTransaction() {
-    const oldOfferId = new BN(1);
-    const offerId = new BN(1);
+// Token addresses - update the offer by closing and creating a new one
+const TOKEN_IN_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'); // USDC
+const TOKEN_OUT_MINT = new PublicKey('5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5'); // ONyc
 
-    const buyTokenAmount =       new BN('20000000000000000');                   // 9 decimals for ONyc
-    const sellTokenStartAmount = new BN('20399638000000');                      // 6 decimals for USDC
-    const sellTokenEndAmount =   new BN('20493362740000');                      // 6 decimals for USDC
-    const offerStartTime = Math.floor(new Date(2025, 7, 12).getTime() / 1000);  // August 12, 2025
-    const offerEndTime = offerStartTime + (60 * 60 * 24 * 15);                  // +15 days (August, 27th)
-    const priceFixDuration = new BN(60 * 60 * 24); // 1 day
+// Configuration
+const OLD_OFFER_ID = 1;
+const NEW_FEE_BASIS_POINTS = 100; // 1% fee for the new offer
 
-    const program = await initProgram();
-    const connection = new anchor.web3.Connection(RPC_URL);
+async function createReplaceOfferTransaction() {
+    const helper = await ScriptHelper.create();
 
-    const BOSS = await getBossAccount(program);
-    const offer = await getOffer(oldOfferId, program);
+    console.log('Creating replace offer transaction...');
+    console.log('This will close offer', OLD_OFFER_ID, 'and create a new one');
+    console.log('Token In (USDC):', TOKEN_IN_MINT.toBase58());
+    console.log('Token Out (ONe):', TOKEN_OUT_MINT.toBase58());
+    console.log('New Fee:', NEW_FEE_BASIS_POINTS / 100, '%');
 
-    const [oldOfferAuthority] = PublicKey.findProgramAddressSync(
-        [Buffer.from('offer_authority'), oldOfferId.toArrayLike(Buffer, 'le', 8)],
-        program.programId,
-    );
-    const [offerAuthority] = PublicKey.findProgramAddressSync(
-        [Buffer.from('offer_authority'), offerId.toArrayLike(Buffer, 'le', 8)],
-        program.programId,
-    );
+    const boss = await helper.getBoss();
+    console.log('Boss:', boss.toBase58());
 
-    const offerSellTokenAccountInstruction = createAssociatedTokenAccountInstruction(
-        BOSS,
-        getAssociatedTokenAddressSync(offer.sellTokenMint, offerAuthority, true),
-        offerAuthority,
-        offer.sellTokenMint,
-        TOKEN_PROGRAM_ID,
-    );
-    const offerBuyTokenAccountInstruction = createAssociatedTokenAccountInstruction(
-        BOSS,
-        getAssociatedTokenAddressSync(offer.buyToken1.mint, offerAuthority, true),
-        offerAuthority,
-        offer.buyToken1.mint,
-    );
-    // Derive the state PDA
-    const [statePda] = PublicKey.findProgramAddressSync([Buffer.from('state')], PROGRAM_ID);
-
-    const [offerPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('offer'), offerId.toArrayLike(Buffer, 'le', 8)],
-        PROGRAM_ID,
-    );
-
-    const [oldOfferPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('offer'), oldOfferId.toArrayLike(Buffer, 'le', 8)],
-        PROGRAM_ID,
-    );
     try {
-        let closeInstruction = await program.methods
-            .closeOfferOne()
-            .accountsPartial({
-                offer: oldOfferPda,
-                offerSellTokenAccount: getAssociatedTokenAddressSync(offer.sellTokenMint, oldOfferAuthority, true),
-                offerBuy1TokenAccount: getAssociatedTokenAddressSync(offer.buyToken1.mint, oldOfferAuthority, true),
-                bossBuy1TokenAccount: getAssociatedTokenAddressSync(offer.buyToken1.mint, BOSS, true),
-                bossSellTokenAccount: getAssociatedTokenAddressSync(offer.sellTokenMint, BOSS, true),
-                state: statePda,
-                offerTokenAuthority: oldOfferAuthority,
-                boss: BOSS,
-            })
-            .instruction();
+        // Check if the old offer exists
+        const oldOffer = await helper.getOffer(OLD_OFFER_ID);
+        if (!oldOffer) {
+            throw new Error(`Offer ${OLD_OFFER_ID} not found.`);
+        }
 
-        const tx = await program.methods
-            .makeOfferOne(
-              offerId,
-              buyTokenAmount,
-              sellTokenStartAmount,
-              sellTokenEndAmount,
-              new BN(offerStartTime),
-              new BN(offerEndTime),
-              priceFixDuration
-            ).accountsPartial({
-                offer: offerPda,
-                offerSellTokenAccount: getAssociatedTokenAddressSync(offer.sellTokenMint, offerAuthority, true),
-                offerBuyToken1Account: getAssociatedTokenAddressSync(offer.buyToken1.mint, offerAuthority, true),
-                offerTokenAuthority: offerAuthority,
-                bossBuyToken1Account: getAssociatedTokenAddressSync(offer.buyToken1.mint, BOSS, true),
-                sellTokenMint: offer.sellTokenMint,
-                buyToken1Mint: offer.buyToken1.mint,
-                state: statePda,
-                boss: BOSS,
-            })
-            .preInstructions([closeInstruction, offerBuyTokenAccountInstruction, offerSellTokenAccountInstruction])
-            .transaction();
-
-        tx.feePayer = BOSS;
-        tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-
-        const serializedTx = tx.serialize({
-            requireAllSignatures: false,
-            verifySignatures: false,
+        console.log('Found old offer:', {
+            id: oldOffer.offerId.toNumber(),
+            tokenIn: oldOffer.tokenInMint.toBase58(),
+            tokenOut: oldOffer.tokenOutMint.toBase58(),
+            currentFee: oldOffer.feeBasisPoints.toNumber() / 100 + '%'
         });
 
-        const base58Tx = bs58.encode(serializedTx);
-        console.log('Replace Offer Transaction (Base58):');
-        console.log(base58Tx);
+        // First, close the old offer
+        console.log('\nStep 1: Closing old offer...');
+        const closeTx = await helper.buildCloseOfferTransaction({
+            offerId: OLD_OFFER_ID
+        });
+        const closeBase58 = helper.printTransaction(closeTx, 'Close Old Offer Transaction');
 
-        return base58Tx;
+        // Then, create a new offer
+        console.log('\nStep 2: Creating new offer...');
+        const makeTx = await helper.buildMakeOfferTransaction({
+            tokenInMint: TOKEN_IN_MINT,
+            tokenOutMint: TOKEN_OUT_MINT,
+            feeBasisPoints: NEW_FEE_BASIS_POINTS
+        });
+        const makeBase58 = helper.printTransaction(makeTx, 'Make New Offer Transaction');
+
+        console.log('\n=== INSTRUCTIONS ===');
+        console.log('1. Execute the close transaction first');
+        console.log('2. Wait for confirmation');
+        console.log('3. Execute the make offer transaction');
+        console.log('4. Add vectors to the new offer using add-offer-vector script');
+
+        return { closeBase58, makeBase58 };
     } catch (error) {
         console.error('Error creating transaction:', error);
         throw error;
@@ -120,7 +66,7 @@ async function createMakeOfferOneTransaction() {
 
 async function main() {
     try {
-        await createMakeOfferOneTransaction();
+        await createReplaceOfferTransaction();
     } catch (error) {
         console.error('Failed to create replace offer transaction:', error);
     }
