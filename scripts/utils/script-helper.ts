@@ -308,9 +308,7 @@ export class ScriptHelper {
     async buildSetKillSwitchTransaction(params: { enable: boolean, boss?: PublicKey }) {
         const tx = await this.program.methods
             .setKillSwitch(params.enable)
-            .accountsPartial({
-                boss: params.boss ?? BOSS
-            })
+            .accounts({})
             .transaction();
 
         return this.prepareTransaction(tx, params.boss);
@@ -368,21 +366,4 @@ export class ScriptHelper {
         console.log(base58Tx);
         return base58Tx;
     }
-}
-
-// Legacy compatibility exports - can be removed after script migration
-export async function initProgram() {
-    const helper = await ScriptHelper.create();
-    return helper.program;
-}
-
-export async function getBossAccount(program: Program<Onreapp>) {
-    const [statePda] = PublicKey.findProgramAddressSync([Buffer.from("state")], PROGRAM_ID);
-    const stateAccount = await program.account.state.fetch(statePda);
-    return stateAccount.boss;
-}
-
-export async function getOffer(offerId: BN, program: Program<Onreapp>) {
-    const helper = await ScriptHelper.create();
-    return helper.getOffer(offerId.toNumber());
 }
