@@ -31,7 +31,6 @@ describe("Initialize Kill Switch", () => {
                 .initialize()
                 .accounts({
                     boss: testHelper.getBoss(), // boss account is the real boss
-                    systemProgram: PublicKey.default,
                 })
                 .signers([nonBoss]) // but nonBoss is trying to sign
                 .rpc()
