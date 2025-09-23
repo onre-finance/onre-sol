@@ -643,64 +643,6 @@ export type Onreapp = {
       "args": []
     },
     {
-      "name": "killSwitch",
-      "docs": [
-        "Enables or disables the kill switch.",
-        "",
-        "Delegates to `kill_switch::kill_switch` to change the kill switch state.",
-        "When enabled (true), the kill switch can halt critical program operations.",
-        "When disabled (false), normal program operations can proceed.",
-        "",
-        "Access control:",
-        "- Both boss and admins can enable the kill switch",
-        "- Only the boss can disable the kill switch",
-        "",
-        "# Arguments",
-        "- `ctx`: Context for `KillSwitch`.",
-        "- `enable`: True to enable the kill switch, false to disable it."
-      ],
-      "discriminator": [
-        189,
-        76,
-        222,
-        157,
-        130,
-        131,
-        241,
-        144
-      ],
-      "accounts": [
-        {
-          "name": "state",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "signer",
-          "signer": true
-        }
-      ],
-      "args": [
-        {
-          "name": "enable",
-          "type": "bool"
-        }
-      ]
-    },
-    {
       "name": "makeOffer",
       "docs": [
         "Creates an offer.",
@@ -1550,6 +1492,64 @@ export type Onreapp = {
         {
           "name": "newBoss",
           "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "setKillSwitch",
+      "docs": [
+        "Enables or disables the kill switch.",
+        "",
+        "Delegates to `kill_switch::kill_switch` to change the kill switch state.",
+        "When enabled (true), the kill switch can halt critical program operations.",
+        "When disabled (false), normal program operations can proceed.",
+        "",
+        "Access control:",
+        "- Both boss and admins can enable the kill switch",
+        "- Only the boss can disable the kill switch",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `KillSwitch`.",
+        "- `enable`: True to enable the kill switch, false to disable it."
+      ],
+      "discriminator": [
+        228,
+        119,
+        172,
+        135,
+        209,
+        250,
+        172,
+        216
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "signer",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "enable",
+          "type": "bool"
         }
       ]
     },

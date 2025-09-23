@@ -22,7 +22,7 @@ describe("Kill Switch Disable", () => {
         await program.addAdmin({ admin: admin.publicKey });
 
         // Enable kill switch initially for disable tests
-        await program.killSwitch({ enable: true });
+        await program.setKillSwitch({ enable: true });
     });
 
     test("Boss can disable kill switch successfully", async () => {
@@ -31,7 +31,7 @@ describe("Kill Switch Disable", () => {
         expect(initialState.isKilled).toBe(true);
 
         // when
-        await program.killSwitch({ enable: false });
+        await program.setKillSwitch({ enable: false });
 
         // then
         const finalState = await program.getState();
@@ -45,7 +45,7 @@ describe("Kill Switch Disable", () => {
 
         // when & then
         await expect(
-            program.killSwitch({ enable: false, signer: admin })
+            program.setKillSwitch({ enable: false, signer: admin })
         ).rejects.toThrow("Only boss can disable the kill switch");
 
         // verify kill switch is still enabled
@@ -60,7 +60,7 @@ describe("Kill Switch Disable", () => {
 
         // when & then
         await expect(
-            program.killSwitch({ enable: false, signer: nonBoss })
+            program.setKillSwitch({ enable: false, signer: nonBoss })
         ).rejects.toThrow("Only boss can disable the kill switch");
 
         // verify kill switch is still enabled
@@ -74,7 +74,7 @@ describe("Kill Switch Disable", () => {
         expect(initialState.isKilled).toBe(true);
 
         // when
-        await program.killSwitch({ enable: false });
+        await program.setKillSwitch({ enable: false });
 
         // then
         const finalState = await program.getState();
@@ -88,7 +88,7 @@ describe("Kill Switch Disable", () => {
         expect(initialState.isKilled).toBe(true);
 
         // when - boss disables
-        await program.killSwitch({ enable: false });
+        await program.setKillSwitch({ enable: false });
 
         // then
         const finalState = await program.getState();
@@ -101,11 +101,11 @@ describe("Kill Switch Disable", () => {
 
         // verify admin no longer has privileges to enable
         await expect(
-            program.killSwitch({ enable: true, signer: admin })
+            program.setKillSwitch({ enable: true, signer: admin })
         ).rejects.toThrow("Unauthorized to enable the kill switch");
 
         // when - boss can still disable
-        await program.killSwitch({ enable: false });
+        await program.setKillSwitch({ enable: false });
 
         // then
         const finalState = await program.getState();

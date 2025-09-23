@@ -322,9 +322,9 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async killSwitch(params: { enable: boolean, signer?: Keypair }) {
+    async setKillSwitch(params: { enable: boolean, signer?: Keypair }) {
         const tx = this.program.methods
-            .killSwitch(params.enable)
+            .setKillSwitch(params.enable)
             .accounts({
                 signer: params.signer ? params.signer.publicKey : this.program.provider.publicKey
             });

@@ -300,8 +300,8 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `KillSwitch`.
     /// - `enable`: True to enable the kill switch, false to disable it.
-    pub fn kill_switch(ctx: Context<KillSwitch>, enable: bool) -> Result<()> {
-        kill_switch::kill_switch(ctx, enable)
+    pub fn set_kill_switch(ctx: Context<KillSwitch>, enable: bool) -> Result<()> {
+        kill_switch::set_kill_switch(ctx, enable)
     }
 
     /// Migrates the State account to include the new is_killed field.

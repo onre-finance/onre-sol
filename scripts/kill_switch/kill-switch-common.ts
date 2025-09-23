@@ -18,7 +18,7 @@ export async function createKillSwitchTransaction(enable: boolean): Promise<stri
 
     try {
         const tx = await program.methods
-            .killSwitch(enable)
+            .setKillSwitch(enable)
             .accountsPartial({
                 state: statePda,
                 signer: BOSS,

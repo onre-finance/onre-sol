@@ -70,14 +70,14 @@ describe("Migrate State", () => {
         await program.addAdmin({ admin: admin.publicKey });
 
         // when - enable kill switch
-        await program.killSwitch({ enable: true, signer: admin });
+        await program.setKillSwitch({ enable: true, signer: admin });
 
         // then - state should reflect kill switch enabled
         const state = await program.getState();
         expect(state.isKilled).toBe(true);
 
         // when - disable kill switch (only boss can disable)
-        await program.killSwitch({ enable: false });
+        await program.setKillSwitch({ enable: false });
 
         // then - state should reflect kill switch disabled
         const finalState = await program.getState();
@@ -123,12 +123,12 @@ describe("Migrate State", () => {
         await program.addAdmin({ admin: admin.publicKey });
 
         // Enable kill switch
-        await program.killSwitch({ enable: true, signer: admin });
+        await program.setKillSwitch({ enable: true, signer: admin });
         const enabledState = await program.getState();
         expect(enabledState.isKilled).toBe(true);
 
         // Disable kill switch (only boss can disable)
-        await program.killSwitch({ enable: false });
+        await program.setKillSwitch({ enable: false });
         const finalState = await program.getState();
         expect(finalState.isKilled).toBe(false);
     });

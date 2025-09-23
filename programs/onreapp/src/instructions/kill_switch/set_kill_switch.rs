@@ -14,7 +14,7 @@ pub struct KillSwitch<'info> {
     pub signer: Signer<'info>,
 }
 
-pub fn kill_switch(ctx: Context<KillSwitch>, enable: bool) -> Result<()> {
+pub fn set_kill_switch(ctx: Context<KillSwitch>, enable: bool) -> Result<()> {
     let state = &mut ctx.accounts.state;
     let signer = &ctx.accounts.signer;
 

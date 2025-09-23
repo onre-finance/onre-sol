@@ -895,7 +895,7 @@ describe("Take Offer", () => {
             });
 
             // Enable kill switch
-            await program.killSwitch({ enable: true, signer: admin });
+            await program.setKillSwitch({ enable: true, signer: admin });
 
             // Verify kill switch is enabled
             const state = await program.getState();
@@ -930,8 +930,8 @@ describe("Take Offer", () => {
             });
 
             // Enable then disable kill switch
-            await program.killSwitch({ enable: true, signer: admin });
-            await program.killSwitch({ enable: false }); // Only boss can disable
+            await program.setKillSwitch({ enable: true, signer: admin });
+            await program.setKillSwitch({ enable: false }); // Only boss can disable
 
             // Verify kill switch is disabled
             const state = await program.getState();

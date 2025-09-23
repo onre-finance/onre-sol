@@ -24,7 +24,7 @@ describe("Kill Switch Enable", () => {
 
     test("Boss can enable kill switch successfully", async () => {
         // when
-        await program.killSwitch({ enable: true });
+        await program.setKillSwitch({ enable: true });
 
         // then
         const state = await program.getState();
@@ -33,7 +33,7 @@ describe("Kill Switch Enable", () => {
 
     test("Admin can enable kill switch successfully", async () => {
         // when
-        await program.killSwitch({ enable: true, signer: admin });
+        await program.setKillSwitch({ enable: true, signer: admin });
 
         // then
         const state = await program.getState();
@@ -43,7 +43,7 @@ describe("Kill Switch Enable", () => {
     test("Non-boss and non-admin cannot enable kill switch - should fail", async () => {
         // when & then
         await expect(
-            program.killSwitch({ enable: true, signer: nonBoss })
+            program.setKillSwitch({ enable: true, signer: nonBoss })
         ).rejects.toThrow("Unauthorized to enable the kill switch");
     });
 
@@ -53,7 +53,7 @@ describe("Kill Switch Enable", () => {
         expect(initialState.isKilled).toBe(false);
 
         // when
-        await program.killSwitch({ enable: true });
+        await program.setKillSwitch({ enable: true });
 
         // then
         const finalState = await program.getKillSwitchState();
@@ -62,12 +62,12 @@ describe("Kill Switch Enable", () => {
 
     test("Can enable kill switch when already enabled (idempotent)", async () => {
         // given - enable kill switch first
-        await program.killSwitch({ enable: true });
+        await program.setKillSwitch({ enable: true });
         const initialState = await program.getKillSwitchState();
         expect(initialState.isKilled).toBe(true);
 
         // when - enable again (use admin signer to make transaction different)
-        await program.killSwitch({ enable: true, signer: admin });
+        await program.setKillSwitch({ enable: true, signer: admin });
 
         // then - should still be enabled
         const finalState = await program.getKillSwitchState();
@@ -80,15 +80,15 @@ describe("Kill Switch Enable", () => {
         await program.addAdmin({ admin: admin2.publicKey });
 
         // when - first admin enables
-        await program.killSwitch({ enable: true, signer: admin });
+        await program.setKillSwitch({ enable: true, signer: admin });
 
         // then - should be enabled
         let state = await program.getState();
         expect(state.isKilled).toBe(true);
 
         // when - boss disables then second admin enables
-        await program.killSwitch({ enable: false });
-        await program.killSwitch({ enable: true, signer: admin2 });
+        await program.setKillSwitch({ enable: false });
+        await program.setKillSwitch({ enable: true, signer: admin2 });
 
         // then - should be enabled again
         state = await program.getState();
