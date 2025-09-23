@@ -1,45 +1,26 @@
-// setBoss.ts
-import * as anchor from '@coral-xyz/anchor';
-import { PublicKey, SystemProgram } from '@solana/web3.js';
-import bs58 from 'bs58';
+import { PublicKey } from "@solana/web3.js";
+import { ScriptHelper } from "../utils/script-helper";
 
-import { getBossAccount, initProgram, PROGRAM_ID, RPC_URL } from './script-commons';
-
-const NEW_BOSS = new PublicKey('9tTUg7r9ftofzoPXKeUPB35oN4Lm8KkrVDVQbbM7Xzxx'); // Replace with this
+// New boss to set - UPDATE THIS
+const NEW_BOSS = new PublicKey("REPLACE_WITH_NEW_BOSS_PUBKEY");
 
 async function createSetBossTransaction() {
-    const program = await initProgram();
-    const connection = new anchor.web3.Connection(RPC_URL);
+    const helper = await ScriptHelper.create();
 
-    const BOSS = await getBossAccount(program);
+    console.log("Creating set boss transaction...");
+    console.log("New boss:", NEW_BOSS.toBase58());
 
-    const [statePda, _bump] = PublicKey.findProgramAddressSync([Buffer.from('state')], PROGRAM_ID);
+    const currentBoss = await helper.getBoss();
+    console.log("Current boss:", currentBoss.toBase58());
 
     try {
-        const tx = await program.methods
-            .setBoss(NEW_BOSS)
-            .accountsPartial({
-                state: statePda,
-                boss: BOSS,
-                systemProgram: SystemProgram.programId,
-            })
-            .transaction();
-
-        tx.feePayer = BOSS;
-        tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-
-        const serializedTx = tx.serialize({
-            requireAllSignatures: false,
-            verifySignatures: false,
+        const tx = await helper.buildSetBossTransaction({
+            newBoss: NEW_BOSS
         });
 
-        const base58Tx = bs58.encode(serializedTx);
-        console.log('Set Boss Transaction (Base58):');
-        console.log(base58Tx);
-
-        return base58Tx;
+        return helper.printTransaction(tx, "Set Boss Transaction");
     } catch (error) {
-        console.error('Error creating transaction:', error);
+        console.error("Error creating transaction:", error);
         throw error;
     }
 }
@@ -48,7 +29,7 @@ async function main() {
     try {
         await createSetBossTransaction();
     } catch (error) {
-        console.error('Failed to create set boss transaction:', error);
+        console.error("Failed to create set boss transaction:", error);
     }
 }
 
