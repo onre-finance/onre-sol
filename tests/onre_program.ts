@@ -467,6 +467,38 @@ export class OnreProgram {
         }
     }
 
+    async getCirculatingSupply(params: { offerId: number, tokenOutMint: PublicKey, tokenOutProgram?: PublicKey }): Promise<BN> {
+        const tokenOutProgram = params.tokenOutProgram ?? TOKEN_PROGRAM_ID;
+        try {
+            // First try with view() for the return value
+            return await this.program.methods
+                .getCirculatingSupply(new BN(params.offerId))
+                .accounts({
+                    tokenOutMint: params.tokenOutMint,
+                    tokenOutProgram: tokenOutProgram,
+                    vaultTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, this.pdas.offerVaultAuthorityPda, true, tokenOutProgram)
+                })
+                .signers([this.program.provider.wallet.payer])
+                .view();
+        } catch (error) {
+            console.log(error);
+            // If view() fails with the null data error, try rpc() to get proper error messages
+            // Use rpc() to get the proper anchor error
+            await this.program.methods
+                .getCirculatingSupply(new BN(params.offerId))
+                .accounts({
+                    tokenOutMint: params.tokenOutMint,
+                    tokenOutProgram: tokenOutProgram,
+                    vaultTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, this.pdas.offerVaultAuthorityPda, true, tokenOutProgram)
+                })
+                .signers([this.program.provider.wallet.payer])
+                .rpc();
+
+            // If rpc doesn't throw, something unexpected happened
+            throw new Error("Unexpected success from rpc after view failure");
+        }
+    }
+
     // Accounts
     async getOfferAccount() {
         const offerAccountPda = this.pdas.offerAccountPda;

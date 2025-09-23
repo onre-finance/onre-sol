@@ -390,4 +390,23 @@ pub mod onreapp {
     pub fn get_tvl(ctx: Context<GetTVL>, offer_id: u64) -> Result<u64> {
         market_info::get_tvl(ctx, offer_id)
     }
+
+    /// Delegates to `market_info::get_circulating_supply`.
+    /// This is a read-only instruction that calculates and returns the current circulating supply
+    /// for an offer based on the total token supply minus the vault amount.
+    /// circulating_supply = total_supply - vault_amount
+    /// Emits a `GetCirculatingSupplyEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `GetCirculatingSupply`.
+    /// - `offer_id`: ID of the offer to get the circulating supply for.
+    ///
+    /// # Returns
+    /// - `Ok(circulating_supply)`: The calculated circulating supply for the offer in base units
+    pub fn get_circulating_supply(
+        ctx: Context<GetCirculatingSupply>,
+        offer_id: u64,
+    ) -> Result<u64> {
+        market_info::get_circulating_supply(ctx, offer_id)
+    }
 }
