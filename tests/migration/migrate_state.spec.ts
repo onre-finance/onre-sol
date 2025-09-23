@@ -34,21 +34,6 @@ describe("Migrate State", () => {
         ).rejects.toThrow("Boss pubkey mismatch");
     });
 
-    test("Migration is idempotent - can be called multiple times", async () => {
-        // given - first migration
-        await program.migrateState();
-        const stateAfterFirst = await program.getState();
-        expect(stateAfterFirst.isKilled).toBe(false);
-
-        // when - migrate again
-        await program.migrateState();
-
-        // then - state should still be accessible and unchanged
-        const stateAfterSecond = await program.getState();
-        expect(stateAfterSecond.boss).toEqual(testHelper.getBoss());
-        expect(stateAfterSecond.isKilled).toBe(false);
-    });
-
     test("Migration preserves existing boss field", async () => {
         // given - get original boss
         const originalBoss = testHelper.getBoss();

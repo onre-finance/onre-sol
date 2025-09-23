@@ -300,7 +300,7 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `KillSwitch`.
     /// - `enable`: True to enable the kill switch, false to disable it.
-    pub fn set_kill_switch(ctx: Context<KillSwitch>, enable: bool) -> Result<()> {
+    pub fn set_kill_switch(ctx: Context<SetKillSwitch>, enable: bool) -> Result<()> {
         kill_switch::set_kill_switch(ctx, enable)
     }
 

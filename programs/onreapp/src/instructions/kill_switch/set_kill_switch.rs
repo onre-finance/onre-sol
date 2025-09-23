@@ -4,7 +4,7 @@ use crate::constants::seeds;
 use crate::state::State;
 
 #[derive(Accounts)]
-pub struct KillSwitch<'info> {
+pub struct SetKillSwitch<'info> {
     #[account(
         mut,
         seeds = [seeds::STATE],
@@ -14,7 +14,7 @@ pub struct KillSwitch<'info> {
     pub signer: Signer<'info>,
 }
 
-pub fn set_kill_switch(ctx: Context<KillSwitch>, enable: bool) -> Result<()> {
+pub fn set_kill_switch(ctx: Context<SetKillSwitch>, enable: bool) -> Result<()> {
     let state = &mut ctx.accounts.state;
     let signer = &ctx.accounts.signer;
 
