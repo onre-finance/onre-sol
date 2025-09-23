@@ -15,6 +15,8 @@ pub enum TakeOfferErrorCode {
     InvalidBoss,
     #[msg("Math overflow")]
     MathOverflow,
+    #[msg("Kill switch is activated")]
+    KillSwitchActivated,
 }
 
 /// Event emitted when an offer is successfully taken
@@ -43,6 +45,9 @@ pub struct TakeOffer<'info> {
     pub offer_account: AccountLoader<'info, OfferAccount>,
 
     /// Program state account containing the boss public key
+    #[account(
+        constraint = state.is_killed == false @ TakeOfferErrorCode::KillSwitchActivated
+    )]
     pub state: Box<Account<'info, State>>,
 
     /// The boss account that receives token_in payments

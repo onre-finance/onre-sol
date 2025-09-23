@@ -42,9 +42,11 @@ pub struct Initialize<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Initializes the program state with the boss’s public key.
+/// Initializes the program state with the boss's public key, kill switch disabled, and empty admins.
 ///
-/// Sets the `boss` field in the `state` account to the signer’s key if it’s not already set.
+/// Sets the `boss` field in the `state` account to the signer's key if it's not already set.
+/// Initializes the kill switch to disabled (false) by default.
+/// Initializes the admins array to empty (all zeros).
 /// The account is created as a PDA with the seed `"state"`.
 ///
 /// # Arguments
@@ -58,6 +60,8 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         return err!(InitializeErrorCode::BossAlreadySet);
     }
     state.boss = ctx.accounts.boss.key();
+    state.is_killed = false; // Initialize kill switch as disabled
+    state.admins = [Pubkey::default(); crate::state::MAX_ADMINS]; // Initialize empty admins array
 
     Ok(())
 }

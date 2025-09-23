@@ -2,7 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
 
-import { initProgram, PROGRAM_ID, RPC_URL } from "./script-commons";
+import { initProgram, PROGRAM_ID, RPC_URL } from "../script-commons";
 
 // PROD
 // const BOSS = new PublicKey("45YnzauhsBM8CpUz96Djf8UG5vqq2Dua62wuW9H3jaJ5"); // WARN: SQUAD MAIN ACCOUNT!!!
@@ -10,7 +10,7 @@ import { initProgram, PROGRAM_ID, RPC_URL } from "./script-commons";
 // TEST & local
 const BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC"); // DEV Squad
 
-async function initialize() {
+export async function createKillSwitchTransaction(enable: boolean): Promise<string> {
     const connection = new anchor.web3.Connection(RPC_URL);
     const program = await initProgram();
 
@@ -18,10 +18,10 @@ async function initialize() {
 
     try {
         const tx = await program.methods
-            .initialize()
+            .setKillSwitch(enable)
             .accountsPartial({
                 state: statePda,
-                boss: BOSS,
+                signer: BOSS,
             })
             .transaction();
 
@@ -34,22 +34,14 @@ async function initialize() {
         });
 
         const base58Tx = bs58.encode(serializedTx);
-        console.log("Make Initialize Transaction (Base58):");
+        const action = enable ? "Enable" : "Disable";
+        console.log(`Kill Switch ${action} Transaction (Base58):`);
         console.log(base58Tx);
 
         return base58Tx;
     } catch (error) {
-        console.error("Error creating transaction:", error);
+        const action = enable ? "enable" : "disable";
+        console.error(`Error creating kill switch ${action} transaction:`, error);
         throw error;
     }
 }
-
-async function main() {
-    try {
-        await initialize();
-    } catch (error) {
-        console.error("Failed to create initialize transaction:", error);
-    }
-}
-
-main();

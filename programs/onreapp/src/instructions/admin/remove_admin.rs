@@ -1,19 +1,12 @@
-use crate::state::{AdminState, State, MAX_ADMINS};
+use crate::state::{State, MAX_ADMINS};
 use crate::constants::seeds;
 use anchor_lang::prelude::*;
 
 /// Account structure for removing an admin.
 #[derive(Accounts)]
 pub struct RemoveAdmin<'info> {
-    /// Admin state account containing the list of admins.
     #[account(
         mut,
-        seeds = [seeds::ADMIN_STATE],
-        bump
-    )]
-    pub admin_state: Account<'info, AdminState>,
-
-    #[account(
         has_one = boss,
         seeds = [seeds::STATE],
         bump
@@ -25,7 +18,7 @@ pub struct RemoveAdmin<'info> {
     pub boss: Signer<'info>
 }
 
-/// Removes an admin from the admin state.
+/// Removes an admin from the state.
 ///
 /// # Arguments
 /// - `ctx`: Context containing the accounts for removing an admin.
@@ -34,12 +27,12 @@ pub struct RemoveAdmin<'info> {
 /// # Errors
 /// - [`RemoveAdminErrorCode::AdminNotFound`] if the admin to remove is not in the list.
 pub fn remove_admin(ctx: Context<RemoveAdmin>, admin_to_remove: Pubkey) -> Result<()> {
-    let admin_state = &mut ctx.accounts.admin_state;
+    let state = &mut ctx.accounts.state;
 
     // Find and remove the admin
     for i in 0..MAX_ADMINS {
-        if admin_state.admins[i] == admin_to_remove {
-            admin_state.admins[i] = Pubkey::default();
+        if state.admins[i] == admin_to_remove {
+            state.admins[i] = Pubkey::default();
             return Ok(());
         }
     }

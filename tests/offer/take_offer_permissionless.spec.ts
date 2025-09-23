@@ -51,6 +51,7 @@ describe("Take Offer Permissionless", () => {
         await program.initializePermissionlessAccount({
             accountName: "test-account"
         });
+        // Kill switch state is now part of the main state - no separate initialization needed
 
         // Create token accounts
         user = testHelper.createUserAccount();
@@ -846,6 +847,81 @@ describe("Take Offer Permissionless", () => {
                 const userBalance = await testHelper.getTokenAccountBalance(feeUserTokenOutAccount);
                 expect(userBalance).toEqual(BigInt(997_500_000)); // 0.9975 token out (based on 0.9975 USDC after 5% fee)
             });
+        });
+    });
+
+    describe("Kill Switch Tests", () => {
+        it("Should reject take_offer_permissionless when kill switch is enabled", async () => {
+            // Add an admin (admin state is now part of main state)
+            const admin = testHelper.createUserAccount();
+            await program.addAdmin({ admin: admin.publicKey });
+
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            await program.addOfferVector({
+                offerId,
+                startTime: currentTime,
+                startPrice: 1e9,
+                apr: 36_500,
+                priceFixDuration: 86400
+            });
+
+            // Enable kill switch
+            await program.setKillSwitch({ enable: true, signer: admin });
+
+            // Verify kill switch is enabled
+            const state = await program.getState();
+            expect(state.isKilled).toBe(true);
+
+            // Try to take offer permissionless - should fail
+            await expect(
+                program.takeOfferPermissionless({
+                    offerId,
+                    tokenInAmount: 1_000_100,
+                    tokenInMint,
+                    tokenOutMint,
+                    user: user.publicKey,
+                    signer: user
+                })
+            ).rejects.toThrow("Kill switch is activated");
+        });
+
+        it("Should allow take_offer_permissionless when kill switch is disabled", async () => {
+            // Add an admin (admin state is now part of main state)
+            const admin = testHelper.createUserAccount();
+            await program.addAdmin({ admin: admin.publicKey });
+
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            await program.addOfferVector({
+                offerId,
+                startTime: currentTime,
+                startPrice: 1e9,
+                apr: 36_500,
+                priceFixDuration: 86400
+            });
+
+            // Enable then disable kill switch
+            await program.setKillSwitch({ enable: true, signer: admin });
+            await program.setKillSwitch({ enable: false }); // Only boss can disable
+
+            // Verify kill switch is disabled
+            const state = await program.getState();
+            expect(state.isKilled).toBe(false);
+
+            // Take offer permissionless - should succeed
+            await program.takeOfferPermissionless({
+                offerId,
+                tokenInAmount: 1_000_100,
+                tokenInMint,
+                tokenOutMint,
+                user: user.publicKey,
+                signer: user
+            });
+
+            // Verify user received tokens
+            const userTokenOutBalance = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+            expect(userTokenOutBalance).toBe(BigInt(1e9));
         });
     });
 

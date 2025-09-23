@@ -16,13 +16,11 @@ export class OnreProgram {
         offerAccountPda: PublicKey;
         offerVaultAuthorityPda: PublicKey;
         permissionlessVaultAuthorityPda: PublicKey;
-        adminStatePda: PublicKey;
         mintAuthorityPda: PublicKey;
     } = {
         offerAccountPda: PublicKey.findProgramAddressSync([Buffer.from("offers")], PROGRAM_ID)[0],
         offerVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("offer_vault_authority")], PROGRAM_ID)[0],
         permissionlessVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], PROGRAM_ID)[0],
-        adminStatePda: PublicKey.findProgramAddressSync([Buffer.from("admin_state")], PROGRAM_ID)[0],
         mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], PROGRAM_ID)[0]
     };
 
@@ -294,19 +292,13 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async initializeAdminState() {
-        await this.program.methods
-            .initializeAdminState()
-            .accounts({
-                state: this.statePda
-            })
-            .rpc();
-    }
-
     async addAdmin(params: { admin: PublicKey, signer?: Keypair }) {
         const tx = this.program.methods
             .addAdmin(params.admin)
-            .accounts({});
+            .accounts({
+                state: this.statePda,
+                boss: this.program.provider.publicKey // Always the actual boss from state
+            });
 
         if (params.signer) {
             tx.signers([params.signer]);
@@ -318,9 +310,41 @@ export class OnreProgram {
     async removeAdmin(params: { admin: PublicKey, signer?: Keypair }) {
         const tx = this.program.methods
             .removeAdmin(params.admin)
-            .accounts({});
+            .accounts({
+                state: this.statePda,
+                boss: this.program.provider.publicKey // Always the actual boss from state
+            });
 
         if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
+    async setKillSwitch(params: { enable: boolean, signer?: Keypair }) {
+        const tx = this.program.methods
+            .setKillSwitch(params.enable)
+            .accounts({
+                signer: params.signer ? params.signer.publicKey : this.program.provider.publicKey
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
+    async migrateState(params?: { signer?: Keypair }) {
+        const tx = this.program.methods
+            .migrateState()
+            .accounts({
+                state: this.statePda,
+                boss: params?.signer ? params.signer.publicKey : this.program.provider.publicKey
+            });
+
+        if (params?.signer) {
             tx.signers([params.signer]);
         }
 
@@ -338,7 +362,13 @@ export class OnreProgram {
         return offerAccount.offers.find(offer => offer.offerId.toNumber() === offerId);
     }
 
-    async getAdminState() {
-        return await this.program.account.adminState.fetch(this.pdas.adminStatePda);
+    async getState() {
+        return await this.program.account.state.fetch(this.statePda);
+    }
+
+    async getKillSwitchState() {
+        // Kill switch state is now part of the main State account
+        const state = await this.getState();
+        return { isKilled: state.isKilled };
     }
 }

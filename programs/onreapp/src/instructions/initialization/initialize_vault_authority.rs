@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 
 /// Account structure for initializing all vault authority accounts.
 ///
-/// This struct defines the accounts required to initialize all three vault authority accounts
+/// This struct defines the accounts required to initialize vault authority account
 /// separately from the main program state. Only the boss can call this.
 #[derive(Accounts)]
 pub struct InitializeVaultAuthority<'info> {

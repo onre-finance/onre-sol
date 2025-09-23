@@ -13,6 +13,8 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 pub enum TakeOfferPermissionlessErrorCode {
     #[msg("Invalid boss account")]
     InvalidBoss,
+    #[msg("Kill switch is activated")]
+    KillSwitchActivated,
 }
 
 /// Event emitted when a offer is successfully taken via permissionless flow
@@ -41,7 +43,10 @@ pub struct TakeOfferPermissionless<'info> {
     pub offer_account: AccountLoader<'info, OfferAccount>,
 
     /// Program state account containing the boss public key
-    #[account(has_one = boss)]
+    #[account(
+        has_one = boss,
+        constraint = state.is_killed == false @ TakeOfferPermissionlessErrorCode::KillSwitchActivated
+    )]
     pub state: Box<Account<'info, State>>,
 
     /// The boss account that receives token_in payments

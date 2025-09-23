@@ -10,7 +10,7 @@ import { initProgram, PROGRAM_ID, RPC_URL } from "./script-commons";
 // TEST & local
 const BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC"); // DEV Squad
 
-async function initialize() {
+async function createMigrateStateTransaction(): Promise<string> {
     const connection = new anchor.web3.Connection(RPC_URL);
     const program = await initProgram();
 
@@ -18,7 +18,7 @@ async function initialize() {
 
     try {
         const tx = await program.methods
-            .initialize()
+            .migrateState()
             .accountsPartial({
                 state: statePda,
                 boss: BOSS,
@@ -34,21 +34,21 @@ async function initialize() {
         });
 
         const base58Tx = bs58.encode(serializedTx);
-        console.log("Make Initialize Transaction (Base58):");
+        console.log("Migrate State Transaction (Base58):");
         console.log(base58Tx);
 
         return base58Tx;
     } catch (error) {
-        console.error("Error creating transaction:", error);
+        console.error("Error creating migrate state transaction:", error);
         throw error;
     }
 }
 
 async function main() {
     try {
-        await initialize();
+        await createMigrateStateTransaction();
     } catch (error) {
-        console.error("Failed to create initialize transaction:", error);
+        console.error("Failed to create migrate state transaction:", error);
     }
 }
 

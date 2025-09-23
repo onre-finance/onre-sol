@@ -235,17 +235,7 @@ pub mod onreapp {
         set_boss::set_boss(ctx, new_boss)
     }
 
-    /// Initializes the admin state.
-    ///
-    /// Delegates to `initialize_admin_state::initialize_admin_state` to set up the admin state account.
-    /// Only the boss can call this instruction to create the admin state account.
-    /// # Arguments
-    /// - `ctx`: Context for `InitializeAdminState`.
-    pub fn initialize_admin_state(ctx: Context<InitializeAdminState>) -> Result<()> {
-        initialize_admin_state::initialize_admin_state(ctx)
-    }
-
-    /// Adds a new admin to the admin state.
+    /// Adds a new admin to the state.
     ///
     /// Delegates to `admin::add_admin` to add a new admin to the admin list.
     /// Only the boss can call this instruction to add new admins.
@@ -256,7 +246,7 @@ pub mod onreapp {
         admin::add_admin(ctx, new_admin)
     }
 
-    /// Removes an admin from the admin state.
+    /// Removes an admin from the state.
     ///
     /// Delegates to `admin::remove_admin` to remove an admin from the admin list.
     /// Only the boss can call this instruction to remove admins.
@@ -295,5 +285,38 @@ pub mod onreapp {
         ctx: Context<TransferMintAuthorityToBoss>,
     ) -> Result<()> {
         mint_authority::transfer_mint_authority_to_boss(ctx)
+    }
+
+    /// Enables or disables the kill switch.
+    ///
+    /// Delegates to `kill_switch::kill_switch` to change the kill switch state.
+    /// When enabled (true), the kill switch can halt critical program operations.
+    /// When disabled (false), normal program operations can proceed.
+    ///
+    /// Access control:
+    /// - Both boss and admins can enable the kill switch
+    /// - Only the boss can disable the kill switch
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `KillSwitch`.
+    /// - `enable`: True to enable the kill switch, false to disable it.
+    pub fn set_kill_switch(ctx: Context<SetKillSwitch>, enable: bool) -> Result<()> {
+        kill_switch::set_kill_switch(ctx, enable)
+    }
+
+    /// Migrates the State account to include the new is_killed field.
+    ///
+    /// This instruction is required after deploying the updated program that includes
+    /// the is_killed field in the State struct. It reallocates the account to the new size
+    /// and initializes the kill switch to disabled (false) by default.
+    ///
+    /// # Security
+    /// - Only the boss can perform this migration
+    /// - The migration can only be performed once (subsequent calls will fail due to size constraints)
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `MigrateState`.
+    pub fn migrate_state(ctx: Context<MigrateState>) -> Result<()> {
+        migration::migrate_state(ctx)
     }
 }
