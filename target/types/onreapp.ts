@@ -417,7 +417,7 @@ export type Onreapp = {
         "- `offer_id`: ID of the offer to get the circulating supply for.",
         "",
         "# Returns",
-        "- `Ok(circulating_supply)`: The calculated circulating supply for the offer"
+        "- `Ok(circulating_supply)`: The calculated circulating supply for the offer in base units"
       ],
       "discriminator": [
         132,

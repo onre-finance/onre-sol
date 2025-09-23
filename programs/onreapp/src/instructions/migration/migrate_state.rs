@@ -1,4 +1,6 @@
+use crate::state::{State, MAX_ADMINS};
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::system_instruction;
 use anchor_lang::Discriminator;
 use anchor_lang::solana_program::system_instruction;
 use crate::state::{State, MAX_ADMINS};
@@ -46,10 +48,12 @@ pub fn migrate_state(ctx: Context<MigrateState>) -> Result<()> {
         );
 
         // boss is stored at bytes [8..40] in the old layout
-        let stored_boss = Pubkey::new_from_array(
-            data[8..8 + 32].try_into().unwrap()
+        let stored_boss = Pubkey::new_from_array(data[8..8 + 32].try_into().unwrap());
+        require_keys_eq!(
+            stored_boss,
+            ctx.accounts.boss.key(),
+            MigrationError::BossMismatch
         );
-        require_keys_eq!(stored_boss, ctx.accounts.boss.key(), MigrationError::BossMismatch);
     }
 
     {
