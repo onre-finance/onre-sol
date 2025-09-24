@@ -1,5 +1,5 @@
-use super::offer_state::OfferAccount;
 use crate::constants::seeds;
+use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::MAX_BASIS_POINTS;
 use anchor_lang::prelude::*;
@@ -9,7 +9,7 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 /// Event emitted when an offer is created.
 #[event]
 pub struct OfferMadeEvent {
-    pub offer_id: u64,
+    pub offer_pda: Pubkey,
     pub fee_basis_points: u64,
     pub boss: Pubkey,
 }
@@ -23,10 +23,6 @@ pub struct OfferMadeEvent {
 /// - All Associated Token Accounts (ATAs) must be initialized prior to execution.
 #[derive(Accounts)]
 pub struct MakeOffer<'info> {
-    /// The offer account within the OfferAccount, rent paid by `boss`. Already initialized in initialize.
-    #[account(mut, seeds = [seeds::OFFERS], bump)]
-    pub offer_account: AccountLoader<'info, OfferAccount>,
-
     /// The offer vault authority PDA that controls vault token accounts
     #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
     /// CHECK: This is safe as it's a PDA used for signing
@@ -49,6 +45,20 @@ pub struct MakeOffer<'info> {
 
     /// Mint of the token_out for the offer.
     pub token_out_mint: InterfaceAccount<'info, Mint>,
+
+    /// The offer account within the OfferAccount, rent paid by `boss`. Already initialized in initialize.
+    #[account(
+        init,
+        payer = boss,
+        space = 8 + Offer::INIT_SPACE,
+        seeds = [
+            seeds::OFFERS,
+            token_in_mint.key().as_ref(),
+            token_out_mint.key().as_ref()
+        ],
+        bump
+    )]
+    pub offer: AccountLoader<'info, Offer>,
 
     /// Program state, ensures `boss` is authorized.
     #[account(has_one = boss)]
@@ -84,30 +94,16 @@ pub fn make_offer(ctx: Context<MakeOffer>, fee_basis_points: u64) -> Result<()> 
         MakeOfferErrorCode::InvalidFee
     );
 
-    let offer_account = &mut ctx.accounts.offer_account.load_mut()?;
-
-    // Find the next available slot
-    let slot_index = offer_account
-        .offers
-        .iter()
-        .position(|offer| offer.offer_id == 0)
-        .ok_or(MakeOfferErrorCode::AccountFull)?;
-
-    // Get the next offer ID and update counter
-    let offer_id = offer_account.counter.saturating_add(1);
-    offer_account.counter = offer_id;
-
     // Create the offer
-    let offer = &mut offer_account.offers[slot_index];
-    offer.offer_id = offer_id;
+    let mut offer = ctx.accounts.offer.load_init()?;
     offer.token_in_mint = ctx.accounts.token_in_mint.key();
     offer.token_out_mint = ctx.accounts.token_out_mint.key();
     offer.fee_basis_points = fee_basis_points;
 
-    msg!("Offer created with ID: {}", offer_id);
+    msg!("Offer created at: {}", ctx.accounts.offer.key());
 
     emit!(OfferMadeEvent {
-        offer_id,
+        offer_pda: ctx.accounts.offer.key(),
         fee_basis_points,
         boss: ctx.accounts.boss.key(),
     });

@@ -21,7 +21,6 @@ describe("Take Offer", () => {
     let vaultTokenOutAccount: PublicKey;
     let vaultTokenInAccount: PublicKey;
 
-    let offerId: number;
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
@@ -33,7 +32,6 @@ describe("Take Offer", () => {
 
         // Initialize program and offers
         await program.initialize({ onycMint: tokenOutMint });
-        await program.initializeOffers();
         // Kill switch state is now part of the main state - no separate initialization needed
 
         // Create an offer
@@ -41,10 +39,6 @@ describe("Take Offer", () => {
             tokenInMint,
             tokenOutMint
         });
-
-        const offerAccount = await program.getOfferAccount();
-        const offer = offerAccount.offers.find(o => o.offerId.toNumber() !== 0);
-        offerId = offer.offerId.toNumber();
 
         // Initialize vault authority
         await program.initializeVaultAuthority();
@@ -73,7 +67,8 @@ describe("Take Offer", () => {
 
             // Add vector: base_price = 1.0 (1e9), APR = 3.65% (36500), duration = 1 day
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9, // 1.0 with 9 decimals
                 apr: 36_500, // 3.65% APR (scaled by 1M)
@@ -86,7 +81,6 @@ describe("Take Offer", () => {
             const expectedTokenInAmount = 1_000_100; // 1.0001 USDC (6 decimals)
 
             await program.takeOffer({
-                offerId,
                 tokenInAmount: expectedTokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -103,6 +97,25 @@ describe("Take Offer", () => {
         it("Should calculate correct price with fee", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
+            const tokenInMint = testHelper.createMint(6);
+            const tokenOutMint = testHelper.createMint(9);
+
+            // Create token accounts
+            const userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(10_000e6), true);
+            const bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, testHelper.getBoss(), BigInt(0));
+            const userTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, user.publicKey);
+            const bossTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(10_000e9));
+
+            // Create and fund vault
+            const vaultTokenInAccount = testHelper.createTokenAccount(tokenInMint, program.pdas.offerVaultAuthorityPda, BigInt(0), true);
+            const vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, program.pdas.offerVaultAuthorityPda, BigInt(0), true);
+
+            // Fund vault
+            await program.offerVaultDeposit({
+                amount: 10_000e9,
+                tokenMint: tokenOutMint
+            });
+
             // Create a new offer
             await program.makeOffer({
                 tokenInMint,
@@ -110,9 +123,9 @@ describe("Take Offer", () => {
                 feeBasisPoints: 100 // 1% fee
             });
 
-            const feeOfferId = 2;
             await program.addOfferVector({
-                offerId: feeOfferId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -124,7 +137,6 @@ describe("Take Offer", () => {
             const expectedTokenInAmount = 1_000_100; // 1.0001 USDC (6 decimals)
 
             await program.takeOffer({
-                offerId: feeOfferId,
                 tokenInAmount: expectedTokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -134,7 +146,7 @@ describe("Take Offer", () => {
 
             const userTokenOutBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
-            // Should receive 0.9 token out
+            // Should receive 0.99 token out (after 1% fee)
             expect(userTokenOutBalanceAfter).toBe(BigInt(99e7));
         });
 
@@ -142,7 +154,8 @@ describe("Take Offer", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -153,7 +166,6 @@ describe("Take Offer", () => {
 
             // First trade
             await program.takeOffer({
-                offerId,
                 tokenInAmount: expectedTokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -171,7 +183,6 @@ describe("Take Offer", () => {
             const user2TokenOutAccount = testHelper.createTokenAccount(tokenOutMint, user2.publicKey, BigInt(0), true);
 
             await program.takeOffer({
-                offerId,
                 tokenInAmount: expectedTokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -191,7 +202,8 @@ describe("Take Offer", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -207,7 +219,6 @@ describe("Take Offer", () => {
             const expectedTokenInAmount = 1_000_200; // 1.0002 USDC
 
             await program.takeOffer({
-                offerId,
                 tokenInAmount: expectedTokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -228,7 +239,8 @@ describe("Take Offer", () => {
 
             // Add first vector (past)
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime + 1000,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -237,7 +249,8 @@ describe("Take Offer", () => {
 
             // Add second vector (more recent)
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime + 2000,
                 startPrice: 2e9, // Different start price
                 apr: 73_000, // Different APR (7.3%)
@@ -251,7 +264,6 @@ describe("Take Offer", () => {
             const expectedTokenInAmount = 2_000_400;
 
             await program.takeOffer({
-                offerId,
                 tokenInAmount: expectedTokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -268,18 +280,18 @@ describe("Take Offer", () => {
 
     describe("Error Cases", () => {
         it("Should fail when offer does not exist", async () => {
-            const nonExistentOfferId = 999;
+            const nonExistentTokenInMint = testHelper.createMint(6);
+            const nonExistentTokenOutMint = testHelper.createMint(9);
 
             await expect(
                 program.takeOffer({
-                    offerId: nonExistentOfferId,
                     tokenInAmount: 1_000_000,
-                    tokenInMint,
-                    tokenOutMint,
+                    tokenInMint: nonExistentTokenInMint,
+                    tokenOutMint: nonExistentTokenOutMint,
                     user: user.publicKey,
                     signer: user
                 })
-            ).rejects.toThrow("Offer not found");
+            ).rejects.toThrow("AnchorError caused by account: offer");
         });
 
         it("Should fail when no active vector exists", async () => {
@@ -287,7 +299,8 @@ describe("Take Offer", () => {
 
             // Add vector in the future
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime + 10000, // Future start time
                 startPrice: 1e9,
                 apr: 36_500,
@@ -296,7 +309,6 @@ describe("Take Offer", () => {
 
             await expect(
                 program.takeOffer({
-                    offerId,
                     tokenInAmount: 1_000_000,
                     tokenInMint,
                     tokenOutMint,
@@ -310,7 +322,8 @@ describe("Take Offer", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -322,7 +335,6 @@ describe("Take Offer", () => {
 
             await expect(
                 program.takeOffer({
-                    offerId,
                     tokenInAmount: excessiveAmount,
                     tokenInMint,
                     tokenOutMint,
@@ -337,7 +349,8 @@ describe("Take Offer", () => {
 
             // Add vector with very low price (expensive for vault)
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e6, // Very low price = 0.001 USDC per token
                 apr: 0, // Zero APR for fixed price
@@ -349,7 +362,6 @@ describe("Take Offer", () => {
 
             await expect(
                 program.takeOffer({
-                    offerId,
                     tokenInAmount,
                     tokenInMint,
                     tokenOutMint,
@@ -358,6 +370,35 @@ describe("Take Offer", () => {
                 })
             ).rejects.toThrow("insufficient funds");
         });
+
+        it("Should fail after offer was closed", async () => {
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            // Add vector with very low price (expensive for vault)
+            await program.addOfferVector({
+                tokenInMint,
+                tokenOutMint,
+                startTime: currentTime,
+                startPrice: 1e6, // Very low price = 0.001 USDC per token
+                apr: 0, // Zero APR for fixed price
+                priceFixDuration: 86400
+            });
+
+            await program.closeOffer(tokenInMint, tokenOutMint);
+
+            // This would require giving out 20,000 tokens for 20 USDC, but vault only has 10,000
+            const tokenInAmount = 20e6; // 10 USDC
+
+            await expect(
+                program.takeOffer({
+                    tokenInAmount,
+                    tokenInMint,
+                    tokenOutMint,
+                    user: user.publicKey,
+                    signer: user
+                })
+            ).rejects.toThrow("AnchorError caused by account");
+        });
     });
 
     describe("Token Transfer Tests", () => {
@@ -365,7 +406,8 @@ describe("Take Offer", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -379,7 +421,6 @@ describe("Take Offer", () => {
             const vaultTokenOutBefore = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
 
             await program.takeOffer({
-                offerId,
                 tokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -413,8 +454,6 @@ describe("Take Offer", () => {
                 tokenInProgram: TOKEN_2022_PROGRAM_ID
             });
 
-            const offerAccount = await program.getOfferAccount();
-            const offerId = offerAccount.counter.toNumber();
 
             // Create token accounts
             const user = testHelper.createUserAccount();
@@ -435,7 +474,8 @@ describe("Take Offer", () => {
             });
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -452,7 +492,6 @@ describe("Take Offer", () => {
             console.log("Token out mint:", tokenOutMint.toBase58());
             console.log("Vault token_out(" + vaultTokenOutAccount.toBase58() + ") balance before: ", vaultTokenOutBefore);
             await program.takeOffer({
-                offerId,
                 tokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -476,11 +515,12 @@ describe("Take Offer", () => {
     });
 
     describe("Edge Cases", () => {
-        it("Should not allow take offer when offerId and token_in_mint don't match", async () => {
+        it("Should not allow take offer when token pair doesn't exist (wrong token_in)", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9, // 1 USDC per ONyc
                 apr: 0, // Zero APR for fixed price
@@ -491,35 +531,21 @@ describe("Take Offer", () => {
             testHelper.createTokenAccount(usdgTokenMint, testHelper.getBoss(), BigInt(0));
             testHelper.createTokenAccount(usdgTokenMint, user.publicKey, BigInt(10_000e9));
 
-            // create a valid offer with different mints
-            await program.makeOffer({
-                tokenInMint: usdgTokenMint,
-                tokenOutMint
-            });
-
-            await program.addOfferVector({
-                offerId: 2,
-                startTime: currentTime,
-                startPrice: 0.5e9, // 0.5 USDG per ONyc
-                apr: 0, // Zero APR for fixed price
-                priceFixDuration: 86400
-            });
-
             await expect(program.takeOffer({
-                offerId: 2, // Offer ID of the USDG offer with better price
                 tokenInAmount: 1e6, // 1 USDG, should get 2 ONyc
-                tokenInMint, // Token in mint of the original offer (USDC)
+                tokenInMint: usdgTokenMint, // Token in mint of the original offer (USDC)
                 tokenOutMint, // Token out mint (ONyc)
                 user: user.publicKey,
                 signer: user
-            })).rejects.toThrow("InvalidTokenInMint");
+            })).rejects.toThrow("AnchorError caused by account: offer");
         });
 
-        it("Should not allow take offer when offerId and token_out_mint don't match", async () => {
+        it("Should not allow take offer when token pair doesn't exist (wrong token_out)", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9, // 1 USDC per ONyc
                 apr: 0, // Zero APR for fixed price
@@ -530,35 +556,21 @@ describe("Take Offer", () => {
             testHelper.createTokenAccount(rONycMint, testHelper.getBoss(), BigInt(0));
             testHelper.createTokenAccount(rONycMint, user.publicKey, BigInt(10_000e9));
 
-            // create a valid offer with different mints
-            await program.makeOffer({
-                tokenInMint,
-                tokenOutMint: rONycMint
-            });
-
-            await program.addOfferVector({
-                offerId: 2,
-                startTime: currentTime,
-                startPrice: 0.5e9, // 0.5 USDG per ONyc
-                apr: 0, // Zero APR for fixed price
-                priceFixDuration: 86400
-            });
-
             await expect(program.takeOffer({
-                offerId: 2, // Offer ID of the USDG offer with better price
-                tokenInAmount: 1e6, // 1 USDG, should get 2 ONyc
+                tokenInAmount: 1e6, // 1 USDC, should get 2 rONyc
                 tokenInMint, // Token in mint of the original offer (USDC)
-                tokenOutMint, // Token out mint (ONyc)
+                tokenOutMint: rONycMint, // Token out mint (ONyc) - SHOULD FAIL because it's wrong mint
                 user: user.publicKey,
                 signer: user
-            })).rejects.toThrow("InvalidTokenOutMint");
+            })).rejects.toThrow("AnchorError caused by account: offer");
         });
 
         it("Should handle zero APR (fixed price) correctly", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 0, // Zero APR for fixed price
@@ -572,7 +584,6 @@ describe("Take Offer", () => {
             const expectedTokenInAmount = 1_000_000; // Exactly 1.0 USDC
 
             await program.takeOffer({
-                offerId,
                 tokenInAmount: expectedTokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -590,7 +601,8 @@ describe("Take Offer", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 365_000, // 36.5% yearly APR
@@ -606,7 +618,6 @@ describe("Take Offer", () => {
             const expectedTokenInAmount = 1_366_000; // Based on the actual calculation from logs
 
             await program.takeOffer({
-                offerId,
                 tokenInAmount: expectedTokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -627,7 +638,8 @@ describe("Take Offer", () => {
                 const currentTime = await testHelper.getCurrentClockTime();
 
                 await program.addOfferVector({
-                    offerId,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime,
                     startPrice: 1e9,
                     apr: 36_500,
@@ -643,7 +655,6 @@ describe("Take Offer", () => {
 
                 // Execute take_offer without mint authority (should use vault transfer)
                 await program.takeOffer({
-                    offerId,
                     tokenInAmount,
                     tokenInMint,
                     tokenOutMint,
@@ -673,7 +684,8 @@ describe("Take Offer", () => {
                 const currentTime = await testHelper.getCurrentClockTime();
 
                 await program.addOfferVector({
-                    offerId,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime,
                     startPrice: 1e9,
                     apr: 36_500,
@@ -690,7 +702,6 @@ describe("Take Offer", () => {
 
                 // Execute take_offer without mint authority (should use vault transfer)
                 await program.takeOffer({
-                    offerId,
                     tokenInAmount,
                     tokenInMint,
                     tokenOutMint,
@@ -727,7 +738,8 @@ describe("Take Offer", () => {
                 const currentTime = await testHelper.getCurrentClockTime();
 
                 await program.addOfferVector({
-                    offerId,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime,
                     startPrice: 1e9,
                     apr: 36_500,
@@ -743,7 +755,6 @@ describe("Take Offer", () => {
 
                 // Execute take_offer with mint authority (should mint directly)
                 await program.takeOffer({
-                    offerId,
                     tokenInAmount,
                     tokenInMint,
                     tokenOutMint,
@@ -778,7 +789,8 @@ describe("Take Offer", () => {
                 const currentTime = await testHelper.getCurrentClockTime();
 
                 await program.addOfferVector({
-                    offerId,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime,
                     startPrice: 1e9,
                     apr: 0,
@@ -795,7 +807,6 @@ describe("Take Offer", () => {
 
                 // Execute take_offer with mint authority (should mint directly)
                 await program.takeOffer({
-                    offerId,
                     tokenInAmount,
                     tokenInMint,
                     tokenOutMint,
@@ -824,6 +835,10 @@ describe("Take Offer", () => {
 
         describe("Edge Cases", () => {
             it("Should handle fee calculations correctly when minting", async () => {
+                // Create separate token pair for fee test
+                const tokenInMint = testHelper.createMint(6);
+                const tokenOutMint = testHelper.createMint(9);
+
                 // Create an offer with fees
                 await program.makeOffer({
                     tokenInMint,
@@ -839,7 +854,8 @@ describe("Take Offer", () => {
                 const currentTime = await testHelper.getCurrentClockTime();
 
                 await program.addOfferVector({
-                    offerId: 2,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime,
                     startPrice: 1e9,
                     apr: 0,
@@ -847,18 +863,31 @@ describe("Take Offer", () => {
                 });
 
                 const tokenInAmount = 1_050_000; // 1.05 USDC (includes 5% fee)
-                const feeUser = testHelper.createUserAccount();
-                const feeUserTokenInAccount = testHelper.createTokenAccount(tokenInMint, feeUser.publicKey, BigInt(10_000e6), true);
+
+                // Create token accounts
+                const userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(10_000e6), true);
+                const bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, testHelper.getBoss(), BigInt(0));
+                const userTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, user.publicKey);
+                const bossTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(10_000e9));
+
+                // Create and fund vault
+                const vaultTokenInAccount = testHelper.createTokenAccount(tokenInMint, program.pdas.offerVaultAuthorityPda, BigInt(0), true);
+                const vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, program.pdas.offerVaultAuthorityPda, BigInt(0), true);
+
+                // Fund vault
+                await program.offerVaultDeposit({
+                    amount: 10_000e9,
+                    tokenMint: tokenOutMint
+                });
 
                 const bossBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
 
                 await program.takeOffer({
-                    offerId: 2,
                     tokenInAmount,
                     tokenInMint,
                     tokenOutMint,
-                    user: feeUser.publicKey,
-                    signer: feeUser
+                    user: user.publicKey,
+                    signer: user
                 });
 
                 // Verify boss received full payment including fee
@@ -868,7 +897,7 @@ describe("Take Offer", () => {
                 // Verify user received correct token_out amount (based on net amount after fee)
                 const feeUserTokenOutAccount = getAssociatedTokenAddressSync(
                     tokenOutMint,
-                    feeUser.publicKey,
+                    user.publicKey,
                     true
                 );
 
@@ -887,7 +916,8 @@ describe("Take Offer", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -904,7 +934,6 @@ describe("Take Offer", () => {
             // Try to take offer - should fail
             await expect(
                 program.takeOffer({
-                    offerId,
                     tokenInAmount: 1_000_100,
                     tokenInMint,
                     tokenOutMint,
@@ -922,7 +951,8 @@ describe("Take Offer", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -939,7 +969,6 @@ describe("Take Offer", () => {
 
             // Take offer - should succeed
             await program.takeOffer({
-                offerId,
                 tokenInAmount: 1_000_100,
                 tokenInMint,
                 tokenOutMint,

@@ -1,13 +1,15 @@
-use super::offer_state::{OfferAccount, OfferVector};
+use super::offer_state::{Offer, OfferVector};
 use crate::constants::seeds;
-use crate::instructions::{find_active_vector_at, find_offer_mut};
+use crate::instructions::find_active_vector_at;
 use crate::state::State;
+use crate::OfferCoreError;
 use anchor_lang::prelude::*;
+use anchor_spl::token_interface::Mint;
 
 /// Event emitted when a time vector is deleted from a offer.
 #[event]
 pub struct OfferVectorDeletedEvent {
-    pub offer_id: u64,
+    pub offer_pda: Pubkey,
     pub vector_id: u64,
 }
 
@@ -17,9 +19,31 @@ pub struct OfferVectorDeletedEvent {
 /// Only the boss can delete time vectors from offers.
 #[derive(Accounts)]
 pub struct DeleteOfferVector<'info> {
-    /// The offer account containing all offers
-    #[account(mut, seeds = [seeds::OFFERS], bump)]
-    pub offer_account: AccountLoader<'info, OfferAccount>,
+    /// The individual offer account
+    #[account(
+        mut,
+        seeds = [
+            seeds::OFFERS,
+            token_in_mint.key().as_ref(),
+            token_out_mint.key().as_ref()
+        ],
+        bump
+    )]
+    pub offer: AccountLoader<'info, Offer>,
+
+    #[account(
+        constraint =
+            token_in_mint.key() == offer.load()?.token_in_mint
+            @ OfferCoreError::InvalidTokenInMint
+    )]
+    pub token_in_mint: InterfaceAccount<'info, Mint>,
+
+    #[account(
+        constraint =
+            token_out_mint.key() == offer.load()?.token_out_mint
+            @ OfferCoreError::InvalidTokenOutMint
+    )]
+    pub token_out_mint: InterfaceAccount<'info, Mint>,
 
     /// Program state, ensures `boss` is authorized.
     #[account(has_one = boss)]
@@ -33,29 +57,22 @@ pub struct DeleteOfferVector<'info> {
 /// Deletes a time vector from an existing offer.
 ///
 /// Removes the specified time vector by setting it to default values.
-/// The vector is identified by both offer_id and vector_id.
+/// The vector is identified by vector_id within the specific offer.
 ///
 /// # Arguments
 /// - `ctx`: Context containing the accounts for the operation.
-/// - `offer_id`: ID of the offer containing the vector to delete.
 /// - `vector_id`: ID of the vector to delete.
 ///
 /// # Errors
-/// - [`DeleteOfferVectorErrorCode::OfferNotFound`] if offer_id is 0 or doesn't exist.
 /// - [`DeleteOfferVectorErrorCode::VectorNotFound`] if vector_id is 0 or doesn't exist in the offer.
 pub fn delete_offer_vector(
     ctx: Context<DeleteOfferVector>,
-    offer_id: u64,
     vector_id: u64,
 ) -> Result<()> {
-    let offer_account = &mut ctx.accounts.offer_account.load_mut()?;
+    let offer = &mut ctx.accounts.offer.load_mut()?;
 
     // Validate inputs
-    require!(offer_id != 0, DeleteOfferVectorErrorCode::OfferNotFound);
     require!(vector_id != 0, DeleteOfferVectorErrorCode::VectorNotFound);
-
-    // Find the offer by offer_id
-    let offer = find_offer_mut(offer_account, offer_id)?;
 
     // Find and delete the vector by vector_id
     let vector_index = find_vector_index_by_id(&offer.vectors, vector_id)?;
@@ -77,13 +94,13 @@ pub fn delete_offer_vector(
     offer.vectors[vector_index] = OfferVector::default();
 
     msg!(
-        "Time vector deleted from offer ID: {}, vector ID: {}",
-        offer_id,
+        "Time vector deleted from offer: {}, vector ID: {}",
+        ctx.accounts.offer.key(),
         vector_id
     );
 
     emit!(OfferVectorDeletedEvent {
-        offer_id,
+        offer_pda: ctx.accounts.offer.key(),
         vector_id,
     });
 
@@ -101,10 +118,6 @@ fn find_vector_index_by_id(vectors: &[OfferVector; 10], vector_id: u64) -> Resul
 /// Error codes for delete offer vector operations.
 #[error_code]
 pub enum DeleteOfferVectorErrorCode {
-    /// Triggered when the specified offer_id is 0 or not found.
-    #[msg("Offer with the specified ID was not found")]
-    OfferNotFound,
-
     /// Triggered when the specified vector_id is 0 or not found in the offer.
     #[msg("Vector with the specified ID was not found in the offer")]
     VectorNotFound,

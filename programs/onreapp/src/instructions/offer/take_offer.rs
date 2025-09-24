@@ -1,8 +1,9 @@
 use crate::constants::seeds;
 use crate::instructions::offer::offer_utils::process_offer_core;
-use crate::instructions::OfferAccount;
+use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::{execute_token_operations, u64_to_dec9, ExecTokenOpsParams};
+use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::associated_token::AssociatedToken;
@@ -22,8 +23,8 @@ pub enum TakeOfferErrorCode {
 /// Event emitted when an offer is successfully taken
 #[event]
 pub struct TakeOfferEvent {
-    /// The ID of the offer that was taken
-    pub offer_id: u64,
+    /// The PDA of the offer that was taken
+    pub offer_pda: Pubkey,
     /// Amount of token_in paid by the user (excluding fee)
     pub token_in_amount: u64,
     /// Amount of token_out received by the user
@@ -40,9 +41,17 @@ pub struct TakeOfferEvent {
 /// including validation constraints to ensure security and proper authorization.
 #[derive(Accounts)]
 pub struct TakeOffer<'info> {
-    /// The offer account containing all active offers
-    #[account(mut, seeds = [seeds::OFFERS], bump)]
-    pub offer_account: AccountLoader<'info, OfferAccount>,
+    /// The individual offer account
+    #[account(
+        mut,
+        seeds = [
+            seeds::OFFERS,
+            token_in_mint.key().as_ref(),
+            token_out_mint.key().as_ref()
+        ],
+        bump
+    )]
+    pub offer: AccountLoader<'info, Offer>,
 
     /// Program state account containing the boss public key
     #[account(
@@ -83,13 +92,23 @@ pub struct TakeOffer<'info> {
 
     /// The mint account for the input token (what user pays)
     /// Must be mutable to allow burning when program has mint authority
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint =
+            token_in_mint.key() == offer.load()?.token_in_mint
+            @ OfferCoreError::InvalidTokenInMint
+    )]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
     pub token_in_program: Interface<'info, TokenInterface>,
 
     /// The mint account for the output token (what user receives)
     /// Must be mutable to allow minting when program has mint authority
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint =
+            token_out_mint.key() == offer.load()?.token_out_mint
+            @ OfferCoreError::InvalidTokenOutMint
+    )]
     pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
     pub token_out_program: Interface<'info, TokenInterface>,
 
@@ -152,7 +171,6 @@ pub struct TakeOffer<'info> {
 /// # Arguments
 ///
 /// * `ctx` - The instruction context containing all required accounts
-/// * `offer_id` - The unique ID of the offer to take
 /// * `token_in_amount` - The amount of token_in the user is willing to pay
 ///
 /// # Process Flow
@@ -178,17 +196,15 @@ pub struct TakeOffer<'info> {
 ///
 /// # Errors
 ///
-/// * `OfferNotFound` - The specified offer_id doesn't exist
 /// * `NoActiveVector` - No pricing vector is currently active  
 /// * `OverflowError` - Mathematical overflow in price calculations
 /// * Token operation errors if insufficient balances, invalid accounts, or missing mint authority
-pub fn take_offer(ctx: Context<TakeOffer>, offer_id: u64, token_in_amount: u64) -> Result<()> {
-    let offer_account = ctx.accounts.offer_account.load()?;
+pub fn take_offer(ctx: Context<TakeOffer>, token_in_amount: u64) -> Result<()> {
+    let offer = ctx.accounts.offer.load()?;
 
     // Use shared core processing logic for main exchange amount
     let result = process_offer_core(
-        &offer_account,
-        offer_id,
+        &offer,
         token_in_amount,
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
@@ -221,8 +237,8 @@ pub fn take_offer(ctx: Context<TakeOffer>, offer_id: u64, token_in_amount: u64) 
     })?;
 
     msg!(
-        "Offer taken - ID: {}, token_in(+fee): {}(+{}), token_out: {}, user: {}, price: {}",
-        offer_id,
+        "Offer taken - PDA: {}, token_in(+fee): {}(+{}), token_out: {}, user: {}, price: {}",
+        ctx.accounts.offer.key(),
         result.token_in_amount,
         result.fee_amount,
         result.token_out_amount,
@@ -231,7 +247,7 @@ pub fn take_offer(ctx: Context<TakeOffer>, offer_id: u64, token_in_amount: u64) 
     );
 
     emit!(TakeOfferEvent {
-        offer_id,
+        offer_pda: ctx.accounts.offer.key(),
         token_in_amount: result.token_in_amount,
         token_out_amount: result.token_out_amount,
         fee_amount: result.fee_amount,

@@ -24,7 +24,6 @@ describe("Take Offer Permissionless", () => {
     let permissionlessTokenInAccount: PublicKey;
     let permissionlessTokenOutAccount: PublicKey;
 
-    let offerId: number;
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
@@ -36,15 +35,12 @@ describe("Take Offer Permissionless", () => {
 
         // Initialize program and offers
         await program.initialize({ onycMint: tokenOutMint });
-        await program.initializeOffers();
 
         // Create an offer
         await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
-
-        offerId = 1;
 
         // Initialize
         await program.initializeVaultAuthority();
@@ -81,7 +77,8 @@ describe("Take Offer Permissionless", () => {
 
             // Add vector: base_price = 1.0 (1e9), APR = 3.65% (36500), duration = 1 day
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -92,7 +89,6 @@ describe("Take Offer Permissionless", () => {
 
             // Execute permissionless offer
             await program.takeOfferPermissionless({
-                offerId,
                 tokenInAmount: expectedTokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -109,7 +105,8 @@ describe("Take Offer Permissionless", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -126,7 +123,6 @@ describe("Take Offer Permissionless", () => {
             const permissionlessTokenOutBefore = await testHelper.getTokenAccountBalance(permissionlessTokenOutAccount);
 
             await program.takeOfferPermissionless({
-                offerId,
                 tokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -157,7 +153,8 @@ describe("Take Offer Permissionless", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -172,7 +169,6 @@ describe("Take Offer Permissionless", () => {
 
             // Execute permissionless flow
             await program.takeOfferPermissionless({
-                offerId,
                 tokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -182,7 +178,6 @@ describe("Take Offer Permissionless", () => {
 
             // Execute direct flow
             await program.takeOffer({
-                offerId,
                 tokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -210,7 +205,8 @@ describe("Take Offer Permissionless", () => {
             });
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -221,7 +217,6 @@ describe("Take Offer Permissionless", () => {
             const largeTokenInAmount = 5_000_500_000; // 5000.5 USDC
 
             await program.takeOfferPermissionless({
-                offerId,
                 tokenInAmount: largeTokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -248,7 +243,8 @@ describe("Take Offer Permissionless", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -258,7 +254,6 @@ describe("Take Offer Permissionless", () => {
             const expectedTokenInAmount = 1.0001e6; // 1.0001 USDC
 
             await program.takeOfferPermissionless({
-                offerId,
                 tokenInAmount: expectedTokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -275,16 +270,16 @@ describe("Take Offer Permissionless", () => {
         it("Should calculate correct price with fee", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
-            // Create a new offer
-            await program.makeOffer({
+            // Set fee on offer
+            await program.updateOfferFee({
                 tokenInMint,
                 tokenOutMint,
-                feeBasisPoints: 100 // 1% fee
+                newFee: 100 // 1% fee
             });
 
-            const feeOfferId = 2;
             await program.addOfferVector({
-                offerId: feeOfferId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -296,7 +291,6 @@ describe("Take Offer Permissionless", () => {
             const expectedTokenInAmount = 1_000_100; // 1.0001 USDC (6 decimals)
 
             await program.takeOfferPermissionless({
-                offerId: feeOfferId,
                 tokenInAmount: expectedTokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -314,7 +308,8 @@ describe("Take Offer Permissionless", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -325,7 +320,6 @@ describe("Take Offer Permissionless", () => {
 
             // First trade
             await program.takeOfferPermissionless({
-                offerId,
                 tokenInAmount: expectedTokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -342,7 +336,6 @@ describe("Take Offer Permissionless", () => {
             const user2TokenOutAccount = testHelper.createTokenAccount(tokenOutMint, user2.publicKey, BigInt(0), true);
 
             await program.takeOfferPermissionless({
-                offerId,
                 tokenInAmount: expectedTokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -362,7 +355,8 @@ describe("Take Offer Permissionless", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -375,7 +369,6 @@ describe("Take Offer Permissionless", () => {
             const expectedTokenInAmount = 1.0002e6; // 1.0002 USDC
 
             await program.takeOfferPermissionless({
-                offerId,
                 tokenInAmount: expectedTokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -394,7 +387,8 @@ describe("Take Offer Permissionless", () => {
 
             // Add first vector (past)
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime + 1000,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -403,7 +397,8 @@ describe("Take Offer Permissionless", () => {
 
             // Add second vector (more recent)
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime + 2000,
                 startPrice: 2e9, // Different start price
                 apr: 73_000, // Different APR (7.3%)
@@ -416,7 +411,6 @@ describe("Take Offer Permissionless", () => {
             const expectedTokenInAmount = 2.0004e6;
 
             await program.takeOfferPermissionless({
-                offerId,
                 tokenInAmount: expectedTokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -433,18 +427,18 @@ describe("Take Offer Permissionless", () => {
 
     describe("Error Handling Tests", () => {
         it("Should fail when offer does not exist", async () => {
-            const nonExistentOfferId = 999;
+            const nonExistentTokenInMint = testHelper.createMint(6);
+            const nonExistentTokenOutMint = testHelper.createMint(9);
 
             await expect(
                 program.takeOfferPermissionless({
-                    offerId: nonExistentOfferId,
                     tokenInAmount: 1_000_000,
-                    tokenInMint,
-                    tokenOutMint,
+                    tokenInMint: nonExistentTokenInMint,
+                    tokenOutMint: nonExistentTokenOutMint,
                     user: user.publicKey,
                     signer: user
                 })
-            ).rejects.toThrow("Offer not found");
+            ).rejects.toThrow("AnchorError caused by account: offer");
         });
 
         it("Should fail when no active vector exists", async () => {
@@ -452,7 +446,8 @@ describe("Take Offer Permissionless", () => {
 
             // Add vector in the future
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime + 10000, // Future start time
                 startPrice: 1e9,
                 apr: 36_500,
@@ -461,7 +456,6 @@ describe("Take Offer Permissionless", () => {
 
             await expect(
                 program.takeOfferPermissionless({
-                    offerId,
                     tokenInAmount: 1_000_000,
                     tokenInMint,
                     tokenOutMint,
@@ -475,7 +469,8 @@ describe("Take Offer Permissionless", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -487,7 +482,6 @@ describe("Take Offer Permissionless", () => {
 
             await expect(
                 program.takeOfferPermissionless({
-                    offerId,
                     tokenInAmount: excessiveAmount,
                     tokenInMint,
                     tokenOutMint,
@@ -502,7 +496,8 @@ describe("Take Offer Permissionless", () => {
 
             // Add vector with very low price (expensive for vault)
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e6, // Very low price = 0.001 USDC per token
                 apr: 0, // Zero APR for fixed price
@@ -514,7 +509,6 @@ describe("Take Offer Permissionless", () => {
 
             await expect(
                 program.takeOfferPermissionless({
-                    offerId,
                     tokenInAmount,
                     tokenInMint,
                     tokenOutMint,
@@ -530,7 +524,8 @@ describe("Take Offer Permissionless", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 0, // Zero APR for fixed price
@@ -543,7 +538,6 @@ describe("Take Offer Permissionless", () => {
             const expectedTokenInAmount = 1_000_000; // Exactly 1.0 USDC
 
             await program.takeOfferPermissionless({
-                offerId,
                 tokenInAmount: expectedTokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -560,7 +554,8 @@ describe("Take Offer Permissionless", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 365_000, // 36.5% yearly APR
@@ -573,7 +568,6 @@ describe("Take Offer Permissionless", () => {
             const expectedTokenInAmount = 1_366_000;
 
             await program.takeOfferPermissionless({
-                offerId,
                 tokenInAmount: expectedTokenInAmount,
                 tokenInMint,
                 tokenOutMint,
@@ -593,7 +587,8 @@ describe("Take Offer Permissionless", () => {
                 const currentTime = await testHelper.getCurrentClockTime();
 
                 await program.addOfferVector({
-                    offerId,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime,
                     startPrice: 1e9,
                     apr: 36_500,
@@ -609,7 +604,6 @@ describe("Take Offer Permissionless", () => {
 
                 // Execute take_offer without mint authority (should use vault transfer)
                 await program.takeOfferPermissionless({
-                    offerId,
                     tokenInAmount,
                     tokenInMint,
                     tokenOutMint,
@@ -641,7 +635,8 @@ describe("Take Offer Permissionless", () => {
                 const currentTime = await testHelper.getCurrentClockTime();
 
                 await program.addOfferVector({
-                    offerId,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime,
                     startPrice: 1e9,
                     apr: 36_500,
@@ -658,7 +653,6 @@ describe("Take Offer Permissionless", () => {
 
                 // Execute take_offer without mint authority (should use vault transfer)
                 await program.takeOfferPermissionless({
-                    offerId,
                     tokenInAmount,
                     tokenInMint,
                     tokenOutMint,
@@ -697,7 +691,8 @@ describe("Take Offer Permissionless", () => {
                 const currentTime = await testHelper.getCurrentClockTime();
 
                 await program.addOfferVector({
-                    offerId,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime,
                     startPrice: 1e9,
                     apr: 36_500,
@@ -713,7 +708,6 @@ describe("Take Offer Permissionless", () => {
 
                 // Execute take_offer with mint authority (should mint directly)
                 await program.takeOfferPermissionless({
-                    offerId,
                     tokenInAmount,
                     tokenInMint,
                     tokenOutMint,
@@ -750,7 +744,8 @@ describe("Take Offer Permissionless", () => {
                 const currentTime = await testHelper.getCurrentClockTime();
 
                 await program.addOfferVector({
-                    offerId,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime,
                     startPrice: 1e9,
                     apr: 0,
@@ -767,7 +762,6 @@ describe("Take Offer Permissionless", () => {
 
                 // Execute take_offer with mint authority (should mint directly)
                 await program.takeOfferPermissionless({
-                    offerId,
                     tokenInAmount,
                     tokenInMint,
                     tokenOutMint,
@@ -798,22 +792,22 @@ describe("Take Offer Permissionless", () => {
 
         describe("Edge Cases", () => {
             it("Should handle fee calculations correctly when minting", async () => {
-                // Create an offer with fees
-                await program.makeOffer({
-                    tokenInMint,
-                    tokenOutMint,
-                    feeBasisPoints: 500 // 5% fee
-                });
-
                 // Transfer mint authority to program
                 await program.transferMintAuthorityToProgram({
                     mint: tokenOutMint
                 });
 
+                await program.updateOfferFee({
+                    tokenInMint,
+                    tokenOutMint,
+                    newFee: 500 // 5% fee
+                });
+
                 const currentTime = await testHelper.getCurrentClockTime();
 
                 await program.addOfferVector({
-                    offerId: 2,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime,
                     startPrice: 1e9,
                     apr: 0,
@@ -821,16 +815,13 @@ describe("Take Offer Permissionless", () => {
                 });
 
                 const tokenInAmount = 1_050_000; // 1.05 USDC (includes 5% fee)
-                const feeUser = testHelper.createUserAccount();
-                const feeUserTokenInAccount = testHelper.createTokenAccount(tokenInMint, feeUser.publicKey, BigInt(10_000e6), true);
 
                 await program.takeOfferPermissionless({
-                    offerId: 2,
                     tokenInAmount,
                     tokenInMint,
                     tokenOutMint,
-                    user: feeUser.publicKey,
-                    signer: feeUser
+                    user: user.publicKey,
+                    signer: user
                 });
 
                 // Verify boss received full payment including fee
@@ -840,7 +831,7 @@ describe("Take Offer Permissionless", () => {
                 // Verify user received correct token_out amount (based on net amount after fee)
                 const feeUserTokenOutAccount = getAssociatedTokenAddressSync(
                     tokenOutMint,
-                    feeUser.publicKey,
+                    user.publicKey,
                     true
                 );
 
@@ -859,7 +850,8 @@ describe("Take Offer Permissionless", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -876,7 +868,6 @@ describe("Take Offer Permissionless", () => {
             // Try to take offer permissionless - should fail
             await expect(
                 program.takeOfferPermissionless({
-                    offerId,
                     tokenInAmount: 1_000_100,
                     tokenInMint,
                     tokenOutMint,
@@ -894,7 +885,8 @@ describe("Take Offer Permissionless", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -911,7 +903,6 @@ describe("Take Offer Permissionless", () => {
 
             // Take offer permissionless - should succeed
             await program.takeOfferPermissionless({
-                offerId,
                 tokenInAmount: 1_000_100,
                 tokenInMint,
                 tokenOutMint,

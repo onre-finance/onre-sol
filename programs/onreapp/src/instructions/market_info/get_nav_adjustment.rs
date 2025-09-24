@@ -1,16 +1,17 @@
 use crate::constants::seeds;
-use crate::instructions::offer::offer_utils::{
-    find_active_vector_at, find_offer,
-};
-use crate::instructions::{calculate_step_price_at, OfferAccount};
+use crate::instructions::offer::offer_utils::
+    find_active_vector_at;
+use crate::instructions::{calculate_step_price_at, Offer};
+use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
+use anchor_spl::token_interface::Mint;
 
 /// Event emitted when get_nav_adjustment is called
 #[event]
 pub struct GetNavAdjustmentEvent {
-    /// The ID of the offer
-    pub offer_id: u64,
+    /// The PDA of the offer
+    pub offer_pda: Pubkey,
     /// Current price from the active vector
     pub current_price: u64,
     /// Previous price from the previous vector (if any)
@@ -24,9 +25,30 @@ pub struct GetNavAdjustmentEvent {
 /// Accounts required for getting NAV adjustment information
 #[derive(Accounts)]
 pub struct GetNavAdjustment<'info> {
-    /// The offer account containing all active offers
-    #[account(seeds = [seeds::OFFERS], bump)]
-    pub offer_account: AccountLoader<'info, OfferAccount>,
+    /// The individual offer account
+    #[account(
+        seeds = [
+            seeds::OFFERS,
+            token_in_mint.key().as_ref(),
+            token_out_mint.key().as_ref()
+        ],
+        bump
+    )]
+    pub offer: AccountLoader<'info, Offer>,
+
+    #[account(
+        constraint =
+            token_in_mint.key() == offer.load()?.token_in_mint
+            @ OfferCoreError::InvalidTokenInMint
+    )]
+    pub token_in_mint: InterfaceAccount<'info, Mint>,
+
+    #[account(
+        constraint =
+            token_out_mint.key() == offer.load()?.token_out_mint
+            @ OfferCoreError::InvalidTokenOutMint
+    )]
+    pub token_out_mint: InterfaceAccount<'info, Mint>,
 }
 
 /// Finds the previous vector for an offer based on the currently active vector
@@ -59,7 +81,6 @@ pub fn find_previous_vector(
 /// # Arguments
 ///
 /// * `ctx` - The instruction context containing required accounts
-/// * `offer_id` - The unique ID of the offer to get the adjustment for
 ///
 /// # Returns
 ///
@@ -68,13 +89,10 @@ pub fn find_previous_vector(
 ///
 /// # Emits
 ///
-/// * `GetNavAdjustmentEvent` - Contains offer_id, prices, adjustment, and timestamp
-pub fn get_nav_adjustment(ctx: Context<GetNavAdjustment>, offer_id: u64) -> Result<i64> {
-    let offer_account = ctx.accounts.offer_account.load()?;
+/// * `GetNavAdjustmentEvent` - Contains offer_pda, prices, adjustment, and timestamp
+pub fn get_nav_adjustment(ctx: Context<GetNavAdjustment>) -> Result<i64> {
+    let offer = ctx.accounts.offer.load()?;
     let current_time = Clock::get()?.unix_timestamp as u64;
-
-    // Find the offer
-    let offer = find_offer(&offer_account, offer_id)?;
 
     // Find the currently active pricing vector
     let active_vector = find_active_vector_at(&offer, current_time)?;
@@ -114,8 +132,8 @@ pub fn get_nav_adjustment(ctx: Context<GetNavAdjustment>, offer_id: u64) -> Resu
         };
 
     msg!(
-        "NAV Adjustment Info - Offer ID: {}, Current Price: {}, Previous Price: {:?}, Adjustment: {}, Timestamp: {}",
-        offer_id,
+        "NAV Adjustment Info - Offer PDA: {}, Current Price: {}, Previous Price: {:?}, Adjustment: {}, Timestamp: {}",
+        ctx.accounts.offer.key(),
         current_price,
         previous_price_opt,
         adjustment,
@@ -123,7 +141,7 @@ pub fn get_nav_adjustment(ctx: Context<GetNavAdjustment>, offer_id: u64) -> Resu
     );
 
     emit!(GetNavAdjustmentEvent {
-        offer_id,
+        offer_pda: ctx.accounts.offer.key(),
         current_price,
         previous_price: previous_price_opt,
         adjustment,

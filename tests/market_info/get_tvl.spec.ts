@@ -6,6 +6,7 @@ import { TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 describe("Get TVL", () => {
     let testHelper: TestHelper;
     let program: OnreProgram;
+
     beforeEach(async () => {
         testHelper = await TestHelper.create();
         program = new OnreProgram(testHelper.context);
@@ -15,8 +16,6 @@ describe("Get TVL", () => {
         let tokenInMint: PublicKey;
         let tokenOutMint: PublicKey;
 
-        let offerId: number;
-
         beforeEach(async () => {
             // Create mints with different decimals to test precision handling
             tokenInMint = testHelper.createMint(6); // USDC-like (6 decimals)
@@ -24,17 +23,12 @@ describe("Get TVL", () => {
 
             // Initialize program and offers
             await program.initialize({ onycMint: tokenOutMint });
-            await program.initializeOffers();
 
             // Create an offer
             await program.makeOffer({
                 tokenInMint,
                 tokenOutMint
             });
-
-            const offerAccount = await program.getOfferAccount();
-            const offer = offerAccount.offers.find(o => o.offerId.toNumber() !== 0);
-            offerId = offer.offerId.toNumber();
         });
 
         describe("Basic Functionality Tests", () => {
@@ -43,7 +37,8 @@ describe("Get TVL", () => {
 
                 // Add vector with base price and APR
                 await program.addOfferVector({
-                    offerId,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime,
                     startPrice: 1e9, // 1.0 with 9 decimals
                     apr: 36_500, // 3.65% APR (scaled by 1M)
@@ -51,7 +46,7 @@ describe("Get TVL", () => {
                 });
 
                 const tvl = await program.getTVL({
-                    offerId,
+                    tokenInMint,
                     tokenOutMint
                 });
 
@@ -64,7 +59,8 @@ describe("Get TVL", () => {
 
                 // Add vector
                 await program.addOfferVector({
-                    offerId,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime,
                     startPrice: 1e9,
                     apr: 36_500,
@@ -72,17 +68,17 @@ describe("Get TVL", () => {
                 });
 
                 // Get offer state before
-                const offerBefore = await program.getOffer(offerId);
+                const offerBefore = await program.getOffer(tokenInMint, tokenOutMint);
                 const mintInfoBefore = await testHelper.getMintInfo(tokenOutMint);
 
                 // Call getTVL - should execute successfully
                 await program.getTVL({
-                    offerId,
+                    tokenInMint,
                     tokenOutMint
                 });
 
                 // Get offer state after
-                const offerAfter = await program.getOffer(offerId);
+                const offerAfter = await program.getOffer(tokenInMint, tokenOutMint);
                 const mintInfoAfter = await testHelper.getMintInfo(tokenOutMint);
 
                 // Should be identical (no state changes)
@@ -97,7 +93,8 @@ describe("Get TVL", () => {
 
                 // Add vector with different base price
                 await program.addOfferVector({
-                    offerId,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime,
                     startPrice: 2e9, // 2.0 with 9 decimals
                     apr: 36_500, // 3.65% APR for fixed price
@@ -106,7 +103,7 @@ describe("Get TVL", () => {
 
                 // Should execute successfully with different prices
                 const tvl = await program.getTVL({
-                    offerId,
+                    tokenInMint,
                     tokenOutMint
                 });
 
@@ -118,7 +115,8 @@ describe("Get TVL", () => {
 
                 // Add vector with APR
                 await program.addOfferVector({
-                    offerId,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime,
                     startPrice: 1e9,
                     apr: 36_500, // 3.65% APR
@@ -130,7 +128,7 @@ describe("Get TVL", () => {
 
                 // Should execute successfully after time advancement
                 const tvl = await program.getTVL({
-                    offerId,
+                    tokenInMint,
                     tokenOutMint
                 });
 
@@ -142,7 +140,8 @@ describe("Get TVL", () => {
 
                 // Test with 0% APR (should maintain base price)
                 await program.addOfferVector({
-                    offerId,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime,
                     startPrice: 3e9, // 3.0 with 9 decimals
                     apr: 0, // 0% APR
@@ -151,7 +150,7 @@ describe("Get TVL", () => {
 
                 // Should execute successfully with 0 APR
                 const tvl = await program.getTVL({
-                    offerId,
+                    tokenInMint,
                     tokenOutMint
                 });
 
@@ -160,28 +159,18 @@ describe("Get TVL", () => {
         });
 
         describe("Error Condition Tests", () => {
-            it("Should fail with non-existent offer ID", async () => {
-                const nonExistentOfferId = 999;
+            it("Should fail with non-existent offer", async () => {
+                await expect(program.getTVL({ tokenInMint: testHelper.createMint(9), tokenOutMint }))
+                    .rejects.toThrow("AnchorError caused by account: offer");
 
-                await expect(program.getTVL({
-                    offerId: nonExistentOfferId,
-                    tokenOutMint
-                }))
-                    .rejects.toThrow("Offer not found");
-            });
-
-            it("Should fail with invalid offer ID (0)", async () => {
-                await expect(program.getTVL({
-                    offerId: 0,
-                    tokenOutMint
-                }))
-                    .rejects.toThrow("Offer not found");
+                await expect(program.getTVL({ tokenInMint, tokenOutMint: testHelper.createMint(9) }))
+                    .rejects.toThrow("AnchorError caused by account: offer");
             });
 
             it("Should fail when offer has no active vectors", async () => {
                 // Don't add any vectors to the offer
                 await expect(program.getTVL({
-                    offerId,
+                    tokenInMint,
                     tokenOutMint
                 }))
                     .rejects.toThrow("No active vector");
@@ -192,7 +181,8 @@ describe("Get TVL", () => {
 
                 // Add vector that starts in the future
                 await program.addOfferVector({
-                    offerId,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime + 86400, // starts tomorrow
                     startPrice: 1e9,
                     apr: 36_500,
@@ -200,7 +190,7 @@ describe("Get TVL", () => {
                 });
 
                 await expect(program.getTVL({
-                    offerId,
+                    tokenInMint,
                     tokenOutMint
                 }))
                     .rejects.toThrow("No active vector");
@@ -211,7 +201,8 @@ describe("Get TVL", () => {
 
                 // Add vector
                 await program.addOfferVector({
-                    offerId,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime,
                     startPrice: 1e9,
                     apr: 36_500,
@@ -222,10 +213,10 @@ describe("Get TVL", () => {
                 const wrongMint = testHelper.createMint(9);
 
                 await expect(program.getTVL({
-                    offerId,
+                    tokenInMint,
                     tokenOutMint: wrongMint
                 }))
-                    .rejects.toThrow("A has one constraint was violated");
+                    .rejects.toThrow("AnchorError caused by account: offer");
             });
         });
 
@@ -235,7 +226,8 @@ describe("Get TVL", () => {
 
                 // Add first vector (older)
                 await program.addOfferVector({
-                    offerId,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime,
                     startPrice: 1e9,
                     apr: 36_500,
@@ -248,7 +240,8 @@ describe("Get TVL", () => {
                 // Add second vector (more recent) with different price
                 const newCurrentTime = await testHelper.getCurrentClockTime();
                 await program.addOfferVector({
-                    offerId,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: newCurrentTime,
                     startPrice: 5e9, // 5.0 with 9 decimals
                     apr: 0, // 0% APR for fixed price
@@ -257,7 +250,7 @@ describe("Get TVL", () => {
 
                 // Should execute successfully and use the most recent vector
                 await program.getTVL({
-                    offerId,
+                    tokenInMint,
                     tokenOutMint
                 });
             });
@@ -274,13 +267,10 @@ describe("Get TVL", () => {
                     tokenOutMint: largeMint
                 });
 
-                const offerAccount = await program.getOfferAccount();
-                const offers = offerAccount.offers.filter(o => o.offerId.toNumber() !== 0);
-                const newOfferId = offers[offers.length - 1].offerId.toNumber();
-
                 // Add vector
                 await program.addOfferVector({
-                    offerId: newOfferId,
+                    tokenInMint,
+                    tokenOutMint: largeMint,
                     startTime: currentTime,
                     startPrice: 1e9, // 1.0 with 9 decimals
                     apr: 0,
@@ -289,7 +279,7 @@ describe("Get TVL", () => {
 
                 // Should execute successfully with large token supplies
                 await program.getTVL({
-                    offerId: newOfferId,
+                    tokenInMint,
                     tokenOutMint: largeMint
                 });
             });
@@ -300,8 +290,6 @@ describe("Get TVL", () => {
         let tokenInMint: PublicKey;
         let tokenOutMint: PublicKey;
 
-        let offerId: number;
-
         beforeEach(async () => {
             // Create mints with different decimals to test precision handling
             tokenInMint = testHelper.createMint2022(6); // USDC-like (6 decimals)
@@ -309,7 +297,6 @@ describe("Get TVL", () => {
 
             // Initialize program and offers
             await program.initialize({ onycMint: testHelper.createMint(9) });
-            await program.initializeOffers();
 
             // Create an offer
             await program.makeOffer({
@@ -317,10 +304,6 @@ describe("Get TVL", () => {
                 tokenOutMint,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID
             });
-
-            const offerAccount = await program.getOfferAccount();
-            const offer = offerAccount.offers.find(o => o.offerId.toNumber() !== 0);
-            offerId = offer.offerId.toNumber();
         });
 
         it("Should calculate TVL correctly with different prices", async () => {
@@ -328,7 +311,8 @@ describe("Get TVL", () => {
 
             // Add vector with different base price
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 2e9, // 2.0 with 9 decimals
                 apr: 36_500, // 3.65% APR for fixed price
@@ -337,7 +321,7 @@ describe("Get TVL", () => {
 
             // Should execute successfully with different prices
             const tvl = await program.getTVL({
-                offerId,
+                tokenInMint,
                 tokenOutMint,
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID
             });
