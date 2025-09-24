@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_lang::Discriminator;
-use solana_program::system_instruction;
+use anchor_lang::solana_program::system_instruction;
 use crate::state::{State, MAX_ADMINS};
 
 // Old size of State (accounting for the 8-byte discriminator).
