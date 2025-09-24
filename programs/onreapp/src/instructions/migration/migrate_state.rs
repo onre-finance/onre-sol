@@ -2,8 +2,7 @@ use crate::state::{State, MAX_ADMINS};
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::system_instruction;
 use anchor_lang::Discriminator;
-use anchor_lang::solana_program::system_instruction;
-use crate::state::{State, MAX_ADMINS};
+use anchor_spl::token::Mint;
 
 // Old size of State (accounting for the 8-byte discriminator).
 // Old State only had: boss (32 bytes)
@@ -30,6 +29,8 @@ pub struct MigrateState<'info> {
     /// The boss who is authorized to perform the migration
     #[account(mut)]
     pub boss: Signer<'info>,
+
+    pub onyc_mint: Account<'info, Mint>,
 
     pub system_program: Program<'info, System>,
 }
@@ -88,10 +89,15 @@ pub fn migrate_state(ctx: Context<MigrateState>) -> Result<()> {
         // Initialize is_killed to false at offset 8 + 32 = 40
         data[40] = 0u8; // false
 
-        // Initialize admins array to all zeros (empty) at offset 8 + 32 + 1 = 41
+        // Set Onyc mint at offset 8 + 32 + 1 = 41
+        for i in 0..32 {
+            data[41 + i] = ctx.accounts.onyc_mint.key().to_bytes()[i];
+        }
+
+        // Initialize admins array to all zeros (empty) at offset 8 + 32 + 32 + 1 = 73
         // Each admin is 32 bytes, and we have MAX_ADMINS slots
         for i in 0..MAX_ADMINS {
-            let start_offset = 41 + (i * 32);
+            let start_offset = 73 + (i * 32);
             for j in 0..32 {
                 data[start_offset + j] = 0u8;
             }

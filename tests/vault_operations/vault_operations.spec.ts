@@ -15,7 +15,7 @@ describe("Vault Operations", () => {
         boss = testHelper.getBoss();
 
         // Initialize program and vault authorities
-        await program.initialize();
+        await program.initialize({ onycMint: testHelper.createMint(9) });
         await program.initializeVaultAuthority();
     });
 

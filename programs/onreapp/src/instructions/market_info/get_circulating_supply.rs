@@ -1,8 +1,7 @@
 use crate::constants::seeds;
-use crate::instructions::offer::offer_utils::find_offer;
-use crate::instructions::OfferAccount;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 
+use crate::state::State;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
@@ -16,8 +15,6 @@ pub enum GetCirculatingSupplyErrorCode {
 /// Event emitted when get_circulating_supply is called
 #[event]
 pub struct GetCirculatingSupplyEvent {
-    /// The ID of the offer
-    pub offer_id: u64,
     /// Current circulating supply for the offer
     pub circulating_supply: u64,
     /// Total token supply
@@ -31,12 +28,10 @@ pub struct GetCirculatingSupplyEvent {
 /// Accounts required for getting circulating supply information
 #[derive(Accounts)]
 pub struct GetCirculatingSupply<'info> {
-    /// The offer account containing all active offers
-    #[account(seeds = [seeds::OFFERS], bump)]
-    pub offer_account: AccountLoader<'info, OfferAccount>,
+    pub onyc_mint: InterfaceAccount<'info, Mint>,
 
-    /// The token_out mint account to get supply information
-    pub token_out_mint: InterfaceAccount<'info, Mint>,
+    #[account(has_one = onyc_mint)]
+    pub state: Box<Account<'info, State>>,
 
     /// The offer vault authority PDA that controls vault token accounts
     /// CHECK: This is safe as it's a PDA
@@ -50,13 +45,13 @@ pub struct GetCirculatingSupply<'info> {
         constraint = vault_token_out_account.key()
             == get_associated_token_address_with_program_id(
                 &vault_authority.key(),
-                &token_out_mint.key(),
-                &token_out_program.key(),
+                &state.onyc_mint.key(),
+                &token_program.key(),
             ) @ GetCirculatingSupplyErrorCode::InvalidVaultAccount
     )]
     pub vault_token_out_account: UncheckedAccount<'info>,
 
-    pub token_out_program: Interface<'info, TokenInterface>,
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 /// Gets the current circulating supply for a specific offer
@@ -78,34 +73,22 @@ pub struct GetCirculatingSupply<'info> {
 /// # Emits
 ///
 /// * `GetCirculatingSupplyEvent` - Contains offer_id, circulating_supply, total_supply, vault_amount, and timestamp
-pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>, offer_id: u64) -> Result<u64> {
-    let offer_account = ctx.accounts.offer_account.load()?;
+pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64> {
     let current_time = Clock::get()?.unix_timestamp as u64;
-
-    // Find the offer
-    let offer = find_offer(&offer_account, offer_id)?;
-
-    // Verify that the provided token_out_mint matches the offer's token_out_mint
-    require_eq!(
-        ctx.accounts.token_out_mint.key(),
-        offer.token_out_mint,
-        ErrorCode::ConstraintHasOne
-    );
 
     let vault_token_out_amount = read_optional_ata_amount(
         &ctx.accounts.vault_token_out_account,
-        &ctx.accounts.token_out_program,
+        &ctx.accounts.token_program,
     )?;
 
     // Get total supply
-    let total_supply = ctx.accounts.token_out_mint.supply;
+    let total_supply = ctx.accounts.onyc_mint.supply;
 
     // Calculate circulating supply = total supply - vault amount
     let circulating_supply = total_supply - vault_token_out_amount;
 
     msg!(
-        "Circulating Supply Info - Offer ID: {}, Circulating Supply: {}, Total Supply: {}, Vault Amount: {}, Timestamp: {}",
-        offer_id,
+        "Circulating Supply Info - Circulating Supply: {}, Total Supply: {}, Vault Amount: {}, Timestamp: {}",
         circulating_supply,
         total_supply,
         vault_token_out_amount,
@@ -113,7 +96,6 @@ pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>, offer_id: u64)
     );
 
     emit!(GetCirculatingSupplyEvent {
-        offer_id,
         circulating_supply,
         total_supply,
         vault_amount: vault_token_out_amount,
@@ -125,7 +107,7 @@ pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>, offer_id: u64)
 
 /// Read amount from an ATA only if it's initialized under the given token program.
 /// Returns Ok(0) if the account is uninitialized or not a token account yet.
-fn read_optional_ata_amount(
+fn read_optional_ata_amount<'info>(
     vault_account: &AccountInfo,
     token_program: &Interface<TokenInterface>,
 ) -> Result<u64> {

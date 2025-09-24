@@ -19,7 +19,7 @@ describe("Update Offer Fee", () => {
         tokenInMint = testHelper.createMint(9);
         tokenOutMint = testHelper.createMint(9);
 
-        await program.initialize();
+        await program.initialize({ onycMint: tokenOutMint });
         await program.initializeOffers();
 
         // Create an offer

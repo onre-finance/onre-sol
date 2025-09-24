@@ -1,4 +1,4 @@
-import { PublicKey, Keypair } from "@solana/web3.js";
+import { Keypair } from "@solana/web3.js";
 import { TestHelper } from "../test_helper";
 import { OnreProgram } from "../onre_program.ts";
 
@@ -16,7 +16,7 @@ describe("Kill Switch Enable", () => {
         admin = testHelper.createUserAccount();
 
         // Initialize required states (admin and kill switch state now part of main state)
-        await program.initialize();
+        await program.initialize({ onycMint: testHelper.createMint(9) });
 
         // Add an admin for testing admin privileges
         await program.addAdmin({ admin: admin.publicKey });

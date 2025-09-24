@@ -431,31 +431,13 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "offerAccount",
-          "docs": [
-            "The offer account containing all active offers"
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  115
-                ]
-              }
-            ]
-          }
+          "name": "onycMint",
+          "relations": [
+            "state"
+          ]
         },
         {
-          "name": "tokenOutMint",
-          "docs": [
-            "The token_out mint account to get supply information"
-          ]
+          "name": "state"
         },
         {
           "name": "vaultAuthority",
@@ -500,15 +482,10 @@ export type Onreapp = {
           ]
         },
         {
-          "name": "tokenOutProgram"
+          "name": "tokenProgram"
         }
       ],
-      "args": [
-        {
-          "name": "offerId",
-          "type": "u64"
-        }
-      ],
+      "args": [],
       "returns": "u64"
     },
     {
@@ -789,6 +766,9 @@ export type Onreapp = {
           ],
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "onycMint"
         },
         {
           "name": "systemProgram",
@@ -1272,6 +1252,9 @@ export type Onreapp = {
           ],
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "onycMint"
         },
         {
           "name": "systemProgram",
@@ -3694,13 +3677,6 @@ export type Onreapp = {
         "kind": "struct",
         "fields": [
           {
-            "name": "offerId",
-            "docs": [
-              "The ID of the offer"
-            ],
-            "type": "u64"
-          },
-          {
             "name": "circulatingSupply",
             "docs": [
               "Current circulating supply for the offer"
@@ -4243,6 +4219,10 @@ export type Onreapp = {
           {
             "name": "isKilled",
             "type": "bool"
+          },
+          {
+            "name": "onycMint",
+            "type": "pubkey"
           },
           {
             "name": "admins",

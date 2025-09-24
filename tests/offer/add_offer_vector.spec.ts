@@ -21,7 +21,7 @@ describe("Add Offer Vector", () => {
         tokenOutMint = testHelper.createMint(9);
 
         // Initialize program and offers
-        await program.initialize();
+        await program.initialize({ onycMint: tokenOutMint });
         await program.initializeOffers();
     });
 

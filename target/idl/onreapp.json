@@ -425,31 +425,13 @@
       ],
       "accounts": [
         {
-          "name": "offer_account",
-          "docs": [
-            "The offer account containing all active offers"
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  115
-                ]
-              }
-            ]
-          }
+          "name": "onyc_mint",
+          "relations": [
+            "state"
+          ]
         },
         {
-          "name": "token_out_mint",
-          "docs": [
-            "The token_out mint account to get supply information"
-          ]
+          "name": "state"
         },
         {
           "name": "vault_authority",
@@ -494,15 +476,10 @@
           ]
         },
         {
-          "name": "token_out_program"
+          "name": "token_program"
         }
       ],
-      "args": [
-        {
-          "name": "offer_id",
-          "type": "u64"
-        }
-      ],
+      "args": [],
       "returns": "u64"
     },
     {
@@ -783,6 +760,9 @@
           ],
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "onyc_mint"
         },
         {
           "name": "system_program",
@@ -1266,6 +1246,9 @@
           ],
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "onyc_mint"
         },
         {
           "name": "system_program",
@@ -3688,13 +3671,6 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "offer_id",
-            "docs": [
-              "The ID of the offer"
-            ],
-            "type": "u64"
-          },
-          {
             "name": "circulating_supply",
             "docs": [
               "Current circulating supply for the offer"
@@ -4237,6 +4213,10 @@
           {
             "name": "is_killed",
             "type": "bool"
+          },
+          {
+            "name": "onyc_mint",
+            "type": "pubkey"
           },
           {
             "name": "admins",

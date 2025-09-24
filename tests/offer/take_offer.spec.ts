@@ -32,7 +32,7 @@ describe("Take Offer", () => {
         tokenOutMint = testHelper.createMint(9); // ONyc-like (9 decimals)
 
         // Initialize program and offers
-        await program.initialize();
+        await program.initialize({ onycMint: tokenOutMint });
         await program.initializeOffers();
         // Kill switch state is now part of the main state - no separate initialization needed
 

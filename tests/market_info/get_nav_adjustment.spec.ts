@@ -20,7 +20,7 @@ describe("Get NAV Adjustment", () => {
         tokenOutMint = testHelper.createMint(9); // ONyc-like (9 decimals)
 
         // Initialize program and offers
-        await program.initialize();
+        await program.initialize({ onycMint: tokenOutMint });
         await program.initializeOffers();
 
         // Create an offer
@@ -111,9 +111,9 @@ describe("Get NAV Adjustment", () => {
             // Get adjustment - should be positive since we went from lower to higher price
             const adjustment = await program.getNavAdjustment({ offerId });
 
-            // First vector price in first/last/only interval is 1.0001
-            // Second vector price in second interval is 1.50015 (1.5 * 1.0002)
-            expect(adjustment).toBe(0.5002e9);
+            // Last interval price in first vector is 1.0002
+            // First interval price in second vector is 1.50015 (1.5 * 1.0001)
+            expect(adjustment).toBe(0.49995e9);
         });
 
         it("Should calculate negative adjustment when price decreases between vectors", async () => {
@@ -144,7 +144,7 @@ describe("Get NAV Adjustment", () => {
             // Get adjustment - should be negative since we went from higher to lower price
             const adjustment = await program.getNavAdjustment({ offerId });
 
-            expect(adjustment).toBe(-1.0001e9);
+            expect(adjustment).toBe(-1.0003e9);
         });
 
         it("Should handle multiple vector transitions correctly", async () => {

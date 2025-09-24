@@ -403,10 +403,7 @@ pub mod onreapp {
     ///
     /// # Returns
     /// - `Ok(circulating_supply)`: The calculated circulating supply for the offer in base units
-    pub fn get_circulating_supply(
-        ctx: Context<GetCirculatingSupply>,
-        offer_id: u64,
-    ) -> Result<u64> {
-        market_info::get_circulating_supply(ctx, offer_id)
+    pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64> {
+        market_info::get_circulating_supply(ctx)
     }
 }

@@ -19,7 +19,7 @@ describe("Mint Authority Transfer", () => {
         tokenMint = testHelper.createMint(9);
 
         // Initialize the program state
-        await program.initialize();
+        await program.initialize({ onycMint: tokenMint });
     });
 
     describe("transfer_mint_authority_to_program", () => {

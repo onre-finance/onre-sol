@@ -23,7 +23,7 @@ describe("Get TVL", () => {
             tokenOutMint = testHelper.createMint(9); // ONyc-like (9 decimals)
 
             // Initialize program and offers
-            await program.initialize();
+            await program.initialize({ onycMint: tokenOutMint });
             await program.initializeOffers();
 
             // Create an offer
@@ -308,7 +308,7 @@ describe("Get TVL", () => {
             tokenOutMint = testHelper.createMint2022(9); // ONyc-like (9 decimals)
 
             // Initialize program and offers
-            await program.initialize();
+            await program.initialize({ onycMint: testHelper.createMint(9) });
             await program.initializeOffers();
 
             // Create an offer
