@@ -9,8 +9,6 @@ describe("Get NAV", () => {
     let tokenInMint: PublicKey;
     let tokenOutMint: PublicKey;
 
-    let offerId: number;
-
     beforeEach(async () => {
         testHelper = await TestHelper.create();
         program = new OnreProgram(testHelper.context);
@@ -21,17 +19,12 @@ describe("Get NAV", () => {
 
         // Initialize program and offers
         await program.initialize({ onycMint: tokenOutMint });
-        await program.initializeOffers();
 
         // Create an offer
         await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
-
-        const offerAccount = await program.getOfferAccount();
-        const offer = offerAccount.offers.find(o => o.offerId.toNumber() !== 0);
-        offerId = offer.offerId.toNumber();
     });
 
     describe("Basic Functionality Tests", () => {
@@ -40,7 +33,8 @@ describe("Get NAV", () => {
 
             // Add vector with base price and APR
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9, // 1.0 with 9 decimals
                 apr: 36_500, // 3.65% APR (scaled by 1M)
@@ -48,7 +42,7 @@ describe("Get NAV", () => {
             });
 
             // Get NAV
-            const nav = await program.getNAV({ offerId });
+            const nav = await program.getNAV({ tokenInMint, tokenOutMint });
 
             // Validate price
             expect(nav).toBe(1.0001e9);
@@ -59,7 +53,8 @@ describe("Get NAV", () => {
 
             // Add vector
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -67,13 +62,13 @@ describe("Get NAV", () => {
             });
 
             // Get offer state before
-            const offerBefore = await program.getOffer(offerId);
+            const offerBefore = await program.getOffer(tokenInMint, tokenOutMint);
 
             // Call getNAV
-            await program.getNAV({ offerId });
+            await program.getNAV({ tokenInMint, tokenOutMint });
 
             // Get offer state after
-            const offerAfter = await program.getOffer(offerId);
+            const offerAfter = await program.getOffer(tokenInMint, tokenOutMint);
 
             // Should be identical (no state changes)
             expect(offerAfter).toEqual(offerBefore);
@@ -86,7 +81,8 @@ describe("Get NAV", () => {
 
             // Add vector
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500, // 3.65% APR
@@ -97,7 +93,7 @@ describe("Get NAV", () => {
             await testHelper.advanceClockBy(86401); // 1 day
 
             // Should calculate price for 3rd interval
-            const nav = await program.getNAV({ offerId });
+            const nav = await program.getNAV({ tokenInMint, tokenOutMint });
             expect(nav).toBe(1.0002e9);
         });
 
@@ -106,41 +102,38 @@ describe("Get NAV", () => {
 
             // Test with 0% APR (should maintain base price)
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 2e9, // 2.0 with 9 decimals
                 apr: 0, // 0% APR
                 priceFixDuration: 86400
             });
 
-            let nav = await program.getNAV({ offerId });
+            let nav = await program.getNAV({ tokenInMint, tokenOutMint });
 
             expect(nav).toBe(2e9);
 
             await testHelper.advanceClockBy(999_999);
 
-            nav = await program.getNAV({ offerId });
+            nav = await program.getNAV({ tokenInMint, tokenOutMint });
 
             expect(nav).toBe(2e9);
         });
     });
 
     describe("Error Condition Tests", () => {
-        it("Should fail with non-existent offer ID", async () => {
-            const nonExistentOfferId = 999;
+        it("Should fail with non-existent offer", async () => {
+            await expect(program.getNAV({ tokenInMint: testHelper.createMint(6), tokenOutMint }))
+                .rejects.toThrow("AnchorError caused by account: offer");
 
-            await expect(program.getNAV({ offerId: nonExistentOfferId }))
-                .rejects.toThrow("Offer not found");
-        });
-
-        it("Should fail with invalid offer ID (0)", async () => {
-            await expect(program.getNAV({ offerId: 0 }))
-                .rejects.toThrow("Offer not found");
+            await expect(program.getNAV({ tokenInMint, tokenOutMint: testHelper.createMint(9) }))
+                .rejects.toThrow("AnchorError caused by account: offer");
         });
 
         it("Should fail when offer has no active vectors", async () => {
             // Don't add any vectors to the offer
-            await expect(program.getNAV({ offerId }))
+            await expect(program.getNAV({ tokenInMint, tokenOutMint }))
                 .rejects.toThrow("No active vector");
         });
 
@@ -149,14 +142,15 @@ describe("Get NAV", () => {
 
             // Add vector that starts in the future
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime + 86400, // starts tomorrow
                 startPrice: 1e9,
                 apr: 36_500,
                 priceFixDuration: 86400
             });
 
-            await expect(program.getNAV({ offerId }))
+            await expect(program.getNAV({ tokenInMint, tokenOutMint }))
                 .rejects.toThrow("No active vector");
         });
     });
@@ -167,7 +161,8 @@ describe("Get NAV", () => {
 
             // Add first vector (older) - use current time as base since vectors must be in order
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -180,7 +175,8 @@ describe("Get NAV", () => {
             // Add second vector (more recent) - must have base_time after the first vector
             const newCurrentTime = await testHelper.getCurrentClockTime();
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: newCurrentTime,
                 startPrice: 2e9, // different base price
                 apr: 73_000, // different APR
@@ -188,7 +184,7 @@ describe("Get NAV", () => {
             });
 
             // Should use the more recent vector without errors
-            await expect(program.getNAV({ offerId })).resolves.not.toThrow();
+            await expect(program.getNAV({ tokenInMint, tokenOutMint })).resolves.not.toThrow();
         });
     });
 });

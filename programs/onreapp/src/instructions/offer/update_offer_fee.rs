@@ -1,14 +1,15 @@
-use super::offer_state::OfferAccount;
 use crate::constants::seeds;
-use crate::instructions::find_offer_mut;
+use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::MAX_BASIS_POINTS;
+use crate::OfferCoreError;
 use anchor_lang::prelude::*;
+use anchor_spl::token_interface::Mint;
 
 /// Event emitted when a offer's fee is updated.
 #[event]
 pub struct OfferFeeUpdatedEvent {
-    pub offer_id: u64,
+    pub offer_pda: Pubkey,
     pub old_fee_basis_points: u64,
     pub new_fee_basis_points: u64,
     pub boss: Pubkey,
@@ -21,8 +22,30 @@ pub struct OfferFeeUpdatedEvent {
 #[derive(Accounts)]
 pub struct UpdateOfferFee<'info> {
     /// The offer account containing all offers
-    #[account(mut, seeds = [seeds::OFFERS], bump)]
-    pub offer_account: AccountLoader<'info, OfferAccount>,
+    #[account(
+        mut,
+        seeds = [
+            seeds::OFFER,
+            token_in_mint.key().as_ref(),
+            token_out_mint.key().as_ref()
+        ],
+        bump
+    )]
+    pub offer: AccountLoader<'info, Offer>,
+
+    #[account(
+        constraint =
+            token_in_mint.key() == offer.load()?.token_in_mint
+            @ OfferCoreError::InvalidTokenInMint
+    )]
+    pub token_in_mint: InterfaceAccount<'info, Mint>,
+
+    #[account(
+        constraint =
+            token_out_mint.key() == offer.load()?.token_out_mint
+            @ OfferCoreError::InvalidTokenOutMint
+    )]
+    pub token_out_mint: InterfaceAccount<'info, Mint>,
 
     /// Program state, ensures `boss` is authorized.
     #[account(has_one = boss)]
@@ -40,28 +63,18 @@ pub struct UpdateOfferFee<'info> {
 ///
 /// # Arguments
 /// - `ctx`: Context containing the accounts for the operation.
-/// - `offer_id`: ID of the offer to update.
 /// - `new_fee_basis_points`: New fee in basis points (0-10000).
 ///
 /// # Errors
-/// - [`UpdateOfferFeeErrorCode::OfferNotFound`] if offer_id doesn't exist.
 /// - [`UpdateOfferFeeErrorCode::InvalidFee`] if fee_basis_points > 10000.
-pub fn update_offer_fee(
-    ctx: Context<UpdateOfferFee>,
-    offer_id: u64,
-    new_fee_basis_points: u64,
-) -> Result<()> {
+pub fn update_offer_fee(ctx: Context<UpdateOfferFee>, new_fee_basis_points: u64) -> Result<()> {
     // Validate fee is within valid range (0-10000 basis points = 0-100%)
     require!(
         new_fee_basis_points <= MAX_BASIS_POINTS,
         UpdateOfferFeeErrorCode::InvalidFee
     );
 
-    let offer_account = &mut ctx.accounts.offer_account.load_mut()?;
-
-    // Find the offer by offer_id
-    let offer = find_offer_mut(offer_account, offer_id)
-        .map_err(|_| UpdateOfferFeeErrorCode::OfferNotFound)?;
+    let offer = &mut ctx.accounts.offer.load_mut()?;
 
     // Store old fee for event
     let old_fee_basis_points = offer.fee_basis_points;
@@ -70,14 +83,14 @@ pub fn update_offer_fee(
     offer.fee_basis_points = new_fee_basis_points;
 
     msg!(
-        "Offer fee updated for ID: {}, old fee: {}, new fee: {}",
-        offer_id,
+        "Offer fee updated for offer: {}, old fee: {}, new fee: {}",
+        ctx.accounts.offer.key(),
         old_fee_basis_points,
         new_fee_basis_points
     );
 
     emit!(OfferFeeUpdatedEvent {
-        offer_id,
+        offer_pda: ctx.accounts.offer.key(),
         old_fee_basis_points,
         new_fee_basis_points,
         boss: ctx.accounts.boss.key(),
@@ -89,11 +102,13 @@ pub fn update_offer_fee(
 /// Error codes for update offer fee operations.
 #[error_code]
 pub enum UpdateOfferFeeErrorCode {
-    /// Triggered when the offer_id doesn't exist.
-    #[msg("Offer not found")]
-    OfferNotFound,
-
     /// Triggered when fee_basis_points is greater than 10000.
     #[msg("Invalid fee: fee_basis_points must be <= 10000")]
     InvalidFee,
+
+    #[msg("Invalid token in mint for offer")]
+    InvalidTokenInMint,
+
+    #[msg("Invalid token out mint for offer")]
+    InvalidTokenOutMint,
 }

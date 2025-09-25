@@ -19,10 +19,9 @@ describe("Close offer", () => {
 
         // Initialize program and offers
         await program.initialize({ onycMint: tokenOutMint });
-        await program.initializeOffers();
     });
 
-    test("Close offer should succeed and clear the offer", async () => {
+    it("Close offer should succeed and clear the offer", async () => {
         // given - create an offer first
         await program.makeOffer({
             tokenInMint,
@@ -30,34 +29,18 @@ describe("Close offer", () => {
         });
 
         // verify offer exists
-        let offerAccount = await program.getOfferAccount();
-        const offerCounter = offerAccount.counter.toNumber();
-        const createdOffer = await program.getOffer(offerCounter);
-        expect(createdOffer).toBeDefined();
+        const offer = await program.getOffer(tokenInMint, tokenOutMint);
+        expect(offer).toBeDefined();
 
         // when - close the offer
-        await program.closeOffer({ offerId: offerCounter });
+        await program.closeOffer({ tokenInMint, tokenOutMint });
 
         // then - verify offer is cleared
-        offerAccount = await program.getOfferAccount();
-
-        // Counter should remain the same (not decremented)
-        expect(offerAccount.counter.toNumber()).toBe(offerCounter);
-
-        // Find the offer that was closed - should be cleared
-        const closedOffer = await program.getOffer(offerCounter);
-        expect(closedOffer).toBeUndefined(); // Should not exist anymore
-
-        // Verify all offers are cleared (since this is the only one)
-        const activeOffers = offerAccount.offers.filter(offer => offer.offerId.toNumber() > 0);
-        expect(activeOffers.length).toBe(0);
+        await expect(program.getOffer(tokenInMint, tokenOutMint)).rejects.toThrow("Could not find");
     });
 
-    test("Close offer should clear specific offer without affecting others", async () => {
+    it("Close offer should clear specific offer without affecting others", async () => {
         // given - create multiple offers
-        const initialData = await program.getOfferAccount();
-        const startingCounter = initialData.counter.toNumber();
-
         await program.makeOffer({
             tokenInMint,
             tokenOutMint
@@ -80,70 +63,55 @@ describe("Close offer", () => {
         });
 
         // verify all offers exist
-        let offerAccountData = await program.getOfferAccount();
-        expect(offerAccountData.counter.toNumber()).toBe(startingCounter + 3);
-        let activeOffers = offerAccountData.offers.filter(offer => offer.offerId.toNumber() > startingCounter);
-        expect(activeOffers.length).toBe(3);
+        const offer1 = await program.getOffer(tokenInMint, tokenOutMint);
+        expect(offer1.tokenInMint).toStrictEqual(tokenInMint);
+        expect(offer1.tokenOutMint).toStrictEqual(tokenOutMint);
+
+        const offer2 = await program.getOffer(token2In, token2Out);
+        expect(offer2.tokenInMint).toStrictEqual(token2In);
+        expect(offer2.tokenOutMint).toStrictEqual(token2Out);
+
+        const offer3 = await program.getOffer(token3In, token3Out);
+        expect(offer3.tokenInMint).toStrictEqual(token3In);
+        expect(offer3.tokenOutMint).toStrictEqual(token3Out);
 
         // when - close the middle offer
-        const middleOfferId = startingCounter + 2;
-        await program.closeOffer({ offerId: middleOfferId });
+        await program.closeOffer({ tokenInMint: token2In, tokenOutMint: token2Out });
 
         // then - verify only the middle offer is cleared
-        offerAccountData = await program.getOfferAccount();
-
-        // Counter remains the same
-        expect(offerAccountData.counter.toNumber()).toBe(startingCounter + 3);
-
-        // Only 2 active offers remain
-        activeOffers = offerAccountData.offers.filter(offer => offer.offerId.toNumber() > startingCounter);
-        expect(activeOffers.length).toBe(2);
+        await expect(program.getOffer(token2In, token2Out)).rejects.toThrow("Could not find");
 
         // First and third offers should still exist
-        const firstOffer = await program.getOffer(startingCounter + 1);
-        const thirdOffer = await program.getOffer(startingCounter + 3);
-
-        expect(firstOffer).toBeDefined();
-        expect(thirdOffer).toBeDefined();
-
-        // Middle offer should be cleared
-        const middleOffer = await program.getOffer(middleOfferId);
-        expect(middleOffer).toBeUndefined();
+        const offer1After = await program.getOffer(tokenInMint, tokenOutMint);
+        expect(offer1After.tokenInMint).toStrictEqual(tokenInMint);
+        expect(offer1After.tokenOutMint).toStrictEqual(tokenOutMint);
+        const offer3After = await program.getOffer(token3In, token3Out);
+        expect(offer3After.tokenInMint).toStrictEqual(token3In);
+        expect(offer3After.tokenOutMint).toStrictEqual(token3Out);
     });
 
-    test("Close offer with offer_id 0 should fail", async () => {
-        // when/then - try to close with invalid offer_id = 0
-        const invalidOfferId = 0;
+    it("Close offer with incorrect tokens should fail", async () => {
+        // when/then - try to close invalid offer
         await expect(
-            program.closeOffer({ offerId: invalidOfferId })
-        ).rejects.toThrow("Offer not found");
-    });
+            program.closeOffer({ tokenInMint: testHelper.createMint(9), tokenOutMint })
+        ).rejects.toThrow("AnchorError caused by account: offer");
 
-    test("Close non-existent offer should fail", async () => {
-        // when/then - try to close non-existent offer (doesn't matter how many other offers exist)
-        const nonExistentOfferId = 999;
         await expect(
-            program.closeOffer({ offerId: nonExistentOfferId })
-        ).rejects.toThrow("Offer not found");
+            program.closeOffer({ tokenInMint, tokenOutMint: testHelper.createMint(9) })
+        ).rejects.toThrow("AnchorError caused by account: offer");
     });
 
-    test("Close offer should fail when not called by boss", async () => {
-        // given - create an offer
-        const initialData = await program.getOfferAccount();
-        const startingCounter = initialData.counter.toNumber();
-
+    it("Close offer should fail when not called by boss", async () => {
         await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
 
-        const newOfferId = startingCounter + 1;
-
         // when/then - try to close with different signer
         const notBoss = testHelper.createUserAccount();
 
         await expect(
-            program.closeOffer({ offerId: newOfferId, signer: notBoss })
+            program.closeOffer({ tokenInMint, tokenOutMint, signer: notBoss })
         ).rejects.toThrow("unknown signer"); // Should fail due to boss constraint
     });
 });

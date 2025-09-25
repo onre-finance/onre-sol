@@ -3,8 +3,6 @@ import { TestHelper } from "../test_helper";
 import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { OnreProgram } from "../onre_program.ts";
 
-const MAX_OFFERS = 10;
-
 describe("Make offer", () => {
     let testHelper: TestHelper;
     let program: OnreProgram;
@@ -21,7 +19,6 @@ describe("Make offer", () => {
         tokenOutMint = testHelper.createMint(9);
 
         await program.initialize({ onycMint: tokenOutMint });
-        await program.initializeOffers();
     });
 
     test("Make an offer should succeed", async () => {
@@ -34,14 +31,11 @@ describe("Make offer", () => {
         });
 
         // then
-        const offerAccount = await program.getOfferAccount();
+        const offer = await program.getOffer(tokenInMint, tokenOutMint);
 
-        expect(offerAccount.counter.toNumber()).toBe(1);
-
-        const firstOffer = offerAccount.offers[0];
-        expect(firstOffer.offerId.toNumber()).toBe(1);
-        expect(firstOffer.tokenInMint.toString()).toBe(tokenInMint.toString());
-        expect(firstOffer.tokenOutMint.toString()).toBe(tokenOutMint.toString());
+        expect(offer.tokenInMint.toString()).toBe(tokenInMint.toString());
+        expect(offer.tokenOutMint.toString()).toBe(tokenOutMint.toString());
+        expect(offer.feeBasisPoints.toNumber()).toBe(feeBasisPoints);
     });
 
     test("Make multiple offers should succeed", async () => {
@@ -65,18 +59,16 @@ describe("Make offer", () => {
         });
 
         // then
-        let offerAccount = await program.getOfferAccount();
-
-        expect(offerAccount.counter.toNumber()).toBe(2);
-
-        // Find offers by their auto-generated IDs
-        const firstOffer = await program.getOffer(1);
+        // Each offer should exist as a separate PDA
+        const firstOffer = await program.getOffer(token1In, token1Out);
         expect(firstOffer).toBeDefined();
-        expect(firstOffer!.tokenOutMint.toString()).toBe(token1Out.toString());
+        expect(firstOffer.tokenInMint.toString()).toBe(token1In.toString());
+        expect(firstOffer.tokenOutMint.toString()).toBe(token1Out.toString());
 
-        const secondOffer = await program.getOffer(2);
+        const secondOffer = await program.getOffer(token2In, token2Out);
         expect(secondOffer).toBeDefined();
-        expect(secondOffer!.tokenOutMint.toString()).toBe(token2Out.toString());
+        expect(secondOffer.tokenInMint.toString()).toBe(token2In.toString());
+        expect(secondOffer.tokenOutMint.toString()).toBe(token2Out.toString());
     });
 
     test("Make an offer should initialize vault token_in account", async () => {
@@ -100,29 +92,18 @@ describe("Make offer", () => {
         })).rejects.toThrow();
     });
 
-    test("Make more than max offers should fail", async () => {
-        // Create MAX_OFFERS offers
-        for (let i = 0; i < MAX_OFFERS; i++) {
-            // Create unique mints for each offer to avoid duplicate transaction issues
-            const uniqueTokenIn = testHelper.createMint(9);
-            const uniqueTokenOut = testHelper.createMint(9);
+    test("Should reject duplicate offers", async () => {
+        // Create first offer
+        await program.makeOffer({
+            tokenInMint,
+            tokenOutMint
+        });
 
-            await program.makeOffer({
-                tokenInMint: uniqueTokenIn,
-                tokenOutMint: uniqueTokenOut
-            });
-        }
-
-        // Verify array is full
-        const offerAccount = await program.getOfferAccount();
-        const activeOffers = offerAccount.offers.filter(offer => offer.offerId.toNumber() > 0).length;
-        expect(activeOffers).toBe(MAX_OFFERS);
-
-        // when - try to make one more offer (should fail)
+        // Try to create same offer again - should fail
         await expect(program.makeOffer({
             tokenInMint,
             tokenOutMint
-        })).rejects.toThrow("Offer account is full, cannot create more offers");
+        })).rejects.toThrow();
     });
 
     test("Should reject when called by non-boss", async () => {
@@ -146,14 +127,10 @@ describe("Make offer", () => {
         });
 
         // then
-        const offerAccount = await program.getOfferAccount();
+        const offer = await program.getOffer(token2022Mint, tokenOutMint);
 
-        expect(offerAccount.counter.toNumber()).toBe(1);
-
-        const firstOffer = offerAccount.offers[0];
-        expect(firstOffer.offerId.toNumber()).toBe(1);
-        expect(firstOffer.tokenInMint.toString()).toBe(token2022Mint.toString());
-        expect(firstOffer.tokenOutMint.toString()).toBe(tokenOutMint.toString());
+        expect(offer.tokenInMint.toString()).toBe(token2022Mint.toString());
+        expect(offer.tokenOutMint.toString()).toBe(tokenOutMint.toString());
     });
 
     test("Should accept Token2022 as token_out_mint", async () => {
@@ -167,13 +144,9 @@ describe("Make offer", () => {
         });
 
         // then
-        const offerAccount = await program.getOfferAccount();
+        const offer = await program.getOffer(tokenInMint, token2022Mint);
 
-        expect(offerAccount.counter.toNumber()).toBe(1);
-
-        const firstOffer = offerAccount.offers[0];
-        expect(firstOffer.offerId.toNumber()).toBe(1);
-        expect(firstOffer.tokenInMint.toString()).toBe(tokenInMint.toString());
-        expect(firstOffer.tokenOutMint.toString()).toBe(token2022Mint.toString());
+        expect(offer.tokenInMint.toString()).toBe(tokenInMint.toString());
+        expect(offer.tokenOutMint.toString()).toBe(token2022Mint.toString());
     });
 });

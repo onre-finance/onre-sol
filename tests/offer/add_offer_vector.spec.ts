@@ -22,7 +22,6 @@ describe("Add Offer Vector", () => {
 
         // Initialize program and offers
         await program.initialize({ onycMint: tokenOutMint });
-        await program.initializeOffers();
     });
 
     it("Should create an offer and add a time vector", async () => {
@@ -32,9 +31,6 @@ describe("Add Offer Vector", () => {
             tokenOutMint
         });
 
-        // Get the first offer (auto-generated ID)
-        const offerId = 1;
-
         // Add a time vector to the offer
         const currentTime = await testHelper.getCurrentClockTime();
         const startTime = currentTime + 3600; // 1 hour in future
@@ -43,7 +39,8 @@ describe("Add Offer Vector", () => {
         const priceFixDuration = 3600; // 1 hour
 
         await program.addOfferVector({
-            offerId,
+            tokenInMint,
+            tokenOutMint,
             startTime,
             startPrice,
             apr,
@@ -51,7 +48,7 @@ describe("Add Offer Vector", () => {
         });
 
         // Verify the time vector was added
-        const updatedOffer = await program.getOffer(offerId);
+        const updatedOffer = await program.getOffer(tokenInMint, tokenOutMint);
 
         const vector = updatedOffer.vectors[0];
         expect(vector.vectorId.toString()).toBe("1");
@@ -68,18 +65,18 @@ describe("Add Offer Vector", () => {
             tokenOutMint
         });
 
-        const offerId = 1;
         const currentTime = await testHelper.getCurrentClockTime();
 
         await program.addOfferVector({
-            offerId,
+            tokenInMint,
+            tokenOutMint,
             startTime: currentTime - 3600, // 1 hour ago,
             startPrice: 1000000,
             apr: 250000, // 25% APR
             priceFixDuration: 1000
         });
 
-        const updatedOffer = await program.getOffer(offerId);
+        const updatedOffer = await program.getOffer(tokenInMint, tokenOutMint);
         const vector = updatedOffer.vectors[0];
 
         expect(vector.baseTime.toString()).toBe((currentTime - 3600).toString());
@@ -87,7 +84,6 @@ describe("Add Offer Vector", () => {
     });
 
     it("Should auto-increment vector IDs correctly", async () => {
-        const offerId = 1;
         // Create offer
         await program.makeOffer({
             tokenInMint,
@@ -98,7 +94,8 @@ describe("Add Offer Vector", () => {
 
         // Add first vector
         await program.addOfferVector({
-            offerId,
+            tokenInMint,
+            tokenOutMint,
             startTime: currentTime + 1000,
             startPrice: 1000000,
             apr: 5000,
@@ -107,7 +104,8 @@ describe("Add Offer Vector", () => {
 
         // Add second vector (with later base_time)
         await program.addOfferVector({
-            offerId,
+            tokenInMint,
+            tokenOutMint,
             startTime: currentTime + 3000,
             startPrice: 2000000,
             apr: 7500,
@@ -116,7 +114,8 @@ describe("Add Offer Vector", () => {
 
         // Add third vector
         await program.addOfferVector({
-            offerId,
+            tokenInMint,
+            tokenOutMint,
             startTime: currentTime + 5000,
             startPrice: 3000000,
             apr: 1000,
@@ -124,7 +123,7 @@ describe("Add Offer Vector", () => {
         });
 
         // Verify vectors have correct auto-incremented IDs
-        const offer = await program.getOffer(offerId);
+        const offer = await program.getOffer(tokenInMint, tokenOutMint);
 
         expect(offer.vectors[0].vectorId.toString()).toBe("1");
         expect(offer.vectors[1].vectorId.toString()).toBe("2");
@@ -133,7 +132,6 @@ describe("Add Offer Vector", () => {
 
     it("Should reject invalid parameters", async () => {
         const currentTime = await testHelper.getCurrentClockTime();
-        const offerId = 1;
         await program.makeOffer({
             tokenInMint,
             tokenOutMint
@@ -141,17 +139,30 @@ describe("Add Offer Vector", () => {
 
         await expect(
             program.addOfferVector({
-                offerId: 0, // Invalid: zero offer_id
+                tokenInMint: testHelper.createMint(9), // Invalid: wrong token_in_mint
+                tokenOutMint,
                 startTime: currentTime + 1000,
                 startPrice: 1000000,
                 apr: 5000,
                 priceFixDuration: 3600
             })
-        ).rejects.toThrow("Invalid input: values cannot be zero");
+        ).rejects.toThrow();
 
         await expect(
             program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint: testHelper.createMint(9), // Invalid: wrong token_out_mint,
+                startTime: currentTime + 1000,
+                startPrice: 1000000,
+                apr: 5000,
+                priceFixDuration: 3600
+            })
+        ).rejects.toThrow();
+
+        await expect(
+            program.addOfferVector({
+                tokenInMint,
+                tokenOutMint,
                 startTime: 0, // Invalid: zero base_time
                 startPrice: 1000000,
                 apr: 5000,
@@ -161,7 +172,8 @@ describe("Add Offer Vector", () => {
 
         await expect(
             program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 0, // Invalid: zero base_price
                 apr: 5000,
@@ -171,7 +183,8 @@ describe("Add Offer Vector", () => {
 
         await expect(
             program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1000000,
                 apr: 5000,
@@ -181,7 +194,6 @@ describe("Add Offer Vector", () => {
     });
 
     it("Should allow zero apr", async () => {
-        const offerId = 1;
         await program.makeOffer({
             tokenInMint,
             tokenOutMint
@@ -191,7 +203,8 @@ describe("Add Offer Vector", () => {
 
         await program
             .addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime + 1000,
                 startPrice: 1000000,
                 apr: 0, // Zero APR
@@ -199,14 +212,13 @@ describe("Add Offer Vector", () => {
             });
 
         // Verify vector was added correctly
-        const offer = await program.getOffer(offerId);
+        const offer = await program.getOffer(tokenInMint, tokenOutMint);
         const vector = offer.vectors[0];
 
         expect(vector.apr.toString()).toBe("0");
     });
 
     it("Should reject start_time before latest existing vector start_time", async () => {
-        const offerId = 1;
         await program.makeOffer({
             tokenInMint,
             tokenOutMint
@@ -216,7 +228,8 @@ describe("Add Offer Vector", () => {
 
         // Add first vector
         await program.addOfferVector({
-            offerId,
+            tokenInMint,
+            tokenOutMint,
             startTime: currentTime + 2000,
             startPrice: 1000000,
             apr: 5000,
@@ -226,7 +239,8 @@ describe("Add Offer Vector", () => {
         // Try to add vector with earlier base_time (should fail)
         await expect(
             program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime + 1000, // Invalid: before previous start_time
                 startPrice: 2000000,
                 apr: 7500,
@@ -236,7 +250,6 @@ describe("Add Offer Vector", () => {
     });
 
     it("Should reject start_time equal to latest existing vector start_time", async () => {
-        const offerId = 1;
         await program.makeOffer({
             tokenInMint,
             tokenOutMint
@@ -247,7 +260,8 @@ describe("Add Offer Vector", () => {
 
         // Add first vector
         await program.addOfferVector({
-            offerId,
+            tokenInMint,
+            tokenOutMint,
             startTime,
             startPrice: 1000000,
             apr: 5000,
@@ -257,7 +271,8 @@ describe("Add Offer Vector", () => {
         // Add vector with same start_time (should fail)
         await expect(program
             .addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime, // Same start_time - should be allowed
                 startPrice: 2000000,
                 apr: 7500,
@@ -266,23 +281,7 @@ describe("Add Offer Vector", () => {
             .rejects.toThrow("Invalid time range: base_time must be after the latest existing vector.");
     });
 
-    it("Should reject adding vector to non-existent offer", async () => {
-        const nonExistentOfferId = 999999;
-        const currentTime = await testHelper.getCurrentClockTime();
-
-        await expect(
-            program.addOfferVector({
-                offerId: nonExistentOfferId,
-                startTime: currentTime + 1000,
-                startPrice: 1000000,
-                apr: 5000,
-                priceFixDuration: 3600
-            })
-        ).rejects.toThrow("Offer not found");
-    });
-
     it("Should reject when offer has maximum vectors", async () => {
-        const offerId = 1;
         await program.makeOffer({
             tokenInMint,
             tokenOutMint
@@ -299,7 +298,8 @@ describe("Add Offer Vector", () => {
             const vectorStartTime = currentTime + (i * vectorTimeOffset);
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: vectorStartTime,
                 startPrice,
                 apr,
@@ -312,7 +312,8 @@ describe("Add Offer Vector", () => {
 
         await expect(
             program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: vectorStartTime,
                 startPrice,
                 apr,
@@ -322,7 +323,6 @@ describe("Add Offer Vector", () => {
     });
 
     it("Should handle large price and apr values correctly", async () => {
-        const offerId = new BN(1);
         await program.makeOffer({
             tokenInMint,
             tokenOutMint
@@ -336,19 +336,20 @@ describe("Add Offer Vector", () => {
 
         await program.program.methods
             .addOfferVector(
-                offerId,
                 new BN(currentTime + 1000),
                 largeStartPrice,
                 largeApr,
                 new BN(3600)
             )
             .accounts({
-                state: program.statePda
+                state: program.statePda,
+                tokenInMint,
+                tokenOutMint
             })
             .rpc();
 
         // Verify the vector was added with large values
-        const offer = await program.getOffer(offerId.toNumber());
+        const offer = await program.getOffer(tokenInMint, tokenOutMint);
         const vector = offer.vectors[0];
 
         expect(vector.basePrice.toString()).toBe(largeStartPrice.toString());
@@ -356,14 +357,14 @@ describe("Add Offer Vector", () => {
     });
 
     it("Should handle minimum valid values (1 for all fields)", async () => {
-        const offerId = 1;
         await program.makeOffer({
             tokenInMint,
             tokenOutMint
         });
 
         await program.addOfferVector({
-            offerId,
+            tokenInMint,
+            tokenOutMint,
             startTime: 1, // Minimum valid start_time
             startPrice: 1, // Minimum valid start_price
             apr: 0, // Minimum valid apr
@@ -371,7 +372,7 @@ describe("Add Offer Vector", () => {
         });
 
         // Verify the vector was added
-        const offer = await program.getOffer(offerId);
+        const offer = await program.getOffer(tokenInMint, tokenOutMint);
         const vector = offer.vectors[0];
 
         expect(vector.vectorId.toString()).toBe("1");
@@ -386,7 +387,6 @@ describe("Add Offer Vector", () => {
     });
 
     it("Should reject when called by non-boss", async () => {
-        const offerId = 1;
         await program.makeOffer({
             tokenInMint,
             tokenOutMint
@@ -396,7 +396,8 @@ describe("Add Offer Vector", () => {
         const currentTime = await testHelper.getCurrentClockTime();
 
         await expect(program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime + 1000,
                 startPrice: 1000000,
                 apr: 5000,
@@ -407,9 +408,6 @@ describe("Add Offer Vector", () => {
     });
 
     it("Should handle vectors added to multiple different offers", async () => {
-        const offer1Id = 1;
-        const offer2Id = 2;
-
         // Create two offers
         await program.makeOffer({
             tokenInMint,
@@ -428,7 +426,8 @@ describe("Add Offer Vector", () => {
 
         // Add vectors to both offers
         await program.addOfferVector({
-            offerId: offer1Id,
+            tokenInMint,
+            tokenOutMint,
             startTime: currentTime + 1000,
             startPrice: 1000000,
             apr: 5000,
@@ -436,7 +435,8 @@ describe("Add Offer Vector", () => {
         });
 
         await program.addOfferVector({
-            offerId: offer2Id,
+            tokenInMint: token2In,
+            tokenOutMint: token2Out,
             startTime: currentTime + 1000,
             startPrice: 3000000,
             apr: 7500,
@@ -444,7 +444,8 @@ describe("Add Offer Vector", () => {
         });
 
         await program.addOfferVector({
-            offerId: offer1Id,
+            tokenInMint,
+            tokenOutMint,
             startTime: currentTime + 3000,
             startPrice: 2000000,
             apr: 2500,
@@ -452,8 +453,8 @@ describe("Add Offer Vector", () => {
         });
 
         // Verify each offer has its own vector ID sequence
-        const offer1 = await program.getOffer(offer1Id);
-        const offer2 = await program.getOffer(offer2Id);
+        const offer1 = await program.getOffer(tokenInMint, tokenOutMint);
+        const offer2 = await program.getOffer(token2In, token2Out);
 
         // Offer 1 should have vectors 1 and 2
         expect(offer1.vectors[0].vectorId.toString()).toBe("1");
@@ -472,7 +473,6 @@ describe("Add Offer Vector", () => {
     });
 
     it("Should clean old past vectors, keeping only current active and previous active", async () => {
-        const offerId = 1;
         await program.makeOffer({
             tokenInMint,
             tokenOutMint
@@ -491,7 +491,8 @@ describe("Add Offer Vector", () => {
         // Add all vectors
         for (let i = 0; i < vectors.length; i++) {
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: vectors[i].startTime,
                 startPrice: vectors[i].price,
                 apr: 5000, // 0.5% APR
@@ -500,7 +501,7 @@ describe("Add Offer Vector", () => {
         }
 
         // Verify all 5 vectors were added
-        let offer = await program.getOffer(offerId);
+        let offer = await program.getOffer(tokenInMint, tokenOutMint);
         let activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
         expect(activeVectors.length).toBe(5);
 
@@ -509,7 +510,8 @@ describe("Add Offer Vector", () => {
 
         // Add another vector to trigger cleanup
         await program.addOfferVector({
-            offerId,
+            tokenInMint,
+            tokenOutMint,
             startTime: currentTime + 6000, // Vector 6 (future)
             startPrice: 6000000,
             apr: 5000,
@@ -522,7 +524,7 @@ describe("Add Offer Vector", () => {
         // - Vector 5 (future vector - should be kept)
         // - Vector 6 (newly added future vector)
         // Vector 1 and 2 should be deleted (oldest past vector)
-        offer = await program.getOffer(offerId);
+        offer = await program.getOffer(tokenInMint, tokenOutMint);
         activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
 
         // Should have exactly 4 vectors remaining (deleted vector 1 and 2)

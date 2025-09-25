@@ -38,17 +38,6 @@ pub mod utils;
 pub mod onreapp {
     use super::*;
 
-    /// Initializes the offers account.
-    ///
-    /// Delegates to `offer::initialize_offers`.
-    /// Only the boss can call this instruction to create the offers account.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `InitializeOffers`.
-    pub fn initialize_offers(ctx: Context<InitializeOffers>) -> Result<()> {
-        initialize_offers::initialize_offers(ctx)
-    }
-
     pub fn initialize_vault_authority(ctx: Context<InitializeVaultAuthority>) -> Result<()> {
         initialize_vault_authority::initialize_vault_authority(ctx)
     }
@@ -103,9 +92,8 @@ pub mod onreapp {
     ///
     /// # Arguments
     /// - `ctx`: Context for `CloseOffer`.
-    /// - `offer_id`: ID of the offer to close.
-    pub fn close_offer(ctx: Context<CloseOffer>, offer_id: u64) -> Result<()> {
-        offer::close_offer(ctx, offer_id)
+    pub fn close_offer(ctx: Context<CloseOffer>) -> Result<()> {
+        offer::close_offer(ctx)
     }
 
     /// Adds a time vector to an existing offer.
@@ -116,27 +104,18 @@ pub mod onreapp {
     ///
     /// # Arguments
     /// - `ctx`: Context for `AddOfferVector`.
-    /// - `offer_id`: ID of the offer to add the vector to.
     /// - `base_time`: Unix timestamp when the vector becomes active.
     /// - `base_price`: Price at the beginning of the vector.
     /// - `apr`: Annual Percentage Rate (APR) (see OfferVector::apr for details).
     /// - `price_fix_duration`: Duration in seconds for each price interval.
     pub fn add_offer_vector(
         ctx: Context<AddOfferVector>,
-        offer_id: u64,
         base_time: u64,
         base_price: u64,
         apr: u64,
         price_fix_duration: u64,
     ) -> Result<()> {
-        offer::add_offer_vector(
-            ctx,
-            offer_id,
-            base_time,
-            base_price,
-            apr,
-            price_fix_duration,
-        )
+        offer::add_offer_vector(ctx, base_time, base_price, apr, price_fix_duration)
     }
 
     /// Deletes a time vector from an offer.
@@ -148,14 +127,9 @@ pub mod onreapp {
     ///
     /// # Arguments
     /// - `ctx`: Context for `DeleteOfferVector`.
-    /// - `offer_id`: ID of the offer containing the vector to delete.
     /// - `vector_id`: ID of the vector to delete.
-    pub fn delete_offer_vector(
-        ctx: Context<DeleteOfferVector>,
-        offer_id: u64,
-        vector_id: u64,
-    ) -> Result<()> {
-        offer::delete_offer_vector(ctx, offer_id, vector_id)
+    pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_id: u64) -> Result<()> {
+        offer::delete_offer_vector(ctx, vector_id)
     }
 
     /// Updates the fee basis points for an offer.
@@ -166,14 +140,9 @@ pub mod onreapp {
     ///
     /// # Arguments
     /// - `ctx`: Context for `UpdateOfferFee`.
-    /// - `offer_id`: ID of the offer to update.
     /// - `new_fee_basis_points`: New fee in basis points (0-10000).
-    pub fn update_offer_fee(
-        ctx: Context<UpdateOfferFee>,
-        offer_id: u64,
-        new_fee_basis_points: u64,
-    ) -> Result<()> {
-        offer::update_offer_fee(ctx, offer_id, new_fee_basis_points)
+    pub fn update_offer_fee(ctx: Context<UpdateOfferFee>, new_fee_basis_points: u64) -> Result<()> {
+        offer::update_offer_fee(ctx, new_fee_basis_points)
     }
 
     /// Takes a offer.
@@ -184,10 +153,9 @@ pub mod onreapp {
     ///
     /// # Arguments
     /// - `ctx`: Context for `TakeOffer`.
-    /// - `offer_id`: ID of the offer to take.
     /// - `token_in_amount`: Amount of token_in to provide.
-    pub fn take_offer(ctx: Context<TakeOffer>, offer_id: u64, token_in_amount: u64) -> Result<()> {
-        offer::take_offer(ctx, offer_id, token_in_amount)
+    pub fn take_offer(ctx: Context<TakeOffer>, token_in_amount: u64) -> Result<()> {
+        offer::take_offer(ctx, token_in_amount)
     }
 
     /// Takes a offer using permissionless flow with intermediary accounts.
@@ -199,14 +167,12 @@ pub mod onreapp {
     ///
     /// # Arguments
     /// - `ctx`: Context for `TakeOfferPermissionless`.
-    /// - `offer_id`: ID of the offer to take.
     /// - `token_in_amount`: Amount of token_in to provide.
     pub fn take_offer_permissionless(
         ctx: Context<TakeOfferPermissionless>,
-        offer_id: u64,
         token_in_amount: u64,
     ) -> Result<()> {
-        offer::take_offer_permissionless(ctx, offer_id, token_in_amount)
+        offer::take_offer_permissionless(ctx, token_in_amount)
     }
 
     /// Initializes the program state.
@@ -324,6 +290,20 @@ pub mod onreapp {
         state_operations::set_onyc_mint(ctx)
     }
 
+    /// Mints ONyc tokens to the boss's account.
+    ///
+    /// Delegates to `state_operations::mint_to` to mint ONyc tokens.
+    /// Only the boss can call this instruction to mint ONyc tokens to their account.
+    /// The program must have mint authority for the ONyc token.
+    /// Emits a `OnycTokensMinted` event upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `MintTo`.
+    /// - `amount`: Amount of ONyc tokens to mint.
+    pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
+        mint_authority::mint_to(ctx, amount)
+    }
+
     /// Migrates the State account to include the new is_killed field.
     ///
     /// This instruction is required after deploying the updated program that includes
@@ -349,12 +329,11 @@ pub mod onreapp {
     ///
     /// # Arguments
     /// - `ctx`: Context for `GetNAV`.
-    /// - `offer_id`: ID of the offer to get the current price for.
     ///
     /// # Returns
     /// - `Ok(current_price)`: The calculated current price (mantissa) for the offer with scale=9
-    pub fn get_nav(ctx: Context<GetNAV>, offer_id: u64) -> Result<u64> {
-        market_info::get_nav(ctx, offer_id)
+    pub fn get_nav(ctx: Context<GetNAV>) -> Result<u64> {
+        market_info::get_nav(ctx)
     }
 
     /// Gets the current APY (Annual Percentage Yield) for a specific offer.
@@ -366,12 +345,11 @@ pub mod onreapp {
     ///
     /// # Arguments
     /// - `ctx`: Context for `GetAPY`.
-    /// - `offer_id`: ID of the offer to get the APY for.
     ///
     /// # Returns
     /// - `Ok(apy)`: The calculated APY scaled by 1_000_000 (returns the mantissa, with scale=6)
-    pub fn get_apy(ctx: Context<GetAPY>, offer_id: u64) -> Result<u64> {
-        market_info::get_apy(ctx, offer_id)
+    pub fn get_apy(ctx: Context<GetAPY>) -> Result<u64> {
+        market_info::get_apy(ctx)
     }
 
     /// Gets the NAV adjustment (price change) for a specific offer.
@@ -384,13 +362,12 @@ pub mod onreapp {
     ///
     /// # Arguments
     /// - `ctx`: Context for `GetNavAdjustment`.
-    /// - `offer_id`: ID of the offer to get the NAV adjustment for.
     ///
     /// # Returns
     /// - `Ok(adjustment)`: The calculated price adjustment (current - previous) as a signed integer,
     /// returns the mantissa with scale=9
-    pub fn get_nav_adjustment(ctx: Context<GetNavAdjustment>, offer_id: u64) -> Result<i64> {
-        market_info::get_nav_adjustment(ctx, offer_id)
+    pub fn get_nav_adjustment(ctx: Context<GetNavAdjustment>) -> Result<i64> {
+        market_info::get_nav_adjustment(ctx)
     }
 
     /// Gets the current TVL (Total Value Locked) for a specific offer with 9 decimal precision
@@ -403,12 +380,11 @@ pub mod onreapp {
     ///
     /// # Arguments
     /// - `ctx`: Context for `GetTVL`.
-    /// - `offer_id`: ID of the offer to get the TVL for.
     ///
     /// # Returns
     /// - `Ok(tvl)`: The calculated TVL (mantissa) for the offer with scale=9
-    pub fn get_tvl(ctx: Context<GetTVL>, offer_id: u64) -> Result<u64> {
-        market_info::get_tvl(ctx, offer_id)
+    pub fn get_tvl(ctx: Context<GetTVL>) -> Result<u64> {
+        market_info::get_tvl(ctx)
     }
 
     /// Delegates to `market_info::get_circulating_supply`.
@@ -419,7 +395,6 @@ pub mod onreapp {
     ///
     /// # Arguments
     /// - `ctx`: Context for `GetCirculatingSupply`.
-    /// - `offer_id`: ID of the offer to get the circulating supply for.
     ///
     /// # Returns
     /// - `Ok(circulating_supply)`: The calculated circulating supply for the offer in base units

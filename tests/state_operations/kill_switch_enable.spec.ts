@@ -49,28 +49,28 @@ describe("Kill Switch Enable", () => {
 
     test("Can enable kill switch when already disabled", async () => {
         // given - kill switch is initialized as disabled (false)
-        const initialState = await program.getKillSwitchState();
+        const initialState = await program.getState();
         expect(initialState.isKilled).toBe(false);
 
         // when
         await program.setKillSwitch({ enable: true });
 
         // then
-        const finalState = await program.getKillSwitchState();
+        const finalState = await program.getState();
         expect(finalState.isKilled).toBe(true);
     });
 
     test("Can enable kill switch when already enabled (idempotent)", async () => {
         // given - enable kill switch first
         await program.setKillSwitch({ enable: true });
-        const initialState = await program.getKillSwitchState();
+        const initialState = await program.getState();
         expect(initialState.isKilled).toBe(true);
 
         // when - enable again (use admin signer to make transaction different)
         await program.setKillSwitch({ enable: true, signer: admin });
 
         // then - should still be enabled
-        const finalState = await program.getKillSwitchState();
+        const finalState = await program.getState();
         expect(finalState.isKilled).toBe(true);
     });
 

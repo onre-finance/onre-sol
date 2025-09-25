@@ -9,8 +9,6 @@ describe("Update Offer Fee", () => {
     let tokenInMint: PublicKey;
     let tokenOutMint: PublicKey;
 
-    let offerId: number;
-
     beforeEach(async () => {
         testHelper = await TestHelper.create();
         program = new OnreProgram(testHelper.context);
@@ -20,7 +18,6 @@ describe("Update Offer Fee", () => {
         tokenOutMint = testHelper.createMint(9);
 
         await program.initialize({ onycMint: tokenOutMint });
-        await program.initializeOffers();
 
         // Create an offer
         await program.makeOffer({
@@ -28,18 +25,16 @@ describe("Update Offer Fee", () => {
             tokenOutMint,
             feeBasisPoints: 500
         });
-
-        offerId = 1;
     });
 
     it("Should successfully update fee for existing offer", async () => {
         const newFee = 1000; // Update to 10%
 
         // Update the fee
-        await program.updateOfferFee({ offerId, newFee });
+        await program.updateOfferFee({ tokenInMint, tokenOutMint, newFee });
 
         // Verify the fee was updated
-        const offer = await program.getOffer(offerId);
+        const offer = await program.getOffer(tokenInMint, tokenOutMint);
 
         expect(offer).toBeDefined();
         expect(offer.feeBasisPoints.toString()).toBe(newFee.toString());
@@ -48,10 +43,10 @@ describe("Update Offer Fee", () => {
     it("Should update fee to 0 (free offer)", async () => {
         const newFee = 0; // Update to 0% (no fee)
 
-        await program.updateOfferFee({ offerId, newFee });
+        await program.updateOfferFee({ tokenInMint, tokenOutMint, newFee });
 
         // Verify the fee was updated to 0
-        const offer = await program.getOffer(offerId);
+        const offer = await program.getOffer(tokenInMint, tokenOutMint);
 
         expect(offer.feeBasisPoints.toString()).toBe("0");
     });
@@ -59,28 +54,31 @@ describe("Update Offer Fee", () => {
     it("Should update fee to maximum (10000 basis points = 100%)", async () => {
         const newFee = 10000; // Maximum fee (100%)
 
-        await program.updateOfferFee({ offerId, newFee });
+        await program.updateOfferFee({ tokenInMint, tokenOutMint, newFee });
 
         // Verify the fee was updated to maximum
-        const offer = await program.getOffer(offerId);
+        const offer = await program.getOffer(tokenInMint, tokenOutMint);
 
         expect(offer.feeBasisPoints.toString()).toBe("10000");
     });
 
     it("Should reject update for non-existent offer", async () => {
-        const nonExistentOfferId = 999999;
         const newFee = 1000;
 
         await expect(
-            program.updateOfferFee({ offerId: nonExistentOfferId, newFee })
-        ).rejects.toThrow("Offer not found");
+            program.updateOfferFee({ tokenInMint: testHelper.createMint(9), tokenOutMint, newFee })
+        ).rejects.toThrow("AnchorError caused by account: offer");
+
+        await expect(
+            program.updateOfferFee({ tokenInMint, tokenOutMint: testHelper.createMint(9), newFee })
+        ).rejects.toThrow("AnchorError caused by account: offer");
     });
 
     it("Should reject fee greater than 10000 basis points", async () => {
         const invalidFee = 10001; // Too high (>100%)
 
         await expect(
-            program.updateOfferFee({ offerId, newFee: invalidFee })
+            program.updateOfferFee({ tokenInMint, tokenOutMint, newFee: invalidFee })
         ).rejects.toThrow("Invalid fee: fee_basis_points must be <= 10000");
     });
 
@@ -88,7 +86,8 @@ describe("Update Offer Fee", () => {
         const newFee = 1000;
 
         await expect(program.updateOfferFee({
-            offerId,
+            tokenInMint,
+            tokenOutMint,
             newFee,
             signer: testHelper.createUserAccount()
         })).rejects.toThrow("unknown signer");
@@ -96,15 +95,15 @@ describe("Update Offer Fee", () => {
 
     it("Should allow multiple fee updates on same offer", async () => {
         // First update
-        await program.updateOfferFee({ offerId, newFee: 750 });
+        await program.updateOfferFee({ tokenInMint, tokenOutMint, newFee: 750 });
 
-        let offer = await program.getOffer(offerId);
+        let offer = await program.getOffer(tokenInMint, tokenOutMint);
         expect(offer.feeBasisPoints.toString()).toBe("750");
 
         // Second update
-        await program.updateOfferFee({ offerId, newFee: 250 });
+        await program.updateOfferFee({ tokenInMint, tokenOutMint, newFee: 250 });
 
-        offer = await program.getOffer(offerId);
+        offer = await program.getOffer(tokenInMint, tokenOutMint);
         expect(offer.feeBasisPoints.toString()).toBe("250");
     });
 
@@ -114,7 +113,8 @@ describe("Update Offer Fee", () => {
         // Add a vector to the offer
         await program
             .addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime + 1000,
                 startPrice: 1000000, // 1.0 with 6 decimals
                 apr: 5000,    // 0.05% APR
@@ -123,10 +123,10 @@ describe("Update Offer Fee", () => {
 
         // Update the fee
         const newFee = 800;
-        await program.updateOfferFee({ offerId, newFee });
+        await program.updateOfferFee({ tokenInMint, tokenOutMint, newFee });
 
         // Verify fee was updated and vector remains intact
-        const offer = await program.getOffer(offerId);
+        const offer = await program.getOffer(tokenInMint, tokenOutMint);
 
         expect(offer.feeBasisPoints.toString()).toBe("800");
         // Verify vector is still there

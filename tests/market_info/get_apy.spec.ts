@@ -9,8 +9,6 @@ describe("Get APY", () => {
     let tokenInMint: PublicKey;
     let tokenOutMint: PublicKey;
 
-    let offerId: number;
-
     beforeEach(async () => {
         testHelper = await TestHelper.create();
         program = new OnreProgram(testHelper.context);
@@ -21,7 +19,6 @@ describe("Get APY", () => {
 
         // Initialize program and offers
         await program.initialize({ onycMint: tokenOutMint });
-        await program.initializeOffers();
 
         // Create an offer
         await program.makeOffer({
@@ -29,9 +26,9 @@ describe("Get APY", () => {
             tokenOutMint
         });
 
-        const offerAccount = await program.getOfferAccount();
-        const offer = offerAccount.offers.find(o => o.offerId.toNumber() !== 0);
-        offerId = offer.offerId.toNumber();
+        const offer = await program.getOffer(tokenInMint, tokenOutMint);
+        expect(offer.tokenInMint).toStrictEqual(tokenInMint);
+        expect(offer.tokenOutMint).toStrictEqual(tokenOutMint);
     });
 
     describe("Basic Functionality Tests", () => {
@@ -40,7 +37,8 @@ describe("Get APY", () => {
 
             // Add vector with 3.65% APR (scaled by 1M)
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9, // 1.0 with 9 decimals
                 apr: 36_500, // 3.65% APR (scaled by 1M)
@@ -48,7 +46,7 @@ describe("Get APY", () => {
             });
 
             // Get APY
-            const apy = await program.getAPY({ offerId });
+            const apy = await program.getAPY({ tokenInMint, tokenOutMint });
 
             // APY should be slightly higher than APR due to compounding
             expect(apy).toBe(37_172);
@@ -59,7 +57,8 @@ describe("Get APY", () => {
 
             // Add vector
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 36_500,
@@ -67,13 +66,13 @@ describe("Get APY", () => {
             });
 
             // Get offer state before
-            const offerBefore = await program.getOffer(offerId);
+            const offerBefore = await program.getOffer(tokenInMint, tokenOutMint);
 
             // Call getAPY
-            await program.getAPY({ offerId });
+            await program.getAPY({ tokenInMint, tokenOutMint });
 
             // Get offer state after
-            const offerAfter = await program.getOffer(offerId);
+            const offerAfter = await program.getOffer(tokenInMint, tokenOutMint);
 
             // Should be identical (no state changes)
             expect(offerAfter).toEqual(offerBefore);
@@ -86,14 +85,15 @@ describe("Get APY", () => {
 
             // Test with 0% APR
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 2e9, // 2.0 with 9 decimals
                 apr: 0, // 0% APR
                 priceFixDuration: 86400
             });
 
-            const apy = await program.getAPY({ offerId });
+            const apy = await program.getAPY({ tokenInMint, tokenOutMint });
 
             expect(apy).toBe(0);
         });
@@ -103,14 +103,15 @@ describe("Get APY", () => {
 
             // Test with 10% APR (scaled by 1M)
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 100_000, // 10% APR (scaled by 1M)
                 priceFixDuration: 86400
             });
 
-            const apy = await program.getAPY({ offerId });
+            const apy = await program.getAPY({ tokenInMint, tokenOutMint });
 
             expect(apy).toBe(105156); // Should be higher than APR
         });
@@ -120,14 +121,15 @@ describe("Get APY", () => {
 
             // Test with 25% APR (scaled by 1M)
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 250_000, // 25% APR (scaled by 1M)
                 priceFixDuration: 86400
             });
 
-            const apy = await program.getAPY({ offerId });
+            const apy = await program.getAPY({ tokenInMint, tokenOutMint });
 
             expect(apy).toBe(283916);
         });
@@ -137,14 +139,15 @@ describe("Get APY", () => {
 
             // Test with 0.01% APR (scaled by 1M)
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 100, // 0.01% APR (scaled by 1M)
                 priceFixDuration: 86400
             });
 
-            const apy = await program.getAPY({ offerId });
+            const apy = await program.getAPY({ tokenInMint, tokenOutMint });
 
             // For very small APR, APY should be essentially the same
             expect(apy).toBe(100);
@@ -152,21 +155,17 @@ describe("Get APY", () => {
     });
 
     describe("Error Condition Tests", () => {
-        it("Should fail with non-existent offer ID", async () => {
-            const nonExistentOfferId = 999;
+        it("Should fail with non-existent offer", async () => {
+            await expect(program.getAPY({ tokenInMint, tokenOutMint: testHelper.createMint(9) }))
+                .rejects.toThrow("AnchorError caused by account: offer");
 
-            await expect(program.getAPY({ offerId: nonExistentOfferId }))
-                .rejects.toThrow("Offer not found");
-        });
-
-        it("Should fail with invalid offer ID (0)", async () => {
-            await expect(program.getAPY({ offerId: 0 }))
-                .rejects.toThrow("Offer not found");
+            await expect(program.getAPY({ tokenInMint, tokenOutMint: testHelper.createMint(9) }))
+                .rejects.toThrow("AnchorError caused by account: offer");
         });
 
         it("Should fail when offer has no active vectors", async () => {
             // Don't add any vectors to the offer
-            await expect(program.getAPY({ offerId }))
+            await expect(program.getAPY({ tokenInMint, tokenOutMint }))
                 .rejects.toThrow("No active vector");
         });
 
@@ -175,14 +174,15 @@ describe("Get APY", () => {
 
             // Add vector that starts in the future
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime + 86400, // starts tomorrow
                 startPrice: 1e9,
                 apr: 36_500,
                 priceFixDuration: 86400
             });
 
-            await expect(program.getAPY({ offerId }))
+            await expect(program.getAPY({ tokenInMint, tokenOutMint }))
                 .rejects.toThrow("No active vector");
         });
     });
@@ -193,7 +193,8 @@ describe("Get APY", () => {
 
             // Add first vector (older) - use current time as base since vectors must be in order
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 50_000, // 5% APR
@@ -206,7 +207,8 @@ describe("Get APY", () => {
             // Add second vector (more recent) - must have base_time after the first vector
             const newCurrentTime = await testHelper.getCurrentClockTime();
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: newCurrentTime,
                 startPrice: 2e9, // different base price
                 apr: 100_000, // 10% APR (different from first vector)
@@ -214,7 +216,7 @@ describe("Get APY", () => {
             });
 
             // Should use the more recent vector (10% APR) for APY calculation
-            const apy = await program.getAPY({ offerId });
+            const apy = await program.getAPY({ tokenInMint, tokenOutMint });
 
             // Should be based on 10% APR, not 5% APR
             expect(apy).toBe(105156); // Higher than 10% APR
@@ -224,7 +226,8 @@ describe("Get APY", () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 1e9,
                 apr: 75_000, // 7.5% APR
@@ -232,9 +235,9 @@ describe("Get APY", () => {
             });
 
             // Call getAPY multiple times
-            const apy1 = await program.getAPY({ offerId });
-            const apy2 = await program.getAPY({ offerId });
-            const apy3 = await program.getAPY({ offerId });
+            const apy1 = await program.getAPY({ tokenInMint, tokenOutMint });
+            const apy2 = await program.getAPY({ tokenInMint, tokenOutMint });
+            const apy3 = await program.getAPY({ tokenInMint, tokenOutMint });
 
             // All calls should return the same result
             expect(apy1).toBe(apy2);

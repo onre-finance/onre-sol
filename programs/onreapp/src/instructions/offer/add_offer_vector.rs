@@ -1,13 +1,15 @@
-use super::offer_state::{Offer, OfferAccount, OfferVector};
+use super::offer_state::{Offer, OfferVector};
 use crate::constants::seeds;
-use crate::instructions::{find_active_vector_at, find_offer_mut};
+use crate::instructions::find_active_vector_at;
 use crate::state::State;
+use crate::OfferCoreError;
 use anchor_lang::prelude::*;
+use anchor_spl::token_interface::Mint;
 
 /// Event emitted when a time vector is added to an offer.
 #[event]
 pub struct OfferVectorAddedEvent {
-    pub offer_id: u64,
+    pub offer_pda: Pubkey,
     pub vector_id: u64,
     pub start_time: u64,
     pub base_time: u64,
@@ -23,8 +25,30 @@ pub struct OfferVectorAddedEvent {
 #[derive(Accounts)]
 pub struct AddOfferVector<'info> {
     /// The offer account containing all offers
-    #[account(mut, seeds = [seeds::OFFERS], bump)]
-    pub offer_account: AccountLoader<'info, OfferAccount>,
+    #[account(
+        mut,
+        seeds = [
+            seeds::OFFER,
+            token_in_mint.key().as_ref(),
+            token_out_mint.key().as_ref()
+        ],
+        bump
+    )]
+    pub offer: AccountLoader<'info, Offer>,
+
+    #[account(
+        constraint =
+            token_in_mint.key() == offer.load()?.token_in_mint
+            @ OfferCoreError::InvalidTokenInMint
+    )]
+    pub token_in_mint: InterfaceAccount<'info, Mint>,
+
+    #[account(
+        constraint =
+            token_out_mint.key() == offer.load()?.token_out_mint
+            @ OfferCoreError::InvalidTokenOutMint
+    )]
+    pub token_out_mint: InterfaceAccount<'info, Mint>,
 
     /// Program state, ensures `boss` is authorized.
     #[account(has_one = boss)]
@@ -42,33 +66,27 @@ pub struct AddOfferVector<'info> {
 ///
 /// # Arguments
 /// - `ctx`: Context containing the accounts for the operation.
-/// - `offer_id`: ID of the offer to add the vector to.
 /// - `base_time`: Unix timestamp when the vector becomes active.
 /// - `base_price`: Price at the beginning of the vector.
 /// - `apr`: Annual Percentage Rate (APR) in basis points (see OfferVector::apr for details).
 /// - `price_fix_duration`: Duration in seconds for each price interval.
 ///
 /// # Errors
-/// - [`AddOfferVectorErrorCode::OfferNotFound`] if offer_id doesn't exist.
 /// - [`AddOfferVectorErrorCode::InvalidTimeRange`] if base_time is before latest existing vector.
 /// - [`AddOfferVectorErrorCode::ZeroValue`] if any value is zero.
 /// - [`AddOfferVectorErrorCode::TooManyVectors`] if the offer already has MAX_SEGMENTS.
 pub fn add_offer_vector(
     ctx: Context<AddOfferVector>,
-    offer_id: u64,
     base_time: u64,
     base_price: u64,
     apr: u64,
     price_fix_duration: u64,
 ) -> Result<()> {
-    let offer_account = &mut ctx.accounts.offer_account.load_mut()?;
+    let offer = &mut ctx.accounts.offer.load_mut()?;
 
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    validate_inputs(offer_id, base_time, base_price, price_fix_duration)?;
-
-    // Find the offer by offer_id
-    let offer = find_offer_mut(offer_account, offer_id)?;
+    validate_inputs(base_time, base_price, price_fix_duration)?;
 
     // Validate base_time is not before the latest existing vector's base_time - only allow appending
     let latest_start_time = offer
@@ -84,8 +102,8 @@ pub fn add_offer_vector(
         AddOfferVectorErrorCode::InvalidTimeRange
     );
 
-    let next_vector_id = offer.counter + 1;
-    offer.counter = next_vector_id;
+    let next_vector_id = offer.vectors_counter + 1;
+    offer.vectors_counter = next_vector_id;
 
     // Calculate start_time: max(base_time, current_time)
     let start_time = if base_time > current_time {
@@ -114,13 +132,13 @@ pub fn add_offer_vector(
     clean_old_vectors(offer, current_time)?;
 
     msg!(
-        "Time vector added to offer ID: {}, vector ID: {}",
-        offer_id,
+        "Time vector added to offer: {}, vector ID: {}",
+        ctx.accounts.offer.key(),
         next_vector_id
     );
 
     emit!(OfferVectorAddedEvent {
-        offer_id,
+        offer_pda: ctx.accounts.offer.key(),
         vector_id: next_vector_id,
         start_time,
         base_time,
@@ -132,14 +150,8 @@ pub fn add_offer_vector(
     Ok(())
 }
 
-fn validate_inputs(
-    offer_id: u64,
-    base_time: u64,
-    base_price: u64,
-    price_fix_duration: u64,
-) -> Result<()> {
+fn validate_inputs(base_time: u64, base_price: u64, price_fix_duration: u64) -> Result<()> {
     // Validate input parameters
-    require!(offer_id > 0, AddOfferVectorErrorCode::ZeroValue);
     require!(base_time > 0, AddOfferVectorErrorCode::ZeroValue);
     require!(base_price > 0, AddOfferVectorErrorCode::ZeroValue);
     require!(price_fix_duration > 0, AddOfferVectorErrorCode::ZeroValue);

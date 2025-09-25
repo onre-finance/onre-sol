@@ -1,8 +1,10 @@
 use crate::constants::seeds;
-use crate::instructions::offer::offer_utils::{find_active_vector_at, find_offer};
-use crate::instructions::OfferAccount;
+use crate::instructions::offer::offer_utils::find_active_vector_at;
+use crate::instructions::Offer;
+use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
+use anchor_spl::token_interface::Mint;
 
 const EXT_SCALE: u128 = 1_000_000; // external/public scale
 const INT_SCALE: u128 = 1_000_000_000_000_000_000; // 1e18 internal scale
@@ -20,8 +22,8 @@ pub enum GetAPYErrorCode {
 /// Event emitted when get_APY is called
 #[event]
 pub struct GetAPYEvent {
-    /// The ID of the offer
-    pub offer_id: u64,
+    /// The PDA of the offer
+    pub offer_pda: Pubkey,
     /// Current APY for the offer (scaled by 1_000_000)
     pub apy: u64,
     /// APR used for calculation (scaled by 1_000_000)
@@ -33,9 +35,30 @@ pub struct GetAPYEvent {
 /// Accounts required for getting APY information
 #[derive(Accounts)]
 pub struct GetAPY<'info> {
-    /// The offer account containing all active offers
-    #[account(seeds = [seeds::OFFERS], bump)]
-    pub offer_account: AccountLoader<'info, OfferAccount>,
+    /// The individual offer account
+    #[account(
+        seeds = [
+            seeds::OFFER,
+            token_in_mint.key().as_ref(),
+            token_out_mint.key().as_ref()
+        ],
+        bump
+    )]
+    pub offer: AccountLoader<'info, Offer>,
+
+    #[account(
+        constraint =
+            token_in_mint.key() == offer.load()?.token_in_mint
+            @ OfferCoreError::InvalidTokenInMint
+    )]
+    pub token_in_mint: InterfaceAccount<'info, Mint>,
+
+    #[account(
+        constraint =
+            token_out_mint.key() == offer.load()?.token_out_mint
+            @ OfferCoreError::InvalidTokenOutMint
+    )]
+    pub token_out_mint: InterfaceAccount<'info, Mint>,
 }
 
 /// Calculates APY from APR using daily compounding
@@ -125,7 +148,6 @@ fn pow_fixed(mut base: u128, mut exp: u32, scale: u128) -> Result<u128> {
 /// # Arguments
 ///
 /// * `ctx` - The instruction context containing required accounts
-/// * `offer_id` - The unique ID of the offer to get the APY for
 ///
 /// # Returns
 ///
@@ -134,13 +156,10 @@ fn pow_fixed(mut base: u128, mut exp: u32, scale: u128) -> Result<u128> {
 ///
 /// # Emits
 ///
-/// * `GetAPYEvent` - Contains offer_id, apy, apr, and timestamp
-pub fn get_apy(ctx: Context<GetAPY>, offer_id: u64) -> Result<u64> {
-    let offer_account = ctx.accounts.offer_account.load()?;
+/// * `GetAPYEvent` - Contains offer_pda, apy, apr, and timestamp
+pub fn get_apy(ctx: Context<GetAPY>) -> Result<u64> {
+    let offer = ctx.accounts.offer.load()?;
     let current_time = Clock::get()?.unix_timestamp as u64;
-
-    // Find the offer
-    let offer = find_offer(&offer_account, offer_id)?;
 
     // Find the currently active pricing vector
     let active_vector = find_active_vector_at(&offer, current_time)?;
@@ -149,15 +168,15 @@ pub fn get_apy(ctx: Context<GetAPY>, offer_id: u64) -> Result<u64> {
     let apy = calculate_apy_from_apr(active_vector.apr)?;
 
     msg!(
-        "APY Info - Offer ID: {}, APR: {}, APY: {}, Timestamp: {}",
-        offer_id,
+        "APY Info - Offer PDA: {}, APR: {}, APY: {}, Timestamp: {}",
+        ctx.accounts.offer.key(),
         active_vector.apr,
         apy,
         current_time
     );
 
     emit!(GetAPYEvent {
-        offer_id,
+        offer_pda: ctx.accounts.offer.key(),
         apy,
         apr: active_vector.apr,
         timestamp: current_time,

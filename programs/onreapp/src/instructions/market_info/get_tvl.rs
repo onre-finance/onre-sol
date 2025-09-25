@@ -1,8 +1,9 @@
 use crate::constants::seeds;
 use crate::instructions::offer::offer_utils::{
-    calculate_current_step_price, find_active_vector_at, find_offer,
+    calculate_current_step_price, find_active_vector_at,
 };
-use crate::instructions::OfferAccount;
+use crate::instructions::Offer;
+use crate::OfferCoreError;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 
 use crate::utils::PRICE_DECIMALS;
@@ -21,8 +22,8 @@ pub enum GetTVLErrorCode {
 /// Event emitted when get_TVL is called
 #[event]
 pub struct GetTVLEvent {
-    /// The ID of the offer
-    pub offer_id: u64,
+    /// The PDA of the offer
+    pub offer_pda: Pubkey,
     /// Current TVL for the offer
     pub tvl: u64,
     /// Current price used for TVL calculation
@@ -36,11 +37,30 @@ pub struct GetTVLEvent {
 /// Accounts required for getting TVL information
 #[derive(Accounts)]
 pub struct GetTVL<'info> {
-    /// The offer account containing all active offers
-    #[account(seeds = [seeds::OFFERS], bump)]
-    pub offer_account: AccountLoader<'info, OfferAccount>,
+    /// The individual offer account
+    #[account(
+        seeds = [
+            seeds::OFFER,
+            token_in_mint.key().as_ref(),
+            token_out_mint.key().as_ref()
+        ],
+        bump
+    )]
+    pub offer: AccountLoader<'info, Offer>,
+
+    #[account(
+        constraint =
+            token_in_mint.key() == offer.load()?.token_in_mint
+            @ OfferCoreError::InvalidTokenInMint
+    )]
+    pub token_in_mint: InterfaceAccount<'info, Mint>,
 
     /// The token_out mint account to get supply information
+    #[account(
+        constraint =
+            token_out_mint.key() == offer.load()?.token_out_mint
+            @ OfferCoreError::InvalidTokenOutMint
+    )]
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 
     /// The offer vault authority PDA that controls vault token accounts
@@ -73,7 +93,6 @@ pub struct GetTVL<'info> {
 /// # Arguments
 ///
 /// * `ctx` - The instruction context containing required accounts
-/// * `offer_id` - The unique ID of the offer to get the TVL for
 ///
 /// # Returns
 ///
@@ -82,20 +101,10 @@ pub struct GetTVL<'info> {
 ///
 /// # Emits
 ///
-/// * `GetTVLEvent` - Contains offer_id, tvl, current_price, token_supply, and timestamp
-pub fn get_tvl(ctx: Context<GetTVL>, offer_id: u64) -> Result<u64> {
-    let offer_account = ctx.accounts.offer_account.load()?;
+/// * `GetTVLEvent` - Contains offer_pda, tvl, current_price, token_supply, and timestamp
+pub fn get_tvl(ctx: Context<GetTVL>) -> Result<u64> {
+    let offer = ctx.accounts.offer.load()?;
     let current_time = Clock::get()?.unix_timestamp as u64;
-
-    // Find the offer
-    let offer = find_offer(&offer_account, offer_id)?;
-
-    // Verify that the provided token_out_mint matches the offer's token_out_mint
-    require_eq!(
-        ctx.accounts.token_out_mint.key(),
-        offer.token_out_mint,
-        ErrorCode::ConstraintHasOne
-    );
 
     // Find the currently active pricing vector
     let active_vector = find_active_vector_at(&offer, current_time)?;
@@ -134,8 +143,8 @@ pub fn get_tvl(ctx: Context<GetTVL>, offer_id: u64) -> Result<u64> {
         .ok_or(GetTVLErrorCode::Overflow)?;
 
     msg!(
-        "TVL Info - Offer ID: {}, TVL: {}, Current Price: {}, Token Supply: {}, Timestamp: {}",
-        offer_id,
+        "TVL Info - Offer PDA: {}, TVL: {}, Current Price: {}, Token Supply: {}, Timestamp: {}",
+        ctx.accounts.offer.key(),
         tvl,
         current_price,
         token_supply,
@@ -143,7 +152,7 @@ pub fn get_tvl(ctx: Context<GetTVL>, offer_id: u64) -> Result<u64> {
     );
 
     emit!(GetTVLEvent {
-        offer_id,
+        offer_pda: ctx.accounts.offer.key(),
         tvl,
         current_price,
         token_supply,

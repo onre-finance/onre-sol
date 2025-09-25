@@ -4,7 +4,7 @@ pub mod seeds {
     pub const STATE: &[u8] = b"state";
 
     /// Seed for the offers account
-    pub const OFFERS: &[u8] = b"offers";
+    pub const OFFER: &[u8] = b"offer";
 
     /// Seed for the offer vault authority account
     pub const OFFER_VAULT_AUTHORITY: &[u8] = b"offer_vault_authority";

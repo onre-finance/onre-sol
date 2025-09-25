@@ -1,4 +1,4 @@
-use crate::instructions::{Offer, OfferAccount, OfferVector};
+use crate::instructions::{Offer, OfferVector};
 use crate::utils::{calculate_fees, calculate_token_out_amount};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
@@ -32,14 +32,12 @@ pub struct OfferProcessResult {
 /// Core processing logic shared between both take_offer instructions
 ///
 /// This function handles all the common validation and calculation logic:
-/// 1. Find and validate the offer exists
-/// 2. Find the currently active pricing vector
-/// 3. Calculate current price based on time and APR parameters
-/// 4. Calculate token_out_amount based on price and decimals
+/// 1. Find the currently active pricing vector
+/// 2. Calculate current price based on time and APR parameters
+/// 3. Calculate token_out_amount based on price and decimals
 ///
 /// # Arguments
-/// * `offer_account` - The loaded offer account
-/// * `offer_id` - The ID of the offer to process
+/// * `offer` - The loaded offer
 /// * `token_in_amount` - Amount of token_in being provided
 /// * `token_in_mint` - The token_in mint for decimal information
 /// * `token_out_mint` - The token_out mint for decimal information
@@ -47,16 +45,12 @@ pub struct OfferProcessResult {
 /// # Returns
 /// A `OfferProcessResult` containing the calculated price and token_out_amount
 pub fn process_offer_core(
-    offer_account: &OfferAccount,
-    offer_id: u64,
+    offer: &Offer,
     token_in_amount: u64,
     token_in_mint: &InterfaceAccount<Mint>,
     token_out_mint: &InterfaceAccount<Mint>,
 ) -> Result<OfferProcessResult> {
     let current_time = Clock::get()?.unix_timestamp as u64;
-
-    // Find the offer
-    let offer = find_offer(offer_account, offer_id)?;
 
     require!(
         offer.token_in_mint == token_in_mint.key(),
@@ -94,72 +88,6 @@ pub fn process_offer_core(
         token_out_amount,
         fee_amount: fee_amounts.fee_amount,
     })
-}
-
-/// Finds a offer by ID in the offer account
-///
-/// # Arguments
-/// * `offer_account` - The offer account containing all offers
-/// * `offer_id` - The ID of the offer to find
-///
-/// # Returns
-/// The found `Offer` or an error if not found
-pub fn find_offer(offer_account: &OfferAccount, offer_id: u64) -> Result<Offer> {
-    if offer_id == 0 {
-        return Err(error!(OfferCoreError::OfferNotFound));
-    }
-
-    let offer = offer_account
-        .offers
-        .iter()
-        .find(|offer| offer.offer_id == offer_id)
-        .ok_or(OfferCoreError::OfferNotFound)?;
-
-    Ok(*offer)
-}
-
-/// Finds a mutable reference to offer by ID in the offer account
-///
-/// # Arguments
-/// * `offer_account` - The offer account containing all offers
-/// * `offer_id` - The ID of the offer to find
-///
-/// # Returns
-/// The found `Offer` or an error if not found
-pub fn find_offer_mut(offer_account: &mut OfferAccount, offer_id: u64) -> Result<&mut Offer> {
-    if offer_id == 0 {
-        return Err(error!(OfferCoreError::OfferNotFound));
-    }
-
-    let offer = offer_account
-        .offers
-        .iter_mut()
-        .find(|offer| offer.offer_id == offer_id)
-        .ok_or(OfferCoreError::OfferNotFound)?;
-
-    Ok(offer)
-}
-
-/// Finds a offer index by ID in the offer account
-///
-/// # Arguments
-/// * `offer_account` - The offer account containing all offers
-/// * `offer_id` - The ID of the offer to find
-///
-/// # Returns
-/// The found `Offer` or an error if not found
-pub fn find_offer_index(offer_account: &OfferAccount, offer_id: u64) -> Result<usize> {
-    if offer_id == 0 {
-        return Err(error!(OfferCoreError::OfferNotFound));
-    }
-
-    let offer_id = offer_account
-        .offers
-        .iter()
-        .position(|offer| offer.offer_id == offer_id)
-        .ok_or(OfferCoreError::OfferNotFound)?;
-
-    Ok(offer_id)
 }
 
 /// Finds the currently active vector for an offer

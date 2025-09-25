@@ -63,7 +63,6 @@ pub struct GetCirculatingSupply<'info> {
 /// # Arguments
 ///
 /// * `ctx` - The instruction context containing required accounts
-/// * `offer_id` - The unique ID of the offer to get the circulating supply for
 ///
 /// # Returns
 ///
@@ -72,7 +71,7 @@ pub struct GetCirculatingSupply<'info> {
 ///
 /// # Emits
 ///
-/// * `GetCirculatingSupplyEvent` - Contains offer_id, circulating_supply, total_supply, vault_amount, and timestamp
+/// * `GetCirculatingSupplyEvent` - Contains circulating_supply, total_supply, vault_amount, and timestamp
 pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64> {
     let current_time = Clock::get()?.unix_timestamp as u64;
 

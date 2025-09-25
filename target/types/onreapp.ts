@@ -110,7 +110,6 @@ export type Onreapp = {
         "",
         "# Arguments",
         "- `ctx`: Context for `AddOfferVector`.",
-        "- `offer_id`: ID of the offer to add the vector to.",
         "- `base_time`: Unix timestamp when the vector becomes active.",
         "- `base_price`: Price at the beginning of the vector.",
         "- `apr`: Annual Percentage Rate (APR) (see OfferVector::apr for details).",
@@ -128,7 +127,7 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "offerAccount",
+          "name": "offer",
           "docs": [
             "The offer account containing all offers"
           ],
@@ -142,12 +141,25 @@ export type Onreapp = {
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
               }
             ]
           }
+        },
+        {
+          "name": "tokenInMint"
+        },
+        {
+          "name": "tokenOutMint"
         },
         {
           "name": "state",
@@ -168,10 +180,6 @@ export type Onreapp = {
         }
       ],
       "args": [
-        {
-          "name": "offerId",
-          "type": "u64"
-        },
         {
           "name": "baseTime",
           "type": "u64"
@@ -251,8 +259,7 @@ export type Onreapp = {
         "Emits a `CloseOfferEvent` upon success.",
         "",
         "# Arguments",
-        "- `ctx`: Context for `CloseOffer`.",
-        "- `offer_id`: ID of the offer to close."
+        "- `ctx`: Context for `CloseOffer`."
       ],
       "discriminator": [
         191,
@@ -266,7 +273,7 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "offerAccount",
+          "name": "offer",
           "docs": [
             "The offer account within the OfferAccount, rent paid by `boss`."
           ],
@@ -280,12 +287,25 @@ export type Onreapp = {
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
               }
             ]
           }
+        },
+        {
+          "name": "tokenInMint"
+        },
+        {
+          "name": "tokenOutMint"
         },
         {
           "name": "boss",
@@ -312,12 +332,7 @@ export type Onreapp = {
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": [
-        {
-          "name": "offerId",
-          "type": "u64"
-        }
-      ]
+      "args": []
     },
     {
       "name": "deleteOfferVector",
@@ -331,7 +346,6 @@ export type Onreapp = {
         "",
         "# Arguments",
         "- `ctx`: Context for `DeleteOfferVector`.",
-        "- `offer_id`: ID of the offer containing the vector to delete.",
         "- `vector_id`: ID of the vector to delete."
       ],
       "discriminator": [
@@ -346,9 +360,9 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "offerAccount",
+          "name": "offer",
           "docs": [
-            "The offer account containing all offers"
+            "The individual offer account"
           ],
           "writable": true,
           "pda": {
@@ -360,12 +374,25 @@ export type Onreapp = {
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
               }
             ]
           }
+        },
+        {
+          "name": "tokenInMint"
+        },
+        {
+          "name": "tokenOutMint"
         },
         {
           "name": "state",
@@ -387,10 +414,6 @@ export type Onreapp = {
       ],
       "args": [
         {
-          "name": "offerId",
-          "type": "u64"
-        },
-        {
           "name": "vectorId",
           "type": "u64"
         }
@@ -408,7 +431,6 @@ export type Onreapp = {
         "",
         "# Arguments",
         "- `ctx`: Context for `GetAPY`.",
-        "- `offer_id`: ID of the offer to get the APY for.",
         "",
         "# Returns",
         "- `Ok(apy)`: The calculated APY scaled by 1_000_000 (returns the mantissa, with scale=6)"
@@ -425,9 +447,9 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "offerAccount",
+          "name": "offer",
           "docs": [
-            "The offer account containing all active offers"
+            "The individual offer account"
           ],
           "pda": {
             "seeds": [
@@ -438,20 +460,28 @@ export type Onreapp = {
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
               }
             ]
           }
-        }
-      ],
-      "args": [
+        },
         {
-          "name": "offerId",
-          "type": "u64"
+          "name": "tokenInMint"
+        },
+        {
+          "name": "tokenOutMint"
         }
       ],
+      "args": [],
       "returns": "u64"
     },
     {
@@ -465,7 +495,6 @@ export type Onreapp = {
         "",
         "# Arguments",
         "- `ctx`: Context for `GetCirculatingSupply`.",
-        "- `offer_id`: ID of the offer to get the circulating supply for.",
         "",
         "# Returns",
         "- `Ok(circulating_supply)`: The calculated circulating supply for the offer in base units"
@@ -551,7 +580,6 @@ export type Onreapp = {
         "",
         "# Arguments",
         "- `ctx`: Context for `GetNAV`.",
-        "- `offer_id`: ID of the offer to get the current price for.",
         "",
         "# Returns",
         "- `Ok(current_price)`: The calculated current price (mantissa) for the offer with scale=9"
@@ -568,9 +596,9 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "offerAccount",
+          "name": "offer",
           "docs": [
-            "The offer account containing all active offers"
+            "The individual offer account"
           ],
           "pda": {
             "seeds": [
@@ -581,20 +609,28 @@ export type Onreapp = {
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
               }
             ]
           }
-        }
-      ],
-      "args": [
+        },
         {
-          "name": "offerId",
-          "type": "u64"
+          "name": "tokenInMint"
+        },
+        {
+          "name": "tokenOutMint"
         }
       ],
+      "args": [],
       "returns": "u64"
     },
     {
@@ -610,7 +646,6 @@ export type Onreapp = {
         "",
         "# Arguments",
         "- `ctx`: Context for `GetNavAdjustment`.",
-        "- `offer_id`: ID of the offer to get the NAV adjustment for.",
         "",
         "# Returns",
         "- `Ok(adjustment)`: The calculated price adjustment (current - previous) as a signed integer,",
@@ -628,9 +663,9 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "offerAccount",
+          "name": "offer",
           "docs": [
-            "The offer account containing all active offers"
+            "The individual offer account"
           ],
           "pda": {
             "seeds": [
@@ -641,20 +676,28 @@ export type Onreapp = {
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
               }
             ]
           }
-        }
-      ],
-      "args": [
+        },
         {
-          "name": "offerId",
-          "type": "u64"
+          "name": "tokenInMint"
+        },
+        {
+          "name": "tokenOutMint"
         }
       ],
+      "args": [],
       "returns": "i64"
     },
     {
@@ -670,7 +713,6 @@ export type Onreapp = {
         "",
         "# Arguments",
         "- `ctx`: Context for `GetTVL`.",
-        "- `offer_id`: ID of the offer to get the TVL for.",
         "",
         "# Returns",
         "- `Ok(tvl)`: The calculated TVL (mantissa) for the offer with scale=9"
@@ -687,9 +729,9 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "offerAccount",
+          "name": "offer",
           "docs": [
-            "The offer account containing all active offers"
+            "The individual offer account"
           ],
           "pda": {
             "seeds": [
@@ -700,12 +742,22 @@ export type Onreapp = {
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
               }
             ]
           }
+        },
+        {
+          "name": "tokenInMint"
         },
         {
           "name": "tokenOutMint",
@@ -759,12 +811,7 @@ export type Onreapp = {
           "name": "tokenOutProgram"
         }
       ],
-      "args": [
-        {
-          "name": "offerId",
-          "type": "u64"
-        }
-      ],
+      "args": [],
       "returns": "u64"
     },
     {
@@ -820,77 +867,6 @@ export type Onreapp = {
         },
         {
           "name": "onycMint"
-        },
-        {
-          "name": "systemProgram",
-          "docs": [
-            "Solana System program for account creation and rent payment."
-          ],
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "initializeOffers",
-      "docs": [
-        "Initializes the offers account.",
-        "",
-        "Delegates to `offer::initialize_offers`.",
-        "Only the boss can call this instruction to create the offers account.",
-        "",
-        "# Arguments",
-        "- `ctx`: Context for `InitializeOffers`."
-      ],
-      "discriminator": [
-        226,
-        123,
-        68,
-        141,
-        151,
-        152,
-        119,
-        113
-      ],
-      "accounts": [
-        {
-          "name": "offerAccount",
-          "docs": [
-            "The buy offer account to initialize, rent paid by `boss`."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  115
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "boss",
-          "docs": [
-            "The signer authorizing the initialization, must be the boss."
-          ],
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "state",
-          "docs": [
-            "Program state, ensures `boss` is authorized."
-          ]
         },
         {
           "name": "systemProgram",
@@ -1093,28 +1069,6 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "offerAccount",
-          "docs": [
-            "The offer account within the OfferAccount, rent paid by `boss`. Already initialized in initialize."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  115
-                ]
-              }
-            ]
-          }
-        },
-        {
           "name": "vaultAuthority",
           "docs": [
             "The offer vault authority PDA that controls vault token accounts"
@@ -1227,6 +1181,35 @@ export type Onreapp = {
           ]
         },
         {
+          "name": "offer",
+          "docs": [
+            "The offer account within the OfferAccount, rent paid by `boss`. Already initialized in initialize."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ]
+          }
+        },
+        {
           "name": "state",
           "docs": [
             "Program state, ensures `boss` is authorized."
@@ -1310,6 +1293,175 @@ export type Onreapp = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "mintTo",
+      "docs": [
+        "Mints ONyc tokens to the boss's account.",
+        "",
+        "Delegates to `state_operations::mint_to` to mint ONyc tokens.",
+        "Only the boss can call this instruction to mint ONyc tokens to their account.",
+        "The program must have mint authority for the ONyc token.",
+        "Emits a `OnycTokensMinted` event upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `MintTo`.",
+        "- `amount`: Amount of ONyc tokens to mint."
+      ],
+      "discriminator": [
+        241,
+        34,
+        48,
+        186,
+        37,
+        179,
+        123,
+        192
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "The program state account, containing the boss and onyc_mint"
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss who is authorized to perform the minting operation"
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "onycMint",
+          "docs": [
+            "The ONyc token mint - must match the one stored in state"
+          ],
+          "writable": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "bossOnycAccount",
+          "docs": [
+            "The boss's ONyc token account"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "mintAuthorityPda",
+          "docs": [
+            "Program-derived account that serves as the mint authority"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program for minting operations"
+          ]
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program required for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "offerVaultDeposit",
@@ -2040,7 +2192,6 @@ export type Onreapp = {
         "",
         "# Arguments",
         "- `ctx`: Context for `TakeOffer`.",
-        "- `offer_id`: ID of the offer to take.",
         "- `token_in_amount`: Amount of token_in to provide."
       ],
       "discriminator": [
@@ -2055,9 +2206,9 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "offerAccount",
+          "name": "offer",
           "docs": [
-            "The offer account containing all active offers"
+            "The individual offer account"
           ],
           "writable": true,
           "pda": {
@@ -2069,9 +2220,16 @@ export type Onreapp = {
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
               }
             ]
           }
@@ -2502,10 +2660,6 @@ export type Onreapp = {
       ],
       "args": [
         {
-          "name": "offerId",
-          "type": "u64"
-        },
-        {
           "name": "tokenInAmount",
           "type": "u64"
         }
@@ -2523,7 +2677,6 @@ export type Onreapp = {
         "",
         "# Arguments",
         "- `ctx`: Context for `TakeOfferPermissionless`.",
-        "- `offer_id`: ID of the offer to take.",
         "- `token_in_amount`: Amount of token_in to provide."
       ],
       "discriminator": [
@@ -2538,9 +2691,9 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "offerAccount",
+          "name": "offer",
           "docs": [
-            "The offer account containing all active offers"
+            "The individual offer account"
           ],
           "writable": true,
           "pda": {
@@ -2552,9 +2705,16 @@ export type Onreapp = {
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
               }
             ]
           }
@@ -3138,10 +3298,6 @@ export type Onreapp = {
       ],
       "args": [
         {
-          "name": "offerId",
-          "type": "u64"
-        },
-        {
           "name": "tokenInAmount",
           "type": "u64"
         }
@@ -3336,7 +3492,6 @@ export type Onreapp = {
         "",
         "# Arguments",
         "- `ctx`: Context for `UpdateOfferFee`.",
-        "- `offer_id`: ID of the offer to update.",
         "- `new_fee_basis_points`: New fee in basis points (0-10000)."
       ],
       "discriminator": [
@@ -3351,7 +3506,7 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "offerAccount",
+          "name": "offer",
           "docs": [
             "The offer account containing all offers"
           ],
@@ -3365,12 +3520,25 @@ export type Onreapp = {
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
               }
             ]
           }
+        },
+        {
+          "name": "tokenInMint"
+        },
+        {
+          "name": "tokenOutMint"
         },
         {
           "name": "state",
@@ -3392,10 +3560,6 @@ export type Onreapp = {
       ],
       "args": [
         {
-          "name": "offerId",
-          "type": "u64"
-        },
-        {
           "name": "newFeeBasisPoints",
           "type": "u64"
         }
@@ -3404,16 +3568,16 @@ export type Onreapp = {
   ],
   "accounts": [
     {
-      "name": "offerAccount",
+      "name": "offer",
       "discriminator": [
-        152,
-        98,
-        9,
-        183,
-        115,
-        190,
-        31,
-        201
+        215,
+        88,
+        60,
+        71,
+        170,
+        162,
+        73,
+        229
       ]
     },
     {
@@ -3666,6 +3830,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "onycTokensMinted",
+      "discriminator": [
+        160,
+        24,
+        238,
+        23,
+        139,
+        42,
+        185,
+        158
+      ]
+    },
+    {
       "name": "takeOfferEvent",
       "discriminator": [
         146,
@@ -3731,8 +3908,8 @@ export type Onreapp = {
         "kind": "struct",
         "fields": [
           {
-            "name": "offerId",
-            "type": "u64"
+            "name": "offerPda",
+            "type": "pubkey"
           },
           {
             "name": "boss",
@@ -3750,11 +3927,11 @@ export type Onreapp = {
         "kind": "struct",
         "fields": [
           {
-            "name": "offerId",
+            "name": "offerPda",
             "docs": [
-              "The ID of the offer"
+              "The PDA of the offer"
             ],
-            "type": "u64"
+            "type": "pubkey"
           },
           {
             "name": "apy",
@@ -3828,11 +4005,11 @@ export type Onreapp = {
         "kind": "struct",
         "fields": [
           {
-            "name": "offerId",
+            "name": "offerPda",
             "docs": [
-              "The ID of the offer"
+              "The PDA of the offer"
             ],
-            "type": "u64"
+            "type": "pubkey"
           },
           {
             "name": "currentPrice",
@@ -3860,11 +4037,11 @@ export type Onreapp = {
         "kind": "struct",
         "fields": [
           {
-            "name": "offerId",
+            "name": "offerPda",
             "docs": [
-              "The ID of the offer"
+              "The PDA of the offer"
             ],
-            "type": "u64"
+            "type": "pubkey"
           },
           {
             "name": "currentPrice",
@@ -3908,11 +4085,11 @@ export type Onreapp = {
         "kind": "struct",
         "fields": [
           {
-            "name": "offerId",
+            "name": "offerPda",
             "docs": [
-              "The ID of the offer"
+              "The PDA of the offer"
             ],
-            "type": "u64"
+            "type": "pubkey"
           },
           {
             "name": "tvl",
@@ -4047,10 +4224,6 @@ export type Onreapp = {
         "kind": "struct",
         "fields": [
           {
-            "name": "offerId",
-            "type": "u64"
-          },
-          {
             "name": "tokenInMint",
             "type": "pubkey"
           },
@@ -4072,43 +4245,11 @@ export type Onreapp = {
             }
           },
           {
-            "name": "counter",
+            "name": "vectorsCounter",
             "type": "u64"
           },
           {
             "name": "feeBasisPoints",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "offerAccount",
-      "docs": [
-        "Account holding MAX_OFFERS Offer instances"
-      ],
-      "serialization": "bytemuck",
-      "repr": {
-        "kind": "c"
-      },
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "offers",
-            "type": {
-              "array": [
-                {
-                  "defined": {
-                    "name": "offer"
-                  }
-                },
-                10
-              ]
-            }
-          },
-          {
-            "name": "counter",
             "type": "u64"
           }
         ]
@@ -4123,8 +4264,8 @@ export type Onreapp = {
         "kind": "struct",
         "fields": [
           {
-            "name": "offerId",
-            "type": "u64"
+            "name": "offerPda",
+            "type": "pubkey"
           },
           {
             "name": "oldFeeBasisPoints",
@@ -4150,8 +4291,8 @@ export type Onreapp = {
         "kind": "struct",
         "fields": [
           {
-            "name": "offerId",
-            "type": "u64"
+            "name": "offerPda",
+            "type": "pubkey"
           },
           {
             "name": "feeBasisPoints",
@@ -4273,8 +4414,8 @@ export type Onreapp = {
         "kind": "struct",
         "fields": [
           {
-            "name": "offerId",
-            "type": "u64"
+            "name": "offerPda",
+            "type": "pubkey"
           },
           {
             "name": "vectorId",
@@ -4312,11 +4453,43 @@ export type Onreapp = {
         "kind": "struct",
         "fields": [
           {
-            "name": "offerId",
-            "type": "u64"
+            "name": "offerPda",
+            "type": "pubkey"
           },
           {
             "name": "vectorId",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "onycTokensMinted",
+      "docs": [
+        "Event emitted when ONyc tokens are minted to the boss"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "onycMint",
+            "docs": [
+              "The ONyc mint from which tokens were minted"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "boss",
+            "docs": [
+              "The boss account that received the minted tokens"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "The amount of tokens minted"
+            ],
             "type": "u64"
           }
         ]
@@ -4382,11 +4555,11 @@ export type Onreapp = {
         "kind": "struct",
         "fields": [
           {
-            "name": "offerId",
+            "name": "offerPda",
             "docs": [
-              "The ID of the offer that was taken"
+              "The PDA of the offer that was taken"
             ],
-            "type": "u64"
+            "type": "pubkey"
           },
           {
             "name": "tokenInAmount",
@@ -4428,11 +4601,11 @@ export type Onreapp = {
         "kind": "struct",
         "fields": [
           {
-            "name": "offerId",
+            "name": "offerPda",
             "docs": [
-              "The ID of the offer that was taken"
+              "The PDA of the offer that was taken"
             ],
-            "type": "u64"
+            "type": "pubkey"
           },
           {
             "name": "tokenInAmount",

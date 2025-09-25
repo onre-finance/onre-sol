@@ -23,7 +23,6 @@ describe("Get Circulating Supply", () => {
 
             // Initialize program and offers
             await program.initialize({ onycMint: tokenOutMint });
-            await program.initializeOffers();
         });
 
         describe("Basic Functionality Tests", () => {
@@ -70,7 +69,8 @@ describe("Get Circulating Supply", () => {
 
                 // Add vector (not required for circulating supply but good practice)
                 await program.addOfferVector({
-                    offerId,
+                    tokenInMint,
+                    tokenOutMint,
                     startTime: currentTime,
                     startPrice: 1e9,
                     apr: 36_500,
@@ -101,7 +101,6 @@ describe("Get Circulating Supply", () => {
 
                 // Check circulating supply after vault amount changes
                 await program.takeOffer({
-                    offerId,
                     tokenInAmount: 1.0001e6, // Should receive 1 token out
                     tokenInMint,
                     tokenOutMint,
@@ -133,8 +132,6 @@ describe("Get Circulating Supply", () => {
         let tokenInMint: PublicKey;
         let tokenOutMint: PublicKey;
 
-        let offerId: number;
-
         beforeEach(async () => {
             // Create mints with different decimals to test precision handling
             tokenInMint = testHelper.createMint2022(6); // USDC-like (6 decimals)
@@ -142,7 +139,6 @@ describe("Get Circulating Supply", () => {
 
             // Initialize program and offers
             await program.initialize({ onycMint: tokenOutMint });
-            await program.initializeOffers();
 
             // Create an offer
             await program.makeOffer({
@@ -150,10 +146,6 @@ describe("Get Circulating Supply", () => {
                 tokenOutMint,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID
             });
-
-            const offerAccount = await program.getOfferAccount();
-            const offer = offerAccount.offers.find(o => o.offerId.toNumber() !== 0);
-            offerId = offer.offerId.toNumber();
         });
 
         it("Should calculate circulating supply correctly for Token2022", async () => {
@@ -161,7 +153,8 @@ describe("Get Circulating Supply", () => {
 
             // Add vector
             await program.addOfferVector({
-                offerId,
+                tokenInMint,
+                tokenOutMint,
                 startTime: currentTime,
                 startPrice: 2e9, // 2.0 with 9 decimals
                 apr: 36_500, // 3.65% APR for fixed price
