@@ -1295,6 +1295,175 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "mintTo",
+      "docs": [
+        "Mints ONyc tokens to the boss's account.",
+        "",
+        "Delegates to `state_operations::mint_to` to mint ONyc tokens.",
+        "Only the boss can call this instruction to mint ONyc tokens to their account.",
+        "The program must have mint authority for the ONyc token.",
+        "Emits a `OnycTokensMinted` event upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `MintTo`.",
+        "- `amount`: Amount of ONyc tokens to mint."
+      ],
+      "discriminator": [
+        241,
+        34,
+        48,
+        186,
+        37,
+        179,
+        123,
+        192
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "The program state account, containing the boss and onyc_mint"
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss who is authorized to perform the minting operation"
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "onycMint",
+          "docs": [
+            "The ONyc token mint - must match the one stored in state"
+          ],
+          "writable": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "bossOnycAccount",
+          "docs": [
+            "The boss's ONyc token account"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "mintAuthorityPda",
+          "docs": [
+            "Program-derived account that serves as the mint authority"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program for minting operations"
+          ]
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program required for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "offerVaultDeposit",
       "docs": [
         "Deposits tokens into the offer vault.",
@@ -3661,6 +3830,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "onycTokensMinted",
+      "discriminator": [
+        160,
+        24,
+        238,
+        23,
+        139,
+        42,
+        185,
+        158
+      ]
+    },
+    {
       "name": "takeOfferEvent",
       "discriminator": [
         146,
@@ -4276,6 +4458,38 @@ export type Onreapp = {
           },
           {
             "name": "vectorId",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "onycTokensMinted",
+      "docs": [
+        "Event emitted when ONyc tokens are minted to the boss"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "onycMint",
+            "docs": [
+              "The ONyc mint from which tokens were minted"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "boss",
+            "docs": [
+              "The boss account that received the minted tokens"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "The amount of tokens minted"
+            ],
             "type": "u64"
           }
         ]

@@ -161,5 +161,13 @@ export class TestHelper {
     async getAccountInfo(publicKey: PublicKey) {
         return await this.context.banksClient.getAccount(publicKey);
     }
+
+    async getTokenAccount(tokenAccount: PublicKey) {
+        const account = await this.context.banksClient.getAccount(tokenAccount);
+        if (!account) {
+            throw new Error("Token account not found");
+        }
+        return AccountLayout.decode(account.data);
+    }
 }
 

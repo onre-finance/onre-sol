@@ -374,6 +374,21 @@ export class OnreProgram {
         await tx.rpc();
     }
 
+    async mintTo(params: { amount: number, signer?: Keypair }) {
+        const tx = this.program.methods
+            .mintTo(new BN(params.amount))
+            .accounts({
+                state: this.statePda,
+                tokenProgram: TOKEN_PROGRAM_ID
+            });
+
+        if (params?.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
     async getNAV(params: { tokenInMint: PublicKey, tokenOutMint: PublicKey }): Promise<number> {
         const tx = this.program.methods
             .getNav()

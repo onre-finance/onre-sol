@@ -290,6 +290,20 @@ pub mod onreapp {
         state_operations::set_onyc_mint(ctx)
     }
 
+    /// Mints ONyc tokens to the boss's account.
+    ///
+    /// Delegates to `state_operations::mint_to` to mint ONyc tokens.
+    /// Only the boss can call this instruction to mint ONyc tokens to their account.
+    /// The program must have mint authority for the ONyc token.
+    /// Emits a `OnycTokensMinted` event upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `MintTo`.
+    /// - `amount`: Amount of ONyc tokens to mint.
+    pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
+        mint_authority::mint_to(ctx, amount)
+    }
+
     /// Migrates the State account to include the new is_killed field.
     ///
     /// This instruction is required after deploying the updated program that includes
