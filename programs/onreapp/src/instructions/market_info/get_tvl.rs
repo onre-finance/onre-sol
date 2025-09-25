@@ -40,7 +40,7 @@ pub struct GetTVL<'info> {
     /// The individual offer account
     #[account(
         seeds = [
-            seeds::OFFERS,
+            seeds::OFFER,
             token_in_mint.key().as_ref(),
             token_out_mint.key().as_ref()
         ],

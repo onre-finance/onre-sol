@@ -23,7 +23,7 @@ pub struct DeleteOfferVector<'info> {
     #[account(
         mut,
         seeds = [
-            seeds::OFFERS,
+            seeds::OFFER,
             token_in_mint.key().as_ref(),
             token_out_mint.key().as_ref()
         ],
@@ -65,10 +65,7 @@ pub struct DeleteOfferVector<'info> {
 ///
 /// # Errors
 /// - [`DeleteOfferVectorErrorCode::VectorNotFound`] if vector_id is 0 or doesn't exist in the offer.
-pub fn delete_offer_vector(
-    ctx: Context<DeleteOfferVector>,
-    vector_id: u64,
-) -> Result<()> {
+pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_id: u64) -> Result<()> {
     let offer = &mut ctx.accounts.offer.load_mut()?;
 
     // Validate inputs

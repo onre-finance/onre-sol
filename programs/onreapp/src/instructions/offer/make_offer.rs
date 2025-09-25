@@ -52,7 +52,7 @@ pub struct MakeOffer<'info> {
         payer = boss,
         space = 8 + Offer::INIT_SPACE,
         seeds = [
-            seeds::OFFERS,
+            seeds::OFFER,
             token_in_mint.key().as_ref(),
             token_out_mint.key().as_ref()
         ],

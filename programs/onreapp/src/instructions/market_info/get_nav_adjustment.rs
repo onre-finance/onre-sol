@@ -1,6 +1,5 @@
 use crate::constants::seeds;
-use crate::instructions::offer::offer_utils::
-    find_active_vector_at;
+use crate::instructions::offer::offer_utils::find_active_vector_at;
 use crate::instructions::{calculate_step_price_at, Offer};
 use crate::OfferCoreError;
 use anchor_lang::prelude::*;
@@ -28,7 +27,7 @@ pub struct GetNavAdjustment<'info> {
     /// The individual offer account
     #[account(
         seeds = [
-            seeds::OFFERS,
+            seeds::OFFER,
             token_in_mint.key().as_ref(),
             token_out_mint.key().as_ref()
         ],

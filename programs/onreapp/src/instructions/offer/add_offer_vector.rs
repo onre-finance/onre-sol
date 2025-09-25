@@ -28,7 +28,7 @@ pub struct AddOfferVector<'info> {
     #[account(
         mut,
         seeds = [
-            seeds::OFFERS,
+            seeds::OFFER,
             token_in_mint.key().as_ref(),
             token_out_mint.key().as_ref()
         ],
