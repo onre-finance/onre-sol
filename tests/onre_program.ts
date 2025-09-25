@@ -5,8 +5,7 @@ import { ONREAPP_PROGRAM_ID } from "./test_helper.ts";
 import idl from "../target/idl/onreapp.json";
 import { BankrunProvider } from "anchor-bankrun";
 import { ProgramTestContext } from "solana-bankrun";
-import { PROGRAM_ID } from "../scripts/script-commons.ts";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 export class OnreProgram {
     program: Program<Onreapp>;
@@ -18,10 +17,10 @@ export class OnreProgram {
         permissionlessVaultAuthorityPda: PublicKey;
         mintAuthorityPda: PublicKey;
     } = {
-        offerAccountPda: PublicKey.findProgramAddressSync([Buffer.from("offers")], PROGRAM_ID)[0],
-        offerVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("offer_vault_authority")], PROGRAM_ID)[0],
-        permissionlessVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], PROGRAM_ID)[0],
-        mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], PROGRAM_ID)[0]
+        offerAccountPda: PublicKey.findProgramAddressSync([Buffer.from("offers")], ONREAPP_PROGRAM_ID)[0],
+        offerVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("offer_vault_authority")], ONREAPP_PROGRAM_ID)[0],
+        permissionlessVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], ONREAPP_PROGRAM_ID)[0],
+        mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], ONREAPP_PROGRAM_ID)[0]
     };
 
     constructor(context: ProgramTestContext) {
@@ -35,11 +34,12 @@ export class OnreProgram {
     }
 
     // Instructions
-    async initialize() {
+    async initialize(params: { onycMint: PublicKey }) {
         await this.program.methods
             .initialize()
             .accounts({
-                boss: this.program.provider.publicKey
+                boss: this.program.provider.publicKey,
+                onycMint: params.onycMint
             })
             .rpc();
     }
@@ -336,12 +336,28 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async migrateState(params?: { signer?: Keypair }) {
+    async migrateState(signer?: Keypair) {
         const tx = this.program.methods
             .migrateState()
             .accounts({
                 state: this.statePda,
-                boss: params?.signer ? params.signer.publicKey : this.program.provider.publicKey
+                boss: signer ? signer.publicKey : this.program.provider.publicKey
+            });
+
+        if (signer) {
+            tx.signers([signer]);
+        }
+
+        await tx.rpc();
+    }
+
+    async setOnycMint(params: { onycMint: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods
+            .setOnycMint()
+            .accounts({
+                state: this.statePda,
+                boss: params?.signer ? params.signer.publicKey : this.program.provider.publicKey,
+                onycMint: params.onycMint
             });
 
         if (params?.signer) {
@@ -349,6 +365,151 @@ export class OnreProgram {
         }
 
         await tx.rpc();
+    }
+
+    async getNAV(params: { offerId: number }): Promise<number> {
+        try {
+            // First try with view() for the return value
+            const response: BN = await this.program.methods
+                .getNav(new BN(params.offerId))
+                .accounts({
+                    offerAccount: this.pdas.offerAccountPda
+                })
+                .signers([this.program.provider.wallet.payer])
+                .view();
+
+            return response.toNumber();
+        } catch (error) {
+            // If view() fails with the null data error, try rpc() to get proper error messages
+            // Use rpc() to get the proper anchor error
+            await this.program.methods
+                .getNav(new BN(params.offerId))
+                .accounts({
+                    offerAccount: this.pdas.offerAccountPda
+                })
+                .signers([this.program.provider.wallet.payer])
+                .rpc();
+
+            // If rpc doesn't throw, something unexpected happened
+            throw new Error("Unexpected success from rpc after view failure");
+        }
+    }
+
+    async getAPY(params: { offerId: number }): Promise<number> {
+        try {
+            // First try with view() for the return value
+            const response: BN = await this.program.methods
+                .getApy(new BN(params.offerId))
+                .accounts({
+                    offerAccount: this.pdas.offerAccountPda
+                })
+                .signers([this.program.provider.wallet.payer])
+                .view();
+
+            return response.toNumber();
+        } catch (error) {
+            // If view() fails with the null data error, try rpc() to get proper error messages
+            // Use rpc() to get the proper anchor error
+            await this.program.methods
+                .getApy(new BN(params.offerId))
+                .accounts({
+                    offerAccount: this.pdas.offerAccountPda
+                })
+                .signers([this.program.provider.wallet.payer])
+                .rpc();
+
+            // If rpc doesn't throw, something unexpected happened
+            throw new Error("Unexpected success from rpc after view failure");
+        }
+    }
+
+    async getNavAdjustment(params: { offerId: number }): Promise<number> {
+        try {
+            // First try with view() for the return value
+            const response: BN = await this.program.methods
+                .getNavAdjustment(new BN(params.offerId))
+                .accounts({
+                    offerAccount: this.pdas.offerAccountPda
+                })
+                .signers([this.program.provider.wallet.payer])
+                .view();
+
+            return response.toNumber();
+        } catch (error) {
+            // If view() fails with the null data error, try rpc() to get proper error messages
+            // Use rpc() to get the proper anchor error
+            await this.program.methods
+                .getNavAdjustment(new BN(params.offerId))
+                .accounts({
+                    offerAccount: this.pdas.offerAccountPda
+                })
+                .signers([this.program.provider.wallet.payer])
+                .rpc();
+
+            // If rpc doesn't throw, something unexpected happened
+            throw new Error("Unexpected success from rpc after view failure");
+        }
+    }
+
+    async getTVL(params: { offerId: number, tokenOutMint: PublicKey, tokenOutProgram?: PublicKey }): Promise<BN> {
+        const tokenOutProgram = params.tokenOutProgram ?? TOKEN_PROGRAM_ID;
+        try {
+            // First try with view() for the return value
+            return await this.program.methods
+                .getTvl(new BN(params.offerId))
+                .accounts({
+                    tokenOutMint: params.tokenOutMint,
+                    tokenOutProgram: tokenOutProgram,
+                    vaultTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, this.pdas.offerVaultAuthorityPda, true, tokenOutProgram)
+                })
+                .signers([this.program.provider.wallet.payer])
+                .view();
+        } catch (error) {
+            console.log(error);
+            // If view() fails with the null data error, try rpc() to get proper error messages
+            // Use rpc() to get the proper anchor error
+            await this.program.methods
+                .getTvl(new BN(params.offerId))
+                .accounts({
+                    tokenOutMint: params.tokenOutMint,
+                    tokenOutProgram: tokenOutProgram,
+                    vaultTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, this.pdas.offerVaultAuthorityPda, true, tokenOutProgram)
+                })
+                .signers([this.program.provider.wallet.payer])
+                .rpc();
+
+            // If rpc doesn't throw, something unexpected happened
+            throw new Error("Unexpected success from rpc after view failure");
+        }
+    }
+
+    async getCirculatingSupply(params: {
+        onycMint: PublicKey,
+        tokenOutProgram?: PublicKey
+    }): Promise<BN> {
+        const tokenOutProgram = params.tokenOutProgram ?? TOKEN_PROGRAM_ID;
+
+        const tx = this.program.methods
+            .getCirculatingSupply()
+            .accounts({
+                state: this.statePda,
+                onycMint: params.onycMint,
+                tokenProgram: tokenOutProgram,
+                vaultTokenOutAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, tokenOutProgram)
+            })
+            .signers([this.program.provider.wallet.payer]);
+
+        try {
+            // First try with view() for the return value
+            return await tx.view();
+        } catch (error) {
+            // If view() fails with the null data error, try rpc() to get proper error messages
+            // Use rpc() to get the proper anchor error
+            await tx.rpc();
+
+            // If rpc doesn't throw, something unexpected happened
+            throw new Error("Unexpected success from rpc after view failure");
+        }
     }
 
     // Accounts

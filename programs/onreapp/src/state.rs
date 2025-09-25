@@ -13,6 +13,7 @@ use anchor_lang::prelude::*;
 pub struct State {
     pub boss: Pubkey,
     pub is_killed: bool,
+    pub onyc_mint: Pubkey,
     pub admins: [Pubkey; MAX_ADMINS],
 }
 

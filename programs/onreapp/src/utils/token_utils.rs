@@ -7,6 +7,7 @@ use anchor_spl::token_interface::{
 };
 
 pub const MAX_BASIS_POINTS: u64 = 10000;
+pub const PRICE_DECIMALS: u8 = 9;
 
 #[error_code]
 pub enum TokenUtilsErrorCode {
@@ -76,7 +77,7 @@ pub fn calculate_token_out_amount(
 
     // Calculate: numerator = token_in_amount * 10^(token_out_decimals + 9)
     let numerator = token_in_amount_u128
-        .checked_mul(10_u128.pow((token_out_decimals + 9) as u32))
+        .checked_mul(10_u128.pow((token_out_decimals + PRICE_DECIMALS) as u32))
         .ok_or(TokenUtilsErrorCode::MathOverflow)?;
 
     // Calculate: denominator = price * 10^token_in_decimals

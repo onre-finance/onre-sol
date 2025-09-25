@@ -1,5 +1,5 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
-import { TestHelper } from "../test_helper";
+import { TestHelper } from "../test_helper.ts";
 import { OnreProgram } from "../onre_program.ts";
 
 describe("Migrate State", () => {
@@ -14,7 +14,7 @@ describe("Migrate State", () => {
         nonBoss = testHelper.createUserAccount();
 
         // Initialize the program with old state structure (only boss field)
-        await program.initialize();
+        await program.initialize({ onycMint: testHelper.createMint(9) });
     });
 
     test("Boss can migrate state successfully", async () => {
@@ -30,7 +30,7 @@ describe("Migrate State", () => {
     test("Non-boss cannot migrate state - should fail", async () => {
         // when & then
         await expect(
-            program.migrateState({ signer: nonBoss })
+            program.migrateState(nonBoss)
         ).rejects.toThrow("Boss pubkey mismatch");
     });
 
@@ -82,7 +82,8 @@ describe("Migrate State", () => {
         const finalSize = migratedAccountInfo.data.length;
 
         expect(finalSize).toBe(initialSize); // Size should be the same for new deployments
-        expect(finalSize).toBe(681); // 8 bytes discriminator + 32 bytes boss + 1 byte is_killed + (20 * 32) bytes admins
+        // 8 bytes discriminator + 32 bytes boss + 1 byte is_killed + 32 bytes onyc_mint + (20 * 32) bytes admins
+        expect(finalSize).toBe(713);
     });
 
     test("Migration initializes kill switch to disabled and admins to empty", async () => {

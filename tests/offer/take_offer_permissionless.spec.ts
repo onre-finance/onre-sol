@@ -35,7 +35,7 @@ describe("Take Offer Permissionless", () => {
         tokenOutMint = testHelper.createMint(9); // ONyc-like (9 decimals)
 
         // Initialize program and offers
-        await program.initialize();
+        await program.initialize({ onycMint: tokenOutMint });
         await program.initializeOffers();
 
         // Create an offer

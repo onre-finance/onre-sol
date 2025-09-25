@@ -166,6 +166,7 @@ pub fn find_offer_index(offer_account: &OfferAccount, offer_id: u64) -> Result<u
 ///
 /// # Arguments
 /// * `offer` - The offer to search for an active vector
+/// * `time` - The time to check for an active vector
 ///
 /// # Returns
 /// The active `OfferVector` or an error if none is active
@@ -256,9 +257,19 @@ pub fn calculate_current_step_price(
 ) -> Result<u64> {
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    require!(base_time <= current_time, OfferCoreError::NoActiveVector);
+    calculate_step_price_at(apr, base_price, base_time, price_fix_duration, current_time)
+}
 
-    let elapsed_since_start = current_time.saturating_sub(base_time);
+pub fn calculate_step_price_at(
+    apr: u64,
+    base_price: u64,
+    base_time: u64,
+    price_fix_duration: u64,
+    time: u64,
+) -> Result<u64> {
+    require!(base_time <= time, OfferCoreError::NoActiveVector);
+
+    let elapsed_since_start = time.saturating_sub(base_time);
 
     // Calculate which price interval we're in (discrete intervals)
     let current_step = elapsed_since_start / price_fix_duration;

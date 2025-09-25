@@ -2,6 +2,7 @@ use crate::constants::seeds;
 use crate::state::State;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
+use anchor_spl::token_interface::Mint;
 
 /// Error codes for the initialize instruction.
 #[error_code]
@@ -33,10 +34,11 @@ pub struct Initialize<'info> {
     )]
     pub state: Account<'info, State>,
 
-
     /// The signer funding and authorizing the state initialization, becomes the boss.
     #[account(mut)]
     pub boss: Signer<'info>,
+
+    pub onyc_mint: InterfaceAccount<'info, Mint>,
 
     /// Solana System program for account creation and rent payment.
     pub system_program: Program<'info, System>,
@@ -62,6 +64,7 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
     state.boss = ctx.accounts.boss.key();
     state.is_killed = false; // Initialize kill switch as disabled
     state.admins = [Pubkey::default(); crate::state::MAX_ADMINS]; // Initialize empty admins array
+    state.onyc_mint = ctx.accounts.onyc_mint.key();
 
     Ok(())
 }

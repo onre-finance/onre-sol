@@ -1,14 +1,14 @@
+use crate::state::State;
 use anchor_lang::prelude::*;
-use anchor_lang::Discriminator;
 use anchor_lang::solana_program::system_instruction;
-use crate::state::{State, MAX_ADMINS};
+use anchor_lang::Discriminator;
 
 // Old size of State (accounting for the 8-byte discriminator).
 // Old State only had: boss (32 bytes)
 const OLD_STATE_SPACE: usize = 8 + 32;
 
 // New size (with InitSpace the const excludes the 8-byte discriminator).
-// New State has: boss (32 bytes) + is_killed (1 byte) + admins array (20 * 32 = 640 bytes)
+// New State has: boss (32 bytes) + is_killed (1 byte) + onyc_mint (32 bytes) + admins array (20 * 32 = 640 bytes)
 const NEW_STATE_SPACE: usize = 8 + <State as Space>::INIT_SPACE;
 
 #[error_code]
@@ -46,10 +46,12 @@ pub fn migrate_state(ctx: Context<MigrateState>) -> Result<()> {
         );
 
         // boss is stored at bytes [8..40] in the old layout
-        let stored_boss = Pubkey::new_from_array(
-            data[8..8 + 32].try_into().unwrap()
+        let stored_boss = Pubkey::new_from_array(data[8..8 + 32].try_into().unwrap());
+        require_keys_eq!(
+            stored_boss,
+            ctx.accounts.boss.key(),
+            MigrationError::BossMismatch
         );
-        require_keys_eq!(stored_boss, ctx.accounts.boss.key(), MigrationError::BossMismatch);
     }
 
     {
@@ -76,24 +78,6 @@ pub fn migrate_state(ctx: Context<MigrateState>) -> Result<()> {
     // 3) Realloc
     ctx.accounts.state.realloc(NEW_STATE_SPACE, true)?;
 
-    // 4) Initialize new fields in the expanded account
-    // The boss field is preserved, we just need to initialize the new fields
-    {
-        let mut data = ctx.accounts.state.try_borrow_mut_data()?;
-
-        // Initialize is_killed to false at offset 8 + 32 = 40
-        data[40] = 0u8; // false
-
-        // Initialize admins array to all zeros (empty) at offset 8 + 32 + 1 = 41
-        // Each admin is 32 bytes, and we have MAX_ADMINS slots
-        for i in 0..MAX_ADMINS {
-            let start_offset = 41 + (i * 32);
-            for j in 0..32 {
-                data[start_offset + j] = 0u8;
-            }
-        }
-    }
-
-    msg!("State migrated: boss preserved, is_killed = false, admins = empty");
+    msg!("State migrated: boss preserved, is_killed = false, onyc_mint = Pubkey::default(), admins = empty");
     Ok(())
 }

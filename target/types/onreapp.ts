@@ -191,6 +191,57 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "clearAdmins",
+      "docs": [
+        "Clears all admins from the state.",
+        "",
+        "Delegates to `admin::clear_admins` to remove all admins from the admin list.",
+        "Only the boss can call this instruction to clear all admins."
+      ],
+      "discriminator": [
+        39,
+        200,
+        132,
+        30,
+        196,
+        160,
+        73,
+        55
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss calling this function."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "closeOffer",
       "docs": [
         "Closes a offer.",
@@ -346,6 +397,377 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "getApy",
+      "docs": [
+        "Gets the current APY (Annual Percentage Yield) for a specific offer.",
+        "",
+        "Delegates to `market_info::get_apy`.",
+        "This is a read-only instruction that calculates and returns the current APY",
+        "by converting the stored APR using daily compounding formula.",
+        "Emits a `GetAPYEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `GetAPY`.",
+        "- `offer_id`: ID of the offer to get the APY for.",
+        "",
+        "# Returns",
+        "- `Ok(apy)`: The calculated APY scaled by 1_000_000 (returns the mantissa, with scale=6)"
+      ],
+      "discriminator": [
+        194,
+        123,
+        183,
+        54,
+        181,
+        74,
+        194,
+        97
+      ],
+      "accounts": [
+        {
+          "name": "offerAccount",
+          "docs": [
+            "The offer account containing all active offers"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        }
+      ],
+      "returns": "u64"
+    },
+    {
+      "name": "getCirculatingSupply",
+      "docs": [
+        "Delegates to `market_info::get_circulating_supply`.",
+        "This is a read-only instruction that calculates and returns the current circulating supply",
+        "for an offer based on the total token supply minus the vault amount.",
+        "circulating_supply = total_supply - vault_amount",
+        "Emits a `GetCirculatingSupplyEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `GetCirculatingSupply`.",
+        "- `offer_id`: ID of the offer to get the circulating supply for.",
+        "",
+        "# Returns",
+        "- `Ok(circulating_supply)`: The calculated circulating supply for the offer in base units"
+      ],
+      "discriminator": [
+        132,
+        168,
+        96,
+        104,
+        217,
+        255,
+        111,
+        152
+      ],
+      "accounts": [
+        {
+          "name": "onycMint",
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state"
+        },
+        {
+          "name": "vaultAuthority",
+          "docs": [
+            "The offer vault authority PDA that controls vault token accounts"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vaultTokenOutAccount",
+          "docs": [
+            "The token_out account to exclude from supply"
+          ]
+        },
+        {
+          "name": "tokenProgram"
+        }
+      ],
+      "args": [],
+      "returns": "u64"
+    },
+    {
+      "name": "getNav",
+      "docs": [
+        "Gets the current NAV (price) for a specific offer.",
+        "",
+        "Delegates to `market_info::get_nav`.",
+        "This is a read-only instruction that calculates and returns the current price",
+        "for an offer based on its time vectors and APR parameters.",
+        "Emits a `GetNAVEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `GetNAV`.",
+        "- `offer_id`: ID of the offer to get the current price for.",
+        "",
+        "# Returns",
+        "- `Ok(current_price)`: The calculated current price (mantissa) for the offer with scale=9"
+      ],
+      "discriminator": [
+        200,
+        89,
+        76,
+        53,
+        215,
+        218,
+        63,
+        21
+      ],
+      "accounts": [
+        {
+          "name": "offerAccount",
+          "docs": [
+            "The offer account containing all active offers"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        }
+      ],
+      "returns": "u64"
+    },
+    {
+      "name": "getNavAdjustment",
+      "docs": [
+        "Gets the NAV adjustment (price change) for a specific offer.",
+        "",
+        "Delegates to `market_info::get_nav_adjustment`.",
+        "This is a read-only instruction that calculates the price difference",
+        "between the current vector and the previous vector at the current time.",
+        "Returns a signed integer representing the price change.",
+        "Emits a `GetNavAdjustmentEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `GetNavAdjustment`.",
+        "- `offer_id`: ID of the offer to get the NAV adjustment for.",
+        "",
+        "# Returns",
+        "- `Ok(adjustment)`: The calculated price adjustment (current - previous) as a signed integer,",
+        "returns the mantissa with scale=9"
+      ],
+      "discriminator": [
+        70,
+        198,
+        229,
+        129,
+        238,
+        233,
+        143,
+        94
+      ],
+      "accounts": [
+        {
+          "name": "offerAccount",
+          "docs": [
+            "The offer account containing all active offers"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        }
+      ],
+      "returns": "i64"
+    },
+    {
+      "name": "getTvl",
+      "docs": [
+        "Gets the current TVL (Total Value Locked) for a specific offer with 9 decimal precision",
+        "",
+        "Delegates to `market_info::get_tvl`.",
+        "This is a read-only instruction that calculates and returns the current TVL",
+        "for an offer based on the token_out supply and current NAV (price).",
+        "TVL = token_out_supply * current_NAV",
+        "Emits a `GetTVLEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `GetTVL`.",
+        "- `offer_id`: ID of the offer to get the TVL for.",
+        "",
+        "# Returns",
+        "- `Ok(tvl)`: The calculated TVL (mantissa) for the offer with scale=9"
+      ],
+      "discriminator": [
+        88,
+        225,
+        219,
+        204,
+        86,
+        91,
+        184,
+        51
+      ],
+      "accounts": [
+        {
+          "name": "offerAccount",
+          "docs": [
+            "The offer account containing all active offers"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenOutMint",
+          "docs": [
+            "The token_out mint account to get supply information"
+          ]
+        },
+        {
+          "name": "vaultAuthority",
+          "docs": [
+            "The offer vault authority PDA that controls vault token accounts"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vaultTokenOutAccount",
+          "docs": [
+            "The token_out account to exclude from supply"
+          ]
+        },
+        {
+          "name": "tokenOutProgram"
+        }
+      ],
+      "args": [
+        {
+          "name": "offerId",
+          "type": "u64"
+        }
+      ],
+      "returns": "u64"
+    },
+    {
       "name": "initialize",
       "docs": [
         "Initializes the program state.",
@@ -395,6 +817,9 @@ export type Onreapp = {
           ],
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "onycMint"
         },
         {
           "name": "systemProgram",
@@ -1446,6 +1871,8 @@ export type Onreapp = {
     {
       "name": "setBoss",
       "docs": [
+        "Updates the boss in the program state.",
+        "",
         "Delegates to `set_boss::set_boss` to change the boss, emitting a `BossUpdated` event."
       ],
       "discriminator": [
@@ -1552,6 +1979,55 @@ export type Onreapp = {
           "type": "bool"
         }
       ]
+    },
+    {
+      "name": "setOnycMint",
+      "docs": [
+        "Sets the Onyc mint in the state.",
+        "",
+        "Delegates to `state_operations::set_onyc_mint` to change the Onyc mint.",
+        "Only the boss can call this instruction to set the Onyc mint.",
+        "Emits a `OnycMintSetEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `SetOnycMint`."
+      ],
+      "discriminator": [
+        177,
+        83,
+        119,
+        179,
+        44,
+        141,
+        201,
+        24
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "The program state account, containing the current onyc_mint to be updated."
+          ],
+          "writable": true
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss who is authorized to perform the operation"
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "onycMint",
+          "docs": [
+            "The ONyc token mint"
+          ]
+        }
+      ],
+      "args": []
     },
     {
       "name": "takeOffer",
@@ -3008,6 +3484,71 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "getApyEvent",
+      "discriminator": [
+        235,
+        74,
+        195,
+        163,
+        16,
+        198,
+        159,
+        61
+      ]
+    },
+    {
+      "name": "getCirculatingSupplyEvent",
+      "discriminator": [
+        2,
+        255,
+        109,
+        150,
+        90,
+        242,
+        104,
+        206
+      ]
+    },
+    {
+      "name": "getNavEvent",
+      "discriminator": [
+        112,
+        70,
+        141,
+        221,
+        181,
+        134,
+        99,
+        92
+      ]
+    },
+    {
+      "name": "getNavAdjustmentEvent",
+      "discriminator": [
+        22,
+        137,
+        159,
+        134,
+        238,
+        37,
+        111,
+        158
+      ]
+    },
+    {
+      "name": "getTvlEvent",
+      "discriminator": [
+        12,
+        82,
+        39,
+        27,
+        40,
+        162,
+        216,
+        88
+      ]
+    },
+    {
       "name": "mintAuthorityTransferredToBossEvent",
       "discriminator": [
         86,
@@ -3031,6 +3572,19 @@ export type Onreapp = {
         70,
         173,
         232
+      ]
+    },
+    {
+      "name": "oNycMintUpdated",
+      "discriminator": [
+        158,
+        135,
+        98,
+        110,
+        129,
+        39,
+        9,
+        176
       ]
     },
     {
@@ -3188,6 +3742,210 @@ export type Onreapp = {
       }
     },
     {
+      "name": "getApyEvent",
+      "docs": [
+        "Event emitted when get_APY is called"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "docs": [
+              "The ID of the offer"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "apy",
+            "docs": [
+              "Current APY for the offer (scaled by 1_000_000)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "apr",
+            "docs": [
+              "APR used for calculation (scaled by 1_000_000)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "docs": [
+              "Unix timestamp when the APY was calculated"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "getCirculatingSupplyEvent",
+      "docs": [
+        "Event emitted when get_circulating_supply is called"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circulatingSupply",
+            "docs": [
+              "Current circulating supply for the offer"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "totalSupply",
+            "docs": [
+              "Total token supply"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "vaultAmount",
+            "docs": [
+              "Vault token amount (excluded from circulating supply)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "docs": [
+              "Unix timestamp when the circulating supply was calculated"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "getNavEvent",
+      "docs": [
+        "Event emitted when get_NAV is called"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "docs": [
+              "The ID of the offer"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "currentPrice",
+            "docs": [
+              "Current price for the offer"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "docs": [
+              "Unix timestamp when the price was calculated"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "getNavAdjustmentEvent",
+      "docs": [
+        "Event emitted when get_nav_adjustment is called"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "docs": [
+              "The ID of the offer"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "currentPrice",
+            "docs": [
+              "Current price from the active vector"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "previousPrice",
+            "docs": [
+              "Previous price from the previous vector (if any)"
+            ],
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "adjustment",
+            "docs": [
+              "Price adjustment (current - previous), signed value"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "docs": [
+              "Unix timestamp when the adjustment was calculated"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "getTvlEvent",
+      "docs": [
+        "Event emitted when get_TVL is called"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerId",
+            "docs": [
+              "The ID of the offer"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tvl",
+            "docs": [
+              "Current TVL for the offer"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "currentPrice",
+            "docs": [
+              "Current price used for TVL calculation"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tokenSupply",
+            "docs": [
+              "Token supply used for TVL calculation"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "docs": [
+              "Unix timestamp when the TVL was calculated"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "mintAuthorityTransferredToBossEvent",
       "docs": [
         "Event emitted when mint authority is successfully transferred from program PDA back to boss"
@@ -3245,6 +4003,31 @@ export type Onreapp = {
             "name": "newAuthority",
             "docs": [
               "The new authority (program PDA)"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "oNycMintUpdated",
+      "docs": [
+        "Event emitted when the ONyc mint is updated in the program state."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldOnycMint",
+            "docs": [
+              "The previous ONyc mint stored in state."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "newOnycMint",
+            "docs": [
+              "The new ONyc mint."
             ],
             "type": "pubkey"
           }
@@ -3573,6 +4356,10 @@ export type Onreapp = {
           {
             "name": "isKilled",
             "type": "bool"
+          },
+          {
+            "name": "onycMint",
+            "type": "pubkey"
           },
           {
             "name": "admins",

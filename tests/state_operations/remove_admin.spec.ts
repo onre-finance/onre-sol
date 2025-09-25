@@ -1,5 +1,5 @@
-import { PublicKey, Keypair } from "@solana/web3.js";
-import { TestHelper } from "../test_helper";
+import { Keypair, PublicKey } from "@solana/web3.js";
+import { TestHelper } from "../test_helper.ts";
 import { OnreProgram } from "../onre_program.ts";
 
 describe("Remove Admin", () => {
@@ -20,7 +20,7 @@ describe("Remove Admin", () => {
         admin3 = testHelper.createUserAccount();
 
         // Initialize state (includes admin array initialization)
-        await program.initialize();
+        await program.initialize({ onycMint: testHelper.createMint(9) });
 
         // Add some admins for testing
         await program.addAdmin({ admin: admin1.publicKey });

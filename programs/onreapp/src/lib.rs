@@ -228,11 +228,11 @@ pub mod onreapp {
         initialize_permissionless::initialize_permissionless_account(ctx, name)
     }
 
-    // /// Updates the boss in the program state.
-    // ///
+    /// Updates the boss in the program state.
+    ///
     /// Delegates to `set_boss::set_boss` to change the boss, emitting a `BossUpdated` event.
     pub fn set_boss(ctx: Context<SetBoss>, new_boss: Pubkey) -> Result<()> {
-        set_boss::set_boss(ctx, new_boss)
+        state_operations::set_boss(ctx, new_boss)
     }
 
     /// Adds a new admin to the state.
@@ -243,7 +243,7 @@ pub mod onreapp {
     /// - `ctx`: Context for `AddAdmin`.
     /// - `new_admin`: Public key of the new admin to be added.
     pub fn add_admin(ctx: Context<AddAdmin>, new_admin: Pubkey) -> Result<()> {
-        admin::add_admin(ctx, new_admin)
+        state_operations::add_admin(ctx, new_admin)
     }
 
     /// Removes an admin from the state.
@@ -254,7 +254,15 @@ pub mod onreapp {
     /// - `ctx`: Context for `RemoveAdmin`.
     /// - `admin_to_remove`: Public key of the admin to be removed.
     pub fn remove_admin(ctx: Context<RemoveAdmin>, admin_to_remove: Pubkey) -> Result<()> {
-        admin::remove_admin(ctx, admin_to_remove)
+        state_operations::remove_admin(ctx, admin_to_remove)
+    }
+
+    /// Clears all admins from the state.
+    ///
+    /// Delegates to `admin::clear_admins` to remove all admins from the admin list.
+    /// Only the boss can call this instruction to clear all admins.
+    pub fn clear_admins(ctx: Context<ClearAdmins>) -> Result<()> {
+        state_operations::clear_admins(ctx)
     }
 
     /// Transfers mint authority from the boss to a program-derived PDA.
@@ -301,7 +309,19 @@ pub mod onreapp {
     /// - `ctx`: Context for `KillSwitch`.
     /// - `enable`: True to enable the kill switch, false to disable it.
     pub fn set_kill_switch(ctx: Context<SetKillSwitch>, enable: bool) -> Result<()> {
-        kill_switch::set_kill_switch(ctx, enable)
+        state_operations::set_kill_switch(ctx, enable)
+    }
+
+    /// Sets the Onyc mint in the state.
+    ///
+    /// Delegates to `state_operations::set_onyc_mint` to change the Onyc mint.
+    /// Only the boss can call this instruction to set the Onyc mint.
+    /// Emits a `OnycMintSetEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `SetOnycMint`.
+    pub fn set_onyc_mint(ctx: Context<SetOnycMint>) -> Result<()> {
+        state_operations::set_onyc_mint(ctx)
     }
 
     /// Migrates the State account to include the new is_killed field.
@@ -317,6 +337,93 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `MigrateState`.
     pub fn migrate_state(ctx: Context<MigrateState>) -> Result<()> {
-        migration::migrate_state(ctx)
+        state_operations::migrate_state(ctx)
+    }
+
+    /// Gets the current NAV (price) for a specific offer.
+    ///
+    /// Delegates to `market_info::get_nav`.
+    /// This is a read-only instruction that calculates and returns the current price
+    /// for an offer based on its time vectors and APR parameters.
+    /// Emits a `GetNAVEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `GetNAV`.
+    /// - `offer_id`: ID of the offer to get the current price for.
+    ///
+    /// # Returns
+    /// - `Ok(current_price)`: The calculated current price (mantissa) for the offer with scale=9
+    pub fn get_nav(ctx: Context<GetNAV>, offer_id: u64) -> Result<u64> {
+        market_info::get_nav(ctx, offer_id)
+    }
+
+    /// Gets the current APY (Annual Percentage Yield) for a specific offer.
+    ///
+    /// Delegates to `market_info::get_apy`.
+    /// This is a read-only instruction that calculates and returns the current APY
+    /// by converting the stored APR using daily compounding formula.
+    /// Emits a `GetAPYEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `GetAPY`.
+    /// - `offer_id`: ID of the offer to get the APY for.
+    ///
+    /// # Returns
+    /// - `Ok(apy)`: The calculated APY scaled by 1_000_000 (returns the mantissa, with scale=6)
+    pub fn get_apy(ctx: Context<GetAPY>, offer_id: u64) -> Result<u64> {
+        market_info::get_apy(ctx, offer_id)
+    }
+
+    /// Gets the NAV adjustment (price change) for a specific offer.
+    ///
+    /// Delegates to `market_info::get_nav_adjustment`.
+    /// This is a read-only instruction that calculates the price difference
+    /// between the current vector and the previous vector at the current time.
+    /// Returns a signed integer representing the price change.
+    /// Emits a `GetNavAdjustmentEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `GetNavAdjustment`.
+    /// - `offer_id`: ID of the offer to get the NAV adjustment for.
+    ///
+    /// # Returns
+    /// - `Ok(adjustment)`: The calculated price adjustment (current - previous) as a signed integer,
+    /// returns the mantissa with scale=9
+    pub fn get_nav_adjustment(ctx: Context<GetNavAdjustment>, offer_id: u64) -> Result<i64> {
+        market_info::get_nav_adjustment(ctx, offer_id)
+    }
+
+    /// Gets the current TVL (Total Value Locked) for a specific offer with 9 decimal precision
+    ///
+    /// Delegates to `market_info::get_tvl`.
+    /// This is a read-only instruction that calculates and returns the current TVL
+    /// for an offer based on the token_out supply and current NAV (price).
+    /// TVL = token_out_supply * current_NAV
+    /// Emits a `GetTVLEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `GetTVL`.
+    /// - `offer_id`: ID of the offer to get the TVL for.
+    ///
+    /// # Returns
+    /// - `Ok(tvl)`: The calculated TVL (mantissa) for the offer with scale=9
+    pub fn get_tvl(ctx: Context<GetTVL>, offer_id: u64) -> Result<u64> {
+        market_info::get_tvl(ctx, offer_id)
+    }
+
+    /// Delegates to `market_info::get_circulating_supply`.
+    /// This is a read-only instruction that calculates and returns the current circulating supply
+    /// for an offer based on the total token supply minus the vault amount.
+    /// circulating_supply = total_supply - vault_amount
+    /// Emits a `GetCirculatingSupplyEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `GetCirculatingSupply`.
+    /// - `offer_id`: ID of the offer to get the circulating supply for.
+    ///
+    /// # Returns
+    /// - `Ok(circulating_supply)`: The calculated circulating supply for the offer in base units
+    pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64> {
+        market_info::get_circulating_supply(ctx)
     }
 }

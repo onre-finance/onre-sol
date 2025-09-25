@@ -1,5 +1,5 @@
-import { PublicKey, Keypair } from "@solana/web3.js";
-import { TestHelper } from "../test_helper";
+import { Keypair, PublicKey } from "@solana/web3.js";
+import { TestHelper } from "../test_helper.ts";
 import { OnreProgram } from "../onre_program.ts";
 
 describe("Initialize Kill Switch", () => {
@@ -16,7 +16,7 @@ describe("Initialize Kill Switch", () => {
 
     test("Kill switch is initialized with correct default values when state is initialized", async () => {
         // when
-        await program.initialize();
+        await program.initialize({ onycMint: testHelper.createMint(9) });
 
         // then
         const state = await program.getState();
@@ -30,7 +30,7 @@ describe("Initialize Kill Switch", () => {
             program.program.methods
                 .initialize()
                 .accounts({
-                    boss: testHelper.getBoss(), // boss account is the real boss
+                    boss: testHelper.getBoss() // boss account is the real boss
                 })
                 .signers([nonBoss]) // but nonBoss is trying to sign
                 .rpc()
@@ -39,17 +39,17 @@ describe("Initialize Kill Switch", () => {
 
     test("Cannot initialize state twice", async () => {
         // given
-        await program.initialize();
+        await program.initialize({ onycMint: testHelper.createMint(9) });
 
         // when & then
         await expect(
-            program.initialize()
+            program.initialize({ onycMint: testHelper.createMint(9) })
         ).rejects.toThrow();
     });
 
     test("State is initialized with correct default values including kill switch", async () => {
         // when
-        await program.initialize();
+        await program.initialize({ onycMint: testHelper.createMint(9) });
 
         // then
         const state = await program.getState();
