@@ -12,12 +12,10 @@ export class OnreProgram {
     statePda: PublicKey;
 
     pdas: {
-        offerAccountPda: PublicKey;
         offerVaultAuthorityPda: PublicKey;
         permissionlessVaultAuthorityPda: PublicKey;
         mintAuthorityPda: PublicKey;
     } = {
-        offerAccountPda: PublicKey.findProgramAddressSync([Buffer.from("offers")], ONREAPP_PROGRAM_ID)[0],
         offerVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("offer_vault_authority")], ONREAPP_PROGRAM_ID)[0],
         permissionlessVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], ONREAPP_PROGRAM_ID)[0],
         mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], ONREAPP_PROGRAM_ID)[0]
@@ -42,12 +40,6 @@ export class OnreProgram {
                 onycMint: params.onycMint
             })
             .rpc();
-    }
-
-    async initializeOffers() {
-        await this.program.methods.initializeOffers().accounts({
-            state: this.statePda
-        }).rpc();
     }
 
     async makeOffer(params: {
@@ -75,7 +67,8 @@ export class OnreProgram {
     }
 
     async addOfferVector(params: {
-        offerId: number,
+        tokenInMint: PublicKey,
+        tokenOutMint: PublicKey,
         startTime: number,
         startPrice: number,
         apr: number,
@@ -84,14 +77,15 @@ export class OnreProgram {
     }) {
         const tx = this.program.methods
             .addOfferVector(
-                new BN(params.offerId),
                 new BN(params.startTime),
                 new BN(params.startPrice),
                 new BN(params.apr),
                 new BN(params.priceFixDuration)
             )
             .accounts({
-                state: this.statePda
+                state: this.statePda,
+                tokenInMint: params.tokenInMint,
+                tokenOutMint: params.tokenOutMint
             });
 
         if (params.signer) {
@@ -101,11 +95,13 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async closeOffer(params: { offerId: number, signer?: Keypair }) {
+    async closeOffer(params: { tokenInMint: PublicKey, tokenOutMint: PublicKey, signer?: Keypair }) {
         const tx = this.program.methods
-            .closeOffer(new BN(params.offerId))
+            .closeOffer()
             .accounts({
-                state: this.statePda
+                state: this.statePda,
+                tokenInMint: params.tokenInMint,
+                tokenOutMint: params.tokenOutMint
             });
 
         if (params.signer) {
@@ -115,11 +111,18 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async updateOfferFee(params: { offerId: number, newFee: number, signer?: Keypair }) {
+    async updateOfferFee(params: {
+        tokenInMint: PublicKey,
+        tokenOutMint: PublicKey,
+        newFee: number,
+        signer?: Keypair
+    }) {
         const tx = this.program.methods
-            .updateOfferFee(new BN(params.offerId), new BN(params.newFee))
+            .updateOfferFee(new BN(params.newFee))
             .accounts({
-                state: this.statePda
+                state: this.statePda,
+                tokenInMint: params.tokenInMint,
+                tokenOutMint: params.tokenOutMint
             });
 
         if (params.signer) {
@@ -129,22 +132,28 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async deleteOfferVector(params: { offerId: number, vectorId: number, signer?: Keypair }) {
+    async deleteOfferVector(
+        tokenInMint: PublicKey,
+        tokenOutMint: PublicKey,
+        vectorId: number,
+        signer?: Keypair
+    ) {
         const tx = this.program.methods
-            .deleteOfferVector(new BN(params.offerId), new BN(params.vectorId))
+            .deleteOfferVector(new BN(vectorId))
             .accounts({
-                state: this.statePda
+                state: this.statePda,
+                tokenInMint: tokenInMint,
+                tokenOutMint: tokenOutMint
             });
 
-        if (params.signer) {
-            tx.signers([params.signer]);
+        if (signer) {
+            tx.signers([signer]);
         }
 
         await tx.rpc();
     }
 
     async takeOffer(params: {
-        offerId: number,
         tokenInAmount: number,
         tokenInMint: PublicKey,
         tokenOutMint: PublicKey,
@@ -154,7 +163,7 @@ export class OnreProgram {
         tokenOutProgram?: PublicKey
     }) {
         const tx = this.program.methods
-            .takeOffer(new BN(params.offerId), new BN(params.tokenInAmount))
+            .takeOffer(new BN(params.tokenInAmount))
             .accounts({
                 state: this.statePda,
                 boss: this.program.provider.publicKey,
@@ -173,7 +182,6 @@ export class OnreProgram {
     }
 
     async takeOfferPermissionless(params: {
-        offerId: number,
         tokenInAmount: number,
         tokenInMint: PublicKey,
         tokenOutMint: PublicKey,
@@ -183,7 +191,7 @@ export class OnreProgram {
         tokenOutProgram?: PublicKey
     }) {
         const tx = this.program.methods
-            .takeOfferPermissionless(new BN(params.offerId), new BN(params.tokenInAmount))
+            .takeOfferPermissionless(new BN(params.tokenInAmount))
             .accounts({
                 state: this.statePda,
                 tokenInMint: params.tokenInMint,
@@ -356,7 +364,6 @@ export class OnreProgram {
             .setOnycMint()
             .accounts({
                 state: this.statePda,
-                boss: params?.signer ? params.signer.publicKey : this.program.provider.publicKey,
                 onycMint: params.onycMint
             });
 
@@ -367,116 +374,95 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async getNAV(params: { offerId: number }): Promise<number> {
+    async getNAV(params: { tokenInMint: PublicKey, tokenOutMint: PublicKey }): Promise<number> {
+        const tx = this.program.methods
+            .getNav()
+            .accounts({
+                tokenInMint: params.tokenInMint,
+                tokenOutMint: params.tokenOutMint
+            })
+            .signers([this.program.provider.wallet.payer]);
         try {
             // First try with view() for the return value
-            const response: BN = await this.program.methods
-                .getNav(new BN(params.offerId))
-                .accounts({
-                    offerAccount: this.pdas.offerAccountPda
-                })
-                .signers([this.program.provider.wallet.payer])
-                .view();
-
+            const response: BN = await tx.view();
             return response.toNumber();
         } catch (error) {
             // If view() fails with the null data error, try rpc() to get proper error messages
             // Use rpc() to get the proper anchor error
-            await this.program.methods
-                .getNav(new BN(params.offerId))
-                .accounts({
-                    offerAccount: this.pdas.offerAccountPda
-                })
-                .signers([this.program.provider.wallet.payer])
-                .rpc();
+            await tx.rpc();
 
             // If rpc doesn't throw, something unexpected happened
             throw new Error("Unexpected success from rpc after view failure");
         }
     }
 
-    async getAPY(params: { offerId: number }): Promise<number> {
+    async getAPY(params: { tokenInMint: PublicKey, tokenOutMint: PublicKey }): Promise<number> {
+        const tx = this.program.methods
+            .getApy()
+            .accounts({
+                tokenInMint: params.tokenInMint,
+                tokenOutMint: params.tokenOutMint
+            })
+            .signers([this.program.provider.wallet.payer]);
         try {
             // First try with view() for the return value
-            const response: BN = await this.program.methods
-                .getApy(new BN(params.offerId))
-                .accounts({
-                    offerAccount: this.pdas.offerAccountPda
-                })
-                .signers([this.program.provider.wallet.payer])
-                .view();
-
+            const response: BN = await tx.view();
             return response.toNumber();
         } catch (error) {
             // If view() fails with the null data error, try rpc() to get proper error messages
             // Use rpc() to get the proper anchor error
-            await this.program.methods
-                .getApy(new BN(params.offerId))
-                .accounts({
-                    offerAccount: this.pdas.offerAccountPda
-                })
-                .signers([this.program.provider.wallet.payer])
-                .rpc();
+            await tx.rpc();
 
             // If rpc doesn't throw, something unexpected happened
             throw new Error("Unexpected success from rpc after view failure");
         }
     }
 
-    async getNavAdjustment(params: { offerId: number }): Promise<number> {
+    async getNavAdjustment(params: { tokenInMint: PublicKey, tokenOutMint: PublicKey }): Promise<number> {
+        const tx = this.program.methods
+            .getNavAdjustment()
+            .accounts({
+                tokenInMint: params.tokenInMint,
+                tokenOutMint: params.tokenOutMint
+            })
+            .signers([this.program.provider.wallet.payer]);
         try {
             // First try with view() for the return value
-            const response: BN = await this.program.methods
-                .getNavAdjustment(new BN(params.offerId))
-                .accounts({
-                    offerAccount: this.pdas.offerAccountPda
-                })
-                .signers([this.program.provider.wallet.payer])
-                .view();
-
+            const response: BN = await tx.view();
             return response.toNumber();
         } catch (error) {
             // If view() fails with the null data error, try rpc() to get proper error messages
             // Use rpc() to get the proper anchor error
-            await this.program.methods
-                .getNavAdjustment(new BN(params.offerId))
-                .accounts({
-                    offerAccount: this.pdas.offerAccountPda
-                })
-                .signers([this.program.provider.wallet.payer])
-                .rpc();
+            await tx.rpc();
 
             // If rpc doesn't throw, something unexpected happened
             throw new Error("Unexpected success from rpc after view failure");
         }
     }
 
-    async getTVL(params: { offerId: number, tokenOutMint: PublicKey, tokenOutProgram?: PublicKey }): Promise<BN> {
+    async getTVL(params: {
+        tokenInMint: PublicKey,
+        tokenOutMint: PublicKey,
+        tokenOutProgram?: PublicKey
+    }): Promise<BN> {
         const tokenOutProgram = params.tokenOutProgram ?? TOKEN_PROGRAM_ID;
+        const tx = this.program.methods
+            .getTvl()
+            .accounts({
+                tokenInMint: params.tokenInMint,
+                tokenOutMint: params.tokenOutMint,
+                tokenOutProgram: tokenOutProgram,
+                vaultTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, this.pdas.offerVaultAuthorityPda, true, tokenOutProgram)
+            })
+            .signers([this.program.provider.wallet.payer]);
         try {
             // First try with view() for the return value
-            return await this.program.methods
-                .getTvl(new BN(params.offerId))
-                .accounts({
-                    tokenOutMint: params.tokenOutMint,
-                    tokenOutProgram: tokenOutProgram,
-                    vaultTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, this.pdas.offerVaultAuthorityPda, true, tokenOutProgram)
-                })
-                .signers([this.program.provider.wallet.payer])
-                .view();
+            return await tx.view();
         } catch (error) {
             console.log(error);
             // If view() fails with the null data error, try rpc() to get proper error messages
             // Use rpc() to get the proper anchor error
-            await this.program.methods
-                .getTvl(new BN(params.offerId))
-                .accounts({
-                    tokenOutMint: params.tokenOutMint,
-                    tokenOutProgram: tokenOutProgram,
-                    vaultTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, this.pdas.offerVaultAuthorityPda, true, tokenOutProgram)
-                })
-                .signers([this.program.provider.wallet.payer])
-                .rpc();
+            await tx.rpc();
 
             // If rpc doesn't throw, something unexpected happened
             throw new Error("Unexpected success from rpc after view failure");
@@ -493,7 +479,6 @@ export class OnreProgram {
             .getCirculatingSupply()
             .accounts({
                 state: this.statePda,
-                onycMint: params.onycMint,
                 tokenProgram: tokenOutProgram,
                 vaultTokenOutAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, tokenOutProgram)
             })
@@ -513,23 +498,15 @@ export class OnreProgram {
     }
 
     // Accounts
-    async getOfferAccount() {
-        const offerAccountPda = this.pdas.offerAccountPda;
-        return await this.program.account.offerAccount.fetch(offerAccountPda);
+    async getOffer(tokenInMint: PublicKey, tokenOutMint: PublicKey) {
+        return await this.program.account.offer.fetch(this.getOfferPda(tokenInMint, tokenOutMint));
     }
 
-    async getOffer(offerId: number) {
-        const offerAccount = await this.getOfferAccount();
-        return offerAccount.offers.find(offer => offer.offerId.toNumber() === offerId);
+    getOfferPda(tokenInMint: PublicKey, tokenOutMint: PublicKey) {
+        return PublicKey.findProgramAddressSync([Buffer.from("offer"), tokenInMint.toBuffer(), tokenOutMint.toBuffer()], this.program.programId)[0];
     }
 
     async getState() {
         return await this.program.account.state.fetch(this.statePda);
-    }
-
-    async getKillSwitchState() {
-        // Kill switch state is now part of the main State account
-        const state = await this.getState();
-        return { isKilled: state.isKilled };
     }
 }

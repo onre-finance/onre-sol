@@ -22,8 +22,6 @@ describe("Add Offer Vector", () => {
 
         // Initialize program and offers
         await program.initialize({ onycMint: tokenOutMint });
-        await program.initializeOffers();
-        await program.initialize();
     });
 
     it("Should create an offer and add a time vector", async () => {

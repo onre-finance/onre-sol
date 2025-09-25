@@ -104,7 +104,6 @@
         "",
         "# Arguments",
         "- `ctx`: Context for `AddOfferVector`.",
-        "- `offer_id`: ID of the offer to add the vector to.",
         "- `base_time`: Unix timestamp when the vector becomes active.",
         "- `base_price`: Price at the beginning of the vector.",
         "- `apr`: Annual Percentage Rate (APR) (see OfferVector::apr for details).",
@@ -122,7 +121,7 @@
       ],
       "accounts": [
         {
-          "name": "offer_account",
+          "name": "offer",
           "docs": [
             "The offer account containing all offers"
           ],
@@ -136,12 +135,25 @@
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
               }
             ]
           }
+        },
+        {
+          "name": "token_in_mint"
+        },
+        {
+          "name": "token_out_mint"
         },
         {
           "name": "state",
@@ -162,10 +174,6 @@
         }
       ],
       "args": [
-        {
-          "name": "offer_id",
-          "type": "u64"
-        },
         {
           "name": "base_time",
           "type": "u64"
@@ -245,8 +253,7 @@
         "Emits a `CloseOfferEvent` upon success.",
         "",
         "# Arguments",
-        "- `ctx`: Context for `CloseOffer`.",
-        "- `offer_id`: ID of the offer to close."
+        "- `ctx`: Context for `CloseOffer`."
       ],
       "discriminator": [
         191,
@@ -260,7 +267,7 @@
       ],
       "accounts": [
         {
-          "name": "offer_account",
+          "name": "offer",
           "docs": [
             "The offer account within the OfferAccount, rent paid by `boss`."
           ],
@@ -274,12 +281,25 @@
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
               }
             ]
           }
+        },
+        {
+          "name": "token_in_mint"
+        },
+        {
+          "name": "token_out_mint"
         },
         {
           "name": "boss",
@@ -306,12 +326,7 @@
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": [
-        {
-          "name": "offer_id",
-          "type": "u64"
-        }
-      ]
+      "args": []
     },
     {
       "name": "delete_offer_vector",
@@ -325,7 +340,6 @@
         "",
         "# Arguments",
         "- `ctx`: Context for `DeleteOfferVector`.",
-        "- `offer_id`: ID of the offer containing the vector to delete.",
         "- `vector_id`: ID of the vector to delete."
       ],
       "discriminator": [
@@ -340,9 +354,9 @@
       ],
       "accounts": [
         {
-          "name": "offer_account",
+          "name": "offer",
           "docs": [
-            "The offer account containing all offers"
+            "The individual offer account"
           ],
           "writable": true,
           "pda": {
@@ -354,12 +368,25 @@
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
               }
             ]
           }
+        },
+        {
+          "name": "token_in_mint"
+        },
+        {
+          "name": "token_out_mint"
         },
         {
           "name": "state",
@@ -381,10 +408,6 @@
       ],
       "args": [
         {
-          "name": "offer_id",
-          "type": "u64"
-        },
-        {
           "name": "vector_id",
           "type": "u64"
         }
@@ -402,7 +425,6 @@
         "",
         "# Arguments",
         "- `ctx`: Context for `GetAPY`.",
-        "- `offer_id`: ID of the offer to get the APY for.",
         "",
         "# Returns",
         "- `Ok(apy)`: The calculated APY scaled by 1_000_000 (returns the mantissa, with scale=6)"
@@ -419,9 +441,9 @@
       ],
       "accounts": [
         {
-          "name": "offer_account",
+          "name": "offer",
           "docs": [
-            "The offer account containing all active offers"
+            "The individual offer account"
           ],
           "pda": {
             "seeds": [
@@ -432,20 +454,28 @@
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
               }
             ]
           }
-        }
-      ],
-      "args": [
+        },
         {
-          "name": "offer_id",
-          "type": "u64"
+          "name": "token_in_mint"
+        },
+        {
+          "name": "token_out_mint"
         }
       ],
+      "args": [],
       "returns": "u64"
     },
     {
@@ -459,7 +489,6 @@
         "",
         "# Arguments",
         "- `ctx`: Context for `GetCirculatingSupply`.",
-        "- `offer_id`: ID of the offer to get the circulating supply for.",
         "",
         "# Returns",
         "- `Ok(circulating_supply)`: The calculated circulating supply for the offer in base units"
@@ -545,7 +574,6 @@
         "",
         "# Arguments",
         "- `ctx`: Context for `GetNAV`.",
-        "- `offer_id`: ID of the offer to get the current price for.",
         "",
         "# Returns",
         "- `Ok(current_price)`: The calculated current price (mantissa) for the offer with scale=9"
@@ -562,9 +590,9 @@
       ],
       "accounts": [
         {
-          "name": "offer_account",
+          "name": "offer",
           "docs": [
-            "The offer account containing all active offers"
+            "The individual offer account"
           ],
           "pda": {
             "seeds": [
@@ -575,20 +603,28 @@
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
               }
             ]
           }
-        }
-      ],
-      "args": [
+        },
         {
-          "name": "offer_id",
-          "type": "u64"
+          "name": "token_in_mint"
+        },
+        {
+          "name": "token_out_mint"
         }
       ],
+      "args": [],
       "returns": "u64"
     },
     {
@@ -604,7 +640,6 @@
         "",
         "# Arguments",
         "- `ctx`: Context for `GetNavAdjustment`.",
-        "- `offer_id`: ID of the offer to get the NAV adjustment for.",
         "",
         "# Returns",
         "- `Ok(adjustment)`: The calculated price adjustment (current - previous) as a signed integer,",
@@ -622,9 +657,9 @@
       ],
       "accounts": [
         {
-          "name": "offer_account",
+          "name": "offer",
           "docs": [
-            "The offer account containing all active offers"
+            "The individual offer account"
           ],
           "pda": {
             "seeds": [
@@ -635,20 +670,28 @@
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
               }
             ]
           }
-        }
-      ],
-      "args": [
+        },
         {
-          "name": "offer_id",
-          "type": "u64"
+          "name": "token_in_mint"
+        },
+        {
+          "name": "token_out_mint"
         }
       ],
+      "args": [],
       "returns": "i64"
     },
     {
@@ -664,7 +707,6 @@
         "",
         "# Arguments",
         "- `ctx`: Context for `GetTVL`.",
-        "- `offer_id`: ID of the offer to get the TVL for.",
         "",
         "# Returns",
         "- `Ok(tvl)`: The calculated TVL (mantissa) for the offer with scale=9"
@@ -681,9 +723,9 @@
       ],
       "accounts": [
         {
-          "name": "offer_account",
+          "name": "offer",
           "docs": [
-            "The offer account containing all active offers"
+            "The individual offer account"
           ],
           "pda": {
             "seeds": [
@@ -694,12 +736,22 @@
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
               }
             ]
           }
+        },
+        {
+          "name": "token_in_mint"
         },
         {
           "name": "token_out_mint",
@@ -753,12 +805,7 @@
           "name": "token_out_program"
         }
       ],
-      "args": [
-        {
-          "name": "offer_id",
-          "type": "u64"
-        }
-      ],
+      "args": [],
       "returns": "u64"
     },
     {
@@ -814,77 +861,6 @@
         },
         {
           "name": "onyc_mint"
-        },
-        {
-          "name": "system_program",
-          "docs": [
-            "Solana System program for account creation and rent payment."
-          ],
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "initialize_offers",
-      "docs": [
-        "Initializes the offers account.",
-        "",
-        "Delegates to `offer::initialize_offers`.",
-        "Only the boss can call this instruction to create the offers account.",
-        "",
-        "# Arguments",
-        "- `ctx`: Context for `InitializeOffers`."
-      ],
-      "discriminator": [
-        226,
-        123,
-        68,
-        141,
-        151,
-        152,
-        119,
-        113
-      ],
-      "accounts": [
-        {
-          "name": "offer_account",
-          "docs": [
-            "The buy offer account to initialize, rent paid by `boss`."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  115
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "boss",
-          "docs": [
-            "The signer authorizing the initialization, must be the boss."
-          ],
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "state",
-          "docs": [
-            "Program state, ensures `boss` is authorized."
-          ]
         },
         {
           "name": "system_program",
@@ -1087,28 +1063,6 @@
       ],
       "accounts": [
         {
-          "name": "offer_account",
-          "docs": [
-            "The offer account within the OfferAccount, rent paid by `boss`. Already initialized in initialize."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  115
-                ]
-              }
-            ]
-          }
-        },
-        {
           "name": "vault_authority",
           "docs": [
             "The offer vault authority PDA that controls vault token accounts"
@@ -1219,6 +1173,35 @@
           "docs": [
             "Mint of the token_out for the offer."
           ]
+        },
+        {
+          "name": "offer",
+          "docs": [
+            "The offer account within the OfferAccount, rent paid by `boss`. Already initialized in initialize."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
+              }
+            ]
+          }
         },
         {
           "name": "state",
@@ -2034,7 +2017,6 @@
         "",
         "# Arguments",
         "- `ctx`: Context for `TakeOffer`.",
-        "- `offer_id`: ID of the offer to take.",
         "- `token_in_amount`: Amount of token_in to provide."
       ],
       "discriminator": [
@@ -2049,9 +2031,9 @@
       ],
       "accounts": [
         {
-          "name": "offer_account",
+          "name": "offer",
           "docs": [
-            "The offer account containing all active offers"
+            "The individual offer account"
           ],
           "writable": true,
           "pda": {
@@ -2063,9 +2045,16 @@
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
               }
             ]
           }
@@ -2496,10 +2485,6 @@
       ],
       "args": [
         {
-          "name": "offer_id",
-          "type": "u64"
-        },
-        {
           "name": "token_in_amount",
           "type": "u64"
         }
@@ -2517,7 +2502,6 @@
         "",
         "# Arguments",
         "- `ctx`: Context for `TakeOfferPermissionless`.",
-        "- `offer_id`: ID of the offer to take.",
         "- `token_in_amount`: Amount of token_in to provide."
       ],
       "discriminator": [
@@ -2532,9 +2516,9 @@
       ],
       "accounts": [
         {
-          "name": "offer_account",
+          "name": "offer",
           "docs": [
-            "The offer account containing all active offers"
+            "The individual offer account"
           ],
           "writable": true,
           "pda": {
@@ -2546,9 +2530,16 @@
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
               }
             ]
           }
@@ -3132,10 +3123,6 @@
       ],
       "args": [
         {
-          "name": "offer_id",
-          "type": "u64"
-        },
-        {
           "name": "token_in_amount",
           "type": "u64"
         }
@@ -3330,7 +3317,6 @@
         "",
         "# Arguments",
         "- `ctx`: Context for `UpdateOfferFee`.",
-        "- `offer_id`: ID of the offer to update.",
         "- `new_fee_basis_points`: New fee in basis points (0-10000)."
       ],
       "discriminator": [
@@ -3345,7 +3331,7 @@
       ],
       "accounts": [
         {
-          "name": "offer_account",
+          "name": "offer",
           "docs": [
             "The offer account containing all offers"
           ],
@@ -3359,12 +3345,25 @@
                   102,
                   102,
                   101,
-                  114,
-                  115
+                  114
                 ]
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
               }
             ]
           }
+        },
+        {
+          "name": "token_in_mint"
+        },
+        {
+          "name": "token_out_mint"
         },
         {
           "name": "state",
@@ -3386,10 +3385,6 @@
       ],
       "args": [
         {
-          "name": "offer_id",
-          "type": "u64"
-        },
-        {
           "name": "new_fee_basis_points",
           "type": "u64"
         }
@@ -3398,16 +3393,16 @@
   ],
   "accounts": [
     {
-      "name": "OfferAccount",
+      "name": "Offer",
       "discriminator": [
-        152,
-        98,
-        9,
-        183,
-        115,
-        190,
-        31,
-        201
+        215,
+        88,
+        60,
+        71,
+        170,
+        162,
+        73,
+        229
       ]
     },
     {
@@ -3725,8 +3720,8 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "offer_id",
-            "type": "u64"
+            "name": "offer_pda",
+            "type": "pubkey"
           },
           {
             "name": "boss",
@@ -3744,11 +3739,11 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "offer_id",
+            "name": "offer_pda",
             "docs": [
-              "The ID of the offer"
+              "The PDA of the offer"
             ],
-            "type": "u64"
+            "type": "pubkey"
           },
           {
             "name": "apy",
@@ -3822,11 +3817,11 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "offer_id",
+            "name": "offer_pda",
             "docs": [
-              "The ID of the offer"
+              "The PDA of the offer"
             ],
-            "type": "u64"
+            "type": "pubkey"
           },
           {
             "name": "current_price",
@@ -3854,11 +3849,11 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "offer_id",
+            "name": "offer_pda",
             "docs": [
-              "The ID of the offer"
+              "The PDA of the offer"
             ],
-            "type": "u64"
+            "type": "pubkey"
           },
           {
             "name": "current_price",
@@ -3902,11 +3897,11 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "offer_id",
+            "name": "offer_pda",
             "docs": [
-              "The ID of the offer"
+              "The PDA of the offer"
             ],
-            "type": "u64"
+            "type": "pubkey"
           },
           {
             "name": "tvl",
@@ -4041,10 +4036,6 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "offer_id",
-            "type": "u64"
-          },
-          {
             "name": "token_in_mint",
             "type": "pubkey"
           },
@@ -4066,43 +4057,11 @@
             }
           },
           {
-            "name": "counter",
+            "name": "vectors_counter",
             "type": "u64"
           },
           {
             "name": "fee_basis_points",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "OfferAccount",
-      "docs": [
-        "Account holding MAX_OFFERS Offer instances"
-      ],
-      "serialization": "bytemuck",
-      "repr": {
-        "kind": "c"
-      },
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "offers",
-            "type": {
-              "array": [
-                {
-                  "defined": {
-                    "name": "Offer"
-                  }
-                },
-                10
-              ]
-            }
-          },
-          {
-            "name": "counter",
             "type": "u64"
           }
         ]
@@ -4117,8 +4076,8 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "offer_id",
-            "type": "u64"
+            "name": "offer_pda",
+            "type": "pubkey"
           },
           {
             "name": "old_fee_basis_points",
@@ -4144,8 +4103,8 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "offer_id",
-            "type": "u64"
+            "name": "offer_pda",
+            "type": "pubkey"
           },
           {
             "name": "fee_basis_points",
@@ -4267,8 +4226,8 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "offer_id",
-            "type": "u64"
+            "name": "offer_pda",
+            "type": "pubkey"
           },
           {
             "name": "vector_id",
@@ -4306,8 +4265,8 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "offer_id",
-            "type": "u64"
+            "name": "offer_pda",
+            "type": "pubkey"
           },
           {
             "name": "vector_id",
@@ -4376,11 +4335,11 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "offer_id",
+            "name": "offer_pda",
             "docs": [
-              "The ID of the offer that was taken"
+              "The PDA of the offer that was taken"
             ],
-            "type": "u64"
+            "type": "pubkey"
           },
           {
             "name": "token_in_amount",
@@ -4422,11 +4381,11 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "offer_id",
+            "name": "offer_pda",
             "docs": [
-              "The ID of the offer that was taken"
+              "The PDA of the offer that was taken"
             ],
-            "type": "u64"
+            "type": "pubkey"
           },
           {
             "name": "token_in_amount",

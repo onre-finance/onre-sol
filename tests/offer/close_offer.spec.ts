@@ -33,7 +33,7 @@ describe("Close offer", () => {
         expect(offer).toBeDefined();
 
         // when - close the offer
-        await program.closeOffer(tokenInMint, tokenOutMint);
+        await program.closeOffer({ tokenInMint, tokenOutMint });
 
         // then - verify offer is cleared
         await expect(program.getOffer(tokenInMint, tokenOutMint)).rejects.toThrow("Could not find");
@@ -76,7 +76,7 @@ describe("Close offer", () => {
         expect(offer3.tokenOutMint).toStrictEqual(token3Out);
 
         // when - close the middle offer
-        await program.closeOffer(token2In, token2Out);
+        await program.closeOffer({ tokenInMint: token2In, tokenOutMint: token2Out });
 
         // then - verify only the middle offer is cleared
         await expect(program.getOffer(token2In, token2Out)).rejects.toThrow("Could not find");
@@ -93,11 +93,11 @@ describe("Close offer", () => {
     it("Close offer with incorrect tokens should fail", async () => {
         // when/then - try to close invalid offer
         await expect(
-            program.closeOffer(testHelper.createMint(9), tokenOutMint)
+            program.closeOffer({ tokenInMint: testHelper.createMint(9), tokenOutMint })
         ).rejects.toThrow("AnchorError caused by account: offer");
 
         await expect(
-            program.closeOffer(tokenInMint, testHelper.createMint(9))
+            program.closeOffer({ tokenInMint, tokenOutMint: testHelper.createMint(9) })
         ).rejects.toThrow("AnchorError caused by account: offer");
     });
 
@@ -111,7 +111,7 @@ describe("Close offer", () => {
         const notBoss = testHelper.createUserAccount();
 
         await expect(
-            program.closeOffer(tokenInMint, tokenOutMint, notBoss)
+            program.closeOffer({ tokenInMint, tokenOutMint, signer: notBoss })
         ).rejects.toThrow("unknown signer"); // Should fail due to boss constraint
     });
 });

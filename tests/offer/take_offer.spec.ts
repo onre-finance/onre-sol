@@ -384,7 +384,7 @@ describe("Take Offer", () => {
                 priceFixDuration: 86400
             });
 
-            await program.closeOffer(tokenInMint, tokenOutMint);
+            await program.closeOffer({ tokenInMint, tokenOutMint });
 
             // This would require giving out 20,000 tokens for 20 USDC, but vault only has 10,000
             const tokenInAmount = 20e6; // 10 USDC
