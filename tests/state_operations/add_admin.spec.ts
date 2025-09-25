@@ -1,5 +1,5 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
-import { TestHelper } from "../test_helper";
+import { TestHelper } from "../test_helper.ts";
 import { OnreProgram } from "../onre_program.ts";
 
 describe("Add Admin", () => {

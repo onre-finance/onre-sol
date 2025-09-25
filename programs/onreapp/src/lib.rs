@@ -228,11 +228,11 @@ pub mod onreapp {
         initialize_permissionless::initialize_permissionless_account(ctx, name)
     }
 
-    // /// Updates the boss in the program state.
-    // ///
+    /// Updates the boss in the program state.
+    ///
     /// Delegates to `set_boss::set_boss` to change the boss, emitting a `BossUpdated` event.
     pub fn set_boss(ctx: Context<SetBoss>, new_boss: Pubkey) -> Result<()> {
-        set_boss::set_boss(ctx, new_boss)
+        state_operations::set_boss(ctx, new_boss)
     }
 
     /// Adds a new admin to the state.
@@ -243,7 +243,7 @@ pub mod onreapp {
     /// - `ctx`: Context for `AddAdmin`.
     /// - `new_admin`: Public key of the new admin to be added.
     pub fn add_admin(ctx: Context<AddAdmin>, new_admin: Pubkey) -> Result<()> {
-        admin::add_admin(ctx, new_admin)
+        state_operations::add_admin(ctx, new_admin)
     }
 
     /// Removes an admin from the state.
@@ -254,7 +254,15 @@ pub mod onreapp {
     /// - `ctx`: Context for `RemoveAdmin`.
     /// - `admin_to_remove`: Public key of the admin to be removed.
     pub fn remove_admin(ctx: Context<RemoveAdmin>, admin_to_remove: Pubkey) -> Result<()> {
-        admin::remove_admin(ctx, admin_to_remove)
+        state_operations::remove_admin(ctx, admin_to_remove)
+    }
+
+    /// Clears all admins from the state.
+    ///
+    /// Delegates to `admin::clear_admins` to remove all admins from the admin list.
+    /// Only the boss can call this instruction to clear all admins.
+    pub fn clear_admins(ctx: Context<ClearAdmins>) -> Result<()> {
+        state_operations::clear_admins(ctx)
     }
 
     /// Transfers mint authority from the boss to a program-derived PDA.
@@ -301,7 +309,19 @@ pub mod onreapp {
     /// - `ctx`: Context for `KillSwitch`.
     /// - `enable`: True to enable the kill switch, false to disable it.
     pub fn set_kill_switch(ctx: Context<SetKillSwitch>, enable: bool) -> Result<()> {
-        kill_switch::set_kill_switch(ctx, enable)
+        state_operations::set_kill_switch(ctx, enable)
+    }
+
+    /// Sets the Onyc mint in the state.
+    ///
+    /// Delegates to `state_operations::set_onyc_mint` to change the Onyc mint.
+    /// Only the boss can call this instruction to set the Onyc mint.
+    /// Emits a `OnycMintSetEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `SetOnycMint`.
+    pub fn set_onyc_mint(ctx: Context<SetOnycMint>) -> Result<()> {
+        state_operations::set_onyc_mint(ctx)
     }
 
     /// Migrates the State account to include the new is_killed field.
@@ -317,7 +337,7 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `MigrateState`.
     pub fn migrate_state(ctx: Context<MigrateState>) -> Result<()> {
-        migration::migrate_state(ctx)
+        state_operations::migrate_state(ctx)
     }
 
     /// Gets the current NAV (price) for a specific offer.

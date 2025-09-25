@@ -1,15 +1,14 @@
-use crate::state::{State, MAX_ADMINS};
+use crate::state::State;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::system_instruction;
 use anchor_lang::Discriminator;
-use anchor_spl::token::Mint;
 
 // Old size of State (accounting for the 8-byte discriminator).
 // Old State only had: boss (32 bytes)
 const OLD_STATE_SPACE: usize = 8 + 32;
 
 // New size (with InitSpace the const excludes the 8-byte discriminator).
-// New State has: boss (32 bytes) + is_killed (1 byte) + admins array (20 * 32 = 640 bytes)
+// New State has: boss (32 bytes) + is_killed (1 byte) + onyc_mint (32 bytes) + admins array (20 * 32 = 640 bytes)
 const NEW_STATE_SPACE: usize = 8 + <State as Space>::INIT_SPACE;
 
 #[error_code]
@@ -29,8 +28,6 @@ pub struct MigrateState<'info> {
     /// The boss who is authorized to perform the migration
     #[account(mut)]
     pub boss: Signer<'info>,
-
-    pub onyc_mint: Account<'info, Mint>,
 
     pub system_program: Program<'info, System>,
 }
@@ -81,29 +78,6 @@ pub fn migrate_state(ctx: Context<MigrateState>) -> Result<()> {
     // 3) Realloc
     ctx.accounts.state.realloc(NEW_STATE_SPACE, true)?;
 
-    // 4) Initialize new fields in the expanded account
-    // The boss field is preserved, we just need to initialize the new fields
-    {
-        let mut data = ctx.accounts.state.try_borrow_mut_data()?;
-
-        // Initialize is_killed to false at offset 8 + 32 = 40
-        data[40] = 0u8; // false
-
-        // Set Onyc mint at offset 8 + 32 + 1 = 41
-        for i in 0..32 {
-            data[41 + i] = ctx.accounts.onyc_mint.key().to_bytes()[i];
-        }
-
-        // Initialize admins array to all zeros (empty) at offset 8 + 32 + 32 + 1 = 73
-        // Each admin is 32 bytes, and we have MAX_ADMINS slots
-        for i in 0..MAX_ADMINS {
-            let start_offset = 73 + (i * 32);
-            for j in 0..32 {
-                data[start_offset + j] = 0u8;
-            }
-        }
-    }
-
-    msg!("State migrated: boss preserved, is_killed = false, admins = empty");
+    msg!("State migrated: boss preserved, is_killed = false, onyc_mint = Pubkey::default(), admins = empty");
     Ok(())
 }

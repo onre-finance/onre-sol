@@ -1,5 +1,5 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
-import { TestHelper } from "../test_helper";
+import { TestHelper } from "../test_helper.ts";
 import { OnreProgram } from "../onre_program.ts";
 
 describe("Migrate State", () => {
@@ -19,20 +19,18 @@ describe("Migrate State", () => {
 
     test("Boss can migrate state successfully", async () => {
         // when - boss migrates the state
-        const onycMint = testHelper.createMint(9);
-        await program.migrateState({ onycMint: onycMint });
+        await program.migrateState();
 
         // then - state should be migrated and accessible
         const state = await program.getState();
         expect(state.boss).toEqual(testHelper.getBoss());
         expect(state.isKilled).toBe(false); // Should be initialized to false
-        expect(state.onycMint).toStrictEqual(onycMint);
     });
 
     test("Non-boss cannot migrate state - should fail", async () => {
         // when & then
         await expect(
-            program.migrateState({ onycMint: testHelper.createMint(9), signer: nonBoss })
+            program.migrateState(nonBoss)
         ).rejects.toThrow("Boss pubkey mismatch");
     });
 
@@ -41,7 +39,7 @@ describe("Migrate State", () => {
         const originalBoss = testHelper.getBoss();
 
         // when - migrate state
-        await program.migrateState({ onycMint: testHelper.createMint(9) });
+        await program.migrateState();
 
         // then - boss should be preserved
         const state = await program.getState();
@@ -50,7 +48,7 @@ describe("Migrate State", () => {
 
     test("After migration, kill switch functionality works", async () => {
         // given - migrate state first
-        await program.migrateState({ onycMint: testHelper.createMint(9) });
+        await program.migrateState();
 
         // Admin state is now part of the main state - no separate initialization needed
         const admin = testHelper.createUserAccount();
@@ -77,7 +75,7 @@ describe("Migrate State", () => {
         const initialSize = stateAccountInfo.data.length;
 
         // when - migrate state
-        await program.migrateState({ onycMint: testHelper.createMint(9) });
+        await program.migrateState();
 
         // then - account size should be maintained (already includes is_killed in new deployments)
         const migratedAccountInfo = await testHelper.getAccountInfo(program.statePda);
@@ -93,7 +91,7 @@ describe("Migrate State", () => {
         const originalBoss = testHelper.getBoss();
 
         // when - migrate state
-        await program.migrateState({ onycMint: testHelper.createMint(9) });
+        await program.migrateState();
 
         // then - migration should initialize kill switch as disabled and admins as empty
         const stateAfter = await program.getState();

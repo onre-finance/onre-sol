@@ -191,6 +191,57 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "clearAdmins",
+      "docs": [
+        "Clears all admins from the state.",
+        "",
+        "Delegates to `admin::clear_admins` to remove all admins from the admin list.",
+        "Only the boss can call this instruction to clear all admins."
+      ],
+      "discriminator": [
+        39,
+        200,
+        132,
+        30,
+        196,
+        160,
+        73,
+        55
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss calling this function."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "closeOffer",
       "docs": [
         "Closes a offer.",
@@ -1254,9 +1305,6 @@ export type Onreapp = {
           "signer": true
         },
         {
-          "name": "onycMint"
-        },
-        {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
@@ -1823,6 +1871,8 @@ export type Onreapp = {
     {
       "name": "setBoss",
       "docs": [
+        "Updates the boss in the program state.",
+        "",
         "Delegates to `set_boss::set_boss` to change the boss, emitting a `BossUpdated` event."
       ],
       "discriminator": [
@@ -1929,6 +1979,55 @@ export type Onreapp = {
           "type": "bool"
         }
       ]
+    },
+    {
+      "name": "setOnycMint",
+      "docs": [
+        "Sets the Onyc mint in the state.",
+        "",
+        "Delegates to `state_operations::set_onyc_mint` to change the Onyc mint.",
+        "Only the boss can call this instruction to set the Onyc mint.",
+        "Emits a `OnycMintSetEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `SetOnycMint`."
+      ],
+      "discriminator": [
+        177,
+        83,
+        119,
+        179,
+        44,
+        141,
+        201,
+        24
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "The program state account, containing the current onyc_mint to be updated."
+          ],
+          "writable": true
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss who is authorized to perform the operation"
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "onycMint",
+          "docs": [
+            "The ONyc token mint"
+          ]
+        }
+      ],
+      "args": []
     },
     {
       "name": "takeOffer",
@@ -3476,6 +3575,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "oNycMintUpdated",
+      "discriminator": [
+        158,
+        135,
+        98,
+        110,
+        129,
+        39,
+        9,
+        176
+      ]
+    },
+    {
       "name": "offerFeeUpdatedEvent",
       "discriminator": [
         65,
@@ -3891,6 +4003,31 @@ export type Onreapp = {
             "name": "newAuthority",
             "docs": [
               "The new authority (program PDA)"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "oNycMintUpdated",
+      "docs": [
+        "Event emitted when the ONyc mint is updated in the program state."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldOnycMint",
+            "docs": [
+              "The previous ONyc mint stored in state."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "newOnycMint",
+            "docs": [
+              "The new ONyc mint."
             ],
             "type": "pubkey"
           }

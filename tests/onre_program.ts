@@ -336,9 +336,24 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async migrateState(params: { onycMint: PublicKey, signer?: Keypair }) {
+    async migrateState(signer?: Keypair) {
         const tx = this.program.methods
             .migrateState()
+            .accounts({
+                state: this.statePda,
+                boss: signer ? signer.publicKey : this.program.provider.publicKey
+            });
+
+        if (signer) {
+            tx.signers([signer]);
+        }
+
+        await tx.rpc();
+    }
+
+    async setOnycMint(params: { onycMint: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods
+            .setOnycMint()
             .accounts({
                 state: this.statePda,
                 boss: params?.signer ? params.signer.publicKey : this.program.provider.publicKey,
