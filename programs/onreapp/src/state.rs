@@ -15,6 +15,8 @@ pub struct State {
     pub is_killed: bool,
     pub onyc_mint: Pubkey,
     pub admins: [Pubkey; MAX_ADMINS],
+    pub trusted: Pubkey, // A trusted entity
+    pub reserved: [u8; 128],
 }
 
 #[account]

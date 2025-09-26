@@ -82,8 +82,7 @@ describe("Migrate State", () => {
         const finalSize = migratedAccountInfo.data.length;
 
         expect(finalSize).toBe(initialSize); // Size should be the same for new deployments
-        // 8 bytes discriminator + 32 bytes boss + 1 byte is_killed + 32 bytes onyc_mint + (20 * 32) bytes admins
-        expect(finalSize).toBe(713);
+        expect(finalSize).toBe(873); // 8 bytes discriminator + 32 bytes boss + 1 byte is_killed + 32 bytes onyc_mint + (20 * 32) bytes admins + 128 reserved
     });
 
     test("Migration initializes kill switch to disabled and admins to empty", async () => {

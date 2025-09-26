@@ -13,6 +13,17 @@ pub struct Offer {
     pub vectors: [OfferVector; MAX_VECTORS],
     pub vectors_counter: u64,
     pub fee_basis_points: u64,
+    pub needs_approval: u64,
+}
+
+impl Offer{
+    pub fn needs_approval(&self) -> bool {
+        self.needs_approval != 0
+    }
+
+    pub fn set_approval(&mut self, needs_approval: bool) {
+        self.needs_approval = if needs_approval { 1 } else { 0 };
+    }
 }
 
 /// Time vector for offers with pricing information

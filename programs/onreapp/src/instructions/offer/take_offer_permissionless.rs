@@ -1,11 +1,10 @@
 use crate::constants::seeds;
-use crate::instructions::offer::offer_utils::process_offer_core;
+use crate::instructions::offer::offer_utils::{process_offer_core, find_offer, verify_offer_approval};
 use crate::instructions::Offer;
 use crate::state::State;
-use crate::utils::{execute_token_operations, transfer_tokens, u64_to_dec9, ExecTokenOpsParams};
+use crate::utils::{execute_token_operations, transfer_tokens, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams};
 use crate::OfferCoreError;
-use anchor_lang::prelude::*;
-use anchor_lang::Accounts;
+use anchor_lang::{prelude::*, solana_program::sysvar, Accounts};
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
@@ -167,6 +166,10 @@ pub struct TakeOfferPermissionless<'info> {
     )]
     pub mint_authority_pda: UncheckedAccount<'info>,
 
+    /// CHECK: sysvar to read previous instruction
+    #[account(address = sysvar::instructions::id())]
+    pub instructions_sysvar: UncheckedAccount<'info>,
+
     /// The user taking the offer (must sign the transaction)
     #[account(mut)]
     pub user: Signer<'info>,
@@ -214,8 +217,19 @@ pub struct TakeOfferPermissionless<'info> {
 pub fn take_offer_permissionless(
     ctx: Context<TakeOfferPermissionless>,
     token_in_amount: u64,
+    approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
     let offer = ctx.accounts.offer.load()?;
+
+    // Verify approval if needed
+    verify_offer_approval(
+        &offer,
+        &approval_message,
+        ctx.program_id,
+        &ctx.accounts.user.key(),
+        &ctx.accounts.state.trusted,
+        &ctx.accounts.instructions_sysvar,
+    )?;
 
     // Use shared core processing logic
     let result = process_offer_core(

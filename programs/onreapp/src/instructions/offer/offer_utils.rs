@@ -1,5 +1,6 @@
 use crate::instructions::{Offer, OfferVector};
-use crate::utils::{calculate_fees, calculate_token_out_amount};
+use crate::utils::{calculate_fees, calculate_token_out_amount, ApprovalMessage};
+use crate::utils::approver::approver_utils;
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
 
@@ -19,6 +20,8 @@ pub enum OfferCoreError {
     InvalidTokenInMint,
     #[msg("Invalid token out mint")]
     InvalidTokenOutMint,
+    #[msg("Approval required for this offer")]
+    ApprovalRequired,
 }
 
 /// Result structure for the core offer processing
@@ -27,6 +30,49 @@ pub struct OfferProcessResult {
     pub token_in_amount: u64,
     pub token_out_amount: u64,
     pub fee_amount: u64,
+}
+
+/// Verifies approval if needed for any take_offer instruction
+///
+/// # Arguments
+/// * `offer` - The offer to check for approval requirement
+/// * `approval_message` - Optional approval message from the user
+/// * `program_id` - The program ID for verification
+/// * `user_pubkey` - The user's public key
+/// * `trusted_pubkey` - The trusted authority's public key
+/// * `instructions_sysvar` - The instructions sysvar account
+/// * `offer_id` - The offer ID for verification
+///
+/// # Returns
+/// * `Ok(())` - If approval is not needed or verification succeeds
+/// * `Err(_)` - If approval is required but not provided, or verification fails
+pub fn verify_offer_approval(
+    offer: &Offer,
+    approval_message: &Option<ApprovalMessage>,
+    program_id: &Pubkey,
+    user_pubkey: &Pubkey,
+    trusted_pubkey: &Pubkey,
+    instructions_sysvar: &UncheckedAccount,
+    offer_id: u64,
+) -> Result<()> {
+    if offer.needs_approval() {
+
+        match approval_message {
+            Some(msg) => {
+                msg!("Offer requires approval, verifying message {}", msg.expiry_unix);
+                approver_utils::verify_approval_message_generic(
+                    program_id,
+                    user_pubkey,
+                    trusted_pubkey,
+                    instructions_sysvar,
+                    msg,
+                    offer_id,
+                )?;
+            },
+            None => return Err(error!(OfferCoreError::ApprovalRequired)),
+        }
+    }
+    Ok(())
 }
 
 /// Core processing logic shared between both take_offer instructions
@@ -62,7 +108,7 @@ pub fn process_offer_core(
     );
 
     // Find the currently active pricing vector
-    let active_vector = find_active_vector_at(&offer, current_time)?;
+    let active_vector = find_active_vector_at(offer, current_time)?;
 
     // Calculate current price with 9 decimals
     let current_price = calculate_current_step_price(
