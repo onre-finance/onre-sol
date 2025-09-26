@@ -1,7 +1,6 @@
 pub struct ParsedEd25519 {
     pub sig_count: u8,
     pub pubkey: [u8; 32],
-    pub signature: [u8; 64],
     pub message: Vec<u8>,
 }
 
@@ -45,7 +44,6 @@ pub fn parse_ed25519_ix(data: &[u8]) -> Option<ParsedEd25519> {
     Some(ParsedEd25519 {
         sig_count,
         pubkey,
-        signature,
         message,
     })
 }

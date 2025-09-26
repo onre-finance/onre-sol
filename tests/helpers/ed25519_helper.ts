@@ -6,7 +6,6 @@ import { sign } from "tweetnacl";
 export interface ApprovalMessage {
     programId: PublicKey;
     userPubkey: PublicKey;
-    amount: BN;
     expiryUnix: BN;
 }
 
@@ -18,7 +17,6 @@ export class Ed25519Helper {
         return Buffer.concat([
             message.programId.toBuffer(),
             message.userPubkey.toBuffer(),
-            Buffer.from(message.amount.toArray('le', 8)),
             Buffer.from(message.expiryUnix.toArray('le', 8))
         ]);
     }
@@ -122,7 +120,6 @@ export class Ed25519Helper {
         const approvalMessage: ApprovalMessage = {
             programId: params.program.program.programId,
             userPubkey: params.user,
-            amount: new BN(params.tokenInAmount),
             expiryUnix: new BN(expiryTime)
         };
 

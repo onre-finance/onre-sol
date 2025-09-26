@@ -1,15 +1,8 @@
 use anchor_lang::prelude::*;
-use anchor_lang::prelude::borsh::BorshDeserialize;
 use anchor_lang::solana_program::{sysvar, ed25519_program};
+use crate::utils::approver::message::ApprovalMessage;
 use crate::utils::ed25519_parser::parse_ed25519_ix;
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
-pub struct ApprovalMessage {
-    pub program_id: Pubkey,
-    pub user_pubkey: Pubkey,
-    pub amount: u64,
-    pub expiry_unix: u64,
-}
 
 #[error_code]
 pub enum ErrorCode {
