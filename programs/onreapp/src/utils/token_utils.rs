@@ -6,7 +6,7 @@ use anchor_spl::token_interface::{
     BurnChecked, Mint, MintToChecked, TokenAccount, TokenInterface, TransferChecked,
 };
 
-pub const MAX_BASIS_POINTS: u64 = 10000;
+pub const MAX_BASIS_POINTS: u32 = 10000;
 pub const PRICE_DECIMALS: u8 = 9;
 
 #[error_code]
@@ -108,7 +108,7 @@ pub struct CalculateFeeResult {
     pub fee_amount: u64,
     pub remaining_token_in_amount: u64,
 }
-pub fn calculate_fees(token_in_amount: u64, fee_basis_points: u64) -> Result<CalculateFeeResult> {
+pub fn calculate_fees(token_in_amount: u64, fee_basis_points: u32) -> Result<CalculateFeeResult> {
     // Calculate fee amount in token_in tokens
     let fee_amount = (token_in_amount as u128)
         .checked_mul(fee_basis_points as u128)

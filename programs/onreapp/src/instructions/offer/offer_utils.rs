@@ -1,6 +1,6 @@
 use crate::instructions::{Offer, OfferVector};
-use crate::utils::{calculate_fees, calculate_token_out_amount, ApprovalMessage};
 use crate::utils::approver::approver_utils;
+use crate::utils::{calculate_fees, calculate_token_out_amount, ApprovalMessage};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
 
@@ -22,6 +22,8 @@ pub enum OfferCoreError {
     InvalidTokenOutMint,
     #[msg("Approval required for this offer")]
     ApprovalRequired,
+    #[msg("Vector not found")]
+    VectorNotFound,
 }
 
 /// Result structure for the core offer processing
@@ -57,7 +59,10 @@ pub fn verify_offer_approval(
     if offer.needs_approval() {
         match approval_message {
             Some(msg) => {
-                msg!("Offer requires approval, verifying message {}", msg.expiry_unix);
+                msg!(
+                    "Offer requires approval, verifying message {}",
+                    msg.expiry_unix
+                );
                 approver_utils::verify_approval_message_generic(
                     program_id,
                     user_pubkey,
@@ -65,7 +70,7 @@ pub fn verify_offer_approval(
                     instructions_sysvar,
                     msg,
                 )?;
-            },
+            }
             None => return Err(error!(OfferCoreError::ApprovalRequired)),
         }
     }
@@ -145,12 +150,21 @@ pub fn find_active_vector_at(offer: &Offer, time: u64) -> Result<OfferVector> {
     let active_vector = offer
         .vectors
         .iter()
-        .filter(|vector| vector.vector_id != 0) // Only consider non-empty vectors
-        .filter(|vector| vector.start_time <= time) // Only vectors that have started
+        .filter(|vector| vector.start_time != 0 && vector.start_time <= time) // Only consider non-empty vectors
         .max_by_key(|vector| vector.start_time) // Find latest start_time in the past
         .ok_or(OfferCoreError::NoActiveVector)?;
 
     Ok(*active_vector)
+}
+
+pub fn find_vector_at(offer: &Offer, start_time: u64) -> Result<OfferVector> {
+    let vector = offer
+        .vectors
+        .iter()
+        .find(|vector| vector.start_time == start_time)
+        .ok_or(OfferCoreError::VectorNotFound)?;
+
+    Ok(*vector)
 }
 
 /// Calculates the price for a pricing vector based on APR and elapsed time.
@@ -254,4 +268,13 @@ pub fn calculate_step_price_at(
 
     // Use the vector price calculation with the effective elapsed time
     calculate_vector_price(apr, base_price, step_end_time)
+}
+
+
+pub fn find_vector_index_by_start_time(offer: &Offer, start_time: u64) -> Result<usize> {
+    offer
+        .vectors
+        .iter()
+        .position(|vector| vector.start_time == start_time && vector.start_time != 0)
+        .ok_or(OfferCoreError::VectorNotFound.into())
 }

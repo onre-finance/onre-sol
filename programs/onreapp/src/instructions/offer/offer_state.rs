@@ -11,9 +11,9 @@ pub struct Offer {
     pub token_in_mint: Pubkey,
     pub token_out_mint: Pubkey,
     pub vectors: [OfferVector; MAX_VECTORS],
-    pub vectors_counter: u64,
-    pub fee_basis_points: u64,
-    pub needs_approval: u64,
+    pub fee_basis_points: u32,
+    pub needs_approval: u8,
+    pub reserved: [u8; 131],
 }
 
 impl Offer{
@@ -31,7 +31,6 @@ impl Offer{
 #[repr(C)]
 #[derive(Default, InitSpace)]
 pub struct OfferVector {
-    pub vector_id: u64,
     pub start_time: u64,
     pub base_time: u64,
     pub base_price: u64,

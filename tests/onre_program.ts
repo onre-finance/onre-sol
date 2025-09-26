@@ -136,11 +136,11 @@ export class OnreProgram {
     async deleteOfferVector(
         tokenInMint: PublicKey,
         tokenOutMint: PublicKey,
-        vectorId: number,
+        vectorStartTime: number,
         signer?: Keypair
     ) {
         const tx = this.program.methods
-            .deleteOfferVector(new BN(vectorId))
+            .deleteOfferVector(new BN(vectorStartTime))
             .accounts({
                 state: this.statePda,
                 tokenInMint: tokenInMint,

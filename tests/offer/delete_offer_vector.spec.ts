@@ -42,20 +42,20 @@ describe("Delete Offer Vector", () => {
 
         // Verify vector was added
         let offer = await program.getOffer(tokenInMint, tokenOutMint);
-        let activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
+        let activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
         expect(activeVectors.length).toBe(1);
-        expect(activeVectors[0].vectorId.toNumber()).toBe(1);
+        expect(activeVectors[0].startTime.toNumber()).toBe(currentTime + 1000);
 
-        // Delete the vector
+        // Delete the vector using its startTime
         await program.deleteOfferVector(
             tokenInMint,
             tokenOutMint,
-            1
+            currentTime + 1000
         );
 
         // Verify vector was deleted
         offer = await program.getOffer(tokenInMint, tokenOutMint);
-        activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
+        activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
         expect(activeVectors.length).toBe(0);
     });
 
@@ -64,7 +64,7 @@ describe("Delete Offer Vector", () => {
             program.deleteOfferVector(
                 tokenInMint,
                 testHelper.createMint(9),
-                1
+                1000
             )
         ).rejects.toThrow("AnchorError caused by account: offer");
 
@@ -72,12 +72,12 @@ describe("Delete Offer Vector", () => {
             program.deleteOfferVector(
                 testHelper.createMint(9),
                 tokenOutMint,
-                1
+                1000
             )
         ).rejects.toThrow("AnchorError caused by account: offer");
     });
 
-    it("Should fail when vector_id is zero", async () => {
+    it("Should fail when vector start_time is zero", async () => {
         // Create an offer
         await program.makeOffer({
             tokenInMint,
@@ -106,7 +106,7 @@ describe("Delete Offer Vector", () => {
                 tokenOutMint,
                 999
             )
-        ).rejects.toThrow("Vector with the specified ID was not found in the offer");
+        ).rejects.toThrow("Vector not found");
     });
 
     it("Should delete specific vector while keeping others", async () => {
@@ -132,23 +132,23 @@ describe("Delete Offer Vector", () => {
 
         // Verify all vectors were added
         let offer = await program.getOffer(tokenInMint, tokenOutMint);
-        let activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
+        let activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
         expect(activeVectors.length).toBe(3);
 
-        // Delete the middle vector (vector_id = 2)
+        // Delete the middle vector (with start_time = currentTime + 2000)
         await program.deleteOfferVector(
             tokenInMint,
             tokenOutMint,
-            2
+            currentTime + 2000
         );
 
-        // Verify only vector 2 was deleted
+        // Verify only the middle vector was deleted
         offer = await program.getOffer(tokenInMint, tokenOutMint);
-        activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
+        activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
 
         expect(activeVectors.length).toBe(2);
-        const vectorIds = activeVectors.map(v => v.vectorId.toNumber()).sort();
-        expect(vectorIds).toEqual([1, 3]);
+        const startTimes = activeVectors.map(v => v.startTime.toNumber()).sort();
+        expect(startTimes).toEqual([currentTime + 1000, currentTime + 3000]);
 
         // Verify prices of remaining vectors
         const vectorPrices = activeVectors.map(v => v.basePrice.toNumber()).sort();
@@ -224,7 +224,7 @@ describe("Delete Offer Vector", () => {
 
             // Verify we have 2 vectors
             const offer = await program.getOffer(tokenInMint, tokenOutMint);
-            const activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
+            const activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
 
             expect(activeVectors.length).toBe(2);
 
@@ -233,7 +233,7 @@ describe("Delete Offer Vector", () => {
                 program.deleteOfferVector(
                     tokenInMint,
                     tokenOutMint,
-                    1
+                    currentTime + 100  // This is the start_time of the first vector
                 )
             ).rejects.toThrow("Cannot delete previously active vector");
         });
@@ -269,19 +269,19 @@ describe("Delete Offer Vector", () => {
             // Advance time to make vector 2 active
             await testHelper.advanceClockBy(25);
 
-            // Delete the current active vector (vector_id = 2) - should succeed
+            // Delete the current active vector (startTime = currentTime + 20) - should succeed
             await program.deleteOfferVector(
                 tokenInMint,
                 tokenOutMint,
-                2
+                currentTime + 20
             );
 
             // Verify deletion succeeded
             const offer = await program.getOffer(tokenInMint, tokenOutMint);
-            const activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
+            const activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
 
             expect(activeVectors.length).toBe(1);
-            expect(activeVectors[0].vectorId.toNumber()).toBe(1);
+            expect(activeVectors[0].startTime.toNumber()).toBe(currentTime + 10);
         });
 
         it("Should allow deletion of future vector", async () => {
@@ -324,20 +324,20 @@ describe("Delete Offer Vector", () => {
             // Advance time to make vector 2 active (vector 3 remains future)
             await testHelper.advanceClockBy(25);
 
-            // Delete the future vector (vector_id = 3) - should succeed
+            // Delete the future vector (startTime = currentTime + 30) - should succeed
             await program.deleteOfferVector(
                 tokenInMint,
                 tokenOutMint,
-                3
+                currentTime + 30
             );
 
             // Verify deletion succeeded
             const offer = await program.getOffer(tokenInMint, tokenOutMint);
-            const activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
+            const activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
 
             expect(activeVectors.length).toBe(2);
-            const vectorIds = activeVectors.map(v => v.vectorId.toNumber()).sort();
-            expect(vectorIds).toEqual([1, 2]);
+            const startTimes = activeVectors.map(v => v.startTime.toNumber()).sort();
+            expect(startTimes).toEqual([currentTime + 10, currentTime + 20]);
         });
 
         it("Should allow deletion when there's only one vector (no previous vector)", async () => {
@@ -366,12 +366,12 @@ describe("Delete Offer Vector", () => {
             await program.deleteOfferVector(
                 tokenInMint,
                 tokenOutMint,
-                1
+                currentTime + 10
             );
 
             // Verify deletion succeeded
             const offer = await program.getOffer(tokenInMint, tokenOutMint);
-            const activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
+            const activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
 
             expect(activeVectors.length).toBe(0);
         });
@@ -431,7 +431,7 @@ describe("Delete Offer Vector", () => {
 
             // Verify we have all 4 vectors
             let offer = await program.getOffer(tokenInMint, tokenOutMint);
-            let activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
+            let activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
 
             expect(activeVectors.length).toBe(4);
 
@@ -439,36 +439,36 @@ describe("Delete Offer Vector", () => {
             await program.deleteOfferVector(
                 tokenInMint,
                 tokenOutMint,
-                1
+                currentTime + 100
             );
 
             // Verify vector 1 was deleted
             offer = await program.getOffer(tokenInMint, tokenOutMint);
-            activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
+            activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
 
             expect(activeVectors.length).toBe(3);
-            expect(activeVectors.map(v => v.vectorId.toNumber()).sort()).toEqual([2, 3, 4]);
+            expect(activeVectors.map(v => v.startTime.toNumber()).sort()).toEqual([currentTime + 200, currentTime + 300, currentTime + 400]);
 
             // Try to delete vector 2 (another old past vector, not previously active) - should succeed
             await program.deleteOfferVector(
                 tokenInMint,
                 tokenOutMint,
-                2
+                currentTime + 200
             );
 
             // Verify vector 2 was deleted
             offer = await program.getOffer(tokenInMint, tokenOutMint);
-            activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
+            activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
 
             expect(activeVectors.length).toBe(2);
-            expect(activeVectors.map(v => v.vectorId.toNumber()).sort()).toEqual([3, 4]);
+            expect(activeVectors.map(v => v.startTime.toNumber()).sort()).toEqual([currentTime + 300, currentTime + 400]);
 
             // Try to delete vector 3 (previously active) - should fail
             await expect(
                 program.deleteOfferVector(
                     tokenInMint,
                     tokenOutMint,
-                    3
+                    currentTime + 300
                 )
             ).rejects.toThrow("Cannot delete previously active vector");
         });
@@ -505,15 +505,15 @@ describe("Delete Offer Vector", () => {
             await program.deleteOfferVector(
                 tokenInMint,
                 tokenOutMint,
-                1
+                currentTime + 100
             );
 
             // Verify deletion succeeded
             const offer = await program.getOffer(tokenInMint, tokenOutMint);
-            const activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
+            const activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
 
             expect(activeVectors.length).toBe(1);
-            expect(activeVectors[0].vectorId.toNumber()).toBe(2);
+            expect(activeVectors[0].startTime.toNumber()).toBe(currentTime + 200);
         });
     });
 });

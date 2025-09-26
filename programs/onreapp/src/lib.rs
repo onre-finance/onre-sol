@@ -81,7 +81,7 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `MakeOffer`.
     /// - `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer.
-    pub fn make_offer(ctx: Context<MakeOffer>, fee_basis_points: u64, needs_approval: bool) -> Result<()> {
+    pub fn make_offer(ctx: Context<MakeOffer>, fee_basis_points: u32, needs_approval: bool) -> Result<()> {
         offer::make_offer(ctx, fee_basis_points, needs_approval)
     }
 
@@ -142,7 +142,7 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `UpdateOfferFee`.
     /// - `new_fee_basis_points`: New fee in basis points (0-10000).
-    pub fn update_offer_fee(ctx: Context<UpdateOfferFee>, new_fee_basis_points: u64) -> Result<()> {
+    pub fn update_offer_fee(ctx: Context<UpdateOfferFee>, new_fee_basis_points: u32) -> Result<()> {
         offer::update_offer_fee(ctx, new_fee_basis_points)
     }
 

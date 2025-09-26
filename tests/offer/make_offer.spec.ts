@@ -35,7 +35,7 @@ describe("Make offer", () => {
 
         expect(offer.tokenInMint.toString()).toBe(tokenInMint.toString());
         expect(offer.tokenOutMint.toString()).toBe(tokenOutMint.toString());
-        expect(offer.feeBasisPoints.toNumber()).toBe(feeBasisPoints);
+        expect(offer.feeBasisPoints).toBe(feeBasisPoints);
     });
 
     test("Make multiple offers should succeed", async () => {

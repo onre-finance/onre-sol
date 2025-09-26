@@ -10,8 +10,8 @@ use anchor_spl::token_interface::Mint;
 #[event]
 pub struct OfferFeeUpdatedEvent {
     pub offer_pda: Pubkey,
-    pub old_fee_basis_points: u64,
-    pub new_fee_basis_points: u64,
+    pub old_fee_basis_points: u32,
+    pub new_fee_basis_points: u32,
     pub boss: Pubkey,
 }
 
@@ -67,7 +67,7 @@ pub struct UpdateOfferFee<'info> {
 ///
 /// # Errors
 /// - [`UpdateOfferFeeErrorCode::InvalidFee`] if fee_basis_points > 10000.
-pub fn update_offer_fee(ctx: Context<UpdateOfferFee>, new_fee_basis_points: u64) -> Result<()> {
+pub fn update_offer_fee(ctx: Context<UpdateOfferFee>, new_fee_basis_points: u32) -> Result<()> {
     // Validate fee is within valid range (0-10000 basis points = 0-100%)
     require!(
         new_fee_basis_points <= MAX_BASIS_POINTS,

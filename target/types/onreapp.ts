@@ -1244,7 +1244,7 @@ export type Onreapp = {
       "args": [
         {
           "name": "feeBasisPoints",
-          "type": "u64"
+          "type": "u32"
         },
         {
           "name": "needsApproval",
@@ -3635,7 +3635,7 @@ export type Onreapp = {
       "args": [
         {
           "name": "newFeeBasisPoints",
-          "type": "u64"
+          "type": "u32"
         }
       ]
     }
@@ -3946,53 +3946,8 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "expired",
-      "msg": "The approval message has expired."
-    },
-    {
-      "code": 6001,
-      "name": "wrongProgram",
-      "msg": "The approval message is for the wrong program."
-    },
-    {
-      "code": 6002,
-      "name": "wrongUser",
-      "msg": "The approval message is for the wrong user."
-    },
-    {
-      "code": 6003,
-      "name": "missingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
-    },
-    {
-      "code": 6004,
-      "name": "wrongIxProgram",
-      "msg": "The instruction is for the wrong program."
-    },
-    {
-      "code": 6005,
-      "name": "malformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
-    },
-    {
-      "code": 6006,
-      "name": "multipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
-    },
-    {
-      "code": 6007,
-      "name": "wrongAuthority",
-      "msg": "The authority public key does not match."
-    },
-    {
-      "code": 6008,
-      "name": "msgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
-    },
-    {
-      "code": 6009,
-      "name": "msgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "name": "mathOverflow",
+      "msg": "Math overflow"
     }
   ],
   "types": [
@@ -4384,16 +4339,21 @@ export type Onreapp = {
             }
           },
           {
-            "name": "vectorsCounter",
-            "type": "u64"
-          },
-          {
             "name": "feeBasisPoints",
-            "type": "u64"
+            "type": "u32"
           },
           {
             "name": "needsApproval",
-            "type": "u64"
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                131
+              ]
+            }
           }
         ]
       }
@@ -4412,11 +4372,11 @@ export type Onreapp = {
           },
           {
             "name": "oldFeeBasisPoints",
-            "type": "u64"
+            "type": "u32"
           },
           {
             "name": "newFeeBasisPoints",
-            "type": "u64"
+            "type": "u32"
           },
           {
             "name": "boss",
@@ -4439,7 +4399,7 @@ export type Onreapp = {
           },
           {
             "name": "feeBasisPoints",
-            "type": "u64"
+            "type": "u32"
           },
           {
             "name": "boss",
@@ -4508,10 +4468,6 @@ export type Onreapp = {
         "kind": "struct",
         "fields": [
           {
-            "name": "vectorId",
-            "type": "u64"
-          },
-          {
             "name": "startTime",
             "type": "u64"
           },
@@ -4561,10 +4517,6 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
-            "name": "vectorId",
-            "type": "u64"
-          },
-          {
             "name": "startTime",
             "type": "u64"
           },
@@ -4600,7 +4552,7 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
-            "name": "vectorId",
+            "name": "vectorStartTime",
             "type": "u64"
           }
         ]
