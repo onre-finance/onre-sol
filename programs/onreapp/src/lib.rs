@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use instructions::*;
-use utils::*;
+use utils::ApprovalMessage;
 
 // Program ID declaration
 declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
@@ -37,7 +37,6 @@ pub mod utils;
 /// - Events are emitted for significant actions (e.g., `OfferMadeOne`, `OfferTakenTwo`) for off-chain traceability.
 #[program]
 pub mod onreapp {
-    use crate::utils::ApprovalMessage;
     use super::*;
 
     pub fn initialize_vault_authority(ctx: Context<InitializeVaultAuthority>) -> Result<()> {
@@ -413,7 +412,7 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `SetTrustedAccount`.
     /// - `trusted`: Public key of the trusted authority for approvals.
-    pub fn set_trusted_account(ctx: Context<SetTrustedAccount>, trusted: Pubkey) -> Result<()> {
-        approval::set_trusted_account(ctx, trusted)
+    pub fn set_trusted_account(ctx: Context<SetTrustedAccount>, approver: Pubkey) -> Result<()> {
+        vault_operations::set_approver(ctx, approver)
     }
 }

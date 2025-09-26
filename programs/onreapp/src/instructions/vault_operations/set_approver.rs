@@ -8,8 +8,8 @@ pub struct SetTrustedAccount<'info> {
     pub boss: Signer<'info>,
 }
 
-pub fn set_trusted_account(ctx: Context<SetTrustedAccount>, trusted: Pubkey) -> Result<()> {
+pub fn set_approver(ctx: Context<SetTrustedAccount>, approver: Pubkey) -> Result<()> {
     let state = &mut ctx.accounts.state;
-    state.trusted = trusted;
+    state.approver = approver;
     Ok(())
 }

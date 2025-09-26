@@ -39,7 +39,7 @@ pub fn verify_approval_message_generic(
     let now = Clock::get()?.unix_timestamp as u64;
     require!(now <= msg.expiry_unix, ErrorCode::Expired);
     require!(msg.program_id == *program_id, ErrorCode::WrongProgram);
-    require!(msg.user_pubkey.key().to_bytes() == user_pubkey.key().to_bytes(), ErrorCode::WrongUser);
+    require!(msg.user_pubkey.key() == user_pubkey.key(), ErrorCode::WrongUser);
 
     // 2) Find the *previous* instruction and ensure it's Ed25519 verify
     let cur_idx = sysvar::instructions::load_current_index_checked(&instructions_sysvar.to_account_info())

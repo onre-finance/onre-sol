@@ -2222,7 +2222,7 @@ export type Onreapp = {
       ],
       "args": [
         {
-          "name": "trusted",
+          "name": "approver",
           "type": "pubkey"
         }
       ]
@@ -4642,7 +4642,7 @@ export type Onreapp = {
             }
           },
           {
-            "name": "trusted",
+            "name": "approver",
             "type": "pubkey"
           },
           {

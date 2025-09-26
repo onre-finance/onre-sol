@@ -2216,7 +2216,7 @@
       ],
       "args": [
         {
-          "name": "trusted",
+          "name": "approver",
           "type": "pubkey"
         }
       ]
@@ -4636,7 +4636,7 @@
             }
           },
           {
-            "name": "trusted",
+            "name": "approver",
             "type": "pubkey"
           },
           {
