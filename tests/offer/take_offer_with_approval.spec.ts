@@ -12,7 +12,6 @@ describe("Take Offer With Approval", () => {
     let user: Keypair;
     let trustedAuthority: Keypair;
     let userTokenOutAccount: PublicKey;
-    let offerId: number;
 
     beforeAll(async () => {
         testHelper = await TestHelper.create();
@@ -26,8 +25,7 @@ describe("Take Offer With Approval", () => {
         trustedAuthority = testHelper.createUserAccount();
 
         // Initialize program and offers
-        await program.initialize();
-        await program.initializeOffers();
+        await program.initialize({ onycMint: tokenOutMint });
 
         // Set trusted authority
         await program.setTrustedAccount({
@@ -41,9 +39,6 @@ describe("Take Offer With Approval", () => {
             withApproval: true
         });
 
-        const offerAccount = await program.getOfferAccount();
-        const offer = offerAccount.offers.find(o => o.offerId.toNumber() !== 0);
-        offerId = offer.offerId.toNumber();
 
         // Initialize vault authority
         await program.initializeVaultAuthority();
@@ -68,11 +63,12 @@ describe("Take Offer With Approval", () => {
         // Add vector to the offer
         const currentTime = await testHelper.getCurrentClockTime();
         await program.addOfferVector({
-            offerId,
             startTime: currentTime,
             startPrice: 1e9, // 1.0 with 9 decimals
             apr: 36_500, // 3.65% APR
-            priceFixDuration: 86400 // 1 day
+            priceFixDuration: 86400, // 1 day,
+            tokenInMint: tokenInMint,
+            tokenOutMint: tokenOutMint
         });
     });
 
@@ -80,7 +76,6 @@ describe("Take Offer With Approval", () => {
         // Try to take offer without approval - should fail with ApprovalRequired error
         await expect(
             program.takeOffer({
-                offerId,
                 tokenInAmount: 1_000_100,
                 tokenInMint,
                 tokenOutMint,
@@ -94,7 +89,6 @@ describe("Take Offer With Approval", () => {
         // Use the helper to execute the approved take offer
         await Ed25519Helper.executeApprovedTakeOffer({
             program,
-            offerId,
             tokenInAmount: 1_000_100,
             tokenInMint,
             tokenOutMint,
@@ -115,7 +109,6 @@ describe("Take Offer With Approval", () => {
         await expect(
             Ed25519Helper.executeApprovedTakeOffer({
                 program,
-                offerId,
                 tokenInAmount: 1_000_100,
                 tokenInMint,
                 tokenOutMint,

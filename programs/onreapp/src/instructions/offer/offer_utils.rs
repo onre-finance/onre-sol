@@ -53,10 +53,8 @@ pub fn verify_offer_approval(
     user_pubkey: &Pubkey,
     trusted_pubkey: &Pubkey,
     instructions_sysvar: &UncheckedAccount,
-    offer_id: u64,
 ) -> Result<()> {
     if offer.needs_approval() {
-
         match approval_message {
             Some(msg) => {
                 msg!("Offer requires approval, verifying message {}", msg.expiry_unix);
@@ -66,7 +64,6 @@ pub fn verify_offer_approval(
                     trusted_pubkey,
                     instructions_sysvar,
                     msg,
-                    offer_id,
                 )?;
             },
             None => return Err(error!(OfferCoreError::ApprovalRequired)),

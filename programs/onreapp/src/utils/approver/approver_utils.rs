@@ -42,7 +42,6 @@ pub fn verify_approval_message_generic(
     trusted_pubkey: &Pubkey,
     instructions_sysvar: &UncheckedAccount,
     msg: &ApprovalMessage,
-    _offer_id: u64,
 ) -> Result<()> {
     let now = Clock::get()?.unix_timestamp as u64;
     require!(now <= msg.expiry_unix, ErrorCode::Expired);

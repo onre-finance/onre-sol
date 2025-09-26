@@ -1239,6 +1239,10 @@
         {
           "name": "fee_basis_points",
           "type": "u64"
+        },
+        {
+          "name": "needs_approval",
+          "type": "bool"
         }
       ]
     },
@@ -2176,6 +2180,48 @@
       "args": []
     },
     {
+      "name": "set_trusted_account",
+      "docs": [
+        "Sets the trusted authority for approval verification.",
+        "",
+        "This instruction allows the boss to set a trusted public key that will be used",
+        "to verify Ed25519 signatures for offer approvals.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `SetTrustedAccount`.",
+        "- `trusted`: Public key of the trusted authority for approvals."
+      ],
+      "discriminator": [
+        40,
+        139,
+        41,
+        11,
+        59,
+        30,
+        210,
+        90
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "trusted",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "take_offer",
       "docs": [
         "Takes a offer.",
@@ -2630,6 +2676,10 @@
           }
         },
         {
+          "name": "instructions_sysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
           "name": "user",
           "docs": [
             "The user taking the offer (must sign the transaction)"
@@ -2656,6 +2706,16 @@
         {
           "name": "token_in_amount",
           "type": "u64"
+        },
+        {
+          "name": "approval_message",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "ApprovalMessage"
+              }
+            }
+          }
         }
       ]
     },
@@ -3268,6 +3328,10 @@
           }
         },
         {
+          "name": "instructions_sysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
           "name": "user",
           "docs": [
             "The user taking the offer (must sign the transaction)"
@@ -3294,6 +3358,16 @@
         {
           "name": "token_in_amount",
           "type": "u64"
+        },
+        {
+          "name": "approval_message",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "ApprovalMessage"
+              }
+            }
+          }
         }
       ]
     },
@@ -3866,11 +3940,80 @@
   "errors": [
     {
       "code": 6000,
-      "name": "MathOverflow",
-      "msg": "Math overflow"
+      "name": "Expired",
+      "msg": "The approval message has expired."
+    },
+    {
+      "code": 6001,
+      "name": "WrongProgram",
+      "msg": "The approval message is for the wrong program."
+    },
+    {
+      "code": 6002,
+      "name": "WrongUser",
+      "msg": "The approval message is for the wrong user."
+    },
+    {
+      "code": 6003,
+      "name": "MissingEd25519Ix",
+      "msg": "Missing Ed25519 instruction."
+    },
+    {
+      "code": 6004,
+      "name": "WrongIxProgram",
+      "msg": "The instruction is for the wrong program."
+    },
+    {
+      "code": 6005,
+      "name": "MalformedEd25519Ix",
+      "msg": "Malformed Ed25519 instruction."
+    },
+    {
+      "code": 6006,
+      "name": "MultipleSigs",
+      "msg": "Multiple signatures found in Ed25519 instruction."
+    },
+    {
+      "code": 6007,
+      "name": "WrongAuthority",
+      "msg": "The authority public key does not match."
+    },
+    {
+      "code": 6008,
+      "name": "MsgMismatch",
+      "msg": "The message in the Ed25519 instruction does not match the approval message."
+    },
+    {
+      "code": 6009,
+      "name": "MsgDeserialize",
+      "msg": "Failed to deserialize the approval message."
     }
   ],
   "types": [
+    {
+      "name": "ApprovalMessage",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "program_id",
+            "type": "pubkey"
+          },
+          {
+            "name": "user_pubkey",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "expiry_unix",
+            "type": "u64"
+          }
+        ]
+      }
+    },
     {
       "name": "BossUpdated",
       "docs": [
@@ -4245,6 +4388,10 @@
           {
             "name": "fee_basis_points",
             "type": "u64"
+          },
+          {
+            "name": "needs_approval",
+            "type": "u64"
           }
         ]
       }
@@ -4534,6 +4681,19 @@
               "array": [
                 "pubkey",
                 20
+              ]
+            }
+          },
+          {
+            "name": "trusted",
+            "type": "pubkey"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                128
               ]
             }
           }

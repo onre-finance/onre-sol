@@ -1,5 +1,5 @@
 use crate::constants::seeds;
-use crate::instructions::offer::offer_utils::{process_offer_core, find_offer, verify_offer_approval};
+use crate::instructions::offer::offer_utils::{process_offer_core, verify_offer_approval};
 use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::{execute_token_operations, transfer_tokens, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams};

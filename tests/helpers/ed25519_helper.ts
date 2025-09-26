@@ -107,7 +107,6 @@ export class Ed25519Helper {
      */
     static async executeApprovedTakeOffer(params: {
         program: OnreProgram;
-        offerId: number;
         tokenInAmount: number;
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
@@ -135,7 +134,7 @@ export class Ed25519Helper {
 
         // Create transaction with Ed25519 verification and take offer
         const tx = params.program.program.methods
-            .takeOffer(new BN(params.offerId), new BN(params.tokenInAmount), approvalMessage)
+            .takeOffer(new BN(params.tokenInAmount), approvalMessage)
             .accounts({
                 state: params.program.statePda,
                 boss: params.boss,
