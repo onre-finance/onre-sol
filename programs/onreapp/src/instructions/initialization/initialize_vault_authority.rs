@@ -2,13 +2,10 @@ use crate::constants::seeds;
 use crate::state::{OfferVaultAuthority, State};
 use anchor_lang::prelude::*;
 
-/// Account structure for initializing all vault authority accounts.
-///
-/// This struct defines the accounts required to initialize vault authority account
-/// separately from the main program state. Only the boss can call this.
+/// Account structure for initializing vault authority account.
 #[derive(Accounts)]
 pub struct InitializeVaultAuthority<'info> {
-    /// The buy offer vault authority account to initialize, rent paid by `boss`.
+    /// The offer vault authority account to initialize, rent paid by `boss`.
     #[account(
         init,
         payer = boss,
@@ -16,7 +13,7 @@ pub struct InitializeVaultAuthority<'info> {
         seeds = [seeds::OFFER_VAULT_AUTHORITY],
         bump
     )]
-    pub buy_offer_vault_authority: Account<'info, OfferVaultAuthority>,
+    pub offer_vault_authority: Account<'info, OfferVaultAuthority>,
 
     /// Program state, ensures `boss` is authorized.
     #[account(has_one = boss)]
@@ -30,17 +27,18 @@ pub struct InitializeVaultAuthority<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Initializes all vault authority accounts.
+/// Initializes vault authority account.
 ///
-/// Creates and initializes all three vault authority accounts for managing token deposits and withdrawals.
+/// Creates and initializes vault authority account for managing token deposits and withdrawals.
 /// Only the boss can call this instruction.
 ///
 /// # Arguments
-/// - `ctx`: Context containing the accounts to initialize all vault authorities.
+/// - `ctx`: Context containing the accounts to initialize vault authority.
 ///
 /// # Returns
 /// A `Result` indicating success or failure.
-pub fn initialize_vault_authority(_ctx: Context<InitializeVaultAuthority>) -> Result<()> {
-    msg!("All vault authorities initialized successfully");
+pub fn initialize_vault_authority(ctx: Context<InitializeVaultAuthority>) -> Result<()> {
+    ctx.accounts.offer_vault_authority.bump = ctx.bumps.offer_vault_authority;
+    msg!("Vault authority initialized successfully");
     Ok(())
 }

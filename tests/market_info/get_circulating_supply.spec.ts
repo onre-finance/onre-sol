@@ -23,6 +23,7 @@ describe("Get Circulating Supply", () => {
 
             // Initialize program and offers
             await program.initialize({ onycMint: tokenOutMint });
+            await program.initializeVaultAuthority();
         });
 
         describe("Basic Functionality Tests", () => {
@@ -59,8 +60,6 @@ describe("Get Circulating Supply", () => {
         describe("Circulating Supply Calculation Tests", () => {
             it("Should handle circulating supply calculation with vault logic", async () => {
                 const currentTime = await testHelper.getCurrentClockTime();
-
-                await program.initializeVaultAuthority();
 
                 // Create an offer
                 await program.makeOffer({ tokenInMint, tokenOutMint });
@@ -139,6 +138,7 @@ describe("Get Circulating Supply", () => {
 
             // Initialize program and offers
             await program.initialize({ onycMint: tokenOutMint });
+            await program.initializeVaultAuthority();
 
             // Create an offer
             await program.makeOffer({

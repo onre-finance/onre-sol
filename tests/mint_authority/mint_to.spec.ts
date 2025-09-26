@@ -18,6 +18,7 @@ describe("Mint To", () => {
 
         // Initialize state with ONyc mint
         await program.initialize({ onycMint: onycMint });
+        await program.initializeMintAuthority();
     });
 
     test("Boss can mint ONyc tokens to their account after transferring mint authority", async () => {

@@ -10,7 +10,7 @@ pub struct ClearAdmins<'info> {
         mut,
         has_one = boss,
         seeds = [seeds::STATE],
-        bump
+        bump = state.bump
     )]
     pub state: Account<'info, State>,
 

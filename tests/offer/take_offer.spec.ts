@@ -42,6 +42,7 @@ describe("Take Offer", () => {
 
         // Initialize vault authority
         await program.initializeVaultAuthority();
+        await program.initializeMintAuthority();
 
         // Create token accounts
         user = testHelper.createUserAccount();

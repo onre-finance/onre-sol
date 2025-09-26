@@ -8,7 +8,7 @@ pub struct SetKillSwitch<'info> {
     #[account(
         mut,
         seeds = [seeds::STATE],
-        bump,
+        bump = state.bump,
     )]
     pub state: Box<Account<'info, State>>,
     pub signer: Signer<'info>,

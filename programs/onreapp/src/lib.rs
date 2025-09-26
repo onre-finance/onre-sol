@@ -43,6 +43,10 @@ pub mod onreapp {
         initialize_vault_authority::initialize_vault_authority(ctx)
     }
 
+    pub fn initialize_mint_authority(ctx: Context<InitializeMintAuthority>) -> Result<()> {
+        initialize_mint_authority::initialize_mint_authority(ctx)
+    }
+
     /// Deposits tokens into the offer vault.
     ///
     /// Delegates to `vault_operations::offer_vault_deposit`.

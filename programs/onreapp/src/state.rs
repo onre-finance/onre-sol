@@ -16,12 +16,21 @@ pub struct State {
     pub onyc_mint: Pubkey,
     pub admins: [Pubkey; MAX_ADMINS],
     pub approver: Pubkey, // A trusted entity
+    pub bump: u8,
     pub reserved: [u8; 128],
 }
 
 #[account]
 #[derive(InitSpace)]
-pub struct OfferVaultAuthority {}
+pub struct OfferVaultAuthority {
+    pub bump: u8,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct MintAuthority {
+    pub bump: u8,
+}
 
 #[account]
 #[derive(InitSpace)]

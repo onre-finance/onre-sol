@@ -1,7 +1,7 @@
 use crate::constants::seeds;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 
-use crate::state::State;
+use crate::state::{OfferVaultAuthority, State};
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
@@ -35,8 +35,8 @@ pub struct GetCirculatingSupply<'info> {
 
     /// The offer vault authority PDA that controls vault token accounts
     /// CHECK: This is safe as it's a PDA
-    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
-    pub vault_authority: UncheckedAccount<'info>,
+    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump = vault_authority.bump)]
+    pub vault_authority: Account<'info, OfferVaultAuthority>,
 
     /// The token_out account to exclude from supply
     /// CHECK: This account is validated by the check below to allow passing uninitialized vault account

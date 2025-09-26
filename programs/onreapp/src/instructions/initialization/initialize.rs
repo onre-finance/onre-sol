@@ -65,6 +65,7 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
     state.is_killed = false; // Initialize kill switch as disabled
     state.admins = [Pubkey::default(); crate::state::MAX_ADMINS]; // Initialize empty admins array
     state.onyc_mint = ctx.accounts.onyc_mint.key();
+    state.bump = ctx.bumps.state;
 
     Ok(())
 }

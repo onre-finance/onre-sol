@@ -1,5 +1,5 @@
 use crate::constants::seeds;
-use crate::state::State;
+use crate::state::{MintAuthority, State};
 use anchor_lang::prelude::*;
 use anchor_spl::token::spl_token::instruction::AuthorityType;
 use anchor_spl::token::{set_authority, SetAuthority};
@@ -65,13 +65,13 @@ pub struct TransferMintAuthorityToProgram<'info> {
     pub mint: InterfaceAccount<'info, Mint>,
 
     /// Program-derived account that will become the new mint authority
-    /// Derived from [MINT_AUTHORITY, mint_pubkey] to ensure uniqueness per token
+    /// Derived from [MINT_AUTHORITY] to ensure uniqueness per token
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
-        bump
+        bump = mint_authority.bump
     )]
-    pub mint_authority_pda: UncheckedAccount<'info>,
+    pub mint_authority: Account<'info, MintAuthority>,
 
     /// SPL Token program for mint authority operations
     pub token_program: Interface<'info, TokenInterface>,
@@ -100,7 +100,7 @@ pub struct TransferMintAuthorityToProgram<'info> {
 pub fn transfer_mint_authority_to_program(
     ctx: Context<TransferMintAuthorityToProgram>,
 ) -> Result<()> {
-    let mint_authority_pda = ctx.accounts.mint_authority_pda.key();
+    let mint_authority = ctx.accounts.mint_authority.key();
 
     // Transfer mint authority from boss to program PDA using SPL Token
     set_authority(
@@ -112,14 +112,14 @@ pub fn transfer_mint_authority_to_program(
             },
         ),
         AuthorityType::MintTokens,
-        Some(mint_authority_pda),
+        Some(mint_authority),
     )?;
 
     // Emit event for transparency and off-chain tracking
     emit!(MintAuthorityTransferredToProgramEvent {
         mint: ctx.accounts.mint.key(),
         old_authority: ctx.accounts.boss.key(),
-        new_authority: mint_authority_pda,
+        new_authority: mint_authority,
     });
 
     Ok(())

@@ -108,6 +108,7 @@ pub fn make_offer(
     offer.fee_basis_points = fee_basis_points;
     offer.set_approval(needs_approval);
     offer.set_permissionless(allow_permissionless);
+    offer.bump = ctx.bumps.offer;
 
     msg!("Offer created at: {}", ctx.accounts.offer.key());
 

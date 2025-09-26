@@ -21,7 +21,7 @@ pub struct CloseOffer<'info> {
             token_in_mint.key().as_ref(),
             token_out_mint.key().as_ref()
         ],
-        bump,
+        bump = offer.load()?.bump,
         close = boss
     )]
     pub offer: AccountLoader<'info, Offer>,

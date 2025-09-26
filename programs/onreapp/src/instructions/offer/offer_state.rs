@@ -14,7 +14,8 @@ pub struct Offer {
     pub fee_basis_points: u16,
     needs_approval: u8,
     allow_permissionless: u8,
-    reserved: [u8; 132],
+    pub bump: u8,
+    reserved: [u8; 131],
 }
 
 impl Offer{

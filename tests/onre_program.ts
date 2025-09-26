@@ -219,6 +219,15 @@ export class OnreProgram {
             .rpc();
     }
 
+    async initializeMintAuthority() {
+        await this.program.methods
+            .initializeMintAuthority()
+            .accounts({
+                state: this.statePda
+            })
+            .rpc();
+    }
+
     async offerVaultDeposit(params: {
         amount: number,
         tokenMint: PublicKey,

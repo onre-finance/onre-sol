@@ -27,7 +27,7 @@ pub struct DeleteOfferVector<'info> {
             token_in_mint.key().as_ref(),
             token_out_mint.key().as_ref()
         ],
-        bump
+        bump = offer.load()?.bump
     )]
     pub offer: AccountLoader<'info, Offer>,
 
