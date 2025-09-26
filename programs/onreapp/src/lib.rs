@@ -413,6 +413,6 @@ pub mod onreapp {
     /// - `ctx`: Context for `SetTrustedAccount`.
     /// - `trusted`: Public key of the trusted authority for approvals.
     pub fn set_approver(ctx: Context<SetApprover>, approver: Pubkey) -> Result<()> {
-        vault_operations::set_approver(ctx, approver)
+        state_operations::set_approver(ctx, approver)
     }
 }
