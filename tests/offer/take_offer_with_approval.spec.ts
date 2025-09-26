@@ -28,7 +28,7 @@ describe("Take Offer With Approval", () => {
         await program.initialize({ onycMint: tokenOutMint });
 
         // Set trusted authority
-        await program.setTrustedAccount({
+        await program.setApprover({
             trusted: trustedAuthority.publicKey
         });
 

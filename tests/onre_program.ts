@@ -532,10 +532,9 @@ export class OnreProgram {
         return { isKilled: state.isKilled };
     }
 
-    async setTrustedAccount(params: { trusted: PublicKey, signer?: Keypair }) {
-        const tx = this.program.methods.setTrustedAccount(params.trusted).accounts({
+    async setApprover(params: { trusted: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods.setApprover(params.trusted).accounts({
             state: this.statePda,
-            boss: params.signer?.publicKey || this.program.provider.publicKey
         });
         if (params.signer) {
             tx.signers([params.signer]);
