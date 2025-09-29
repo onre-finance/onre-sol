@@ -36,10 +36,11 @@ describe("Take Offer Permissionless", () => {
         // Initialize program and offers
         await program.initialize({ onycMint: tokenOutMint });
 
-        // Create an offer
+        // Create an offer with permissionless enabled
         await program.makeOffer({
             tokenInMint,
-            tokenOutMint
+            tokenOutMint,
+            allowPermissionless: true
         });
 
         // Initialize
@@ -875,6 +876,52 @@ describe("Take Offer Permissionless", () => {
                     signer: user
                 })
             ).rejects.toThrow("Kill switch is activated");
+        });
+
+        it("Should reject take_offer_permissionless when offer doesn't allow permissionless", async () => {
+            // Create a new offer without permissionless enabled
+            const restrictedTokenIn = testHelper.createMint(6);
+            const restrictedTokenOut = testHelper.createMint(9);
+
+            await program.makeOffer({
+                tokenInMint: restrictedTokenIn,
+                tokenOutMint: restrictedTokenOut,
+                allowPermissionless: false // explicitly disabled
+            });
+
+            // Set up vault and vector for the restricted offer
+            testHelper.createTokenAccount(restrictedTokenOut, testHelper.getBoss(), BigInt(10_000e9));
+            await program.offerVaultDeposit({
+                amount: 5_000e9,
+                tokenMint: restrictedTokenOut
+            });
+
+            // Create permissionless token accounts for the restricted offer
+            testHelper.createTokenAccount(restrictedTokenIn, program.pdas.permissionlessVaultAuthorityPda, BigInt(0), true);
+            testHelper.createTokenAccount(restrictedTokenOut, program.pdas.permissionlessVaultAuthorityPda, BigInt(0), true);
+
+            // Create user and boss token accounts for the restricted token
+            testHelper.createTokenAccount(restrictedTokenIn, user.publicKey, BigInt(10_000e6), true);
+            testHelper.createTokenAccount(restrictedTokenIn, testHelper.getBoss(), BigInt(0));
+
+            const currentTime = await testHelper.getCurrentClockTime();
+            await program.addOfferVector({
+                tokenInMint: restrictedTokenIn,
+                tokenOutMint: restrictedTokenOut,
+                startTime: currentTime,
+                startPrice: 1e9,
+                apr: 0,
+                priceFixDuration: 86400
+            });
+
+            // Try to take the offer using permissionless flow - should fail
+            await expect(program.takeOfferPermissionless({
+                tokenInAmount: 1000000,
+                tokenInMint: restrictedTokenIn,
+                tokenOutMint: restrictedTokenOut,
+                user: user.publicKey,
+                signer: user
+            })).rejects.toThrow("Permissionless take offer not allowed");
         });
 
         it("Should allow take_offer_permissionless when kill switch is disabled", async () => {

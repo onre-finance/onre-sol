@@ -15,6 +15,8 @@ pub enum TakeOfferPermissionlessErrorCode {
     InvalidBoss,
     #[msg("Kill switch is activated")]
     KillSwitchActivated,
+    #[msg("Permissionless take offer not allowed")]
+    PermissionlessNotAllowed,
 }
 
 /// Event emitted when a offer is successfully taken via permissionless flow
@@ -220,6 +222,9 @@ pub fn take_offer_permissionless(
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
     let offer = ctx.accounts.offer.load()?;
+
+    // Validate if offer allows permissionless access
+    require!(offer.allow_permissionless(), TakeOfferPermissionlessErrorCode::PermissionlessNotAllowed);
 
     // Verify approval if needed
     verify_offer_approval(

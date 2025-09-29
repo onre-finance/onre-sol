@@ -1249,6 +1249,10 @@ export type Onreapp = {
         {
           "name": "needsApproval",
           "type": "bool"
+        },
+        {
+          "name": "allowPermissionless",
+          "type": "bool"
         }
       ]
     },
@@ -4392,11 +4396,15 @@ export type Onreapp = {
             "type": "u8"
           },
           {
+            "name": "allowPermissionless",
+            "type": "u8"
+          },
+          {
             "name": "reserved",
             "type": {
               "array": [
                 "u8",
-                133
+                132
               ]
             }
           }
@@ -4449,6 +4457,14 @@ export type Onreapp = {
           {
             "name": "boss",
             "type": "pubkey"
+          },
+          {
+            "name": "needsApproval",
+            "type": "bool"
+          },
+          {
+            "name": "allowPermissionless",
+            "type": "bool"
           }
         ]
       }

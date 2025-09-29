@@ -12,6 +12,8 @@ pub struct OfferMadeEvent {
     pub offer_pda: Pubkey,
     pub fee_basis_points: u16,
     pub boss: Pubkey,
+    pub needs_approval: bool,
+    pub allow_permissionless: bool,
 }
 
 /// Account structure for creating an offer.
@@ -87,7 +89,12 @@ pub struct MakeOffer<'info> {
 /// # Errors
 /// - [`MakeOfferErrorCode::AccountFull`] if the OfferAccount is full.
 /// - [`MakeOfferErrorCode::InvalidFee`] if fee_basis_points > 10000.
-pub fn make_offer(ctx: Context<MakeOffer>, fee_basis_points: u16, needs_approval: bool) -> Result<()> {
+pub fn make_offer(
+    ctx: Context<MakeOffer>,
+    fee_basis_points: u16,
+    needs_approval: bool,
+    allow_permissionless: bool,
+) -> Result<()> {
     // Validate fee is within valid range (0-10000 basis points = 0-100%)
     require!(
         fee_basis_points <= MAX_BASIS_POINTS,
@@ -100,6 +107,7 @@ pub fn make_offer(ctx: Context<MakeOffer>, fee_basis_points: u16, needs_approval
     offer.token_out_mint = ctx.accounts.token_out_mint.key();
     offer.fee_basis_points = fee_basis_points;
     offer.set_approval(needs_approval);
+    offer.set_permissionless(allow_permissionless);
 
     msg!("Offer created at: {}", ctx.accounts.offer.key());
 
@@ -107,6 +115,8 @@ pub fn make_offer(ctx: Context<MakeOffer>, fee_basis_points: u16, needs_approval
         offer_pda: ctx.accounts.offer.key(),
         fee_basis_points,
         boss: ctx.accounts.boss.key(),
+        needs_approval,
+        allow_permissionless,
     });
 
     Ok(())
