@@ -10,7 +10,7 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 #[event]
 pub struct OfferMadeEvent {
     pub offer_pda: Pubkey,
-    pub fee_basis_points: u32,
+    pub fee_basis_points: u16,
     pub boss: Pubkey,
 }
 
@@ -87,7 +87,7 @@ pub struct MakeOffer<'info> {
 /// # Errors
 /// - [`MakeOfferErrorCode::AccountFull`] if the OfferAccount is full.
 /// - [`MakeOfferErrorCode::InvalidFee`] if fee_basis_points > 10000.
-pub fn make_offer(ctx: Context<MakeOffer>, fee_basis_points: u32, needs_approval: bool) -> Result<()> {
+pub fn make_offer(ctx: Context<MakeOffer>, fee_basis_points: u16, needs_approval: bool) -> Result<()> {
     // Validate fee is within valid range (0-10000 basis points = 0-100%)
     require!(
         fee_basis_points <= MAX_BASIS_POINTS,

@@ -1238,7 +1238,7 @@
       "args": [
         {
           "name": "fee_basis_points",
-          "type": "u32"
+          "type": "u16"
         },
         {
           "name": "needs_approval",
@@ -3629,7 +3629,7 @@
       "args": [
         {
           "name": "new_fee_basis_points",
-          "type": "u32"
+          "type": "u16"
         }
       ]
     }
@@ -4334,7 +4334,7 @@
           },
           {
             "name": "fee_basis_points",
-            "type": "u32"
+            "type": "u16"
           },
           {
             "name": "needs_approval",
@@ -4345,7 +4345,7 @@
             "type": {
               "array": [
                 "u8",
-                131
+                133
               ]
             }
           }
@@ -4366,11 +4366,11 @@
           },
           {
             "name": "old_fee_basis_points",
-            "type": "u32"
+            "type": "u16"
           },
           {
             "name": "new_fee_basis_points",
-            "type": "u32"
+            "type": "u16"
           },
           {
             "name": "boss",
@@ -4393,7 +4393,7 @@
           },
           {
             "name": "fee_basis_points",
-            "type": "u32"
+            "type": "u16"
           },
           {
             "name": "boss",

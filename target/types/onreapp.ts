@@ -1244,7 +1244,7 @@ export type Onreapp = {
       "args": [
         {
           "name": "feeBasisPoints",
-          "type": "u32"
+          "type": "u16"
         },
         {
           "name": "needsApproval",
@@ -3635,7 +3635,7 @@ export type Onreapp = {
       "args": [
         {
           "name": "newFeeBasisPoints",
-          "type": "u32"
+          "type": "u16"
         }
       ]
     }
@@ -4340,7 +4340,7 @@ export type Onreapp = {
           },
           {
             "name": "feeBasisPoints",
-            "type": "u32"
+            "type": "u16"
           },
           {
             "name": "needsApproval",
@@ -4351,7 +4351,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                131
+                133
               ]
             }
           }
@@ -4372,11 +4372,11 @@ export type Onreapp = {
           },
           {
             "name": "oldFeeBasisPoints",
-            "type": "u32"
+            "type": "u16"
           },
           {
             "name": "newFeeBasisPoints",
-            "type": "u32"
+            "type": "u16"
           },
           {
             "name": "boss",
@@ -4399,7 +4399,7 @@ export type Onreapp = {
           },
           {
             "name": "feeBasisPoints",
-            "type": "u32"
+            "type": "u16"
           },
           {
             "name": "boss",

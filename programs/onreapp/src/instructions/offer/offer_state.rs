@@ -11,9 +11,9 @@ pub struct Offer {
     pub token_in_mint: Pubkey,
     pub token_out_mint: Pubkey,
     pub vectors: [OfferVector; MAX_VECTORS],
-    pub fee_basis_points: u32,
+    pub fee_basis_points: u16,
     pub needs_approval: u8,
-    pub reserved: [u8; 131],
+    pub reserved: [u8; 133],
 }
 
 impl Offer{
