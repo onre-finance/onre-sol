@@ -114,10 +114,8 @@ pub fn add_offer_vector(
     }
 
     // Find an empty slot in time_vectors array
-    let empty_slot_index = match find_vector_index_by_start_time(&offer, 0) {
-        Ok(index) => index,
-        Err(_) => return Err(AddOfferVectorErrorCode::TooManyVectors.into()),
-    };
+    let empty_slot_index = find_vector_index_by_start_time(&offer, 0)
+        .map_err(|_| AddOfferVectorErrorCode::TooManyVectors)?;
 
     // Create the new time vector
     let new_vector = OfferVector {
