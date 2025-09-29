@@ -122,6 +122,6 @@ describe("Set ONyc Mint", () => {
 
         expect(finalSize).toBe(initialSize);
         // Verify expected size: 8 bytes discriminator + 32 bytes boss + 1 byte is_killed + 32 bytes onyc_mint + (20 * 32) bytes admins + 32 bytes trusted + 128 reserved
-        expect(finalSize).toBe(873);
+        expect(finalSize).toBe(874);
     });
 });

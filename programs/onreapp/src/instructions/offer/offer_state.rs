@@ -18,7 +18,7 @@ pub struct Offer {
     reserved: [u8; 131],
 }
 
-impl Offer{
+impl Offer {
     pub fn needs_approval(&self) -> bool {
         self.needs_approval != 0
     }

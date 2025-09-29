@@ -879,6 +879,76 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "initializeMintAuthority",
+      "discriminator": [
+        174,
+        153,
+        136,
+        197,
+        49,
+        34,
+        167,
+        3
+      ],
+      "accounts": [
+        {
+          "name": "mintAuthority",
+          "docs": [
+            "The offer mint authority account to initialize, rent paid by `boss`."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the initialization, must be the boss."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "initializePermissionlessAccount",
       "docs": [
         "Initializes a permissionless account.",
@@ -980,9 +1050,9 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "buyOfferVaultAuthority",
+          "name": "offerVaultAuthority",
           "docs": [
-            "The buy offer vault authority account to initialize, rent paid by `boss`."
+            "The offer vault authority account to initialize, rent paid by `boss`."
           ],
           "writable": true,
           "pda": {
@@ -3432,10 +3502,10 @@ export type Onreapp = {
           "writable": true
         },
         {
-          "name": "mintAuthorityPda",
+          "name": "mintAuthority",
           "docs": [
             "Program-derived account that currently holds mint authority",
-            "Must be derived from [MINT_AUTHORITY, mint_pubkey] and currently be the mint authority"
+            "Must be derived from [MINT_AUTHORITY] and currently be the mint authority"
           ],
           "pda": {
             "seeds": [
@@ -3521,10 +3591,10 @@ export type Onreapp = {
           "writable": true
         },
         {
-          "name": "mintAuthorityPda",
+          "name": "mintAuthority",
           "docs": [
             "Program-derived account that will become the new mint authority",
-            "Derived from [MINT_AUTHORITY, mint_pubkey] to ensure uniqueness per token"
+            "Derived from [MINT_AUTHORITY] to ensure uniqueness per token"
           ],
           "pda": {
             "seeds": [
@@ -3645,6 +3715,19 @@ export type Onreapp = {
     }
   ],
   "accounts": [
+    {
+      "name": "mintAuthority",
+      "discriminator": [
+        148,
+        0,
+        219,
+        228,
+        254,
+        237,
+        76,
+        128
+      ]
+    },
     {
       "name": "offer",
       "discriminator": [
@@ -3950,53 +4033,8 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "expired",
-      "msg": "The approval message has expired."
-    },
-    {
-      "code": 6001,
-      "name": "wrongProgram",
-      "msg": "The approval message is for the wrong program."
-    },
-    {
-      "code": 6002,
-      "name": "wrongUser",
-      "msg": "The approval message is for the wrong user."
-    },
-    {
-      "code": 6003,
-      "name": "missingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
-    },
-    {
-      "code": 6004,
-      "name": "wrongIxProgram",
-      "msg": "The instruction is for the wrong program."
-    },
-    {
-      "code": 6005,
-      "name": "malformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
-    },
-    {
-      "code": 6006,
-      "name": "multipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
-    },
-    {
-      "code": 6007,
-      "name": "wrongAuthority",
-      "msg": "The authority public key does not match."
-    },
-    {
-      "code": 6008,
-      "name": "msgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
-    },
-    {
-      "code": 6009,
-      "name": "msgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "name": "mathOverflow",
+      "msg": "Math overflow"
     }
   ],
   "types": [
@@ -4266,6 +4304,18 @@ export type Onreapp = {
       }
     },
     {
+      "name": "mintAuthority",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "mintAuthorityTransferredToBossEvent",
       "docs": [
         "Event emitted when mint authority is successfully transferred from program PDA back to boss"
@@ -4400,11 +4450,15 @@ export type Onreapp = {
             "type": "u8"
           },
           {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
             "name": "reserved",
             "type": {
               "array": [
                 "u8",
-                132
+                131
               ]
             }
           }
@@ -4473,7 +4527,12 @@ export type Onreapp = {
       "name": "offerVaultAuthority",
       "type": {
         "kind": "struct",
-        "fields": []
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
       }
     },
     {
@@ -4702,6 +4761,10 @@ export type Onreapp = {
           {
             "name": "approver",
             "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           },
           {
             "name": "reserved",
