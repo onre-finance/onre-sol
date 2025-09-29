@@ -114,7 +114,10 @@ pub fn add_offer_vector(
     }
 
     // Find an empty slot in time_vectors array
-    let empty_slot_index = find_vector_index_by_start_time(&offer, 0)?;
+    let empty_slot_index = match find_vector_index_by_start_time(&offer, 0) {
+        Ok(index) => index,
+        Err(_) => return Err(AddOfferVectorErrorCode::TooManyVectors.into()),
+    };
 
     // Create the new time vector
     let new_vector = OfferVector {
@@ -215,4 +218,8 @@ pub enum AddOfferVectorErrorCode {
     /// Triggered when a vector with the same start_time already exists.
     #[msg("A vector with this start_time already exists")]
     DuplicateStartTime,
+
+    /// Triggered when the offer already has the maximum number of vectors.
+    #[msg("Offer already has the maximum number of vectors")]
+    TooManyVectors,
 }

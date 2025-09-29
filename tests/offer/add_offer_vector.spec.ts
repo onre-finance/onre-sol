@@ -318,7 +318,7 @@ describe("Add Offer Vector", () => {
                 apr,
                 priceFixDuration
             })
-        ).rejects.toThrow("Vector not found");
+        ).rejects.toThrow("Offer already has the maximum number of vectors.");
     });
 
     it("Should handle large price and apr values correctly", async () => {
