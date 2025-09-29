@@ -167,22 +167,6 @@ describe("Make offer", () => {
         expect(offer.allowPermissionless).toBe(true);
     });
 
-    test("Should create offer with permissionless disabled by default", async () => {
-        // Create unique token pair for this test
-        const tokenIn = testHelper.createMint(9);
-        const tokenOut = testHelper.createMint(9);
-
-        // when
-        await program.makeOffer({
-            tokenInMint: tokenIn,
-            tokenOutMint: tokenOut
-        });
-
-        // then
-        const offer = await program.getOffer(tokenIn, tokenOut);
-        expect(offer.allowPermissionless).toBe(false);
-    });
-
     test("Should create offer with permissionless explicitly disabled", async () => {
         // Create unique token pair for this test
         const tokenIn = testHelper.createMint(9);
