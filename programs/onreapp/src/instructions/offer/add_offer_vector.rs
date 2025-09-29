@@ -1,6 +1,6 @@
 use super::offer_state::{Offer, OfferVector};
 use crate::constants::seeds;
-use crate::instructions::find_active_vector_at;
+use crate::instructions::{find_active_vector_at, find_vector_index_by_start_time};
 use crate::state::State;
 use crate::OfferCoreError;
 use anchor_lang::prelude::*;
@@ -10,7 +10,6 @@ use anchor_spl::token_interface::Mint;
 #[event]
 pub struct OfferVectorAddedEvent {
     pub offer_pda: Pubkey,
-    pub vector_id: u64,
     pub start_time: u64,
     pub base_time: u64,
     pub base_price: u64,
@@ -74,7 +73,6 @@ pub struct AddOfferVector<'info> {
 /// # Errors
 /// - [`AddOfferVectorErrorCode::InvalidTimeRange`] if base_time is before latest existing vector.
 /// - [`AddOfferVectorErrorCode::ZeroValue`] if any value is zero.
-/// - [`AddOfferVectorErrorCode::TooManyVectors`] if the offer already has MAX_SEGMENTS.
 pub fn add_offer_vector(
     ctx: Context<AddOfferVector>,
     base_time: u64,
@@ -88,23 +86,6 @@ pub fn add_offer_vector(
 
     validate_inputs(base_time, base_price, price_fix_duration)?;
 
-    // Validate base_time is not before the latest existing vector's base_time - only allow appending
-    let latest_start_time = offer
-        .vectors
-        .iter()
-        .filter(|vector| vector.vector_id != 0)
-        .map(|vector| vector.start_time)
-        .max()
-        .unwrap_or(0);
-
-    require!(
-        base_time > latest_start_time,
-        AddOfferVectorErrorCode::InvalidTimeRange
-    );
-
-    let next_vector_id = offer.vectors_counter + 1;
-    offer.vectors_counter = next_vector_id;
-
     // Calculate start_time: max(base_time, current_time)
     let start_time = if base_time > current_time {
         base_time
@@ -112,12 +93,32 @@ pub fn add_offer_vector(
         current_time
     };
 
+    // Validate start_time is not duplicated
+    let existing_start_times: Vec<u64> = offer
+        .vectors
+        .iter()
+        .filter(|vector| vector.start_time != 0)
+        .map(|vector| vector.start_time)
+        .collect();
+
+    require!(
+        !existing_start_times.contains(&start_time),
+        AddOfferVectorErrorCode::DuplicateStartTime
+    );
+
+    if let Some(latest_start_time) = existing_start_times.iter().max() {
+        require!(
+          &base_time > latest_start_time,
+          AddOfferVectorErrorCode::InvalidTimeRange
+      );
+    }
+
     // Find an empty slot in time_vectors array
-    let empty_slot_index = find_empty_vector_slot(&offer.vectors)?;
+    let empty_slot_index = find_vector_index_by_start_time(&offer, 0)
+        .ok_or_else(|| error!(AddOfferVectorErrorCode::TooManyVectors))?;
 
     // Create the new time vector
     let new_vector = OfferVector {
-        vector_id: next_vector_id,
         start_time,
         base_time,
         base_price,
@@ -132,14 +133,13 @@ pub fn add_offer_vector(
     clean_old_vectors(offer, current_time)?;
 
     msg!(
-        "Time vector added to offer: {}, vector ID: {}",
+        "Time vector added to offer: {}, vector start_time: {}",
         ctx.accounts.offer.key(),
-        next_vector_id
+        start_time
     );
 
     emit!(OfferVectorAddedEvent {
         offer_pda: ctx.accounts.offer.key(),
-        vector_id: next_vector_id,
         start_time,
         base_time,
         base_price,
@@ -159,14 +159,6 @@ fn validate_inputs(base_time: u64, base_price: u64, price_fix_duration: u64) -> 
     Ok(())
 }
 
-/// Finds the first empty slot in the time_vectors array.
-fn find_empty_vector_slot(vectors: &[OfferVector; 10]) -> Result<usize> {
-    vectors
-        .iter()
-        .position(|vector| vector.vector_id == 0)
-        .ok_or(AddOfferVectorErrorCode::TooManyVectors.into())
-}
-
 /// Cleans old inactive vectors from the offer, keeping only the currently active vector
 /// and the last previously active vector.
 ///
@@ -182,25 +174,25 @@ fn clean_old_vectors(offer: &mut Offer, current_time: u64) -> Result<()> {
     // Find currently active vector
     let active_vector = find_active_vector_at(offer, current_time);
 
-    let active_vector_id = match active_vector {
-        Ok(vector) => vector.vector_id,
+    let active_vector_start_time = match active_vector {
+        Ok(vector) => vector.start_time,
         Err(_) => return Ok(()), // No active vector found, nothing to clean
     };
 
     // Find previously active vector (closest smaller vector_id)
     let prev_vector = find_active_vector_at(offer, active_vector?.start_time - 1);
 
-    let prev_vector_id = match prev_vector {
-        Ok(vector) => vector.vector_id,
+    let prev_vector_start_time = match prev_vector {
+        Ok(vector) => vector.start_time,
         Err(_) => 0, // If no previous vector exists, use 0
     };
 
     // Clear all vectors except active and previous
     for vector in offer.vectors.iter_mut() {
-        if vector.vector_id != 0 // Don't touch already empty slots
-            && vector.vector_id != active_vector_id // Keep active vector
-            && vector.vector_id != prev_vector_id // Keep previous vector
-            && vector.vector_id < active_vector_id
+        if vector.start_time != 0 // Don't touch already empty slots
+            && vector.start_time != active_vector_start_time // Keep active vector
+            && vector.start_time != prev_vector_start_time // Keep previous vector
+            && vector.start_time < active_vector_start_time
         // Keep all future vectors
         {
             *vector = OfferVector::default(); // Clear the vector
@@ -221,7 +213,11 @@ pub enum AddOfferVectorErrorCode {
     #[msg("Invalid input: values cannot be zero")]
     ZeroValue,
 
+    /// Triggered when a vector with the same start_time already exists.
+    #[msg("A vector with this start_time already exists")]
+    DuplicateStartTime,
+
     /// Triggered when the offer already has the maximum number of vectors.
-    #[msg("Cannot add more vectors: maximum limit reached")]
+    #[msg("Offer already has the maximum number of vectors")]
     TooManyVectors,
 }

@@ -65,8 +65,7 @@ pub fn find_previous_vector(
     offer
         .vectors
         .iter()
-        .filter(|vector| vector.vector_id != 0) // Only consider non-empty vectors
-        .filter(|vector| vector.start_time < current_vector_start_time) // Only vectors before current
+        .filter(|vector| vector.start_time != 0 && vector.start_time < current_vector_start_time) // Only consider non-empty vectors and vectors before current
         .max_by_key(|vector| vector.start_time) // Find latest start_time before current
         .copied()
 }

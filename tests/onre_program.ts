@@ -48,10 +48,11 @@ export class OnreProgram {
         feeBasisPoints?: number;
         signer?: Keypair;
         tokenInProgram?: PublicKey;
+        withApproval?: boolean;
     }) {
         const feeBasisPoints = params.feeBasisPoints ?? 0;
         const tx = this.program.methods
-            .makeOffer(new BN(feeBasisPoints))
+            .makeOffer(new BN(feeBasisPoints), params.withApproval ?? false)
             .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
@@ -135,11 +136,11 @@ export class OnreProgram {
     async deleteOfferVector(
         tokenInMint: PublicKey,
         tokenOutMint: PublicKey,
-        vectorId: number,
+        vectorStartTime: number,
         signer?: Keypair
     ) {
         const tx = this.program.methods
-            .deleteOfferVector(new BN(vectorId))
+            .deleteOfferVector(new BN(vectorStartTime))
             .accounts({
                 state: this.statePda,
                 tokenInMint: tokenInMint,
@@ -163,7 +164,7 @@ export class OnreProgram {
         tokenOutProgram?: PublicKey
     }) {
         const tx = this.program.methods
-            .takeOffer(new BN(params.tokenInAmount))
+            .takeOffer(new BN(params.tokenInAmount), null)
             .accounts({
                 state: this.statePda,
                 boss: this.program.provider.publicKey,
@@ -191,7 +192,7 @@ export class OnreProgram {
         tokenOutProgram?: PublicKey
     }) {
         const tx = this.program.methods
-            .takeOfferPermissionless(new BN(params.tokenInAmount))
+            .takeOfferPermissionless(new BN(params.tokenInAmount), null)
             .accounts({
                 state: this.statePda,
                 tokenInMint: params.tokenInMint,
@@ -523,5 +524,21 @@ export class OnreProgram {
 
     async getState() {
         return await this.program.account.state.fetch(this.statePda);
+    }
+
+    async getKillSwitchState() {
+        // Kill switch state is now part of the main State account
+        const state = await this.getState();
+        return { isKilled: state.isKilled };
+    }
+
+    async setApprover(params: { trusted: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods.setApprover(params.trusted).accounts({
+            state: this.statePda,
+        });
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+        await tx.rpc();
     }
 }

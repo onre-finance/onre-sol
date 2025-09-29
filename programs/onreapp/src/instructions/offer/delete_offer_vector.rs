@@ -1,6 +1,6 @@
 use super::offer_state::{Offer, OfferVector};
 use crate::constants::seeds;
-use crate::instructions::find_active_vector_at;
+use crate::instructions::{find_active_vector_at, find_vector_index_by_start_time};
 use crate::state::State;
 use crate::OfferCoreError;
 use anchor_lang::prelude::*;
@@ -10,7 +10,7 @@ use anchor_spl::token_interface::Mint;
 #[event]
 pub struct OfferVectorDeletedEvent {
     pub offer_pda: Pubkey,
-    pub vector_id: u64,
+    pub vector_start_time: u64,
 }
 
 /// Account structure for deleting a time vector from an offer.
@@ -65,14 +65,15 @@ pub struct DeleteOfferVector<'info> {
 ///
 /// # Errors
 /// - [`DeleteOfferVectorErrorCode::VectorNotFound`] if vector_id is 0 or doesn't exist in the offer.
-pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_id: u64) -> Result<()> {
+pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_start_time: u64) -> Result<()> {
     let offer = &mut ctx.accounts.offer.load_mut()?;
 
     // Validate inputs
-    require!(vector_id != 0, DeleteOfferVectorErrorCode::VectorNotFound);
+    require!(vector_start_time != 0, DeleteOfferVectorErrorCode::VectorNotFound);
 
-    // Find and delete the vector by vector_id
-    let vector_index = find_vector_index_by_id(&offer.vectors, vector_id)?;
+    // Find and delete the vector by vector_start_time
+    let vector_index = find_vector_index_by_start_time(&offer, vector_start_time)
+        .ok_or_else(|| error!(DeleteOfferVectorErrorCode::VectorNotFound))?;
 
     let current_vector = find_active_vector_at(offer, Clock::get()?.unix_timestamp as u64);
 
@@ -81,7 +82,7 @@ pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_id: u64) -> R
 
         if prev_vector.is_ok() {
             require!(
-                prev_vector?.vector_id != vector_id,
+                prev_vector?.start_time != vector_start_time,
                 DeleteOfferVectorErrorCode::CannotDeletePreviousVector
             );
         }
@@ -91,32 +92,24 @@ pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_id: u64) -> R
     offer.vectors[vector_index] = OfferVector::default();
 
     msg!(
-        "Time vector deleted from offer: {}, vector ID: {}",
+        "Time vector deleted from offer: {}, vector start_time: {}",
         ctx.accounts.offer.key(),
-        vector_id
+        vector_start_time
     );
 
     emit!(OfferVectorDeletedEvent {
         offer_pda: ctx.accounts.offer.key(),
-        vector_id,
+        vector_start_time,
     });
 
     Ok(())
 }
 
-/// Finds the index of a vector by its ID in the vectors array.
-fn find_vector_index_by_id(vectors: &[OfferVector; 10], vector_id: u64) -> Result<usize> {
-    vectors
-        .iter()
-        .position(|vector| vector.vector_id == vector_id && vector.vector_id != 0)
-        .ok_or(DeleteOfferVectorErrorCode::VectorNotFound.into())
-}
-
 /// Error codes for delete offer vector operations.
 #[error_code]
 pub enum DeleteOfferVectorErrorCode {
-    /// Triggered when the specified vector_id is 0 or not found in the offer.
-    #[msg("Vector with the specified ID was not found in the offer")]
+    /// Triggered when the specified vector start_time is 0 or not found in the offer.
+    #[msg("Vector not found")]
     VectorNotFound,
 
     #[msg("Cannot delete previously active vector")]

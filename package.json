@@ -20,6 +20,7 @@
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
     "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
+    "@noble/ed25519": "^3.0.0",
     "@solana/spl-token": "0.4.12",
     "@solana/wallet-adapter-base": "^0.9.24",
     "@solana/wallet-adapter-react": "0.15.36",
@@ -37,7 +38,8 @@
     "react-helmet-async": "^2.0.5",
     "react-hot-toast": "^2.5.2",
     "react-router": "^7.3.0",
-    "styled-components": "^6.1.16"
+    "styled-components": "^6.1.16",
+    "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
     "@esbuild-plugins/node-globals-polyfill": "^0.2.3",

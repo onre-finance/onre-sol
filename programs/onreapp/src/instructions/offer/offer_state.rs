@@ -11,8 +11,19 @@ pub struct Offer {
     pub token_in_mint: Pubkey,
     pub token_out_mint: Pubkey,
     pub vectors: [OfferVector; MAX_VECTORS],
-    pub vectors_counter: u64,
-    pub fee_basis_points: u64,
+    pub fee_basis_points: u16,
+    pub needs_approval: u8,
+    pub reserved: [u8; 133],
+}
+
+impl Offer{
+    pub fn needs_approval(&self) -> bool {
+        self.needs_approval != 0
+    }
+
+    pub fn set_approval(&mut self, needs_approval: bool) {
+        self.needs_approval = if needs_approval { 1 } else { 0 };
+    }
 }
 
 /// Time vector for offers with pricing information
@@ -20,7 +31,6 @@ pub struct Offer {
 #[repr(C)]
 #[derive(Default, InitSpace)]
 pub struct OfferVector {
-    pub vector_id: u64,
     pub start_time: u64,
     pub base_time: u64,
     pub base_price: u64,

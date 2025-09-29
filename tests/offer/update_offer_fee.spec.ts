@@ -130,8 +130,8 @@ describe("Update Offer Fee", () => {
 
         expect(offer.feeBasisPoints.toString()).toBe("800");
         // Verify vector is still there
-        const activeVector = offer.vectors.find(v => v.vectorId.toNumber() !== 0);
+        const activeVector = offer.vectors.find(v => v.startTime.toNumber() !== 0);
         expect(activeVector).toBeDefined();
-        expect(activeVector.vectorId.toString()).toBe("1");
+        expect(activeVector.startTime.toNumber()).toBe(currentTime + 1000);
     });
 });

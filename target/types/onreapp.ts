@@ -1244,7 +1244,11 @@ export type Onreapp = {
       "args": [
         {
           "name": "feeBasisPoints",
-          "type": "u64"
+          "type": "u16"
+        },
+        {
+          "name": "needsApproval",
+          "type": "bool"
         }
       ]
     },
@@ -2021,6 +2025,48 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "setApprover",
+      "docs": [
+        "Sets the trusted authority for approval verification.",
+        "",
+        "This instruction allows the boss to set a trusted public key that will be used",
+        "to verify Ed25519 signatures for offer approvals.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `SetTrustedAccount`.",
+        "- `trusted`: Public key of the trusted authority for approvals."
+      ],
+      "discriminator": [
+        139,
+        202,
+        200,
+        122,
+        109,
+        173,
+        219,
+        116
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "approver",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "setBoss",
       "docs": [
         "Updates the boss in the program state.",
@@ -2636,6 +2682,10 @@ export type Onreapp = {
           }
         },
         {
+          "name": "instructionsSysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
           "name": "user",
           "docs": [
             "The user taking the offer (must sign the transaction)"
@@ -2662,6 +2712,16 @@ export type Onreapp = {
         {
           "name": "tokenInAmount",
           "type": "u64"
+        },
+        {
+          "name": "approvalMessage",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "approvalMessage"
+              }
+            }
+          }
         }
       ]
     },
@@ -3274,6 +3334,10 @@ export type Onreapp = {
           }
         },
         {
+          "name": "instructionsSysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
           "name": "user",
           "docs": [
             "The user taking the offer (must sign the transaction)"
@@ -3300,6 +3364,16 @@ export type Onreapp = {
         {
           "name": "tokenInAmount",
           "type": "u64"
+        },
+        {
+          "name": "approvalMessage",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "approvalMessage"
+              }
+            }
+          }
         }
       ]
     },
@@ -3561,7 +3635,7 @@ export type Onreapp = {
       "args": [
         {
           "name": "newFeeBasisPoints",
-          "type": "u64"
+          "type": "u16"
         }
       ]
     }
@@ -3872,11 +3946,76 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "mathOverflow",
-      "msg": "Math overflow"
+      "name": "expired",
+      "msg": "The approval message has expired."
+    },
+    {
+      "code": 6001,
+      "name": "wrongProgram",
+      "msg": "The approval message is for the wrong program."
+    },
+    {
+      "code": 6002,
+      "name": "wrongUser",
+      "msg": "The approval message is for the wrong user."
+    },
+    {
+      "code": 6003,
+      "name": "missingEd25519Ix",
+      "msg": "Missing Ed25519 instruction."
+    },
+    {
+      "code": 6004,
+      "name": "wrongIxProgram",
+      "msg": "The instruction is for the wrong program."
+    },
+    {
+      "code": 6005,
+      "name": "malformedEd25519Ix",
+      "msg": "Malformed Ed25519 instruction."
+    },
+    {
+      "code": 6006,
+      "name": "multipleSigs",
+      "msg": "Multiple signatures found in Ed25519 instruction."
+    },
+    {
+      "code": 6007,
+      "name": "wrongAuthority",
+      "msg": "The authority public key does not match."
+    },
+    {
+      "code": 6008,
+      "name": "msgMismatch",
+      "msg": "The message in the Ed25519 instruction does not match the approval message."
+    },
+    {
+      "code": 6009,
+      "name": "msgDeserialize",
+      "msg": "Failed to deserialize the approval message."
     }
   ],
   "types": [
+    {
+      "name": "approvalMessage",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "programId",
+            "type": "pubkey"
+          },
+          {
+            "name": "userPubkey",
+            "type": "pubkey"
+          },
+          {
+            "name": "expiryUnix",
+            "type": "u64"
+          }
+        ]
+      }
+    },
     {
       "name": "bossUpdated",
       "docs": [
@@ -4245,12 +4384,21 @@ export type Onreapp = {
             }
           },
           {
-            "name": "vectorsCounter",
-            "type": "u64"
+            "name": "feeBasisPoints",
+            "type": "u16"
           },
           {
-            "name": "feeBasisPoints",
-            "type": "u64"
+            "name": "needsApproval",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                133
+              ]
+            }
           }
         ]
       }
@@ -4269,11 +4417,11 @@ export type Onreapp = {
           },
           {
             "name": "oldFeeBasisPoints",
-            "type": "u64"
+            "type": "u16"
           },
           {
             "name": "newFeeBasisPoints",
-            "type": "u64"
+            "type": "u16"
           },
           {
             "name": "boss",
@@ -4296,7 +4444,7 @@ export type Onreapp = {
           },
           {
             "name": "feeBasisPoints",
-            "type": "u64"
+            "type": "u16"
           },
           {
             "name": "boss",
@@ -4365,10 +4513,6 @@ export type Onreapp = {
         "kind": "struct",
         "fields": [
           {
-            "name": "vectorId",
-            "type": "u64"
-          },
-          {
             "name": "startTime",
             "type": "u64"
           },
@@ -4418,10 +4562,6 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
-            "name": "vectorId",
-            "type": "u64"
-          },
-          {
             "name": "startTime",
             "type": "u64"
           },
@@ -4457,7 +4597,7 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
-            "name": "vectorId",
+            "name": "vectorStartTime",
             "type": "u64"
           }
         ]
@@ -4540,6 +4680,19 @@ export type Onreapp = {
               "array": [
                 "pubkey",
                 20
+              ]
+            }
+          },
+          {
+            "name": "approver",
+            "type": "pubkey"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                128
               ]
             }
           }

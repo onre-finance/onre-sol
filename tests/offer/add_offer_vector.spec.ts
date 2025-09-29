@@ -51,7 +51,6 @@ describe("Add Offer Vector", () => {
         const updatedOffer = await program.getOffer(tokenInMint, tokenOutMint);
 
         const vector = updatedOffer.vectors[0];
-        expect(vector.vectorId.toString()).toBe("1");
         expect(vector.baseTime.toString()).toBe(startTime.toString());
         expect(vector.startTime.toString()).toBe(startTime.toString()); // start_time should equal base_time when base_time is in future
         expect(vector.basePrice.toString()).toBe(startPrice.toString());
@@ -125,9 +124,9 @@ describe("Add Offer Vector", () => {
         // Verify vectors have correct auto-incremented IDs
         const offer = await program.getOffer(tokenInMint, tokenOutMint);
 
-        expect(offer.vectors[0].vectorId.toString()).toBe("1");
-        expect(offer.vectors[1].vectorId.toString()).toBe("2");
-        expect(offer.vectors[2].vectorId.toString()).toBe("3");
+        expect(offer.vectors[0].startTime.toString()).toBe(currentTime + 1000 + "");
+        expect(offer.vectors[1].startTime.toString()).toBe(currentTime + 3000 + "");
+        expect(offer.vectors[2].startTime.toString()).toBe(currentTime + 5000 + "");
     });
 
     it("Should reject invalid parameters", async () => {
@@ -278,7 +277,7 @@ describe("Add Offer Vector", () => {
                 apr: 7500,
                 priceFixDuration: 1800
             }))
-            .rejects.toThrow("Invalid time range: base_time must be after the latest existing vector.");
+            .rejects.toThrow("A vector with this start_time already exists");
     });
 
     it("Should reject when offer has maximum vectors", async () => {
@@ -319,7 +318,7 @@ describe("Add Offer Vector", () => {
                 apr,
                 priceFixDuration
             })
-        ).rejects.toThrow("Cannot add more vectors: maximum limit reached");
+        ).rejects.toThrow("Offer already has the maximum number of vectors.");
     });
 
     it("Should handle large price and apr values correctly", async () => {
@@ -375,7 +374,6 @@ describe("Add Offer Vector", () => {
         const offer = await program.getOffer(tokenInMint, tokenOutMint);
         const vector = offer.vectors[0];
 
-        expect(vector.vectorId.toString()).toBe("1");
         expect(vector.baseTime.toString()).toBe("1");
         // start_time should be current time since base_time=1 is in the past
         const currentTime = await testHelper.getCurrentClockTime();
@@ -456,12 +454,9 @@ describe("Add Offer Vector", () => {
         const offer1 = await program.getOffer(tokenInMint, tokenOutMint);
         const offer2 = await program.getOffer(token2In, token2Out);
 
-        // Offer 1 should have vectors 1 and 2
-        expect(offer1.vectors[0].vectorId.toString()).toBe("1");
-        expect(offer1.vectors[1].vectorId.toString()).toBe("2");
-
-        // Offer 2 should have vector 1 (independent sequence)
-        expect(offer2.vectors[0].vectorId.toString()).toBe("1");
+        // Offer 1 should have vectors
+        expect(offer1.vectors[0].startTime.toString()).toBe(currentTime + 1000 + "");
+        expect(offer1.vectors[1].startTime.toString()).toBe(currentTime + 3000 + "");
 
         // Verify prices are correct for each offer
         expect(offer1.vectors[0].basePrice.toString()).toBe("1000000");
@@ -502,7 +497,7 @@ describe("Add Offer Vector", () => {
 
         // Verify all 5 vectors were added
         let offer = await program.getOffer(tokenInMint, tokenOutMint);
-        let activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
+        let activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
         expect(activeVectors.length).toBe(5);
 
         // Time travel so the 4th vector is now active
@@ -525,17 +520,28 @@ describe("Add Offer Vector", () => {
         // - Vector 6 (newly added future vector)
         // Vector 1 and 2 should be deleted (oldest past vector)
         offer = await program.getOffer(tokenInMint, tokenOutMint);
-        activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() !== 0);
+        activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
 
         // Should have exactly 4 vectors remaining (deleted vector 1 and 2)
         expect(activeVectors.length).toBe(4);
 
         // Find vectors by their prices to identify them
-        const remainingVectorIds = activeVectors.map(v => v.vectorId.toNumber()).sort();
+        const remainingVectorStartTimes = activeVectors.map(v => v.startTime.toNumber()).sort();
         const remainingPrices = activeVectors.map(v => v.basePrice.toNumber()).sort();
 
-        // Should have vectors 2, 3, 4, 5, and 6
-        expect(remainingVectorIds).toEqual([3, 4, 5, 6]);
+        // Should have vectors with startTimes corresponding to vector 3, 4, 5, 6
+        // Vector 3 startTime = currentTime + 3000
+        // Vector 4 startTime = currentTime + 4000
+        // Vector 5 startTime = currentTime + 5000
+        // Vector 6 startTime = currentTime + 6000
+        const expectedStartTimes = [
+            currentTime + 3000,
+            currentTime + 4000,
+            currentTime + 5000,
+            currentTime + 6000
+        ];
+
+        expect(remainingVectorStartTimes).toEqual(expectedStartTimes);
 
         // Verify the specific prices are present
         expect(remainingPrices).toContain(3000000); // Vector 3 (previous active)

@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use instructions::*;
+use utils::ApprovalMessage;
 
 // Program ID declaration
 declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
@@ -80,8 +81,8 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `MakeOffer`.
     /// - `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer.
-    pub fn make_offer(ctx: Context<MakeOffer>, fee_basis_points: u64) -> Result<()> {
-        offer::make_offer(ctx, fee_basis_points)
+    pub fn make_offer(ctx: Context<MakeOffer>, fee_basis_points: u16, needs_approval: bool) -> Result<()> {
+        offer::make_offer(ctx, fee_basis_points, needs_approval)
     }
 
     /// Closes a offer.
@@ -141,7 +142,7 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `UpdateOfferFee`.
     /// - `new_fee_basis_points`: New fee in basis points (0-10000).
-    pub fn update_offer_fee(ctx: Context<UpdateOfferFee>, new_fee_basis_points: u64) -> Result<()> {
+    pub fn update_offer_fee(ctx: Context<UpdateOfferFee>, new_fee_basis_points: u16) -> Result<()> {
         offer::update_offer_fee(ctx, new_fee_basis_points)
     }
 
@@ -154,8 +155,8 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `TakeOffer`.
     /// - `token_in_amount`: Amount of token_in to provide.
-    pub fn take_offer(ctx: Context<TakeOffer>, token_in_amount: u64) -> Result<()> {
-        offer::take_offer(ctx, token_in_amount)
+    pub fn take_offer(ctx: Context<TakeOffer>, token_in_amount: u64, approval_message: Option<ApprovalMessage>) -> Result<()> {
+        offer::take_offer(ctx, token_in_amount, approval_message)
     }
 
     /// Takes a offer using permissionless flow with intermediary accounts.
@@ -171,8 +172,9 @@ pub mod onreapp {
     pub fn take_offer_permissionless(
         ctx: Context<TakeOfferPermissionless>,
         token_in_amount: u64,
+        approval_message: Option<ApprovalMessage>,
     ) -> Result<()> {
-        offer::take_offer_permissionless(ctx, token_in_amount)
+        offer::take_offer_permissionless(ctx, token_in_amount, approval_message)
     }
 
     /// Initializes the program state.
@@ -400,5 +402,17 @@ pub mod onreapp {
     /// - `Ok(circulating_supply)`: The calculated circulating supply for the offer in base units
     pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64> {
         market_info::get_circulating_supply(ctx)
+    }
+
+    /// Sets the trusted authority for approval verification.
+    ///
+    /// This instruction allows the boss to set a trusted public key that will be used
+    /// to verify Ed25519 signatures for offer approvals.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `SetTrustedAccount`.
+    /// - `trusted`: Public key of the trusted authority for approvals.
+    pub fn set_approver(ctx: Context<SetApprover>, approver: Pubkey) -> Result<()> {
+        state_operations::set_approver(ctx, approver)
     }
 }
