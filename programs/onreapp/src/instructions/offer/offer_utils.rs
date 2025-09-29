@@ -1,4 +1,4 @@
-use crate::instructions::{Offer, OfferVector};
+use crate::instructions::{AddOfferVectorErrorCode, Offer, OfferVector};
 use crate::utils::approver::approver_utils;
 use crate::utils::{calculate_fees, calculate_token_out_amount, ApprovalMessage};
 use anchor_lang::prelude::*;
@@ -157,16 +157,6 @@ pub fn find_active_vector_at(offer: &Offer, time: u64) -> Result<OfferVector> {
     Ok(*active_vector)
 }
 
-pub fn find_vector_at(offer: &Offer, start_time: u64) -> Result<OfferVector> {
-    let vector = offer
-        .vectors
-        .iter()
-        .find(|vector| vector.start_time == start_time)
-        .ok_or(OfferCoreError::VectorNotFound)?;
-
-    Ok(*vector)
-}
-
 /// Calculates the price for a pricing vector based on APR and elapsed time.
 ///
 /// This function implements the core linear price growth formula without discrete intervals.
@@ -275,6 +265,6 @@ pub fn find_vector_index_by_start_time(offer: &Offer, start_time: u64) -> Result
     offer
         .vectors
         .iter()
-        .position(|vector| vector.start_time == start_time && vector.start_time != 0)
+        .position(|vector| vector.start_time == start_time)
         .ok_or(OfferCoreError::VectorNotFound.into())
 }

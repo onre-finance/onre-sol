@@ -5,7 +5,26 @@ pub struct ParsedEd25519 {
 }
 
 /// Parse Ed25519 verify instruction data into useful parts.
-/// Returns None if data is malformed.
+///
+/// Expected data format (Solana Ed25519 instruction format):
+/// ```
+/// Bytes 0:     Number of signatures (u8) - must be 1
+/// Bytes 1:     Instruction index (u8)
+/// Bytes 2-3:   Signature offset (u16 little-endian)
+/// Bytes 4-5:   Signature instruction index (u16 little-endian)
+/// Bytes 6-7:   Public key offset (u16 little-endian)
+/// Bytes 8-9:   Public key instruction index (u16 little-endian)
+/// Bytes 10-11: Message data offset (u16 little-endian)
+/// Bytes 12-13: Message data size (u16 little-endian)
+/// Bytes 14-15: Message instruction index (u16 little-endian)
+///
+/// Variable data section:
+/// - 64-byte Ed25519 signature at signature_offset
+/// - 32-byte Ed25519 public key at pubkey_offset
+/// - Message bytes (length = message_size) at message_offset
+/// ```
+///
+/// Returns None if data is malformed or doesn't follow expected format.
 pub fn parse_ed25519_ix(data: &[u8]) -> Option<ParsedEd25519> {
     if data.len() < 16 {
         return None;

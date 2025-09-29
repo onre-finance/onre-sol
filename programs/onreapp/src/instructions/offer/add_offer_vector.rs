@@ -1,6 +1,6 @@
 use super::offer_state::{Offer, OfferVector};
 use crate::constants::seeds;
-use crate::instructions::find_active_vector_at;
+use crate::instructions::{find_active_vector_at, find_vector_index_by_start_time};
 use crate::state::State;
 use crate::OfferCoreError;
 use anchor_lang::prelude::*;
@@ -73,7 +73,6 @@ pub struct AddOfferVector<'info> {
 /// # Errors
 /// - [`AddOfferVectorErrorCode::InvalidTimeRange`] if base_time is before latest existing vector.
 /// - [`AddOfferVectorErrorCode::ZeroValue`] if any value is zero.
-/// - [`AddOfferVectorErrorCode::TooManyVectors`] if the offer already has MAX_SEGMENTS.
 pub fn add_offer_vector(
     ctx: Context<AddOfferVector>,
     base_time: u64,
@@ -107,16 +106,15 @@ pub fn add_offer_vector(
         AddOfferVectorErrorCode::DuplicateStartTime
     );
 
-    // Validate base_time is not before the latest existing vector's base_time - only allow appending
-    let latest_start_time = existing_start_times.iter().max().cloned().unwrap_or(0);
-
-    require!(
-        base_time > latest_start_time,
-        AddOfferVectorErrorCode::InvalidTimeRange
-    );
+    if let Some(latest_start_time) = existing_start_times.iter().max() {
+        require!(
+          &base_time > latest_start_time,
+          AddOfferVectorErrorCode::InvalidTimeRange
+      );
+    }
 
     // Find an empty slot in time_vectors array
-    let empty_slot_index = find_empty_vector_slot(&offer.vectors)?;
+    let empty_slot_index = find_vector_index_by_start_time(&offer, 0)?;
 
     // Create the new time vector
     let new_vector = OfferVector {
@@ -158,14 +156,6 @@ fn validate_inputs(base_time: u64, base_price: u64, price_fix_duration: u64) -> 
     require!(price_fix_duration > 0, AddOfferVectorErrorCode::ZeroValue);
 
     Ok(())
-}
-
-/// Finds the first empty slot in the time_vectors array.
-fn find_empty_vector_slot(vectors: &[OfferVector; 10]) -> Result<usize> {
-    vectors
-        .iter()
-        .position(|vector| vector.start_time == 0)
-        .ok_or(AddOfferVectorErrorCode::TooManyVectors.into())
 }
 
 /// Cleans old inactive vectors from the offer, keeping only the currently active vector
@@ -221,10 +211,6 @@ pub enum AddOfferVectorErrorCode {
     /// Triggered when any required value is zero.
     #[msg("Invalid input: values cannot be zero")]
     ZeroValue,
-
-    /// Triggered when the offer already has the maximum number of vectors.
-    #[msg("Cannot add more vectors: maximum limit reached")]
-    TooManyVectors,
 
     /// Triggered when a vector with the same start_time already exists.
     #[msg("A vector with this start_time already exists")]
