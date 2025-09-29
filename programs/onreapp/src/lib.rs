@@ -81,8 +81,8 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `MakeOffer`.
     /// - `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer.
-    pub fn make_offer(ctx: Context<MakeOffer>, fee_basis_points: u16, needs_approval: bool) -> Result<()> {
-        offer::make_offer(ctx, fee_basis_points, needs_approval)
+    pub fn make_offer(ctx: Context<MakeOffer>, fee_basis_points: u16, needs_approval: bool, allow_permissionless: bool) -> Result<()> {
+        offer::make_offer(ctx, fee_basis_points, needs_approval, allow_permissionless)
     }
 
     /// Closes a offer.

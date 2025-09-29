@@ -12,8 +12,9 @@ pub struct Offer {
     pub token_out_mint: Pubkey,
     pub vectors: [OfferVector; MAX_VECTORS],
     pub fee_basis_points: u16,
-    pub needs_approval: u8,
-    pub reserved: [u8; 133],
+    needs_approval: u8,
+    allow_permissionless: u8,
+    reserved: [u8; 132],
 }
 
 impl Offer{
@@ -23,6 +24,14 @@ impl Offer{
 
     pub fn set_approval(&mut self, needs_approval: bool) {
         self.needs_approval = if needs_approval { 1 } else { 0 };
+    }
+
+    pub fn allow_permissionless(&self) -> bool {
+        self.allow_permissionless != 0
+    }
+
+    pub fn set_permissionless(&mut self, allow_permissionless: bool) {
+        self.allow_permissionless = if allow_permissionless { 1 } else { 0 };
     }
 }
 

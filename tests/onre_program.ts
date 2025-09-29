@@ -49,10 +49,11 @@ export class OnreProgram {
         signer?: Keypair;
         tokenInProgram?: PublicKey;
         withApproval?: boolean;
+        allowPermissionless?: boolean;
     }) {
         const feeBasisPoints = params.feeBasisPoints ?? 0;
         const tx = this.program.methods
-            .makeOffer(new BN(feeBasisPoints), params.withApproval ?? false)
+            .makeOffer(new BN(feeBasisPoints), params.withApproval ?? false, params.allowPermissionless ?? false)
             .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,

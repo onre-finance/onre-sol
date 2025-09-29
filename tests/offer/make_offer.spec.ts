@@ -149,4 +149,38 @@ describe("Make offer", () => {
         expect(offer.tokenInMint.toString()).toBe(tokenInMint.toString());
         expect(offer.tokenOutMint.toString()).toBe(token2022Mint.toString());
     });
+
+    test("Should create offer with permissionless enabled", async () => {
+        // Create unique token pair for this test
+        const tokenIn = testHelper.createMint(9);
+        const tokenOut = testHelper.createMint(9);
+
+        // when
+        await program.makeOffer({
+            tokenInMint: tokenIn,
+            tokenOutMint: tokenOut,
+            allowPermissionless: true
+        });
+
+        // then
+        const offer = await program.getOffer(tokenIn, tokenOut);
+        expect(offer.allowPermissionless).toBe(true);
+    });
+
+    test("Should create offer with permissionless explicitly disabled", async () => {
+        // Create unique token pair for this test
+        const tokenIn = testHelper.createMint(9);
+        const tokenOut = testHelper.createMint(9);
+
+        // when
+        await program.makeOffer({
+            tokenInMint: tokenIn,
+            tokenOutMint: tokenOut,
+            allowPermissionless: false
+        });
+
+        // then
+        const offer = await program.getOffer(tokenIn, tokenOut);
+        expect(offer.allowPermissionless).toBe(false);
+    });
 });
