@@ -71,8 +71,9 @@ pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_start_time: u
     // Validate inputs
     require!(vector_start_time != 0, DeleteOfferVectorErrorCode::VectorNotFound);
 
-    // Find and delete the vector by vector_id
-    let vector_index = find_vector_index_by_start_time(&offer, vector_start_time)?;
+    // Find and delete the vector by vector_start_time
+    let vector_index = find_vector_index_by_start_time(&offer, vector_start_time)
+        .ok_or_else(|| error!(DeleteOfferVectorErrorCode::VectorNotFound))?;
 
     let current_vector = find_active_vector_at(offer, Clock::get()?.unix_timestamp as u64);
 
@@ -107,8 +108,8 @@ pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_start_time: u
 /// Error codes for delete offer vector operations.
 #[error_code]
 pub enum DeleteOfferVectorErrorCode {
-    /// Triggered when the specified vector_id is 0 or not found in the offer.
-    #[msg("Vector with the specified ID was not found in the offer")]
+    /// Triggered when the specified vector start_time is 0 or not found in the offer.
+    #[msg("Vector not found")]
     VectorNotFound,
 
     #[msg("Cannot delete previously active vector")]

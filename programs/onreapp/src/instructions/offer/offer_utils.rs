@@ -1,4 +1,4 @@
-use crate::instructions::{AddOfferVectorErrorCode, Offer, OfferVector};
+use crate::instructions::{Offer, OfferVector};
 use crate::utils::approver::approver_utils;
 use crate::utils::{calculate_fees, calculate_token_out_amount, ApprovalMessage};
 use anchor_lang::prelude::*;
@@ -22,8 +22,6 @@ pub enum OfferCoreError {
     InvalidTokenOutMint,
     #[msg("Approval required for this offer")]
     ApprovalRequired,
-    #[msg("Vector not found")]
-    VectorNotFound,
 }
 
 /// Result structure for the core offer processing
@@ -261,10 +259,9 @@ pub fn calculate_step_price_at(
 }
 
 
-pub fn find_vector_index_by_start_time(offer: &Offer, start_time: u64) -> Result<usize> {
+pub fn find_vector_index_by_start_time(offer: &Offer, start_time: u64) -> Option<usize> {
     offer
         .vectors
         .iter()
         .position(|vector| vector.start_time == start_time)
-        .ok_or(OfferCoreError::VectorNotFound.into())
 }

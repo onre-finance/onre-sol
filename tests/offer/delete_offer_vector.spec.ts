@@ -90,7 +90,7 @@ describe("Delete Offer Vector", () => {
                 tokenOutMint,
                 0
             )
-        ).rejects.toThrow("Vector with the specified ID was not found in the offer");
+        ).rejects.toThrow("Vector not found");
     });
 
     it("Should fail when vector doesn't exist in the offer", async () => {
