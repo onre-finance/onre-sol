@@ -341,7 +341,6 @@ describe("Add Offer Vector", () => {
                 new BN(3600)
             )
             .accounts({
-                state: program.statePda,
                 tokenInMint,
                 tokenOutMint
             })

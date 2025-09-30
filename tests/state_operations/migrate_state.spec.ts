@@ -15,11 +15,12 @@ describe("Migrate State", () => {
 
         // Initialize the program with old state structure (only boss field)
         await program.initialize({ onycMint: testHelper.createMint(9) });
+        await program.initializePermissionlessAccount({ accountName: "test-account" });
     });
 
     test("Boss can migrate state successfully", async () => {
         // when - boss migrates the state
-        await program.migrateState();
+        await program.migrateV3();
 
         // then - state should be migrated and accessible
         const state = await program.getState();
@@ -30,7 +31,7 @@ describe("Migrate State", () => {
     test("Non-boss cannot migrate state - should fail", async () => {
         // when & then
         await expect(
-            program.migrateState(nonBoss)
+            program.migrateV3(nonBoss)
         ).rejects.toThrow("Boss pubkey mismatch");
     });
 
@@ -39,7 +40,7 @@ describe("Migrate State", () => {
         const originalBoss = testHelper.getBoss();
 
         // when - migrate state
-        await program.migrateState();
+        await program.migrateV3();
 
         // then - boss should be preserved
         const state = await program.getState();
@@ -48,7 +49,7 @@ describe("Migrate State", () => {
 
     test("After migration, kill switch functionality works", async () => {
         // given - migrate state first
-        await program.migrateState();
+        await program.migrateV3();
 
         // Admin state is now part of the main state - no separate initialization needed
         const admin = testHelper.createUserAccount();
@@ -71,14 +72,14 @@ describe("Migrate State", () => {
 
     test("State account maintains proper size after migration", async () => {
         // given - get initial account size
-        const stateAccountInfo = await testHelper.getAccountInfo(program.statePda);
+        const stateAccountInfo = await testHelper.getAccountInfo(program.pdas.statePda);
         const initialSize = stateAccountInfo.data.length;
 
         // when - migrate state
-        await program.migrateState();
+        await program.migrateV3();
 
         // then - account size should be maintained (already includes is_killed in new deployments)
-        const migratedAccountInfo = await testHelper.getAccountInfo(program.statePda);
+        const migratedAccountInfo = await testHelper.getAccountInfo(program.pdas.statePda);
         const finalSize = migratedAccountInfo.data.length;
 
         expect(finalSize).toBe(initialSize); // Size should be the same for new deployments
@@ -90,7 +91,7 @@ describe("Migrate State", () => {
         const originalBoss = testHelper.getBoss();
 
         // when - migrate state
-        await program.migrateState();
+        await program.migrateV3();
 
         // then - migration should initialize kill switch as disabled and admins as empty
         const stateAfter = await program.getState();

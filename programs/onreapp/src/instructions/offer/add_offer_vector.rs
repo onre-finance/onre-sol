@@ -50,7 +50,7 @@ pub struct AddOfferVector<'info> {
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 
     /// Program state, ensures `boss` is authorized.
-    #[account(has_one = boss)]
+    #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss)]
     pub state: Account<'info, State>,
 
     /// The signer authorizing the time vector addition (must be boss).
@@ -108,9 +108,9 @@ pub fn add_offer_vector(
 
     if let Some(latest_start_time) = existing_start_times.iter().max() {
         require!(
-          &base_time > latest_start_time,
-          AddOfferVectorErrorCode::InvalidTimeRange
-      );
+            &base_time > latest_start_time,
+            AddOfferVectorErrorCode::InvalidTimeRange
+        );
     }
 
     // Find an empty slot in time_vectors array

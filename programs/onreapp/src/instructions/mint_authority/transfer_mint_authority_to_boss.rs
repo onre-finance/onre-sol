@@ -57,7 +57,7 @@ pub struct TransferMintAuthorityToBoss<'info> {
     pub boss: Signer<'info>,
 
     /// Program state containing the current boss public key
-    #[account(has_one = boss)]
+    #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss)]
     pub state: Account<'info, State>,
 
     /// The token mint whose authority will be transferred back to boss

@@ -85,7 +85,12 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `MakeOffer`.
     /// - `fee_basis_points`: Fee in basis points (e.g., 500 = 5%) charged when taking the offer.
-    pub fn make_offer(ctx: Context<MakeOffer>, fee_basis_points: u16, needs_approval: bool, allow_permissionless: bool) -> Result<()> {
+    pub fn make_offer(
+        ctx: Context<MakeOffer>,
+        fee_basis_points: u16,
+        needs_approval: bool,
+        allow_permissionless: bool,
+    ) -> Result<()> {
         offer::make_offer(ctx, fee_basis_points, needs_approval, allow_permissionless)
     }
 
@@ -159,7 +164,11 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `TakeOffer`.
     /// - `token_in_amount`: Amount of token_in to provide.
-    pub fn take_offer(ctx: Context<TakeOffer>, token_in_amount: u64, approval_message: Option<ApprovalMessage>) -> Result<()> {
+    pub fn take_offer(
+        ctx: Context<TakeOffer>,
+        token_in_amount: u64,
+        approval_message: Option<ApprovalMessage>,
+    ) -> Result<()> {
         offer::take_offer(ctx, token_in_amount, approval_message)
     }
 
@@ -194,10 +203,10 @@ pub mod onreapp {
     /// The account is created as a PDA with the seed "permissionless-1".
     /// Only the boss can initialize permissionless accounts.
     pub fn initialize_permissionless_account(
-        ctx: Context<InitializePermissionlessAccount>,
+        ctx: Context<InitializePermissionlessAuthority>,
         name: String,
     ) -> Result<()> {
-        initialize_permissionless::initialize_permissionless_account(ctx, name)
+        initialize_permissionless_authority::initialize_permissionless_authority(ctx, name)
     }
 
     /// Updates the boss in the program state.
@@ -322,8 +331,8 @@ pub mod onreapp {
     ///
     /// # Arguments
     /// - `ctx`: Context for `MigrateState`.
-    pub fn migrate_state(ctx: Context<MigrateState>) -> Result<()> {
-        state_operations::migrate_state(ctx)
+    pub fn migrate_v3(ctx: Context<MigrateV3>) -> Result<()> {
+        state_operations::migrate_v3(ctx)
     }
 
     /// Gets the current NAV (price) for a specific offer.

@@ -1,9 +1,13 @@
-use anchor_lang::prelude::*;
+use crate::constants::seeds;
 use crate::state::State;
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct SetApprover<'info> {
-    #[account(mut, has_one = boss)]
+    #[account(mut,
+        seeds = [seeds::STATE],
+        bump = state.bump,
+        has_one = boss)]
     pub state: Account<'info, State>,
     pub boss: Signer<'info>,
 }

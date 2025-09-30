@@ -1,5 +1,7 @@
+use crate::constants::seeds;
 use crate::state::State;
-use anchor_lang::prelude::*; // Includes `emit!` and `#[event]`
+use anchor_lang::prelude::*;
+// Includes `emit!` and `#[event]`
 use anchor_lang::Accounts;
 
 /// Error codes for the set_boss instruction.
@@ -32,7 +34,12 @@ pub struct SetBoss<'info> {
     /// # Constraints
     /// - Must be mutable to allow updating the `boss` field.
     /// - The `has_one = boss` constraint ensures only the current boss can modify it.
-    #[account(mut, has_one = boss)]
+    #[account(
+        mut,
+        seeds = [seeds::STATE],
+        bump = state.bump,
+        has_one = boss
+    )]
     pub state: Account<'info, State>,
 
     /// The current boss, signing the transaction to authorize the update.

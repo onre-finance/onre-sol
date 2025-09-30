@@ -9,15 +9,16 @@ import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-tok
 
 export class OnreProgram {
     program: Program<Onreapp>;
-    statePda: PublicKey;
 
     pdas: {
+        statePda: PublicKey;
         offerVaultAuthorityPda: PublicKey;
-        permissionlessVaultAuthorityPda: PublicKey;
+        permissionlessAuthorityPda: PublicKey;
         mintAuthorityPda: PublicKey;
     } = {
+        statePda: PublicKey.findProgramAddressSync([Buffer.from("state")], ONREAPP_PROGRAM_ID)[0],
         offerVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("offer_vault_authority")], ONREAPP_PROGRAM_ID)[0],
-        permissionlessVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], ONREAPP_PROGRAM_ID)[0],
+        permissionlessAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], ONREAPP_PROGRAM_ID)[0],
         mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], ONREAPP_PROGRAM_ID)[0]
     };
 
@@ -28,7 +29,6 @@ export class OnreProgram {
             idl,
             provider
         );
-        [this.statePda] = PublicKey.findProgramAddressSync([Buffer.from("state")], ONREAPP_PROGRAM_ID);
     }
 
     // Instructions
@@ -53,12 +53,11 @@ export class OnreProgram {
     }) {
         const feeBasisPoints = params.feeBasisPoints ?? 0;
         const tx = this.program.methods
-            .makeOffer(new BN(feeBasisPoints), params.withApproval ?? false, params.allowPermissionless ?? false)
+            .makeOffer(feeBasisPoints, params.withApproval ?? false, params.allowPermissionless ?? false)
             .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
-                tokenOutMint: params.tokenOutMint,
-                state: this.statePda
+                tokenOutMint: params.tokenOutMint
             });
 
         if (params.signer) {
@@ -85,7 +84,6 @@ export class OnreProgram {
                 new BN(params.priceFixDuration)
             )
             .accounts({
-                state: this.statePda,
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint
             });
@@ -101,7 +99,6 @@ export class OnreProgram {
         const tx = this.program.methods
             .closeOffer()
             .accounts({
-                state: this.statePda,
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint
             });
@@ -120,9 +117,8 @@ export class OnreProgram {
         signer?: Keypair
     }) {
         const tx = this.program.methods
-            .updateOfferFee(new BN(params.newFee))
+            .updateOfferFee(params.newFee)
             .accounts({
-                state: this.statePda,
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint
             });
@@ -143,7 +139,6 @@ export class OnreProgram {
         const tx = this.program.methods
             .deleteOfferVector(new BN(vectorStartTime))
             .accounts({
-                state: this.statePda,
                 tokenInMint: tokenInMint,
                 tokenOutMint: tokenOutMint
             });
@@ -167,8 +162,6 @@ export class OnreProgram {
         const tx = this.program.methods
             .takeOffer(new BN(params.tokenInAmount), null)
             .accounts({
-                state: this.statePda,
-                boss: this.program.provider.publicKey,
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
                 user: params.user,
@@ -195,7 +188,6 @@ export class OnreProgram {
         const tx = this.program.methods
             .takeOfferPermissionless(new BN(params.tokenInAmount), null)
             .accounts({
-                state: this.statePda,
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
                 user: params.user,
@@ -213,18 +205,12 @@ export class OnreProgram {
     async initializeVaultAuthority() {
         await this.program.methods
             .initializeVaultAuthority()
-            .accounts({
-                state: this.statePda
-            })
             .rpc();
     }
 
     async initializeMintAuthority() {
         await this.program.methods
             .initializeMintAuthority()
-            .accounts({
-                state: this.statePda
-            })
             .rpc();
     }
 
@@ -237,7 +223,6 @@ export class OnreProgram {
         const tx = this.program.methods
             .offerVaultDeposit(new BN(params.amount))
             .accounts({
-                state: this.statePda,
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
@@ -258,7 +243,6 @@ export class OnreProgram {
         const tx = this.program.methods
             .offerVaultWithdraw(new BN(params.amount))
             .accounts({
-                state: this.statePda,
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
@@ -273,9 +257,6 @@ export class OnreProgram {
     async initializePermissionlessAccount(params: { accountName: string }) {
         await this.program.methods
             .initializePermissionlessAccount(params.accountName)
-            .accounts({
-                state: this.statePda
-            })
             .rpc();
     }
 
@@ -283,7 +264,6 @@ export class OnreProgram {
         const tx = this.program.methods
             .transferMintAuthorityToProgram()
             .accounts({
-                state: this.statePda,
                 mint: params.mint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
@@ -299,7 +279,6 @@ export class OnreProgram {
         const tx = this.program.methods
             .transferMintAuthorityToBoss()
             .accounts({
-                state: this.statePda,
                 mint: params.mint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
@@ -313,11 +292,7 @@ export class OnreProgram {
 
     async addAdmin(params: { admin: PublicKey, signer?: Keypair }) {
         const tx = this.program.methods
-            .addAdmin(params.admin)
-            .accounts({
-                state: this.statePda,
-                boss: this.program.provider.publicKey // Always the actual boss from state
-            });
+            .addAdmin(params.admin);
 
         if (params.signer) {
             tx.signers([params.signer]);
@@ -328,11 +303,7 @@ export class OnreProgram {
 
     async removeAdmin(params: { admin: PublicKey, signer?: Keypair }) {
         const tx = this.program.methods
-            .removeAdmin(params.admin)
-            .accounts({
-                state: this.statePda,
-                boss: this.program.provider.publicKey // Always the actual boss from state
-            });
+            .removeAdmin(params.admin);
 
         if (params.signer) {
             tx.signers([params.signer]);
@@ -355,11 +326,12 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async migrateState(signer?: Keypair) {
+    async migrateV3(signer?: Keypair) {
         const tx = this.program.methods
-            .migrateState()
+            .migrateV3()
             .accounts({
-                state: this.statePda,
+                state: this.pdas.statePda,
+                permissionlessAuthority: this.pdas.permissionlessAuthorityPda,
                 boss: signer ? signer.publicKey : this.program.provider.publicKey
             });
 
@@ -374,7 +346,6 @@ export class OnreProgram {
         const tx = this.program.methods
             .setOnycMint()
             .accounts({
-                state: this.statePda,
                 onycMint: params.onycMint
             });
 
@@ -389,7 +360,6 @@ export class OnreProgram {
         const tx = this.program.methods
             .mintTo(new BN(params.amount))
             .accounts({
-                state: this.statePda,
                 tokenProgram: TOKEN_PROGRAM_ID
             });
 
@@ -504,7 +474,6 @@ export class OnreProgram {
         const tx = this.program.methods
             .getCirculatingSupply()
             .accounts({
-                state: this.statePda,
                 tokenProgram: tokenOutProgram,
                 vaultTokenOutAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, tokenOutProgram)
             })
@@ -533,19 +502,12 @@ export class OnreProgram {
     }
 
     async getState() {
-        return await this.program.account.state.fetch(this.statePda);
-    }
-
-    async getKillSwitchState() {
-        // Kill switch state is now part of the main State account
-        const state = await this.getState();
-        return { isKilled: state.isKilled };
+        return await this.program.account.state.fetch(this.pdas.statePda);
     }
 
     async setApprover(params: { trusted: PublicKey, signer?: Keypair }) {
-        const tx = this.program.methods.setApprover(params.trusted).accounts({
-            state: this.statePda,
-        });
+        const tx = this.program.methods.setApprover(params.trusted);
+
         if (params.signer) {
             tx.signers([params.signer]);
         }

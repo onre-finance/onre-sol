@@ -110,14 +110,14 @@ describe("Set ONyc Mint", () => {
 
     test("State account size remains consistent after ONyc mint update", async () => {
         // given - get initial account size
-        const stateAccountInfo = await testHelper.getAccountInfo(program.statePda);
+        const stateAccountInfo = await testHelper.getAccountInfo(program.pdas.statePda);
         const initialSize = stateAccountInfo.data.length;
 
         // when - update ONyc mint
         await program.setOnycMint({ onycMint: newOnycMint });
 
         // then - account size should remain the same
-        const updatedAccountInfo = await testHelper.getAccountInfo(program.statePda);
+        const updatedAccountInfo = await testHelper.getAccountInfo(program.pdas.statePda);
         const finalSize = updatedAccountInfo.data.length;
 
         expect(finalSize).toBe(initialSize);

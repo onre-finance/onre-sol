@@ -16,7 +16,7 @@ pub struct InitializeVaultAuthority<'info> {
     pub offer_vault_authority: Account<'info, OfferVaultAuthority>,
 
     /// Program state, ensures `boss` is authorized.
-    #[account(has_one = boss)]
+    #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss)]
     pub state: Box<Account<'info, State>>,
 
     /// The signer authorizing the initialization, must be the boss.

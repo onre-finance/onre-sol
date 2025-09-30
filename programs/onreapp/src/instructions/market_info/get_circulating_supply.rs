@@ -30,7 +30,7 @@ pub struct GetCirculatingSupplyEvent {
 pub struct GetCirculatingSupply<'info> {
     pub onyc_mint: InterfaceAccount<'info, Mint>,
 
-    #[account(has_one = onyc_mint)]
+    #[account(seeds = [seeds::STATE], bump = state.bump, has_one = onyc_mint)]
     pub state: Box<Account<'info, State>>,
 
     /// The offer vault authority PDA that controls vault token accounts

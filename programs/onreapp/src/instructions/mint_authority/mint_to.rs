@@ -1,5 +1,5 @@
 use crate::constants::seeds;
-use crate::state::State;
+use crate::state::{MintAuthority, State};
 use crate::utils::token_utils::mint_tokens;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
@@ -30,7 +30,7 @@ pub enum MintToErrorCode {
 #[derive(Accounts)]
 pub struct MintTo<'info> {
     /// The program state account, containing the boss and onyc_mint
-    #[account(has_one = boss, has_one = onyc_mint)]
+    #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss, has_one = onyc_mint)]
     pub state: Account<'info, State>,
 
     /// The boss who is authorized to perform the minting operation
@@ -55,10 +55,10 @@ pub struct MintTo<'info> {
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
-        bump,
-        constraint = onyc_mint.mint_authority.unwrap() == mint_authority_pda.key() @ MintToErrorCode::NoMintAuthority
+        bump = mint_authority.bump,
+        constraint = onyc_mint.mint_authority.unwrap() == mint_authority.key() @ MintToErrorCode::NoMintAuthority
     )]
-    pub mint_authority_pda: UncheckedAccount<'info>,
+    pub mint_authority: Account<'info, MintAuthority>,
 
     /// SPL Token program for minting operations
     pub token_program: Interface<'info, TokenInterface>,
@@ -93,7 +93,7 @@ pub struct MintTo<'info> {
 /// # Events
 /// Emits `OnycTokensMinted` on success
 pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
-    let mint_authority_seeds = &[seeds::MINT_AUTHORITY, &[ctx.bumps.mint_authority_pda]];
+    let mint_authority_seeds = &[seeds::MINT_AUTHORITY, &[ctx.accounts.mint_authority.bump]];
     let mint_authority_signer_seeds = &[mint_authority_seeds.as_slice()];
 
     // Mint tokens to the boss's ONyc account
@@ -101,7 +101,7 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
         &ctx.accounts.token_program,
         &ctx.accounts.onyc_mint,
         &ctx.accounts.boss_onyc_account,
-        &ctx.accounts.mint_authority_pda.to_account_info(),
+        &ctx.accounts.mint_authority.to_account_info(),
         mint_authority_signer_seeds,
         amount,
     )?;

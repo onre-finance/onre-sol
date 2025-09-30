@@ -34,9 +34,10 @@ pub struct MintAuthority {
 
 #[account]
 #[derive(InitSpace)]
-pub struct PermissionlessAccount {
+pub struct PermissionlessAuthority {
     #[max_len(50)]
     pub name: String,
+    pub bump: u8,
 }
 
 pub const MAX_ADMINS: usize = 20;

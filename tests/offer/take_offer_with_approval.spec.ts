@@ -40,8 +40,9 @@ describe("Take Offer With Approval", () => {
         });
 
 
-        // Initialize vault authority
+        // Initialize authorities
         await program.initializeVaultAuthority();
+        await program.initializeMintAuthority();
 
         // Create token accounts
         user = testHelper.createUserAccount();

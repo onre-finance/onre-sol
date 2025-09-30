@@ -1,5 +1,5 @@
 use crate::constants::seeds;
-use crate::state::{PermissionlessAccount, State};
+use crate::state::{PermissionlessAuthority, State};
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 
@@ -10,7 +10,7 @@ pub enum InitializePermissionlessErrorCode {
     InvalidPermissionlessAccountName,
 }
 
-/// Account structure for initializing a permissionless account.
+/// Account structure for initializing a permissionless authority.
 ///
 /// This struct defines the accounts required to create a new permissionless account,
 /// which can be used as an intermediary authority for routing tokens.
@@ -19,23 +19,23 @@ pub enum InitializePermissionlessErrorCode {
 /// - Only the boss can initialize permissionless accounts
 /// - The permissionless account must not exist prior to execution
 #[derive(Accounts)]
-pub struct InitializePermissionlessAccount<'info> {
+pub struct InitializePermissionlessAuthority<'info> {
     /// The permissionless account to be created.
     ///
     /// # Note
-    /// - Space is allocated as `8 + PermissionlessAccount::INIT_SPACE` bytes
+    /// - Space is allocated as `8 + PermissionlessAuthority::INIT_SPACE` bytes
     /// - Seeded with hardcoded "permissionless-1" for PDA derivation
     #[account(
         init,
         payer = boss,
-        space = 8 + PermissionlessAccount::INIT_SPACE,
-        seeds = [seeds::PERMISSIONLESS_1],
+        space = 8 + PermissionlessAuthority::INIT_SPACE,
+        seeds = [seeds::PERMISSIONLESS_AUTHORITY],
         bump
     )]
-    pub permissionless_account: Account<'info, PermissionlessAccount>,
+    pub permissionless_authority: Account<'info, PermissionlessAuthority>,
 
     /// The program state account, used to verify boss authorization.
-    #[account(has_one = boss)]
+    #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss)]
     pub state: Account<'info, State>,
 
     /// The boss account that authorizes and pays for the permissionless account creation.
@@ -46,9 +46,9 @@ pub struct InitializePermissionlessAccount<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Initializes a new permissionless account with the provided name.
+/// Initializes a new permissionless authority with the provided name.
 ///
-/// Creates a permissionless account that can serve as an intermediary authority
+/// Creates a permissionless authority that can serve as an intermediary authority
 /// for token routing operations. Only the boss can create these accounts.
 /// The PDA is always derived using the hardcoded seed "permissionless-1".
 ///
@@ -62,8 +62,8 @@ pub struct InitializePermissionlessAccount<'info> {
 /// # Errors
 /// - Fails if the caller is not the boss (enforced by `has_one = boss` constraint)
 /// - Fails if the permissionless account already exists
-pub fn initialize_permissionless_account(
-    ctx: Context<InitializePermissionlessAccount>,
+pub fn initialize_permissionless_authority(
+    ctx: Context<InitializePermissionlessAuthority>,
     name: String,
 ) -> Result<()> {
     let name_cleaned = name.trim();
@@ -71,7 +71,8 @@ pub fn initialize_permissionless_account(
         !name_cleaned.is_empty(),
         InitializePermissionlessErrorCode::InvalidPermissionlessAccountName
     );
-    let permissionless_account = &mut ctx.accounts.permissionless_account;
-    permissionless_account.name = name_cleaned.to_string();
+    let permissionless_authority = &mut ctx.accounts.permissionless_authority;
+    permissionless_authority.name = name_cleaned.to_string();
+    permissionless_authority.bump = ctx.bumps.permissionless_authority;
     Ok(())
 }

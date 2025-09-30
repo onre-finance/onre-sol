@@ -24,6 +24,7 @@ describe("Get Circulating Supply", () => {
             // Initialize program and offers
             await program.initialize({ onycMint: tokenOutMint });
             await program.initializeVaultAuthority();
+            await program.initializeMintAuthority();
         });
 
         describe("Basic Functionality Tests", () => {
@@ -63,8 +64,6 @@ describe("Get Circulating Supply", () => {
 
                 // Create an offer
                 await program.makeOffer({ tokenInMint, tokenOutMint });
-
-                const offerId = 1;
 
                 // Add vector (not required for circulating supply but good practice)
                 await program.addOfferVector({

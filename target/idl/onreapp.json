@@ -159,7 +159,21 @@
           "name": "state",
           "docs": [
             "Program state, ensures `boss` is authorized."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -316,7 +330,21 @@
           "name": "state",
           "docs": [
             "Program state, ensures `boss` is authorized."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "system_program",
@@ -392,7 +420,21 @@
           "name": "state",
           "docs": [
             "Program state, ensures `boss` is authorized."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -511,7 +553,21 @@
           ]
         },
         {
-          "name": "state"
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "vault_authority",
@@ -919,7 +975,21 @@
           "name": "state",
           "docs": [
             "Program state, ensures `boss` is authorized."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -963,12 +1033,12 @@
       ],
       "accounts": [
         {
-          "name": "permissionless_account",
+          "name": "permissionless_authority",
           "docs": [
             "The permissionless account to be created.",
             "",
             "# Note",
-            "- Space is allocated as `8 + PermissionlessAccount::INIT_SPACE` bytes",
+            "- Space is allocated as `8 + PermissionlessAuthority::INIT_SPACE` bytes",
             "- Seeded with hardcoded \"permissionless-1\" for PDA derivation"
           ],
           "writable": true,
@@ -1002,7 +1072,21 @@
           "name": "state",
           "docs": [
             "The program state account, used to verify boss authorization."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -1084,7 +1168,21 @@
           "name": "state",
           "docs": [
             "Program state, ensures `boss` is authorized."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -1277,7 +1375,21 @@
           "name": "state",
           "docs": [
             "Program state, ensures `boss` is authorized."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -1321,7 +1433,7 @@
       ]
     },
     {
-      "name": "migrate_state",
+      "name": "migrate_v3",
       "docs": [
         "Migrates the State account to include the new is_killed field.",
         "",
@@ -1337,18 +1449,22 @@
         "- `ctx`: Context for `MigrateState`."
       ],
       "discriminator": [
-        34,
-        189,
-        226,
-        222,
-        218,
-        156,
-        19,
-        213
+        245,
+        170,
+        103,
+        124,
+        144,
+        187,
+        21,
+        102
       ],
       "accounts": [
         {
           "name": "state",
+          "writable": true
+        },
+        {
+          "name": "permissionless_authority",
           "writable": true
         },
         {
@@ -1395,7 +1511,21 @@
           "name": "state",
           "docs": [
             "The program state account, containing the boss and onyc_mint"
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -1479,7 +1609,7 @@
           }
         },
         {
-          "name": "mint_authority_pda",
+          "name": "mint_authority",
           "docs": [
             "Program-derived account that serves as the mint authority"
           ],
@@ -1738,7 +1868,21 @@
           "name": "state",
           "docs": [
             "Program state, ensures `boss` is authorized."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "token_program",
@@ -2003,7 +2147,21 @@
           "name": "state",
           "docs": [
             "Program state, ensures `boss` is authorized."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "token_program",
@@ -2117,7 +2275,21 @@
       "accounts": [
         {
           "name": "state",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -2161,7 +2333,21 @@
             "- Must be mutable to allow updating the `boss` field.",
             "- The `has_one = boss` constraint ensures only the current boss can modify it."
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -2274,7 +2460,21 @@
           "docs": [
             "The program state account, containing the current onyc_mint to be updated."
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -2352,13 +2552,30 @@
           "name": "state",
           "docs": [
             "Program state account containing the boss public key"
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
           "docs": [
             "The boss account that receives token_in payments",
             "Must match the boss stored in the program state"
+          ],
+          "relations": [
+            "state"
           ]
         },
         {
@@ -2721,7 +2938,7 @@
           }
         },
         {
-          "name": "mint_authority_pda",
+          "name": "mint_authority",
           "docs": [
             "Mint authority PDA for direct minting (when program has mint authority)"
           ],
@@ -2851,7 +3068,21 @@
           "name": "state",
           "docs": [
             "Program state account containing the boss public key"
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -3485,7 +3716,21 @@
           "name": "state",
           "docs": [
             "Program state containing the current boss public key"
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "mint",
@@ -3574,7 +3819,21 @@
           "name": "state",
           "docs": [
             "Program state containing the current boss public key"
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "mint",
@@ -3686,7 +3945,21 @@
           "name": "state",
           "docs": [
             "Program state, ensures `boss` is authorized."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -3749,16 +4022,16 @@
       ]
     },
     {
-      "name": "PermissionlessAccount",
+      "name": "PermissionlessAuthority",
       "discriminator": [
-        9,
-        107,
-        135,
-        228,
-        163,
-        199,
-        67,
-        169
+        241,
+        34,
+        5,
+        97,
+        43,
+        102,
+        149,
+        52
       ]
     },
     {
@@ -4436,15 +4709,15 @@
             "type": "u16"
           },
           {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
             "name": "needs_approval",
             "type": "u8"
           },
           {
             "name": "allow_permissionless",
-            "type": "u8"
-          },
-          {
-            "name": "bump",
             "type": "u8"
           },
           {
@@ -4705,13 +4978,17 @@
       }
     },
     {
-      "name": "PermissionlessAccount",
+      "name": "PermissionlessAuthority",
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "name",
             "type": "string"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
