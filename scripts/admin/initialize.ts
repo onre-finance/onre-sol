@@ -11,15 +11,11 @@ async function createInitializeTransaction() {
     console.log("Boss (DEV Squad):", BOSS.toBase58());
 
     try {
-        const tx = await helper.program.methods
-            .initialize()
-            .accounts({
-                boss: BOSS,
-            })
-            .transaction();
+        const tx = await helper.buildInitializeTransaction({
+            boss: BOSS
+        });
 
-        const preparedTx = await helper.prepareTransaction(tx);
-        return helper.printTransaction(preparedTx, "Initialize Transaction");
+        return helper.printTransaction(tx, "Initialize Transaction");
     } catch (error) {
         console.error("Error creating transaction:", error);
         throw error;
