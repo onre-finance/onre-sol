@@ -1,8 +1,10 @@
+import { PublicKey } from '@solana/web3.js';
 import { ScriptHelper } from '../utils/script-helper';
 import { getMint } from '@solana/spl-token';
 
-// Configuration
-const OFFER_ID = 1;
+// Token addresses
+const TOKEN_IN_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'); // USDC
+const TOKEN_OUT_MINT = new PublicKey('5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5'); // ONyc
 
 // Helper function to format timestamp to human readable date
 function formatTimestamp(timestamp: number): string {
@@ -14,21 +16,23 @@ async function fetchOffer() {
     const helper = await ScriptHelper.create();
 
     console.log('Fetching offer details...');
-    console.log('Offer ID:', OFFER_ID);
+    console.log('Token In (USDC):', TOKEN_IN_MINT.toBase58());
+    console.log('Token Out (ONe):', TOKEN_OUT_MINT.toBase58());
 
     try {
-        const offer = await helper.getOffer(OFFER_ID);
+        const offer = await helper.getOffer(TOKEN_IN_MINT, TOKEN_OUT_MINT);
         if (!offer) {
-            console.log(`Offer ${OFFER_ID} not found.`);
+            console.log(`Offer for ${TOKEN_IN_MINT.toBase58()} -> ${TOKEN_OUT_MINT.toBase58()} not found.`);
             return;
         }
 
         console.log('\n📋 OFFER DETAILS');
         console.log('================');
-        console.log(`Offer ID: ${offer.offerId.toString()}`);
         console.log(`Token In:  ${offer.tokenInMint.toBase58()}`);
         console.log(`Token Out: ${offer.tokenOutMint.toBase58()}`);
-        console.log(`Fee: ${(offer.feeBasisPoints.toNumber() / 100).toFixed(2)}%`);
+        console.log(`Fee: ${(offer.feeBasisPoints / 100).toFixed(2)}%`);
+        console.log(`Needs Approval: ${offer.needsApproval != 0}`);
+        console.log(`Allow Permissionless: ${offer.allowPermissionless != 0}`);
 
         // Fetch token mint info for better display
         try {
@@ -41,15 +45,16 @@ async function fetchOffer() {
         }
 
         // Show vectors
-        const activeVectors = offer.vectors.filter(v => v.vectorId.toNumber() > 0);
+        const activeVectors = offer.vectors.filter(v => v.startTime.toNumber() > 0);
         console.log(`\nVectors: ${activeVectors.length} configured`);
 
         if (activeVectors.length > 0) {
             console.log('\n🔢 VECTOR DETAILS');
             console.log('=================');
 
-            for (const vector of activeVectors) {
-                console.log(`\nVector #${vector.vectorId.toString()}:`);
+            for (let i = 0; i < activeVectors.length; i++) {
+                const vector = activeVectors[i];
+                console.log(`\nVector #${i}:`);
                 console.log(`  Start Time: ${formatTimestamp(vector.startTime.toNumber())}`);
                 console.log(`  Base Time:  ${formatTimestamp(vector.baseTime.toNumber())}`);
                 console.log(`  Base Price: ${vector.basePrice.toString()}`);
@@ -68,7 +73,7 @@ async function fetchOffer() {
     } catch (error) {
         console.error('Error fetching offer:', error);
         if (error.message?.includes('Account does not exist')) {
-            console.log('Offers account not initialized. Run initialize-offers script first.');
+            console.log('Offer account not found. Create the offer first using make-offer script.');
         }
     }
 }

@@ -23,7 +23,9 @@ async function createMakeOfferTransaction() {
         const tx = await helper.buildMakeOfferTransaction({
             tokenInMint: TOKEN_IN_MINT,
             tokenOutMint: TOKEN_OUT_MINT,
-            feeBasisPoints: 0 // 0% fee
+            feeBasisPoints: 0, // 0% fee
+            needsApproval: false, // No approval required
+            allowPermissionless: false // Standard flow only
         });
 
         return helper.printTransaction(tx, 'Make Offer Transaction');
