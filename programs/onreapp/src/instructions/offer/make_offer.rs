@@ -63,7 +63,7 @@ pub struct MakeOffer<'info> {
     pub offer: AccountLoader<'info, Offer>,
 
     /// Program state, ensures `boss` is authorized.
-    #[account(has_one = boss)]
+    #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss)]
     pub state: Account<'info, State>,
 
     /// The signer funding and authorizing the offer creation.
@@ -108,6 +108,7 @@ pub fn make_offer(
     offer.fee_basis_points = fee_basis_points;
     offer.set_approval(needs_approval);
     offer.set_permissionless(allow_permissionless);
+    offer.bump = ctx.bumps.offer;
 
     msg!("Offer created at: {}", ctx.accounts.offer.key());
 

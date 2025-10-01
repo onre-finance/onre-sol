@@ -6,6 +6,7 @@ use crate::instructions::Offer;
 use crate::OfferCoreError;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 
+use crate::state::OfferVaultAuthority;
 use crate::utils::PRICE_DECIMALS;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
@@ -44,7 +45,7 @@ pub struct GetTVL<'info> {
             token_in_mint.key().as_ref(),
             token_out_mint.key().as_ref()
         ],
-        bump
+        bump = offer.load()?.bump
     )]
     pub offer: AccountLoader<'info, Offer>,
 
@@ -65,8 +66,8 @@ pub struct GetTVL<'info> {
 
     /// The offer vault authority PDA that controls vault token accounts
     /// CHECK: This is safe as it's a PDA
-    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
-    pub vault_authority: UncheckedAccount<'info>,
+    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump = vault_authority.bump)]
+    pub vault_authority: Account<'info, OfferVaultAuthority>,
 
     /// The token_out account to exclude from supply
     /// CHECK: This account is validated by the check below to allow passing uninitialized vault account

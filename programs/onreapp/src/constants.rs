@@ -10,7 +10,7 @@ pub mod seeds {
     pub const OFFER_VAULT_AUTHORITY: &[u8] = b"offer_vault_authority";
 
     /// Seed for the permissionless intermediary authority account
-    pub const PERMISSIONLESS_1: &[u8] = b"permissionless-1";
+    pub const PERMISSIONLESS_AUTHORITY: &[u8] = b"permissionless-1";
 
     /// Seed for mint authority PDA accounts
     pub const MINT_AUTHORITY: &[u8] = b"mint_authority";

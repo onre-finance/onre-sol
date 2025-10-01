@@ -165,7 +165,21 @@ export type Onreapp = {
           "name": "state",
           "docs": [
             "Program state, ensures `boss` is authorized."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -322,7 +336,21 @@ export type Onreapp = {
           "name": "state",
           "docs": [
             "Program state, ensures `boss` is authorized."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "systemProgram",
@@ -398,7 +426,21 @@ export type Onreapp = {
           "name": "state",
           "docs": [
             "Program state, ensures `boss` is authorized."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -517,7 +559,21 @@ export type Onreapp = {
           ]
         },
         {
-          "name": "state"
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "vaultAuthority",
@@ -879,6 +935,90 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "initializeMintAuthority",
+      "discriminator": [
+        174,
+        153,
+        136,
+        197,
+        49,
+        34,
+        167,
+        3
+      ],
+      "accounts": [
+        {
+          "name": "mintAuthority",
+          "docs": [
+            "The offer mint authority account to initialize, rent paid by `boss`."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state, ensures `boss` is authorized."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The signer authorizing the initialization, must be the boss."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "Solana System program for account creation and rent payment."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "initializePermissionlessAccount",
       "docs": [
         "Initializes a permissionless account.",
@@ -899,12 +1039,12 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "permissionlessAccount",
+          "name": "permissionlessAuthority",
           "docs": [
             "The permissionless account to be created.",
             "",
             "# Note",
-            "- Space is allocated as `8 + PermissionlessAccount::INIT_SPACE` bytes",
+            "- Space is allocated as `8 + PermissionlessAuthority::INIT_SPACE` bytes",
             "- Seeded with hardcoded \"permissionless-1\" for PDA derivation"
           ],
           "writable": true,
@@ -938,7 +1078,21 @@ export type Onreapp = {
           "name": "state",
           "docs": [
             "The program state account, used to verify boss authorization."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -980,9 +1134,9 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "buyOfferVaultAuthority",
+          "name": "offerVaultAuthority",
           "docs": [
-            "The buy offer vault authority account to initialize, rent paid by `boss`."
+            "The offer vault authority account to initialize, rent paid by `boss`."
           ],
           "writable": true,
           "pda": {
@@ -1020,7 +1174,21 @@ export type Onreapp = {
           "name": "state",
           "docs": [
             "Program state, ensures `boss` is authorized."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -1213,7 +1381,21 @@ export type Onreapp = {
           "name": "state",
           "docs": [
             "Program state, ensures `boss` is authorized."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -1257,7 +1439,7 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "migrateState",
+      "name": "migrateV3",
       "docs": [
         "Migrates the State account to include the new is_killed field.",
         "",
@@ -1273,18 +1455,22 @@ export type Onreapp = {
         "- `ctx`: Context for `MigrateState`."
       ],
       "discriminator": [
-        34,
-        189,
-        226,
-        222,
-        218,
-        156,
-        19,
-        213
+        245,
+        170,
+        103,
+        124,
+        144,
+        187,
+        21,
+        102
       ],
       "accounts": [
         {
           "name": "state",
+          "writable": true
+        },
+        {
+          "name": "permissionlessAuthority",
           "writable": true
         },
         {
@@ -1331,7 +1517,21 @@ export type Onreapp = {
           "name": "state",
           "docs": [
             "The program state account, containing the boss and onyc_mint"
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -1415,7 +1615,7 @@ export type Onreapp = {
           }
         },
         {
-          "name": "mintAuthorityPda",
+          "name": "mintAuthority",
           "docs": [
             "Program-derived account that serves as the mint authority"
           ],
@@ -1674,7 +1874,21 @@ export type Onreapp = {
           "name": "state",
           "docs": [
             "Program state, ensures `boss` is authorized."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "tokenProgram",
@@ -1939,7 +2153,21 @@ export type Onreapp = {
           "name": "state",
           "docs": [
             "Program state, ensures `boss` is authorized."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "tokenProgram",
@@ -2053,7 +2281,21 @@ export type Onreapp = {
       "accounts": [
         {
           "name": "state",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -2097,7 +2339,21 @@ export type Onreapp = {
             "- Must be mutable to allow updating the `boss` field.",
             "- The `has_one = boss` constraint ensures only the current boss can modify it."
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -2210,7 +2466,21 @@ export type Onreapp = {
           "docs": [
             "The program state account, containing the current onyc_mint to be updated."
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -2288,13 +2558,30 @@ export type Onreapp = {
           "name": "state",
           "docs": [
             "Program state account containing the boss public key"
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
           "docs": [
             "The boss account that receives token_in payments",
             "Must match the boss stored in the program state"
+          ],
+          "relations": [
+            "state"
           ]
         },
         {
@@ -2657,7 +2944,7 @@ export type Onreapp = {
           }
         },
         {
-          "name": "mintAuthorityPda",
+          "name": "mintAuthority",
           "docs": [
             "Mint authority PDA for direct minting (when program has mint authority)"
           ],
@@ -2787,7 +3074,21 @@ export type Onreapp = {
           "name": "state",
           "docs": [
             "Program state account containing the boss public key"
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -3421,7 +3722,21 @@ export type Onreapp = {
           "name": "state",
           "docs": [
             "Program state containing the current boss public key"
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "mint",
@@ -3432,10 +3747,10 @@ export type Onreapp = {
           "writable": true
         },
         {
-          "name": "mintAuthorityPda",
+          "name": "mintAuthority",
           "docs": [
             "Program-derived account that currently holds mint authority",
-            "Must be derived from [MINT_AUTHORITY, mint_pubkey] and currently be the mint authority"
+            "Must be derived from [MINT_AUTHORITY] and currently be the mint authority"
           ],
           "pda": {
             "seeds": [
@@ -3510,7 +3825,21 @@ export type Onreapp = {
           "name": "state",
           "docs": [
             "Program state containing the current boss public key"
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "mint",
@@ -3521,10 +3850,10 @@ export type Onreapp = {
           "writable": true
         },
         {
-          "name": "mintAuthorityPda",
+          "name": "mintAuthority",
           "docs": [
             "Program-derived account that will become the new mint authority",
-            "Derived from [MINT_AUTHORITY, mint_pubkey] to ensure uniqueness per token"
+            "Derived from [MINT_AUTHORITY] to ensure uniqueness per token"
           ],
           "pda": {
             "seeds": [
@@ -3622,7 +3951,21 @@ export type Onreapp = {
           "name": "state",
           "docs": [
             "Program state, ensures `boss` is authorized."
-          ]
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "boss",
@@ -3645,6 +3988,19 @@ export type Onreapp = {
     }
   ],
   "accounts": [
+    {
+      "name": "mintAuthority",
+      "discriminator": [
+        148,
+        0,
+        219,
+        228,
+        254,
+        237,
+        76,
+        128
+      ]
+    },
     {
       "name": "offer",
       "discriminator": [
@@ -3672,16 +4028,16 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "permissionlessAccount",
+      "name": "permissionlessAuthority",
       "discriminator": [
-        9,
-        107,
-        135,
-        228,
-        163,
-        199,
-        67,
-        169
+        241,
+        34,
+        5,
+        97,
+        43,
+        102,
+        149,
+        52
       ]
     },
     {
@@ -3950,53 +4306,8 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "expired",
-      "msg": "The approval message has expired."
-    },
-    {
-      "code": 6001,
-      "name": "wrongProgram",
-      "msg": "The approval message is for the wrong program."
-    },
-    {
-      "code": 6002,
-      "name": "wrongUser",
-      "msg": "The approval message is for the wrong user."
-    },
-    {
-      "code": 6003,
-      "name": "missingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
-    },
-    {
-      "code": 6004,
-      "name": "wrongIxProgram",
-      "msg": "The instruction is for the wrong program."
-    },
-    {
-      "code": 6005,
-      "name": "malformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
-    },
-    {
-      "code": 6006,
-      "name": "multipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
-    },
-    {
-      "code": 6007,
-      "name": "wrongAuthority",
-      "msg": "The authority public key does not match."
-    },
-    {
-      "code": 6008,
-      "name": "msgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
-    },
-    {
-      "code": 6009,
-      "name": "msgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "name": "mathOverflow",
+      "msg": "Math overflow"
     }
   ],
   "types": [
@@ -4266,6 +4577,18 @@ export type Onreapp = {
       }
     },
     {
+      "name": "mintAuthority",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "mintAuthorityTransferredToBossEvent",
       "docs": [
         "Event emitted when mint authority is successfully transferred from program PDA back to boss"
@@ -4392,6 +4715,10 @@ export type Onreapp = {
             "type": "u16"
           },
           {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
             "name": "needsApproval",
             "type": "u8"
           },
@@ -4404,7 +4731,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                132
+                131
               ]
             }
           }
@@ -4473,7 +4800,12 @@ export type Onreapp = {
       "name": "offerVaultAuthority",
       "type": {
         "kind": "struct",
-        "fields": []
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
       }
     },
     {
@@ -4652,13 +4984,17 @@ export type Onreapp = {
       }
     },
     {
-      "name": "permissionlessAccount",
+      "name": "permissionlessAuthority",
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "name",
             "type": "string"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
@@ -4702,6 +5038,10 @@ export type Onreapp = {
           {
             "name": "approver",
             "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           },
           {
             "name": "reserved",

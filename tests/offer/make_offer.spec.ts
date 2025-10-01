@@ -164,7 +164,7 @@ describe("Make offer", () => {
 
         // then
         const offer = await program.getOffer(tokenIn, tokenOut);
-        expect(offer.allowPermissionless).toBe(true);
+        expect(offer.allowPermissionless).toBe(1);
     });
 
     test("Should create offer with permissionless explicitly disabled", async () => {
@@ -181,6 +181,6 @@ describe("Make offer", () => {
 
         // then
         const offer = await program.getOffer(tokenIn, tokenOut);
-        expect(offer.allowPermissionless).toBe(false);
+        expect(offer.allowPermissionless).toBe(0);
     });
 });

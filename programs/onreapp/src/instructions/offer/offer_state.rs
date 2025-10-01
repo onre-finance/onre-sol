@@ -12,12 +12,13 @@ pub struct Offer {
     pub token_out_mint: Pubkey,
     pub vectors: [OfferVector; MAX_VECTORS],
     pub fee_basis_points: u16,
+    pub bump: u8,
     needs_approval: u8,
     allow_permissionless: u8,
-    reserved: [u8; 132],
+    reserved: [u8; 131],
 }
 
-impl Offer{
+impl Offer {
     pub fn needs_approval(&self) -> bool {
         self.needs_approval != 0
     }

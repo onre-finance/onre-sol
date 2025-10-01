@@ -1,5 +1,5 @@
 use crate::constants::seeds;
-use crate::state::State;
+use crate::state::{MintAuthority, State};
 use anchor_lang::prelude::*;
 use anchor_spl::token::spl_token::instruction::AuthorityType;
 use anchor_spl::token::{set_authority, SetAuthority};
@@ -57,25 +57,25 @@ pub struct TransferMintAuthorityToBoss<'info> {
     pub boss: Signer<'info>,
 
     /// Program state containing the current boss public key
-    #[account(has_one = boss)]
+    #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss)]
     pub state: Account<'info, State>,
 
     /// The token mint whose authority will be transferred back to boss
     /// Must currently have the program PDA as its mint authority
     #[account(
         mut,
-        constraint = mint.mint_authority.unwrap() == mint_authority_pda.key() @ TransferMintAuthorityToBossErrorCode::ProgramNotMintAuthority
+        constraint = mint.mint_authority.unwrap() == mint_authority.key() @ TransferMintAuthorityToBossErrorCode::ProgramNotMintAuthority
     )]
     pub mint: InterfaceAccount<'info, Mint>,
 
     /// Program-derived account that currently holds mint authority
-    /// Must be derived from [MINT_AUTHORITY, mint_pubkey] and currently be the mint authority
+    /// Must be derived from [MINT_AUTHORITY] and currently be the mint authority
     /// CHECK: PDA derivation is validated by seeds constraint, authority is validated by mint constraint
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
-        bump
+        bump = mint_authority.bump
     )]
-    pub mint_authority_pda: UncheckedAccount<'info>,
+    pub mint_authority: Account<'info, MintAuthority>,
 
     /// SPL Token program for mint authority operations
     pub token_program: Interface<'info, TokenInterface>,
@@ -104,7 +104,7 @@ pub struct TransferMintAuthorityToBoss<'info> {
 /// Emits `MintAuthorityTransferredToBossEvent` on success
 pub fn transfer_mint_authority_to_boss(ctx: Context<TransferMintAuthorityToBoss>) -> Result<()> {
     // Construct PDA signer seeds for authorization
-    let seeds = &[seeds::MINT_AUTHORITY, &[ctx.bumps.mint_authority_pda]];
+    let seeds = &[seeds::MINT_AUTHORITY, &[ctx.accounts.mint_authority.bump]];
     let signer_seeds = &[seeds.as_slice()];
 
     // Transfer mint authority from program PDA back to boss using program signature
@@ -112,7 +112,7 @@ pub fn transfer_mint_authority_to_boss(ctx: Context<TransferMintAuthorityToBoss>
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             SetAuthority {
-                current_authority: ctx.accounts.mint_authority_pda.to_account_info(),
+                current_authority: ctx.accounts.mint_authority.to_account_info(),
                 account_or_mint: ctx.accounts.mint.to_account_info(),
             },
             signer_seeds,
@@ -124,7 +124,7 @@ pub fn transfer_mint_authority_to_boss(ctx: Context<TransferMintAuthorityToBoss>
     // Emit event for transparency and off-chain tracking
     emit!(MintAuthorityTransferredToBossEvent {
         mint: ctx.accounts.mint.key(),
-        old_authority: ctx.accounts.mint_authority_pda.key(),
+        old_authority: ctx.accounts.mint_authority.key(),
         new_authority: ctx.accounts.boss.key(),
     });
 

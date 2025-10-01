@@ -1,4 +1,5 @@
 use crate::account;
+use crate::constants::seeds;
 use crate::state::State;
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
@@ -15,7 +16,12 @@ pub struct ONycMintUpdated {
 #[derive(Accounts)]
 pub struct SetOnycMint<'info> {
     /// The program state account, containing the current onyc_mint to be updated.
-    #[account(mut, has_one = boss)]
+    #[account(
+        mut,
+        seeds = [seeds::STATE],
+        bump = state.bump,
+        has_one = boss
+    )]
     pub state: Account<'info, State>,
 
     /// The boss who is authorized to perform the operation

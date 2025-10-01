@@ -29,7 +29,7 @@ pub struct UpdateOfferFee<'info> {
             token_in_mint.key().as_ref(),
             token_out_mint.key().as_ref()
         ],
-        bump
+        bump = offer.load()?.bump
     )]
     pub offer: AccountLoader<'info, Offer>,
 
@@ -48,7 +48,10 @@ pub struct UpdateOfferFee<'info> {
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 
     /// Program state, ensures `boss` is authorized.
-    #[account(has_one = boss)]
+    #[account(
+        seeds = [seeds::STATE],
+        bump = state.bump,
+        has_one = boss)]
     pub state: Account<'info, State>,
 
     /// The signer authorizing the fee update (must be boss).

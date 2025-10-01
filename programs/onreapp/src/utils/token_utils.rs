@@ -201,7 +201,7 @@ pub struct ExecTokenOpsParams<'a, 'info> {
     // Token out params
     pub token_out_mint: &'a InterfaceAccount<'info, Mint>,
     pub token_out_amount: u64,
-    pub token_out_authority: &'a UncheckedAccount<'info>,
+    pub token_out_authority: &'a AccountInfo<'info>,
     pub token_out_source_account: &'a InterfaceAccount<'info, TokenAccount>,
     pub token_out_destination_account: &'a InterfaceAccount<'info, TokenAccount>,
     pub mint_authority_pda: &'a AccountInfo<'info>,

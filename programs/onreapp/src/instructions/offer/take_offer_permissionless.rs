@@ -1,8 +1,10 @@
 use crate::constants::seeds;
 use crate::instructions::offer::offer_utils::{process_offer_core, verify_offer_approval};
 use crate::instructions::Offer;
-use crate::state::State;
-use crate::utils::{execute_token_operations, transfer_tokens, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams};
+use crate::state::{OfferVaultAuthority, PermissionlessAuthority, State};
+use crate::utils::{
+    execute_token_operations, transfer_tokens, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams,
+};
 use crate::OfferCoreError;
 use anchor_lang::{prelude::*, solana_program::sysvar, Accounts};
 use anchor_spl::associated_token::AssociatedToken;
@@ -48,13 +50,15 @@ pub struct TakeOfferPermissionless<'info> {
             token_in_mint.key().as_ref(),
             token_out_mint.key().as_ref()
         ],
-        bump
+        bump = offer.load()?.bump
     )]
     pub offer: AccountLoader<'info, Offer>,
 
     /// Program state account containing the boss public key
     #[account(
-        has_one = boss,
+        seeds = [seeds::STATE],
+        bump = state.bump,
+        has_one = boss @ TakeOfferPermissionlessErrorCode::InvalidBoss,
         constraint = state.is_killed == false @ TakeOfferPermissionlessErrorCode::KillSwitchActivated
     )]
     pub state: Box<Account<'info, State>>,
@@ -65,9 +69,12 @@ pub struct TakeOfferPermissionless<'info> {
     pub boss: UncheckedAccount<'info>,
 
     /// The offer vault authority PDA that controls vault token accounts
-    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
+    #[account(
+        seeds = [seeds::OFFER_VAULT_AUTHORITY],
+        bump = vault_authority.bump
+    )]
     /// CHECK: This is safe as it's a PDA used for signing
-    pub vault_authority: UncheckedAccount<'info>,
+    pub vault_authority: Account<'info, OfferVaultAuthority>,
 
     /// Vault's token_in account, used for burning tokens when program has mint authority
     #[account(
@@ -88,9 +95,12 @@ pub struct TakeOfferPermissionless<'info> {
     pub vault_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The permissionless authority PDA that controls intermediary token accounts
-    #[account(seeds = [seeds::PERMISSIONLESS_1], bump)]
+    #[account(
+        seeds = [seeds::PERMISSIONLESS_AUTHORITY], 
+        bump = permissionless_authority.bump
+    )]
     /// CHECK: This is safe as it's a PDA used for signing
-    pub permissionless_authority: UncheckedAccount<'info>,
+    pub permissionless_authority: Account<'info, PermissionlessAuthority>,
 
     /// Permissionless intermediary token_in account (temporary holding for token_in)
     #[account(
@@ -224,7 +234,10 @@ pub fn take_offer_permissionless(
     let offer = ctx.accounts.offer.load()?;
 
     // Validate if offer allows permissionless access
-    require!(offer.allow_permissionless(), TakeOfferPermissionlessErrorCode::PermissionlessNotAllowed);
+    require!(
+        offer.allow_permissionless(),
+        TakeOfferPermissionlessErrorCode::PermissionlessNotAllowed
+    );
 
     // Verify approval if needed
     verify_offer_approval(
@@ -262,24 +275,24 @@ pub fn take_offer_permissionless(
         token_in_program: &ctx.accounts.token_in_program,
         token_in_mint: &ctx.accounts.token_in_mint,
         token_in_amount, // Including fee
-        token_in_authority: &ctx.accounts.permissionless_authority,
+        token_in_authority: &ctx.accounts.permissionless_authority.to_account_info(),
         token_in_source_signer_seeds: Some(&[&[
-            seeds::PERMISSIONLESS_1,
-            &[ctx.bumps.permissionless_authority],
+            seeds::PERMISSIONLESS_AUTHORITY,
+            &[ctx.accounts.permissionless_authority.bump],
         ]]),
         vault_authority_signer_seeds: Some(&[&[
             seeds::OFFER_VAULT_AUTHORITY,
-            &[ctx.bumps.vault_authority],
+            &[ctx.accounts.vault_authority.bump],
         ]]),
         token_in_source_account: &ctx.accounts.permissionless_token_in_account,
         token_in_destination_account: &ctx.accounts.boss_token_in_account,
         token_in_burn_account: &ctx.accounts.vault_token_in_account,
-        token_in_burn_authority: &ctx.accounts.vault_authority,
+        token_in_burn_authority: &ctx.accounts.vault_authority.to_account_info(),
         // Token out params
         token_out_program: &ctx.accounts.token_out_program,
         token_out_mint: &ctx.accounts.token_out_mint,
         token_out_amount: result.token_out_amount,
-        token_out_authority: &ctx.accounts.vault_authority,
+        token_out_authority: &ctx.accounts.vault_authority.to_account_info(),
         token_out_source_account: &ctx.accounts.vault_token_out_account,
         token_out_destination_account: &ctx.accounts.permissionless_token_out_account,
         mint_authority_pda: &ctx.accounts.mint_authority_pda,
@@ -291,10 +304,10 @@ pub fn take_offer_permissionless(
         &ctx.accounts.token_out_program,
         &ctx.accounts.permissionless_token_out_account,
         &ctx.accounts.user_token_out_account,
-        &ctx.accounts.permissionless_authority,
+        &ctx.accounts.permissionless_authority.to_account_info(),
         Some(&[&[
-            seeds::PERMISSIONLESS_1,
-            &[ctx.bumps.permissionless_authority],
+            seeds::PERMISSIONLESS_AUTHORITY,
+            &[ctx.accounts.permissionless_authority.bump],
         ]]),
         result.token_out_amount,
     )?;

@@ -27,7 +27,7 @@ pub struct DeleteOfferVector<'info> {
             token_in_mint.key().as_ref(),
             token_out_mint.key().as_ref()
         ],
-        bump
+        bump = offer.load()?.bump
     )]
     pub offer: AccountLoader<'info, Offer>,
 
@@ -46,7 +46,7 @@ pub struct DeleteOfferVector<'info> {
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 
     /// Program state, ensures `boss` is authorized.
-    #[account(has_one = boss)]
+    #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss)]
     pub state: Account<'info, State>,
 
     /// The signer authorizing the time vector deletion (must be boss).
@@ -69,7 +69,10 @@ pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_start_time: u
     let offer = &mut ctx.accounts.offer.load_mut()?;
 
     // Validate inputs
-    require!(vector_start_time != 0, DeleteOfferVectorErrorCode::VectorNotFound);
+    require!(
+        vector_start_time != 0,
+        DeleteOfferVectorErrorCode::VectorNotFound
+    );
 
     // Find and delete the vector by vector_start_time
     let vector_index = find_vector_index_by_start_time(&offer, vector_start_time)

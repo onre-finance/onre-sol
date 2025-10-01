@@ -23,6 +23,8 @@ describe("Get Circulating Supply", () => {
 
             // Initialize program and offers
             await program.initialize({ onycMint: tokenOutMint });
+            await program.initializeVaultAuthority();
+            await program.initializeMintAuthority();
         });
 
         describe("Basic Functionality Tests", () => {
@@ -60,12 +62,8 @@ describe("Get Circulating Supply", () => {
             it("Should handle circulating supply calculation with vault logic", async () => {
                 const currentTime = await testHelper.getCurrentClockTime();
 
-                await program.initializeVaultAuthority();
-
                 // Create an offer
                 await program.makeOffer({ tokenInMint, tokenOutMint });
-
-                const offerId = 1;
 
                 // Add vector (not required for circulating supply but good practice)
                 await program.addOfferVector({
@@ -139,6 +137,7 @@ describe("Get Circulating Supply", () => {
 
             // Initialize program and offers
             await program.initialize({ onycMint: tokenOutMint });
+            await program.initializeVaultAuthority();
 
             // Create an offer
             await program.makeOffer({

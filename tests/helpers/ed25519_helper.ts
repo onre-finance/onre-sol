@@ -1,4 +1,4 @@
-import { PublicKey, TransactionInstruction, Keypair, Transaction, ComputeBudgetProgram } from "@solana/web3.js";
+import { ComputeBudgetProgram, Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { OnreProgram } from "../onre_program";
 import BN from "bn.js";
 import { sign } from "tweetnacl";
@@ -17,7 +17,7 @@ export class Ed25519Helper {
         return Buffer.concat([
             message.programId.toBuffer(),
             message.userPubkey.toBuffer(),
-            Buffer.from(message.expiryUnix.toArray('le', 8))
+            Buffer.from(message.expiryUnix.toArray("le", 8))
         ]);
     }
 
@@ -133,13 +133,11 @@ export class Ed25519Helper {
         const tx = params.program.program.methods
             .takeOffer(new BN(params.tokenInAmount), approvalMessage)
             .accounts({
-                state: params.program.statePda,
-                boss: params.boss,
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
                 user: params.user,
                 tokenInProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-                tokenOutProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+                tokenOutProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
             })
             .preInstructions([
                 ComputeBudgetProgram.setComputeUnitLimit({ units: 300_000 }),

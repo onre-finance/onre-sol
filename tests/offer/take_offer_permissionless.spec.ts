@@ -35,6 +35,7 @@ describe("Take Offer Permissionless", () => {
 
         // Initialize program and offers
         await program.initialize({ onycMint: tokenOutMint });
+        await program.initializeMintAuthority();
 
         // Create an offer with permissionless enabled
         await program.makeOffer({
@@ -61,8 +62,8 @@ describe("Take Offer Permissionless", () => {
         vaultTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, program.pdas.offerVaultAuthorityPda, BigInt(0), true);
         vaultTokenInAccount = testHelper.createTokenAccount(tokenInMint, program.pdas.offerVaultAuthorityPda, BigInt(0), true);
 
-        permissionlessTokenInAccount = testHelper.createTokenAccount(tokenInMint, program.pdas.permissionlessVaultAuthorityPda, BigInt(0), true);
-        permissionlessTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, program.pdas.permissionlessVaultAuthorityPda, BigInt(0), true);
+        permissionlessTokenInAccount = testHelper.createTokenAccount(tokenInMint, program.pdas.permissionlessAuthorityPda, BigInt(0), true);
+        permissionlessTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, program.pdas.permissionlessAuthorityPda, BigInt(0), true);
 
         // Fund vault
         testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(10_000e9));
@@ -897,8 +898,8 @@ describe("Take Offer Permissionless", () => {
             });
 
             // Create permissionless token accounts for the restricted offer
-            testHelper.createTokenAccount(restrictedTokenIn, program.pdas.permissionlessVaultAuthorityPda, BigInt(0), true);
-            testHelper.createTokenAccount(restrictedTokenOut, program.pdas.permissionlessVaultAuthorityPda, BigInt(0), true);
+            testHelper.createTokenAccount(restrictedTokenIn, program.pdas.permissionlessAuthorityPda, BigInt(0), true);
+            testHelper.createTokenAccount(restrictedTokenOut, program.pdas.permissionlessAuthorityPda, BigInt(0), true);
 
             // Create user and boss token accounts for the restricted token
             testHelper.createTokenAccount(restrictedTokenIn, user.publicKey, BigInt(10_000e6), true);

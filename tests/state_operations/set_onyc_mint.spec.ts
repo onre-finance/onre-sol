@@ -110,18 +110,18 @@ describe("Set ONyc Mint", () => {
 
     test("State account size remains consistent after ONyc mint update", async () => {
         // given - get initial account size
-        const stateAccountInfo = await testHelper.getAccountInfo(program.statePda);
+        const stateAccountInfo = await testHelper.getAccountInfo(program.pdas.statePda);
         const initialSize = stateAccountInfo.data.length;
 
         // when - update ONyc mint
         await program.setOnycMint({ onycMint: newOnycMint });
 
         // then - account size should remain the same
-        const updatedAccountInfo = await testHelper.getAccountInfo(program.statePda);
+        const updatedAccountInfo = await testHelper.getAccountInfo(program.pdas.statePda);
         const finalSize = updatedAccountInfo.data.length;
 
         expect(finalSize).toBe(initialSize);
-        // Verify expected size: 8 bytes discriminator + 32 bytes boss + 1 byte is_killed + 32 bytes onyc_mint + (20 * 32) bytes admins + 32 bytes trusted + 128 reserved
-        expect(finalSize).toBe(873);
+        // Verify expected size: 8 bytes discriminator + 32 bytes boss + 1 byte is_killed + 32 bytes onyc_mint + (20 * 32) bytes admins + 32 bytes trusted + 128 reserved + 1 byte bump
+        expect(finalSize).toBe(874);
     });
 });
