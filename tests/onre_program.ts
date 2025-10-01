@@ -505,6 +505,10 @@ export class OnreProgram {
         return await this.program.account.state.fetch(this.pdas.statePda);
     }
 
+    async getPermissionlessAuthority() {
+        return await this.program.account.permissionlessAuthority.fetch(this.pdas.permissionlessAuthorityPda);
+    }
+
     async setApprover(params: { trusted: PublicKey, signer?: Keypair }) {
         const tx = this.program.methods.setApprover(params.trusted);
 
