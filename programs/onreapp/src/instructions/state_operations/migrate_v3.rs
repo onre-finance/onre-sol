@@ -1,6 +1,7 @@
 use crate::constants::seeds;
 use crate::state::{PermissionlessAuthority, State};
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::hash::hash;
 use anchor_lang::solana_program::system_instruction;
 use anchor_lang::Discriminator;
 
@@ -13,7 +14,7 @@ const OLD_STATE_SPACE: usize = 8 + 32;
 const NEW_STATE_SPACE: usize = 8 + <State as Space>::INIT_SPACE;
 
 // Old size of PermissionlessAuthority (accounting for the 8-byte discriminator)
-const OLD_PERMISSIONLESS_SPACE: usize = 8;
+const OLD_PERMISSIONLESS_SPACE: usize = 8 + 4 + 50;
 
 // New size (with InitSpace the const excludes the 8-byte discriminator).
 const NEW_PERMISSIONLESS_SPACE: usize = 8 + <PermissionlessAuthority as Space>::INIT_SPACE;
@@ -102,23 +103,37 @@ fn migrate_state(ctx: &Context<MigrateV3>) -> Result<()> {
     state.bump = bump;
     state.try_serialize(&mut &mut data[..])?;
 
-    msg!("State migrated: boss preserved, is_killed = false, onyc_mint = Pubkey::default(), admins = empty");
+    msg!("State migrated");
     Ok(())
 }
 
 fn migrate_permissionless(ctx: &Context<MigrateV3>) -> Result<()> {
-    {
+    // Validations
+    let bump = {
         let data = ctx.accounts.permissionless_authority.try_borrow_data()?;
 
         require!(
             data.len() == OLD_PERMISSIONLESS_SPACE || data.len() == NEW_PERMISSIONLESS_SPACE,
             MigrationError::InvalidPermissionlessData
         );
+        let old_discriminator = &hash(b"account:PermissionlessAccount").to_bytes()[0..8];
         require!(
-            data.starts_with(&PermissionlessAuthority::DISCRIMINATOR),
+            data.starts_with(&PermissionlessAuthority::DISCRIMINATOR)
+                || data.starts_with(old_discriminator),
             MigrationError::InvalidPermissionlessData
         );
-    } // data borrow is dropped here
+
+        let (pda, bump) =
+            Pubkey::find_program_address(&[seeds::PERMISSIONLESS_AUTHORITY], ctx.program_id);
+
+        require_keys_eq!(
+            pda,
+            ctx.accounts.permissionless_authority.key(),
+            MigrationError::InvalidPermissionlessData
+        );
+
+        bump
+    }; // data borrow is dropped here
 
     top_up_lamports(
         ctx.accounts.permissionless_authority.to_account_info(),
@@ -126,14 +141,6 @@ fn migrate_permissionless(ctx: &Context<MigrateV3>) -> Result<()> {
         NEW_PERMISSIONLESS_SPACE,
         ctx.accounts.system_program.to_account_info(),
     )?;
-
-    let (pda, bump) =
-        Pubkey::find_program_address(&[seeds::PERMISSIONLESS_AUTHORITY], ctx.program_id);
-    require_keys_eq!(
-        pda,
-        ctx.accounts.permissionless_authority.key(),
-        MigrationError::InvalidPermissionlessData
-    );
 
     // Realloc
     ctx.accounts
@@ -153,7 +160,7 @@ fn migrate_permissionless(ctx: &Context<MigrateV3>) -> Result<()> {
     permissionless.bump = bump;
     permissionless.try_serialize(&mut &mut data[..])?;
 
-    msg!("Permissionless migrated: bump preserved, name = empty");
+    msg!("Permissionless migrated");
     Ok(())
 }
 
