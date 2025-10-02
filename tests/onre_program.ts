@@ -475,7 +475,7 @@ export class OnreProgram {
             .getCirculatingSupply()
             .accounts({
                 tokenProgram: tokenOutProgram,
-                vaultTokenOutAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, tokenOutProgram)
+                onycVaultAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, tokenOutProgram)
             })
             .signers([this.program.provider.wallet.payer]);
 
