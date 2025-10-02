@@ -5,63 +5,60 @@ use anchor_spl::token::spl_token::instruction::AuthorityType;
 use anchor_spl::token::{set_authority, SetAuthority};
 use anchor_spl::token_interface::{Mint, TokenInterface};
 
-/// This module handles transferring mint authority from a program-derived PDA back to the boss account.
+/// Handles transferring mint authority from program PDA back to the boss account
 ///
-/// This instruction serves as an emergency recovery mechanism and allows the boss to regain control
-/// of mint authority if needed. Common use cases include:
-/// - Emergency recovery in case of program issues
-/// - Temporary need to mint tokens outside the program
-/// - Program maintenance or upgrades requiring manual token operations
-/// - Returning to the original pre-program mint authority setup
+/// This instruction serves as an emergency recovery mechanism allowing the boss to regain
+/// direct control of mint authority. Common use cases include emergency recovery, temporary
+/// manual token operations, program maintenance, or returning to pre-program authority setup.
 ///
-/// # Security Considerations
-/// - Only the current boss can initiate the transfer back
-/// - The program PDA must be the current mint authority
-/// - Uses program-derived signatures to authorize the transfer
-/// - Each token has its own independent mint authority PDA
+/// # Security
+/// - Only the current boss can initiate the transfer
+/// - Program PDA must currently hold mint authority
+/// - Uses program-derived signatures for authorization
 
-/// Error codes specific to transferring mint authority back to boss
+/// Error codes for mint authority transfer to boss operations
 #[error_code]
 pub enum TransferMintAuthorityToBossErrorCode {
-    /// Error when the program PDA does not currently hold mint authority
+    /// The program PDA is not the current mint authority for the specified token
     #[msg("Program PDA must be the current mint authority")]
     ProgramNotMintAuthority,
 }
 
-/// Event emitted when mint authority is successfully transferred from program PDA back to boss
+/// Event emitted when mint authority is successfully transferred from program PDA to boss
+///
+/// Provides transparency for tracking mint authority changes and emergency recovery operations.
 #[event]
 pub struct MintAuthorityTransferredToBossEvent {
     /// The mint whose authority was transferred
     pub mint: Pubkey,
     /// The previous authority (program PDA)
     pub old_authority: Pubkey,
-    /// The new authority (boss)
+    /// The new authority (boss account)
     pub new_authority: Pubkey,
 }
 
-/// Account structure for transferring mint authority from program PDA back to boss
+/// Account structure for transferring mint authority from program PDA to boss
 ///
-/// This instruction allows the boss to recover mint authority from the program PDA.
-/// It's designed as an emergency recovery mechanism and for situations where manual
-/// control of minting is temporarily required.
-///
-/// # Account Requirements
-/// - `boss` must be the current boss as defined in program state
-/// - `mint` must currently have the program PDA as its mint authority
-/// - `mint_authority_pda` must be the derived PDA that currently holds authority
+/// This struct defines the accounts required for the boss to recover mint authority
+/// from the program PDA. Serves as an emergency recovery mechanism for regaining
+/// direct control over token minting operations.
 #[derive(Accounts)]
 pub struct TransferMintAuthorityToBoss<'info> {
-    /// The current boss account, must sign the transaction
-    /// Must match the boss stored in the program state
+    /// The boss account authorized to recover mint authority
+    ///
+    /// Must be the current boss stored in program state and sign the transaction
+    /// to authorize the mint authority transfer.
     #[account(mut)]
     pub boss: Signer<'info>,
 
-    /// Program state containing the current boss public key
+    /// Program state account containing boss validation
     #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss)]
     pub state: Account<'info, State>,
 
-    /// The token mint whose authority will be transferred back to boss
-    /// Must currently have the program PDA as its mint authority
+    /// The token mint whose authority will be transferred to the boss
+    ///
+    /// Must currently have the program PDA as its mint authority. The mint
+    /// will be updated to have the boss as the new mint authority.
     #[account(
         mut,
         constraint = mint.mint_authority.unwrap() == mint_authority.key() @ TransferMintAuthorityToBossErrorCode::ProgramNotMintAuthority
@@ -69,7 +66,9 @@ pub struct TransferMintAuthorityToBoss<'info> {
     pub mint: InterfaceAccount<'info, Mint>,
 
     /// Program-derived account that currently holds mint authority
-    /// Must be derived from [MINT_AUTHORITY] and currently be the mint authority
+    ///
+    /// This PDA must be the current mint authority for the token. The program
+    /// uses this PDA's signature to authorize transferring authority to the boss.
     /// CHECK: PDA derivation is validated by seeds constraint, authority is validated by mint constraint
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
@@ -81,27 +80,30 @@ pub struct TransferMintAuthorityToBoss<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-/// Transfers mint authority from a program-derived PDA back to the boss account
+/// Transfers mint authority from program PDA back to the boss account
 ///
-/// This instruction serves as an emergency recovery mechanism and allows the boss to
-/// regain control of mint authority. The transfer is authorized using the program's
-/// PDA signature, proving that the program is willingly relinquishing control.
+/// This instruction serves as an emergency recovery mechanism allowing the boss to
+/// regain direct control of mint authority. The transfer uses the program's PDA
+/// signature to prove the program is willingly relinquishing control.
 ///
-/// # Process
-/// 1. Validates that the program PDA currently holds mint authority
-/// 2. Constructs PDA signer seeds for authorization
-/// 3. Uses SPL Token's `set_authority` with PDA signature to transfer to boss
-/// 4. Emits an event for transparency and off-chain tracking
+/// After this operation, the boss will have direct mint authority and can mint tokens
+/// outside the program's controlled minting mechanisms.
 ///
 /// # Arguments
-/// * `ctx` - The instruction context containing all required accounts
+/// * `ctx` - The instruction context containing validated accounts
 ///
 /// # Returns
-/// * `Ok(())` if the transfer succeeds
-/// * `Err` if validation fails or the SPL Token instruction fails
+/// * `Ok(())` - If authority transfer completes successfully
+/// * `Err(TransferMintAuthorityToBossErrorCode::ProgramNotMintAuthority)` - If program PDA doesn't hold authority
+/// * `Err(_)` - If SPL Token authority transfer fails
+///
+/// # Access Control
+/// - Only the boss can call this instruction
+/// - Program PDA must currently hold mint authority
+/// - Boss account must match the one stored in program state
 ///
 /// # Events
-/// Emits `MintAuthorityTransferredToBossEvent` on success
+/// * `MintAuthorityTransferredToBossEvent` - Emitted on successful authority transfer
 pub fn transfer_mint_authority_to_boss(ctx: Context<TransferMintAuthorityToBoss>) -> Result<()> {
     // Construct PDA signer seeds for authorization
     let seeds = &[seeds::MINT_AUTHORITY, &[ctx.accounts.mint_authority.bump]];

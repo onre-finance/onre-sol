@@ -7,45 +7,58 @@ use anchor_spl::token_interface::Mint;
 const SECONDS_IN_YEAR: u128 = 31_536_000;
 const APR_SCALE: u128 = 1_000_000;
 
-/// Common error codes that can be used by both take_offer instructions
+/// Common error codes for offer processing operations
 #[error_code]
 pub enum OfferCoreError {
+    /// The specified offer was not found or is invalid
     #[msg("Offer not found")]
     OfferNotFound,
+    /// No pricing vector is currently active for the given time
     #[msg("No active vector")]
     NoActiveVector,
+    /// Arithmetic overflow occurred during calculations
     #[msg("Overflow error")]
     OverflowError,
+    /// The provided token_in mint does not match the offer's expected mint
     #[msg("Invalid token in mint")]
     InvalidTokenInMint,
+    /// The provided token_out mint does not match the offer's expected mint
     #[msg("Invalid token out mint")]
     InvalidTokenOutMint,
+    /// The offer requires approval but none was provided or verification failed
     #[msg("Approval required for this offer")]
     ApprovalRequired,
 }
 
-/// Result structure for the core offer processing
+/// Result structure containing offer processing calculations
 pub struct OfferProcessResult {
+    /// Current price with scale=9 (1_000_000_000 = 1.0) at the time of processing
     pub current_price: u64,
+    /// Amount of token_in after fee deduction
     pub token_in_amount: u64,
+    /// Calculated amount of token_out to be provided to the user
     pub token_out_amount: u64,
+    /// Fee amount deducted from the original token_in amount
     pub fee_amount: u64,
 }
 
-/// Verifies approval if needed for any take_offer instruction
+/// Verifies approval requirements for offer operations
+///
+/// Checks if the offer requires approval and validates the provided approval message
+/// using cryptographic signature verification against a trusted authority.
 ///
 /// # Arguments
 /// * `offer` - The offer to check for approval requirement
 /// * `approval_message` - Optional approval message from the user
-/// * `program_id` - The program ID for verification
+/// * `program_id` - The program ID for verification context
 /// * `user_pubkey` - The user's public key
-/// * `trusted_pubkey` - The trusted authority's public key
-/// * `instructions_sysvar` - The instructions sysvar account
-/// * `offer_id` - The offer ID for verification
+/// * `trusted_pubkey` - The trusted authority's public key for verification
+/// * `instructions_sysvar` - The instructions sysvar account for signature verification
 ///
 /// # Returns
 /// * `Ok(())` - If approval is not needed or verification succeeds
-/// * `Err(_)` - If approval is required but not provided, or verification fails
+/// * `Err(OfferCoreError::ApprovalRequired)` - If approval is required but not provided
+/// * `Err(_)` - If approval verification fails
 pub fn verify_offer_approval(
     offer: &Offer,
     approval_message: &Option<ApprovalMessage>,
@@ -75,21 +88,21 @@ pub fn verify_offer_approval(
     Ok(())
 }
 
-/// Core processing logic shared between both take_offer instructions
+/// Core processing logic for offer execution calculations
 ///
-/// This function handles all the common validation and calculation logic:
-/// 1. Find the currently active pricing vector
-/// 2. Calculate current price based on time and APR parameters
-/// 3. Calculate token_out_amount based on price and decimals
+/// Performs comprehensive validation and calculation for offer processing including
+/// active vector identification, price calculation with APR-based growth, fee
+/// calculation, and token amount conversions with decimal adjustments.
 ///
 /// # Arguments
-/// * `offer` - The loaded offer
-/// * `token_in_amount` - Amount of token_in being provided
-/// * `token_in_mint` - The token_in mint for decimal information
-/// * `token_out_mint` - The token_out mint for decimal information
+/// * `offer` - The loaded offer containing pricing vectors and configuration
+/// * `token_in_amount` - Amount of token_in being provided by the user
+/// * `token_in_mint` - The token_in mint for decimal and validation information
+/// * `token_out_mint` - The token_out mint for decimal and validation information
 ///
 /// # Returns
-/// A `OfferProcessResult` containing the calculated price and token_out_amount
+/// * `Ok(OfferProcessResult)` - Containing current price, token amounts, and fees
+/// * `Err(_)` - If validation fails or no active vector exists
 pub fn process_offer_core(
     offer: &Offer,
     token_in_amount: u64,
@@ -136,14 +149,19 @@ pub fn process_offer_core(
     })
 }
 
-/// Finds the currently active vector for an offer
+/// Finds the currently active pricing vector at a specific time
+///
+/// Searches through the offer's pricing vectors to find the one that should be
+/// active at the given time. Returns the vector with the latest start_time that
+/// is still before or equal to the specified time.
 ///
 /// # Arguments
-/// * `offer` - The offer to search for an active vector
-/// * `time` - The time to check for an active vector
+/// * `offer` - The offer containing pricing vectors to search
+/// * `time` - Unix timestamp to check for active vector
 ///
 /// # Returns
-/// The active `OfferVector` or an error if none is active
+/// * `Ok(OfferVector)` - The active pricing vector at the specified time
+/// * `Err(OfferCoreError::NoActiveVector)` - If no vector is active at that time
 pub fn find_active_vector_at(offer: &Offer, time: u64) -> Result<OfferVector> {
     let active_vector = offer
         .vectors
@@ -155,22 +173,22 @@ pub fn find_active_vector_at(offer: &Offer, time: u64) -> Result<OfferVector> {
     Ok(*active_vector)
 }
 
-/// Calculates the price for a pricing vector based on APR and elapsed time.
+/// Calculates continuous price growth using APR-based compound interest
 ///
-/// This function implements the core linear price growth formula without discrete intervals.
-/// It computes a continuous price based on the APR (Annual Percentage Rate) and time elapsed.
+/// Implements linear price growth formula for continuous pricing without discrete
+/// intervals. Uses fixed-point arithmetic to maintain precision in calculations.
 ///
-/// Formula: P(t) = P0 * (1 + y * elapsed_time / S)
-/// where S = 365*24*3600 (seconds per year), and y is yearly APR as a decimal.
-/// We compute this in fixed-point arithmetic to avoid precision loss.
+/// Formula: P(t) = P0 * (1 + apr * elapsed_time / SECONDS_IN_YEAR)
+/// where SECONDS_IN_YEAR = 31,536,000 and apr is scaled by 1,000,000.
 ///
 /// # Arguments
-/// * `apr` - Annual Percentage Rate scaled by 1_000_000 (e.g., 10.12% => 101_200)
-/// * `base_price` - Starting price
+/// * `apr` - Annual Percentage Rate scaled by 1_000_000 (1_000_000 = 1% APR)
+/// * `base_price` - Starting price with scale=9
 /// * `elapsed_time` - Time elapsed since base_time in seconds
 ///
 /// # Returns
-/// The calculated price for the given elapsed time
+/// * `Ok(u64)` - Calculated price with same scale as base_price
+/// * `Err(OfferCoreError::OverflowError)` - If arithmetic overflow occurs
 pub fn calculate_vector_price(apr: u64, base_price: u64, elapsed_time: u64) -> Result<u64> {
     // Compute: price = P0 * (1 + y * elapsed_time / SECONDS_IN_YEAR)
     // With fixed-point:
@@ -201,27 +219,26 @@ pub fn calculate_vector_price(apr: u64, base_price: u64, elapsed_time: u64) -> R
     Ok(price_u128 as u64)
 }
 
-/// Calculates the current price using discrete interval pricing with "price-fix" windows.
+/// Calculates discrete interval pricing with fixed price windows
 ///
-/// This function implements the discrete interval pricing model where prices are fixed
-/// within specific time windows and snap to the END of the current interval.
-/// It determines which interval we're currently in, then calculates the price at that interval.
-///
-/// - price_fix_duration: duration (seconds) of each price-fix window; price is constant within a window
+/// Implements discrete interval pricing where prices are fixed within specific
+/// time windows and snap to the end of the current interval. This creates
+/// step-function price behavior rather than continuous growth.
 ///
 /// Formula:
-///   k = current interval = floor((current_time - base_time) / price_fix_duration)
-///   elapsed_effective = (k + 1) * price_fix_duration  (snap to end of interval)
-///   P(t) = calculate_vector_price(apr, base_price, elapsed_effective)
+///   interval = floor((current_time - base_time) / price_fix_duration)
+///   effective_time = (interval + 1) * price_fix_duration
+///   price = calculate_vector_price(apr, base_price, effective_time)
 ///
 /// # Arguments
 /// * `apr` - Annual Percentage Rate scaled by 1_000_000
-/// * `base_price` - Starting price
-/// * `base_time` - Unix timestamp when pricing starts
-/// * `price_fix_duration` - Duration of each price interval in seconds
+/// * `base_price` - Starting price with scale=9
+/// * `base_time` - Unix timestamp when pricing vector starts
+/// * `price_fix_duration` - Duration of each discrete price interval in seconds
 ///
 /// # Returns
-/// The calculated current price at the discrete interval
+/// * `Ok(u64)` - Current price at the discrete interval
+/// * `Err(_)` - If calculation fails or time is before base_time
 pub fn calculate_current_step_price(
     apr: u64,
     base_price: u64,
@@ -233,6 +250,21 @@ pub fn calculate_current_step_price(
     calculate_step_price_at(apr, base_price, base_time, price_fix_duration, current_time)
 }
 
+/// Calculates discrete step price at a specific time
+///
+/// Internal helper function that calculates the step price at any given time
+/// using the discrete interval pricing model.
+///
+/// # Arguments
+/// * `apr` - Annual Percentage Rate scaled by 1_000_000
+/// * `base_price` - Starting price with scale=9
+/// * `base_time` - Unix timestamp when pricing vector starts
+/// * `price_fix_duration` - Duration of each discrete price interval in seconds
+/// * `time` - Specific time to calculate price for
+///
+/// # Returns
+/// * `Ok(u64)` - Price at the specified time
+/// * `Err(_)` - If calculation fails or time is invalid
 pub fn calculate_step_price_at(
     apr: u64,
     base_price: u64,
@@ -259,6 +291,18 @@ pub fn calculate_step_price_at(
 }
 
 
+/// Finds the array index of a pricing vector by its start time
+///
+/// Searches through the offer's pricing vector array to find the index
+/// of the vector with the specified start_time.
+///
+/// # Arguments
+/// * `offer` - The offer containing pricing vectors to search
+/// * `start_time` - The start_time to search for
+///
+/// # Returns
+/// * `Some(usize)` - Array index of the matching vector
+/// * `None` - If no vector with that start_time exists
 pub fn find_vector_index_by_start_time(offer: &Offer, start_time: u64) -> Option<usize> {
     offer
         .vectors

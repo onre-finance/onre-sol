@@ -13,36 +13,45 @@ use anchor_spl::{
 /// Error codes specific to the take_offer instruction
 #[error_code]
 pub enum TakeOfferErrorCode {
+    /// The boss account does not match the one stored in program state
     #[msg("Invalid boss account")]
     InvalidBoss,
+    /// Arithmetic overflow occurred during calculations
     #[msg("Math overflow")]
     MathOverflow,
+    /// The program kill switch is activated, preventing offer operations
     #[msg("Kill switch is activated")]
     KillSwitchActivated,
 }
 
 /// Event emitted when an offer is successfully taken
+///
+/// Provides transparency for tracking offer execution and token exchange details.
 #[event]
 pub struct TakeOfferEvent {
-    /// The PDA of the offer that was taken
+    /// The PDA address of the offer that was executed
     pub offer_pda: Pubkey,
-    /// Amount of token_in paid by the user (excluding fee)
+    /// Amount of token_in paid by the user after fee deduction
     pub token_in_amount: u64,
     /// Amount of token_out received by the user
     pub token_out_amount: u64,
-    /// Fee amount paid by the user in token_in
+    /// Fee amount deducted from the original token_in payment
     pub fee_amount: u64,
-    /// Public key of the user who took the offer
+    /// Public key of the user who executed the offer
     pub user: Pubkey,
 }
 
-/// Accounts required for taking an offer
+/// Account structure for executing an offer transaction
 ///
-/// This struct defines all the accounts needed to execute a take_offer instruction,
-/// including validation constraints to ensure security and proper authorization.
+/// This struct defines all accounts required for offer execution including token
+/// operations, approval verification, and flexible burn/mint or transfer mechanisms
+/// depending on program mint authority status.
 #[derive(Accounts)]
 pub struct TakeOffer<'info> {
-    /// The individual offer account
+    /// The offer account containing pricing vectors and exchange configuration
+    ///
+    /// This account is validated as a PDA derived from token mint addresses
+    /// and contains the pricing vectors used for dynamic price calculation.
     #[account(
         mut,
         seeds = [
@@ -54,7 +63,7 @@ pub struct TakeOffer<'info> {
     )]
     pub offer: AccountLoader<'info, Offer>,
 
-    /// Program state account containing the boss public key
+    /// Program state account containing authorization and kill switch status
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
@@ -63,20 +72,26 @@ pub struct TakeOffer<'info> {
     )]
     pub state: Box<Account<'info, State>>,
 
-    /// The boss account that receives token_in payments
-    /// Must match the boss stored in the program state
-    /// CHECK: This account is validated through the constraint in state
+    /// The boss account authorized to receive token_in payments
+    ///
+    /// Must match the boss stored in program state for security validation.
+    /// CHECK: Account validation is enforced through state account constraint
     pub boss: UncheckedAccount<'info>,
 
-    /// The offer vault authority PDA that controls vault token accounts
+    /// Program-derived authority that controls vault token operations
+    ///
+    /// This PDA manages token transfers and burning operations for the
+    /// burn/mint architecture when program has mint authority.
     #[account(
         seeds = [seeds::OFFER_VAULT_AUTHORITY],
         bump = vault_authority.bump
     )]
-    /// CHECK: This is safe as it's a PDA used for signing
     pub vault_authority: Account<'info, OfferVaultAuthority>,
 
-    /// Vault's token_in account, used for burning tokens when program has mint authority
+    /// Vault account for temporary token_in storage during burn operations
+    ///
+    /// Used for burning input tokens when the program has mint authority
+    /// for efficient burn/mint token exchange architecture.
     #[account(
         mut,
         associated_token::mint = token_in_mint,
@@ -85,7 +100,10 @@ pub struct TakeOffer<'info> {
     )]
     pub vault_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// Vault's token_out account (source of tokens to distribute to user)
+    /// Vault account for token_out distribution when using transfer mechanism
+    ///
+    /// Source of output tokens when the program lacks mint authority
+    /// and must transfer from pre-funded vault instead of minting.
     #[account(
         mut,
         associated_token::mint = token_out_mint,
@@ -94,8 +112,10 @@ pub struct TakeOffer<'info> {
     )]
     pub vault_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// The mint account for the input token (what user pays)
-    /// Must be mutable to allow burning when program has mint authority
+    /// Input token mint account for the exchange
+    ///
+    /// Must be mutable to allow burning operations when program has mint authority.
+    /// Validated against the offer's expected token_in_mint.
     #[account(
         mut,
         constraint =
@@ -103,10 +123,14 @@ pub struct TakeOffer<'info> {
             @ OfferCoreError::InvalidTokenInMint
     )]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
+    
+    /// Token program interface for input token operations
     pub token_in_program: Interface<'info, TokenInterface>,
 
-    /// The mint account for the output token (what user receives)
-    /// Must be mutable to allow minting when program has mint authority
+    /// Output token mint account for the exchange
+    ///
+    /// Must be mutable to allow minting operations when program has mint authority.
+    /// Validated against the offer's expected token_out_mint.
     #[account(
         mut,
         constraint =
@@ -114,9 +138,14 @@ pub struct TakeOffer<'info> {
             @ OfferCoreError::InvalidTokenOutMint
     )]
     pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
+    
+    /// Token program interface for output token operations
     pub token_out_program: Interface<'info, TokenInterface>,
 
-    /// User's token_in account (source of payment)
+    /// User's input token account for payment
+    ///
+    /// Source account from which the user pays token_in for the exchange.
+    /// Must have sufficient balance for the requested token_in_amount.
     #[account(
         mut,
         associated_token::mint = token_in_mint,
@@ -125,8 +154,10 @@ pub struct TakeOffer<'info> {
     )]
     pub user_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// User's token_out account (destination of received tokens)
-    /// Uses init_if_needed to automatically create account if it doesn't exist
+    /// User's output token account for receiving exchanged tokens
+    ///
+    /// Destination account where the user receives token_out from the exchange.
+    /// Created automatically if it doesn't exist using init_if_needed.
     #[account(
         init_if_needed,
         payer = user,
@@ -136,7 +167,10 @@ pub struct TakeOffer<'info> {
     )]
     pub user_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// Boss's token_in account (destination of user's payment)
+    /// Boss's input token account for receiving payments
+    ///
+    /// Destination account where the boss receives token_in payments
+    /// from users taking offers.
     #[account(
         mut,
         associated_token::mint = token_in_mint,
@@ -145,7 +179,10 @@ pub struct TakeOffer<'info> {
     )]
     pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// Mint authority PDA for direct minting (when program has mint authority)
+    /// Program-derived mint authority for direct token minting
+    ///
+    /// Used when the program has mint authority and can mint token_out
+    /// directly to users instead of transferring from vault.
     /// CHECK: PDA derivation is validated through seeds constraint
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
@@ -153,11 +190,15 @@ pub struct TakeOffer<'info> {
     )]
     pub mint_authority: Account<'info, MintAuthority>,
 
-    /// CHECK: sysvar to read previous instruction
+    /// Instructions sysvar for approval signature verification
+    ///
+    /// Required for cryptographic verification of approval messages
+    /// when offers require boss approval for execution.
+    /// CHECK: Validated through address constraint to instructions sysvar
     #[account(address = sysvar::instructions::id())]
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    /// The user taking the offer (must sign the transaction)
+    /// The user executing the offer and paying for account creation
     #[account(mut)]
     pub user: Signer<'info>,
 
@@ -168,48 +209,40 @@ pub struct TakeOffer<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Main instruction handler for taking an offer with mint/transfer flexibility
+/// Executes an offer transaction with flexible burn/mint or transfer mechanisms
 ///
-/// This function allows users to accept an offer by paying the current market price
-/// in token_in to receive token_out. The price is calculated using a discrete interval
-/// pricing model with linear yield growth. Token distribution uses smart logic:
-/// - If program has mint authority: mints token_out directly to user (more efficient)
-/// - If program lacks mint authority: transfers token_out from vault to user (fallback)
+/// This instruction allows users to accept offers by paying the current market price
+/// calculated using discrete interval pricing with APR-based growth. The implementation
+/// uses smart token distribution logic based on program mint authority status.
+///
+/// The instruction handles approval verification, price calculation, fee deduction,
+/// and token operations with automatic fallback between mint/burn and transfer modes.
 ///
 /// # Arguments
-///
-/// * `ctx` - The instruction context containing all required accounts
-/// * `token_in_amount` - The amount of token_in the user is willing to pay
+/// * `ctx` - The instruction context containing validated accounts
+/// * `token_in_amount` - Amount of token_in the user is willing to pay (including fees)
+/// * `approval_message` - Optional cryptographic approval from trusted authority
 ///
 /// # Process Flow
-///
-/// 1. Load and validate the offer exists
-/// 2. Find the currently active pricing vector
-/// 3. Calculate current price based on time elapsed and APR parameters
-/// 4. Calculate how many token_out to give for the provided token_in_amount
-/// 5. Execute payment: user → boss (token_in)
-/// 6. Execute distribution: program mints token_out to user OR transfers from vault
-/// 7. Emit event with transaction details
-///
-/// # Account Requirements
-///
-/// * `mint_authority_pda` - Optional, required only if program should mint directly
-/// * `vault_token_out_account` - Optional, required only if program should transfer from vault
-/// * At least one of the above must be provided for token distribution
+/// 1. Verify approval requirements if offer needs approval
+/// 2. Find active pricing vector and calculate current price
+/// 3. Calculate token_out amount and fees based on current price
+/// 4. Execute token operations (burn/mint or transfer based on mint authority)
+/// 5. Emit event with transaction details
 ///
 /// # Returns
+/// * `Ok(())` - If the offer is successfully executed
+/// * `Err(_)` - If validation fails, no active vector, or token operations fail
 ///
-/// * `Ok(())` - If the offer was successfully taken
-/// * `Err(_)` - If validation fails or token operations cannot be completed
+/// # Access Control
+/// - Any user can execute offers unless approval is required
+/// - Kill switch prevents execution when activated
+/// - Approval verification against trusted authority when needed
 ///
-/// # Errors
-///
-/// * `NoActiveVector` - No pricing vector is currently active  
-/// * `OverflowError` - Mathematical overflow in price calculations
-/// * Token operation errors if insufficient balances, invalid accounts, or missing mint authority
+/// # Events
+/// * `TakeOfferEvent` - Emitted with execution details and token amounts
 pub fn take_offer(
     ctx: Context<TakeOffer>,
-
     token_in_amount: u64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {

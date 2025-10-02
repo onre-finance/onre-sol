@@ -1,43 +1,63 @@
 use anchor_lang::prelude::*;
 
-/// Represents the program state in the Onre App program.
+/// Global program state containing governance and configuration settings
 ///
-/// Stores the current boss's public key, kill switch state, and admin list used for authorization across instructions.
-///
-/// # Fields
-/// - `boss`: Public key of the current boss, set via `initialize` and updated via `set_boss`.
-/// - `is_killed`: Kill switch state - when true, certain operations are disabled for emergency purposes.
-/// - `admins`: Array of admin public keys who can enable the kill switch.
+/// Stores the core program authority structure, emergency controls, and trusted entities
+/// used for authorization and approval verification across all program operations.
 #[account]
 #[derive(InitSpace)]
 pub struct State {
+    /// Primary program authority with full control over all operations
     pub boss: Pubkey,
+    /// Emergency kill switch to halt critical operations when activated
     pub is_killed: bool,
+    /// ONyc token mint used for market calculations and operations
     pub onyc_mint: Pubkey,
+    /// Array of admin accounts authorized to enable the kill switch
     pub admins: [Pubkey; MAX_ADMINS],
-    pub approver: Pubkey, // A trusted entity
+    /// Trusted authority for cryptographic approval verification
+    pub approver: Pubkey,
+    /// PDA bump seed for account derivation
     pub bump: u8,
+    /// Reserved space for future program state extensions
     pub reserved: [u8; 128],
 }
 
+/// Program-derived authority for controlling offer vault token accounts
+///
+/// This PDA manages token transfers and burning operations for the vault accounts
+/// used in burn/mint token exchange architecture.
 #[account]
 #[derive(InitSpace)]
 pub struct OfferVaultAuthority {
+    /// PDA bump seed for account derivation
     pub bump: u8,
 }
 
+/// Program-derived authority for direct token minting operations
+///
+/// This PDA enables the program to mint tokens directly when it has mint authority,
+/// supporting efficient burn/mint token exchange mechanisms.
 #[account]
 #[derive(InitSpace)]
 pub struct MintAuthority {
+    /// PDA bump seed for account derivation
     pub bump: u8,
 }
 
+/// Program-derived authority for permissionless token routing operations
+///
+/// This PDA manages intermediary accounts used for permissionless offer execution,
+/// enabling secure token routing without direct user-boss relationships.
 #[account]
 #[derive(InitSpace)]
 pub struct PermissionlessAuthority {
+    /// Optional name identifier for the authority (max 50 characters)
     #[max_len(50)]
     pub name: String,
+    /// PDA bump seed for account derivation
     pub bump: u8,
 }
 
+/// Maximum number of admin accounts that can be stored in program state
 pub const MAX_ADMINS: usize = 20;

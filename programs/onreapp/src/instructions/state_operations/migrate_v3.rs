@@ -5,47 +5,96 @@ use anchor_lang::solana_program::hash::hash;
 use anchor_lang::solana_program::system_instruction;
 use anchor_lang::Discriminator;
 
-// Old size of State (accounting for the 8-byte discriminator).
-// Old State only had: boss (32 bytes)
+/// Size of the old State account including 8-byte discriminator
+/// Old State structure only contained: boss (32 bytes)
 const OLD_STATE_SPACE: usize = 8 + 32;
 
-// New size (with InitSpace the const excludes the 8-byte discriminator).
-// New State has: boss (32 bytes) + is_killed (1 byte) + onyc_mint (32 bytes) + admins array (20 * 32 = 640 bytes)
+/// Size of the new State account including 8-byte discriminator
+/// New State contains: boss (32 bytes) + is_killed (1 byte) + onyc_mint (32 bytes) +
+/// admins array (20 * 32 = 640 bytes) + approver (32 bytes) + bump (1 byte) + reserved (128 bytes)
 const NEW_STATE_SPACE: usize = 8 + <State as Space>::INIT_SPACE;
 
-// Old size of PermissionlessAuthority (accounting for the 8-byte discriminator)
+/// Size of the old PermissionlessAuthority account including 8-byte discriminator
+/// Old structure was empty except for the discriminator
 const OLD_PERMISSIONLESS_SPACE: usize = 8 + 4 + 50;
 
-// New size (with InitSpace the const excludes the 8-byte discriminator).
+/// Size of the new PermissionlessAuthority account including 8-byte discriminator
+/// New structure contains: name (String with max 50 chars) + bump (1 byte)
 const NEW_PERMISSIONLESS_SPACE: usize = 8 + <PermissionlessAuthority as Space>::INIT_SPACE;
 
+/// Error codes for migration operations
 #[error_code]
 pub enum MigrationError {
+    /// State account has invalid size or discriminator
     #[msg("Invalid State account data")]
     InvalidStateData,
+    /// PermissionlessAuthority account has invalid size or discriminator
     #[msg("Invalid PermissionlessAuthority account data")]
     InvalidPermissionlessData,
+    /// The stored boss public key does not match the transaction signer
     #[msg("Boss pubkey mismatch")]
     BossMismatch,
 }
 
+/// Account structure for migrating program accounts to v3 layouts
+///
+/// This struct defines the accounts required for the v3 migration process
+/// which upgrades State and PermissionlessAuthority accounts to their new
+/// expanded layouts with additional fields and functionality.
 #[derive(Accounts)]
 pub struct MigrateV3<'info> {
-    /// CHECK: handled manually to avoid deserializing the new struct over old data
+    /// State account to be migrated from old to new layout
+    ///
+    /// Handled manually to avoid deserialization conflicts between old and new structures.
+    /// Will be expanded from 40 bytes to include new fields for enhanced functionality.
+    /// CHECK: Manual validation of discriminator and size performed in migration logic
     #[account(mut)]
     pub state: AccountInfo<'info>,
 
-    /// CHECK: handled manually to avoid deserializing the new struct over old data
+    /// PermissionlessAuthority account to be migrated from old to new layout
+    ///
+    /// Handled manually to avoid deserialization conflicts between old and new structures.
+    /// Will be expanded from 8 bytes to include bump and name fields.
+    /// CHECK: Manual validation of discriminator and size performed in migration logic
     #[account(mut)]
     pub permissionless_authority: AccountInfo<'info>,
 
-    /// The boss who is authorized to perform the migration
+    /// The boss account authorized to perform the migration and pay for additional rent
     #[account(mut)]
     pub boss: Signer<'info>,
 
+    /// System program for account reallocation and rent transfers
     pub system_program: Program<'info, System>,
 }
 
+/// Migrates program accounts from v2 to v3 layouts with enhanced functionality
+///
+/// This instruction performs a comprehensive migration of both State and PermissionlessAuthority
+/// accounts to their new v3 layouts, expanding their storage capacity and adding new fields
+/// while preserving existing data integrity.
+///
+/// The migration expands State from 40 bytes to include admin management, kill switch,
+/// and approval authority features. PermissionlessAuthority is expanded to include
+/// bump and name fields for improved functionality.
+///
+/// # Arguments
+/// * `ctx` - The migration context containing accounts to be migrated
+///
+/// # Returns
+/// * `Ok(())` - If both account migrations complete successfully
+/// * `Err(MigrationError::InvalidStateData)` - If State account validation fails
+/// * `Err(MigrationError::InvalidPermissionlessData)` - If PermissionlessAuthority validation fails
+/// * `Err(MigrationError::BossMismatch)` - If signer is not the stored boss
+///
+/// # Access Control
+/// - Only the current boss stored in State account can perform migration
+/// - Boss validation occurs during State account processing
+///
+/// # Effects
+/// - Expands State account with new fields (is_killed, onyc_mint, admins, approver, bump)
+/// - Expands PermissionlessAuthority account with bump and name fields
+/// - Preserves existing boss public key in State
+/// - Pays additional rent from boss account for increased storage
 pub fn migrate_v3(ctx: Context<MigrateV3>) -> Result<()> {
     migrate_state(&ctx)?; // Signer == boss is validated inside migrate_state
     migrate_permissionless(&ctx)?;
@@ -164,6 +213,21 @@ fn migrate_permissionless(ctx: &Context<MigrateV3>) -> Result<()> {
     Ok(())
 }
 
+/// Ensures an account has sufficient lamports for its new size requirement
+///
+/// Calculates the minimum rent required for the expanded account size and transfers
+/// additional lamports from the boss if the current balance is insufficient.
+/// This prevents rent exemption violations during account reallocation.
+///
+/// # Arguments
+/// * `account` - The account being resized that may need additional rent
+/// * `boss` - The boss account that will cover any additional rent costs
+/// * `new_account_size` - The target size in bytes after reallocation
+/// * `system_program` - The system program for executing lamport transfers
+///
+/// # Returns
+/// * `Ok(())` - If account has sufficient rent or top-up transfer succeeds
+/// * `Err(_)` - If rent calculation or transfer fails
 fn top_up_lamports<'a>(
     account: AccountInfo<'a>,
     boss: AccountInfo<'a>,

@@ -21,18 +21,23 @@ export type Onreapp = {
     "sell token required can change over the offer's duration based on predefined parameters.",
     "",
     "Core functionalities include:",
-    "- Making offers with dynamic pricing (`make_offer_one`, `make_offer_two`).",
-    "- Taking offers, respecting the current price (`take_offer_one`, `take_offer_two`).",
-    "- Closing offers (`close_offer_one`, `close_offer_two`).",
-    "- Program state initialization and boss management (`initialize`, `set_boss`).",
+    "- Making offers with dynamic pricing (`make_offer`).",
+    "- Taking offers with current market pricing (`take_offer`, `take_offer_permissionless`).",
+    "- Managing offer vectors for price control (`add_offer_vector`, `delete_offer_vector`).",
+    "- Closing offers (`close_offer`).",
+    "- Program state initialization and management (`initialize`, `set_boss`, `add_admin`, `remove_admin`).",
+    "- Vault operations for token deposits and withdrawals (`offer_vault_deposit`, `offer_vault_withdraw`).",
+    "- Market information queries (`get_nav`, `get_apy`, `get_tvl`, `get_circulating_supply`).",
+    "- Mint authority management (`transfer_mint_authority_to_program`, `transfer_mint_authority_to_boss`).",
+    "- Emergency controls (`set_kill_switch`) and approval mechanisms (`set_approver`).",
     "",
     "# Dynamic Pricing Model",
-    "The price (amount of sell tokens per buy token) is determined by:",
-    "- `sell_token_start_amount`: Sell token amount at the beginning of the offer.",
-    "- `sell_token_end_amount`: Sell token amount at the end of the offer.",
-    "- `offer_start_time`, `offer_end_time`: Defines the offer's active duration.",
-    "- `price_fix_duration`: The duration of each discrete pricing interval within the offer period.",
-    "The price interpolates linearly across these intervals.",
+    "The price for offers is determined by time-based vectors with APR (Annual Percentage Rate) growth:",
+    "- `base_time`: The timestamp when the vector becomes active.",
+    "- `base_price`: The initial price at the base_time with 9 decimal precision.",
+    "- `apr`: Annual percentage rate scaled by 1,000,000 (e.g., 1_000_000 = 1% APR).",
+    "- `price_fix_duration`: Duration in seconds for each discrete pricing step.",
+    "The price increases over time based on the APR, calculated in discrete intervals.",
     "",
     "# Security",
     "- Access controls are enforced, for example, ensuring only the `boss` can create offers or update critical state.",
@@ -64,6 +69,12 @@ export type Onreapp = {
       "accounts": [
         {
           "name": "state",
+          "docs": [
+            "Program state account containing the admin list",
+            "",
+            "Must be mutable to allow admin list modifications and have the",
+            "boss account as the authorized signer for admin management."
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -83,7 +94,7 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The signer authorizing the addition, must be the boss."
+            "The boss account authorized to add new admins"
           ],
           "writable": true,
           "signer": true,
@@ -129,7 +140,10 @@ export type Onreapp = {
         {
           "name": "offer",
           "docs": [
-            "The offer account containing all offers"
+            "The offer account to which the pricing vector will be added",
+            "",
+            "This account is validated as a PDA derived from token mint addresses",
+            "and contains the array of pricing vectors for the offer."
           ],
           "writable": true,
           "pda": {
@@ -156,15 +170,21 @@ export type Onreapp = {
           }
         },
         {
-          "name": "tokenInMint"
+          "name": "tokenInMint",
+          "docs": [
+            "The input token mint account for offer validation"
+          ]
         },
         {
-          "name": "tokenOutMint"
+          "name": "tokenOutMint",
+          "docs": [
+            "The output token mint account for offer validation"
+          ]
         },
         {
           "name": "state",
           "docs": [
-            "Program state, ensures `boss` is authorized."
+            "Program state account containing boss authorization"
           ],
           "pda": {
             "seeds": [
@@ -184,7 +204,7 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The signer authorizing the time vector addition (must be boss)."
+            "The boss account authorized to add pricing vectors to offers"
           ],
           "writable": true,
           "signer": true,
@@ -233,6 +253,12 @@ export type Onreapp = {
       "accounts": [
         {
           "name": "state",
+          "docs": [
+            "Program state account containing the admin list to be cleared",
+            "",
+            "Must be mutable to allow admin list modifications and have the",
+            "boss account as the authorized signer for admin management."
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -252,7 +278,7 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The boss calling this function."
+            "The boss account authorized to clear all admin privileges"
           ],
           "writable": true,
           "signer": true,
@@ -289,7 +315,10 @@ export type Onreapp = {
         {
           "name": "offer",
           "docs": [
-            "The offer account within the OfferAccount, rent paid by `boss`."
+            "The offer account to be closed and its rent reclaimed",
+            "",
+            "This account is validated as a PDA derived from token mint addresses.",
+            "The account will be closed and its rent transferred to the boss."
           ],
           "writable": true,
           "pda": {
@@ -316,15 +345,21 @@ export type Onreapp = {
           }
         },
         {
-          "name": "tokenInMint"
+          "name": "tokenInMint",
+          "docs": [
+            "The input token mint account for offer validation"
+          ]
         },
         {
-          "name": "tokenOutMint"
+          "name": "tokenOutMint",
+          "docs": [
+            "The output token mint account for offer validation"
+          ]
         },
         {
           "name": "boss",
           "docs": [
-            "The signer funding and authorizing the offer closure."
+            "The boss account authorized to close offers and receive rent"
           ],
           "writable": true,
           "signer": true,
@@ -335,7 +370,7 @@ export type Onreapp = {
         {
           "name": "state",
           "docs": [
-            "Program state, ensures `boss` is authorized."
+            "Program state account containing boss authorization"
           ],
           "pda": {
             "seeds": [
@@ -355,7 +390,7 @@ export type Onreapp = {
         {
           "name": "systemProgram",
           "docs": [
-            "Solana System program for account creation and rent payment."
+            "System program required for account closure and rent transfer"
           ],
           "address": "11111111111111111111111111111111"
         }
@@ -390,7 +425,10 @@ export type Onreapp = {
         {
           "name": "offer",
           "docs": [
-            "The individual offer account"
+            "The offer account from which the pricing vector will be deleted",
+            "",
+            "This account is validated as a PDA derived from token mint addresses",
+            "and contains the array of pricing vectors for the offer."
           ],
           "writable": true,
           "pda": {
@@ -417,15 +455,21 @@ export type Onreapp = {
           }
         },
         {
-          "name": "tokenInMint"
+          "name": "tokenInMint",
+          "docs": [
+            "The input token mint account for offer validation"
+          ]
         },
         {
-          "name": "tokenOutMint"
+          "name": "tokenOutMint",
+          "docs": [
+            "The output token mint account for offer validation"
+          ]
         },
         {
           "name": "state",
           "docs": [
-            "Program state, ensures `boss` is authorized."
+            "Program state account containing boss authorization"
           ],
           "pda": {
             "seeds": [
@@ -445,7 +489,7 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The signer authorizing the time vector deletion (must be boss)."
+            "The boss account authorized to delete pricing vectors from offers"
           ],
           "writable": true,
           "signer": true,
@@ -491,7 +535,11 @@ export type Onreapp = {
         {
           "name": "offer",
           "docs": [
-            "The individual offer account"
+            "The offer account containing the pricing vectors and APR data",
+            "",
+            "This account is validated as a PDA derived from the \"offer\" seed combined",
+            "with both token mint addresses. Contains the time-based pricing vectors",
+            "that include the APR values used for APY calculation."
           ],
           "pda": {
             "seeds": [
@@ -517,10 +565,24 @@ export type Onreapp = {
           }
         },
         {
-          "name": "tokenInMint"
+          "name": "tokenInMint",
+          "docs": [
+            "The input token mint account for offer validation",
+            "",
+            "Must match the token_in_mint stored in the offer account to ensure",
+            "the correct offer is being queried. This validation prevents",
+            "accidental queries against incorrect token pairs."
+          ]
         },
         {
-          "name": "tokenOutMint"
+          "name": "tokenOutMint",
+          "docs": [
+            "The output token mint account for offer validation",
+            "",
+            "Must match the token_out_mint stored in the offer account to ensure",
+            "the correct offer is being queried. This validation prevents",
+            "accidental queries against incorrect token pairs."
+          ]
         }
       ],
       "args": [],
@@ -554,12 +616,18 @@ export type Onreapp = {
       "accounts": [
         {
           "name": "onycMint",
+          "docs": [
+            "The ONyc token mint containing total supply information"
+          ],
           "relations": [
             "state"
           ]
         },
         {
           "name": "state",
+          "docs": [
+            "Program state account containing the ONyc mint reference"
+          ],
           "pda": {
             "seeds": [
               {
@@ -578,7 +646,7 @@ export type Onreapp = {
         {
           "name": "vaultAuthority",
           "docs": [
-            "The offer vault authority PDA that controls vault token accounts"
+            "The vault authority PDA that controls vault token accounts"
           ],
           "pda": {
             "seeds": [
@@ -612,13 +680,20 @@ export type Onreapp = {
           }
         },
         {
-          "name": "vaultTokenOutAccount",
+          "name": "onycVaultAccount",
           "docs": [
-            "The token_out account to exclude from supply"
+            "The vault's ONyc token account to exclude from circulating supply",
+            "",
+            "This account holds tokens that are not considered in circulation.",
+            "The account address is validated to match the expected ATA address",
+            "and can be uninitialized (treated as zero balance)."
           ]
         },
         {
-          "name": "tokenProgram"
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program for account validation"
+          ]
         }
       ],
       "args": [],
@@ -654,7 +729,10 @@ export type Onreapp = {
         {
           "name": "offer",
           "docs": [
-            "The individual offer account"
+            "The offer account containing pricing vectors and configuration",
+            "",
+            "This account is validated as a PDA derived from token mint addresses",
+            "and contains time-based pricing vectors for price calculation."
           ],
           "pda": {
             "seeds": [
@@ -680,10 +758,16 @@ export type Onreapp = {
           }
         },
         {
-          "name": "tokenInMint"
+          "name": "tokenInMint",
+          "docs": [
+            "The input token mint account for offer validation"
+          ]
         },
         {
-          "name": "tokenOutMint"
+          "name": "tokenOutMint",
+          "docs": [
+            "The output token mint account for offer validation"
+          ]
         }
       ],
       "args": [],
@@ -721,7 +805,10 @@ export type Onreapp = {
         {
           "name": "offer",
           "docs": [
-            "The individual offer account"
+            "The offer account containing pricing vectors for adjustment calculation",
+            "",
+            "This account is validated as a PDA derived from token mint addresses",
+            "and contains multiple time-based pricing vectors for comparison."
           ],
           "pda": {
             "seeds": [
@@ -747,10 +834,16 @@ export type Onreapp = {
           }
         },
         {
-          "name": "tokenInMint"
+          "name": "tokenInMint",
+          "docs": [
+            "The input token mint account for offer validation"
+          ]
         },
         {
-          "name": "tokenOutMint"
+          "name": "tokenOutMint",
+          "docs": [
+            "The output token mint account for offer validation"
+          ]
         }
       ],
       "args": [],
@@ -787,7 +880,10 @@ export type Onreapp = {
         {
           "name": "offer",
           "docs": [
-            "The individual offer account"
+            "The offer account containing pricing vectors for current price calculation",
+            "",
+            "This account is validated as a PDA derived from token mint addresses",
+            "and contains time-based pricing vectors for TVL calculation."
           ],
           "pda": {
             "seeds": [
@@ -813,18 +909,21 @@ export type Onreapp = {
           }
         },
         {
-          "name": "tokenInMint"
+          "name": "tokenInMint",
+          "docs": [
+            "The input token mint account for offer validation"
+          ]
         },
         {
           "name": "tokenOutMint",
           "docs": [
-            "The token_out mint account to get supply information"
+            "The output token mint account containing total supply information"
           ]
         },
         {
           "name": "vaultAuthority",
           "docs": [
-            "The offer vault authority PDA that controls vault token accounts"
+            "The vault authority PDA that controls vault token accounts"
           ],
           "pda": {
             "seeds": [
@@ -860,11 +959,18 @@ export type Onreapp = {
         {
           "name": "vaultTokenOutAccount",
           "docs": [
-            "The token_out account to exclude from supply"
+            "The vault's token_out account to exclude from circulating supply",
+            "",
+            "This account holds tokens that should not be included in TVL calculations.",
+            "The account address is validated to match the expected ATA address",
+            "and can be uninitialized (treated as zero balance)."
           ]
         },
         {
-          "name": "tokenOutProgram"
+          "name": "tokenOutProgram",
+          "docs": [
+            "SPL Token program for vault account validation"
+          ]
         }
       ],
       "args": [],
@@ -891,11 +997,17 @@ export type Onreapp = {
         {
           "name": "state",
           "docs": [
-            "The program state account, initialized with the boss’s public key.",
+            "The program state account to be created and initialized",
             "",
-            "# Note",
-            "- Space is allocated as `8 + State::INIT_SPACE` bytes, where 8 bytes are for the discriminator.",
-            "- Seeded with `\"state\"` and a bump for PDA derivation."
+            "This account stores all global program configuration including:",
+            "- Boss public key (program authority)",
+            "- Kill switch state (initially disabled)",
+            "- ONyc mint reference",
+            "- Admin list (initially empty)",
+            "- Approver for signature verification (initially unset)",
+            "",
+            "The account is created as a PDA derived from the \"state\" seed to ensure",
+            "deterministic addressing and program ownership."
           ],
           "writable": true,
           "pda": {
@@ -916,18 +1028,31 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The signer funding and authorizing the state initialization, becomes the boss."
+            "The initial boss who will have full authority over the program",
+            "",
+            "This signer becomes the program's boss and gains the ability to:",
+            "- Create and manage offers",
+            "- Update program state (boss, admins, kill switch, approver)",
+            "- Perform administrative operations",
+            "- Pay for the state account creation"
           ],
           "writable": true,
           "signer": true
         },
         {
-          "name": "onycMint"
+          "name": "onycMint",
+          "docs": [
+            "The ONyc token mint that this program will manage",
+            "",
+            "This mint represents the protocol's native token and is used for:",
+            "- Token minting operations when program has mint authority",
+            "- Reference in various program calculations and operations"
+          ]
         },
         {
           "name": "systemProgram",
           "docs": [
-            "Solana System program for account creation and rent payment."
+            "Solana System program required for account creation and rent payment"
           ],
           "address": "11111111111111111111111111111111"
         }
@@ -1239,7 +1364,10 @@ export type Onreapp = {
         {
           "name": "vaultAuthority",
           "docs": [
-            "The offer vault authority PDA that controls vault token accounts"
+            "Program-derived authority that controls offer vault token accounts",
+            "",
+            "This PDA manages token transfers and burning operations when the program",
+            "has mint authority for efficient burn/mint architecture."
           ],
           "pda": {
             "seeds": [
@@ -1275,17 +1403,22 @@ export type Onreapp = {
         {
           "name": "tokenInMint",
           "docs": [
-            "Mint of the token_in for the offer."
+            "The input token mint for the offer"
           ]
         },
         {
-          "name": "tokenInProgram"
+          "name": "tokenInProgram",
+          "docs": [
+            "Token program interface for the input token"
+          ]
         },
         {
           "name": "vaultTokenInAccount",
           "docs": [
-            "Vault token_in account, used to transfer tokens to a program owned account for burning",
-            "when program has mint authority."
+            "Vault account for storing input tokens during burn/mint operations",
+            "",
+            "Created automatically if needed. Used for temporary token storage",
+            "when the program has mint authority and needs to burn tokens."
           ],
           "writable": true,
           "pda": {
@@ -1345,13 +1478,17 @@ export type Onreapp = {
         {
           "name": "tokenOutMint",
           "docs": [
-            "Mint of the token_out for the offer."
+            "The output token mint for the offer"
           ]
         },
         {
           "name": "offer",
           "docs": [
-            "The offer account within the OfferAccount, rent paid by `boss`. Already initialized in initialize."
+            "The offer account storing exchange configuration and pricing vectors",
+            "",
+            "This account is derived from token mint addresses ensuring unique",
+            "offers per token pair. Contains fee settings, approval requirements,",
+            "and pricing vector array for dynamic pricing."
           ],
           "writable": true,
           "pda": {
@@ -1380,7 +1517,7 @@ export type Onreapp = {
         {
           "name": "state",
           "docs": [
-            "Program state, ensures `boss` is authorized."
+            "Program state account containing boss authorization"
           ],
           "pda": {
             "seeds": [
@@ -1400,7 +1537,7 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The signer funding and authorizing the offer creation."
+            "The boss account authorized to create offers and pay for account creation"
           ],
           "writable": true,
           "signer": true,
@@ -1418,7 +1555,7 @@ export type Onreapp = {
         {
           "name": "systemProgram",
           "docs": [
-            "Solana System program for account creation and rent payment."
+            "System program for account creation and rent payment"
           ],
           "address": "11111111111111111111111111111111"
         }
@@ -1467,22 +1604,37 @@ export type Onreapp = {
       "accounts": [
         {
           "name": "state",
+          "docs": [
+            "State account to be migrated from old to new layout",
+            "",
+            "Handled manually to avoid deserialization conflicts between old and new structures.",
+            "Will be expanded from 40 bytes to include new fields for enhanced functionality."
+          ],
           "writable": true
         },
         {
           "name": "permissionlessAuthority",
+          "docs": [
+            "PermissionlessAuthority account to be migrated from old to new layout",
+            "",
+            "Handled manually to avoid deserialization conflicts between old and new structures.",
+            "Will be expanded from 8 bytes to include bump and name fields."
+          ],
           "writable": true
         },
         {
           "name": "boss",
           "docs": [
-            "The boss who is authorized to perform the migration"
+            "The boss account authorized to perform the migration and pay for additional rent"
           ],
           "writable": true,
           "signer": true
         },
         {
           "name": "systemProgram",
+          "docs": [
+            "System program for account reallocation and rent transfers"
+          ],
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -1516,7 +1668,7 @@ export type Onreapp = {
         {
           "name": "state",
           "docs": [
-            "The program state account, containing the boss and onyc_mint"
+            "The program state account containing boss and ONyc mint validation"
           ],
           "pda": {
             "seeds": [
@@ -1536,7 +1688,10 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The boss who is authorized to perform the minting operation"
+            "The boss authorized to perform minting operations",
+            "",
+            "Must be the boss stored in the program state and pay for any",
+            "account creation if the token account doesn't exist."
           ],
           "writable": true,
           "signer": true,
@@ -1547,7 +1702,10 @@ export type Onreapp = {
         {
           "name": "onycMint",
           "docs": [
-            "The ONyc token mint - must match the one stored in state"
+            "The ONyc token mint account for minting new tokens",
+            "",
+            "Must match the ONyc mint stored in program state and be mutable",
+            "to allow supply updates during minting."
           ],
           "writable": true,
           "relations": [
@@ -1557,7 +1715,10 @@ export type Onreapp = {
         {
           "name": "bossOnycAccount",
           "docs": [
-            "The boss's ONyc token account"
+            "The boss's ONyc token account to receive minted tokens",
+            "",
+            "If the account doesn't exist, it will be created automatically",
+            "as an Associated Token Account with the boss as the authority."
           ],
           "writable": true,
           "pda": {
@@ -1617,7 +1778,10 @@ export type Onreapp = {
         {
           "name": "mintAuthority",
           "docs": [
-            "Program-derived account that serves as the mint authority"
+            "Program-derived account that serves as the mint authority",
+            "",
+            "This PDA must be the current mint authority for the ONyc token.",
+            "Validated to ensure the program has permission to mint tokens."
           ],
           "pda": {
             "seeds": [
@@ -1659,7 +1823,7 @@ export type Onreapp = {
         {
           "name": "systemProgram",
           "docs": [
-            "System program required for account creation"
+            "System program required for account creation and rent payment"
           ],
           "address": "11111111111111111111111111111111"
         }
@@ -1699,7 +1863,10 @@ export type Onreapp = {
         {
           "name": "vaultAuthority",
           "docs": [
-            "The offer vault authority account that controls the vault token accounts."
+            "Program-derived authority that controls vault token accounts",
+            "",
+            "This PDA manages the vault token accounts and enables the program",
+            "to distribute tokens during offer executions."
           ],
           "pda": {
             "seeds": [
@@ -1735,13 +1902,15 @@ export type Onreapp = {
         {
           "name": "tokenMint",
           "docs": [
-            "The token mint for the deposit."
+            "The token mint for the deposit operation"
           ]
         },
         {
           "name": "bossTokenAccount",
           "docs": [
-            "Boss's token account for the specific mint (source of tokens)."
+            "Boss's token account serving as the source of deposited tokens",
+            "",
+            "Must have sufficient balance to cover the requested deposit amount."
           ],
           "writable": true,
           "pda": {
@@ -1801,8 +1970,10 @@ export type Onreapp = {
         {
           "name": "vaultTokenAccount",
           "docs": [
-            "Vault's token account for the specific mint (destination of tokens).",
-            "Uses init_if_needed to create the account if it doesn't exist."
+            "Vault's token account serving as the destination for deposited tokens",
+            "",
+            "Created automatically if it doesn't exist. Stores tokens that can be",
+            "distributed during offer executions when minting is not available."
           ],
           "writable": true,
           "pda": {
@@ -1862,7 +2033,7 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The signer authorizing the deposit, must be the boss."
+            "The boss account authorized to deposit tokens and pay for account creation"
           ],
           "writable": true,
           "signer": true,
@@ -1873,7 +2044,7 @@ export type Onreapp = {
         {
           "name": "state",
           "docs": [
-            "Program state, ensures `boss` is authorized."
+            "Program state account containing boss authorization"
           ],
           "pda": {
             "seeds": [
@@ -1893,20 +2064,20 @@ export type Onreapp = {
         {
           "name": "tokenProgram",
           "docs": [
-            "Token program."
+            "Token program interface for transfer operations"
           ]
         },
         {
           "name": "associatedTokenProgram",
           "docs": [
-            "Associated Token program."
+            "Associated Token Program for automatic token account creation"
           ],
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         },
         {
           "name": "systemProgram",
           "docs": [
-            "Solana System program for account creation and rent payment."
+            "System program for account creation and rent payment"
           ],
           "address": "11111111111111111111111111111111"
         }
@@ -1946,7 +2117,10 @@ export type Onreapp = {
         {
           "name": "vaultAuthority",
           "docs": [
-            "The offer vault authority account that controls the vault token accounts."
+            "Program-derived authority that controls vault token accounts",
+            "",
+            "This PDA manages the vault token accounts and signs the withdrawal",
+            "transfer using program-derived signatures."
           ],
           "pda": {
             "seeds": [
@@ -1982,13 +2156,16 @@ export type Onreapp = {
         {
           "name": "tokenMint",
           "docs": [
-            "The token mint for the withdrawal."
+            "The token mint for the withdrawal operation"
           ]
         },
         {
           "name": "bossTokenAccount",
           "docs": [
-            "Boss's token account for the specific mint (destination of tokens)."
+            "Boss's token account serving as the destination for withdrawn tokens",
+            "",
+            "Created automatically if it doesn't exist. Receives tokens withdrawn",
+            "from the vault for boss fund management."
           ],
           "writable": true,
           "pda": {
@@ -2048,7 +2225,10 @@ export type Onreapp = {
         {
           "name": "vaultTokenAccount",
           "docs": [
-            "Vault's token account for the specific mint (source of tokens)."
+            "Vault's token account serving as the source of withdrawn tokens",
+            "",
+            "Must have sufficient balance to cover the requested withdrawal amount.",
+            "Controlled by the vault authority PDA."
           ],
           "writable": true,
           "pda": {
@@ -2141,7 +2321,7 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The signer authorizing the withdrawal, must be the boss."
+            "The boss account authorized to withdraw tokens and pay for account creation"
           ],
           "writable": true,
           "signer": true,
@@ -2152,7 +2332,7 @@ export type Onreapp = {
         {
           "name": "state",
           "docs": [
-            "Program state, ensures `boss` is authorized."
+            "Program state account containing boss authorization"
           ],
           "pda": {
             "seeds": [
@@ -2172,20 +2352,20 @@ export type Onreapp = {
         {
           "name": "tokenProgram",
           "docs": [
-            "Token program."
+            "Token program interface for transfer operations"
           ]
         },
         {
           "name": "associatedTokenProgram",
           "docs": [
-            "Associated Token program."
+            "Associated Token Program for automatic token account creation"
           ],
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         },
         {
           "name": "systemProgram",
           "docs": [
-            "Solana System program for account creation and rent payment."
+            "System program for account creation and rent payment"
           ],
           "address": "11111111111111111111111111111111"
         }
@@ -2221,6 +2401,12 @@ export type Onreapp = {
       "accounts": [
         {
           "name": "state",
+          "docs": [
+            "Program state account containing the admin list to be modified",
+            "",
+            "Must be mutable to allow admin list modifications and have the",
+            "boss account as the authorized signer for admin management."
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -2240,7 +2426,7 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The boss calling this function."
+            "The boss account authorized to remove admin privileges"
           ],
           "writable": true,
           "signer": true,
@@ -2333,11 +2519,10 @@ export type Onreapp = {
         {
           "name": "state",
           "docs": [
-            "The program state account, containing the current boss to be updated.",
+            "Program state account containing the boss authority to be updated",
             "",
-            "# Constraints",
-            "- Must be mutable to allow updating the `boss` field.",
-            "- The `has_one = boss` constraint ensures only the current boss can modify it."
+            "Must be mutable to allow boss field modification and have the current",
+            "boss account as the authorized signer for ownership transfer."
           ],
           "writable": true,
           "pda": {
@@ -2358,7 +2543,7 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The current boss, signing the transaction to authorize the update."
+            "The current boss account authorizing the ownership transfer"
           ],
           "signer": true,
           "relations": [
@@ -2368,7 +2553,7 @@ export type Onreapp = {
         {
           "name": "systemProgram",
           "docs": [
-            "Solana System program, included for potential rent accounting."
+            "System program for potential account operations"
           ],
           "address": "11111111111111111111111111111111"
         }
@@ -2410,6 +2595,12 @@ export type Onreapp = {
       "accounts": [
         {
           "name": "state",
+          "docs": [
+            "Program state account containing the kill switch flag",
+            "",
+            "Must be mutable to allow kill switch state modifications.",
+            "The kill switch prevents offer operations when enabled."
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -2428,6 +2619,9 @@ export type Onreapp = {
         },
         {
           "name": "signer",
+          "docs": [
+            "The account attempting to modify the kill switch (boss or admin)"
+          ],
           "signer": true
         }
       ],
@@ -2464,7 +2658,10 @@ export type Onreapp = {
         {
           "name": "state",
           "docs": [
-            "The program state account, containing the current onyc_mint to be updated."
+            "Program state account containing the ONyc mint configuration",
+            "",
+            "Must be mutable to allow ONyc mint updates and have the boss account",
+            "as the authorized signer for mint configuration management."
           ],
           "writable": true,
           "pda": {
@@ -2485,7 +2682,7 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The boss who is authorized to perform the operation"
+            "The boss account authorized to configure the ONyc mint"
           ],
           "signer": true,
           "relations": [
@@ -2495,7 +2692,7 @@ export type Onreapp = {
         {
           "name": "onycMint",
           "docs": [
-            "The ONyc token mint"
+            "The ONyc token mint account to be set in program state"
           ]
         }
       ],
@@ -2528,7 +2725,10 @@ export type Onreapp = {
         {
           "name": "offer",
           "docs": [
-            "The individual offer account"
+            "The offer account containing pricing vectors and exchange configuration",
+            "",
+            "This account is validated as a PDA derived from token mint addresses",
+            "and contains the pricing vectors used for dynamic price calculation."
           ],
           "writable": true,
           "pda": {
@@ -2557,7 +2757,7 @@ export type Onreapp = {
         {
           "name": "state",
           "docs": [
-            "Program state account containing the boss public key"
+            "Program state account containing authorization and kill switch status"
           ],
           "pda": {
             "seeds": [
@@ -2577,8 +2777,9 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The boss account that receives token_in payments",
-            "Must match the boss stored in the program state"
+            "The boss account authorized to receive token_in payments",
+            "",
+            "Must match the boss stored in program state for security validation."
           ],
           "relations": [
             "state"
@@ -2587,7 +2788,10 @@ export type Onreapp = {
         {
           "name": "vaultAuthority",
           "docs": [
-            "The offer vault authority PDA that controls vault token accounts"
+            "Program-derived authority that controls vault token operations",
+            "",
+            "This PDA manages token transfers and burning operations for the",
+            "burn/mint architecture when program has mint authority."
           ],
           "pda": {
             "seeds": [
@@ -2623,7 +2827,10 @@ export type Onreapp = {
         {
           "name": "vaultTokenInAccount",
           "docs": [
-            "Vault's token_in account, used for burning tokens when program has mint authority"
+            "Vault account for temporary token_in storage during burn operations",
+            "",
+            "Used for burning input tokens when the program has mint authority",
+            "for efficient burn/mint token exchange architecture."
           ],
           "writable": true,
           "pda": {
@@ -2683,7 +2890,10 @@ export type Onreapp = {
         {
           "name": "vaultTokenOutAccount",
           "docs": [
-            "Vault's token_out account (source of tokens to distribute to user)"
+            "Vault account for token_out distribution when using transfer mechanism",
+            "",
+            "Source of output tokens when the program lacks mint authority",
+            "and must transfer from pre-funded vault instead of minting."
           ],
           "writable": true,
           "pda": {
@@ -2743,29 +2953,42 @@ export type Onreapp = {
         {
           "name": "tokenInMint",
           "docs": [
-            "The mint account for the input token (what user pays)",
-            "Must be mutable to allow burning when program has mint authority"
+            "Input token mint account for the exchange",
+            "",
+            "Must be mutable to allow burning operations when program has mint authority.",
+            "Validated against the offer's expected token_in_mint."
           ],
           "writable": true
         },
         {
-          "name": "tokenInProgram"
+          "name": "tokenInProgram",
+          "docs": [
+            "Token program interface for input token operations"
+          ]
         },
         {
           "name": "tokenOutMint",
           "docs": [
-            "The mint account for the output token (what user receives)",
-            "Must be mutable to allow minting when program has mint authority"
+            "Output token mint account for the exchange",
+            "",
+            "Must be mutable to allow minting operations when program has mint authority.",
+            "Validated against the offer's expected token_out_mint."
           ],
           "writable": true
         },
         {
-          "name": "tokenOutProgram"
+          "name": "tokenOutProgram",
+          "docs": [
+            "Token program interface for output token operations"
+          ]
         },
         {
           "name": "userTokenInAccount",
           "docs": [
-            "User's token_in account (source of payment)"
+            "User's input token account for payment",
+            "",
+            "Source account from which the user pays token_in for the exchange.",
+            "Must have sufficient balance for the requested token_in_amount."
           ],
           "writable": true,
           "pda": {
@@ -2825,8 +3048,10 @@ export type Onreapp = {
         {
           "name": "userTokenOutAccount",
           "docs": [
-            "User's token_out account (destination of received tokens)",
-            "Uses init_if_needed to automatically create account if it doesn't exist"
+            "User's output token account for receiving exchanged tokens",
+            "",
+            "Destination account where the user receives token_out from the exchange.",
+            "Created automatically if it doesn't exist using init_if_needed."
           ],
           "writable": true,
           "pda": {
@@ -2886,7 +3111,10 @@ export type Onreapp = {
         {
           "name": "bossTokenInAccount",
           "docs": [
-            "Boss's token_in account (destination of user's payment)"
+            "Boss's input token account for receiving payments",
+            "",
+            "Destination account where the boss receives token_in payments",
+            "from users taking offers."
           ],
           "writable": true,
           "pda": {
@@ -2946,7 +3174,10 @@ export type Onreapp = {
         {
           "name": "mintAuthority",
           "docs": [
-            "Mint authority PDA for direct minting (when program has mint authority)"
+            "Program-derived mint authority for direct token minting",
+            "",
+            "Used when the program has mint authority and can mint token_out",
+            "directly to users instead of transferring from vault."
           ],
           "pda": {
             "seeds": [
@@ -2974,12 +3205,18 @@ export type Onreapp = {
         },
         {
           "name": "instructionsSysvar",
+          "docs": [
+            "Instructions sysvar for approval signature verification",
+            "",
+            "Required for cryptographic verification of approval messages",
+            "when offers require boss approval for execution."
+          ],
           "address": "Sysvar1nstructions1111111111111111111111111"
         },
         {
           "name": "user",
           "docs": [
-            "The user taking the offer (must sign the transaction)"
+            "The user executing the offer and paying for account creation"
           ],
           "writable": true,
           "signer": true
@@ -3044,7 +3281,10 @@ export type Onreapp = {
         {
           "name": "offer",
           "docs": [
-            "The individual offer account"
+            "The offer account containing pricing vectors and configuration",
+            "",
+            "Must have allow_permissionless enabled for this instruction to succeed.",
+            "Contains pricing vectors for dynamic price calculation."
           ],
           "writable": true,
           "pda": {
@@ -3073,7 +3313,7 @@ export type Onreapp = {
         {
           "name": "state",
           "docs": [
-            "Program state account containing the boss public key"
+            "Program state account containing authorization and kill switch status"
           ],
           "pda": {
             "seeds": [
@@ -3093,8 +3333,9 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The boss account that receives token_in payments",
-            "Must match the boss stored in the program state"
+            "The boss account authorized to receive token_in payments",
+            "",
+            "Must match the boss stored in program state for security validation."
           ],
           "relations": [
             "state"
@@ -3103,7 +3344,10 @@ export type Onreapp = {
         {
           "name": "vaultAuthority",
           "docs": [
-            "The offer vault authority PDA that controls vault token accounts"
+            "Program-derived authority that controls vault token operations",
+            "",
+            "This PDA manages token transfers and burning operations for the",
+            "burn/mint architecture when program has mint authority."
           ],
           "pda": {
             "seeds": [
@@ -3139,7 +3383,10 @@ export type Onreapp = {
         {
           "name": "vaultTokenInAccount",
           "docs": [
-            "Vault's token_in account, used for burning tokens when program has mint authority"
+            "Vault account for temporary token_in storage during burn operations",
+            "",
+            "Used for burning input tokens when the program has mint authority",
+            "for efficient burn/mint token exchange architecture."
           ],
           "writable": true,
           "pda": {
@@ -3199,7 +3446,10 @@ export type Onreapp = {
         {
           "name": "vaultTokenOutAccount",
           "docs": [
-            "Vault's token_out account (source of tokens to distribute, when program doesn't have mint authority)"
+            "Vault account for token_out distribution when using transfer mechanism",
+            "",
+            "Source of output tokens when the program lacks mint authority",
+            "and must transfer from pre-funded vault instead of minting."
           ],
           "writable": true,
           "pda": {
@@ -3259,7 +3509,10 @@ export type Onreapp = {
         {
           "name": "permissionlessAuthority",
           "docs": [
-            "The permissionless authority PDA that controls intermediary token accounts"
+            "Program-derived authority that controls intermediary token routing accounts",
+            "",
+            "This PDA manages the intermediary accounts used for permissionless token",
+            "routing, enabling secure transfers without direct user-boss relationships."
           ],
           "pda": {
             "seeds": [
@@ -3290,7 +3543,10 @@ export type Onreapp = {
         {
           "name": "permissionlessTokenInAccount",
           "docs": [
-            "Permissionless intermediary token_in account (temporary holding for token_in)"
+            "Intermediary account for routing token_in payments",
+            "",
+            "Temporary holding account that receives user payments before forwarding",
+            "to boss, enabling permissionless operations without direct relationships."
           ],
           "writable": true,
           "pda": {
@@ -3350,7 +3606,10 @@ export type Onreapp = {
         {
           "name": "permissionlessTokenOutAccount",
           "docs": [
-            "Permissionless intermediary token_out account (temporary holding for token_out)"
+            "Intermediary account for routing token_out distributions",
+            "",
+            "Temporary holding account that receives output tokens before forwarding",
+            "to user, completing the permissionless routing mechanism."
           ],
           "writable": true,
           "pda": {
@@ -3410,29 +3669,42 @@ export type Onreapp = {
         {
           "name": "tokenInMint",
           "docs": [
-            "The mint account for the input token (what user pays)",
-            "Must be mutable to allow burning when program has mint authority"
+            "Input token mint account for the exchange",
+            "",
+            "Must be mutable to allow burning operations when program has mint authority.",
+            "Validated against the offer's expected token_in_mint."
           ],
           "writable": true
         },
         {
-          "name": "tokenInProgram"
+          "name": "tokenInProgram",
+          "docs": [
+            "Token program interface for input token operations"
+          ]
         },
         {
           "name": "tokenOutMint",
           "docs": [
-            "The mint account for the output token (what user receives)",
-            "Must be mutable to allow minting when program has mint authority"
+            "Output token mint account for the exchange",
+            "",
+            "Must be mutable to allow minting operations when program has mint authority.",
+            "Validated against the offer's expected token_out_mint."
           ],
           "writable": true
         },
         {
-          "name": "tokenOutProgram"
+          "name": "tokenOutProgram",
+          "docs": [
+            "Token program interface for output token operations"
+          ]
         },
         {
           "name": "userTokenInAccount",
           "docs": [
-            "User's token_in account (source of payment)"
+            "User's input token account for payment",
+            "",
+            "Source account from which the user pays token_in for the exchange.",
+            "Must have sufficient balance for the requested token_in_amount."
           ],
           "writable": true,
           "pda": {
@@ -3492,7 +3764,10 @@ export type Onreapp = {
         {
           "name": "userTokenOutAccount",
           "docs": [
-            "User's token_out account (destination of received tokens)"
+            "User's output token account for receiving exchanged tokens",
+            "",
+            "Destination account where the user receives token_out from the exchange.",
+            "Created automatically if it doesn't exist using init_if_needed."
           ],
           "writable": true,
           "pda": {
@@ -3552,7 +3827,10 @@ export type Onreapp = {
         {
           "name": "bossTokenInAccount",
           "docs": [
-            "Boss's token_in account (final destination of user's payment)"
+            "Boss's input token account for receiving payments",
+            "",
+            "Final destination account where the boss receives token_in payments",
+            "from users taking offers via intermediary routing."
           ],
           "writable": true,
           "pda": {
@@ -3612,7 +3890,10 @@ export type Onreapp = {
         {
           "name": "mintAuthorityPda",
           "docs": [
-            "Mint authority PDA for direct minting (when program has mint authority)"
+            "Program-derived mint authority for direct token minting",
+            "",
+            "Used when the program has mint authority and can mint token_out",
+            "directly instead of transferring from vault."
           ],
           "pda": {
             "seeds": [
@@ -3640,12 +3921,18 @@ export type Onreapp = {
         },
         {
           "name": "instructionsSysvar",
+          "docs": [
+            "Instructions sysvar for approval signature verification",
+            "",
+            "Required for cryptographic verification of approval messages",
+            "when offers require boss approval for execution."
+          ],
           "address": "Sysvar1nstructions1111111111111111111111111"
         },
         {
           "name": "user",
           "docs": [
-            "The user taking the offer (must sign the transaction)"
+            "The user executing the offer and paying for account creation"
           ],
           "writable": true,
           "signer": true
@@ -3709,8 +3996,10 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The current boss account, must sign the transaction",
-            "Must match the boss stored in the program state"
+            "The boss account authorized to recover mint authority",
+            "",
+            "Must be the current boss stored in program state and sign the transaction",
+            "to authorize the mint authority transfer."
           ],
           "writable": true,
           "signer": true,
@@ -3721,7 +4010,7 @@ export type Onreapp = {
         {
           "name": "state",
           "docs": [
-            "Program state containing the current boss public key"
+            "Program state account containing boss validation"
           ],
           "pda": {
             "seeds": [
@@ -3741,8 +4030,10 @@ export type Onreapp = {
         {
           "name": "mint",
           "docs": [
-            "The token mint whose authority will be transferred back to boss",
-            "Must currently have the program PDA as its mint authority"
+            "The token mint whose authority will be transferred to the boss",
+            "",
+            "Must currently have the program PDA as its mint authority. The mint",
+            "will be updated to have the boss as the new mint authority."
           ],
           "writable": true
         },
@@ -3750,7 +4041,9 @@ export type Onreapp = {
           "name": "mintAuthority",
           "docs": [
             "Program-derived account that currently holds mint authority",
-            "Must be derived from [MINT_AUTHORITY] and currently be the mint authority"
+            "",
+            "This PDA must be the current mint authority for the token. The program",
+            "uses this PDA's signature to authorize transferring authority to the boss."
           ],
           "pda": {
             "seeds": [
@@ -3812,8 +4105,10 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The current boss account, must sign the transaction",
-            "Must match the boss stored in the program state"
+            "The boss account authorized to transfer mint authority",
+            "",
+            "Must be the current boss stored in program state and currently hold",
+            "mint authority for the specified token."
           ],
           "writable": true,
           "signer": true,
@@ -3824,7 +4119,7 @@ export type Onreapp = {
         {
           "name": "state",
           "docs": [
-            "Program state containing the current boss public key"
+            "Program state account containing boss validation"
           ],
           "pda": {
             "seeds": [
@@ -3844,8 +4139,10 @@ export type Onreapp = {
         {
           "name": "mint",
           "docs": [
-            "The token mint whose authority will be transferred",
-            "Must currently have the boss as its mint authority"
+            "The token mint whose authority will be transferred to the program",
+            "",
+            "Must currently have the boss as its mint authority. After the transfer,",
+            "the program PDA will be able to mint tokens programmatically."
           ],
           "writable": true
         },
@@ -3853,7 +4150,9 @@ export type Onreapp = {
           "name": "mintAuthority",
           "docs": [
             "Program-derived account that will become the new mint authority",
-            "Derived from [MINT_AUTHORITY] to ensure uniqueness per token"
+            "",
+            "This PDA will receive mint authority and enable the program to mint",
+            "tokens directly for controlled supply management operations."
           ],
           "pda": {
             "seeds": [
@@ -3915,7 +4214,10 @@ export type Onreapp = {
         {
           "name": "offer",
           "docs": [
-            "The offer account containing all offers"
+            "The offer account whose fee will be updated",
+            "",
+            "This account is validated as a PDA derived from token mint addresses",
+            "and contains the fee configuration to be modified."
           ],
           "writable": true,
           "pda": {
@@ -3942,15 +4244,21 @@ export type Onreapp = {
           }
         },
         {
-          "name": "tokenInMint"
+          "name": "tokenInMint",
+          "docs": [
+            "The input token mint account for offer validation"
+          ]
         },
         {
-          "name": "tokenOutMint"
+          "name": "tokenOutMint",
+          "docs": [
+            "The output token mint account for offer validation"
+          ]
         },
         {
           "name": "state",
           "docs": [
-            "Program state, ensures `boss` is authorized."
+            "Program state account containing boss authorization"
           ],
           "pda": {
             "seeds": [
@@ -3970,7 +4278,7 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The signer authorizing the fee update (must be boss)."
+            "The boss account authorized to update offer fees"
           ],
           "writable": true,
           "signer": true,
@@ -4358,19 +4666,40 @@ export type Onreapp = {
   "types": [
     {
       "name": "approvalMessage",
+      "docs": [
+        "Message structure for approval verification",
+        "",
+        "This structure contains the data required to verify that a user has received",
+        "approval from a trusted authority to perform a specific action within the program.",
+        "The message is signed by the trusted authority using Ed25519 signature.",
+        "",
+        "# Fields",
+        "- `program_id`: The ID of the program for which this approval is valid",
+        "- `user_pubkey`: The public key of the user who is approved to perform the action",
+        "- `expiry_unix`: Unix timestamp when this approval expires"
+      ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "programId",
+            "docs": [
+              "The program ID this approval is valid for"
+            ],
             "type": "pubkey"
           },
           {
             "name": "userPubkey",
+            "docs": [
+              "The user public key that is approved"
+            ],
             "type": "pubkey"
           },
           {
             "name": "expiryUnix",
+            "docs": [
+              "Unix timestamp when this approval expires"
+            ],
             "type": "u64"
           }
         ]
@@ -4379,7 +4708,9 @@ export type Onreapp = {
     {
       "name": "bossUpdated",
       "docs": [
-        "Event emitted when the boss is updated in the program state."
+        "Event emitted when the boss authority is successfully updated",
+        "",
+        "Provides transparency for tracking ownership transfers and authority changes."
       ],
       "type": {
         "kind": "struct",
@@ -4387,14 +4718,14 @@ export type Onreapp = {
           {
             "name": "oldBoss",
             "docs": [
-              "The previous boss’s public key."
+              "The previous boss's public key before the update"
             ],
             "type": "pubkey"
           },
           {
             "name": "newBoss",
             "docs": [
-              "The new boss’s public key."
+              "The new boss's public key after the update"
             ],
             "type": "pubkey"
           }
@@ -4403,15 +4734,26 @@ export type Onreapp = {
     },
     {
       "name": "closeOfferEvent",
+      "docs": [
+        "Event emitted when an offer is successfully closed and account is reclaimed",
+        "",
+        "Provides transparency for tracking offer lifecycle and account cleanup operations."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "offerPda",
+            "docs": [
+              "The PDA address of the offer that was closed"
+            ],
             "type": "pubkey"
           },
           {
             "name": "boss",
+            "docs": [
+              "The boss account that initiated the closure and received the rent"
+            ],
             "type": "pubkey"
           }
         ]
@@ -4420,7 +4762,10 @@ export type Onreapp = {
     {
       "name": "getApyEvent",
       "docs": [
-        "Event emitted when get_APY is called"
+        "Event emitted when APY calculation is successfully completed",
+        "",
+        "This event provides transparency for off-chain applications to track",
+        "APY queries and monitor yield calculation results for specific offers."
       ],
       "type": {
         "kind": "struct",
@@ -4428,28 +4773,28 @@ export type Onreapp = {
           {
             "name": "offerPda",
             "docs": [
-              "The PDA of the offer"
+              "The PDA address of the offer for which APY was calculated"
             ],
             "type": "pubkey"
           },
           {
             "name": "apy",
             "docs": [
-              "Current APY for the offer (scaled by 1_000_000)"
+              "Calculated Annual Percentage Yield with scale=6 (1_000_000 = 100%)"
             ],
             "type": "u64"
           },
           {
             "name": "apr",
             "docs": [
-              "APR used for calculation (scaled by 1_000_000)"
+              "Source Annual Percentage Rate with scale=6 used for calculation"
             ],
             "type": "u64"
           },
           {
             "name": "timestamp",
             "docs": [
-              "Unix timestamp when the APY was calculated"
+              "Unix timestamp when the APY calculation was performed"
             ],
             "type": "u64"
           }
@@ -4459,7 +4804,9 @@ export type Onreapp = {
     {
       "name": "getCirculatingSupplyEvent",
       "docs": [
-        "Event emitted when get_circulating_supply is called"
+        "Event emitted when circulating supply calculation is completed",
+        "",
+        "Provides transparency for tracking token supply distribution and vault holdings."
       ],
       "type": {
         "kind": "struct",
@@ -4467,28 +4814,28 @@ export type Onreapp = {
           {
             "name": "circulatingSupply",
             "docs": [
-              "Current circulating supply for the offer"
+              "Calculated circulating supply (total_supply - vault_amount) in base units"
             ],
             "type": "u64"
           },
           {
             "name": "totalSupply",
             "docs": [
-              "Total token supply"
+              "Total token supply from the mint account in base units"
             ],
             "type": "u64"
           },
           {
             "name": "vaultAmount",
             "docs": [
-              "Vault token amount (excluded from circulating supply)"
+              "Vault token amount excluded from circulation in base units"
             ],
             "type": "u64"
           },
           {
             "name": "timestamp",
             "docs": [
-              "Unix timestamp when the circulating supply was calculated"
+              "Unix timestamp when the calculation was performed"
             ],
             "type": "u64"
           }
@@ -4498,7 +4845,9 @@ export type Onreapp = {
     {
       "name": "getNavEvent",
       "docs": [
-        "Event emitted when get_NAV is called"
+        "Event emitted when NAV (Net Asset Value) calculation is completed",
+        "",
+        "Provides transparency for tracking current pricing information for offers."
       ],
       "type": {
         "kind": "struct",
@@ -4506,21 +4855,21 @@ export type Onreapp = {
           {
             "name": "offerPda",
             "docs": [
-              "The PDA of the offer"
+              "The PDA address of the offer for which NAV was calculated"
             ],
             "type": "pubkey"
           },
           {
             "name": "currentPrice",
             "docs": [
-              "Current price for the offer"
+              "Current price with 9 decimal precision (scale=9)"
             ],
             "type": "u64"
           },
           {
             "name": "timestamp",
             "docs": [
-              "Unix timestamp when the price was calculated"
+              "Unix timestamp when the price calculation was performed"
             ],
             "type": "u64"
           }
@@ -4530,7 +4879,9 @@ export type Onreapp = {
     {
       "name": "getNavAdjustmentEvent",
       "docs": [
-        "Event emitted when get_nav_adjustment is called"
+        "Event emitted when NAV adjustment calculation is completed",
+        "",
+        "Provides transparency for tracking price changes between pricing vectors."
       ],
       "type": {
         "kind": "struct",
@@ -4538,21 +4889,21 @@ export type Onreapp = {
           {
             "name": "offerPda",
             "docs": [
-              "The PDA of the offer"
+              "The PDA address of the offer for which adjustment was calculated"
             ],
             "type": "pubkey"
           },
           {
             "name": "currentPrice",
             "docs": [
-              "Current price from the active vector"
+              "Current price from the active vector with scale=9"
             ],
             "type": "u64"
           },
           {
             "name": "previousPrice",
             "docs": [
-              "Previous price from the previous vector (if any)"
+              "Previous price from the previous vector with scale=9 (None if first vector)"
             ],
             "type": {
               "option": "u64"
@@ -4561,14 +4912,14 @@ export type Onreapp = {
           {
             "name": "adjustment",
             "docs": [
-              "Price adjustment (current - previous), signed value"
+              "Price adjustment (current - previous) as signed value with scale=9"
             ],
             "type": "i64"
           },
           {
             "name": "timestamp",
             "docs": [
-              "Unix timestamp when the adjustment was calculated"
+              "Unix timestamp when the adjustment calculation was performed"
             ],
             "type": "u64"
           }
@@ -4578,7 +4929,9 @@ export type Onreapp = {
     {
       "name": "getTvlEvent",
       "docs": [
-        "Event emitted when get_TVL is called"
+        "Event emitted when TVL (Total Value Locked) calculation is completed",
+        "",
+        "Provides transparency for tracking total value metrics for offers."
       ],
       "type": {
         "kind": "struct",
@@ -4586,35 +4939,35 @@ export type Onreapp = {
           {
             "name": "offerPda",
             "docs": [
-              "The PDA of the offer"
+              "The PDA address of the offer for which TVL was calculated"
             ],
             "type": "pubkey"
           },
           {
             "name": "tvl",
             "docs": [
-              "Current TVL for the offer"
+              "Calculated TVL in base units (circulating_supply * current_price / 10^9)"
             ],
             "type": "u64"
           },
           {
             "name": "currentPrice",
             "docs": [
-              "Current price used for TVL calculation"
+              "Current price with scale=9 used for TVL calculation"
             ],
             "type": "u64"
           },
           {
             "name": "tokenSupply",
             "docs": [
-              "Token supply used for TVL calculation"
+              "Circulating token supply (total_supply - vault_amount) in base units"
             ],
             "type": "u64"
           },
           {
             "name": "timestamp",
             "docs": [
-              "Unix timestamp when the TVL was calculated"
+              "Unix timestamp when the TVL calculation was performed"
             ],
             "type": "u64"
           }
@@ -4623,11 +4976,20 @@ export type Onreapp = {
     },
     {
       "name": "mintAuthority",
+      "docs": [
+        "Program-derived authority for direct token minting operations",
+        "",
+        "This PDA enables the program to mint tokens directly when it has mint authority,",
+        "supporting efficient burn/mint token exchange mechanisms."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "bump",
+            "docs": [
+              "PDA bump seed for account derivation"
+            ],
             "type": "u8"
           }
         ]
@@ -4636,7 +4998,9 @@ export type Onreapp = {
     {
       "name": "mintAuthorityTransferredToBossEvent",
       "docs": [
-        "Event emitted when mint authority is successfully transferred from program PDA back to boss"
+        "Event emitted when mint authority is successfully transferred from program PDA to boss",
+        "",
+        "Provides transparency for tracking mint authority changes and emergency recovery operations."
       ],
       "type": {
         "kind": "struct",
@@ -4658,7 +5022,7 @@ export type Onreapp = {
           {
             "name": "newAuthority",
             "docs": [
-              "The new authority (boss)"
+              "The new authority (boss account)"
             ],
             "type": "pubkey"
           }
@@ -4668,7 +5032,9 @@ export type Onreapp = {
     {
       "name": "mintAuthorityTransferredToProgramEvent",
       "docs": [
-        "Event emitted when mint authority is successfully transferred from boss to program PDA"
+        "Event emitted when mint authority is successfully transferred from boss to program PDA",
+        "",
+        "Provides transparency for tracking mint authority changes and enabling programmatic control."
       ],
       "type": {
         "kind": "struct",
@@ -4683,7 +5049,7 @@ export type Onreapp = {
           {
             "name": "oldAuthority",
             "docs": [
-              "The previous authority (boss)"
+              "The previous authority (boss account)"
             ],
             "type": "pubkey"
           },
@@ -4700,7 +5066,9 @@ export type Onreapp = {
     {
       "name": "oNycMintUpdated",
       "docs": [
-        "Event emitted when the ONyc mint is updated in the program state."
+        "Event emitted when the ONyc token mint is successfully updated",
+        "",
+        "Provides transparency for tracking ONyc mint configuration changes."
       ],
       "type": {
         "kind": "struct",
@@ -4708,14 +5076,14 @@ export type Onreapp = {
           {
             "name": "oldOnycMint",
             "docs": [
-              "The previous ONyc mint stored in state."
+              "The previous ONyc mint public key before the update"
             ],
             "type": "pubkey"
           },
           {
             "name": "newOnycMint",
             "docs": [
-              "The new ONyc mint."
+              "The new ONyc mint public key after the update"
             ],
             "type": "pubkey"
           }
@@ -4725,7 +5093,11 @@ export type Onreapp = {
     {
       "name": "offer",
       "docs": [
-        "Offer struct for token exchange with dynamic pricing"
+        "Token exchange offer with dynamic APR-based pricing",
+        "",
+        "Stores configuration for token pair exchanges with time-based pricing vectors",
+        "that implement compound interest growth using Annual Percentage Rate (APR).",
+        "Each offer is unique per token pair and supports up to 10 pricing vectors."
       ],
       "serialization": "bytemuck",
       "repr": {
@@ -4736,14 +5108,23 @@ export type Onreapp = {
         "fields": [
           {
             "name": "tokenInMint",
+            "docs": [
+              "Input token mint for the exchange"
+            ],
             "type": "pubkey"
           },
           {
             "name": "tokenOutMint",
+            "docs": [
+              "Output token mint for the exchange"
+            ],
             "type": "pubkey"
           },
           {
             "name": "vectors",
+            "docs": [
+              "Array of pricing vectors defining price evolution over time"
+            ],
             "type": {
               "array": [
                 {
@@ -4757,22 +5138,37 @@ export type Onreapp = {
           },
           {
             "name": "feeBasisPoints",
+            "docs": [
+              "Fee in basis points (10000 = 100%) charged when taking the offer"
+            ],
             "type": "u16"
           },
           {
             "name": "bump",
+            "docs": [
+              "PDA bump seed for account derivation"
+            ],
             "type": "u8"
           },
           {
             "name": "needsApproval",
+            "docs": [
+              "Whether the offer requires boss approval for taking (0 = false, 1 = true)"
+            ],
             "type": "u8"
           },
           {
             "name": "allowPermissionless",
+            "docs": [
+              "Whether the offer allows permissionless operations (0 = false, 1 = true)"
+            ],
             "type": "u8"
           },
           {
             "name": "reserved",
+            "docs": [
+              "Reserved space for future fields"
+            ],
             "type": {
               "array": [
                 "u8",
@@ -4786,25 +5182,39 @@ export type Onreapp = {
     {
       "name": "offerFeeUpdatedEvent",
       "docs": [
-        "Event emitted when a offer's fee is updated."
+        "Event emitted when an offer's fee is successfully updated",
+        "",
+        "Provides transparency for tracking fee changes and offer configuration modifications."
       ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "offerPda",
+            "docs": [
+              "The PDA address of the offer whose fee was updated"
+            ],
             "type": "pubkey"
           },
           {
             "name": "oldFeeBasisPoints",
+            "docs": [
+              "Previous fee in basis points (10000 = 100%)"
+            ],
             "type": "u16"
           },
           {
             "name": "newFeeBasisPoints",
+            "docs": [
+              "New fee in basis points (10000 = 100%)"
+            ],
             "type": "u16"
           },
           {
             "name": "boss",
+            "docs": [
+              "The boss account that authorized the fee update"
+            ],
             "type": "pubkey"
           }
         ]
@@ -4813,29 +5223,46 @@ export type Onreapp = {
     {
       "name": "offerMadeEvent",
       "docs": [
-        "Event emitted when an offer is created."
+        "Event emitted when an offer is successfully created",
+        "",
+        "Provides transparency for tracking offer creation and configuration parameters."
       ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "offerPda",
+            "docs": [
+              "The PDA address of the newly created offer"
+            ],
             "type": "pubkey"
           },
           {
             "name": "feeBasisPoints",
+            "docs": [
+              "Fee in basis points (10000 = 100%) charged when taking the offer"
+            ],
             "type": "u16"
           },
           {
             "name": "boss",
+            "docs": [
+              "The boss account that created and owns the offer"
+            ],
             "type": "pubkey"
           },
           {
             "name": "needsApproval",
+            "docs": [
+              "Whether the offer requires boss approval for taking"
+            ],
             "type": "bool"
           },
           {
             "name": "allowPermissionless",
+            "docs": [
+              "Whether the offer allows permissionless operations"
+            ],
             "type": "bool"
           }
         ]
@@ -4843,11 +5270,20 @@ export type Onreapp = {
     },
     {
       "name": "offerVaultAuthority",
+      "docs": [
+        "Program-derived authority for controlling offer vault token accounts",
+        "",
+        "This PDA manages token transfers and burning operations for the vault accounts",
+        "used in burn/mint token exchange architecture."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "bump",
+            "docs": [
+              "PDA bump seed for account derivation"
+            ],
             "type": "u8"
           }
         ]
@@ -4855,19 +5291,33 @@ export type Onreapp = {
     },
     {
       "name": "offerVaultDepositEvent",
+      "docs": [
+        "Event emitted when tokens are successfully deposited to the offer vault",
+        "",
+        "Provides transparency for tracking vault funding and token availability."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "mint",
+            "docs": [
+              "The token mint that was deposited"
+            ],
             "type": "pubkey"
           },
           {
             "name": "amount",
+            "docs": [
+              "Amount of tokens deposited to the vault"
+            ],
             "type": "u64"
           },
           {
             "name": "boss",
+            "docs": [
+              "The boss account that made the deposit"
+            ],
             "type": "pubkey"
           }
         ]
@@ -4875,19 +5325,33 @@ export type Onreapp = {
     },
     {
       "name": "offerVaultWithdrawEvent",
+      "docs": [
+        "Event emitted when tokens are successfully withdrawn from the offer vault",
+        "",
+        "Provides transparency for tracking vault withdrawals and fund management."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "mint",
+            "docs": [
+              "The token mint that was withdrawn"
+            ],
             "type": "pubkey"
           },
           {
             "name": "amount",
+            "docs": [
+              "Amount of tokens withdrawn from the vault"
+            ],
             "type": "u64"
           },
           {
             "name": "boss",
+            "docs": [
+              "The boss account that performed the withdrawal"
+            ],
             "type": "pubkey"
           }
         ]
@@ -4896,7 +5360,11 @@ export type Onreapp = {
     {
       "name": "offerVector",
       "docs": [
-        "Time vector for offers with pricing information"
+        "Time-based pricing vector with APR-driven compound growth",
+        "",
+        "Defines price evolution over time using Annual Percentage Rate (APR) with",
+        "discrete pricing steps. Each vector becomes active at start_time and",
+        "implements compound interest pricing until the next vector activates."
       ],
       "serialization": "bytemuck",
       "repr": {
@@ -4907,36 +5375,40 @@ export type Onreapp = {
         "fields": [
           {
             "name": "startTime",
+            "docs": [
+              "Calculated activation time: max(base_time, current_time) when vector was added"
+            ],
             "type": "u64"
           },
           {
             "name": "baseTime",
+            "docs": [
+              "Original requested activation time before current_time adjustment"
+            ],
             "type": "u64"
           },
           {
             "name": "basePrice",
+            "docs": [
+              "Initial price with scale=9 (1_000_000_000 = 1.0) at vector start"
+            ],
             "type": "u64"
           },
           {
             "name": "apr",
             "docs": [
-              "Annual Percentage Rate (APR)",
+              "Annual Percentage Rate scaled by 1_000_000 (1_000_000 = 1% APR)",
               "",
-              "APR represents the annualized rate of return for this offer.",
-              "It is scaled by 1,000,000 for precision (6 decimal places).",
-              "",
-              "Examples:",
-              "- 0 = 0% APR (fixed price, no yield over time)",
-              "- 36_500 = 0.0365% APR (3.65% annual rate)",
-              "- 1_000_000 = 1% APR",
-              "- 10_000_000 = 10% APR",
-              "",
-              "The APR determines how the price increases over time intervals."
+              "Determines compound interest rate for price growth over time.",
+              "Scale=6 where 1_000_000 = 1% annual rate."
             ],
             "type": "u64"
           },
           {
             "name": "priceFixDuration",
+            "docs": [
+              "Duration in seconds for each discrete pricing step"
+            ],
             "type": "u64"
           }
         ]
@@ -4945,33 +5417,53 @@ export type Onreapp = {
     {
       "name": "offerVectorAddedEvent",
       "docs": [
-        "Event emitted when a time vector is added to an offer."
+        "Event emitted when a pricing vector is successfully added to an offer",
+        "",
+        "Provides transparency for tracking pricing vector additions and configurations."
       ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "offerPda",
+            "docs": [
+              "The PDA address of the offer to which the vector was added"
+            ],
             "type": "pubkey"
           },
           {
             "name": "startTime",
+            "docs": [
+              "Calculated start time when the vector becomes active (max(base_time, current_time))"
+            ],
             "type": "u64"
           },
           {
             "name": "baseTime",
+            "docs": [
+              "Original base time specified for the vector"
+            ],
             "type": "u64"
           },
           {
             "name": "basePrice",
+            "docs": [
+              "Base price with 9 decimal precision at the vector start"
+            ],
             "type": "u64"
           },
           {
             "name": "apr",
+            "docs": [
+              "Annual Percentage Rate scaled by 1,000,000 (1_000_000 = 1% APR)"
+            ],
             "type": "u64"
           },
           {
             "name": "priceFixDuration",
+            "docs": [
+              "Duration in seconds for each discrete pricing step"
+            ],
             "type": "u64"
           }
         ]
@@ -4980,17 +5472,25 @@ export type Onreapp = {
     {
       "name": "offerVectorDeletedEvent",
       "docs": [
-        "Event emitted when a time vector is deleted from a offer."
+        "Event emitted when a pricing vector is successfully deleted from an offer",
+        "",
+        "Provides transparency for tracking pricing vector removals and offer configuration changes."
       ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "offerPda",
+            "docs": [
+              "The PDA address of the offer from which the vector was deleted"
+            ],
             "type": "pubkey"
           },
           {
             "name": "vectorStartTime",
+            "docs": [
+              "Start time of the deleted pricing vector"
+            ],
             "type": "u64"
           }
         ]
@@ -4999,7 +5499,9 @@ export type Onreapp = {
     {
       "name": "onycTokensMinted",
       "docs": [
-        "Event emitted when ONyc tokens are minted to the boss"
+        "Event emitted when ONyc tokens are successfully minted to the boss account",
+        "",
+        "Provides transparency for tracking token minting operations performed by the boss."
       ],
       "type": {
         "kind": "struct",
@@ -5014,14 +5516,14 @@ export type Onreapp = {
           {
             "name": "boss",
             "docs": [
-              "The boss account that received the minted tokens"
+              "The boss account that received the newly minted tokens"
             ],
             "type": "pubkey"
           },
           {
             "name": "amount",
             "docs": [
-              "The amount of tokens minted"
+              "The amount of tokens minted in base units"
             ],
             "type": "u64"
           }
@@ -5030,15 +5532,27 @@ export type Onreapp = {
     },
     {
       "name": "permissionlessAuthority",
+      "docs": [
+        "Program-derived authority for permissionless token routing operations",
+        "",
+        "This PDA manages intermediary accounts used for permissionless offer execution,",
+        "enabling secure token routing without direct user-boss relationships."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "name",
+            "docs": [
+              "Optional name identifier for the authority (max 50 characters)"
+            ],
             "type": "string"
           },
           {
             "name": "bump",
+            "docs": [
+              "PDA bump seed for account derivation"
+            ],
             "type": "u8"
           }
         ]
@@ -5047,32 +5561,40 @@ export type Onreapp = {
     {
       "name": "state",
       "docs": [
-        "Represents the program state in the Onre App program.",
+        "Global program state containing governance and configuration settings",
         "",
-        "Stores the current boss's public key, kill switch state, and admin list used for authorization across instructions.",
-        "",
-        "# Fields",
-        "- `boss`: Public key of the current boss, set via `initialize` and updated via `set_boss`.",
-        "- `is_killed`: Kill switch state - when true, certain operations are disabled for emergency purposes.",
-        "- `admins`: Array of admin public keys who can enable the kill switch."
+        "Stores the core program authority structure, emergency controls, and trusted entities",
+        "used for authorization and approval verification across all program operations."
       ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "boss",
+            "docs": [
+              "Primary program authority with full control over all operations"
+            ],
             "type": "pubkey"
           },
           {
             "name": "isKilled",
+            "docs": [
+              "Emergency kill switch to halt critical operations when activated"
+            ],
             "type": "bool"
           },
           {
             "name": "onycMint",
+            "docs": [
+              "ONyc token mint used for market calculations and operations"
+            ],
             "type": "pubkey"
           },
           {
             "name": "admins",
+            "docs": [
+              "Array of admin accounts authorized to enable the kill switch"
+            ],
             "type": {
               "array": [
                 "pubkey",
@@ -5082,14 +5604,23 @@ export type Onreapp = {
           },
           {
             "name": "approver",
+            "docs": [
+              "Trusted authority for cryptographic approval verification"
+            ],
             "type": "pubkey"
           },
           {
             "name": "bump",
+            "docs": [
+              "PDA bump seed for account derivation"
+            ],
             "type": "u8"
           },
           {
             "name": "reserved",
+            "docs": [
+              "Reserved space for future program state extensions"
+            ],
             "type": {
               "array": [
                 "u8",
@@ -5103,7 +5634,9 @@ export type Onreapp = {
     {
       "name": "takeOfferEvent",
       "docs": [
-        "Event emitted when an offer is successfully taken"
+        "Event emitted when an offer is successfully taken",
+        "",
+        "Provides transparency for tracking offer execution and token exchange details."
       ],
       "type": {
         "kind": "struct",
@@ -5111,14 +5644,14 @@ export type Onreapp = {
           {
             "name": "offerPda",
             "docs": [
-              "The PDA of the offer that was taken"
+              "The PDA address of the offer that was executed"
             ],
             "type": "pubkey"
           },
           {
             "name": "tokenInAmount",
             "docs": [
-              "Amount of token_in paid by the user (excluding fee)"
+              "Amount of token_in paid by the user after fee deduction"
             ],
             "type": "u64"
           },
@@ -5132,14 +5665,14 @@ export type Onreapp = {
           {
             "name": "feeAmount",
             "docs": [
-              "Fee amount paid by the user in token_in"
+              "Fee amount deducted from the original token_in payment"
             ],
             "type": "u64"
           },
           {
             "name": "user",
             "docs": [
-              "Public key of the user who took the offer"
+              "Public key of the user who executed the offer"
             ],
             "type": "pubkey"
           }
@@ -5149,7 +5682,9 @@ export type Onreapp = {
     {
       "name": "takeOfferPermissionlessEvent",
       "docs": [
-        "Event emitted when a offer is successfully taken via permissionless flow"
+        "Event emitted when an offer is successfully executed via permissionless flow",
+        "",
+        "Provides transparency for tracking permissionless offer execution with intermediary routing."
       ],
       "type": {
         "kind": "struct",
@@ -5157,14 +5692,14 @@ export type Onreapp = {
           {
             "name": "offerPda",
             "docs": [
-              "The PDA of the offer that was taken"
+              "The PDA address of the offer that was executed"
             ],
             "type": "pubkey"
           },
           {
             "name": "tokenInAmount",
             "docs": [
-              "Amount of token_in paid by the user"
+              "Amount of token_in paid by the user after fee deduction"
             ],
             "type": "u64"
           },
@@ -5178,14 +5713,14 @@ export type Onreapp = {
           {
             "name": "feeAmount",
             "docs": [
-              "Fee amount paid by the user in token_in"
+              "Fee amount deducted from the original token_in payment"
             ],
             "type": "u64"
           },
           {
             "name": "user",
             "docs": [
-              "Public key of the user who took the offer"
+              "Public key of the user who executed the offer"
             ],
             "type": "pubkey"
           }

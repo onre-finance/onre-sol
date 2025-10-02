@@ -18,18 +18,23 @@ pub mod utils;
 /// sell token required can change over the offer's duration based on predefined parameters.
 ///
 /// Core functionalities include:
-/// - Making offers with dynamic pricing (`make_offer_one`, `make_offer_two`).
-/// - Taking offers, respecting the current price (`take_offer_one`, `take_offer_two`).
-/// - Closing offers (`close_offer_one`, `close_offer_two`).
-/// - Program state initialization and boss management (`initialize`, `set_boss`).
+/// - Making offers with dynamic pricing (`make_offer`).
+/// - Taking offers with current market pricing (`take_offer`, `take_offer_permissionless`).
+/// - Managing offer vectors for price control (`add_offer_vector`, `delete_offer_vector`).
+/// - Closing offers (`close_offer`).
+/// - Program state initialization and management (`initialize`, `set_boss`, `add_admin`, `remove_admin`).
+/// - Vault operations for token deposits and withdrawals (`offer_vault_deposit`, `offer_vault_withdraw`).
+/// - Market information queries (`get_nav`, `get_apy`, `get_tvl`, `get_circulating_supply`).
+/// - Mint authority management (`transfer_mint_authority_to_program`, `transfer_mint_authority_to_boss`).
+/// - Emergency controls (`set_kill_switch`) and approval mechanisms (`set_approver`).
 ///
 /// # Dynamic Pricing Model
-/// The price (amount of sell tokens per buy token) is determined by:
-/// - `sell_token_start_amount`: Sell token amount at the beginning of the offer.
-/// - `sell_token_end_amount`: Sell token amount at the end of the offer.
-/// - `offer_start_time`, `offer_end_time`: Defines the offer's active duration.
-/// - `price_fix_duration`: The duration of each discrete pricing interval within the offer period.
-/// The price interpolates linearly across these intervals.
+/// The price for offers is determined by time-based vectors with APR (Annual Percentage Rate) growth:
+/// - `base_time`: The timestamp when the vector becomes active.
+/// - `base_price`: The initial price at the base_time with 9 decimal precision.
+/// - `apr`: Annual percentage rate scaled by 1,000,000 (e.g., 1_000_000 = 1% APR).
+/// - `price_fix_duration`: Duration in seconds for each discrete pricing step.
+/// The price increases over time based on the APR, calculated in discrete intervals.
 ///
 /// # Security
 /// - Access controls are enforced, for example, ensuring only the `boss` can create offers or update critical state.

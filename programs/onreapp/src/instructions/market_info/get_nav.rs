@@ -8,21 +8,30 @@ use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::Mint;
 
-/// Event emitted when get_NAV is called
+/// Event emitted when NAV (Net Asset Value) calculation is completed
+///
+/// Provides transparency for tracking current pricing information for offers.
 #[event]
 pub struct GetNAVEvent {
-    /// The PDA of the offer
+    /// The PDA address of the offer for which NAV was calculated
     pub offer_pda: Pubkey,
-    /// Current price for the offer
+    /// Current price with 9 decimal precision (scale=9)
     pub current_price: u64,
-    /// Unix timestamp when the price was calculated
+    /// Unix timestamp when the price calculation was performed
     pub timestamp: u64,
 }
 
-/// Accounts required for getting NAV information
+/// Account structure for querying NAV (Net Asset Value) information
+///
+/// This struct defines the accounts required to calculate the current price
+/// for a specific offer. The calculation is read-only and validates all
+/// accounts belong to the same offer.
 #[derive(Accounts)]
 pub struct GetNAV<'info> {
-    /// The individual offer account
+    /// The offer account containing pricing vectors and configuration
+    ///
+    /// This account is validated as a PDA derived from token mint addresses
+    /// and contains time-based pricing vectors for price calculation.
     #[account(
         seeds = [
             seeds::OFFER,
@@ -33,6 +42,7 @@ pub struct GetNAV<'info> {
     )]
     pub offer: AccountLoader<'info, Offer>,
 
+    /// The input token mint account for offer validation
     #[account(
         constraint =
             token_in_mint.key() == offer.load()?.token_in_mint
@@ -40,6 +50,7 @@ pub struct GetNAV<'info> {
     )]
     pub token_in_mint: InterfaceAccount<'info, Mint>,
 
+    /// The output token mint account for offer validation
     #[account(
         constraint =
             token_out_mint.key() == offer.load()?.token_out_mint
@@ -48,24 +59,24 @@ pub struct GetNAV<'info> {
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 }
 
-/// Gets the current NAV (price) for a specific offer
+/// Calculates and returns the current NAV (Net Asset Value) for a specific offer
 ///
-/// This instruction allows anyone to query the current price for an offer
-/// without making any state modifications. The price is calculated using
-/// the existing offer_utils::calculate_current_step_price function.
+/// This read-only instruction calculates the current price by finding the active
+/// pricing vector and applying time-based price calculations with APR growth.
+/// The price represents the current exchange rate with 9 decimal precision.
+///
+/// The calculation uses the currently active vector's base price, APR, and
+/// time elapsed since the base time to determine the current stepped price.
 ///
 /// # Arguments
-///
-/// * `ctx` - The instruction context containing required accounts
+/// * `ctx` - The instruction context containing validated accounts
 ///
 /// # Returns
+/// * `Ok(current_price)` - The calculated price with scale=9 (1_000_000_000 = 1.0)
+/// * `Err(OfferCoreError::NoActiveVector)` - If no pricing vector is currently active
 ///
-/// * `Ok(u64)` - The current price if successfully calculated
-/// * `Err(_)` - If the offer doesn't exist or price calculation fails
-///
-/// # Emits
-///
-/// * `GetNAVEvent` - Contains offer_pda, current_price, and timestamp
+/// # Events
+/// * `GetNAVEvent` - Emitted with offer PDA, current price, and timestamp
 pub fn get_nav(ctx: Context<GetNAV>) -> Result<u64> {
     let offer = ctx.accounts.offer.load()?;
     let current_time = Clock::get()?.unix_timestamp as u64;

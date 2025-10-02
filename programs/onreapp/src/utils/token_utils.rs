@@ -88,7 +88,21 @@ pub fn calculate_token_out_amount(
     Ok((numerator / denominator) as u64)
 }
 
-/// Formats an u64 number as a decimal string where the last 9 digits are the fraction
+/// Formats a u64 number as a decimal string with 9 decimal places
+///
+/// This function treats the input as a fixed-point number with 9 decimal places,
+/// where the last 9 digits represent the fractional part.
+///
+/// # Arguments
+/// * `n` - The number to format, with the last 9 digits as the fractional part
+///
+/// # Returns
+/// A string representation of the number with appropriate decimal formatting
+///
+/// # Examples
+/// * `u64_to_dec9(1_500_000_000)` returns `"1.5"`
+/// * `u64_to_dec9(123_456_789_012)` returns `"123.456789012"`
+/// * `u64_to_dec9(1_000_000_000)` returns `"1"`
 pub fn u64_to_dec9(n: u64) -> String {
     let int_part = n / 1_000_000_000;
     let frac_part = n % 1_000_000_000;
@@ -104,10 +118,33 @@ pub fn u64_to_dec9(n: u64) -> String {
     format!("{}.{}", int_part, frac)
 }
 
+/// Result structure for fee calculation
 pub struct CalculateFeeResult {
+    /// The calculated fee amount in token_in units
     pub fee_amount: u64,
+    /// The remaining token_in amount after fee deduction
     pub remaining_token_in_amount: u64,
 }
+
+/// Calculates fee amount and remaining amount after fee deduction
+///
+/// # Arguments
+/// * `token_in_amount` - Total amount of token_in being processed
+/// * `fee_basis_points` - Fee percentage in basis points (e.g., 500 = 5%)
+///
+/// # Returns
+/// A `CalculateFeeResult` containing the fee amount and remaining amount
+///
+/// # Errors
+/// * `MathOverflow` - If calculations exceed u128 limits
+///
+/// # Example
+/// ```
+/// // 5% fee on 1000 tokens = 50 fee, 950 remaining
+/// let result = calculate_fees(1000, 500)?;
+/// assert_eq!(result.fee_amount, 50);
+/// assert_eq!(result.remaining_token_in_amount, 950);
+/// ```
 pub fn calculate_fees(token_in_amount: u64, fee_basis_points: u16) -> Result<CalculateFeeResult> {
     // Calculate fee amount in token_in tokens
     let fee_amount = (token_in_amount as u128)
@@ -185,36 +222,79 @@ pub fn burn_tokens<'info>(
     token_interface::burn_checked(cpi_context, amount, mint.decimals)
 }
 
+/// Parameters for executing token exchange operations
+///
+/// This structure contains all the accounts and parameters needed to execute
+/// a complete token exchange, handling both token_in payment and token_out distribution
+/// with support for both mint/burn and transfer operations.
 pub struct ExecTokenOpsParams<'a, 'info> {
+    /// SPL Token program for token_in operations
     pub token_in_program: &'a Interface<'info, TokenInterface>,
+    /// SPL Token program for token_out operations  
     pub token_out_program: &'a Interface<'info, TokenInterface>,
+    
     // Token in params
+    /// Mint account for the input token
     pub token_in_mint: &'a InterfaceAccount<'info, Mint>,
+    /// Amount of token_in to process
     pub token_in_amount: u64,
+    /// Authority that can transfer from the source account
     pub token_in_authority: &'a AccountInfo<'info>,
+    /// Optional PDA seeds for program-signed token_in transfers
     pub token_in_source_signer_seeds: Option<&'a [&'a [&'a [u8]]]>,
+    /// PDA seeds for vault authority operations
     pub vault_authority_signer_seeds: Option<&'a [&'a [&'a [u8]]]>,
+    /// Source account for token_in (user's account)
     pub token_in_source_account: &'a InterfaceAccount<'info, TokenAccount>,
+    /// Destination account for token_in (boss's account)
     pub token_in_destination_account: &'a InterfaceAccount<'info, TokenAccount>,
+    /// Vault account for burning token_in when program has mint authority
     pub token_in_burn_account: &'a InterfaceAccount<'info, TokenAccount>,
+    /// Authority for burning tokens from the vault
     pub token_in_burn_authority: &'a AccountInfo<'info>,
+    
     // Token out params
+    /// Mint account for the output token
     pub token_out_mint: &'a InterfaceAccount<'info, Mint>,
+    /// Amount of token_out to distribute
     pub token_out_amount: u64,
+    /// Authority for token_out operations (vault authority)
     pub token_out_authority: &'a AccountInfo<'info>,
+    /// Source account for token_out transfers (vault account)
     pub token_out_source_account: &'a InterfaceAccount<'info, TokenAccount>,
+    /// Destination account for token_out (user's account)
     pub token_out_destination_account: &'a InterfaceAccount<'info, TokenAccount>,
+    /// PDA for mint authority operations
     pub mint_authority_pda: &'a AccountInfo<'info>,
+    /// Bump seed for mint authority PDA
     pub mint_authority_bump: &'a [u8],
 }
 
-/// Executes token operations for exchanging token_in for a single token_out.
+/// Executes token operations for exchanging token_in for token_out
 ///
-/// If the program has mint authority for token_in, it transfers tokens from user to program vault
-/// and burns them. Otherwise, it transfers directly to the boss.
+/// This function handles the complete token exchange process with intelligent routing
+/// based on mint authority ownership. It supports both mint/burn and transfer operations
+/// to provide maximum flexibility for different token configurations.
 ///
-/// If the program has mint authority for token_out, it mints directly to the user. Otherwise,
-/// it transfers tokens from the vault to the user.
+/// # Token In Processing
+/// - If program has mint authority: transfers to vault → burns tokens (deflationary)
+/// - If program lacks mint authority: transfers directly to boss/destination (standard transfer)
+///
+/// # Token Out Processing  
+/// - If program has mint authority: mints directly to user (inflationary)
+/// - If program lacks mint authority: transfers from vault to user (standard transfer)
+///
+/// # Arguments
+/// * `params` - Complete parameter structure containing all required accounts and amounts
+///
+/// # Returns
+/// * `Ok(())` - If all token operations complete successfully
+/// * `Err(_)` - If any transfer, mint, or burn operation fails
+///
+/// # Security
+/// - All operations use checked token instructions for decimal validation
+/// - PDA seeds are used for program-signed operations
+/// - Authority validation ensures only authorized transfers
 pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
     // Step 1: User pays token_in
     let controls_token_in_mint =
