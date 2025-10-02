@@ -2,9 +2,16 @@ use crate::state::{State, MAX_ADMINS};
 use crate::constants::seeds;
 use anchor_lang::prelude::*;
 
-/// Account structure for adding a new admin.
+/// Account structure for adding a new admin to the program state
+///
+/// This struct defines the accounts required to add an admin account to the
+/// program's admin list. Only the boss can add new admins.
 #[derive(Accounts)]
 pub struct AddAdmin<'info> {
+    /// Program state account containing the admin list
+    ///
+    /// Must be mutable to allow admin list modifications and have the
+    /// boss account as the authorized signer for admin management.
     #[account(
         mut,
         has_one = boss,
@@ -13,20 +20,33 @@ pub struct AddAdmin<'info> {
     )]
     pub state: Account<'info, State>,
 
-    /// The signer authorizing the addition, must be the boss.
+    /// The boss account authorized to add new admins
     #[account(mut)]
     pub boss: Signer<'info>,
 }
 
-/// Adds a new admin to the state.
+/// Adds a new admin to the program's admin list
+///
+/// This instruction allows the boss to grant admin privileges to a new account
+/// by adding it to the program state's admin list. The admin list supports up
+/// to MAX_ADMINS entries and prevents duplicate additions.
 ///
 /// # Arguments
-/// - `ctx`: Context containing the accounts for adding an admin.
-/// - `new_admin`: Public key of the new admin to be added.
+/// * `ctx` - The instruction context containing validated accounts
+/// * `new_admin` - Public key of the account to be granted admin privileges
 ///
-/// # Errors
-/// - [`AddAdminErrorCode::AdminAlreadyExists`] if the admin is already in the list.
-/// - [`AddAdminErrorCode::MaxAdminsReached`] if the maximum number of admins is reached.
+/// # Returns
+/// * `Ok(())` - If the admin is successfully added
+/// * `Err(AddAdminErrorCode::AdminAlreadyExists)` - If the account is already an admin
+/// * `Err(AddAdminErrorCode::MaxAdminsReached)` - If the admin list is full
+///
+/// # Access Control
+/// - Only the boss can call this instruction
+/// - Boss account must match the one stored in program state
+///
+/// # Effects
+/// - Adds the new admin to the first available slot in the admin array
+/// - Grants admin privileges for program operations
 pub fn add_admin(ctx: Context<AddAdmin>, new_admin: Pubkey) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
@@ -48,14 +68,14 @@ pub fn add_admin(ctx: Context<AddAdmin>, new_admin: Pubkey) -> Result<()> {
     Err(AddAdminErrorCode::MaxAdminsReached.into())
 }
 
-/// Error codes for add admin operations.
+/// Error codes for add admin operations
 #[error_code]
 pub enum AddAdminErrorCode {
-    /// Triggered when trying to add an admin that already exists.
+    /// The specified account is already present in the admin list
     #[msg("Admin already exists in the admin list")]
     AdminAlreadyExists,
 
-    /// Triggered when trying to add more than 20 admins.
+    /// The admin list has reached its maximum capacity and cannot accept more admins
     #[msg("Maximum number of admins (20) reached")]
     MaxAdminsReached,
 }

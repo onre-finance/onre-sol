@@ -1,6 +1,13 @@
+/// Parsed components of an Ed25519 signature verification instruction
+///
+/// Contains the extracted signature count, public key, and message data
+/// from a Solana Ed25519 instruction for cryptographic verification.
 pub struct ParsedEd25519 {
+    /// Number of signatures in the instruction (must be 1 for single signature verification)
     pub sig_count: u8,
+    /// 32-byte Ed25519 public key used for signature verification
     pub pubkey: [u8; 32],
+    /// Message bytes that were signed
     pub message: Vec<u8>,
 }
 

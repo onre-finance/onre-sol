@@ -5,27 +5,39 @@ use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
+/// Event emitted when tokens are successfully deposited to the offer vault
+///
+/// Provides transparency for tracking vault funding and token availability.
 #[event]
 pub struct OfferVaultDepositEvent {
+    /// The token mint that was deposited
     pub mint: Pubkey,
+    /// Amount of tokens deposited to the vault
     pub amount: u64,
+    /// The boss account that made the deposit
     pub boss: Pubkey,
 }
 
-/// Account structure for depositing tokens to the offer vault.
+/// Account structure for depositing tokens to the offer vault
 ///
-/// This struct defines the accounts required for the boss to deposit tokens
-/// into the offer vault authority's token accounts.
+/// This struct defines the accounts required for the boss to fund the offer vault
+/// with tokens that can be distributed during offer executions when the program
+/// lacks mint authority and must transfer from pre-funded reserves.
 #[derive(Accounts)]
 pub struct OfferVaultDeposit<'info> {
-    /// The offer vault authority account that controls the vault token accounts.
+    /// Program-derived authority that controls vault token accounts
+    ///
+    /// This PDA manages the vault token accounts and enables the program
+    /// to distribute tokens during offer executions.
     #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
     pub vault_authority: Account<'info, OfferVaultAuthority>,
 
-    /// The token mint for the deposit.
+    /// The token mint for the deposit operation
     pub token_mint: Box<InterfaceAccount<'info, Mint>>,
 
-    /// Boss's token account for the specific mint (source of tokens).
+    /// Boss's token account serving as the source of deposited tokens
+    ///
+    /// Must have sufficient balance to cover the requested deposit amount.
     #[account(
         mut,
         associated_token::mint = token_mint,
@@ -34,8 +46,10 @@ pub struct OfferVaultDeposit<'info> {
     )]
     pub boss_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// Vault's token account for the specific mint (destination of tokens).
-    /// Uses init_if_needed to create the account if it doesn't exist.
+    /// Vault's token account serving as the destination for deposited tokens
+    ///
+    /// Created automatically if it doesn't exist. Stores tokens that can be
+    /// distributed during offer executions when minting is not available.
     #[account(
         init_if_needed,
         payer = boss,
@@ -45,11 +59,11 @@ pub struct OfferVaultDeposit<'info> {
     )]
     pub vault_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// The signer authorizing the deposit, must be the boss.
+    /// The boss account authorized to deposit tokens and pay for account creation
     #[account(mut)]
     pub boss: Signer<'info>,
 
-    /// Program state, ensures `boss` is authorized.
+    /// Program state account containing boss authorization
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
@@ -57,28 +71,42 @@ pub struct OfferVaultDeposit<'info> {
     )]
     pub state: Box<Account<'info, State>>,
 
-    /// Token program.
+    /// Token program interface for transfer operations
     pub token_program: Interface<'info, TokenInterface>,
 
-    /// Associated Token program.
+    /// Associated Token Program for automatic token account creation
     pub associated_token_program: Program<'info, AssociatedToken>,
 
-    /// Solana System program for account creation and rent payment.
+    /// System program for account creation and rent payment
     pub system_program: Program<'info, System>,
 }
 
-/// Deposits tokens into the offer vault.
+/// Deposits tokens into the offer vault for distribution during offer executions
 ///
-/// Transfers tokens from the boss's token account to the offer vault's token account
-/// for the specified mint. Creates the vault token account if it doesn't exist.
-/// Only the boss can call this instruction.
+/// This instruction allows the boss to fund the offer vault with tokens that can be
+/// distributed to users when offers are executed and the program lacks mint authority.
+/// This supports the transfer-based token distribution mechanism as an alternative
+/// to the burn/mint architecture.
 ///
 /// # Arguments
-/// - `ctx`: Context containing the accounts for the deposit.
-/// - `amount`: Amount of tokens to deposit.
+/// * `ctx` - The instruction context containing validated accounts
+/// * `amount` - Amount of tokens to deposit into the vault
 ///
 /// # Returns
-/// A `Result` indicating success or failure.
+/// * `Ok(())` - If the deposit completes successfully
+/// * `Err(_)` - If transfer fails or insufficient balance
+///
+/// # Access Control
+/// - Only the boss can call this instruction
+/// - Boss account must match the one stored in program state
+///
+/// # Effects
+/// - Transfers tokens from boss account to vault account
+/// - Creates vault token account if it doesn't exist
+/// - Increases available tokens for offer distributions
+///
+/// # Events
+/// * `OfferVaultDepositEvent` - Emitted with mint, amount, and depositor details
 pub fn offer_vault_deposit(ctx: Context<OfferVaultDeposit>, amount: u64) -> Result<()> {
     // Transfer tokens from boss to vault
     transfer_tokens(

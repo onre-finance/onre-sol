@@ -6,24 +6,35 @@ use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
 
-/// Event emitted when a time vector is added to an offer.
+/// Event emitted when a pricing vector is successfully added to an offer
+///
+/// Provides transparency for tracking pricing vector additions and configurations.
 #[event]
 pub struct OfferVectorAddedEvent {
+    /// The PDA address of the offer to which the vector was added
     pub offer_pda: Pubkey,
+    /// Calculated start time when the vector becomes active (max(base_time, current_time))
     pub start_time: u64,
+    /// Original base time specified for the vector
     pub base_time: u64,
+    /// Base price with 9 decimal precision at the vector start
     pub base_price: u64,
+    /// Annual Percentage Rate scaled by 1,000,000 (1_000_000 = 1% APR)
     pub apr: u64,
+    /// Duration in seconds for each discrete pricing step
     pub price_fix_duration: u64,
 }
 
-/// Account structure for adding a time vector to an offer.
+/// Account structure for adding a pricing vector to an offer
 ///
-/// This struct defines the accounts required to add a time vector to an existing offer.
-/// Only the boss can add time vectors to offers.
+/// This struct defines the accounts required to add a time-based pricing vector
+/// to an existing offer. Only the boss can add pricing vectors to control offer dynamics.
 #[derive(Accounts)]
 pub struct AddOfferVector<'info> {
-    /// The offer account containing all offers
+    /// The offer account to which the pricing vector will be added
+    ///
+    /// This account is validated as a PDA derived from token mint addresses
+    /// and contains the array of pricing vectors for the offer.
     #[account(
         mut,
         seeds = [
@@ -35,6 +46,7 @@ pub struct AddOfferVector<'info> {
     )]
     pub offer: AccountLoader<'info, Offer>,
 
+    /// The input token mint account for offer validation
     #[account(
         constraint =
             token_in_mint.key() == offer.load()?.token_in_mint
@@ -42,6 +54,7 @@ pub struct AddOfferVector<'info> {
     )]
     pub token_in_mint: InterfaceAccount<'info, Mint>,
 
+    /// The output token mint account for offer validation
     #[account(
         constraint =
             token_out_mint.key() == offer.load()?.token_out_mint
@@ -49,30 +62,45 @@ pub struct AddOfferVector<'info> {
     )]
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 
-    /// Program state, ensures `boss` is authorized.
+    /// Program state account containing boss authorization
     #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss)]
     pub state: Account<'info, State>,
 
-    /// The signer authorizing the time vector addition (must be boss).
+    /// The boss account authorized to add pricing vectors to offers
     #[account(mut)]
     pub boss: Signer<'info>,
 }
 
-/// Adds a time vector to an existing offer.
+/// Adds a time-based pricing vector to an existing offer
 ///
-/// Creates a new time vector with auto-generated vector_id for the specified offer.
-/// The vector_id is calculated as the highest existing vector_id + 1.
+/// This instruction creates a new pricing vector that defines price evolution over time
+/// using APR-based growth. The vector becomes active at the calculated start time and
+/// implements discrete pricing steps based on the specified duration.
+///
+/// The start time is calculated as max(base_time, current_time) to ensure vectors
+/// cannot start in the past. After adding the vector, old inactive vectors are
+/// automatically cleaned up to maintain storage efficiency.
 ///
 /// # Arguments
-/// - `ctx`: Context containing the accounts for the operation.
-/// - `base_time`: Unix timestamp when the vector becomes active.
-/// - `base_price`: Price at the beginning of the vector.
-/// - `apr`: Annual Percentage Rate (APR) in basis points (see OfferVector::apr for details).
-/// - `price_fix_duration`: Duration in seconds for each price interval.
+/// * `ctx` - The instruction context containing validated accounts
+/// * `base_time` - Unix timestamp when the vector should become active
+/// * `base_price` - Initial price with scale=9 (1_000_000_000 = 1.0)
+/// * `apr` - Annual Percentage Rate scaled by 1,000,000 (1_000_000 = 1% APR)
+/// * `price_fix_duration` - Duration in seconds for each discrete pricing step
 ///
-/// # Errors
-/// - [`AddOfferVectorErrorCode::InvalidTimeRange`] if base_time is before latest existing vector.
-/// - [`AddOfferVectorErrorCode::ZeroValue`] if any value is zero.
+/// # Returns
+/// * `Ok(())` - If the vector is successfully added
+/// * `Err(AddOfferVectorErrorCode::InvalidTimeRange)` - If base_time is before latest existing vector
+/// * `Err(AddOfferVectorErrorCode::ZeroValue)` - If any required value is zero
+/// * `Err(AddOfferVectorErrorCode::DuplicateStartTime)` - If calculated start_time already exists
+/// * `Err(AddOfferVectorErrorCode::TooManyVectors)` - If offer has maximum vectors
+///
+/// # Access Control
+/// - Only the boss can call this instruction
+/// - Boss account must match the one stored in program state
+///
+/// # Events
+/// * `OfferVectorAddedEvent` - Emitted on successful vector addition with parameters
 pub fn add_offer_vector(
     ctx: Context<AddOfferVector>,
     base_time: u64,
@@ -150,6 +178,19 @@ pub fn add_offer_vector(
     Ok(())
 }
 
+/// Validates input parameters for pricing vector creation
+///
+/// Ensures all required parameters are non-zero values to prevent
+/// invalid pricing vector configurations.
+///
+/// # Arguments
+/// * `base_time` - Unix timestamp for vector activation
+/// * `base_price` - Initial price value
+/// * `price_fix_duration` - Duration for pricing steps
+///
+/// # Returns
+/// * `Ok(())` - If all parameters are valid
+/// * `Err(AddOfferVectorErrorCode::ZeroValue)` - If any parameter is zero
 fn validate_inputs(base_time: u64, base_price: u64, price_fix_duration: u64) -> Result<()> {
     // Validate input parameters
     require!(base_time > 0, AddOfferVectorErrorCode::ZeroValue);
@@ -159,17 +200,18 @@ fn validate_inputs(base_time: u64, base_price: u64, price_fix_duration: u64) -> 
     Ok(())
 }
 
-/// Cleans old inactive vectors from the offer, keeping only the currently active vector
-/// and the last previously active vector.
+/// Removes old inactive pricing vectors to maintain storage efficiency
+///
+/// This function preserves the currently active vector and the most recent
+/// previously active vector while clearing older historical vectors that
+/// are no longer needed for pricing calculations.
 ///
 /// # Arguments
-/// - `offer`: Mutable reference to the offer containing vectors to clean
-/// - `current_time`: Current unix timestamp for determining active vector
+/// * `offer` - Mutable reference to the offer containing vectors to clean
+/// * `current_time` - Current unix timestamp for determining active vector
 ///
-/// # Behavior
-/// - Finds the currently active vector (most recent start_time <= current_time)
-/// - Finds the previously active vector (closest smaller vector_id to active vector)
-/// - Deletes all other vectors by setting them to default (vector_id = 0)
+/// # Returns
+/// * `Ok(())` - If cleanup completes successfully or no active vector exists
 fn clean_old_vectors(offer: &mut Offer, current_time: u64) -> Result<()> {
     // Find currently active vector
     let active_vector = find_active_vector_at(offer, current_time);
@@ -202,22 +244,22 @@ fn clean_old_vectors(offer: &mut Offer, current_time: u64) -> Result<()> {
     Ok(())
 }
 
-/// Error codes for add offer vector operations.
+/// Error codes for add offer vector operations
 #[error_code]
 pub enum AddOfferVectorErrorCode {
-    /// Triggered when base_time is before the latest existing vector.
+    /// The base_time is before the latest existing vector's base_time
     #[msg("Invalid time range: base_time must be after the latest existing vector")]
     InvalidTimeRange,
 
-    /// Triggered when any required value is zero.
+    /// One or more required parameters (base_time, base_price, price_fix_duration) is zero
     #[msg("Invalid input: values cannot be zero")]
     ZeroValue,
 
-    /// Triggered when a vector with the same start_time already exists.
+    /// A vector with the calculated start_time already exists in the offer
     #[msg("A vector with this start_time already exists")]
     DuplicateStartTime,
 
-    /// Triggered when the offer already has the maximum number of vectors.
+    /// The offer has reached the maximum number of pricing vectors allowed
     #[msg("Offer already has the maximum number of vectors")]
     TooManyVectors,
 }

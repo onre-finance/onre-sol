@@ -6,20 +6,27 @@ use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
 
-/// Event emitted when a time vector is deleted from a offer.
+/// Event emitted when a pricing vector is successfully deleted from an offer
+///
+/// Provides transparency for tracking pricing vector removals and offer configuration changes.
 #[event]
 pub struct OfferVectorDeletedEvent {
+    /// The PDA address of the offer from which the vector was deleted
     pub offer_pda: Pubkey,
+    /// Start time of the deleted pricing vector
     pub vector_start_time: u64,
 }
 
-/// Account structure for deleting a time vector from an offer.
+/// Account structure for deleting a pricing vector from an offer
 ///
-/// This struct defines the accounts required to delete a time vector from an existing offer.
-/// Only the boss can delete time vectors from offers.
+/// This struct defines the accounts required to remove a time-based pricing vector
+/// from an existing offer. Only the boss can delete pricing vectors to control offer dynamics.
 #[derive(Accounts)]
 pub struct DeleteOfferVector<'info> {
-    /// The individual offer account
+    /// The offer account from which the pricing vector will be deleted
+    ///
+    /// This account is validated as a PDA derived from token mint addresses
+    /// and contains the array of pricing vectors for the offer.
     #[account(
         mut,
         seeds = [
@@ -31,6 +38,7 @@ pub struct DeleteOfferVector<'info> {
     )]
     pub offer: AccountLoader<'info, Offer>,
 
+    /// The input token mint account for offer validation
     #[account(
         constraint =
             token_in_mint.key() == offer.load()?.token_in_mint
@@ -38,6 +46,7 @@ pub struct DeleteOfferVector<'info> {
     )]
     pub token_in_mint: InterfaceAccount<'info, Mint>,
 
+    /// The output token mint account for offer validation
     #[account(
         constraint =
             token_out_mint.key() == offer.load()?.token_out_mint
@@ -45,26 +54,44 @@ pub struct DeleteOfferVector<'info> {
     )]
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 
-    /// Program state, ensures `boss` is authorized.
+    /// Program state account containing boss authorization
     #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss)]
     pub state: Account<'info, State>,
 
-    /// The signer authorizing the time vector deletion (must be boss).
+    /// The boss account authorized to delete pricing vectors from offers
     #[account(mut)]
     pub boss: Signer<'info>,
 }
 
-/// Deletes a time vector from an existing offer.
+/// Deletes a pricing vector from an existing offer
 ///
-/// Removes the specified time vector by setting it to default values.
-/// The vector is identified by vector_id within the specific offer.
+/// This instruction removes a time-based pricing vector from an offer by setting it to
+/// default values. The vector is identified by its start_time within the offer's vector array.
+/// Deleting a vector immediately stops its price evolution and removes its configuration.
+///
+/// To maintain pricing continuity, the instruction prevents deletion of the previously
+/// active vector to ensure smooth price transitions between remaining vectors.
 ///
 /// # Arguments
-/// - `ctx`: Context containing the accounts for the operation.
-/// - `vector_id`: ID of the vector to delete.
+/// * `ctx` - The instruction context containing validated accounts
+/// * `vector_start_time` - Start time of the pricing vector to delete
 ///
-/// # Errors
-/// - [`DeleteOfferVectorErrorCode::VectorNotFound`] if vector_id is 0 or doesn't exist in the offer.
+/// # Returns
+/// * `Ok(())` - If the vector is successfully deleted
+/// * `Err(DeleteOfferVectorErrorCode::VectorNotFound)` - If start_time is zero or vector doesn't exist
+/// * `Err(DeleteOfferVectorErrorCode::CannotDeletePreviousVector)` - If attempting to delete previous active vector
+///
+/// # Access Control
+/// - Only the boss can call this instruction
+/// - Boss account must match the one stored in program state
+///
+/// # Effects
+/// - Pricing vector is set to default (empty) values
+/// - Vector slot becomes available for future additions
+/// - Price evolution for that timeframe is removed
+///
+/// # Events
+/// * `OfferVectorDeletedEvent` - Emitted with offer PDA and deleted vector start time
 pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_start_time: u64) -> Result<()> {
     let offer = &mut ctx.accounts.offer.load_mut()?;
 
@@ -108,13 +135,14 @@ pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_start_time: u
     Ok(())
 }
 
-/// Error codes for delete offer vector operations.
+/// Error codes for delete offer vector operations
 #[error_code]
 pub enum DeleteOfferVectorErrorCode {
-    /// Triggered when the specified vector start_time is 0 or not found in the offer.
+    /// The specified start_time is zero or no vector exists with that start_time
     #[msg("Vector not found")]
     VectorNotFound,
 
+    /// Cannot delete the previously active vector to maintain pricing continuity
     #[msg("Cannot delete previously active vector")]
     CannotDeletePreviousVector,
 }

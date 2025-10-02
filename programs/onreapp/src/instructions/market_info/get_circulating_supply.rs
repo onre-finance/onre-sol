@@ -6,77 +6,92 @@ use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
+/// Error codes for circulating supply calculation operations
 #[error_code]
 pub enum GetCirculatingSupplyErrorCode {
+    /// The vault account address doesn't match the expected ATA address
     #[msg("Invalid token_out vault account")]
     InvalidVaultAccount,
 }
 
-/// Event emitted when get_circulating_supply is called
+/// Event emitted when circulating supply calculation is completed
+///
+/// Provides transparency for tracking token supply distribution and vault holdings.
 #[event]
 pub struct GetCirculatingSupplyEvent {
-    /// Current circulating supply for the offer
+    /// Calculated circulating supply (total_supply - vault_amount) in base units
     pub circulating_supply: u64,
-    /// Total token supply
+    /// Total token supply from the mint account in base units
     pub total_supply: u64,
-    /// Vault token amount (excluded from circulating supply)
+    /// Vault token amount excluded from circulation in base units
     pub vault_amount: u64,
-    /// Unix timestamp when the circulating supply was calculated
+    /// Unix timestamp when the calculation was performed
     pub timestamp: u64,
 }
 
-/// Accounts required for getting circulating supply information
+/// Account structure for querying circulating supply information
+///
+/// This struct defines the accounts required to calculate the circulating supply
+/// of ONyc tokens by subtracting vault holdings from total supply. All accounts
+/// are validated to ensure accurate calculation.
 #[derive(Accounts)]
 pub struct GetCirculatingSupply<'info> {
+    /// The ONyc token mint containing total supply information
     pub onyc_mint: InterfaceAccount<'info, Mint>,
 
+    /// Program state account containing the ONyc mint reference
     #[account(seeds = [seeds::STATE], bump = state.bump, has_one = onyc_mint)]
     pub state: Box<Account<'info, State>>,
 
-    /// The offer vault authority PDA that controls vault token accounts
-    /// CHECK: This is safe as it's a PDA
+    /// The vault authority PDA that controls vault token accounts
     #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump = vault_authority.bump)]
     pub vault_authority: Account<'info, OfferVaultAuthority>,
 
-    /// The token_out account to exclude from supply
-    /// CHECK: This account is validated by the check below to allow passing uninitialized vault account
+    /// The vault's ONyc token account to exclude from circulating supply
+    ///
+    /// This account holds tokens that are not considered in circulation.
+    /// The account address is validated to match the expected ATA address
+    /// and can be uninitialized (treated as zero balance).
+    /// CHECK: Account address is validated by the constraint below to allow passing uninitialized vault account
     #[account(
-        // enforce the exact ATA address
-        constraint = vault_token_out_account.key()
+        constraint = onyc_vault_account.key()
             == get_associated_token_address_with_program_id(
                 &vault_authority.key(),
                 &state.onyc_mint.key(),
                 &token_program.key(),
             ) @ GetCirculatingSupplyErrorCode::InvalidVaultAccount
     )]
-    pub vault_token_out_account: UncheckedAccount<'info>,
+    pub onyc_vault_account: UncheckedAccount<'info>,
 
+    /// SPL Token program for account validation
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-/// Gets the current circulating supply for a specific offer
+/// Calculates and returns the current circulating supply of ONyc tokens
 ///
-/// This instruction allows anyone to query the current circulating supply for an offer
-/// without making any state modifications. The circulating supply is calculated as:
-/// circulating_supply = total_supply - vault_amount
+/// This read-only instruction calculates the circulating supply by subtracting
+/// vault holdings from the total token supply. The vault amount represents tokens
+/// held by the program that are not considered in active circulation.
+///
+/// Formula: `circulating_supply = total_supply - vault_amount`
+///
+/// The vault account can be uninitialized (treated as zero balance) or contain
+/// tokens that should be excluded from circulation calculations.
 ///
 /// # Arguments
-///
-/// * `ctx` - The instruction context containing required accounts
+/// * `ctx` - The instruction context containing validated accounts
 ///
 /// # Returns
+/// * `Ok(circulating_supply)` - The calculated circulating supply in base units
+/// * `Err(GetCirculatingSupplyErrorCode::InvalidVaultAccount)` - If vault account validation fails
 ///
-/// * `Ok(circulating_supply)` - If the circulating supply was successfully calculated
-/// * `Err(_)` - If the offer doesn't exist or calculation fails
-///
-/// # Emits
-///
-/// * `GetCirculatingSupplyEvent` - Contains circulating_supply, total_supply, vault_amount, and timestamp
+/// # Events
+/// * `GetCirculatingSupplyEvent` - Emitted with calculation details and timestamp
 pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64> {
     let current_time = Clock::get()?.unix_timestamp as u64;
 
     let vault_token_out_amount = read_optional_ata_amount(
-        &ctx.accounts.vault_token_out_account,
+        &ctx.accounts.onyc_vault_account,
         &ctx.accounts.token_program,
     )?;
 
@@ -104,8 +119,18 @@ pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64>
     Ok(circulating_supply)
 }
 
-/// Read amount from an ATA only if it's initialized under the given token program.
-/// Returns Ok(0) if the account is uninitialized or not a token account yet.
+/// Safely reads token amount from an Associated Token Account
+///
+/// This function handles both initialized and uninitialized token accounts,
+/// returning zero for accounts that don't exist or aren't properly initialized.
+/// Supports both Token and Token-2022 programs with extension handling.
+///
+/// # Arguments
+/// * `vault_account` - The token account to read from
+/// * `token_program` - The SPL Token program for ownership validation
+///
+/// # Returns
+/// * `Ok(amount)` - Token amount if account is initialized, 0 otherwise
 fn read_optional_ata_amount<'info>(
     vault_account: &AccountInfo,
     token_program: &Interface<TokenInterface>,

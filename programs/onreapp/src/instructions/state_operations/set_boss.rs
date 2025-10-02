@@ -4,36 +4,34 @@ use anchor_lang::prelude::*;
 // Includes `emit!` and `#[event]`
 use anchor_lang::Accounts;
 
-/// Error codes for the set_boss instruction.
+/// Error codes for the set_boss instruction
 #[error_code]
 pub enum SetBossErrorCode {
-    /// Error when attempting to set the boss to the system program address.
+    /// Cannot set boss to default (system program) address
     InvalidBossAddress,
 }
 
-/// Event emitted when the boss is updated in the program state.
+/// Event emitted when the boss authority is successfully updated
+///
+/// Provides transparency for tracking ownership transfers and authority changes.
 #[event]
 pub struct BossUpdated {
-    /// The previous boss’s public key.
+    /// The previous boss's public key before the update
     pub old_boss: Pubkey,
-    /// The new boss’s public key.
+    /// The new boss's public key after the update
     pub new_boss: Pubkey,
 }
 
-/// Account structure for updating the program’s boss.
+/// Account structure for transferring program ownership to a new boss
 ///
-/// This struct defines the accounts required to change the `boss` field in the program state.
-///
-/// # Preconditions
-/// - The `state` account must be initialized prior to execution, via an `initialize` instruction.
-/// - The current `boss` must sign the transaction to authorize the change.
+/// This struct defines the accounts required to change the program's boss authority.
+/// Only the current boss can authorize the ownership transfer.
 #[derive(Accounts)]
 pub struct SetBoss<'info> {
-    /// The program state account, containing the current boss to be updated.
+    /// Program state account containing the boss authority to be updated
     ///
-    /// # Constraints
-    /// - Must be mutable to allow updating the `boss` field.
-    /// - The `has_one = boss` constraint ensures only the current boss can modify it.
+    /// Must be mutable to allow boss field modification and have the current
+    /// boss account as the authorized signer for ownership transfer.
     #[account(
         mut,
         seeds = [seeds::STATE],
@@ -42,27 +40,38 @@ pub struct SetBoss<'info> {
     )]
     pub state: Account<'info, State>,
 
-    /// The current boss, signing the transaction to authorize the update.
+    /// The current boss account authorizing the ownership transfer
     pub boss: Signer<'info>,
 
-    /// Solana System program, included for potential rent accounting.
+    /// System program for potential account operations
     pub system_program: Program<'info, System>,
 }
 
-/// Updates the boss in the program state.
+/// Transfers program ownership to a new boss authority
 ///
-/// Sets the `boss` field in the `state` account to a new public key, emitting a `BossUpdated` event
-/// for traceability. Only the current boss can call this instruction, enforced by the `has_one = boss` constraint.
+/// This instruction allows the current boss to transfer complete program control
+/// to a new account. The new boss will have authority over all program operations
+/// including admin management, state changes, and offer configuration.
 ///
 /// # Arguments
-/// - `ctx`: Context containing the accounts for the state update.
-/// - `new_boss`: The new public key to set as the boss.
-///
-/// # Errors
-/// - [`SetBossErrorCode::InvalidBossAddress`] if the new boss is the system program address.
+/// * `ctx` - The instruction context containing validated accounts
+/// * `new_boss` - Public key of the account to receive boss authority
 ///
 /// # Returns
-/// A `Result` indicating success or failure.
+/// * `Ok(())` - If ownership transfer completes successfully
+/// * `Err(SetBossErrorCode::InvalidBossAddress)` - If new_boss is default address
+///
+/// # Access Control
+/// - Only the current boss can call this instruction
+/// - Current boss account must match the one stored in program state
+///
+/// # Effects
+/// - Updates the program state's boss field
+/// - Transfers all program authority to the new boss
+/// - Emits BossUpdated event for transparency
+///
+/// # Events
+/// * `BossUpdated` - Emitted with old and new boss public keys
 pub fn set_boss(ctx: Context<SetBoss>, new_boss: Pubkey) -> Result<()> {
     require!(
         new_boss != Pubkey::default(),

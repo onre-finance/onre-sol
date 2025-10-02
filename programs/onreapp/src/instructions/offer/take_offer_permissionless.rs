@@ -13,36 +13,45 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 /// Error codes specific to the take_offer_permissionless instruction
 #[error_code]
 pub enum TakeOfferPermissionlessErrorCode {
+    /// The boss account does not match the one stored in program state
     #[msg("Invalid boss account")]
     InvalidBoss,
+    /// The program kill switch is activated, preventing offer operations
     #[msg("Kill switch is activated")]
     KillSwitchActivated,
+    /// The offer does not allow permissionless operations
     #[msg("Permissionless take offer not allowed")]
     PermissionlessNotAllowed,
 }
 
-/// Event emitted when a offer is successfully taken via permissionless flow
+/// Event emitted when an offer is successfully executed via permissionless flow
+///
+/// Provides transparency for tracking permissionless offer execution with intermediary routing.
 #[event]
 pub struct TakeOfferPermissionlessEvent {
-    /// The PDA of the offer that was taken
+    /// The PDA address of the offer that was executed
     pub offer_pda: Pubkey,
-    /// Amount of token_in paid by the user
+    /// Amount of token_in paid by the user after fee deduction
     pub token_in_amount: u64,
     /// Amount of token_out received by the user
     pub token_out_amount: u64,
-    /// Fee amount paid by the user in token_in
+    /// Fee amount deducted from the original token_in payment
     pub fee_amount: u64,
-    /// Public key of the user who took the offer
+    /// Public key of the user who executed the offer
     pub user: Pubkey,
 }
 
-/// Accounts required for taking a offer via permissionless flow
+/// Account structure for executing offers via permissionless flow with intermediary routing
 ///
-/// This struct defines all the accounts needed to execute a take_offer_permissionless instruction,
-/// including intermediary accounts owned by the program for routing token transfers.
+/// This struct defines all accounts required for permissionless offer execution including
+/// program-owned intermediary accounts that enable secure token routing without requiring
+/// direct user-to-boss token account relationships.
 #[derive(Accounts)]
 pub struct TakeOfferPermissionless<'info> {
-    /// The individual offer account
+    /// The offer account containing pricing vectors and configuration
+    ///
+    /// Must have allow_permissionless enabled for this instruction to succeed.
+    /// Contains pricing vectors for dynamic price calculation.
     #[account(
         mut,
         seeds = [
@@ -54,7 +63,7 @@ pub struct TakeOfferPermissionless<'info> {
     )]
     pub offer: AccountLoader<'info, Offer>,
 
-    /// Program state account containing the boss public key
+    /// Program state account containing authorization and kill switch status
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
@@ -63,20 +72,26 @@ pub struct TakeOfferPermissionless<'info> {
     )]
     pub state: Box<Account<'info, State>>,
 
-    /// The boss account that receives token_in payments
-    /// Must match the boss stored in the program state
-    /// CHECK: This account is validated through the constraint above
+    /// The boss account authorized to receive token_in payments
+    ///
+    /// Must match the boss stored in program state for security validation.
+    /// CHECK: Account validation is enforced through state account constraint
     pub boss: UncheckedAccount<'info>,
 
-    /// The offer vault authority PDA that controls vault token accounts
+    /// Program-derived authority that controls vault token operations
+    ///
+    /// This PDA manages token transfers and burning operations for the
+    /// burn/mint architecture when program has mint authority.
     #[account(
         seeds = [seeds::OFFER_VAULT_AUTHORITY],
         bump = vault_authority.bump
     )]
-    /// CHECK: This is safe as it's a PDA used for signing
     pub vault_authority: Account<'info, OfferVaultAuthority>,
 
-    /// Vault's token_in account, used for burning tokens when program has mint authority
+    /// Vault account for temporary token_in storage during burn operations
+    ///
+    /// Used for burning input tokens when the program has mint authority
+    /// for efficient burn/mint token exchange architecture.
     #[account(
         mut,
         associated_token::mint = token_in_mint,
@@ -85,7 +100,10 @@ pub struct TakeOfferPermissionless<'info> {
     )]
     pub vault_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// Vault's token_out account (source of tokens to distribute, when program doesn't have mint authority)
+    /// Vault account for token_out distribution when using transfer mechanism
+    ///
+    /// Source of output tokens when the program lacks mint authority
+    /// and must transfer from pre-funded vault instead of minting.
     #[account(
         mut,
         associated_token::mint = token_out_mint,
@@ -94,15 +112,20 @@ pub struct TakeOfferPermissionless<'info> {
     )]
     pub vault_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// The permissionless authority PDA that controls intermediary token accounts
+    /// Program-derived authority that controls intermediary token routing accounts
+    ///
+    /// This PDA manages the intermediary accounts used for permissionless token
+    /// routing, enabling secure transfers without direct user-boss relationships.
     #[account(
         seeds = [seeds::PERMISSIONLESS_AUTHORITY], 
         bump = permissionless_authority.bump
     )]
-    /// CHECK: This is safe as it's a PDA used for signing
     pub permissionless_authority: Account<'info, PermissionlessAuthority>,
 
-    /// Permissionless intermediary token_in account (temporary holding for token_in)
+    /// Intermediary account for routing token_in payments
+    ///
+    /// Temporary holding account that receives user payments before forwarding
+    /// to boss, enabling permissionless operations without direct relationships.
     #[account(
         mut,
         associated_token::mint = token_in_mint,
@@ -111,7 +134,10 @@ pub struct TakeOfferPermissionless<'info> {
     )]
     pub permissionless_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// Permissionless intermediary token_out account (temporary holding for token_out)
+    /// Intermediary account for routing token_out distributions
+    ///
+    /// Temporary holding account that receives output tokens before forwarding
+    /// to user, completing the permissionless routing mechanism.
     #[account(
         mut,
         associated_token::mint = token_out_mint,
@@ -120,8 +146,10 @@ pub struct TakeOfferPermissionless<'info> {
     )]
     pub permissionless_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// The mint account for the input token (what user pays)
-    /// Must be mutable to allow burning when program has mint authority
+    /// Input token mint account for the exchange
+    ///
+    /// Must be mutable to allow burning operations when program has mint authority.
+    /// Validated against the offer's expected token_in_mint.
     #[account(
         mut,
         constraint =
@@ -129,10 +157,14 @@ pub struct TakeOfferPermissionless<'info> {
             @ OfferCoreError::InvalidTokenInMint
     )]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
+    
+    /// Token program interface for input token operations
     pub token_in_program: Interface<'info, TokenInterface>,
 
-    /// The mint account for the output token (what user receives)
-    /// Must be mutable to allow minting when program has mint authority
+    /// Output token mint account for the exchange
+    ///
+    /// Must be mutable to allow minting operations when program has mint authority.
+    /// Validated against the offer's expected token_out_mint.
     #[account(
         mut,
         constraint =
@@ -140,9 +172,14 @@ pub struct TakeOfferPermissionless<'info> {
             @ OfferCoreError::InvalidTokenOutMint
     )]
     pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
+    
+    /// Token program interface for output token operations
     pub token_out_program: Interface<'info, TokenInterface>,
 
-    /// User's token_in account (source of payment)
+    /// User's input token account for payment
+    ///
+    /// Source account from which the user pays token_in for the exchange.
+    /// Must have sufficient balance for the requested token_in_amount.
     #[account(
         mut,
         associated_token::mint = token_in_mint,
@@ -151,7 +188,10 @@ pub struct TakeOfferPermissionless<'info> {
     )]
     pub user_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// User's token_out account (destination of received tokens)
+    /// User's output token account for receiving exchanged tokens
+    ///
+    /// Destination account where the user receives token_out from the exchange.
+    /// Created automatically if it doesn't exist using init_if_needed.
     #[account(
         init_if_needed,
         payer = user,
@@ -161,7 +201,10 @@ pub struct TakeOfferPermissionless<'info> {
     )]
     pub user_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// Boss's token_in account (final destination of user's payment)
+    /// Boss's input token account for receiving payments
+    ///
+    /// Final destination account where the boss receives token_in payments
+    /// from users taking offers via intermediary routing.
     #[account(
         mut,
         associated_token::mint = token_in_mint,
@@ -170,7 +213,10 @@ pub struct TakeOfferPermissionless<'info> {
     )]
     pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// Mint authority PDA for direct minting (when program has mint authority)
+    /// Program-derived mint authority for direct token minting
+    ///
+    /// Used when the program has mint authority and can mint token_out
+    /// directly instead of transferring from vault.
     /// CHECK: PDA derivation is validated through seeds constraint
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
@@ -178,11 +224,15 @@ pub struct TakeOfferPermissionless<'info> {
     )]
     pub mint_authority_pda: UncheckedAccount<'info>,
 
-    /// CHECK: sysvar to read previous instruction
+    /// Instructions sysvar for approval signature verification
+    ///
+    /// Required for cryptographic verification of approval messages
+    /// when offers require boss approval for execution.
+    /// CHECK: Validated through address constraint to instructions sysvar
     #[account(address = sysvar::instructions::id())]
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    /// The user taking the offer (must sign the transaction)
+    /// The user executing the offer and paying for account creation
     #[account(mut)]
     pub user: Signer<'info>,
 
@@ -193,39 +243,38 @@ pub struct TakeOfferPermissionless<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Main instruction handler for taking an offer via permissionless flow
+/// Executes offers via permissionless flow with secure intermediary routing
 ///
-/// This function allows users to accept an offer using intermediary accounts owned by the program.
-/// Instead of direct transfers, tokens are routed through permissionless intermediary accounts:
-/// 1. User → Permissionless intermediary (token_in)
-/// 2. Permissionless intermediary → Boss (token_in)
-/// 3. Vault → Permissionless intermediary (token_out)
-/// 4. Permissionless intermediary → User (token_out)
+/// This instruction enables users to execute offers without requiring direct token account
+/// relationships with the boss by routing transfers through program-owned intermediary accounts.
+/// This design supports permissionless access while maintaining security and atomicity.
+///
+/// The routing mechanism: User → Intermediary → Boss (token_in) and Vault/Mint → Intermediary → User (token_out)
 ///
 /// # Arguments
-///
-/// * `ctx` - The instruction context containing all required accounts
-/// * `token_in_amount` - The amount of token_in the user is willing to pay
+/// * `ctx` - The instruction context containing validated accounts
+/// * `token_in_amount` - Amount of token_in the user is willing to pay (including fees)
+/// * `approval_message` - Optional cryptographic approval from trusted authority
 ///
 /// # Process Flow
-///
-/// 1. Load and validate the offer exists
-/// 2. Find the currently active pricing vector
-/// 3. Calculate current price based on time elapsed and APR parameters
-/// 4. Calculate how many token_out to give for the provided token_in_amount
-/// 5. Execute atomic transfers through intermediary accounts
-/// 6. Emit event with transaction details
+/// 1. Validate offer allows permissionless operations
+/// 2. Verify approval requirements if offer needs approval
+/// 3. Calculate current price and token amounts
+/// 4. Execute atomic transfers through intermediary accounts
+/// 5. Emit event with transaction details
 ///
 /// # Returns
+/// * `Ok(())` - If the offer is successfully executed
+/// * `Err(PermissionlessNotAllowed)` - If offer doesn't allow permissionless operations
+/// * `Err(_)` - If validation fails or token operations fail
 ///
-/// * `Ok(())` - If the offer was successfully taken
-/// * `Err(_)` - If validation fails or transfers cannot be completed
+/// # Access Control
+/// - Only available for offers with allow_permissionless enabled
+/// - Kill switch prevents execution when activated
+/// - Approval verification when required
 ///
-/// # Errors
-///
-/// * `NoActiveVector` - No pricing vector is currently active  
-/// * `OverflowError` - Mathematical overflow in price calculations
-/// * Token transfer errors if insufficient balances or invalid accounts
+/// # Events
+/// * `TakeOfferPermissionlessEvent` - Emitted with execution details and routing information
 pub fn take_offer_permissionless(
     ctx: Context<TakeOfferPermissionless>,
     token_in_amount: u64,

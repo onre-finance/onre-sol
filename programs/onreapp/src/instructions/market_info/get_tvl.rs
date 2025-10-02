@@ -12,33 +12,45 @@ use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
+/// Error codes for TVL calculation operations
 #[error_code]
 pub enum GetTVLErrorCode {
+    /// Mathematical overflow during TVL calculations
     #[msg("Math overflow")]
     Overflow,
+    /// The vault account address doesn't match the expected ATA address
     #[msg("Invalid token_out vault account")]
     InvalidVaultAccount,
 }
 
-/// Event emitted when get_TVL is called
+/// Event emitted when TVL (Total Value Locked) calculation is completed
+///
+/// Provides transparency for tracking total value metrics for offers.
 #[event]
 pub struct GetTVLEvent {
-    /// The PDA of the offer
+    /// The PDA address of the offer for which TVL was calculated
     pub offer_pda: Pubkey,
-    /// Current TVL for the offer
+    /// Calculated TVL in base units (circulating_supply * current_price / 10^9)
     pub tvl: u64,
-    /// Current price used for TVL calculation
+    /// Current price with scale=9 used for TVL calculation
     pub current_price: u64,
-    /// Token supply used for TVL calculation
+    /// Circulating token supply (total_supply - vault_amount) in base units
     pub token_supply: u64,
-    /// Unix timestamp when the TVL was calculated
+    /// Unix timestamp when the TVL calculation was performed
     pub timestamp: u64,
 }
 
-/// Accounts required for getting TVL information
+/// Account structure for querying TVL (Total Value Locked) information
+///
+/// This struct defines the accounts required to calculate the TVL for a specific
+/// offer by combining current pricing with circulating token supply. The calculation
+/// is read-only and validates all accounts belong to the same offer.
 #[derive(Accounts)]
 pub struct GetTVL<'info> {
-    /// The individual offer account
+    /// The offer account containing pricing vectors for current price calculation
+    ///
+    /// This account is validated as a PDA derived from token mint addresses
+    /// and contains time-based pricing vectors for TVL calculation.
     #[account(
         seeds = [
             seeds::OFFER,
@@ -49,6 +61,7 @@ pub struct GetTVL<'info> {
     )]
     pub offer: AccountLoader<'info, Offer>,
 
+    /// The input token mint account for offer validation
     #[account(
         constraint =
             token_in_mint.key() == offer.load()?.token_in_mint
@@ -56,7 +69,7 @@ pub struct GetTVL<'info> {
     )]
     pub token_in_mint: InterfaceAccount<'info, Mint>,
 
-    /// The token_out mint account to get supply information
+    /// The output token mint account containing total supply information
     #[account(
         constraint =
             token_out_mint.key() == offer.load()?.token_out_mint
@@ -64,15 +77,17 @@ pub struct GetTVL<'info> {
     )]
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 
-    /// The offer vault authority PDA that controls vault token accounts
-    /// CHECK: This is safe as it's a PDA
+    /// The vault authority PDA that controls vault token accounts
     #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump = vault_authority.bump)]
     pub vault_authority: Account<'info, OfferVaultAuthority>,
 
-    /// The token_out account to exclude from supply
-    /// CHECK: This account is validated by the check below to allow passing uninitialized vault account
+    /// The vault's token_out account to exclude from circulating supply
+    ///
+    /// This account holds tokens that should not be included in TVL calculations.
+    /// The account address is validated to match the expected ATA address
+    /// and can be uninitialized (treated as zero balance).
+    /// CHECK: Account address is validated by the constraint below to allow passing uninitialized vault account
     #[account(
-        // enforce the exact ATA address
         constraint = vault_token_out_account.key()
             == get_associated_token_address_with_program_id(
                 &vault_authority.key(),
@@ -82,27 +97,32 @@ pub struct GetTVL<'info> {
     )]
     pub vault_token_out_account: UncheckedAccount<'info>,
 
+    /// SPL Token program for vault account validation
     pub token_out_program: Interface<'info, TokenInterface>,
 }
 
-/// Gets the current TVL (Total Value Locked) for a specific offer
+/// Calculates and returns the current TVL (Total Value Locked) for a specific offer
 ///
-/// This instruction allows anyone to query the current TVL for an offer
-/// without making any state modifications. The TVL is calculated as:
-/// TVL = token_out_supply * current_NAV
+/// This read-only instruction calculates the TVL by combining the current NAV price
+/// with the circulating token supply. The calculation excludes vault holdings from
+/// the total supply to represent only tokens in circulation.
+///
+/// Formula: `TVL = circulating_supply * current_price / 10^9`
+///
+/// The calculation uses the current active pricing vector to determine NAV and
+/// subtracts vault holdings from total supply to get circulating supply.
 ///
 /// # Arguments
-///
-/// * `ctx` - The instruction context containing required accounts
+/// * `ctx` - The instruction context containing validated accounts
 ///
 /// # Returns
+/// * `Ok(tvl)` - The calculated TVL in base units
+/// * `Err(OfferCoreError::NoActiveVector)` - If no pricing vector is currently active
+/// * `Err(GetTVLErrorCode::Overflow)` - If mathematical overflow occurs during calculation
+/// * `Err(GetTVLErrorCode::InvalidVaultAccount)` - If vault account validation fails
 ///
-/// * `Ok(tvl)` - If the TVL was successfully calculated
-/// * `Err(_)` - If the offer doesn't exist, TVL calculation fails, or math overflow occurs
-///
-/// # Emits
-///
-/// * `GetTVLEvent` - Contains offer_pda, tvl, current_price, token_supply, and timestamp
+/// # Events
+/// * `GetTVLEvent` - Emitted with TVL, price, supply, and timestamp details
 pub fn get_tvl(ctx: Context<GetTVL>) -> Result<u64> {
     let offer = ctx.accounts.offer.load()?;
     let current_time = Clock::get()?.unix_timestamp as u64;
@@ -163,8 +183,18 @@ pub fn get_tvl(ctx: Context<GetTVL>) -> Result<u64> {
     Ok(tvl)
 }
 
-/// Read amount from an ATA only if it’s initialized under the given token program.
-/// Returns Ok(0) if the account is uninitialized or not a token account yet.
+/// Safely reads token amount from an Associated Token Account
+///
+/// This function handles both initialized and uninitialized token accounts,
+/// returning zero for accounts that don't exist or aren't properly initialized.
+/// Supports both Token and Token-2022 programs with extension handling.
+///
+/// # Arguments
+/// * `vault_account` - The token account to read from
+/// * `token_program` - The SPL Token program for ownership validation
+///
+/// # Returns
+/// * `Ok(amount)` - Token amount if account is initialized, 0 otherwise
 fn read_optional_ata_amount(
     vault_account: &AccountInfo,
     token_program: &Interface<TokenInterface>,

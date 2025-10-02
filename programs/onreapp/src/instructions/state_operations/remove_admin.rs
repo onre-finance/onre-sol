@@ -2,9 +2,16 @@ use crate::state::{State, MAX_ADMINS};
 use crate::constants::seeds;
 use anchor_lang::prelude::*;
 
-/// Account structure for removing an admin.
+/// Account structure for removing an admin from the program state
+///
+/// This struct defines the accounts required to revoke admin privileges
+/// from a specific account. Only the boss can remove admins.
 #[derive(Accounts)]
 pub struct RemoveAdmin<'info> {
+    /// Program state account containing the admin list to be modified
+    ///
+    /// Must be mutable to allow admin list modifications and have the
+    /// boss account as the authorized signer for admin management.
     #[account(
         mut,
         has_one = boss,
@@ -13,19 +20,33 @@ pub struct RemoveAdmin<'info> {
     )]
     pub state: Account<'info, State>,
 
-    /// The boss calling this function.
+    /// The boss account authorized to remove admin privileges
     #[account(mut)]
     pub boss: Signer<'info>
 }
 
-/// Removes an admin from the state.
+/// Removes admin privileges from a specific account
+///
+/// This instruction allows the boss to revoke admin privileges from an account
+/// by removing it from the program state's admin list. The admin entry is set
+/// to default (empty) value, making the slot available for future additions.
 ///
 /// # Arguments
-/// - `ctx`: Context containing the accounts for removing an admin.
-/// - `admin_to_remove`: Public key of the admin to be removed.
+/// * `ctx` - The instruction context containing validated accounts
+/// * `admin_to_remove` - Public key of the account to lose admin privileges
 ///
-/// # Errors
-/// - [`RemoveAdminErrorCode::AdminNotFound`] if the admin to remove is not in the list.
+/// # Returns
+/// * `Ok(())` - If the admin is successfully removed
+/// * `Err(RemoveAdminErrorCode::AdminNotFound)` - If the account is not in the admin list
+///
+/// # Access Control
+/// - Only the boss can call this instruction
+/// - Boss account must match the one stored in program state
+///
+/// # Effects
+/// - Sets the admin array entry to default (empty) public key
+/// - Revokes admin privileges from the specified account
+/// - Makes the admin slot available for future use
 pub fn remove_admin(ctx: Context<RemoveAdmin>, admin_to_remove: Pubkey) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
@@ -41,10 +62,10 @@ pub fn remove_admin(ctx: Context<RemoveAdmin>, admin_to_remove: Pubkey) -> Resul
     Err(RemoveAdminErrorCode::AdminNotFound.into())
 }
 
-/// Error codes for remove admin operations.
+/// Error codes for remove admin operations
 #[error_code]
 pub enum RemoveAdminErrorCode {
-    /// Triggered when trying to remove an admin that doesn't exist.
+    /// The specified account is not present in the admin list
     #[msg("Admin not found in the admin list")]
     AdminNotFound,
 }

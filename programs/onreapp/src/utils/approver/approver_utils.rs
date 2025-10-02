@@ -4,31 +4,70 @@ use crate::utils::approver::message::ApprovalMessage;
 use crate::utils::ed25519_parser::parse_ed25519_ix;
 
 
+/// Error codes for approval verification operations
 #[error_code]
 pub enum ErrorCode {
+    /// The approval message timestamp has passed the current time
     #[msg("The approval message has expired.")]
     Expired,
+    /// The approval message was signed for a different program ID
     #[msg("The approval message is for the wrong program.")]
     WrongProgram,
+    /// The approval message was signed for a different user
     #[msg("The approval message is for the wrong user.")]
     WrongUser,
+    /// No Ed25519 instruction found before the current instruction
     #[msg("Missing Ed25519 instruction.")]
     MissingEd25519Ix,
+    /// The previous instruction is not an Ed25519 instruction
     #[msg("The instruction is for the wrong program.")]
     WrongIxProgram,
+    /// The Ed25519 instruction data is malformed or invalid
     #[msg("Malformed Ed25519 instruction.")]
     MalformedEd25519Ix,
+    /// The Ed25519 instruction contains more than one signature
     #[msg("Multiple signatures found in Ed25519 instruction.")]
     MultipleSigs,
+    /// The signing authority does not match the trusted authority
     #[msg("The authority public key does not match.")]
     WrongAuthority,
+    /// The signed message does not match the provided approval message
     #[msg("The message in the Ed25519 instruction does not match the approval message.")]
     MsgMismatch,
+    /// Failed to deserialize the approval message from the signature
     #[msg("Failed to deserialize the approval message.")]
     MsgDeserialize,
 }
 
 
+/// Verifies cryptographic approval messages signed by trusted authorities
+///
+/// This function performs comprehensive validation of approval messages using Ed25519
+/// signature verification. It ensures the approval was signed by the correct authority,
+/// is intended for the current program and user, and has not expired.
+///
+/// The verification process validates both the approval message content and the
+/// cryptographic signature by examining the Ed25519 instruction that must immediately
+/// precede the current instruction in the transaction.
+///
+/// # Arguments
+/// * `program_id` - The current program ID for validation context
+/// * `user_pubkey` - The user requesting approval
+/// * `trusted_pubkey` - The authorized signing authority
+/// * `instructions_sysvar` - Instructions sysvar for accessing previous instructions
+/// * `msg` - The approval message to verify
+///
+/// # Returns
+/// * `Ok(())` - If approval signature and content are valid
+/// * `Err(_)` - If any validation step fails
+///
+/// # Validation Steps
+/// 1. Expiry time validation against current timestamp
+/// 2. Program ID matching verification
+/// 3. User public key matching verification
+/// 4. Ed25519 signature instruction location and parsing
+/// 5. Trusted authority signature verification
+/// 6. Signed message content validation
 pub fn verify_approval_message_generic(
     program_id: &Pubkey,
     user_pubkey: &Pubkey,

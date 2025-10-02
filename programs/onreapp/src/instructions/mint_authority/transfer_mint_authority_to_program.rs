@@ -5,31 +5,33 @@ use anchor_spl::token::spl_token::instruction::AuthorityType;
 use anchor_spl::token::{set_authority, SetAuthority};
 use anchor_spl::token_interface::{Mint, TokenInterface};
 
-/// This module handles transferring mint authority from the boss account to a program-derived PDA.
+/// Handles transferring mint authority from the boss account to a program PDA
 ///
-/// The mint authority transfer is part of the burn/mint token architecture that allows the program
-/// to mint tokens directly instead of transferring from pre-minted vaults.
+/// This enables burn/mint token architecture allowing the program to mint tokens directly
+/// instead of transferring from pre-minted vaults. Essential for controlled token supply
+/// management and programmatic minting operations.
 ///
-/// # Security Considerations
+/// # Security
 /// - Only the current boss can transfer mint authority
-/// - The boss must be the current mint authority for the token
-/// - Each token gets its own unique mint authority PDA
+/// - Boss must be the current mint authority for the token
 /// - Authority can be recovered using `transfer_mint_authority_to_boss`
 
-/// Error codes specific to transferring mint authority to program
+/// Error codes for mint authority transfer to program operations
 #[error_code]
 pub enum TransferMintAuthorityToProgramErrorCode {
-    /// Error when the boss does not currently hold mint authority for the token
+    /// The boss is not the current mint authority for the specified token
     #[msg("Boss must be the current mint authority")]
     BossNotMintAuthority,
 }
 
 /// Event emitted when mint authority is successfully transferred from boss to program PDA
+///
+/// Provides transparency for tracking mint authority changes and enabling programmatic control.
 #[event]
 pub struct MintAuthorityTransferredToProgramEvent {
     /// The mint whose authority was transferred
     pub mint: Pubkey,
-    /// The previous authority (boss)
+    /// The previous authority (boss account)
     pub old_authority: Pubkey,
     /// The new authority (program PDA)
     pub new_authority: Pubkey,
@@ -37,27 +39,25 @@ pub struct MintAuthorityTransferredToProgramEvent {
 
 /// Account structure for transferring mint authority from boss to program PDA
 ///
-/// This instruction allows the boss to transfer mint authority for a specific token
-/// to a program-derived account. The PDA is derived deterministically from the mint
-/// address, ensuring each token has its own unique mint authority PDA.
-///
-/// # Account Requirements
-/// - `boss` must be the current boss and current mint authority
-/// - `mint` must have the boss as its current mint authority
-/// - `mint_authority_pda` is derived from [MINT_AUTHORITY, mint_pubkey]
+/// This struct defines the accounts required for the boss to transfer mint authority
+/// to the program PDA, enabling programmatic token minting and burn/mint architecture.
 #[derive(Accounts)]
 pub struct TransferMintAuthorityToProgram<'info> {
-    /// The current boss account, must sign the transaction
-    /// Must match the boss stored in the program state
+    /// The boss account authorized to transfer mint authority
+    ///
+    /// Must be the current boss stored in program state and currently hold
+    /// mint authority for the specified token.
     #[account(mut)]
     pub boss: Signer<'info>,
 
-    /// Program state containing the current boss public key
+    /// Program state account containing boss validation
     #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss)]
     pub state: Account<'info, State>,
 
-    /// The token mint whose authority will be transferred
-    /// Must currently have the boss as its mint authority
+    /// The token mint whose authority will be transferred to the program
+    ///
+    /// Must currently have the boss as its mint authority. After the transfer,
+    /// the program PDA will be able to mint tokens programmatically.
     #[account(
         mut,
         constraint = mint.mint_authority.unwrap() == boss.key() @ TransferMintAuthorityToProgramErrorCode::BossNotMintAuthority
@@ -65,7 +65,9 @@ pub struct TransferMintAuthorityToProgram<'info> {
     pub mint: InterfaceAccount<'info, Mint>,
 
     /// Program-derived account that will become the new mint authority
-    /// Derived from [MINT_AUTHORITY] to ensure uniqueness per token
+    ///
+    /// This PDA will receive mint authority and enable the program to mint
+    /// tokens directly for controlled supply management operations.
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
@@ -77,26 +79,30 @@ pub struct TransferMintAuthorityToProgram<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-/// Transfers mint authority from the boss account to a program-derived PDA
+/// Transfers mint authority from the boss account to a program PDA
 ///
-/// This instruction is the first step in enabling burn/mint functionality for the program.
-/// After calling this instruction, the program will be able to mint tokens using the
-/// derived PDA as the mint authority.
+/// This instruction enables burn/mint functionality by giving the program direct
+/// control over token minting. After this transfer, the program can mint tokens
+/// programmatically using the PDA's authority for controlled supply management.
 ///
-/// # Process
-/// 1. Validates that the boss is the current mint authority
-/// 2. Uses SPL Token's `set_authority` to transfer mint authority to the PDA
-/// 3. Emits an event for transparency and off-chain tracking
+/// The boss retains the ability to recover mint authority using the
+/// `transfer_mint_authority_to_boss` instruction if needed.
 ///
 /// # Arguments
-/// * `ctx` - The instruction context containing all required accounts
+/// * `ctx` - The instruction context containing validated accounts
 ///
 /// # Returns
-/// * `Ok(())` if the transfer succeeds
-/// * `Err` if validation fails or the SPL Token instruction fails
+/// * `Ok(())` - If authority transfer completes successfully
+/// * `Err(TransferMintAuthorityToProgramErrorCode::BossNotMintAuthority)` - If boss doesn't hold authority
+/// * `Err(_)` - If SPL Token authority transfer fails
+///
+/// # Access Control
+/// - Only the boss can call this instruction
+/// - Boss must currently hold mint authority
+/// - Boss account must match the one stored in program state
 ///
 /// # Events
-/// Emits `MintAuthorityTransferredToProgramEvent` on success
+/// * `MintAuthorityTransferredToProgramEvent` - Emitted on successful authority transfer
 pub fn transfer_mint_authority_to_program(
     ctx: Context<TransferMintAuthorityToProgram>,
 ) -> Result<()> {
