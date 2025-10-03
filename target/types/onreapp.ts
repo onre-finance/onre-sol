@@ -3336,9 +3336,6 @@ export type Onreapp = {
             "The boss account authorized to receive token_in payments",
             "",
             "Must match the boss stored in program state for security validation."
-          ],
-          "relations": [
-            "state"
           ]
         },
         {
@@ -3888,7 +3885,7 @@ export type Onreapp = {
           }
         },
         {
-          "name": "mintAuthorityPda",
+          "name": "mintAuthority",
           "docs": [
             "Program-derived mint authority for direct token minting",
             "",
@@ -4614,8 +4611,18 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "mathOverflow",
-      "msg": "Math overflow"
+      "name": "invalidBoss",
+      "msg": "Invalid boss account"
+    },
+    {
+      "code": 6001,
+      "name": "killSwitchActivated",
+      "msg": "Kill switch is activated"
+    },
+    {
+      "code": 6002,
+      "name": "permissionlessNotAllowed",
+      "msg": "Permissionless take offer not allowed"
     }
   ],
   "types": [

@@ -1,7 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::offer::offer_utils::{process_offer_core, verify_offer_approval};
 use crate::instructions::Offer;
-use crate::state::{OfferVaultAuthority, PermissionlessAuthority, State};
+use crate::state::State;
 use crate::utils::{
     execute_token_operations, transfer_tokens, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams,
 };
@@ -59,16 +59,14 @@ pub struct TakeOfferPermissionless<'info> {
             token_in_mint.key().as_ref(),
             token_out_mint.key().as_ref()
         ],
-        bump = offer.load()?.bump
+        bump
     )]
     pub offer: AccountLoader<'info, Offer>,
 
     /// Program state account containing authorization and kill switch status
     #[account(
         seeds = [seeds::STATE],
-        bump = state.bump,
-        has_one = boss @ TakeOfferPermissionlessErrorCode::InvalidBoss,
-        constraint = state.is_killed == false @ TakeOfferPermissionlessErrorCode::KillSwitchActivated
+        bump = state.bump
     )]
     pub state: Box<Account<'info, State>>,
 
@@ -82,11 +80,12 @@ pub struct TakeOfferPermissionless<'info> {
     ///
     /// This PDA manages token transfers and burning operations for the
     /// burn/mint architecture when program has mint authority.
+    /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
         seeds = [seeds::OFFER_VAULT_AUTHORITY],
-        bump = vault_authority.bump
+        bump
     )]
-    pub vault_authority: Account<'info, OfferVaultAuthority>,
+    pub vault_authority: UncheckedAccount<'info>,
 
     /// Vault account for temporary token_in storage during burn operations
     ///
@@ -116,11 +115,12 @@ pub struct TakeOfferPermissionless<'info> {
     ///
     /// This PDA manages the intermediary accounts used for permissionless token
     /// routing, enabling secure transfers without direct user-boss relationships.
+    /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
-        seeds = [seeds::PERMISSIONLESS_AUTHORITY], 
-        bump = permissionless_authority.bump
+        seeds = [seeds::PERMISSIONLESS_AUTHORITY],
+        bump
     )]
-    pub permissionless_authority: Account<'info, PermissionlessAuthority>,
+    pub permissionless_authority: UncheckedAccount<'info>,
 
     /// Intermediary account for routing token_in payments
     ///
@@ -150,14 +150,9 @@ pub struct TakeOfferPermissionless<'info> {
     ///
     /// Must be mutable to allow burning operations when program has mint authority.
     /// Validated against the offer's expected token_in_mint.
-    #[account(
-        mut,
-        constraint =
-            token_in_mint.key() == offer.load()?.token_in_mint
-            @ OfferCoreError::InvalidTokenInMint
-    )]
+    #[account(mut)]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
-    
+
     /// Token program interface for input token operations
     pub token_in_program: Interface<'info, TokenInterface>,
 
@@ -165,14 +160,9 @@ pub struct TakeOfferPermissionless<'info> {
     ///
     /// Must be mutable to allow minting operations when program has mint authority.
     /// Validated against the offer's expected token_out_mint.
-    #[account(
-        mut,
-        constraint =
-            token_out_mint.key() == offer.load()?.token_out_mint
-            @ OfferCoreError::InvalidTokenOutMint
-    )]
+    #[account(mut)]
     pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
-    
+
     /// Token program interface for output token operations
     pub token_out_program: Interface<'info, TokenInterface>,
 
@@ -222,7 +212,7 @@ pub struct TakeOfferPermissionless<'info> {
         seeds = [seeds::MINT_AUTHORITY],
         bump
     )]
-    pub mint_authority_pda: UncheckedAccount<'info>,
+    pub mint_authority: UncheckedAccount<'info>,
 
     /// Instructions sysvar for approval signature verification
     ///
@@ -275,13 +265,39 @@ pub struct TakeOfferPermissionless<'info> {
 ///
 /// # Events
 /// * `TakeOfferPermissionlessEvent` - Emitted with execution details and routing information
+#[inline(never)]
 pub fn take_offer_permissionless(
     ctx: Context<TakeOfferPermissionless>,
     token_in_amount: u64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
+    // validate state account
+    {
+        let state = &ctx.accounts.state;
+        require!(
+            state.is_killed == false,
+            TakeOfferPermissionlessErrorCode::KillSwitchActivated
+        );
+        require_keys_eq!(
+            state.boss,
+            ctx.accounts.boss.key(),
+            TakeOfferPermissionlessErrorCode::InvalidBoss
+        );
+    }
+
     let offer = ctx.accounts.offer.load()?;
 
+    // Validate offer mints
+    require_keys_eq!(
+        offer.token_in_mint,
+        ctx.accounts.token_in_mint.key(),
+        OfferCoreError::InvalidTokenInMint
+    );
+    require_keys_eq!(
+        offer.token_out_mint,
+        ctx.accounts.token_out_mint.key(),
+        OfferCoreError::InvalidTokenOutMint
+    );
     // Validate if offer allows permissionless access
     require!(
         offer.allow_permissionless(),
@@ -327,11 +343,11 @@ pub fn take_offer_permissionless(
         token_in_authority: &ctx.accounts.permissionless_authority.to_account_info(),
         token_in_source_signer_seeds: Some(&[&[
             seeds::PERMISSIONLESS_AUTHORITY,
-            &[ctx.accounts.permissionless_authority.bump],
+            &[ctx.bumps.permissionless_authority],
         ]]),
         vault_authority_signer_seeds: Some(&[&[
             seeds::OFFER_VAULT_AUTHORITY,
-            &[ctx.accounts.vault_authority.bump],
+            &[ctx.bumps.vault_authority],
         ]]),
         token_in_source_account: &ctx.accounts.permissionless_token_in_account,
         token_in_destination_account: &ctx.accounts.boss_token_in_account,
@@ -344,8 +360,8 @@ pub fn take_offer_permissionless(
         token_out_authority: &ctx.accounts.vault_authority.to_account_info(),
         token_out_source_account: &ctx.accounts.vault_token_out_account,
         token_out_destination_account: &ctx.accounts.permissionless_token_out_account,
-        mint_authority_pda: &ctx.accounts.mint_authority_pda,
-        mint_authority_bump: &[ctx.bumps.mint_authority_pda],
+        mint_authority_pda: &ctx.accounts.mint_authority.to_account_info(),
+        mint_authority_bump: &[ctx.bumps.mint_authority],
     })?;
 
     transfer_tokens(
@@ -356,7 +372,7 @@ pub fn take_offer_permissionless(
         &ctx.accounts.permissionless_authority.to_account_info(),
         Some(&[&[
             seeds::PERMISSIONLESS_AUTHORITY,
-            &[ctx.accounts.permissionless_authority.bump],
+            &[ctx.bumps.permissionless_authority],
         ]]),
         result.token_out_amount,
     )?;

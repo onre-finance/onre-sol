@@ -192,7 +192,8 @@ export class OnreProgram {
                 tokenOutMint: params.tokenOutMint,
                 user: params.user,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
-                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID
+                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
+                boss: this.program.provider.publicKey
             });
 
         if (params.signer) {
