@@ -4611,18 +4611,8 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "invalidBoss",
-      "msg": "Invalid boss account"
-    },
-    {
-      "code": 6001,
-      "name": "killSwitchActivated",
-      "msg": "Kill switch is activated"
-    },
-    {
-      "code": 6002,
-      "name": "permissionlessNotAllowed",
-      "msg": "Permissionless take offer not allowed"
+      "name": "mathOverflow",
+      "msg": "Math overflow"
     }
   ],
   "types": [

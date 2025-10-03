@@ -4605,18 +4605,8 @@
   "errors": [
     {
       "code": 6000,
-      "name": "InvalidBoss",
-      "msg": "Invalid boss account"
-    },
-    {
-      "code": 6001,
-      "name": "KillSwitchActivated",
-      "msg": "Kill switch is activated"
-    },
-    {
-      "code": 6002,
-      "name": "PermissionlessNotAllowed",
-      "msg": "Permissionless take offer not allowed"
+      "name": "MathOverflow",
+      "msg": "Math overflow"
     }
   ],
   "types": [
