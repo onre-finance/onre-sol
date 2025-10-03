@@ -3336,9 +3336,6 @@ export type Onreapp = {
             "The boss account authorized to receive token_in payments",
             "",
             "Must match the boss stored in program state for security validation."
-          ],
-          "relations": [
-            "state"
           ]
         },
         {
@@ -3888,7 +3885,7 @@ export type Onreapp = {
           }
         },
         {
-          "name": "mintAuthorityPda",
+          "name": "mintAuthority",
           "docs": [
             "Program-derived mint authority for direct token minting",
             "",
