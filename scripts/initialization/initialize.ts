@@ -1,5 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper, BOSS_DEV } from "../utils/script-helper";
+import { ScriptHelper } from "../utils/script-helper";
 
 // Use DEV Squad for initialization
 const BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC"); // DEV Squad
@@ -11,9 +11,9 @@ async function createInitializeTransaction() {
     console.log("Boss (DEV Squad):", BOSS.toBase58());
 
     try {
-        const tx = await helper.buildInitializeTransaction({
-            boss: BOSS
-        });
+        const ix = await helper.buildInitializeIx();
+
+        const tx = await helper.prepareTransaction(ix, BOSS);
 
         return helper.printTransaction(tx, "Initialize Transaction");
     } catch (error) {

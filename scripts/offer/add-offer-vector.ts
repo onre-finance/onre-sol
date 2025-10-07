@@ -1,4 +1,4 @@
-import { PublicKey, Transaction } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import { ScriptHelper } from "../utils/script-helper";
 
 // Token addresses
@@ -50,7 +50,7 @@ async function createAddOfferVectorTransaction() {
             priceFixDuration: PRICE_FIX_DURATION
         });
 
-        const tx = await helper.prepareTransaction(new Transaction().add(ix));
+        const tx = await helper.prepareTransaction(ix);
 
         return helper.printTransaction(tx, "Add Offer Vector Transaction");
     } catch (error) {

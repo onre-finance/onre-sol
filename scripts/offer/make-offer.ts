@@ -1,4 +1,4 @@
-import { PublicKey, Transaction } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import { ScriptHelper } from "../utils/script-helper";
 
 // Token addresses
@@ -28,7 +28,7 @@ async function createMakeOfferTransaction() {
             allowPermissionless: false // Standard flow only
         });
 
-        const tx = await helper.prepareTransaction(new Transaction().add(ix));
+        const tx = await helper.prepareTransaction(ix);
 
         return helper.printTransaction(tx, "Make Offer Transaction");
     } catch (error) {

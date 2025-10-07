@@ -16,10 +16,12 @@ async function createVaultWithdrawTransaction() {
     console.log("Boss:", boss.toBase58());
 
     try {
-        const tx = await helper.buildOfferVaultWithdrawTransaction({
+        const ix = await helper.buildOfferVaultWithdrawIx({
             amount: AMOUNT,
             tokenMint: TOKEN_MINT
         });
+
+        const tx = await helper.prepareTransaction(ix);
 
         return helper.printTransaction(tx, "Vault Withdraw Transaction");
     } catch (error) {

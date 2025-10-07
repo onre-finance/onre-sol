@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
-import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
+import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { BN } from "bn.js";
 import { Onreapp } from "../../target/types/onreapp";
@@ -109,7 +109,7 @@ export class ScriptHelper {
 
         return await this.program.methods
             .makeOffer(feeBasisPoints, needsApproval, allowPermissionless)
-            .accountsPartial({
+            .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
                 tokenOutMint: params.tokenOutMint
@@ -132,7 +132,7 @@ export class ScriptHelper {
                 new BN(params.apr),
                 new BN(params.priceFixDuration)
             )
-            .accountsPartial({
+            .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint
             })
@@ -145,49 +145,39 @@ export class ScriptHelper {
     }) {
         return await this.program.methods
             .closeOffer()
-            .accountsPartial({
+            .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint
             })
             .instruction();
     }
 
-    async buildUpdateOfferFeeTransaction(params: {
+    async buildUpdateOfferFeeIx(params: {
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
         newFeeBasisPoints: number;
-        boss?: PublicKey;
     }) {
-        const tx = await this.program.methods
+        return await this.program.methods
             .updateOfferFee(params.newFeeBasisPoints)
-            .accountsPartial({
+            .accounts({
                 tokenInMint: params.tokenInMint,
-                tokenOutMint: params.tokenOutMint,
-                state: this.statePda,
-                boss: params.boss ?? BOSS
+                tokenOutMint: params.tokenOutMint
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildDeleteOfferVectorTransaction(params: {
+    async buildDeleteOfferVectorIx(params: {
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
         vectorStartTimestamp: number;
-        boss?: PublicKey;
     }) {
-        const tx = await this.program.methods
+        return await this.program.methods
             .deleteOfferVector(new BN(params.vectorStartTimestamp))
-            .accountsPartial({
+            .accounts({
                 tokenInMint: params.tokenInMint,
-                tokenOutMint: params.tokenOutMint,
-                state: this.statePda,
-                boss: params.boss ?? BOSS
+                tokenOutMint: params.tokenOutMint
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
     async buildTakeOfferIx(params: {
@@ -201,7 +191,7 @@ export class ScriptHelper {
     }) {
         return await this.program.methods
             .takeOffer(new BN(params.tokenInAmount), params.approvalMessage ?? null)
-            .accountsPartial({
+            .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
                 user: params.user,
@@ -222,12 +212,13 @@ export class ScriptHelper {
     }) {
         return await this.program.methods
             .takeOfferPermissionless(new BN(params.tokenInAmount), params.approvalMessage ?? null)
-            .accountsPartial({
+            .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
                 user: params.user,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
-                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID
+                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
+                boss: BOSS
             })
             .instruction();
     }
@@ -239,143 +230,98 @@ export class ScriptHelper {
     }) {
         return await this.program.methods
             .offerVaultDeposit(new BN(params.amount))
-            .accountsPartial({
-                state: this.statePda,
+            .accounts({
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             })
             .instruction();
     }
 
-    async buildOfferVaultWithdrawTransaction(params: {
+    async buildOfferVaultWithdrawIx(params: {
         amount: number,
         tokenMint: PublicKey,
         tokenProgram?: PublicKey,
-        boss?: PublicKey
     }) {
-        const tx = await this.program.methods
+        return await this.program.methods
             .offerVaultWithdraw(new BN(params.amount))
-            .accountsPartial({
-                state: this.statePda,
+            .accounts({
                 tokenMint: params.tokenMint,
-                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
-                boss: params.boss ?? BOSS
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildAddAdminTransaction(params: { admin: PublicKey, boss?: PublicKey }) {
-        const tx = await this.program.methods
+    async buildAddAdminIx(params: { admin: PublicKey }) {
+        return await this.program.methods
             .addAdmin(params.admin)
-            .accountsPartial({
-                state: this.statePda,
-                boss: params.boss ?? BOSS
-            })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildRemoveAdminTransaction(params: { admin: PublicKey, boss?: PublicKey }) {
-        const tx = await this.program.methods
+    async buildRemoveAdminIx(params: { admin: PublicKey }) {
+        return await this.program.methods
             .removeAdmin(params.admin)
-            .accountsPartial({
-                state: this.statePda,
-                boss: params.boss ?? BOSS
-            })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildSetBossTransaction(params: { newBoss: PublicKey, boss?: PublicKey }) {
-        const tx = await this.program.methods
+    async buildSetBossIx(params: { newBoss: PublicKey }) {
+        return await this.program.methods
             .setBoss(params.newBoss)
-            .accountsPartial({
-                state: this.statePda,
-                boss: params.boss ?? BOSS
-            })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildSetKillSwitchTransaction(params: { enable: boolean, boss?: PublicKey }) {
-        const tx = await this.program.methods
+    async buildSetKillSwitchIx(params: { enable: boolean }) {
+        return await this.program.methods
             .setKillSwitch(params.enable)
-            .accounts({})
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildInitializeTransaction(params: { boss: PublicKey }) {
-        const tx = await this.program.methods
+    async buildInitializeIx() {
+        return await this.program.methods
             .initialize()
-            .accountsPartial({
-                boss: params.boss,
-                state: this.statePda
-            })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildMigrateStateTransaction(params: { boss?: PublicKey } = {}) {
-        const tx = await this.program.methods
+    async buildMigrateStateIx() {
+        return await this.program.methods
             .migrateV3()
-            .accountsPartial({
+            .accounts({
                 state: this.statePda,
-                boss: params.boss ?? BOSS
+                permissionlessAuthority: this.pdas.permissionlessVaultAuthorityPda
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildInitializeVaultAuthorityTransaction(params: { boss?: PublicKey } = {}) {
-        const tx = await this.program.methods
+    async buildInitializeVaultAuthorityIx() {
+        return await this.program.methods
             .initializeVaultAuthority()
-            .accountsPartial({
-                state: this.statePda,
-                boss: params.boss ?? BOSS
-            })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildInitializeMintAuthorityTransaction(params: { boss?: PublicKey } = {}) {
-        const tx = await this.program.methods
+    async buildInitializeMintAuthorityIx() {
+        return await this.program.methods
             .initializeMintAuthority()
-            .accountsPartial({
-                state: this.statePda,
-                boss: params.boss ?? BOSS
-            })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildInitializePermissionlessAuthorityTransaction(params: { name: string, boss?: PublicKey }) {
-        const tx = await this.program.methods
+    async buildInitializePermissionlessAuthorityIx(params: { name: string }) {
+        return await this.program.methods
             .initializePermissionlessAuthority(params.name)
-            .accountsPartial({
-                state: this.statePda,
-                boss: params.boss ?? BOSS
-            })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    // Helper to prepare transaction with boss as fee payer and recent blockhash
-    async prepareTransaction(tx: Transaction, boss?: PublicKey) {
+    async prepareTransactionMultipleIxs(ixs: TransactionInstruction[], boss?: PublicKey) {
+        const tx = new Transaction();
+        for (const ix of ixs) {
+            tx.add(ix);
+        }
         tx.feePayer = boss ?? BOSS;
         tx.recentBlockhash = (await this.connection.getLatestBlockhash()).blockhash;
         return tx;
+    }
+
+    // Helper to prepare transaction with boss as fee payer and recent blockhash
+    async prepareTransaction(ix: TransactionInstruction, boss?: PublicKey) {
+        return await this.prepareTransactionMultipleIxs([ix], boss);
     }
 
     /**

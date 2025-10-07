@@ -1,5 +1,4 @@
-import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper, BOSS } from "../utils/script-helper";
+import { BOSS, ScriptHelper } from "../utils/script-helper";
 
 const PERMISSIONLESS_NAME = "permissionless-1";
 
@@ -11,10 +10,11 @@ async function createInitializePermissionlessAuthorityTransaction() {
     console.log("Name:", PERMISSIONLESS_NAME);
 
     try {
-        const tx = await helper.buildInitializePermissionlessAuthorityTransaction({
-            name: PERMISSIONLESS_NAME,
-            boss: BOSS
+        const ix = await helper.buildInitializePermissionlessAuthorityIx({
+            name: PERMISSIONLESS_NAME
         });
+
+        const tx = await helper.prepareTransaction(ix);
 
         return helper.printTransaction(tx, "Initialize Permissionless Authority Transaction");
     } catch (error) {

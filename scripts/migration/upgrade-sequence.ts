@@ -1,5 +1,4 @@
-import { PublicKey, Transaction } from "@solana/web3.js";
-import { ScriptHelper, BOSS } from "../utils/script-helper";
+import { BOSS, ScriptHelper } from "../utils/script-helper";
 
 /**
  * Creates a sequence of instructions for program upgrade:
@@ -17,35 +16,19 @@ async function createUpgradeSequence() {
     console.log("Vault Authority PDA:", helper.pdas.offerVaultAuthorityPda.toBase58());
 
     try {
-        // Create all three transactions
-        const migrateTx = await helper.buildMigrateStateTransaction({ boss: BOSS });
-        const initMintTx = await helper.buildInitializeMintAuthorityTransaction({ boss: BOSS });
-        const initVaultTx = await helper.buildInitializeVaultAuthorityTransaction({ boss: BOSS });
+        // Create all three instructions
+        const migrateIx = await helper.buildMigrateStateIx();
+        const initMintIx = await helper.buildInitializeMintAuthorityIx();
+        const initVaultIx = await helper.buildInitializeVaultAuthorityIx();
 
-        console.log("\n=== Transaction Sequence ===");
-        console.log("\n1. Migrate State Transaction:");
-        const migrateTxBase58 = helper.serializeTransaction(migrateTx);
-        console.log(migrateTxBase58);
+        const tx = await helper.prepareTransactionMultipleIxs([migrateIx, initMintIx, initVaultIx]);
 
-        console.log("\n2. Initialize Mint Authority Transaction:");
-        const initMintTxBase58 = helper.serializeTransaction(initMintTx);
-        console.log(initMintTxBase58);
+        console.log("\n=== Instruction Sequence ===");
+        console.log("\n1. Migrate State Instruction:");
+        console.log("\n2. Initialize Mint Authority Instruction:");
+        console.log("\n3. Initialize Vault Authority Instruction:");
 
-        console.log("\n3. Initialize Vault Authority Transaction:");
-        const initVaultTxBase58 = helper.serializeTransaction(initVaultTx);
-        console.log(initVaultTxBase58);
-
-        console.log("\n=== Instructions ===");
-        console.log("Execute these transactions IN ORDER:");
-        console.log("1. First execute migrate state");
-        console.log("2. Then execute initialize mint authority");
-        console.log("3. Finally execute initialize vault authority");
-
-        return {
-            migrateState: migrateTxBase58,
-            initializeMintAuthority: initMintTxBase58,
-            initializeVaultAuthority: initVaultTxBase58
-        };
+        return helper.printTransaction(tx, "Upgrade Sequence Transaction");
     } catch (error) {
         console.error("Error creating upgrade sequence:", error);
         throw error;

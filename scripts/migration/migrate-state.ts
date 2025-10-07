@@ -9,7 +9,8 @@ async function createMigrateStateTransaction() {
     console.log("Boss:", boss.toBase58());
 
     try {
-        const tx = await helper.buildMigrateStateTransaction();
+        const ix = await helper.buildMigrateStateIx();
+        const tx = await helper.prepareTransaction(ix);
 
         console.log("\nThis transaction will:");
         console.log("- Migrate the State account to include new fields");
