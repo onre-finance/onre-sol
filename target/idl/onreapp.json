@@ -5184,6 +5184,20 @@
             "type": "pubkey"
           },
           {
+            "name": "token_in_mint",
+            "docs": [
+              "The input token mint for the offer"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "token_out_mint",
+            "docs": [
+              "The output token mint for the offer"
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "fee_basis_points",
             "docs": [
               "Fee in basis points (10000 = 100%) charged when taking the offer"

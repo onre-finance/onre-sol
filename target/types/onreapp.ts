@@ -5190,6 +5190,20 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
+            "name": "tokenInMint",
+            "docs": [
+              "The input token mint for the offer"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenOutMint",
+            "docs": [
+              "The output token mint for the offer"
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "feeBasisPoints",
             "docs": [
               "Fee in basis points (10000 = 100%) charged when taking the offer"

@@ -13,6 +13,10 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 pub struct OfferMadeEvent {
     /// The PDA address of the newly created offer
     pub offer_pda: Pubkey,
+    /// The input token mint for the offer
+    pub token_in_mint: Pubkey,
+    /// The output token mint for the offer
+    pub token_out_mint: Pubkey,
     /// Fee in basis points (10000 = 100%) charged when taking the offer
     pub fee_basis_points: u16,
     /// The boss account that created and owns the offer
@@ -148,6 +152,8 @@ pub fn make_offer(
 
     emit!(OfferMadeEvent {
         offer_pda: ctx.accounts.offer.key(),
+        token_in_mint: ctx.accounts.token_in_mint.key(),
+        token_out_mint: ctx.accounts.token_out_mint.key(),
         fee_basis_points,
         boss: ctx.accounts.boss.key(),
         needs_approval,
