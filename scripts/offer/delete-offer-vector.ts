@@ -26,10 +26,10 @@ async function createDeleteOfferVectorTransaction() {
             throw new Error(`Offer for ${TOKEN_IN_MINT.toBase58()} -> ${TOKEN_OUT_MINT.toBase58()} not found.`);
         }
 
-        // Check if vector exists (vectors are now identified by their startTime index)
-        const vector = offer.vectors[VECTOR_START_TIMESTAMP];
-        if (!vector || vector.startTime.toNumber() === 0) {
-            throw new Error(`Vector ${VECTOR_START_TIMESTAMP} not found in offer ${TOKEN_IN_MINT.toBase58()} -> ${TOKEN_OUT_MINT.toBase58()}.`);
+        // Check if vector exists by finding it with matching startTime
+        const vector = offer.vectors.find(v => v.startTime.toNumber() === VECTOR_START_TIMESTAMP);
+        if (!vector) {
+            throw new Error(`Vector with startTime ${VECTOR_START_TIMESTAMP} not found in offer ${TOKEN_IN_MINT.toBase58()} -> ${TOKEN_OUT_MINT.toBase58()}.`);
         }
 
         console.log('Found offer:', {
