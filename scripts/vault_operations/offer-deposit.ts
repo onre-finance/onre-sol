@@ -1,4 +1,4 @@
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, Transaction } from "@solana/web3.js";
 import { ScriptHelper } from "../utils/script-helper";
 
 // Configuration - UPDATE THESE
@@ -16,10 +16,12 @@ async function createVaultDepositTransaction() {
     console.log("Boss:", boss.toBase58());
 
     try {
-        const tx = await helper.buildOfferVaultDepositTransaction({
+        const ix = await helper.buildOfferVaultDepositIx({
             amount: AMOUNT,
             tokenMint: TOKEN_MINT
         });
+
+        const tx = await helper.prepareTransaction(new Transaction().add(ix));
 
         return helper.printTransaction(tx, "Vault Deposit Transaction");
     } catch (error) {
