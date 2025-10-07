@@ -221,7 +221,7 @@ fn clean_old_vectors(offer: &mut Offer, current_time: u64) -> Result<()> {
         Err(_) => return Ok(()), // No active vector found, nothing to clean
     };
 
-    // Find previously active vector (closest smaller vector_id)
+    // Find previously active vector (closest smaller vector_start_timestamp)
     let prev_vector = find_active_vector_at(offer, active_vector?.start_time - 1);
 
     let prev_vector_start_time = match prev_vector {

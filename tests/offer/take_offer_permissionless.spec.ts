@@ -46,7 +46,7 @@ describe("Take Offer Permissionless", () => {
 
         // Initialize
         await program.initializeVaultAuthority();
-        await program.initializePermissionlessAccount({
+        await program.initializePermissionlessAuthority({
             accountName: "test-account"
         });
         // Kill switch state is now part of the main state - no separate initialization needed

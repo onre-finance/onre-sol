@@ -514,7 +514,7 @@ describe("Add Offer Vector", () => {
 
         // After cleanup, should only have:
         // - Vector 4 (currently active - most recent start_time <= current_time)
-        // - Vector 3 (previously active - closest smaller vector_id to vector 3)
+        // - Vector 3 (previously active - closest smaller vector_start_timestamp to vector 3)
         // - Vector 5 (future vector - should be kept)
         // - Vector 6 (newly added future vector)
         // Vector 1 and 2 should be deleted (oldest past vector)

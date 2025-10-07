@@ -17,7 +17,7 @@ describe("Migrate State", () => {
 
             // Initialize the program with old state structure (only boss field)
             await program.initialize({ onycMint: testHelper.createMint(9) });
-            await program.initializePermissionlessAccount({ accountName: "test-account" });
+            await program.initializePermissionlessAuthority({ accountName: "test-account" });
         });
 
         test("Boss can migrate state successfully", async () => {

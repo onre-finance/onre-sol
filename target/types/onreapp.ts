@@ -116,7 +116,7 @@ export type Onreapp = {
         "Adds a time vector to an existing offer.",
         "",
         "Delegates to `offer::add_offer_time_vector`.",
-        "Creates a new time vector with auto-generated vector_id for the specified offer.",
+        "Creates a new time vector with auto-generated vector_start_timestamp for the specified offer.",
         "Emits a `OfferVectorAdded` event upon success.",
         "",
         "# Arguments",
@@ -409,7 +409,7 @@ export type Onreapp = {
         "",
         "# Arguments",
         "- `ctx`: Context for `DeleteOfferVector`.",
-        "- `vector_id`: ID of the vector to delete."
+        "- `vector_start_time`: Start time of the vector to delete."
       ],
       "discriminator": [
         87,
@@ -500,7 +500,7 @@ export type Onreapp = {
       ],
       "args": [
         {
-          "name": "vectorId",
+          "name": "vectorStartTime",
           "type": "u64"
         }
       ]
@@ -1144,23 +1144,23 @@ export type Onreapp = {
       "args": []
     },
     {
-      "name": "initializePermissionlessAccount",
+      "name": "initializePermissionlessAuthority",
       "docs": [
         "Initializes a permissionless account.",
         "",
-        "Delegates to `initialize::initialize_permissionless_account` to create a new permissionless account.",
+        "Delegates to `initialize::initialize_permissionless_authority` to create a new permissionless account.",
         "The account is created as a PDA with the seed \"permissionless-1\".",
         "Only the boss can initialize permissionless accounts."
       ],
       "discriminator": [
-        144,
-        160,
-        10,
-        56,
-        91,
-        17,
-        77,
-        115
+        89,
+        93,
+        43,
+        180,
+        148,
+        16,
+        238,
+        24
       ],
       "accounts": [
         {
@@ -4611,8 +4611,53 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "mathOverflow",
-      "msg": "Math overflow"
+      "name": "expired",
+      "msg": "The approval message has expired."
+    },
+    {
+      "code": 6001,
+      "name": "wrongProgram",
+      "msg": "The approval message is for the wrong program."
+    },
+    {
+      "code": 6002,
+      "name": "wrongUser",
+      "msg": "The approval message is for the wrong user."
+    },
+    {
+      "code": 6003,
+      "name": "missingEd25519Ix",
+      "msg": "Missing Ed25519 instruction."
+    },
+    {
+      "code": 6004,
+      "name": "wrongIxProgram",
+      "msg": "The instruction is for the wrong program."
+    },
+    {
+      "code": 6005,
+      "name": "malformedEd25519Ix",
+      "msg": "Malformed Ed25519 instruction."
+    },
+    {
+      "code": 6006,
+      "name": "multipleSigs",
+      "msg": "Multiple signatures found in Ed25519 instruction."
+    },
+    {
+      "code": 6007,
+      "name": "wrongAuthority",
+      "msg": "The authority public key does not match."
+    },
+    {
+      "code": 6008,
+      "name": "msgMismatch",
+      "msg": "The message in the Ed25519 instruction does not match the approval message."
+    },
+    {
+      "code": 6009,
+      "name": "msgDeserialize",
+      "msg": "Failed to deserialize the approval message."
     }
   ],
   "types": [
