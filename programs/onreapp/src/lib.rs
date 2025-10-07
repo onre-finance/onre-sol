@@ -204,10 +204,10 @@ pub mod onreapp {
 
     /// Initializes a permissionless account.
     ///
-    /// Delegates to `initialize::initialize_permissionless_account` to create a new permissionless account.
+    /// Delegates to `initialize::initialize_permissionless_authority` to create a new permissionless account.
     /// The account is created as a PDA with the seed "permissionless-1".
     /// Only the boss can initialize permissionless accounts.
-    pub fn initialize_permissionless_account(
+    pub fn initialize_permissionless_authority(
         ctx: Context<InitializePermissionlessAuthority>,
         name: String,
     ) -> Result<()> {

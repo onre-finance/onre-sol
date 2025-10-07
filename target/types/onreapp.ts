@@ -1144,23 +1144,23 @@ export type Onreapp = {
       "args": []
     },
     {
-      "name": "initializePermissionlessAccount",
+      "name": "initializePermissionlessAuthority",
       "docs": [
         "Initializes a permissionless account.",
         "",
-        "Delegates to `initialize::initialize_permissionless_account` to create a new permissionless account.",
+        "Delegates to `initialize::initialize_permissionless_authority` to create a new permissionless account.",
         "The account is created as a PDA with the seed \"permissionless-1\".",
         "Only the boss can initialize permissionless accounts."
       ],
       "discriminator": [
-        144,
-        160,
-        10,
-        56,
-        91,
-        17,
-        77,
-        115
+        89,
+        93,
+        43,
+        180,
+        148,
+        16,
+        238,
+        24
       ],
       "accounts": [
         {

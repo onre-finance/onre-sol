@@ -255,9 +255,9 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async initializePermissionlessAccount(params: { accountName: string }) {
+    async initializePermissionlessAuthority(params: { accountName: string }) {
         await this.program.methods
-            .initializePermissionlessAccount(params.accountName)
+            .initializePermissionlessAuthority(params.accountName)
             .rpc();
     }
 

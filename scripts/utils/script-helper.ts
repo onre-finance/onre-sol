@@ -353,7 +353,7 @@ export class ScriptHelper {
 
     async buildMigrateStateTransaction(params: { boss?: PublicKey } = {}) {
         const tx = await this.program.methods
-            .migrateState()
+            .migrateV3()
             .accountsPartial({
                 state: this.statePda,
                 boss: params.boss ?? BOSS
@@ -366,6 +366,30 @@ export class ScriptHelper {
     async buildInitializeVaultAuthorityTransaction(params: { boss?: PublicKey } = {}) {
         const tx = await this.program.methods
             .initializeVaultAuthority()
+            .accountsPartial({
+                state: this.statePda,
+                boss: params.boss ?? BOSS
+            })
+            .transaction();
+
+        return this.prepareTransaction(tx, params.boss);
+    }
+
+    async buildInitializeMintAuthorityTransaction(params: { boss?: PublicKey } = {}) {
+        const tx = await this.program.methods
+            .initializeMintAuthority()
+            .accountsPartial({
+                state: this.statePda,
+                boss: params.boss ?? BOSS
+            })
+            .transaction();
+
+        return this.prepareTransaction(tx, params.boss);
+    }
+
+    async buildInitializePermissionlessAuthorityTransaction(params: { name: string, boss?: PublicKey }) {
+        const tx = await this.program.methods
+            .initializePermissionlessAuthority(params.name)
             .accountsPartial({
                 state: this.statePda,
                 boss: params.boss ?? BOSS
