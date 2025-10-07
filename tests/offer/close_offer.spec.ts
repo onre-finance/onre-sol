@@ -90,6 +90,30 @@ describe("Close offer", () => {
         expect(offer3After.tokenOutMint).toStrictEqual(token3Out);
     });
 
+    it("Should allow reopening the same offer after it was closed", async () => {
+        // given - create an offer first
+        await program.makeOffer({
+            tokenInMint,
+            tokenOutMint
+        });
+
+        // close the offer
+        await program.closeOffer({ tokenInMint, tokenOutMint });
+
+        // verify offer is cleared
+        await expect(program.getOffer(tokenInMint, tokenOutMint)).rejects.toThrow("Could not find");
+
+        // when - reopen the offer
+        await program.makeOffer({
+            tokenInMint,
+            tokenOutMint
+        });
+
+        // verify offer exists
+        const offer = await program.getOffer(tokenInMint, tokenOutMint);
+        expect(offer).toBeDefined();
+    });
+
     it("Close offer with incorrect tokens should fail", async () => {
         // when/then - try to close invalid offer
         await expect(
