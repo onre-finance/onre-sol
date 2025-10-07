@@ -7,7 +7,7 @@ const TOKEN_OUT_MINT = new PublicKey('5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcx
 
 // Configuration for the offer vector
 const BASE_TIME = Math.floor(new Date(Date.UTC(2025, 4, 27, 0, 0, 0)).getTime() / 1000); // May 27, 2025
-const BASE_PRICE = 20160514420000000; // 9 decimals base price (price is always scaled by 1e9)
+const BASE_PRICE = 1_000_000_000; // 1.0 (scaled by 1,000,000,000) all prices are scaled by 9 decimals
 const APR = 36_500; // 0.0365% APR (scaled by 1,000,000)
 const PRICE_FIX_DURATION = 60 * 60 * 24; // 1 day
 
