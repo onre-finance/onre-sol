@@ -189,11 +189,11 @@ export class ScriptHelper {
     async buildDeleteOfferVectorTransaction(params: {
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
-        vectorId: number;
+        vectorStartTimestamp: number;
         boss?: PublicKey;
     }) {
         const tx = await this.program.methods
-            .deleteOfferVector(new BN(params.vectorId))
+            .deleteOfferVector(new BN(params.vectorStartTimestamp))
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,

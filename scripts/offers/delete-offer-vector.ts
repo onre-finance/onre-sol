@@ -6,7 +6,7 @@ const TOKEN_IN_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1
 const TOKEN_OUT_MINT = new PublicKey('5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5'); // ONyc
 
 // Configuration
-const VECTOR_ID = 1;
+const VECTOR_START_TIMESTAMP = new Date(2025, 4, 27).getTime() / 1000; // May 27, 2025
 
 async function createDeleteOfferVectorTransaction() {
     const helper = await ScriptHelper.create();
@@ -14,7 +14,7 @@ async function createDeleteOfferVectorTransaction() {
     console.log('Creating delete offer vector transaction...');
     console.log('Token In (USDC):', TOKEN_IN_MINT.toBase58());
     console.log('Token Out (ONe):', TOKEN_OUT_MINT.toBase58());
-    console.log('Vector ID:', VECTOR_ID);
+    console.log('Vector ID:', VECTOR_START_TIMESTAMP);
 
     const boss = await helper.getBoss();
     console.log('Boss:', boss.toBase58());
@@ -27,9 +27,9 @@ async function createDeleteOfferVectorTransaction() {
         }
 
         // Check if vector exists (vectors are now identified by their startTime index)
-        const vector = offer.vectors[VECTOR_ID];
+        const vector = offer.vectors[VECTOR_START_TIMESTAMP];
         if (!vector || vector.startTime.toNumber() === 0) {
-            throw new Error(`Vector ${VECTOR_ID} not found in offer ${TOKEN_IN_MINT.toBase58()} -> ${TOKEN_OUT_MINT.toBase58()}.`);
+            throw new Error(`Vector ${VECTOR_START_TIMESTAMP} not found in offer ${TOKEN_IN_MINT.toBase58()} -> ${TOKEN_OUT_MINT.toBase58()}.`);
         }
 
         console.log('Found offer:', {
@@ -42,7 +42,7 @@ async function createDeleteOfferVectorTransaction() {
         });
 
         console.log('Found vector:', {
-            index: VECTOR_ID,
+            index: VECTOR_START_TIMESTAMP,
             startTime: new Date(vector.startTime.toNumber() * 1000).toISOString(),
             baseTime: new Date(vector.baseTime.toNumber() * 1000).toISOString(),
             basePrice: vector.basePrice.toNumber(),
@@ -53,7 +53,7 @@ async function createDeleteOfferVectorTransaction() {
         const tx = await helper.buildDeleteOfferVectorTransaction({
             tokenInMint: TOKEN_IN_MINT,
             tokenOutMint: TOKEN_OUT_MINT,
-            vectorId: VECTOR_ID
+            vectorStartTimestamp: VECTOR_START_TIMESTAMP
         });
 
         return helper.printTransaction(tx, 'Delete Offer Vector Transaction');

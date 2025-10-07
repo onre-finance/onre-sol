@@ -114,7 +114,7 @@ pub mod onreapp {
     /// Adds a time vector to an existing offer.
     ///
     /// Delegates to `offer::add_offer_time_vector`.
-    /// Creates a new time vector with auto-generated vector_id for the specified offer.
+    /// Creates a new time vector with auto-generated vector_start_timestamp for the specified offer.
     /// Emits a `OfferVectorAdded` event upon success.
     ///
     /// # Arguments
@@ -142,9 +142,9 @@ pub mod onreapp {
     ///
     /// # Arguments
     /// - `ctx`: Context for `DeleteOfferVector`.
-    /// - `vector_id`: ID of the vector to delete.
-    pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_id: u64) -> Result<()> {
-        offer::delete_offer_vector(ctx, vector_id)
+    /// - `vector_start_time`: Start time of the vector to delete.
+    pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_start_time: u64) -> Result<()> {
+        offer::delete_offer_vector(ctx, vector_start_time)
     }
 
     /// Updates the fee basis points for an offer.
