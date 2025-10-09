@@ -15,7 +15,7 @@ pub enum SetBossErrorCode {
 ///
 /// Provides transparency for tracking ownership transfers and authority changes.
 #[event]
-pub struct BossUpdated {
+pub struct BossUpdatedEvent {
     /// The previous boss's public key before the update
     pub old_boss: Pubkey,
     /// The new boss's public key after the update
@@ -81,6 +81,6 @@ pub fn set_boss(ctx: Context<SetBoss>, new_boss: Pubkey) -> Result<()> {
     let state = &mut ctx.accounts.state;
     let old_boss = ctx.accounts.boss.key(); // Capture old boss before update
     state.boss = new_boss;
-    emit!(BossUpdated { old_boss, new_boss });
+    emit!(BossUpdatedEvent { old_boss, new_boss });
     Ok(())
 }

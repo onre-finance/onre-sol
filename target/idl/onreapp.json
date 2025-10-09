@@ -4355,16 +4355,16 @@
   ],
   "events": [
     {
-      "name": "BossUpdated",
+      "name": "BossUpdatedEvent",
       "discriminator": [
-        240,
-        140,
-        218,
-        236,
-        20,
-        65,
-        191,
-        69
+        50,
+        213,
+        189,
+        211,
+        27,
+        13,
+        194,
+        199
       ]
     },
     {
@@ -4563,16 +4563,16 @@
       ]
     },
     {
-      "name": "OnycTokensMinted",
+      "name": "OnycTokensMintedEvent",
       "discriminator": [
-        160,
-        24,
-        238,
-        23,
-        139,
-        42,
-        185,
-        158
+        241,
+        171,
+        63,
+        134,
+        122,
+        8,
+        178,
+        120
       ]
     },
     {
@@ -4697,7 +4697,7 @@
       }
     },
     {
-      "name": "BossUpdated",
+      "name": "BossUpdatedEvent",
       "docs": [
         "Event emitted when the boss authority is successfully updated",
         "",
@@ -5502,7 +5502,7 @@
       }
     },
     {
-      "name": "OnycTokensMinted",
+      "name": "OnycTokensMintedEvent",
       "docs": [
         "Event emitted when ONyc tokens are successfully minted to the boss account",
         "",

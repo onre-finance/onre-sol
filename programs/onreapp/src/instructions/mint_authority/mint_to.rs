@@ -9,7 +9,7 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 ///
 /// Provides transparency for tracking token minting operations performed by the boss.
 #[event]
-pub struct OnycTokensMinted {
+pub struct OnycTokensMintedEvent {
     /// The ONyc mint from which tokens were minted
     pub onyc_mint: Pubkey,
     /// The boss account that received the newly minted tokens
@@ -130,7 +130,7 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
     msg!("Minted {} ONyc tokens to boss account", amount);
 
     // Emit event for transparency and off-chain tracking
-    emit!(OnycTokensMinted {
+    emit!(OnycTokensMintedEvent {
         onyc_mint: ctx.accounts.onyc_mint.key(),
         boss: ctx.accounts.boss.key(),
         amount,

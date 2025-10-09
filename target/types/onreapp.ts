@@ -4361,16 +4361,16 @@ export type Onreapp = {
   ],
   "events": [
     {
-      "name": "bossUpdated",
+      "name": "bossUpdatedEvent",
       "discriminator": [
-        240,
-        140,
-        218,
-        236,
-        20,
-        65,
-        191,
-        69
+        50,
+        213,
+        189,
+        211,
+        27,
+        13,
+        194,
+        199
       ]
     },
     {
@@ -4569,16 +4569,16 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "onycTokensMinted",
+      "name": "onycTokensMintedEvent",
       "discriminator": [
-        160,
-        24,
-        238,
-        23,
-        139,
-        42,
-        185,
-        158
+        241,
+        171,
+        63,
+        134,
+        122,
+        8,
+        178,
+        120
       ]
     },
     {
@@ -4703,7 +4703,7 @@ export type Onreapp = {
       }
     },
     {
-      "name": "bossUpdated",
+      "name": "bossUpdatedEvent",
       "docs": [
         "Event emitted when the boss authority is successfully updated",
         "",
@@ -5508,7 +5508,7 @@ export type Onreapp = {
       }
     },
     {
-      "name": "onycTokensMinted",
+      "name": "onycTokensMintedEvent",
       "docs": [
         "Event emitted when ONyc tokens are successfully minted to the boss account",
         "",
