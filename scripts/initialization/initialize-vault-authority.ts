@@ -11,7 +11,8 @@ async function createInitializeVaultTransaction() {
     console.log("Offer Vault Authority PDA:", helper.pdas.offerVaultAuthorityPda.toBase58());
 
     try {
-        const tx = await helper.buildInitializeVaultAuthorityTransaction();
+        const ix = await helper.buildInitializeVaultAuthorityIx();
+        const tx = await helper.prepareTransaction(ix);
 
         console.log("\nThis transaction will initialize:");
         console.log("- Offer vault authority PDA for managing program-owned token accounts");

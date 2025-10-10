@@ -14,9 +14,11 @@ async function createAddAdminTransaction() {
     console.log("Current boss:", boss.toBase58());
 
     try {
-        const tx = await helper.buildAddAdminTransaction({
+        const ix = await helper.buildAddAdminIx({
             admin: NEW_ADMIN
         });
+
+        const tx = await helper.prepareTransaction(ix);
 
         return helper.printTransaction(tx, "Add Admin Transaction");
     } catch (error) {

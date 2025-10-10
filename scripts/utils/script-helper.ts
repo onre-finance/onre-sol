@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
-import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction } from "@solana/spl-token";
 import { BN } from "bn.js";
 import { Onreapp } from "../../target/types/onreapp";
 import idl from "../../target/idl/onreapp.json";
@@ -21,6 +21,10 @@ export const PROGRAM_ID = new PublicKey("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XX
 // export const BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC"); // DEV Squad
 export const BOSS = new PublicKey("EVdiVScB7LX1P3bn7ZLmLJTBrSSgRXPqRU3bVxrEpRb5"); // devnet Squad
 // Note: In production, the actual boss is fetched from the program state, these are just for reference
+
+// Default token mints - UPDATE THESE for your environment
+export const TOKEN_IN_MINT = new PublicKey("5XCS4paUDKJL9cJaywgVsrT3jTD5JGcmou5bvNbcuniw"); // USDC-like (6 decimals)
+export const TOKEN_OUT_MINT = new PublicKey("HQmHPQLhuXTj8dbsLUoFsJeCZWBkK75Zwczxork8Byzh"); // ONyc-like (9 decimals)
 
 /**
  * Helper class for Onre scripts - provides clean abstraction similar to test OnreProgram
@@ -94,8 +98,64 @@ export class ScriptHelper {
         return await this.program.account.state.fetch(this.statePda);
     }
 
+    /**
+     * Create instructions for permissionless token accounts if they don't exist
+     * Returns an array of instructions (may be empty if accounts already exist)
+     */
+    async buildCreatePermissionlessTokenAccountsIxs(params: {
+        tokenInMint: PublicKey;
+        tokenOutMint: PublicKey;
+        payer?: PublicKey | null;
+    }): Promise<TransactionInstruction[]> {
+        const instructions: TransactionInstruction[] = [];
+        const permissionlessAuthority = this.pdas.permissionlessVaultAuthorityPda;
+        const payer = params.payer ?? BOSS;
+
+        // Create permissionless token_in account if it doesn't exist
+        const permissionlessTokenInAccount = getAssociatedTokenAddressSync(
+            params.tokenInMint,
+            permissionlessAuthority,
+            true,
+            TOKEN_PROGRAM_ID
+        );
+
+        const tokenInAccountInfo = await this.connection.getAccountInfo(permissionlessTokenInAccount);
+        if (!tokenInAccountInfo) {
+            const createTokenInIx = createAssociatedTokenAccountIdempotentInstruction(
+                payer,
+                permissionlessTokenInAccount,
+                permissionlessAuthority,
+                params.tokenInMint,
+                TOKEN_PROGRAM_ID
+            );
+            instructions.push(createTokenInIx);
+        }
+
+        // Create permissionless token_out account if it doesn't exist
+        const permissionlessTokenOutAccount = getAssociatedTokenAddressSync(
+            params.tokenOutMint,
+            permissionlessAuthority,
+            true,
+            TOKEN_PROGRAM_ID
+        );
+
+        const tokenOutAccountInfo = await this.connection.getAccountInfo(permissionlessTokenOutAccount);
+        if (!tokenOutAccountInfo) {
+            const createTokenOutIx = createAssociatedTokenAccountIdempotentInstruction(
+                payer,
+                permissionlessTokenOutAccount,
+                permissionlessAuthority,
+                params.tokenOutMint,
+                TOKEN_PROGRAM_ID
+            );
+            instructions.push(createTokenOutIx);
+        }
+
+        return instructions;
+    }
+
     // Transaction builders - return unsigned transactions for signing
-    async buildMakeOfferTransaction(params: {
+    async buildMakeOfferIx(params: {
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
         feeBasisPoints?: number;
@@ -108,21 +168,18 @@ export class ScriptHelper {
         const needsApproval = params.needsApproval ?? false;
         const allowPermissionless = params.allowPermissionless ?? false;
 
-        const tx = await this.program.methods
+        return await this.program.methods
             .makeOffer(feeBasisPoints, needsApproval, allowPermissionless)
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
                 tokenOutMint: params.tokenOutMint,
-                state: this.statePda,
                 boss: params.boss ?? BOSS
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildAddOfferVectorTransaction(params: {
+    async buildAddOfferVectorIx(params: {
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
         baseTime: number;
@@ -131,7 +188,7 @@ export class ScriptHelper {
         priceFixDuration: number;
         boss?: PublicKey;
     }) {
-        const tx = await this.program.methods
+        return await this.program.methods
             .addOfferVector(
                 new BN(params.baseTime),
                 new BN(params.basePrice),
@@ -141,71 +198,59 @@ export class ScriptHelper {
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
-                state: this.statePda,
                 boss: params.boss ?? BOSS
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildCloseOfferTransaction(params: {
+    async buildCloseOfferIx(params: {
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
         boss?: PublicKey;
     }) {
-        const tx = await this.program.methods
+        return await this.program.methods
             .closeOffer()
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
-                state: this.statePda,
                 boss: params.boss ?? BOSS
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildUpdateOfferFeeTransaction(params: {
+    async buildUpdateOfferFeeIx(params: {
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
         newFeeBasisPoints: number;
         boss?: PublicKey;
     }) {
-        const tx = await this.program.methods
+        return await this.program.methods
             .updateOfferFee(params.newFeeBasisPoints)
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
-                state: this.statePda,
                 boss: params.boss ?? BOSS
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildDeleteOfferVectorTransaction(params: {
+    async buildDeleteOfferVectorIx(params: {
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
         vectorStartTimestamp: number;
         boss?: PublicKey;
     }) {
-        const tx = await this.program.methods
+        return await this.program.methods
             .deleteOfferVector(new BN(params.vectorStartTimestamp))
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
-                state: this.statePda,
                 boss: params.boss ?? BOSS
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildTakeOfferTransaction(params: {
+    async buildTakeOfferIx(params: {
         tokenInAmount: number;
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
@@ -215,23 +260,20 @@ export class ScriptHelper {
         tokenOutProgram?: PublicKey;
         boss?: PublicKey;
     }) {
-        const tx = await this.program.methods
+        return await this.program.methods
             .takeOffer(new BN(params.tokenInAmount), params.approvalMessage ?? null)
             .accountsPartial({
-                state: this.statePda,
-                boss: params.boss ?? BOSS,
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
                 user: params.user,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
-                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID
+                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
+                boss: params.boss ?? BOSS
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildTakeOfferPermissionlessTransaction(params: {
+    async buildTakeOfferPermissionlessIx(params: {
         tokenInAmount: number;
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
@@ -241,170 +283,147 @@ export class ScriptHelper {
         tokenOutProgram?: PublicKey;
         boss?: PublicKey;
     }) {
-        const tx = await this.program.methods
+        return await this.program.methods
             .takeOfferPermissionless(new BN(params.tokenInAmount), params.approvalMessage ?? null)
             .accountsPartial({
-                state: this.statePda,
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
                 user: params.user,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
-                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID
+                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
+                boss: params.boss ?? BOSS
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildOfferVaultDepositTransaction(params: {
+    async buildOfferVaultDepositIx(params: {
         amount: number,
         tokenMint: PublicKey,
         tokenProgram?: PublicKey,
-        boss?: PublicKey
+        boss?: PublicKey;
     }) {
-        const tx = await this.program.methods
+        return await this.program.methods
             .offerVaultDeposit(new BN(params.amount))
             .accountsPartial({
-                state: this.statePda,
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
                 boss: params.boss ?? BOSS
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildOfferVaultWithdrawTransaction(params: {
+    async buildOfferVaultWithdrawIx(params: {
         amount: number,
         tokenMint: PublicKey,
         tokenProgram?: PublicKey,
-        boss?: PublicKey
+        boss?: PublicKey;
     }) {
-        const tx = await this.program.methods
+        return await this.program.methods
             .offerVaultWithdraw(new BN(params.amount))
             .accountsPartial({
-                state: this.statePda,
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
                 boss: params.boss ?? BOSS
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildAddAdminTransaction(params: { admin: PublicKey, boss?: PublicKey }) {
-        const tx = await this.program.methods
+    async buildAddAdminIx(params: { admin: PublicKey; boss?: PublicKey }) {
+        return await this.program.methods
             .addAdmin(params.admin)
             .accountsPartial({
-                state: this.statePda,
                 boss: params.boss ?? BOSS
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildRemoveAdminTransaction(params: { admin: PublicKey, boss?: PublicKey }) {
-        const tx = await this.program.methods
+    async buildRemoveAdminIx(params: { admin: PublicKey; boss?: PublicKey }) {
+        return await this.program.methods
             .removeAdmin(params.admin)
             .accountsPartial({
-                state: this.statePda,
                 boss: params.boss ?? BOSS
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildSetBossTransaction(params: { newBoss: PublicKey, boss?: PublicKey }) {
-        const tx = await this.program.methods
+    async buildSetBossIx(params: { newBoss: PublicKey; boss?: PublicKey }) {
+        return await this.program.methods
             .setBoss(params.newBoss)
             .accountsPartial({
-                state: this.statePda,
                 boss: params.boss ?? BOSS
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildSetKillSwitchTransaction(params: { enable: boolean, boss?: PublicKey }) {
-        const tx = await this.program.methods
+    async buildSetKillSwitchIx(params: { enable: boolean; boss?: PublicKey }) {
+        return await this.program.methods
             .setKillSwitch(params.enable)
-            .accounts({})
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .accountsPartial({
+                signer: params.boss ?? BOSS
+            })
+            .instruction();
     }
 
-    async buildInitializeTransaction(params: { boss: PublicKey }) {
-        const tx = await this.program.methods
+    async buildInitializeIx(params?: { payer?: PublicKey }) {
+        return await this.program.methods
             .initialize()
             .accountsPartial({
-                boss: params.boss,
-                state: this.statePda
+                boss: params?.payer ?? BOSS
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildMigrateStateTransaction(params: { boss?: PublicKey } = {}) {
-        const tx = await this.program.methods
+    async buildMigrateStateIx(params?: { boss?: PublicKey }) {
+        return await this.program.methods
             .migrateV3()
             .accountsPartial({
                 state: this.statePda,
-                boss: params.boss ?? BOSS
+                permissionlessAuthority: this.pdas.permissionlessVaultAuthorityPda,
+                boss: params?.boss ?? BOSS
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildInitializeVaultAuthorityTransaction(params: { boss?: PublicKey } = {}) {
-        const tx = await this.program.methods
+    async buildInitializeVaultAuthorityIx(params?: { boss?: PublicKey }) {
+        return await this.program.methods
             .initializeVaultAuthority()
             .accountsPartial({
-                state: this.statePda,
-                boss: params.boss ?? BOSS
+                boss: params?.boss ?? BOSS
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildInitializeMintAuthorityTransaction(params: { boss?: PublicKey } = {}) {
-        const tx = await this.program.methods
+    async buildInitializeMintAuthorityIx(params?: { boss?: PublicKey }) {
+        return await this.program.methods
             .initializeMintAuthority()
             .accountsPartial({
-                state: this.statePda,
-                boss: params.boss ?? BOSS
+                boss: params?.boss ?? BOSS
             })
-            .transaction();
-
-        return this.prepareTransaction(tx, params.boss);
+            .instruction();
     }
 
-    async buildInitializePermissionlessAuthorityTransaction(params: { name: string, boss?: PublicKey }) {
-        const tx = await this.program.methods
+    async buildInitializePermissionlessAuthorityIx(params: { name: string; boss?: PublicKey }) {
+        return await this.program.methods
             .initializePermissionlessAuthority(params.name)
             .accountsPartial({
-                state: this.statePda,
                 boss: params.boss ?? BOSS
             })
-            .transaction();
+            .instruction();
+    }
 
-        return this.prepareTransaction(tx, params.boss);
+    async prepareTransactionMultipleIxs(ixs: TransactionInstruction[], boss?: PublicKey) {
+        const tx = new Transaction();
+        for (const ix of ixs) {
+            tx.add(ix);
+        }
+        tx.feePayer = boss ?? BOSS;
+        tx.recentBlockhash = (await this.connection.getLatestBlockhash()).blockhash;
+        return tx;
     }
 
     // Helper to prepare transaction with boss as fee payer and recent blockhash
-    async prepareTransaction(tx: Transaction, boss?: PublicKey) {
-        const feePayer = boss ?? BOSS;
-        tx.feePayer = feePayer;
-        tx.recentBlockhash = (await this.connection.getLatestBlockhash()).blockhash;
-        return tx;
+    async prepareTransaction(ix: TransactionInstruction, boss?: PublicKey) {
+        return await this.prepareTransactionMultipleIxs([ix], boss);
     }
 
     /**
@@ -413,7 +432,7 @@ export class ScriptHelper {
     serializeTransaction(tx: Transaction): string {
         const serializedTx = tx.serialize({
             requireAllSignatures: false,
-            verifySignatures: false,
+            verifySignatures: false
         });
         return bs58.encode(serializedTx);
     }

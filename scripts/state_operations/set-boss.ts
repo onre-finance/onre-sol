@@ -14,9 +14,11 @@ async function createSetBossTransaction() {
     console.log("Current boss:", currentBoss.toBase58());
 
     try {
-        const tx = await helper.buildSetBossTransaction({
+        const ix = await helper.buildSetBossIx({
             newBoss: NEW_BOSS
         });
+
+        const tx = await helper.prepareTransaction(ix);
 
         return helper.printTransaction(tx, "Set Boss Transaction");
     } catch (error) {

@@ -1,9 +1,8 @@
-import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper } from "../utils/script-helper";
+import { ScriptHelper, TOKEN_OUT_MINT } from "../utils/script-helper";
 
 // Configuration - UPDATE THESE
-const TOKEN_MINT = new PublicKey("FsSJSYJKLdyxtsT25DoyLS1j2asxzBkTVuX8vtojyWob"); // USDC Mint Address
-const AMOUNT = 1_000_000_000; // 1000 tokens with 6 decimals for USDC
+const TOKEN_MINT = TOKEN_OUT_MINT; // Using default TOKEN_OUT_MINT from script-helper
+const AMOUNT = 10_000_000_000; // 100 000 tokens with 6 decimals for USDC
 
 async function createVaultDepositTransaction() {
     const helper = await ScriptHelper.create();
@@ -15,11 +14,21 @@ async function createVaultDepositTransaction() {
     const boss = await helper.getBoss();
     console.log("Boss:", boss.toBase58());
 
+    const bossTokenAccounts = await helper.connection.getTokenAccountsByOwner(boss, { mint: TOKEN_MINT });
+    if (bossTokenAccounts.value.length > 0) {
+        const bossBalance = await helper.connection.getTokenAccountBalance(bossTokenAccounts.value[0].pubkey);
+        console.log("Boss token balance:", bossBalance.value.uiAmountString);
+    } else {
+        console.log("Boss token balance: No token account found");
+    }
+
     try {
-        const tx = await helper.buildOfferVaultDepositTransaction({
+        const ix = await helper.buildOfferVaultDepositIx({
             amount: AMOUNT,
             tokenMint: TOKEN_MINT
         });
+
+        const tx = await helper.prepareTransaction(ix);
 
         return helper.printTransaction(tx, "Vault Deposit Transaction");
     } catch (error) {

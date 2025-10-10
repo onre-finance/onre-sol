@@ -14,9 +14,11 @@ async function createRemoveAdminTransaction() {
     console.log("Current boss:", boss.toBase58());
 
     try {
-        const tx = await helper.buildRemoveAdminTransaction({
+        const ix = await helper.buildRemoveAdminIx({
             admin: ADMIN_TO_REMOVE
         });
+
+        const tx = await helper.prepareTransaction(ix);
 
         return helper.printTransaction(tx, "Remove Admin Transaction");
     } catch (error) {

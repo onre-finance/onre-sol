@@ -1,5 +1,4 @@
-import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper, BOSS } from "../utils/script-helper";
+import { BOSS, ScriptHelper } from "../utils/script-helper";
 
 async function createInitializeMintAuthorityTransaction() {
     const helper = await ScriptHelper.create();
@@ -8,9 +7,8 @@ async function createInitializeMintAuthorityTransaction() {
     console.log("Boss:", BOSS.toBase58());
 
     try {
-        const tx = await helper.buildInitializeMintAuthorityTransaction({
-            boss: BOSS
-        });
+        const ix = await helper.buildInitializeMintAuthorityIx();
+        const tx = await helper.prepareTransaction(ix);
 
         return helper.printTransaction(tx, "Initialize Mint Authority Transaction");
     } catch (error) {
