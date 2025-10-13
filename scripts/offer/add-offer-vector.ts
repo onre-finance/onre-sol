@@ -1,9 +1,4 @@
-import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper } from "../utils/script-helper";
-
-// Token addresses
-const TOKEN_IN_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // USDC
-const TOKEN_OUT_MINT = new PublicKey("5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5"); // ONyc
+import { ScriptHelper, TOKEN_IN_MINT, TOKEN_OUT_MINT } from "../utils/script-helper";
 
 // Configuration for the offer vector
 const BASE_TIME = Math.floor(new Date(Date.UTC(2025, 4, 27, 0, 0, 0)).getTime() / 1000); // May 27, 2025
@@ -19,7 +14,7 @@ async function createAddOfferVectorTransaction() {
     console.log("Token Out (ONe):", TOKEN_OUT_MINT.toBase58());
     console.log("Base Time:", new Date(BASE_TIME * 1000).toISOString());
     console.log("Base Price:", BASE_PRICE);
-    console.log("APR:", APR / 1_000_000, "%");
+    console.log("APR:", (APR / 1_000_000) * 100, "%");
     console.log("Price Fix Duration:", PRICE_FIX_DURATION, "seconds");
 
     const boss = await helper.getBoss();
