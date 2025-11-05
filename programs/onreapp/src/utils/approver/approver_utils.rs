@@ -43,8 +43,8 @@ pub enum ErrorCode {
 /// Verifies cryptographic approval messages signed by trusted authorities
 ///
 /// This function performs comprehensive validation of approval messages using Ed25519
-/// signature verification. It ensures the approval was signed by the correct authority,
-/// is intended for the current program and user, and has not expired.
+/// signature verification. It ensures the approval was signed by one of the two correct
+/// authorities, is intended for the current program and user, and has not expired.
 ///
 /// The verification process validates both the approval message content and the
 /// cryptographic signature by examining the Ed25519 instruction that must immediately
@@ -53,25 +53,27 @@ pub enum ErrorCode {
 /// # Arguments
 /// * `program_id` - The current program ID for validation context
 /// * `user_pubkey` - The user requesting approval
-/// * `trusted_pubkey` - The authorized signing authority
+/// * `approver1` - The first authorized signing authority
+/// * `approver2` - The second authorized signing authority
 /// * `instructions_sysvar` - Instructions sysvar for accessing previous instructions
 /// * `msg` - The approval message to verify
 ///
 /// # Returns
-/// * `Ok(())` - If approval signature and content are valid
-/// * `Err(_)` - If any validation step fails
+/// * `Ok(())` - If approval signature and content are valid with either approver
+/// * `Err(_)` - If validation fails with both approvers
 ///
 /// # Validation Steps
 /// 1. Expiry time validation against current timestamp
 /// 2. Program ID matching verification
 /// 3. User public key matching verification
 /// 4. Ed25519 signature instruction location and parsing
-/// 5. Trusted authority signature verification
+/// 5. Trusted authority signature verification (against either approver1 or approver2)
 /// 6. Signed message content validation
 pub fn verify_approval_message_generic(
     program_id: &Pubkey,
     user_pubkey: &Pubkey,
-    trusted_pubkey: &Pubkey,
+    approver1: &Pubkey,
+    approver2: &Pubkey,
     instructions_sysvar: &UncheckedAccount,
     msg: &ApprovalMessage,
 ) -> Result<()> {
@@ -94,7 +96,12 @@ pub fn verify_approval_message_generic(
 
     let parsed = parse_ed25519_ix(&ix.data).ok_or(ErrorCode::MalformedEd25519Ix)?;
     require!(parsed.sig_count == 1, ErrorCode::MultipleSigs);
-    require!(parsed.pubkey == trusted_pubkey.to_bytes(), ErrorCode::WrongAuthority);
+
+    // Check if the signature is from either approver1 or approver2
+    let is_approver1 = *approver1 != Pubkey::default() && parsed.pubkey == approver1.to_bytes();
+    let is_approver2 = *approver2 != Pubkey::default() && parsed.pubkey == approver2.to_bytes();
+    require!(is_approver1 || is_approver2, ErrorCode::WrongAuthority);
+
     let signed_msg = ApprovalMessage::try_from_slice(&parsed.message)
         .map_err(|_| ErrorCode::MsgDeserialize)?;
     require!(signed_msg.program_id == *program_id, ErrorCode::WrongProgram);

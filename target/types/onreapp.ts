@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/onreapp.json`.
  */
 export type Onreapp = {
-  "address": "J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2",
+  "address": "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe",
   "metadata": {
     "name": "onreapp",
     "version": "0.1.0",
@@ -106,6 +106,62 @@ export type Onreapp = {
       "args": [
         {
           "name": "newAdmin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "addApprover",
+      "docs": [
+        "Adds a trusted authority for approval verification.",
+        "",
+        "This instruction allows the boss to add an approver to one of the two available",
+        "approver slots. If both slots are already filled, the instruction will fail.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `AddApprover`.",
+        "- `approver`: Public key of the approver to add."
+      ],
+      "discriminator": [
+        213,
+        245,
+        135,
+        79,
+        129,
+        129,
+        22,
+        80
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "approver",
           "type": "pubkey"
         }
       ]
@@ -2438,62 +2494,6 @@ export type Onreapp = {
       "args": [
         {
           "name": "adminToRemove",
-          "type": "pubkey"
-        }
-      ]
-    },
-    {
-      "name": "setApprover",
-      "docs": [
-        "Sets the trusted authority for approval verification.",
-        "",
-        "This instruction allows the boss to set a trusted public key that will be used",
-        "to verify Ed25519 signatures for offer approvals.",
-        "",
-        "# Arguments",
-        "- `ctx`: Context for `SetTrustedAccount`.",
-        "- `trusted`: Public key of the trusted authority for approvals."
-      ],
-      "discriminator": [
-        139,
-        202,
-        200,
-        122,
-        109,
-        173,
-        219,
-        116
-      ],
-      "accounts": [
-        {
-          "name": "state",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "boss",
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        }
-      ],
-      "args": [
-        {
-          "name": "approver",
           "type": "pubkey"
         }
       ]
@@ -5614,9 +5614,16 @@ export type Onreapp = {
             }
           },
           {
-            "name": "approver",
+            "name": "approver1",
             "docs": [
-              "Trusted authority for cryptographic approval verification"
+              "First trusted authority for cryptographic approval verification"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "approver2",
+            "docs": [
+              "Second trusted authority for cryptographic approval verification"
             ],
             "type": "pubkey"
           },
@@ -5635,7 +5642,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                128
+                96
               ]
             }
           }

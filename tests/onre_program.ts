@@ -510,8 +510,8 @@ export class OnreProgram {
         return await this.program.account.permissionlessAuthority.fetch(this.pdas.permissionlessAuthorityPda);
     }
 
-    async setApprover(params: { trusted: PublicKey, signer?: Keypair }) {
-        const tx = this.program.methods.setApprover(params.trusted);
+    async addApprover(params: { trusted: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods.addApprover(params.trusted);
 
         if (params.signer) {
             tx.signers([params.signer]);

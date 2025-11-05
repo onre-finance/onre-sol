@@ -105,6 +105,62 @@
       ]
     },
     {
+      "name": "add_approver",
+      "docs": [
+        "Adds a trusted authority for approval verification.",
+        "",
+        "This instruction allows the boss to add an approver to one of the two available",
+        "approver slots. If both slots are already filled, the instruction will fail.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `AddApprover`.",
+        "- `approver`: Public key of the approver to add."
+      ],
+      "discriminator": [
+        213,
+        245,
+        135,
+        79,
+        129,
+        129,
+        22,
+        80
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "approver",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "add_offer_vector",
       "docs": [
         "Adds a time vector to an existing offer.",
@@ -2432,62 +2488,6 @@
       "args": [
         {
           "name": "admin_to_remove",
-          "type": "pubkey"
-        }
-      ]
-    },
-    {
-      "name": "set_approver",
-      "docs": [
-        "Sets the trusted authority for approval verification.",
-        "",
-        "This instruction allows the boss to set a trusted public key that will be used",
-        "to verify Ed25519 signatures for offer approvals.",
-        "",
-        "# Arguments",
-        "- `ctx`: Context for `SetTrustedAccount`.",
-        "- `trusted`: Public key of the trusted authority for approvals."
-      ],
-      "discriminator": [
-        139,
-        202,
-        200,
-        122,
-        109,
-        173,
-        219,
-        116
-      ],
-      "accounts": [
-        {
-          "name": "state",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "boss",
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        }
-      ],
-      "args": [
-        {
-          "name": "approver",
           "type": "pubkey"
         }
       ]
@@ -5608,9 +5608,16 @@
             }
           },
           {
-            "name": "approver",
+            "name": "approver1",
             "docs": [
-              "Trusted authority for cryptographic approval verification"
+              "First trusted authority for cryptographic approval verification"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "approver2",
+            "docs": [
+              "Second trusted authority for cryptographic approval verification"
             ],
             "type": "pubkey"
           },
@@ -5629,7 +5636,7 @@
             "type": {
               "array": [
                 "u8",
-                128
+                96
               ]
             }
           }

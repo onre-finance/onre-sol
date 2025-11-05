@@ -85,7 +85,9 @@ describe("Migrate State", () => {
             const finalSize = migratedAccountInfo.data.length;
 
             expect(finalSize).toBe(initialSize); // Size should be the same for new deployments
-            expect(finalSize).toBe(874); // 8 bytes discriminator + 32 bytes boss + 1 byte is_killed + 32 bytes onyc_mint + (20 * 32) bytes admins + 128 reserved + 1 byte bump
+            // 8 bytes discriminator + 32 bytes boss + 1 byte is_killed + 32 bytes onyc_mint + (20 * 32) bytes admins
+            // + 32 bytes approver1 + 32 bytes approver2 + 96 reserved + 1 byte bump
+            expect(finalSize).toBe(874);
         });
 
         test("Migration initializes kill switch to disabled and admins to empty", async () => {
@@ -162,7 +164,8 @@ describe("Migrate State", () => {
             expect(state.isKilled).toBe(false); // Should be initialized to false
             expect(state.onycMint.toString()).toBe(PublicKey.default.toString()); // Should be initialized to default
             expect(state.admins).toEqual(Array(20).fill(PublicKey.default)); // Should be initialized to empty array
-            expect(state.approver.toString()).toBe(PublicKey.default.toString()); // Should be initialized to default
+            expect(state.approver1.toString()).toBe(PublicKey.default.toString()); // Should be initialized to default
+            expect(state.approver2.toString()).toBe(PublicKey.default.toString()); // Should be initialized to default
             expect(state.bump).toBeGreaterThan(0); // Should be initialized to a valid bump
 
             const permissionlessAuthority = await program.getPermissionlessAuthority();

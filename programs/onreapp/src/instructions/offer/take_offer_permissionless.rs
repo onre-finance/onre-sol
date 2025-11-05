@@ -310,7 +310,8 @@ pub fn take_offer_permissionless(
         &approval_message,
         ctx.program_id,
         &ctx.accounts.user.key(),
-        &ctx.accounts.state.approver,
+        &ctx.accounts.state.approver1,
+        &ctx.accounts.state.approver2,
         &ctx.accounts.instructions_sysvar,
     )?;
 

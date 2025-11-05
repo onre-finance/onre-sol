@@ -422,15 +422,15 @@ pub mod onreapp {
         market_info::get_circulating_supply(ctx)
     }
 
-    /// Sets the trusted authority for approval verification.
+    /// Adds a trusted authority for approval verification.
     ///
-    /// This instruction allows the boss to set a trusted public key that will be used
-    /// to verify Ed25519 signatures for offer approvals.
+    /// This instruction allows the boss to add an approver to one of the two available
+    /// approver slots. If both slots are already filled, the instruction will fail.
     ///
     /// # Arguments
-    /// - `ctx`: Context for `SetTrustedAccount`.
-    /// - `trusted`: Public key of the trusted authority for approvals.
-    pub fn set_approver(ctx: Context<SetApprover>, approver: Pubkey) -> Result<()> {
-        state_operations::set_approver(ctx, approver)
+    /// - `ctx`: Context for `AddApprover`.
+    /// - `approver`: Public key of the approver to add.
+    pub fn add_approver(ctx: Context<AddApprover>, approver: Pubkey) -> Result<()> {
+        state_operations::add_approver(ctx, approver)
     }
 }
