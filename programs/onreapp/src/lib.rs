@@ -433,4 +433,17 @@ pub mod onreapp {
     pub fn add_approver(ctx: Context<AddApprover>, approver: Pubkey) -> Result<()> {
         state_operations::add_approver(ctx, approver)
     }
+
+    /// Removes a trusted authority from approval verification.
+    ///
+    /// This instruction allows the boss to remove an approver by their public key.
+    /// The approver must exist in either approver1 or approver2 slot, otherwise
+    /// the instruction will fail.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `RemoveApprover`.
+    /// - `approver`: Public key of the approver to remove.
+    pub fn remove_approver(ctx: Context<RemoveApprover>, approver: Pubkey) -> Result<()> {
+        state_operations::remove_approver(ctx, approver)
+    }
 }

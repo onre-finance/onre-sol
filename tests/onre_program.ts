@@ -518,4 +518,13 @@ export class OnreProgram {
         }
         await tx.rpc();
     }
+
+    async removeApprover(params: { approver: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods.removeApprover(params.approver);
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+        await tx.rpc();
+    }
 }

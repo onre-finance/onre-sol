@@ -2499,6 +2499,63 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "removeApprover",
+      "docs": [
+        "Removes a trusted authority from approval verification.",
+        "",
+        "This instruction allows the boss to remove an approver by their public key.",
+        "The approver must exist in either approver1 or approver2 slot, otherwise",
+        "the instruction will fail.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `RemoveApprover`.",
+        "- `approver`: Public key of the approver to remove."
+      ],
+      "discriminator": [
+        214,
+        72,
+        133,
+        48,
+        50,
+        58,
+        227,
+        224
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "approver",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "setBoss",
       "docs": [
         "Updates the boss in the program state.",
