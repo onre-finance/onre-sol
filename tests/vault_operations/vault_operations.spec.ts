@@ -1,7 +1,7 @@
 import { PublicKey } from "@solana/web3.js";
 import { TestHelper } from "../test_helper";
 import { OnreProgram } from "../onre_program.ts";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 
 describe("Vault Operations", () => {
     let testHelper: TestHelper;
@@ -106,6 +106,53 @@ describe("Vault Operations", () => {
                         signer: notBoss
                     })
                 ).rejects.toThrow("unknown signer");
+            });
+
+            test("Withdraw Token2022 tokens from offer vault should succeed", async () => {
+                // given - create Token2022 mint and deposit tokens
+                const testTokenMint = testHelper.createMint2022(9);
+                const testBossTokenAccount = testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9), false, TOKEN_2022_PROGRAM_ID);
+                const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.offerVaultAuthorityPda, true, TOKEN_2022_PROGRAM_ID);
+                const depositAmount = 100_000e9;
+
+                await program.offerVaultDeposit({
+                    amount: depositAmount,
+                    tokenMint: testTokenMint,
+                    tokenProgram: TOKEN_2022_PROGRAM_ID
+                });
+
+                // when - withdraw Token2022 tokens
+                const withdrawAmount = 50_000e9;
+                await program.offerVaultWithdraw({
+                    amount: withdrawAmount,
+                    tokenMint: testTokenMint,
+                    tokenProgram: TOKEN_2022_PROGRAM_ID
+                });
+
+                // then - verify balances
+                await testHelper.expectTokenAccountAmountToBe(testVaultTokenAccount, BigInt(50_000e9));
+                await testHelper.expectTokenAccountAmountToBe(testBossTokenAccount, BigInt(950_000e9));
+            });
+
+            test("Withdraw with wrong token_program should fail", async () => {
+                // given - deposit tokens first
+                const testTokenMint = testHelper.createMint(9);
+                const testBossTokenAccount = testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
+                const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.offerVaultAuthorityPda, true);
+                const depositAmount = 100_000e9;
+
+                await program.offerVaultDeposit({
+                    amount: depositAmount,
+                    tokenMint: testTokenMint
+                });
+
+                // when - withdraw some tokens
+                const withdrawAmount = 50_000e9;
+                await expect(program.offerVaultWithdraw({
+                    amount: withdrawAmount,
+                    tokenMint: testTokenMint,
+                    tokenProgram: TOKEN_2022_PROGRAM_ID
+                })).rejects.toThrow();
             });
         });
     });

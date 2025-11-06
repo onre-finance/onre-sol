@@ -56,6 +56,7 @@ pub struct OfferVaultWithdraw<'info> {
         mut,
         associated_token::mint = token_mint,
         associated_token::authority = vault_authority,
+        associated_token::token_program = token_program
     )]
     pub vault_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
