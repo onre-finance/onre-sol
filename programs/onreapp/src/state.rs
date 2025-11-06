@@ -9,6 +9,8 @@ use anchor_lang::prelude::*;
 pub struct State {
     /// Primary program authority with full control over all operations
     pub boss: Pubkey,
+    /// Proposed new boss for two-step ownership transfer
+    pub proposed_boss: Pubkey,
     /// Emergency kill switch to halt critical operations when activated
     pub is_killed: bool,
     /// ONyc token mint used for market calculations and operations
@@ -24,7 +26,7 @@ pub struct State {
     /// Optional maximum supply cap for ONyc token minting (0 = no cap)
     pub max_supply: u64,
     /// Reserved space for future program state extensions
-    pub reserved: [u8; 88],
+    pub reserved: [u8; 56],
 }
 
 /// Program-derived authority for controlling offer vault token accounts

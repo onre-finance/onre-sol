@@ -221,6 +221,33 @@ pub mod onreapp {
         state_operations::set_boss(ctx, new_boss)
     }
 
+    /// Proposes a new boss for ownership transfer.
+    ///
+    /// Delegates to `propose_boss::propose_boss` to propose a new boss authority.
+    /// This is the first step in a two-step ownership transfer process.
+    /// The proposed boss must then call accept_boss to complete the transfer.
+    /// Emits a `BossProposedEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `ProposeBoss`.
+    /// - `new_boss`: Public key of the proposed new boss.
+    pub fn propose_boss(ctx: Context<ProposeBoss>, new_boss: Pubkey) -> Result<()> {
+        state_operations::propose_boss(ctx, new_boss)
+    }
+
+    /// Accepts the proposed boss transfer.
+    ///
+    /// Delegates to `accept_boss::accept_boss` to complete the ownership transfer.
+    /// This is the second step in a two-step ownership transfer process.
+    /// Only the proposed boss can call this instruction to accept and become the new boss.
+    /// Emits a `BossAcceptedEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `AcceptBoss`.
+    pub fn accept_boss(ctx: Context<AcceptBoss>) -> Result<()> {
+        state_operations::accept_boss(ctx)
+    }
+
     /// Adds a new admin to the state.
     ///
     /// Delegates to `admin::add_admin` to add a new admin to the admin list.

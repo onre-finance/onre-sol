@@ -120,8 +120,11 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
     // Initialize max supply as 0 (no cap by default)
     state.max_supply = 0;
 
+    // Initialize proposed_boss as unset
+    state.proposed_boss = Pubkey::default();
+
     // Reserved space is automatically zero-initialized
-    state.reserved = [0u8; 88];
+    state.reserved = [0u8; 56];
 
     msg!(
         "Program state initialized: boss={}, onyc_mint={}, bump={}",
