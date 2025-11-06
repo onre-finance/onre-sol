@@ -17,6 +17,8 @@ pub enum RemoveApproverError {
     /// The provided address is not an approver
     #[msg("The provided address is not an approver")]
     NotAnApprover,
+    #[msg("Invalid approver")]
+    InvalidApprover,
 }
 
 /// Removes a trusted authority from the approval verification list
@@ -44,14 +46,18 @@ pub enum RemoveApproverError {
 pub fn remove_approver(ctx: Context<RemoveApprover>, approver: Pubkey) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
+    if approver == Pubkey::default() {
+        return Err(error!(RemoveApproverError::InvalidApprover));
+    }
+
     // Check if the approver matches approver1
-    if state.approver1 == approver && approver != Pubkey::default() {
+    if state.approver1 == approver {
         state.approver1 = Pubkey::default();
         return Ok(());
     }
 
     // Check if the approver matches approver2
-    if state.approver2 == approver && approver != Pubkey::default() {
+    if state.approver2 == approver {
         state.approver2 = Pubkey::default();
         return Ok(());
     }

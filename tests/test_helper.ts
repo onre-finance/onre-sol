@@ -31,6 +31,11 @@ export class TestHelper {
         return new TestHelper(context);
     }
 
+    async advanceSlot() {
+        const currentSlot = await this.context.banksClient.getSlot();
+        this.context.warpToSlot(currentSlot + BigInt(1));
+    }
+
     getBoss(): PublicKey {
         return this.context.payer.publicKey;
     }

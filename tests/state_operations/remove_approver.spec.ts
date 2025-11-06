@@ -1,7 +1,6 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { TestHelper } from "../test_helper.ts";
 import { OnreProgram } from "../onre_program.ts";
-import { sleep } from "zx";
 
 describe("Remove Approver", () => {
     let testHelper: TestHelper;
@@ -77,7 +76,7 @@ describe("Remove Approver", () => {
         // when & then
         await expect(
             program.removeApprover({ approver: PublicKey.default })
-        ).rejects.toThrow("NotAnApprover");
+        ).rejects.toThrow("InvalidApprover");
     });
 
     test("Can remove both approvers", async () => {
@@ -142,10 +141,8 @@ describe("Remove Approver", () => {
         // given - remove approver1 first time
         await program.removeApprover({ approver: approver1.publicKey });
 
-        // Testing framework tries to replay the same transaction and fails with 'Transaction already processed'
-        // Adding a delay seems to help.
-        await sleep(100);
-        
+        await testHelper.advanceSlot();
+
         // when & then - try to remove the same approver again
         await expect(
             program.removeApprover({ approver: approver1.publicKey })
@@ -198,9 +195,7 @@ describe("Remove Approver", () => {
         await program.removeApprover({ approver: approver1.publicKey });
         await program.removeApprover({ approver: approver2.publicKey });
 
-        // Testing framework tries to replay the same transaction and fails with 'Transaction already processed'
-        // Adding a delay seems to help.
-        await sleep(100);
+        await testHelper.advanceSlot();
 
         await program.addApprover({ trusted: approver2.publicKey });
         await program.addApprover({ trusted: approver1.publicKey });

@@ -17,6 +17,8 @@ pub enum AddApproverError {
     /// Both approver slots are already filled
     #[msg("Both approver slots are already filled")]
     BothApproversFilled,
+    #[msg("Invalid approver")]
+    InvalidApprover,
 }
 
 /// Adds a trusted authority for cryptographic approval verification
@@ -43,6 +45,10 @@ pub enum AddApproverError {
 /// - Affects all future offer operations requiring approval
 pub fn add_approver(ctx: Context<AddApprover>, approver: Pubkey) -> Result<()> {
     let state = &mut ctx.accounts.state;
+
+    if approver == Pubkey::default() {
+        return Err(error!(AddApproverError::InvalidApprover));
+    }
 
     // Check if approver1 is empty (default pubkey)
     if state.approver1 == Pubkey::default() {
