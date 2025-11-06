@@ -45,26 +45,28 @@ pub struct OfferProcessResult {
 /// Verifies approval requirements for offer operations
 ///
 /// Checks if the offer requires approval and validates the provided approval message
-/// using cryptographic signature verification against a trusted authority.
+/// using cryptographic signature verification against one of the two trusted authorities.
 ///
 /// # Arguments
 /// * `offer` - The offer to check for approval requirement
 /// * `approval_message` - Optional approval message from the user
 /// * `program_id` - The program ID for verification context
 /// * `user_pubkey` - The user's public key
-/// * `trusted_pubkey` - The trusted authority's public key for verification
+/// * `approver1` - The first trusted authority's public key for verification
+/// * `approver2` - The second trusted authority's public key for verification
 /// * `instructions_sysvar` - The instructions sysvar account for signature verification
 ///
 /// # Returns
-/// * `Ok(())` - If approval is not needed or verification succeeds
+/// * `Ok(())` - If approval is not needed or verification succeeds with either approver
 /// * `Err(OfferCoreError::ApprovalRequired)` - If approval is required but not provided
-/// * `Err(_)` - If approval verification fails
+/// * `Err(_)` - If approval verification fails with both approvers
 pub fn verify_offer_approval(
     offer: &Offer,
     approval_message: &Option<ApprovalMessage>,
     program_id: &Pubkey,
     user_pubkey: &Pubkey,
-    trusted_pubkey: &Pubkey,
+    approver1: &Pubkey,
+    approver2: &Pubkey,
     instructions_sysvar: &UncheckedAccount,
 ) -> Result<()> {
     if offer.needs_approval() {
@@ -77,7 +79,8 @@ pub fn verify_offer_approval(
                 approver_utils::verify_approval_message_generic(
                     program_id,
                     user_pubkey,
-                    trusted_pubkey,
+                    approver1,
+                    approver2,
                     instructions_sysvar,
                     msg,
                 )?;

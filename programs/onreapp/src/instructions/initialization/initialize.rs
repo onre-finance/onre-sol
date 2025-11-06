@@ -110,14 +110,15 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
     // Initialize admin list as empty
     state.admins = [Pubkey::default(); crate::state::MAX_ADMINS];
 
-    // Leave approver unset initially (must be configured via set_approver)
-    state.approver = Pubkey::default();
+    // Leave approvers unset initially (must be configured via add_approver)
+    state.approver1 = Pubkey::default();
+    state.approver2 = Pubkey::default();
 
     // Store PDA bump for future validations
     state.bump = ctx.bumps.state;
 
     // Reserved space is automatically zero-initialized
-    state.reserved = [0u8; 128];
+    state.reserved = [0u8; 96];
 
     msg!(
         "Program state initialized: boss={}, onyc_mint={}, bump={}",

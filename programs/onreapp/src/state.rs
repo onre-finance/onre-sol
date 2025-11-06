@@ -15,12 +15,14 @@ pub struct State {
     pub onyc_mint: Pubkey,
     /// Array of admin accounts authorized to enable the kill switch
     pub admins: [Pubkey; MAX_ADMINS],
-    /// Trusted authority for cryptographic approval verification
-    pub approver: Pubkey,
+    /// First trusted authority for cryptographic approval verification
+    pub approver1: Pubkey,
+    /// Second trusted authority for cryptographic approval verification
+    pub approver2: Pubkey,
     /// PDA bump seed for account derivation
     pub bump: u8,
     /// Reserved space for future program state extensions
-    pub reserved: [u8; 128],
+    pub reserved: [u8; 96],
 }
 
 /// Program-derived authority for controlling offer vault token accounts

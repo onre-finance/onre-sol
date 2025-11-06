@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/onreapp.json`.
  */
 export type Onreapp = {
-  "address": "J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2",
+  "address": "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe",
   "metadata": {
     "name": "onreapp",
     "version": "0.1.0",
@@ -106,6 +106,62 @@ export type Onreapp = {
       "args": [
         {
           "name": "newAdmin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "addApprover",
+      "docs": [
+        "Adds a trusted authority for approval verification.",
+        "",
+        "This instruction allows the boss to add an approver to one of the two available",
+        "approver slots. If both slots are already filled, the instruction will fail.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `AddApprover`.",
+        "- `approver`: Public key of the approver to add."
+      ],
+      "discriminator": [
+        213,
+        245,
+        135,
+        79,
+        129,
+        129,
+        22,
+        80
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "approver",
           "type": "pubkey"
         }
       ]
@@ -2443,26 +2499,27 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "setApprover",
+      "name": "removeApprover",
       "docs": [
-        "Sets the trusted authority for approval verification.",
+        "Removes a trusted authority from approval verification.",
         "",
-        "This instruction allows the boss to set a trusted public key that will be used",
-        "to verify Ed25519 signatures for offer approvals.",
+        "This instruction allows the boss to remove an approver by their public key.",
+        "The approver must exist in either approver1 or approver2 slot, otherwise",
+        "the instruction will fail.",
         "",
         "# Arguments",
-        "- `ctx`: Context for `SetTrustedAccount`.",
-        "- `trusted`: Public key of the trusted authority for approvals."
+        "- `ctx`: Context for `RemoveApprover`.",
+        "- `approver`: Public key of the approver to remove."
       ],
       "discriminator": [
-        139,
-        202,
-        200,
-        122,
-        109,
-        173,
-        219,
-        116
+        214,
+        72,
+        133,
+        48,
+        50,
+        58,
+        227,
+        224
       ],
       "accounts": [
         {
@@ -4611,53 +4668,8 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "expired",
-      "msg": "The approval message has expired."
-    },
-    {
-      "code": 6001,
-      "name": "wrongProgram",
-      "msg": "The approval message is for the wrong program."
-    },
-    {
-      "code": 6002,
-      "name": "wrongUser",
-      "msg": "The approval message is for the wrong user."
-    },
-    {
-      "code": 6003,
-      "name": "missingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
-    },
-    {
-      "code": 6004,
-      "name": "wrongIxProgram",
-      "msg": "The instruction is for the wrong program."
-    },
-    {
-      "code": 6005,
-      "name": "malformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
-    },
-    {
-      "code": 6006,
-      "name": "multipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
-    },
-    {
-      "code": 6007,
-      "name": "wrongAuthority",
-      "msg": "The authority public key does not match."
-    },
-    {
-      "code": 6008,
-      "name": "msgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
-    },
-    {
-      "code": 6009,
-      "name": "msgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "name": "mathOverflow",
+      "msg": "Math overflow"
     }
   ],
   "types": [
@@ -5614,9 +5626,16 @@ export type Onreapp = {
             }
           },
           {
-            "name": "approver",
+            "name": "approver1",
             "docs": [
-              "Trusted authority for cryptographic approval verification"
+              "First trusted authority for cryptographic approval verification"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "approver2",
+            "docs": [
+              "Second trusted authority for cryptographic approval verification"
             ],
             "type": "pubkey"
           },
@@ -5635,7 +5654,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                128
+                96
               ]
             }
           }

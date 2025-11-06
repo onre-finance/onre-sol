@@ -121,7 +121,8 @@ describe("Set ONyc Mint", () => {
         const finalSize = updatedAccountInfo.data.length;
 
         expect(finalSize).toBe(initialSize);
-        // Verify expected size: 8 bytes discriminator + 32 bytes boss + 1 byte is_killed + 32 bytes onyc_mint + (20 * 32) bytes admins + 32 bytes trusted + 128 reserved + 1 byte bump
+        // Verify expected size: 8 bytes discriminator + 32 bytes boss + 1 byte is_killed +
+        // 32 bytes onyc_mint + (20 * 32) bytes admins + 32 approver1 + 32 approver2 + 96 reserved + 1 byte bump
         expect(finalSize).toBe(874);
     });
 });
