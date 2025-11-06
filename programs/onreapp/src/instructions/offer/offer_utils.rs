@@ -1,6 +1,6 @@
 use crate::instructions::{Offer, OfferVector};
 use crate::utils::approver::approver_utils;
-use crate::utils::{calculate_fees, calculate_token_out_amount, ApprovalMessage};
+use crate::utils::{calculate_fees, calculate_token_out_amount};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
 
@@ -49,7 +49,6 @@ pub struct OfferProcessResult {
 ///
 /// # Arguments
 /// * `offer` - The offer to check for approval requirement
-/// * `approval_message` - Optional approval message from the user
 /// * `program_id` - The program ID for verification context
 /// * `user_pubkey` - The user's public key
 /// * `trusted_pubkey` - The trusted authority's public key for verification
@@ -61,29 +60,19 @@ pub struct OfferProcessResult {
 /// * `Err(_)` - If approval verification fails
 pub fn verify_offer_approval(
     offer: &Offer,
-    approval_message: &Option<ApprovalMessage>,
     program_id: &Pubkey,
     user_pubkey: &Pubkey,
     trusted_pubkey: &Pubkey,
     instructions_sysvar: &UncheckedAccount,
 ) -> Result<()> {
     if offer.needs_approval() {
-        match approval_message {
-            Some(msg) => {
-                msg!(
-                    "Offer requires approval, verifying message {}",
-                    msg.expiry_unix
-                );
-                approver_utils::verify_approval_message_generic(
-                    program_id,
-                    user_pubkey,
-                    trusted_pubkey,
-                    instructions_sysvar,
-                    msg,
-                )?;
-            }
-            None => return Err(error!(OfferCoreError::ApprovalRequired)),
-        }
+        msg!("Offer requires approval, verifying message");
+        approver_utils::verify_approval_message_generic(
+            program_id,
+            user_pubkey,
+            trusted_pubkey,
+            instructions_sysvar,
+        )?;
     }
     Ok(())
 }
@@ -289,7 +278,6 @@ pub fn calculate_step_price_at(
     // Use the vector price calculation with the effective elapsed time
     calculate_vector_price(apr, base_price, step_end_time)
 }
-
 
 /// Finds the array index of a pricing vector by its start time
 ///

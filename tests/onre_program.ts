@@ -160,7 +160,7 @@ export class OnreProgram {
         tokenOutProgram?: PublicKey
     }) {
         const tx = this.program.methods
-            .takeOffer(new BN(params.tokenInAmount), null)
+            .takeOffer(new BN(params.tokenInAmount))
             .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
@@ -186,7 +186,7 @@ export class OnreProgram {
         tokenOutProgram?: PublicKey
     }) {
         const tx = this.program.methods
-            .takeOfferPermissionless(new BN(params.tokenInAmount), null)
+            .takeOfferPermissionless(new BN(params.tokenInAmount))
             .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,

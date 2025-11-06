@@ -73,14 +73,9 @@ pub fn verify_approval_message_generic(
     user_pubkey: &Pubkey,
     trusted_pubkey: &Pubkey,
     instructions_sysvar: &UncheckedAccount,
-    msg: &ApprovalMessage,
 ) -> Result<()> {
     let now = Clock::get()?.unix_timestamp as u64;
-    require!(now <= msg.expiry_unix, ErrorCode::Expired);
-    require!(msg.program_id == *program_id, ErrorCode::WrongProgram);
-    require!(msg.user_pubkey.key() == user_pubkey.key(), ErrorCode::WrongUser);
-
-    // 2) Find the *previous* instruction and ensure it's Ed25519 verify
+    // Find the *previous* instruction and ensure it's Ed25519 verify
     let cur_idx = sysvar::instructions::load_current_index_checked(&instructions_sysvar.to_account_info())
         .map_err(|_| ErrorCode::MissingEd25519Ix)?;
     require!(cur_idx > 0, ErrorCode::MissingEd25519Ix);
@@ -99,7 +94,7 @@ pub fn verify_approval_message_generic(
         .map_err(|_| ErrorCode::MsgDeserialize)?;
     require!(signed_msg.program_id == *program_id, ErrorCode::WrongProgram);
     require!(signed_msg.user_pubkey == *user_pubkey, ErrorCode::WrongUser);
-    require!(signed_msg.expiry_unix >= Clock::get()?.unix_timestamp as u64, ErrorCode::Expired);
+    require!(signed_msg.expiry_unix >= now, ErrorCode::Expired);
 
     Ok(())
 }

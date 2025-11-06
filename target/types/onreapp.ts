@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/onreapp.json`.
  */
 export type Onreapp = {
-  "address": "J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2",
+  "address": "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe",
   "metadata": {
     "name": "onreapp",
     "version": "0.1.0",
@@ -3240,16 +3240,6 @@ export type Onreapp = {
         {
           "name": "tokenInAmount",
           "type": "u64"
-        },
-        {
-          "name": "approvalMessage",
-          "type": {
-            "option": {
-              "defined": {
-                "name": "approvalMessage"
-              }
-            }
-          }
         }
       ]
     },
@@ -3953,16 +3943,6 @@ export type Onreapp = {
         {
           "name": "tokenInAmount",
           "type": "u64"
-        },
-        {
-          "name": "approvalMessage",
-          "type": {
-            "option": {
-              "defined": {
-                "name": "approvalMessage"
-              }
-            }
-          }
         }
       ]
     },
@@ -4661,47 +4641,6 @@ export type Onreapp = {
     }
   ],
   "types": [
-    {
-      "name": "approvalMessage",
-      "docs": [
-        "Message structure for approval verification",
-        "",
-        "This structure contains the data required to verify that a user has received",
-        "approval from a trusted authority to perform a specific action within the program.",
-        "The message is signed by the trusted authority using Ed25519 signature.",
-        "",
-        "# Fields",
-        "- `program_id`: The ID of the program for which this approval is valid",
-        "- `user_pubkey`: The public key of the user who is approved to perform the action",
-        "- `expiry_unix`: Unix timestamp when this approval expires"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "programId",
-            "docs": [
-              "The program ID this approval is valid for"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "userPubkey",
-            "docs": [
-              "The user public key that is approved"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "expiryUnix",
-            "docs": [
-              "Unix timestamp when this approval expires"
-            ],
-            "type": "u64"
-          }
-        ]
-      }
-    },
     {
       "name": "bossUpdatedEvent",
       "docs": [
