@@ -133,6 +133,27 @@ describe("Vault Operations", () => {
                 await testHelper.expectTokenAccountAmountToBe(testVaultTokenAccount, BigInt(50_000e9));
                 await testHelper.expectTokenAccountAmountToBe(testBossTokenAccount, BigInt(950_000e9));
             });
+
+            test("Withdraw with wrong token_program should fail", async () => {
+                // given - deposit tokens first
+                const testTokenMint = testHelper.createMint(9);
+                const testBossTokenAccount = testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
+                const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.offerVaultAuthorityPda, true);
+                const depositAmount = 100_000e9;
+
+                await program.offerVaultDeposit({
+                    amount: depositAmount,
+                    tokenMint: testTokenMint
+                });
+
+                // when - withdraw some tokens
+                const withdrawAmount = 50_000e9;
+                await expect(program.offerVaultWithdraw({
+                    amount: withdrawAmount,
+                    tokenMint: testTokenMint,
+                    tokenProgram: TOKEN_2022_PROGRAM_ID
+                })).rejects.toThrow();
+            });
         });
     });
 });
