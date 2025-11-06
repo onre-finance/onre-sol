@@ -363,6 +363,7 @@ pub fn take_offer_permissionless(
         token_out_destination_account: &ctx.accounts.permissionless_token_out_account,
         mint_authority_pda: &ctx.accounts.mint_authority.to_account_info(),
         mint_authority_bump: &[ctx.bumps.mint_authority],
+        token_out_max_supply: ctx.accounts.state.max_supply,
     })?;
 
     transfer_tokens(

@@ -53,24 +53,20 @@ export class TestHelper {
         return user;
     }
 
-    createMint2022(decimals: number, mintAuthority: PublicKey = null, freezeAuthority: PublicKey = mintAuthority): PublicKey {
-        return this.createMint(decimals, mintAuthority, freezeAuthority, TOKEN_2022_PROGRAM_ID);
+    createMint2022(decimals: number, mintAuthority: PublicKey | null = null, freezeAuthority: PublicKey | null = mintAuthority): PublicKey {
+        return this.createMint(decimals, mintAuthority, BigInt(999_999_999 * 10 ** decimals), freezeAuthority, TOKEN_2022_PROGRAM_ID);
     }
 
-    createMint(decimals: number, mintAuthority: PublicKey = null, freezeAuthority: PublicKey = mintAuthority, owner: PublicKey = TOKEN_PROGRAM_ID): PublicKey {
-        if (!mintAuthority) {
-            mintAuthority = this.getBoss();
-            freezeAuthority = this.getBoss();
-        }
+    createMint(decimals: number, mintAuthority: PublicKey | null = null, supply: bigint = BigInt(999_999_999 * 10 ** decimals), freezeAuthority: PublicKey | null = mintAuthority, owner: PublicKey = TOKEN_PROGRAM_ID): PublicKey {
         const mintData = Buffer.alloc(MINT_SIZE);
         MintLayout.encode({
             mintAuthorityOption: 1,  // 1 = Some(authority), 0 = None
-            mintAuthority: mintAuthority,
-            supply: BigInt(999_999_999 * 10 ** decimals),
+            mintAuthority: mintAuthority ? mintAuthority : this.getBoss(),
+            supply: BigInt(supply),
             decimals: decimals,
             isInitialized: true,
             freezeAuthorityOption: 1,  // 1 = Some(authority), 0 = None
-            freezeAuthority: freezeAuthority
+            freezeAuthority: freezeAuthority ? freezeAuthority : this.getBoss()
         }, mintData);
 
         const mintAddress = PublicKey.unique();

@@ -454,6 +454,73 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "configureMaxSupply",
+      "docs": [
+        "Configures the maximum supply cap for ONyc token minting.",
+        "",
+        "Delegates to `state_operations::configure_max_supply`.",
+        "This instruction allows the boss to set or update the maximum supply cap",
+        "that restricts ONyc token minting. Setting to 0 removes the cap.",
+        "Emits a `MaxSupplyConfigured` event upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `ConfigureMaxSupply`.",
+        "- `max_supply`: The maximum supply cap in base units (0 = no cap)."
+      ],
+      "discriminator": [
+        145,
+        100,
+        133,
+        229,
+        142,
+        59,
+        96,
+        62
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing the max supply configuration",
+            "",
+            "Must be mutable to allow max supply updates and have the boss account",
+            "as the authorized signer for supply cap management."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account authorized to configure the max supply"
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "maxSupply",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "deleteOfferVector",
       "docs": [
         "Deletes a time vector from an offer.",
@@ -4476,6 +4543,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "maxSupplyConfigured",
+      "discriminator": [
+        141,
+        204,
+        147,
+        220,
+        107,
+        188,
+        62,
+        224
+      ]
+    },
+    {
       "name": "mintAuthorityTransferredToBossEvent",
       "discriminator": [
         86,
@@ -4637,6 +4717,11 @@ export type Onreapp = {
       "code": 6000,
       "name": "mathOverflow",
       "msg": "Math overflow"
+    },
+    {
+      "code": 6001,
+      "name": "maxSupplyExceeded",
+      "msg": "Minting would exceed maximum supply cap"
     }
   ],
   "types": [
@@ -4944,6 +5029,33 @@ export type Onreapp = {
             "name": "timestamp",
             "docs": [
               "Unix timestamp when the TVL calculation was performed"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "maxSupplyConfigured",
+      "docs": [
+        "Event emitted when the ONyc maximum supply is successfully configured",
+        "",
+        "Provides transparency for tracking max supply configuration changes."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldMaxSupply",
+            "docs": [
+              "The previous maximum supply cap (0 = no cap)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "newMaxSupply",
+            "docs": [
+              "The new maximum supply cap (0 = no cap)"
             ],
             "type": "u64"
           }
@@ -5614,6 +5726,13 @@ export type Onreapp = {
             "type": "u8"
           },
           {
+            "name": "maxSupply",
+            "docs": [
+              "Optional maximum supply cap for ONyc token minting (0 = no cap)"
+            ],
+            "type": "u64"
+          },
+          {
             "name": "reserved",
             "docs": [
               "Reserved space for future program state extensions"
@@ -5621,7 +5740,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                96
+                88
               ]
             }
           }

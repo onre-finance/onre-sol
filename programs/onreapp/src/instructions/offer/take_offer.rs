@@ -123,7 +123,7 @@ pub struct TakeOffer<'info> {
             @ OfferCoreError::InvalidTokenInMint
     )]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
-    
+
     /// Token program interface for input token operations
     pub token_in_program: Interface<'info, TokenInterface>,
 
@@ -138,7 +138,7 @@ pub struct TakeOffer<'info> {
             @ OfferCoreError::InvalidTokenOutMint
     )]
     pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
-    
+
     /// Token program interface for output token operations
     pub token_out_program: Interface<'info, TokenInterface>,
 
@@ -291,6 +291,7 @@ pub fn take_offer(
         token_out_destination_account: &ctx.accounts.user_token_out_account,
         mint_authority_pda: &ctx.accounts.mint_authority.to_account_info(),
         mint_authority_bump: &[ctx.accounts.mint_authority.bump],
+        token_out_max_supply: ctx.accounts.state.max_supply,
     })?;
 
     msg!(

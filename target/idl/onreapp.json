@@ -448,6 +448,73 @@
       "args": []
     },
     {
+      "name": "configure_max_supply",
+      "docs": [
+        "Configures the maximum supply cap for ONyc token minting.",
+        "",
+        "Delegates to `state_operations::configure_max_supply`.",
+        "This instruction allows the boss to set or update the maximum supply cap",
+        "that restricts ONyc token minting. Setting to 0 removes the cap.",
+        "Emits a `MaxSupplyConfigured` event upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `ConfigureMaxSupply`.",
+        "- `max_supply`: The maximum supply cap in base units (0 = no cap)."
+      ],
+      "discriminator": [
+        145,
+        100,
+        133,
+        229,
+        142,
+        59,
+        96,
+        62
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing the max supply configuration",
+            "",
+            "Must be mutable to allow max supply updates and have the boss account",
+            "as the authorized signer for supply cap management."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account authorized to configure the max supply"
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "max_supply",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "delete_offer_vector",
       "docs": [
         "Deletes a time vector from an offer.",
@@ -4470,6 +4537,19 @@
       ]
     },
     {
+      "name": "MaxSupplyConfigured",
+      "discriminator": [
+        141,
+        204,
+        147,
+        220,
+        107,
+        188,
+        62,
+        224
+      ]
+    },
+    {
       "name": "MintAuthorityTransferredToBossEvent",
       "discriminator": [
         86,
@@ -4631,6 +4711,11 @@
       "code": 6000,
       "name": "MathOverflow",
       "msg": "Math overflow"
+    },
+    {
+      "code": 6001,
+      "name": "MaxSupplyExceeded",
+      "msg": "Minting would exceed maximum supply cap"
     }
   ],
   "types": [
@@ -4938,6 +5023,33 @@
             "name": "timestamp",
             "docs": [
               "Unix timestamp when the TVL calculation was performed"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MaxSupplyConfigured",
+      "docs": [
+        "Event emitted when the ONyc maximum supply is successfully configured",
+        "",
+        "Provides transparency for tracking max supply configuration changes."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_max_supply",
+            "docs": [
+              "The previous maximum supply cap (0 = no cap)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "new_max_supply",
+            "docs": [
+              "The new maximum supply cap (0 = no cap)"
             ],
             "type": "u64"
           }
@@ -5608,6 +5720,13 @@
             "type": "u8"
           },
           {
+            "name": "max_supply",
+            "docs": [
+              "Optional maximum supply cap for ONyc token minting (0 = no cap)"
+            ],
+            "type": "u64"
+          },
+          {
             "name": "reserved",
             "docs": [
               "Reserved space for future program state extensions"
@@ -5615,7 +5734,7 @@
             "type": {
               "array": [
                 "u8",
-                96
+                88
               ]
             }
           }
