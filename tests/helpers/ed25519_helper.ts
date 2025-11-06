@@ -131,7 +131,7 @@ export class Ed25519Helper {
 
         // Create transaction with Ed25519 verification and take offer
         const tx = params.program.program.methods
-            .takeOffer(new BN(params.tokenInAmount), approvalMessage)
+            .takeOffer(new BN(params.tokenInAmount))
             .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,

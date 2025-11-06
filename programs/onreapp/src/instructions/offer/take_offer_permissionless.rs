@@ -3,7 +3,7 @@ use crate::instructions::offer::offer_utils::{process_offer_core, verify_offer_a
 use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::{
-    execute_token_operations, transfer_tokens, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams,
+    execute_token_operations, transfer_tokens, u64_to_dec9, ExecTokenOpsParams,
 };
 use crate::OfferCoreError;
 use anchor_lang::{prelude::*, solana_program::sysvar, Accounts};
@@ -269,7 +269,6 @@ pub struct TakeOfferPermissionless<'info> {
 pub fn take_offer_permissionless(
     ctx: Context<TakeOfferPermissionless>,
     token_in_amount: u64,
-    approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
     // validate state account
     {
@@ -307,7 +306,6 @@ pub fn take_offer_permissionless(
     // Verify approval if needed
     verify_offer_approval(
         &offer,
-        &approval_message,
         ctx.program_id,
         &ctx.accounts.user.key(),
         &ctx.accounts.state.approver,

@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 use instructions::*;
-use utils::ApprovalMessage;
 
 // Program ID declaration
 declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
@@ -172,9 +171,8 @@ pub mod onreapp {
     pub fn take_offer(
         ctx: Context<TakeOffer>,
         token_in_amount: u64,
-        approval_message: Option<ApprovalMessage>,
     ) -> Result<()> {
-        offer::take_offer(ctx, token_in_amount, approval_message)
+        offer::take_offer(ctx, token_in_amount)
     }
 
     /// Takes a offer using permissionless flow with intermediary accounts.
@@ -190,9 +188,8 @@ pub mod onreapp {
     pub fn take_offer_permissionless(
         ctx: Context<TakeOfferPermissionless>,
         token_in_amount: u64,
-        approval_message: Option<ApprovalMessage>,
     ) -> Result<()> {
-        offer::take_offer_permissionless(ctx, token_in_amount, approval_message)
+        offer::take_offer_permissionless(ctx, token_in_amount)
     }
 
     /// Initializes the program state.

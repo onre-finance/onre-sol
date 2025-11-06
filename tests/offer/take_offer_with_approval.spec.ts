@@ -83,7 +83,7 @@ describe("Take Offer With Approval", () => {
                 user: user.publicKey,
                 signer: user
             })
-        ).rejects.toThrow("ApprovalRequired");
+        ).rejects.toThrow("MissingEd25519Ix");
     });
 
     it("Should successfully take offer with valid Ed25519 approval signature", async () => {

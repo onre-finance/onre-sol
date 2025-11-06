@@ -2,7 +2,7 @@ use crate::constants::seeds;
 use crate::instructions::offer::offer_utils::{process_offer_core, verify_offer_approval};
 use crate::instructions::Offer;
 use crate::state::{MintAuthority, OfferVaultAuthority, State};
-use crate::utils::{execute_token_operations, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams};
+use crate::utils::{execute_token_operations, u64_to_dec9, ExecTokenOpsParams};
 use crate::OfferCoreError;
 use anchor_lang::{prelude::*, solana_program::sysvar, Accounts};
 use anchor_spl::{
@@ -244,14 +244,12 @@ pub struct TakeOffer<'info> {
 pub fn take_offer(
     ctx: Context<TakeOffer>,
     token_in_amount: u64,
-    approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
     let offer = ctx.accounts.offer.load()?;
 
     // Verify approval if needed
     verify_offer_approval(
         &offer,
-        &approval_message,
         ctx.program_id,
         &ctx.accounts.user.key(),
         &ctx.accounts.state.approver,
