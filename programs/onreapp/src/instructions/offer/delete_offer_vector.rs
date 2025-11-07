@@ -1,6 +1,6 @@
 use super::offer_state::{Offer, OfferVector};
 use crate::constants::seeds;
-use crate::instructions::{find_active_vector_at, find_vector_index_by_start_time};
+use crate::instructions::find_vector_index_by_start_time;
 use crate::state::State;
 use crate::OfferCoreError;
 use anchor_lang::prelude::*;
@@ -68,9 +68,6 @@ pub struct DeleteOfferVector<'info> {
 /// default values. The vector is identified by its start_time within the offer's vector array.
 /// Deleting a vector immediately stops its price evolution and removes its configuration.
 ///
-/// To maintain pricing continuity, the instruction prevents deletion of the previously
-/// active vector to ensure smooth price transitions between remaining vectors.
-///
 /// # Arguments
 /// * `ctx` - The instruction context containing validated accounts
 /// * `vector_start_time` - Start time of the pricing vector to delete
@@ -78,7 +75,6 @@ pub struct DeleteOfferVector<'info> {
 /// # Returns
 /// * `Ok(())` - If the vector is successfully deleted
 /// * `Err(DeleteOfferVectorErrorCode::VectorNotFound)` - If start_time is zero or vector doesn't exist
-/// * `Err(DeleteOfferVectorErrorCode::CannotDeletePreviousVector)` - If attempting to delete previous active vector
 ///
 /// # Access Control
 /// - Only the boss can call this instruction
@@ -104,19 +100,6 @@ pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_start_time: u
     let vector_index = find_vector_index_by_start_time(&offer, vector_start_time)
         .ok_or_else(|| error!(DeleteOfferVectorErrorCode::VectorNotFound))?;
 
-    let current_vector = find_active_vector_at(offer, Clock::get()?.unix_timestamp as u64);
-
-    if current_vector.is_ok() {
-        let prev_vector = find_active_vector_at(offer, current_vector?.start_time - 1);
-
-        if prev_vector.is_ok() {
-            require!(
-                prev_vector?.start_time != vector_start_time,
-                DeleteOfferVectorErrorCode::CannotDeletePreviousVector
-            );
-        }
-    }
-
     // Delete the vector by setting it to default
     offer.vectors[vector_index] = OfferVector::default();
 
@@ -140,8 +123,4 @@ pub enum DeleteOfferVectorErrorCode {
     /// The specified start_time is zero or no vector exists with that start_time
     #[msg("Vector not found")]
     VectorNotFound,
-
-    /// Cannot delete the previously active vector to maintain pricing continuity
-    #[msg("Cannot delete previously active vector")]
-    CannotDeletePreviousVector,
 }

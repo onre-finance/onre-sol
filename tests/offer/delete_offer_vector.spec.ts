@@ -189,7 +189,7 @@ describe("Delete Offer Vector", () => {
     });
 
     describe("Previously Active Vector Validation", () => {
-        it("Should prevent deletion of previously active vector", async () => {
+        it("Should allow deletion of previously active vector", async () => {
             // Create an offer
             await program.makeOffer({
                 tokenInMint,
@@ -228,14 +228,19 @@ describe("Delete Offer Vector", () => {
 
             expect(activeVectors.length).toBe(2);
 
-            // Now try to delete vector 1 (previous active) - should fail
-            await expect(
-                program.deleteOfferVector(
-                    tokenInMint,
-                    tokenOutMint,
-                    currentTime + 100  // This is the start_time of the first vector
-                )
-            ).rejects.toThrow("Cannot delete previously active vector");
+            // Now try to delete vector 1 (previous active) - should succeed
+            await program.deleteOfferVector(
+                tokenInMint,
+                tokenOutMint,
+                currentTime + 100  // This is the start_time of the first vector
+            );
+
+            // Verify deletion succeeded
+            const offerAfter = await program.getOffer(tokenInMint, tokenOutMint);
+            const activeVectorsAfter = offerAfter.vectors.filter(v => v.startTime.toNumber() !== 0);
+
+            expect(activeVectorsAfter.length).toBe(1);
+            expect(activeVectorsAfter[0].startTime.toNumber()).toBe(currentTime + 200);
         });
 
         it("Should allow deletion of current active vector", async () => {
@@ -376,7 +381,7 @@ describe("Delete Offer Vector", () => {
             expect(activeVectors.length).toBe(0);
         });
 
-        it("Should allow deletion of past vectors that are not previously active", async () => {
+        it("Should allow deletion of past vectors", async () => {
             // Create an offer
             await program.makeOffer({
                 tokenInMint,
@@ -463,14 +468,19 @@ describe("Delete Offer Vector", () => {
             expect(activeVectors.length).toBe(2);
             expect(activeVectors.map(v => v.startTime.toNumber()).sort()).toEqual([currentTime + 300, currentTime + 400]);
 
-            // Try to delete vector 3 (previously active) - should fail
-            await expect(
-                program.deleteOfferVector(
-                    tokenInMint,
-                    tokenOutMint,
-                    currentTime + 300
-                )
-            ).rejects.toThrow("Cannot delete previously active vector");
+            // Try to delete vector 3 (previously active) - should succeed
+            await program.deleteOfferVector(
+                tokenInMint,
+                tokenOutMint,
+                currentTime + 300
+            );
+
+            // Verify vector 3 was deleted
+            offer = await program.getOffer(tokenInMint, tokenOutMint);
+            activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
+
+            expect(activeVectors.length).toBe(1);
+            expect(activeVectors[0].startTime.toNumber()).toBe(currentTime + 400);
         });
 
         it("Should allow deletion when all vectors are in the future (no active vector)", async () => {
