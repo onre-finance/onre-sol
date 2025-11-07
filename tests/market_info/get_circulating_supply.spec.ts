@@ -69,8 +69,8 @@ describe("Get Circulating Supply", () => {
                 await program.addOfferVector({
                     tokenInMint,
                     tokenOutMint,
-                    startTime: currentTime,
-                    startPrice: 1e9,
+                    baseTime: currentTime,
+                    basePrice: 1e9,
                     apr: 36_500,
                     priceFixDuration: 86400
                 });
@@ -154,8 +154,8 @@ describe("Get Circulating Supply", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 2e9, // 2.0 with 9 decimals
+                baseTime: currentTime,
+                basePrice: 2e9, // 2.0 with 9 decimals
                 apr: 36_500, // 3.65% APR for fixed price
                 priceFixDuration: 86400
             });

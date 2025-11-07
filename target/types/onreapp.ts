@@ -234,6 +234,7 @@ export type Onreapp = {
         "",
         "# Arguments",
         "- `ctx`: Context for `AddOfferVector`.",
+        "- `start_time`: Unix timestamp when the vector becomes active.",
         "- `base_time`: Unix timestamp when the vector becomes active.",
         "- `base_price`: Price at the beginning of the vector.",
         "- `apr`: Annual Percentage Rate (APR) (see OfferVector::apr for details).",
@@ -327,6 +328,12 @@ export type Onreapp = {
         }
       ],
       "args": [
+        {
+          "name": "startTime",
+          "type": {
+            "option": "u64"
+          }
+        },
         {
           "name": "baseTime",
           "type": "u64"

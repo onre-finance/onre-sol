@@ -5,6 +5,7 @@ use crate::state::State;
 use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
+use std::cmp::max;
 
 /// Event emitted when a pricing vector is successfully added to an offer
 ///
@@ -74,15 +75,16 @@ pub struct AddOfferVector<'info> {
 /// Adds a time-based pricing vector to an existing offer
 ///
 /// This instruction creates a new pricing vector that defines price evolution over time
-/// using APR-based growth. The vector becomes active at the calculated start time and
+/// using APR-based growth. The vector becomes active at the start time and
 /// implements discrete pricing steps based on the specified duration.
 ///
-/// The start time is calculated as max(base_time, current_time) to ensure vectors
-/// cannot start in the past. After adding the vector, old inactive vectors are
+/// The start time cannot be in the past. After adding the vector, old inactive vectors are
 /// automatically cleaned up to maintain storage efficiency.
 ///
 /// # Arguments
 /// * `ctx` - The instruction context containing validated accounts
+/// * `start_time` - Optional Unix timestamp when the vector becomes active. If not provided,
+/// max(base_time, current_time) is used.
 /// * `base_time` - Unix timestamp when the vector should become active
 /// * `base_price` - Initial price with scale=9 (1_000_000_000 = 1.0)
 /// * `apr` - Annual Percentage Rate scaled by 1,000,000 (1_000_000 = 1% APR)
@@ -90,9 +92,9 @@ pub struct AddOfferVector<'info> {
 ///
 /// # Returns
 /// * `Ok(())` - If the vector is successfully added
-/// * `Err(AddOfferVectorErrorCode::InvalidTimeRange)` - If base_time is before latest existing vector
+/// * `Err(AddOfferVectorErrorCode::InvalidTimeRange)` - If start_time is before latest existing vector
 /// * `Err(AddOfferVectorErrorCode::ZeroValue)` - If any required value is zero
-/// * `Err(AddOfferVectorErrorCode::DuplicateStartTime)` - If calculated start_time already exists
+/// * `Err(AddOfferVectorErrorCode::DuplicateStartTime)` - If start_time already exists
 /// * `Err(AddOfferVectorErrorCode::TooManyVectors)` - If offer has maximum vectors
 ///
 /// # Access Control
@@ -103,43 +105,24 @@ pub struct AddOfferVector<'info> {
 /// * `OfferVectorAddedEvent` - Emitted on successful vector addition with parameters
 pub fn add_offer_vector(
     ctx: Context<AddOfferVector>,
+    start_time_opt: Option<u64>,
     base_time: u64,
     base_price: u64,
     apr: u64,
     price_fix_duration: u64,
 ) -> Result<()> {
     let offer = &mut ctx.accounts.offer.load_mut()?;
-
     let current_time = Clock::get()?.unix_timestamp as u64;
+    let start_time = start_time_opt.unwrap_or_else(|| max(current_time, base_time));
 
-    validate_inputs(base_time, base_price, price_fix_duration)?;
-
-    // Calculate start_time: max(base_time, current_time)
-    let start_time = if base_time > current_time {
-        base_time
-    } else {
-        current_time
-    };
-
-    // Validate start_time is not duplicated
-    let existing_start_times: Vec<u64> = offer
-        .vectors
-        .iter()
-        .filter(|vector| vector.start_time != 0)
-        .map(|vector| vector.start_time)
-        .collect();
-
-    require!(
-        !existing_start_times.contains(&start_time),
-        AddOfferVectorErrorCode::DuplicateStartTime
-    );
-
-    if let Some(latest_start_time) = existing_start_times.iter().max() {
-        require!(
-            &base_time > latest_start_time,
-            AddOfferVectorErrorCode::InvalidTimeRange
-        );
-    }
+    validate_inputs(
+        start_time,
+        base_time,
+        base_price,
+        price_fix_duration,
+        current_time,
+        &offer,
+    )?;
 
     // Create the new time vector
     let new_vector = OfferVector {
@@ -191,11 +174,42 @@ pub fn add_offer_vector(
 /// # Returns
 /// * `Ok(())` - If all parameters are valid
 /// * `Err(AddOfferVectorErrorCode::ZeroValue)` - If any parameter is zero
-fn validate_inputs(base_time: u64, base_price: u64, price_fix_duration: u64) -> Result<()> {
-    // Validate input parameters
+fn validate_inputs(
+    start_time: u64,
+    base_time: u64,
+    base_price: u64,
+    price_fix_duration: u64,
+    current_time: u64,
+    offer: &Offer,
+) -> Result<()> {
+    require!(
+        start_time >= current_time,
+        AddOfferVectorErrorCode::StartTimeInPast
+    );
     require!(base_time > 0, AddOfferVectorErrorCode::ZeroValue);
     require!(base_price > 0, AddOfferVectorErrorCode::ZeroValue);
     require!(price_fix_duration > 0, AddOfferVectorErrorCode::ZeroValue);
+
+    // Validate start_time is not duplicated
+    let existing_start_times: Vec<u64> = offer
+        .vectors
+        .iter()
+        .filter(|vector| vector.start_time != 0)
+        .map(|vector| vector.start_time)
+        .collect();
+
+    require!(
+        !existing_start_times.contains(&start_time),
+        AddOfferVectorErrorCode::DuplicateStartTime
+    );
+
+    // Validate start_time is after latest existing vector
+    if let Some(latest_start_time) = existing_start_times.iter().max() {
+        require!(
+            &start_time > latest_start_time,
+            AddOfferVectorErrorCode::InvalidTimeRange
+        );
+    }
 
     Ok(())
 }
@@ -260,6 +274,10 @@ pub enum AddOfferVectorErrorCode {
     /// One or more required parameters (base_time, base_price, price_fix_duration) is zero
     #[msg("Invalid input: values cannot be zero")]
     ZeroValue,
+
+    /// The start_time is in the past
+    #[msg("Invalid input: start_time cannot be in the past")]
+    StartTimeInPast,
 
     /// A vector with the calculated start_time already exists in the offer
     #[msg("A vector with this start_time already exists")]

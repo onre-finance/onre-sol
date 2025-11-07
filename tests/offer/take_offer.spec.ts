@@ -70,8 +70,8 @@ describe("Take Offer", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9, // 1.0 with 9 decimals
+                baseTime: currentTime,
+                basePrice: 1e9, // 1.0 with 9 decimals
                 apr: 36_500, // 3.65% APR (scaled by 1M)
                 priceFixDuration: 86400 // 1 day
             });
@@ -127,8 +127,8 @@ describe("Take Offer", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 36_500,
                 priceFixDuration: 86400
             });
@@ -157,8 +157,8 @@ describe("Take Offer", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 36_500,
                 priceFixDuration: 86400
             });
@@ -205,8 +205,8 @@ describe("Take Offer", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 36_500,
                 priceFixDuration: 86400
             });
@@ -242,8 +242,8 @@ describe("Take Offer", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 1000,
-                startPrice: 1e9,
+                baseTime: currentTime + 1000,
+                basePrice: 1e9,
                 apr: 36_500,
                 priceFixDuration: 86400
             });
@@ -252,8 +252,8 @@ describe("Take Offer", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 2000,
-                startPrice: 2e9, // Different start price
+                baseTime: currentTime + 2000,
+                basePrice: 2e9, // Different start price
                 apr: 73_000, // Different APR (7.3%)
                 priceFixDuration: 86400
             });
@@ -302,8 +302,8 @@ describe("Take Offer", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 10000, // Future start time
-                startPrice: 1e9,
+                baseTime: currentTime + 10000, // Future start time
+                basePrice: 1e9,
                 apr: 36_500,
                 priceFixDuration: 86400
             });
@@ -325,8 +325,8 @@ describe("Take Offer", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 36_500,
                 priceFixDuration: 86400
             });
@@ -352,8 +352,8 @@ describe("Take Offer", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e6, // Very low price = 0.001 USDC per token
+                baseTime: currentTime,
+                basePrice: 1e6, // Very low price = 0.001 USDC per token
                 apr: 0, // Zero APR for fixed price
                 priceFixDuration: 86400
             });
@@ -379,8 +379,8 @@ describe("Take Offer", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e6, // Very low price = 0.001 USDC per token
+                baseTime: currentTime,
+                basePrice: 1e6, // Very low price = 0.001 USDC per token
                 apr: 0, // Zero APR for fixed price
                 priceFixDuration: 86400
             });
@@ -409,8 +409,8 @@ describe("Take Offer", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 36_500,
                 priceFixDuration: 86400
             });
@@ -477,8 +477,8 @@ describe("Take Offer", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 36_500,
                 priceFixDuration: 86400
             });
@@ -522,8 +522,8 @@ describe("Take Offer", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9, // 1 USDC per ONyc
+                baseTime: currentTime,
+                basePrice: 1e9, // 1 USDC per ONyc
                 apr: 0, // Zero APR for fixed price
                 priceFixDuration: 86400
             });
@@ -547,8 +547,8 @@ describe("Take Offer", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9, // 1 USDC per ONyc
+                baseTime: currentTime,
+                basePrice: 1e9, // 1 USDC per ONyc
                 apr: 0, // Zero APR for fixed price
                 priceFixDuration: 86400
             });
@@ -572,8 +572,8 @@ describe("Take Offer", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 0, // Zero APR for fixed price
                 priceFixDuration: 86400
             });
@@ -604,8 +604,8 @@ describe("Take Offer", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 365_000, // 36.5% yearly APR
                 priceFixDuration: 86400
             });
@@ -641,8 +641,8 @@ describe("Take Offer", () => {
                 await program.addOfferVector({
                     tokenInMint,
                     tokenOutMint,
-                    startTime: currentTime,
-                    startPrice: 1e9,
+                    baseTime: currentTime,
+                    basePrice: 1e9,
                     apr: 36_500,
                     priceFixDuration: 86400
                 });
@@ -687,8 +687,8 @@ describe("Take Offer", () => {
                 await program.addOfferVector({
                     tokenInMint,
                     tokenOutMint,
-                    startTime: currentTime,
-                    startPrice: 1e9,
+                    baseTime: currentTime,
+                    basePrice: 1e9,
                     apr: 36_500,
                     priceFixDuration: 86400
                 });
@@ -741,8 +741,8 @@ describe("Take Offer", () => {
                 await program.addOfferVector({
                     tokenInMint,
                     tokenOutMint,
-                    startTime: currentTime,
-                    startPrice: 1e9,
+                    baseTime: currentTime,
+                    basePrice: 1e9,
                     apr: 36_500,
                     priceFixDuration: 86400
                 });
@@ -792,8 +792,8 @@ describe("Take Offer", () => {
                 await program.addOfferVector({
                     tokenInMint,
                     tokenOutMint,
-                    startTime: currentTime,
-                    startPrice: 1e9,
+                    baseTime: currentTime,
+                    basePrice: 1e9,
                     apr: 0,
                     priceFixDuration: 86400
                 });
@@ -857,8 +857,8 @@ describe("Take Offer", () => {
                 await program.addOfferVector({
                     tokenInMint,
                     tokenOutMint,
-                    startTime: currentTime,
-                    startPrice: 1e9,
+                    baseTime: currentTime,
+                    basePrice: 1e9,
                     apr: 0,
                     priceFixDuration: 86400
                 });
@@ -919,8 +919,8 @@ describe("Take Offer", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 36_500,
                 priceFixDuration: 86400
             });
@@ -954,8 +954,8 @@ describe("Take Offer", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 36_500,
                 priceFixDuration: 86400
             });

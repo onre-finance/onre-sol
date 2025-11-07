@@ -119,18 +119,27 @@ pub mod onreapp {
     ///
     /// # Arguments
     /// - `ctx`: Context for `AddOfferVector`.
+    /// - `start_time`: Unix timestamp when the vector becomes active.
     /// - `base_time`: Unix timestamp when the vector becomes active.
     /// - `base_price`: Price at the beginning of the vector.
     /// - `apr`: Annual Percentage Rate (APR) (see OfferVector::apr for details).
     /// - `price_fix_duration`: Duration in seconds for each price interval.
     pub fn add_offer_vector(
         ctx: Context<AddOfferVector>,
+        start_time: Option<u64>,
         base_time: u64,
         base_price: u64,
         apr: u64,
         price_fix_duration: u64,
     ) -> Result<()> {
-        offer::add_offer_vector(ctx, base_time, base_price, apr, price_fix_duration)
+        offer::add_offer_vector(
+            ctx,
+            start_time,
+            base_time,
+            base_price,
+            apr,
+            price_fix_duration,
+        )
     }
 
     /// Deletes a time vector from an offer.
@@ -143,7 +152,10 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `DeleteOfferVector`.
     /// - `vector_start_time`: Start time of the vector to delete.
-    pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_start_time: u64) -> Result<()> {
+    pub fn delete_offer_vector(
+        ctx: Context<DeleteOfferVector>,
+        vector_start_time: u64,
+    ) -> Result<()> {
         offer::delete_offer_vector(ctx, vector_start_time)
     }
 

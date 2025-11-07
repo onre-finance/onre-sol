@@ -39,8 +39,8 @@ describe("Get APY", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9, // 1.0 with 9 decimals
+                baseTime: currentTime,
+                basePrice: 1e9, // 1.0 with 9 decimals
                 apr: 36_500, // 3.65% APR (scaled by 1M)
                 priceFixDuration: 86400 // 1 day
             });
@@ -59,8 +59,8 @@ describe("Get APY", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 36_500,
                 priceFixDuration: 86400
             });
@@ -87,8 +87,8 @@ describe("Get APY", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 2e9, // 2.0 with 9 decimals
+                baseTime: currentTime,
+                basePrice: 2e9, // 2.0 with 9 decimals
                 apr: 0, // 0% APR
                 priceFixDuration: 86400
             });
@@ -105,8 +105,8 @@ describe("Get APY", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 100_000, // 10% APR (scaled by 1M)
                 priceFixDuration: 86400
             });
@@ -123,8 +123,8 @@ describe("Get APY", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 250_000, // 25% APR (scaled by 1M)
                 priceFixDuration: 86400
             });
@@ -141,8 +141,8 @@ describe("Get APY", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 100, // 0.01% APR (scaled by 1M)
                 priceFixDuration: 86400
             });
@@ -176,8 +176,8 @@ describe("Get APY", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 86400, // starts tomorrow
-                startPrice: 1e9,
+                baseTime: currentTime + 86400, // starts tomorrow
+                basePrice: 1e9,
                 apr: 36_500,
                 priceFixDuration: 86400
             });
@@ -195,8 +195,8 @@ describe("Get APY", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 50_000, // 5% APR
                 priceFixDuration: 3600
             });
@@ -209,8 +209,8 @@ describe("Get APY", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: newCurrentTime,
-                startPrice: 2e9, // different base price
+                baseTime: newCurrentTime,
+                basePrice: 2e9, // different base price
                 apr: 100_000, // 10% APR (different from first vector)
                 priceFixDuration: 1800
             });
@@ -228,8 +228,8 @@ describe("Get APY", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 75_000, // 7.5% APR
                 priceFixDuration: 86400
             });

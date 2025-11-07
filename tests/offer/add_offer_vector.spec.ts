@@ -33,16 +33,16 @@ describe("Add Offer Vector", () => {
 
         // Add a time vector to the offer
         const currentTime = await testHelper.getCurrentClockTime();
-        const startTime = currentTime + 3600; // 1 hour in future
-        const startPrice = 1000000; // 1 token
+        const baseTime = currentTime + 3600; // 1 hour in future
+        const basePrice = 1000000; // 1 token
         const apr = 5000;    // 50% APR (5000/10000)
         const priceFixDuration = 3600; // 1 hour
 
         await program.addOfferVector({
             tokenInMint,
             tokenOutMint,
-            startTime,
-            startPrice,
+            baseTime,
+            basePrice,
             apr,
             priceFixDuration
         });
@@ -51,9 +51,9 @@ describe("Add Offer Vector", () => {
         const updatedOffer = await program.getOffer(tokenInMint, tokenOutMint);
 
         const vector = updatedOffer.vectors[0];
-        expect(vector.baseTime.toString()).toBe(startTime.toString());
-        expect(vector.startTime.toString()).toBe(startTime.toString()); // start_time should equal base_time when base_time is in future
-        expect(vector.basePrice.toString()).toBe(startPrice.toString());
+        expect(vector.baseTime.toString()).toBe(baseTime.toString());
+        expect(vector.startTime.toString()).toBe(baseTime.toString()); // start_time should equal base_time when base_time is in future
+        expect(vector.basePrice.toString()).toBe(basePrice.toString());
         expect(vector.apr.toString()).toBe(apr.toString());
         expect(vector.priceFixDuration.toString()).toBe(priceFixDuration.toString());
     });
@@ -69,8 +69,8 @@ describe("Add Offer Vector", () => {
         await program.addOfferVector({
             tokenInMint,
             tokenOutMint,
-            startTime: currentTime - 3600, // 1 hour ago,
-            startPrice: 1000000,
+            baseTime: currentTime - 3600, // 1 hour ago,
+            basePrice: 1000000,
             apr: 250000, // 25% APR
             priceFixDuration: 1000
         });
@@ -95,8 +95,8 @@ describe("Add Offer Vector", () => {
         await program.addOfferVector({
             tokenInMint,
             tokenOutMint,
-            startTime: currentTime + 1000,
-            startPrice: 1000000,
+            baseTime: currentTime + 1000,
+            basePrice: 1000000,
             apr: 5000,
             priceFixDuration: 3600
         });
@@ -105,8 +105,8 @@ describe("Add Offer Vector", () => {
         await program.addOfferVector({
             tokenInMint,
             tokenOutMint,
-            startTime: currentTime + 3000,
-            startPrice: 2000000,
+            baseTime: currentTime + 3000,
+            basePrice: 2000000,
             apr: 7500,
             priceFixDuration: 1800
         });
@@ -115,8 +115,8 @@ describe("Add Offer Vector", () => {
         await program.addOfferVector({
             tokenInMint,
             tokenOutMint,
-            startTime: currentTime + 5000,
-            startPrice: 3000000,
+            baseTime: currentTime + 5000,
+            basePrice: 3000000,
             apr: 1000,
             priceFixDuration: 900
         });
@@ -140,8 +140,8 @@ describe("Add Offer Vector", () => {
             program.addOfferVector({
                 tokenInMint: testHelper.createMint(9), // Invalid: wrong token_in_mint
                 tokenOutMint,
-                startTime: currentTime + 1000,
-                startPrice: 1000000,
+                baseTime: currentTime + 1000,
+                basePrice: 1000000,
                 apr: 5000,
                 priceFixDuration: 3600
             })
@@ -151,8 +151,8 @@ describe("Add Offer Vector", () => {
             program.addOfferVector({
                 tokenInMint,
                 tokenOutMint: testHelper.createMint(9), // Invalid: wrong token_out_mint,
-                startTime: currentTime + 1000,
-                startPrice: 1000000,
+                baseTime: currentTime + 1000,
+                basePrice: 1000000,
                 apr: 5000,
                 priceFixDuration: 3600
             })
@@ -162,8 +162,8 @@ describe("Add Offer Vector", () => {
             program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: 0, // Invalid: zero base_time
-                startPrice: 1000000,
+                baseTime: 0, // Invalid: zero base_time
+                basePrice: 1000000,
                 apr: 5000,
                 priceFixDuration: 3600
             })
@@ -173,8 +173,8 @@ describe("Add Offer Vector", () => {
             program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 0, // Invalid: zero base_price
+                baseTime: currentTime,
+                basePrice: 0, // Invalid: zero base_price
                 apr: 5000,
                 priceFixDuration: 3600
             })
@@ -184,8 +184,8 @@ describe("Add Offer Vector", () => {
             program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1000000,
+                baseTime: currentTime,
+                basePrice: 1000000,
                 apr: 5000,
                 priceFixDuration: 0 // Invalid: zero price_fix_duration
             })
@@ -204,8 +204,8 @@ describe("Add Offer Vector", () => {
             .addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 1000,
-                startPrice: 1000000,
+                baseTime: currentTime + 1000,
+                basePrice: 1000000,
                 apr: 0, // Zero APR
                 priceFixDuration: 3600
             });
@@ -229,8 +229,8 @@ describe("Add Offer Vector", () => {
         await program.addOfferVector({
             tokenInMint,
             tokenOutMint,
-            startTime: currentTime + 2000,
-            startPrice: 1000000,
+            baseTime: currentTime + 2000,
+            basePrice: 1000000,
             apr: 5000,
             priceFixDuration: 3600
         });
@@ -240,8 +240,8 @@ describe("Add Offer Vector", () => {
             program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 1000, // Invalid: before previous start_time
-                startPrice: 2000000,
+                baseTime: currentTime + 1000, // Invalid: before previous start_time
+                basePrice: 2000000,
                 apr: 7500,
                 priceFixDuration: 1800
             })
@@ -255,14 +255,14 @@ describe("Add Offer Vector", () => {
         });
 
         const currentTime = await testHelper.getCurrentClockTime();
-        const startTime = currentTime + 2000;
+        const baseTime = currentTime + 2000;
 
         // Add first vector
         await program.addOfferVector({
             tokenInMint,
             tokenOutMint,
-            startTime,
-            startPrice: 1000000,
+            baseTime,
+            basePrice: 1000000,
             apr: 5000,
             priceFixDuration: 3600
         });
@@ -272,12 +272,218 @@ describe("Add Offer Vector", () => {
             .addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime, // Same start_time - should be allowed
-                startPrice: 2000000,
+                baseTime, // Same start_time - should be allowed
+                basePrice: 2000000,
                 apr: 7500,
                 priceFixDuration: 1800
             }))
             .rejects.toThrow("A vector with this start_time already exists");
+    });
+
+    it("Should allow adding vector with base_time before last vector's start_time", async () => {
+        await program.makeOffer({
+            tokenInMint,
+            tokenOutMint
+        });
+
+        let currentTime = await testHelper.getCurrentClockTime();
+        const firstVectorBaseTime = currentTime + 1000;
+
+        // Add first vector with start_time in the future
+        await program.addOfferVector({
+            tokenInMint,
+            tokenOutMint,
+            baseTime: firstVectorBaseTime,
+            basePrice: 1000000,
+            apr: 5000,
+            priceFixDuration: 3600
+        });
+
+        await testHelper.advanceClockBy(5000);
+        currentTime = await testHelper.getCurrentClockTime();
+
+        // Add second vector with base_time before first vector's startTime
+        await program.addOfferVector({
+            tokenInMint,
+            tokenOutMint,
+            baseTime: firstVectorBaseTime - 1000,
+            basePrice: 2000000,
+            apr: 7500,
+            priceFixDuration: 1800
+        });
+
+        // Verify both vectors were added successfully
+        const offer = await program.getOffer(tokenInMint, tokenOutMint);
+        const activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
+
+        expect(activeVectors.length).toBe(2);
+        expect(activeVectors[0].startTime.toNumber()).toBe(firstVectorBaseTime);
+        expect(activeVectors[0].baseTime.toNumber()).toBe(firstVectorBaseTime);
+        expect(activeVectors[1].startTime.toNumber()).toBe(currentTime);
+        expect(activeVectors[1].baseTime.toNumber()).toBe(firstVectorBaseTime - 1000);
+    });
+
+    it("Should allow adding vector with explicit start_time in the future", async () => {
+        await program.makeOffer({
+            tokenInMint,
+            tokenOutMint
+        });
+
+        const currentTime = await testHelper.getCurrentClockTime();
+
+        // Add first vector
+        await program.addOfferVector({
+            tokenInMint,
+            tokenOutMint,
+            baseTime: currentTime + 1000,
+            basePrice: 1000000,
+            apr: 5000,
+            priceFixDuration: 3600
+        });
+
+        // Add second vector with explicit startTime in the future
+        await program.addOfferVector({
+            tokenInMint,
+            tokenOutMint,
+            startTime: currentTime + 3000,
+            baseTime: currentTime + 2000,
+            basePrice: 2000000,
+            apr: 7500,
+            priceFixDuration: 1800
+        });
+
+        // Verify both vectors were added successfully
+        const offer = await program.getOffer(tokenInMint, tokenOutMint);
+        const activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
+
+        expect(activeVectors.length).toBe(2);
+        expect(activeVectors[0].startTime.toNumber()).toBe(currentTime + 1000);
+        expect(activeVectors[1].startTime.toNumber()).toBe(currentTime + 3000);
+    });
+
+    it("Should reject explicit startTime that equals existing vector's startTime", async () => {
+        await program.makeOffer({
+            tokenInMint,
+            tokenOutMint
+        });
+
+        const currentTime = await testHelper.getCurrentClockTime();
+
+        // Add first vector
+        await program.addOfferVector({
+            tokenInMint,
+            tokenOutMint,
+            startTime: currentTime + 2000,
+            baseTime: currentTime + 2000,
+            basePrice: 1000000,
+            apr: 5000,
+            priceFixDuration: 3600
+        });
+
+        // Try to add second vector with same explicit startTime (should fail)
+        await expect(program.addOfferVector({
+            tokenInMint,
+            tokenOutMint,
+            startTime: currentTime + 2000, // Same as first vector's startTime
+            baseTime: currentTime + 1000, // Different baseTime
+            basePrice: 2000000,
+            apr: 7500,
+            priceFixDuration: 1800
+        })).rejects.toThrow("A vector with this start_time already exists");
+    });
+
+    it("Should reject explicit startTime that is before existing vector's startTime", async () => {
+        await program.makeOffer({
+            tokenInMint,
+            tokenOutMint
+        });
+
+        const currentTime = await testHelper.getCurrentClockTime();
+
+        // Add first vector
+        await program.addOfferVector({
+            tokenInMint,
+            tokenOutMint,
+            startTime: currentTime + 3000,
+            baseTime: currentTime + 3000,
+            basePrice: 1000000,
+            apr: 5000,
+            priceFixDuration: 3600
+        });
+
+        // Try to add second vector with earlier explicit startTime (should fail)
+        await expect(program.addOfferVector({
+            tokenInMint,
+            tokenOutMint,
+            startTime: currentTime + 2000, // Before first vector's startTime
+            baseTime: currentTime + 1000,
+            basePrice: 2000000,
+            apr: 7500,
+            priceFixDuration: 1800
+        })).rejects.toThrow("Invalid time range: base_time must be after the latest existing vector");
+    });
+
+    it("Should reject explicit startTime of 0", async () => {
+        await program.makeOffer({
+            tokenInMint,
+            tokenOutMint
+        });
+
+        const currentTime = await testHelper.getCurrentClockTime();
+        const baseTime = currentTime + 1000;
+
+        // Add vector with explicit startTime of 0 (treated as automatic)
+        await expect(program.addOfferVector({
+            tokenInMint,
+            tokenOutMint,
+            startTime: 0, // Treated as automatic calculation
+            baseTime: baseTime,
+            basePrice: 1000000,
+            apr: 5000,
+            priceFixDuration: 3600
+        })).rejects.toThrow("Invalid input: start_time cannot be in the past");
+    });
+
+    it("Should enforce that explicit startTime cannot create vector ordering violations", async () => {
+        await program.makeOffer({
+            tokenInMint,
+            tokenOutMint
+        });
+
+        const currentTime = await testHelper.getCurrentClockTime();
+
+        // Add first vector
+        await program.addOfferVector({
+            tokenInMint,
+            tokenOutMint,
+            startTime: currentTime + 1000,
+            baseTime: currentTime + 1000,
+            basePrice: 1000000,
+            apr: 5000,
+            priceFixDuration: 3600
+        });
+
+        // Add second vector
+        await program.addOfferVector({
+            tokenInMint,
+            tokenOutMint,
+            startTime: currentTime + 2000,
+            baseTime: currentTime + 2000,
+            basePrice: 2000000,
+            apr: 7500,
+            priceFixDuration: 3600
+        });
+
+        // Try to add a vector with startTime between the two existing vectors (should fail)
+        await expect(program.addOfferVector({
+            tokenInMint,
+            tokenOutMint,
+            startTime: currentTime + 1500, // Between first and second vector
+            baseTime: currentTime + 500,
+            basePrice: 1500000,
+            apr: 6000,
+            priceFixDuration: 3600
+        })).rejects.toThrow("Invalid time range: base_time must be after the latest existing vector");
     });
 
     it("Should reject when offer has maximum vectors", async () => {
@@ -294,27 +500,27 @@ describe("Add Offer Vector", () => {
 
         // Add maximum number of vectors
         for (let i = 1; i <= MAX_VECTORS; i++) {
-            const vectorStartTime = currentTime + (i * vectorTimeOffset);
+            const vectorBaseTime = currentTime + (i * vectorTimeOffset);
 
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: vectorStartTime,
-                startPrice,
+                baseTime: vectorBaseTime,
+                basePrice: startPrice,
                 apr,
                 priceFixDuration
             });
         }
 
         // Try to add one more vector (should fail)
-        const vectorStartTime = currentTime + ((MAX_VECTORS + 1) * vectorTimeOffset);
+        const vectorBaseTime = currentTime + ((MAX_VECTORS + 1) * vectorTimeOffset);
 
         await expect(
             program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: vectorStartTime,
-                startPrice,
+                baseTime: vectorBaseTime,
+                basePrice: startPrice,
                 apr,
                 priceFixDuration
             })
@@ -335,6 +541,7 @@ describe("Add Offer Vector", () => {
 
         await program.program.methods
             .addOfferVector(
+                null,
                 new BN(currentTime + 1000),
                 largeStartPrice,
                 largeApr,
@@ -363,8 +570,8 @@ describe("Add Offer Vector", () => {
         await program.addOfferVector({
             tokenInMint,
             tokenOutMint,
-            startTime: 1, // Minimum valid start_time
-            startPrice: 1, // Minimum valid start_price
+            baseTime: 1, // Minimum valid start_time
+            basePrice: 1, // Minimum valid start_price
             apr: 0, // Minimum valid apr
             priceFixDuration: 1  // Minimum valid price_fix_duration
         });
@@ -395,8 +602,8 @@ describe("Add Offer Vector", () => {
         await expect(program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 1000,
-                startPrice: 1000000,
+                baseTime: currentTime + 1000,
+                basePrice: 1000000,
                 apr: 5000,
                 priceFixDuration: 3600,
                 signer: notBoss
@@ -425,8 +632,8 @@ describe("Add Offer Vector", () => {
         await program.addOfferVector({
             tokenInMint,
             tokenOutMint,
-            startTime: currentTime + 1000,
-            startPrice: 1000000,
+            baseTime: currentTime + 1000,
+            basePrice: 1000000,
             apr: 5000,
             priceFixDuration: 3600
         });
@@ -434,8 +641,8 @@ describe("Add Offer Vector", () => {
         await program.addOfferVector({
             tokenInMint: token2In,
             tokenOutMint: token2Out,
-            startTime: currentTime + 1000,
-            startPrice: 3000000,
+            baseTime: currentTime + 1000,
+            basePrice: 3000000,
             apr: 7500,
             priceFixDuration: 1800
         });
@@ -443,8 +650,8 @@ describe("Add Offer Vector", () => {
         await program.addOfferVector({
             tokenInMint,
             tokenOutMint,
-            startTime: currentTime + 3000,
-            startPrice: 2000000,
+            baseTime: currentTime + 3000,
+            basePrice: 2000000,
             apr: 2500,
             priceFixDuration: 3600
         });
@@ -487,8 +694,8 @@ describe("Add Offer Vector", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: vectors[i].startTime,
-                startPrice: vectors[i].price,
+                baseTime: vectors[i].startTime,
+                basePrice: vectors[i].price,
                 apr: 5000, // 0.5% APR
                 priceFixDuration: 3600  // 1 hour duration
             });
@@ -506,8 +713,8 @@ describe("Add Offer Vector", () => {
         await program.addOfferVector({
             tokenInMint,
             tokenOutMint,
-            startTime: currentTime + 6000, // Vector 6 (future)
-            startPrice: 6000000,
+            baseTime: currentTime + 6000, // Vector 6 (future)
+            basePrice: 6000000,
             apr: 5000,
             priceFixDuration: 3600
         });
@@ -553,7 +760,7 @@ describe("Add Offer Vector", () => {
         expect(remainingPrices).not.toContain(2000000); // Vector 2 price
     });
 
-    it("Should fail to add vector when array is full even if cleanup would make space (W6 bug)", async () => {
+    it("Should allow to add vector when array is full and cleanup would make space", async () => {
         await program.makeOffer({
             tokenInMint,
             tokenOutMint
@@ -565,8 +772,8 @@ describe("Add Offer Vector", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + (i * 1000),
-                startPrice: i * 1000000,
+                baseTime: currentTime + (i * 1000),
+                basePrice: i * 1000000,
                 apr: 5000,
                 priceFixDuration: 3600
             });
@@ -589,8 +796,8 @@ describe("Add Offer Vector", () => {
         await program.addOfferVector({
             tokenInMint,
             tokenOutMint,
-            startTime: currentTime - 1000,
-            startPrice: 11000000,
+            baseTime: currentTime - 1000,
+            basePrice: 11000000,
             apr: 5000,
             priceFixDuration: 3600
         });

@@ -70,16 +70,18 @@ export class OnreProgram {
     async addOfferVector(params: {
         tokenInMint: PublicKey,
         tokenOutMint: PublicKey,
-        startTime: number,
-        startPrice: number,
+        startTime?: number,
+        baseTime: number,
+        basePrice: number,
         apr: number,
         priceFixDuration: number,
         signer?: Keypair;
     }) {
         const tx = this.program.methods
             .addOfferVector(
-                new BN(params.startTime),
-                new BN(params.startPrice),
+                params.startTime == null ? null : new BN(params.startTime),
+                new BN(params.baseTime),
+                new BN(params.basePrice),
                 new BN(params.apr),
                 new BN(params.priceFixDuration)
             )
