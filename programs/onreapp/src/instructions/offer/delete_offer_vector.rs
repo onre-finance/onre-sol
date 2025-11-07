@@ -59,7 +59,6 @@ pub struct DeleteOfferVector<'info> {
     pub state: Account<'info, State>,
 
     /// The boss account authorized to delete pricing vectors from offers
-    #[account(mut)]
     pub boss: Signer<'info>,
 }
 

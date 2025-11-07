@@ -66,7 +66,6 @@ pub struct UpdateOfferFee<'info> {
     pub state: Account<'info, State>,
 
     /// The boss account authorized to update offer fees
-    #[account(mut)]
     pub boss: Signer<'info>,
 }
 

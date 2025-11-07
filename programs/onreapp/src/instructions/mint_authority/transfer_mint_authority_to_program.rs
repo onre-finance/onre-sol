@@ -47,7 +47,6 @@ pub struct TransferMintAuthorityToProgram<'info> {
     ///
     /// Must be the current boss stored in program state and currently hold
     /// mint authority for the specified token.
-    #[account(mut)]
     pub boss: Signer<'info>,
 
     /// Program state account containing boss validation
