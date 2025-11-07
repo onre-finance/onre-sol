@@ -1,7 +1,7 @@
 use crate::constants::seeds;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 
-use crate::state::{OfferVaultAuthority, State};
+use crate::state::State;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
@@ -44,8 +44,9 @@ pub struct GetCirculatingSupply<'info> {
     pub state: Box<Account<'info, State>>,
 
     /// The vault authority PDA that controls vault token accounts
-    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump = vault_authority.bump)]
-    pub vault_authority: Account<'info, OfferVaultAuthority>,
+    /// CHECK: PDA derivation is validated by seeds constraint
+    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
+    pub vault_authority: AccountInfo<'info>,
 
     /// The vault's ONyc token account to exclude from circulating supply
     ///

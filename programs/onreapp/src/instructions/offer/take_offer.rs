@@ -1,7 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::offer::offer_utils::{process_offer_core, verify_offer_approval};
 use crate::instructions::Offer;
-use crate::state::{MintAuthority, OfferVaultAuthority, State};
+use crate::state::State;
 use crate::utils::{execute_token_operations, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams};
 use crate::OfferCoreError;
 use anchor_lang::{prelude::*, solana_program::sysvar, Accounts};
@@ -82,11 +82,12 @@ pub struct TakeOffer<'info> {
     ///
     /// This PDA manages token transfers and burning operations for the
     /// burn/mint architecture when program has mint authority.
+    /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
         seeds = [seeds::OFFER_VAULT_AUTHORITY],
-        bump = vault_authority.bump
+        bump
     )]
-    pub vault_authority: Account<'info, OfferVaultAuthority>,
+    pub vault_authority: AccountInfo<'info>,
 
     /// Vault account for temporary token_in storage during burn operations
     ///
@@ -186,9 +187,9 @@ pub struct TakeOffer<'info> {
     /// CHECK: PDA derivation is validated through seeds constraint
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
-        bump = mint_authority.bump
+        bump
     )]
-    pub mint_authority: Account<'info, MintAuthority>,
+    pub mint_authority: AccountInfo<'info>,
 
     /// Instructions sysvar for approval signature verification
     ///
@@ -277,7 +278,7 @@ pub fn take_offer(
         token_in_source_signer_seeds: None,
         vault_authority_signer_seeds: Some(&[&[
             seeds::OFFER_VAULT_AUTHORITY,
-            &[ctx.accounts.vault_authority.bump],
+            &[ctx.bumps.vault_authority],
         ]]),
         token_in_source_account: &ctx.accounts.user_token_in_account,
         token_in_destination_account: &ctx.accounts.boss_token_in_account,
@@ -291,7 +292,7 @@ pub fn take_offer(
         token_out_source_account: &ctx.accounts.vault_token_out_account,
         token_out_destination_account: &ctx.accounts.user_token_out_account,
         mint_authority_pda: &ctx.accounts.mint_authority.to_account_info(),
-        mint_authority_bump: &[ctx.accounts.mint_authority.bump],
+        mint_authority_bump: &[ctx.bumps.mint_authority],
         token_out_max_supply: ctx.accounts.state.max_supply,
     })?;
 

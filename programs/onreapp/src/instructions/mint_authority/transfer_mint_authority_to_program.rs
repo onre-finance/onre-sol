@@ -1,5 +1,5 @@
 use crate::constants::seeds;
-use crate::state::{MintAuthority, State};
+use crate::state::State;
 use anchor_lang::prelude::*;
 use anchor_spl::token::spl_token::instruction::AuthorityType;
 use anchor_spl::token::{set_authority, SetAuthority};
@@ -71,9 +71,9 @@ pub struct TransferMintAuthorityToProgram<'info> {
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
-        bump = mint_authority.bump
+        bump
     )]
-    pub mint_authority: Account<'info, MintAuthority>,
+    pub mint_authority: AccountInfo<'info>,
 
     /// SPL Token program for mint authority operations
     pub token_program: Interface<'info, TokenInterface>,

@@ -21,7 +21,7 @@ describe("Vault Operations", () => {
 
     test("Vault is initialized correctly", async () => {
         // Verify all vault authorities are initialized correctly
-        const offerVaultAuthority = await program.program.account.offerVaultAuthority.fetch(program.pdas.offerVaultAuthorityPda);
+        const offerVaultAuthority = await program.program.provider.connection.getAccountInfo(program.pdas.offerVaultAuthorityPda);
 
         expect(offerVaultAuthority).toBeDefined();
     });

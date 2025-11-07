@@ -1,5 +1,5 @@
 use crate::constants::seeds;
-use crate::state::{OfferVaultAuthority, State};
+use crate::state::State;
 use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
@@ -29,8 +29,9 @@ pub struct OfferVaultWithdraw<'info> {
     ///
     /// This PDA manages the vault token accounts and signs the withdrawal
     /// transfer using program-derived signatures.
+    /// CHECK: PDA derivation is validated by seeds constraint
     #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
-    pub vault_authority: Account<'info, OfferVaultAuthority>,
+    pub vault_authority: AccountInfo<'info>,
 
     /// The token mint for the withdrawal operation
     pub token_mint: Box<InterfaceAccount<'info, Mint>>,
