@@ -141,10 +141,6 @@ pub fn add_offer_vector(
         );
     }
 
-    // Find an empty slot in time_vectors array
-    let empty_slot_index = find_vector_index_by_start_time(&offer, 0)
-        .ok_or_else(|| error!(AddOfferVectorErrorCode::TooManyVectors))?;
-
     // Create the new time vector
     let new_vector = OfferVector {
         start_time,
@@ -154,11 +150,15 @@ pub fn add_offer_vector(
         price_fix_duration,
     };
 
+    // Clean up old vectors before emitting success message
+    clean_old_vectors(offer, &new_vector, current_time)?;
+
+    // Find an empty slot in time_vectors array
+    let empty_slot_index = find_vector_index_by_start_time(&offer, 0)
+        .ok_or_else(|| error!(AddOfferVectorErrorCode::TooManyVectors))?;
+
     // Add the vector to the offer
     offer.vectors[empty_slot_index] = new_vector;
-
-    // Clean up old vectors before emitting success message
-    clean_old_vectors(offer, current_time)?;
 
     msg!(
         "Time vector added to offer: {}, vector start_time: {}",
@@ -212,9 +212,13 @@ fn validate_inputs(base_time: u64, base_price: u64, price_fix_duration: u64) -> 
 ///
 /// # Returns
 /// * `Ok(())` - If cleanup completes successfully or no active vector exists
-fn clean_old_vectors(offer: &mut Offer, current_time: u64) -> Result<()> {
+fn clean_old_vectors(offer: &mut Offer, new_vector: &OfferVector, current_time: u64) -> Result<()> {
     // Find currently active vector
-    let active_vector = find_active_vector_at(offer, current_time);
+    let active_vector = if new_vector.start_time == current_time {
+        Ok(*new_vector)
+    } else {
+        find_active_vector_at(offer, current_time)
+    };
 
     let active_vector_start_time = match active_vector {
         Ok(vector) => vector.start_time,
@@ -232,10 +236,12 @@ fn clean_old_vectors(offer: &mut Offer, current_time: u64) -> Result<()> {
     // Clear all vectors except active and previous
     for vector in offer.vectors.iter_mut() {
         if vector.start_time != 0 // Don't touch already empty slots
-            && vector.start_time != active_vector_start_time // Keep active vector
-            && vector.start_time != prev_vector_start_time // Keep previous vector
+            // Keep active vector
+            && vector.start_time != active_vector_start_time
+            // Keep previous vector
+            && vector.start_time != prev_vector_start_time
+            // Keep all future vectors
             && vector.start_time < active_vector_start_time
-        // Keep all future vectors
         {
             *vector = OfferVector::default(); // Clear the vector
         }
