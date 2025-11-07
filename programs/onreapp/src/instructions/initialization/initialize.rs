@@ -117,8 +117,11 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
     // Store PDA bump for future validations
     state.bump = ctx.bumps.state;
 
+    // Initialize max supply as 0 (no cap by default)
+    state.max_supply = 0;
+
     // Reserved space is automatically zero-initialized
-    state.reserved = [0u8; 96];
+    state.reserved = [0u8; 88];
 
     msg!(
         "Program state initialized: boss={}, onyc_mint={}, bump={}",

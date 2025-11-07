@@ -446,4 +446,18 @@ pub mod onreapp {
     pub fn remove_approver(ctx: Context<RemoveApprover>, approver: Pubkey) -> Result<()> {
         state_operations::remove_approver(ctx, approver)
     }
+
+    /// Configures the maximum supply cap for ONyc token minting.
+    ///
+    /// Delegates to `state_operations::configure_max_supply`.
+    /// This instruction allows the boss to set or update the maximum supply cap
+    /// that restricts ONyc token minting. Setting to 0 removes the cap.
+    /// Emits a `MaxSupplyConfigured` event upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `ConfigureMaxSupply`.
+    /// - `max_supply`: The maximum supply cap in base units (0 = no cap).
+    pub fn configure_max_supply(ctx: Context<ConfigureMaxSupply>, max_supply: u64) -> Result<()> {
+        state_operations::configure_max_supply(ctx, max_supply)
+    }
 }

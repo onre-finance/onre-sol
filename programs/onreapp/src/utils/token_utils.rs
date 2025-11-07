@@ -13,6 +13,8 @@ pub const PRICE_DECIMALS: u8 = 9;
 pub enum TokenUtilsErrorCode {
     #[msg("Math overflow")]
     MathOverflow,
+    #[msg("Minting would exceed maximum supply cap")]
+    MaxSupplyExceeded,
 }
 
 /// Generic token transfer function that handles both regular and PDA-signed transfers
@@ -164,7 +166,10 @@ pub fn calculate_fees(token_in_amount: u64, fee_basis_points: u16) -> Result<Cal
     })
 }
 
-/// Mint tokens directly to a destination account using program authority
+/// Mint tokens with maximum supply validation
+///
+/// This function validates that minting the requested amount will not exceed
+/// the configured maximum supply cap (if set). If max_supply is 0, no cap is enforced.
 ///
 /// # Arguments
 /// * `token_program` - The SPL Token program
@@ -173,6 +178,17 @@ pub fn calculate_fees(token_in_amount: u64, fee_basis_points: u16) -> Result<Cal
 /// * `authority` - The mint authority (must be a PDA with signing capability)
 /// * `signer_seeds` - PDA seeds for program-signed minting
 /// * `amount` - Amount of tokens to mint
+/// * `max_supply` - Maximum supply cap (0 = no cap)
+///
+/// # Returns
+/// * `Ok(())` - If minting completes successfully and doesn't exceed max supply
+/// * `Err(TokenUtilsErrorCode::MaxSupplyExceeded)` - If minting would exceed the cap
+/// * `Err(_)` - If token minting operation fails
+///
+/// # Security
+/// - Validates current supply + amount <= max_supply (when max_supply > 0)
+/// - Uses checked token instructions for decimal validation
+/// - Prevents unbounded inflation when max supply is configured
 pub fn mint_tokens<'info>(
     token_program: &Interface<'info, TokenInterface>,
     mint: &InterfaceAccount<'info, Mint>,
@@ -180,7 +196,22 @@ pub fn mint_tokens<'info>(
     authority: &AccountInfo<'info>,
     signer_seeds: &[&[&[u8]]],
     amount: u64,
+    max_supply: u64,
 ) -> Result<()> {
+    // Validate max supply if configured (0 = no cap)
+    if max_supply > 0 {
+        let current_supply = mint.supply;
+        let new_supply = current_supply
+            .checked_add(amount)
+            .ok_or(TokenUtilsErrorCode::MathOverflow)?;
+
+        require!(
+            new_supply <= max_supply,
+            TokenUtilsErrorCode::MaxSupplyExceeded
+        );
+    }
+
+    // Perform the mint operation
     let mint_accounts = MintToChecked {
         mint: mint.to_account_info(),
         to: to_account.to_account_info(),
@@ -230,9 +261,9 @@ pub fn burn_tokens<'info>(
 pub struct ExecTokenOpsParams<'a, 'info> {
     /// SPL Token program for token_in operations
     pub token_in_program: &'a Interface<'info, TokenInterface>,
-    /// SPL Token program for token_out operations  
+    /// SPL Token program for token_out operations
     pub token_out_program: &'a Interface<'info, TokenInterface>,
-    
+
     // Token in params
     /// Mint account for the input token
     pub token_in_mint: &'a InterfaceAccount<'info, Mint>,
@@ -252,7 +283,7 @@ pub struct ExecTokenOpsParams<'a, 'info> {
     pub token_in_burn_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Authority for burning tokens from the vault
     pub token_in_burn_authority: &'a AccountInfo<'info>,
-    
+
     // Token out params
     /// Mint account for the output token
     pub token_out_mint: &'a InterfaceAccount<'info, Mint>,
@@ -268,6 +299,8 @@ pub struct ExecTokenOpsParams<'a, 'info> {
     pub mint_authority_pda: &'a AccountInfo<'info>,
     /// Bump seed for mint authority PDA
     pub mint_authority_bump: &'a [u8],
+    /// Maximum supply cap for token_out minting (0 = no cap)
+    pub token_out_max_supply: u64,
 }
 
 /// Executes token operations for exchanging token_in for token_out
@@ -340,6 +373,7 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
             params.mint_authority_pda,
             mint_authority_signer_seeds,
             params.token_out_amount,
+            params.token_out_max_supply,
         )?;
     } else {
         transfer_tokens(

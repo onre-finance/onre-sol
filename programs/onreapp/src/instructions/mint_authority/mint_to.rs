@@ -117,7 +117,7 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
     let mint_authority_seeds = &[seeds::MINT_AUTHORITY, &[ctx.accounts.mint_authority.bump]];
     let mint_authority_signer_seeds = &[mint_authority_seeds.as_slice()];
 
-    // Mint tokens to the boss's ONyc account
+    // Mint tokens to the boss's ONyc account with max supply validation
     mint_tokens(
         &ctx.accounts.token_program,
         &ctx.accounts.onyc_mint,
@@ -125,6 +125,7 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
         &ctx.accounts.mint_authority.to_account_info(),
         mint_authority_signer_seeds,
         amount,
+        ctx.accounts.state.max_supply,
     )?;
 
     msg!("Minted {} ONyc tokens to boss account", amount);

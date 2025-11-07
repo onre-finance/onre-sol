@@ -21,8 +21,10 @@ pub struct State {
     pub approver2: Pubkey,
     /// PDA bump seed for account derivation
     pub bump: u8,
+    /// Optional maximum supply cap for ONyc token minting (0 = no cap)
+    pub max_supply: u64,
     /// Reserved space for future program state extensions
-    pub reserved: [u8; 96],
+    pub reserved: [u8; 88],
 }
 
 /// Program-derived authority for controlling offer vault token accounts
