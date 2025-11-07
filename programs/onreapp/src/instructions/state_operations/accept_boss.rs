@@ -40,9 +40,6 @@ pub struct AcceptBoss<'info> {
 
     /// The proposed new boss account accepting the ownership transfer
     pub new_boss: Signer<'info>,
-
-    /// System program for potential account operations
-    pub system_program: Program<'info, System>,
 }
 
 /// Accepts and completes the boss authority transfer

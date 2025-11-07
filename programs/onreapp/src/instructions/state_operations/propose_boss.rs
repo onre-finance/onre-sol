@@ -40,9 +40,6 @@ pub struct ProposeBoss<'info> {
 
     /// The current boss account proposing the ownership transfer
     pub boss: Signer<'info>,
-
-    /// System program for potential account operations
-    pub system_program: Program<'info, System>,
 }
 
 /// Proposes a new boss authority for ownership transfer
