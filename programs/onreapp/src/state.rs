@@ -26,7 +26,7 @@ pub struct State {
     /// Optional maximum supply cap for ONyc token minting (0 = no cap)
     pub max_supply: u64,
     /// Reserved space for future program state extensions
-    pub reserved: [u8; 56],
+    pub reserved: [u8; 128],
 }
 
 /// Program-derived authority for controlling offer vault token accounts

@@ -124,7 +124,7 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
     state.proposed_boss = Pubkey::default();
 
     // Reserved space is automatically zero-initialized
-    state.reserved = [0u8; 56];
+    state.reserved = [0u8; 128];
 
     msg!(
         "Program state initialized: boss={}, onyc_mint={}, bump={}",
