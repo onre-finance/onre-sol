@@ -41,8 +41,8 @@ describe("Get TVL", () => {
                 await program.addOfferVector({
                     tokenInMint,
                     tokenOutMint,
-                    startTime: currentTime,
-                    startPrice: 1e9, // 1.0 with 9 decimals
+                    baseTime: currentTime,
+                    basePrice: 1e9, // 1.0 with 9 decimals
                     apr: 36_500, // 3.65% APR (scaled by 1M)
                     priceFixDuration: 86400 // 1 day
                 });
@@ -63,8 +63,8 @@ describe("Get TVL", () => {
                 await program.addOfferVector({
                     tokenInMint,
                     tokenOutMint,
-                    startTime: currentTime,
-                    startPrice: 1e9,
+                    baseTime: currentTime,
+                    basePrice: 1e9,
                     apr: 36_500,
                     priceFixDuration: 86400
                 });
@@ -97,8 +97,8 @@ describe("Get TVL", () => {
                 await program.addOfferVector({
                     tokenInMint,
                     tokenOutMint,
-                    startTime: currentTime,
-                    startPrice: 2e9, // 2.0 with 9 decimals
+                    baseTime: currentTime,
+                    basePrice: 2e9, // 2.0 with 9 decimals
                     apr: 36_500, // 3.65% APR for fixed price
                     priceFixDuration: 86400
                 });
@@ -119,8 +119,8 @@ describe("Get TVL", () => {
                 await program.addOfferVector({
                     tokenInMint,
                     tokenOutMint,
-                    startTime: currentTime,
-                    startPrice: 1e9,
+                    baseTime: currentTime,
+                    basePrice: 1e9,
                     apr: 36_500, // 3.65% APR
                     priceFixDuration: 86400 // 1 day intervals
                 });
@@ -144,8 +144,8 @@ describe("Get TVL", () => {
                 await program.addOfferVector({
                     tokenInMint,
                     tokenOutMint,
-                    startTime: currentTime,
-                    startPrice: 3e9, // 3.0 with 9 decimals
+                    baseTime: currentTime,
+                    basePrice: 3e9, // 3.0 with 9 decimals
                     apr: 0, // 0% APR
                     priceFixDuration: 86400
                 });
@@ -185,8 +185,8 @@ describe("Get TVL", () => {
                 await program.addOfferVector({
                     tokenInMint,
                     tokenOutMint,
-                    startTime: currentTime + 86400, // starts tomorrow
-                    startPrice: 1e9,
+                    baseTime: currentTime + 86400, // starts tomorrow
+                    basePrice: 1e9,
                     apr: 36_500,
                     priceFixDuration: 86400
                 });
@@ -205,8 +205,8 @@ describe("Get TVL", () => {
                 await program.addOfferVector({
                     tokenInMint,
                     tokenOutMint,
-                    startTime: currentTime,
-                    startPrice: 1e9,
+                    baseTime: currentTime,
+                    basePrice: 1e9,
                     apr: 36_500,
                     priceFixDuration: 86400
                 });
@@ -230,8 +230,8 @@ describe("Get TVL", () => {
                 await program.addOfferVector({
                     tokenInMint,
                     tokenOutMint,
-                    startTime: currentTime,
-                    startPrice: 1e9,
+                    baseTime: currentTime,
+                    basePrice: 1e9,
                     apr: 36_500,
                     priceFixDuration: 3600
                 });
@@ -244,8 +244,8 @@ describe("Get TVL", () => {
                 await program.addOfferVector({
                     tokenInMint,
                     tokenOutMint,
-                    startTime: newCurrentTime,
-                    startPrice: 5e9, // 5.0 with 9 decimals
+                    baseTime: newCurrentTime,
+                    basePrice: 5e9, // 5.0 with 9 decimals
                     apr: 0, // 0% APR for fixed price
                     priceFixDuration: 1800
                 });
@@ -273,8 +273,8 @@ describe("Get TVL", () => {
                 await program.addOfferVector({
                     tokenInMint,
                     tokenOutMint: largeMint,
-                    startTime: currentTime,
-                    startPrice: 1e9, // 1.0 with 9 decimals
+                    baseTime: currentTime,
+                    basePrice: 1e9, // 1.0 with 9 decimals
                     apr: 0,
                     priceFixDuration: 86400
                 });
@@ -316,8 +316,8 @@ describe("Get TVL", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 2e9, // 2.0 with 9 decimals
+                baseTime: currentTime,
+                basePrice: 2e9, // 2.0 with 9 decimals
                 apr: 36_500, // 3.65% APR for fixed price
                 priceFixDuration: 86400
             });

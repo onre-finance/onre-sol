@@ -64,8 +64,8 @@ describe("Take Offer With Approval", () => {
         // Add vector to the offer
         const currentTime = await testHelper.getCurrentClockTime();
         await program.addOfferVector({
-            startTime: currentTime,
-            startPrice: 1e9, // 1.0 with 9 decimals
+            baseTime: currentTime,
+            basePrice: 1e9, // 1.0 with 9 decimals
             apr: 36_500, // 3.65% APR
             priceFixDuration: 86400, // 1 day,
             tokenInMint: tokenInMint,

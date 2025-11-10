@@ -34,8 +34,8 @@ describe("Delete Offer Vector", () => {
         await program.addOfferVector({
             tokenInMint,
             tokenOutMint,
-            startTime: currentTime + 1000,
-            startPrice: 1000000,
+            baseTime: currentTime + 1000,
+            basePrice: 1000000,
             apr: 5000,
             priceFixDuration: 3600
         });
@@ -123,8 +123,8 @@ describe("Delete Offer Vector", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + (i * 1000),
-                startPrice: i * 1000000,
+                baseTime: currentTime + (i * 1000),
+                basePrice: i * 1000000,
                 apr: 5000,
                 priceFixDuration: 3600
             });
@@ -170,8 +170,8 @@ describe("Delete Offer Vector", () => {
         await program.addOfferVector({
             tokenInMint,
             tokenOutMint,
-            startTime: currentTime + 1000,
-            startPrice: 1000000,
+            baseTime: currentTime + 1000,
+            basePrice: 1000000,
             apr: 5000,
             priceFixDuration: 3600
         });
@@ -203,8 +203,8 @@ describe("Delete Offer Vector", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 100, // 100 seconds in future
-                startPrice: 1000000,
+                baseTime: currentTime + 100, // 100 seconds in future
+                basePrice: 1000000,
                 apr: 5000,
                 priceFixDuration: 3600
             });
@@ -213,8 +213,8 @@ describe("Delete Offer Vector", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 200, // 200 seconds in future
-                startPrice: 2000000,
+                baseTime: currentTime + 200, // 200 seconds in future
+                basePrice: 2000000,
                 apr: 7500,
                 priceFixDuration: 3600
             });
@@ -251,8 +251,8 @@ describe("Delete Offer Vector", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 10, // 10 seconds in future
-                startPrice: 1000000,
+                baseTime: currentTime + 10, // 10 seconds in future
+                basePrice: 1000000,
                 apr: 5000,
                 priceFixDuration: 3600
             });
@@ -260,8 +260,8 @@ describe("Delete Offer Vector", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 20, // 20 seconds in future
-                startPrice: 2000000,
+                baseTime: currentTime + 20, // 20 seconds in future
+                basePrice: 2000000,
                 apr: 7500,
                 priceFixDuration: 3600
             });
@@ -297,8 +297,8 @@ describe("Delete Offer Vector", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 10, // 10 seconds in future
-                startPrice: 1000000,
+                baseTime: currentTime + 10, // 10 seconds in future
+                basePrice: 1000000,
                 apr: 5000,
                 priceFixDuration: 3600
             });
@@ -306,8 +306,8 @@ describe("Delete Offer Vector", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 20, // 20 seconds in future
-                startPrice: 2000000,
+                baseTime: currentTime + 20, // 20 seconds in future
+                basePrice: 2000000,
                 apr: 7500,
                 priceFixDuration: 3600
             });
@@ -315,8 +315,8 @@ describe("Delete Offer Vector", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 30, // 30 seconds in future
-                startPrice: 3000000,
+                baseTime: currentTime + 30, // 30 seconds in future
+                basePrice: 3000000,
                 apr: 10000,
                 priceFixDuration: 3600
             });
@@ -353,8 +353,8 @@ describe("Delete Offer Vector", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 10, // 10 seconds in future
-                startPrice: 1000000,
+                baseTime: currentTime + 10, // 10 seconds in future
+                basePrice: 1000000,
                 apr: 5000,
                 priceFixDuration: 3600
             });
@@ -390,8 +390,8 @@ describe("Delete Offer Vector", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 100, // 100 seconds in future
-                startPrice: 1000000,
+                baseTime: currentTime + 100, // 100 seconds in future
+                basePrice: 1000000,
                 apr: 5000,
                 priceFixDuration: 3600
             });
@@ -400,8 +400,8 @@ describe("Delete Offer Vector", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 200, // 200 seconds in future
-                startPrice: 2000000,
+                baseTime: currentTime + 200, // 200 seconds in future
+                basePrice: 2000000,
                 apr: 6000,
                 priceFixDuration: 3600
             });
@@ -410,8 +410,8 @@ describe("Delete Offer Vector", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 300, // 300 seconds in future
-                startPrice: 3000000,
+                baseTime: currentTime + 300, // 300 seconds in future
+                basePrice: 3000000,
                 apr: 7000,
                 priceFixDuration: 3600
             });
@@ -420,8 +420,8 @@ describe("Delete Offer Vector", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 400, // 400 seconds in future
-                startPrice: 4000000,
+                baseTime: currentTime + 400, // 400 seconds in future
+                basePrice: 4000000,
                 apr: 8000,
                 priceFixDuration: 3600
             });
@@ -486,8 +486,8 @@ describe("Delete Offer Vector", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 100, // 100 seconds in future
-                startPrice: 1000000,
+                baseTime: currentTime + 100, // 100 seconds in future
+                basePrice: 1000000,
                 apr: 5000,
                 priceFixDuration: 3600
             });
@@ -495,8 +495,8 @@ describe("Delete Offer Vector", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 200, // 200 seconds in future
-                startPrice: 2000000,
+                baseTime: currentTime + 200, // 200 seconds in future
+                basePrice: 2000000,
                 apr: 7500,
                 priceFixDuration: 3600
             });

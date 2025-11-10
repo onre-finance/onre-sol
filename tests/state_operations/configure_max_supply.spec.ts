@@ -189,8 +189,8 @@ describe("Configure Max Supply and Enforcement", () => {
             await program.addOfferVector({
                 tokenInMint: usdcMint,
                 tokenOutMint: onycMint,
-                startTime: Math.floor(Date.now() / 1000) - 1000,
-                startPrice: 1_000_000_000, // 1:1 price (9 decimals)
+                baseTime: Math.floor(Date.now() / 1000) - 1000,
+                basePrice: 1_000_000_000, // 1:1 price (9 decimals)
                 apr: 0,
                 priceFixDuration: 3600
             });
@@ -326,8 +326,8 @@ describe("Configure Max Supply and Enforcement", () => {
             await program.addOfferVector({
                 tokenInMint: usdcMint,
                 tokenOutMint: onycMint,
-                startTime: Math.floor(Date.now() / 1000) - 1000,
-                startPrice: 1_000_000_000,
+                baseTime: Math.floor(Date.now() / 1000) - 1000,
+                basePrice: 1_000_000_000,
                 apr: 0,
                 priceFixDuration: 3600
             });

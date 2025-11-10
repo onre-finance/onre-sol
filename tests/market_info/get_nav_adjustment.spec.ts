@@ -35,8 +35,8 @@ describe("Get NAV Adjustment", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9, // 1.0 with 9 decimals
+                baseTime: currentTime,
+                basePrice: 1e9, // 1.0 with 9 decimals
                 apr: 36_500, // 3.65% APR (scaled by 1M)
                 priceFixDuration: 86400 // 1 day
             });
@@ -55,8 +55,8 @@ describe("Get NAV Adjustment", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 36_500,
                 priceFixDuration: 86400
             });
@@ -83,8 +83,8 @@ describe("Get NAV Adjustment", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9, // 1.0 with 9 decimals
+                baseTime: currentTime,
+                basePrice: 1e9, // 1.0 with 9 decimals
                 apr: 36_500, // 3.65% APR
                 priceFixDuration: 86400 // 1 day intervals
             });
@@ -97,8 +97,8 @@ describe("Get NAV Adjustment", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: newCurrentTime,
-                startPrice: 1.5e9, // 1.5 with 9 decimals (higher than first)
+                baseTime: newCurrentTime,
+                basePrice: 1.5e9, // 1.5 with 9 decimals (higher than first)
                 apr: 36_500, // 3.65% APR (lower than first)
                 priceFixDuration: 86400 // 1 day intervals
             });
@@ -120,8 +120,8 @@ describe("Get NAV Adjustment", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 2e9, // 2.0 with 9 decimals
+                baseTime: currentTime,
+                basePrice: 2e9, // 2.0 with 9 decimals
                 apr: 36_500, // 3.65%% APR
                 priceFixDuration: 86400 // 1 day
             });
@@ -134,8 +134,8 @@ describe("Get NAV Adjustment", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: newCurrentTime,
-                startPrice: 1e9, // 1.0 with 9 decimals (lower than first)
+                baseTime: newCurrentTime,
+                basePrice: 1e9, // 1.0 with 9 decimals (lower than first)
                 apr: 36_500, // 3.65% APR
                 priceFixDuration: 86400 // 1 hour
             });
@@ -153,8 +153,8 @@ describe("Get NAV Adjustment", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9, // 1.0
+                baseTime: currentTime,
+                basePrice: 1e9, // 1.0
                 apr: 50_000, // 5% APR
                 priceFixDuration: 1800 // 30 minutes
             });
@@ -165,8 +165,8 @@ describe("Get NAV Adjustment", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: newCurrentTime,
-                startPrice: 1.2e9, // 1.2 (higher)
+                baseTime: newCurrentTime,
+                basePrice: 1.2e9, // 1.2 (higher)
                 apr: 36_500, // 3.65% APR
                 priceFixDuration: 86_400 // 1 day
             });
@@ -177,8 +177,8 @@ describe("Get NAV Adjustment", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: newCurrentTime,
-                startPrice: 1.1e9, // 1.1 (lower than second, but higher than first)
+                baseTime: newCurrentTime,
+                basePrice: 1.1e9, // 1.1 (lower than second, but higher than first)
                 apr: 36_500, // 3.65% APR
                 priceFixDuration: 86_400 // 1 day
             });
@@ -197,8 +197,8 @@ describe("Get NAV Adjustment", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9, // 1.0
+                baseTime: currentTime,
+                basePrice: 1e9, // 1.0
                 apr: 0, // 0% APR (no growth)
                 priceFixDuration: 3600
             });
@@ -211,8 +211,8 @@ describe("Get NAV Adjustment", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: newCurrentTime,
-                startPrice: 2.5e9,
+                baseTime: newCurrentTime,
+                basePrice: 2.5e9,
                 apr: 0, // 0% APR (no growth)
                 priceFixDuration: 3600
             });
@@ -246,8 +246,8 @@ describe("Get NAV Adjustment", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 86400, // starts tomorrow
-                startPrice: 1e9,
+                baseTime: currentTime + 86400, // starts tomorrow
+                basePrice: 1e9,
                 apr: 36_500,
                 priceFixDuration: 86400
             });
@@ -265,8 +265,8 @@ describe("Get NAV Adjustment", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 36_500,
                 priceFixDuration: 86400
             });
@@ -279,8 +279,8 @@ describe("Get NAV Adjustment", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: newCurrentTime,
-                startPrice: 1.3e9,
+                baseTime: newCurrentTime,
+                basePrice: 1.3e9,
                 apr: 36_500,
                 priceFixDuration: 86400
             });
@@ -305,8 +305,8 @@ describe("Get NAV Adjustment", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime,
-                startPrice: 1e9,
+                baseTime: currentTime,
+                basePrice: 1e9,
                 apr: 50_000,
                 priceFixDuration: 3600
             });
@@ -317,8 +317,8 @@ describe("Get NAV Adjustment", () => {
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: newCurrentTime,
-                startPrice: 1.5e9,
+                baseTime: newCurrentTime,
+                basePrice: 1.5e9,
                 apr: 30_000,
                 priceFixDuration: 3600
             });

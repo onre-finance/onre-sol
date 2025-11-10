@@ -92,6 +92,70 @@ pub struct GetAPY<'info> {
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 }
 
+/// Calculates and returns the current Annual Percentage Yield (APY) for a specific offer
+///
+/// This is a read-only instruction that queries the current APY for an offer by:
+/// 1. Finding the currently active pricing vector based on the current timestamp
+/// 2. Extracting the APR from the active vector
+/// 3. Converting APR to APY using daily compounding mathematics
+/// 4. Returning the calculated APY with the same scale as the input APR
+///
+/// The calculation uses the standard financial formula: APY = (1 + APR/365)^365 - 1
+/// with daily compounding (365 periods per year). This provides a more accurate
+/// representation of the actual annual yield compared to simple APR.
+///
+/// # Process Flow
+/// 1. Load the offer account and get current timestamp
+/// 2. Identify the active pricing vector for the current time
+/// 3. Extract APR from the active vector (scale=6)
+/// 4. Apply daily compounding formula to convert APR to APY
+/// 5. Return APY with scale=6 (same as APR)
+/// 6. Emit event with calculation details
+///
+/// # Access Control
+/// - No authorization required (public read-only instruction)
+/// - No state modifications performed
+/// - Can be called by anyone at any time
+///
+/// # Arguments
+/// * `ctx` - The instruction context containing validated accounts
+///
+/// # Returns
+/// * `Ok(apy)` - The calculated APY with scale=6 (1_000_000 = 100%)
+/// * `Err(OfferCoreError::NoActiveVector)` - If no pricing vector is currently active
+/// * `Err(GetAPYErrorCode::Overflow)` - If mathematical overflow occurs during calculation
+/// * `Err(GetAPYErrorCode::DivByZero)` - If division by zero occurs during calculation
+///
+/// # Events
+/// * `GetAPYEvent` - Emitted on successful calculation containing offer PDA, APY, source APR, and timestamp
+pub fn get_apy(ctx: Context<GetAPY>) -> Result<u64> {
+    let offer = ctx.accounts.offer.load()?;
+    let current_time = Clock::get()?.unix_timestamp as u64;
+
+    // Find the currently active pricing vector
+    let active_vector = find_active_vector_at(&offer, current_time)?;
+
+    // Calculate APY from the vector's APR
+    let apy = calculate_apy_from_apr(active_vector.apr)?;
+
+    msg!(
+        "APY Info - Offer PDA: {}, APR: {}, APY: {}, Timestamp: {}",
+        ctx.accounts.offer.key(),
+        active_vector.apr,
+        apy,
+        current_time
+    );
+
+    emit!(GetAPYEvent {
+        offer_pda: ctx.accounts.offer.key(),
+        apy,
+        apr: active_vector.apr,
+        timestamp: current_time,
+    });
+
+    Ok(apy)
+}
+
 /// Converts Annual Percentage Rate (APR) to Annual Percentage Yield (APY) using daily compounding
 ///
 /// This function implements the standard financial formula for converting APR to APY
@@ -167,7 +231,7 @@ pub fn calculate_apy_from_apr(apr_scaled: u64) -> Result<u64> {
 ///
 /// # Arguments
 /// * `a` - First multiplicand
-/// * `b` - Second multiplicand  
+/// * `b` - Second multiplicand
 /// * `denom` - Denominator for division
 ///
 /// # Returns
@@ -217,68 +281,4 @@ fn pow_fixed(mut base: u128, mut exp: u32, scale: u128) -> Result<u128> {
         }
     }
     Ok(acc)
-}
-
-/// Calculates and returns the current Annual Percentage Yield (APY) for a specific offer
-///
-/// This is a read-only instruction that queries the current APY for an offer by:
-/// 1. Finding the currently active pricing vector based on the current timestamp
-/// 2. Extracting the APR from the active vector
-/// 3. Converting APR to APY using daily compounding mathematics
-/// 4. Returning the calculated APY with the same scale as the input APR
-///
-/// The calculation uses the standard financial formula: APY = (1 + APR/365)^365 - 1
-/// with daily compounding (365 periods per year). This provides a more accurate
-/// representation of the actual annual yield compared to simple APR.
-///
-/// # Process Flow
-/// 1. Load the offer account and get current timestamp
-/// 2. Identify the active pricing vector for the current time
-/// 3. Extract APR from the active vector (scale=6)
-/// 4. Apply daily compounding formula to convert APR to APY
-/// 5. Return APY with scale=6 (same as APR)
-/// 6. Emit event with calculation details
-///
-/// # Access Control
-/// - No authorization required (public read-only instruction)
-/// - No state modifications performed
-/// - Can be called by anyone at any time
-///
-/// # Arguments
-/// * `ctx` - The instruction context containing validated accounts
-///
-/// # Returns
-/// * `Ok(apy)` - The calculated APY with scale=6 (1_000_000 = 100%)
-/// * `Err(OfferCoreError::NoActiveVector)` - If no pricing vector is currently active
-/// * `Err(GetAPYErrorCode::Overflow)` - If mathematical overflow occurs during calculation
-/// * `Err(GetAPYErrorCode::DivByZero)` - If division by zero occurs during calculation
-///
-/// # Events
-/// * `GetAPYEvent` - Emitted on successful calculation containing offer PDA, APY, source APR, and timestamp
-pub fn get_apy(ctx: Context<GetAPY>) -> Result<u64> {
-    let offer = ctx.accounts.offer.load()?;
-    let current_time = Clock::get()?.unix_timestamp as u64;
-
-    // Find the currently active pricing vector
-    let active_vector = find_active_vector_at(&offer, current_time)?;
-
-    // Calculate APY from the vector's APR
-    let apy = calculate_apy_from_apr(active_vector.apr)?;
-
-    msg!(
-        "APY Info - Offer PDA: {}, APR: {}, APY: {}, Timestamp: {}",
-        ctx.accounts.offer.key(),
-        active_vector.apr,
-        apy,
-        current_time
-    );
-
-    emit!(GetAPYEvent {
-        offer_pda: ctx.accounts.offer.key(),
-        apy,
-        apr: active_vector.apr,
-        timestamp: current_time,
-    });
-
-    Ok(apy)
 }

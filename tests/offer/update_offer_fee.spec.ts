@@ -115,8 +115,8 @@ describe("Update Offer Fee", () => {
             .addOfferVector({
                 tokenInMint,
                 tokenOutMint,
-                startTime: currentTime + 1000,
-                startPrice: 1000000, // 1.0 with 6 decimals
+                baseTime: currentTime + 1000,
+                basePrice: 1000000, // 1.0 with 6 decimals
                 apr: 5000,    // 0.05% APR
                 priceFixDuration: 3600     // 1 hour
             });
