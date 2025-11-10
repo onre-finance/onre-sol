@@ -313,6 +313,31 @@ export class OnreProgram {
         await tx.rpc();
     }
 
+    async proposeBoss(params: { newBoss: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods
+            .proposeBoss(params.newBoss)
+            .accounts({
+                boss: params.signer ? params.signer.publicKey : this.program.provider.publicKey
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
+    async acceptBoss(params: { newBoss: Keypair }) {
+        const tx = this.program.methods
+            .acceptBoss()
+            .accounts({
+                newBoss: params.newBoss.publicKey
+            })
+            .signers([params.newBoss]);
+
+        await tx.rpc();
+    }
+
     async setKillSwitch(params: { enable: boolean, signer?: Keypair }) {
         const tx = this.program.methods
             .setKillSwitch(params.enable)

@@ -40,6 +40,63 @@
   ],
   "instructions": [
     {
+      "name": "accept_boss",
+      "docs": [
+        "Accepts the proposed boss transfer.",
+        "",
+        "Delegates to `accept_boss::accept_boss` to complete the ownership transfer.",
+        "This is the second step in a two-step ownership transfer process.",
+        "Only the proposed boss can call this instruction to accept and become the new boss.",
+        "Emits a `BossAcceptedEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `AcceptBoss`."
+      ],
+      "discriminator": [
+        152,
+        63,
+        117,
+        209,
+        67,
+        11,
+        250,
+        242
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing the boss and proposed_boss",
+            "",
+            "Must be mutable to allow boss field modification."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_boss",
+          "docs": [
+            "The proposed new boss account accepting the ownership transfer"
+          ],
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "add_admin",
       "docs": [
         "Adds a new admin to the state.",
@@ -2462,6 +2519,73 @@
       ]
     },
     {
+      "name": "propose_boss",
+      "docs": [
+        "Proposes a new boss for ownership transfer.",
+        "",
+        "Delegates to `propose_boss::propose_boss` to propose a new boss authority.",
+        "This is the first step in a two-step ownership transfer process.",
+        "The proposed boss must then call accept_boss to complete the transfer.",
+        "Emits a `BossProposedEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `ProposeBoss`.",
+        "- `new_boss`: Public key of the proposed new boss."
+      ],
+      "discriminator": [
+        163,
+        199,
+        158,
+        47,
+        155,
+        78,
+        174,
+        173
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing the boss authority",
+            "",
+            "Must be mutable to allow proposed_boss field modification and have the current",
+            "boss account as the authorized signer."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The current boss account proposing the ownership transfer"
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_boss",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "remove_admin",
       "docs": [
         "Removes an admin from the state.",
@@ -4446,6 +4570,32 @@
   ],
   "events": [
     {
+      "name": "BossAcceptedEvent",
+      "discriminator": [
+        11,
+        133,
+        76,
+        152,
+        219,
+        5,
+        220,
+        103
+      ]
+    },
+    {
+      "name": "BossProposedEvent",
+      "discriminator": [
+        22,
+        117,
+        195,
+        6,
+        169,
+        57,
+        141,
+        17
+      ]
+    },
+    {
       "name": "BossUpdatedEvent",
       "discriminator": [
         50,
@@ -4756,6 +4906,60 @@
               "Unix timestamp when this approval expires"
             ],
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BossAcceptedEvent",
+      "docs": [
+        "Event emitted when the boss authority is successfully transferred",
+        "",
+        "Provides transparency for tracking ownership transfers and authority changes."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_boss",
+            "docs": [
+              "The previous boss's public key before the update"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "new_boss",
+            "docs": [
+              "The new boss's public key after the update"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BossProposedEvent",
+      "docs": [
+        "Event emitted when a new boss is proposed",
+        "",
+        "Provides transparency for tracking ownership transfer proposals."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "current_boss",
+            "docs": [
+              "The current boss's public key"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "proposed_boss",
+            "docs": [
+              "The proposed new boss's public key"
+            ],
+            "type": "pubkey"
           }
         ]
       }
@@ -5673,6 +5877,13 @@
             "type": "pubkey"
           },
           {
+            "name": "proposed_boss",
+            "docs": [
+              "Proposed new boss for two-step ownership transfer"
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "is_killed",
             "docs": [
               "Emergency kill switch to halt critical operations when activated"
@@ -5734,7 +5945,7 @@
             "type": {
               "array": [
                 "u8",
-                88
+                128
               ]
             }
           }

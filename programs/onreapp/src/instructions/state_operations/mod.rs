@@ -1,19 +1,23 @@
+pub mod accept_boss;
 pub mod add_admin;
 pub mod add_approver;
 pub mod clear_admins;
 pub mod configure_max_supply;
 pub mod migrate_v3;
+pub mod propose_boss;
 pub mod remove_admin;
 pub mod remove_approver;
 pub mod set_boss;
 pub mod set_kill_switch;
 pub mod set_onyc_mint;
 
+pub use accept_boss::*;
 pub use add_admin::*;
 pub use add_approver::*;
 pub use clear_admins::*;
 pub use configure_max_supply::*;
 pub use migrate_v3::*;
+pub use propose_boss::*;
 pub use remove_admin::*;
 pub use remove_approver::*;
 pub use set_boss::*;

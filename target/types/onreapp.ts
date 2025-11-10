@@ -46,6 +46,63 @@ export type Onreapp = {
   ],
   "instructions": [
     {
+      "name": "acceptBoss",
+      "docs": [
+        "Accepts the proposed boss transfer.",
+        "",
+        "Delegates to `accept_boss::accept_boss` to complete the ownership transfer.",
+        "This is the second step in a two-step ownership transfer process.",
+        "Only the proposed boss can call this instruction to accept and become the new boss.",
+        "Emits a `BossAcceptedEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `AcceptBoss`."
+      ],
+      "discriminator": [
+        152,
+        63,
+        117,
+        209,
+        67,
+        11,
+        250,
+        242
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing the boss and proposed_boss",
+            "",
+            "Must be mutable to allow boss field modification."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "newBoss",
+          "docs": [
+            "The proposed new boss account accepting the ownership transfer"
+          ],
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "addAdmin",
       "docs": [
         "Adds a new admin to the state.",
@@ -2468,6 +2525,73 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "proposeBoss",
+      "docs": [
+        "Proposes a new boss for ownership transfer.",
+        "",
+        "Delegates to `propose_boss::propose_boss` to propose a new boss authority.",
+        "This is the first step in a two-step ownership transfer process.",
+        "The proposed boss must then call accept_boss to complete the transfer.",
+        "Emits a `BossProposedEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `ProposeBoss`.",
+        "- `new_boss`: Public key of the proposed new boss."
+      ],
+      "discriminator": [
+        163,
+        199,
+        158,
+        47,
+        155,
+        78,
+        174,
+        173
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing the boss authority",
+            "",
+            "Must be mutable to allow proposed_boss field modification and have the current",
+            "boss account as the authorized signer."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The current boss account proposing the ownership transfer"
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newBoss",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "removeAdmin",
       "docs": [
         "Removes an admin from the state.",
@@ -4452,6 +4576,32 @@ export type Onreapp = {
   ],
   "events": [
     {
+      "name": "bossAcceptedEvent",
+      "discriminator": [
+        11,
+        133,
+        76,
+        152,
+        219,
+        5,
+        220,
+        103
+      ]
+    },
+    {
+      "name": "bossProposedEvent",
+      "discriminator": [
+        22,
+        117,
+        195,
+        6,
+        169,
+        57,
+        141,
+        17
+      ]
+    },
+    {
       "name": "bossUpdatedEvent",
       "discriminator": [
         50,
@@ -4762,6 +4912,60 @@ export type Onreapp = {
               "Unix timestamp when this approval expires"
             ],
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bossAcceptedEvent",
+      "docs": [
+        "Event emitted when the boss authority is successfully transferred",
+        "",
+        "Provides transparency for tracking ownership transfers and authority changes."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldBoss",
+            "docs": [
+              "The previous boss's public key before the update"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "newBoss",
+            "docs": [
+              "The new boss's public key after the update"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bossProposedEvent",
+      "docs": [
+        "Event emitted when a new boss is proposed",
+        "",
+        "Provides transparency for tracking ownership transfer proposals."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "currentBoss",
+            "docs": [
+              "The current boss's public key"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "proposedBoss",
+            "docs": [
+              "The proposed new boss's public key"
+            ],
+            "type": "pubkey"
           }
         ]
       }
@@ -5679,6 +5883,13 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
+            "name": "proposedBoss",
+            "docs": [
+              "Proposed new boss for two-step ownership transfer"
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "isKilled",
             "docs": [
               "Emergency kill switch to halt critical operations when activated"
@@ -5740,7 +5951,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                88
+                128
               ]
             }
           }
