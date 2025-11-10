@@ -147,7 +147,6 @@
           "docs": [
             "The boss account authorized to add new admins"
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -314,7 +313,6 @@
           "docs": [
             "The boss account authorized to add pricing vectors to offers"
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -394,7 +392,6 @@
           "docs": [
             "The boss account authorized to clear all admin privileges"
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -475,7 +472,6 @@
           "docs": [
             "The boss account authorized to close offers and receive rent"
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -672,7 +668,6 @@
           "docs": [
             "The boss account authorized to delete pricing vectors from offers"
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -2643,7 +2638,6 @@
           "docs": [
             "The boss account authorized to remove admin privileges"
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -4147,7 +4141,6 @@
             "Must be the current boss stored in program state and sign the transaction",
             "to authorize the mint authority transfer."
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -4256,7 +4249,6 @@
             "Must be the current boss stored in program state and currently hold",
             "mint authority for the specified token."
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -4426,7 +4418,6 @@
           "docs": [
             "The boss account authorized to update offer fees"
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -4443,19 +4434,6 @@
   ],
   "accounts": [
     {
-      "name": "MintAuthority",
-      "discriminator": [
-        148,
-        0,
-        219,
-        228,
-        254,
-        237,
-        76,
-        128
-      ]
-    },
-    {
       "name": "Offer",
       "discriminator": [
         215,
@@ -4466,19 +4444,6 @@
         162,
         73,
         229
-      ]
-    },
-    {
-      "name": "OfferVaultAuthority",
-      "discriminator": [
-        68,
-        19,
-        219,
-        165,
-        51,
-        111,
-        201,
-        255
       ]
     },
     {
@@ -4786,13 +4751,53 @@
   "errors": [
     {
       "code": 6000,
-      "name": "MathOverflow",
-      "msg": "Math overflow"
+      "name": "Expired",
+      "msg": "The approval message has expired."
     },
     {
       "code": 6001,
-      "name": "MaxSupplyExceeded",
-      "msg": "Minting would exceed maximum supply cap"
+      "name": "WrongProgram",
+      "msg": "The approval message is for the wrong program."
+    },
+    {
+      "code": 6002,
+      "name": "WrongUser",
+      "msg": "The approval message is for the wrong user."
+    },
+    {
+      "code": 6003,
+      "name": "MissingEd25519Ix",
+      "msg": "Missing Ed25519 instruction."
+    },
+    {
+      "code": 6004,
+      "name": "WrongIxProgram",
+      "msg": "The instruction is for the wrong program."
+    },
+    {
+      "code": 6005,
+      "name": "MalformedEd25519Ix",
+      "msg": "Malformed Ed25519 instruction."
+    },
+    {
+      "code": 6006,
+      "name": "MultipleSigs",
+      "msg": "Multiple signatures found in Ed25519 instruction."
+    },
+    {
+      "code": 6007,
+      "name": "WrongAuthority",
+      "msg": "The authority public key does not match."
+    },
+    {
+      "code": 6008,
+      "name": "MsgMismatch",
+      "msg": "The message in the Ed25519 instruction does not match the approval message."
+    },
+    {
+      "code": 6009,
+      "name": "MsgDeserialize",
+      "msg": "Failed to deserialize the approval message."
     }
   ],
   "types": [
@@ -5161,27 +5166,6 @@
       }
     },
     {
-      "name": "MintAuthority",
-      "docs": [
-        "Program-derived authority for direct token minting operations",
-        "",
-        "This PDA enables the program to mint tokens directly when it has mint authority,",
-        "supporting efficient burn/mint token exchange mechanisms."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "bump",
-            "docs": [
-              "PDA bump seed for account derivation"
-            ],
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
       "name": "MintAuthorityTransferredToBossEvent",
       "docs": [
         "Event emitted when mint authority is successfully transferred from program PDA to boss",
@@ -5464,27 +5448,6 @@
               "Whether the offer allows permissionless operations"
             ],
             "type": "bool"
-          }
-        ]
-      }
-    },
-    {
-      "name": "OfferVaultAuthority",
-      "docs": [
-        "Program-derived authority for controlling offer vault token accounts",
-        "",
-        "This PDA manages token transfers and burning operations for the vault accounts",
-        "used in burn/mint token exchange architecture."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "bump",
-            "docs": [
-              "PDA bump seed for account derivation"
-            ],
-            "type": "u8"
           }
         ]
       }
