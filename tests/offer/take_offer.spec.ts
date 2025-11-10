@@ -905,6 +905,74 @@ describe("Take Offer", () => {
                 const userBalance = await testHelper.getTokenAccountBalance(feeUserTokenOutAccount);
                 expect(userBalance).toEqual(BigInt(997_500_000)); // 0.9975 token out (based on 0.9975 USDC after 5% fee)
             });
+
+            it("Should handle fee collections when burning", async () => {
+                // Create separate token pair for fee test
+                const tokenInMint = testHelper.createMint(9);
+                const tokenOutMint = testHelper.createMint(6);
+
+                // Create an offer with fees
+                await program.makeOffer({
+                    tokenInMint,
+                    tokenOutMint,
+                    feeBasisPoints: 500 // 5% fee
+                });
+
+                // Transfer mint authority to program
+                await program.transferMintAuthorityToProgram({
+                    mint: tokenInMint
+                });
+
+                const currentTime = await testHelper.getCurrentClockTime();
+
+                await program.addOfferVector({
+                    tokenInMint,
+                    tokenOutMint,
+                    baseTime: currentTime,
+                    basePrice: 1e9,
+                    apr: 0,
+                    priceFixDuration: 86400
+                });
+
+                const tokenInAmount = 1e9; // 1 ONYC (includes 5% fee)
+
+                // Create token accounts
+                testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(10_000e6), true);
+                const bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, testHelper.getBoss(), BigInt(0));
+                testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(10_000e9));
+
+                // Create and fund vault
+                testHelper.createTokenAccount(tokenInMint, program.pdas.offerVaultAuthorityPda, BigInt(0), true);
+                testHelper.createTokenAccount(tokenOutMint, program.pdas.offerVaultAuthorityPda, BigInt(0), true);
+
+                // Fund vault
+                await program.offerVaultDeposit({
+                    amount: 10_000e9,
+                    tokenMint: tokenOutMint
+                });
+
+                await program.takeOffer({
+                    tokenInAmount,
+                    tokenInMint,
+                    tokenOutMint,
+                    user: user.publicKey,
+                    signer: user
+                });
+
+                // Verify boss received only fee (rest was burned)
+                const bossAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+                expect(bossAfter).toEqual(BigInt(50_000_000)); // Fee amount
+
+                // Verify user received correct token_out amount (based on net amount after fee)
+                const feeUserTokenOutAccount = getAssociatedTokenAddressSync(
+                    tokenOutMint,
+                    user.publicKey,
+                    true
+                );
+
+                const userBalance = await testHelper.getTokenAccountBalance(feeUserTokenOutAccount);
+                expect(userBalance).toEqual(BigInt(950_000)); // 0.95 token out
+            });
         });
     });
 

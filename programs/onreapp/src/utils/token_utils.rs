@@ -123,9 +123,9 @@ pub fn u64_to_dec9(n: u64) -> String {
 /// Result structure for fee calculation
 pub struct CalculateFeeResult {
     /// The calculated fee amount in token_in units
-    pub fee_amount: u64,
+    pub token_in_fee_amount: u64,
     /// The remaining token_in amount after fee deduction
-    pub remaining_token_in_amount: u64,
+    pub token_in_net_amount: u64,
 }
 
 /// Calculates fee amount and remaining amount after fee deduction
@@ -149,20 +149,20 @@ pub struct CalculateFeeResult {
 /// ```
 pub fn calculate_fees(token_in_amount: u64, fee_basis_points: u16) -> Result<CalculateFeeResult> {
     // Calculate fee amount in token_in tokens
-    let fee_amount = (token_in_amount as u128)
+    let token_fee_amount = (token_in_amount as u128)
         .checked_mul(fee_basis_points as u128)
         .ok_or(TokenUtilsErrorCode::MathOverflow)?
         .checked_div(MAX_BASIS_POINTS as u128)
         .ok_or(TokenUtilsErrorCode::MathOverflow)? as u64;
 
     // Amount after fee deduction for the main offer exchange
-    let remaining_token_in_amount = token_in_amount
-        .checked_sub(fee_amount)
+    let token_net_amount = token_in_amount
+        .checked_sub(token_fee_amount)
         .ok_or(TokenUtilsErrorCode::MathOverflow)?;
 
     Ok(CalculateFeeResult {
-        fee_amount,
-        remaining_token_in_amount,
+        token_in_fee_amount: token_fee_amount,
+        token_in_net_amount: token_net_amount,
     })
 }
 
@@ -267,8 +267,10 @@ pub struct ExecTokenOpsParams<'a, 'info> {
     // Token in params
     /// Mint account for the input token
     pub token_in_mint: &'a InterfaceAccount<'info, Mint>,
-    /// Amount of token_in to process
-    pub token_in_amount: u64,
+    /// Amount of token_in to process (without fee)
+    pub token_in_net_amount: u64,
+    /// Amount of token_in fee
+    pub token_in_fee_amount: u64,
     /// Authority that can transfer from the source account
     pub token_in_authority: &'a AccountInfo<'info>,
     /// Optional PDA seeds for program-signed token_in transfers
@@ -310,10 +312,12 @@ pub struct ExecTokenOpsParams<'a, 'info> {
 /// to provide maximum flexibility for different token configurations.
 ///
 /// # Token In Processing
-/// - If program has mint authority: transfers to vault → burns tokens (deflationary)
-/// - If program lacks mint authority: transfers directly to boss/destination (standard transfer)
+/// - If program has mint authority:
+///   - Transfers net amount (after fees) to vault → burns only net amount
+///   - Transfers fee amount directly to boss account
+/// - If program lacks mint authority: transfers full amount directly to boss/destination (standard transfer)
 ///
-/// # Token Out Processing  
+/// # Token Out Processing
 /// - If program has mint authority: mints directly to user (inflationary)
 /// - If program lacks mint authority: transfers from vault to user (standard transfer)
 ///
@@ -332,32 +336,52 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
     // Step 1: User pays token_in
     let controls_token_in_mint =
         program_controls_mint(params.token_in_mint, params.mint_authority_pda);
-    let token_in_destination = if controls_token_in_mint {
-        // transfer to program owned PDA for burning
-        params.token_in_burn_account
-    } else {
-        // transfer directly to boss/intermediary account (in permissionless flow)
-        params.token_in_destination_account
-    };
-
-    transfer_tokens(
-        params.token_in_mint,
-        params.token_in_program,
-        params.token_in_source_account,
-        token_in_destination,
-        params.token_in_authority,
-        params.token_in_source_signer_seeds,
-        params.token_in_amount,
-    )?;
 
     if controls_token_in_mint {
+        // Transfer net amount to burn account
+        transfer_tokens(
+            params.token_in_mint,
+            params.token_in_program,
+            params.token_in_source_account,
+            params.token_in_burn_account,
+            params.token_in_authority,
+            params.token_in_source_signer_seeds,
+            params.token_in_net_amount,
+        )?;
+
+        // Burn only the net amount (fees are not burned)
         burn_tokens(
             params.token_in_program,
             params.token_in_mint,
             params.token_in_burn_account,
             params.token_in_burn_authority,
             params.vault_authority_signer_seeds.unwrap(),
-            params.token_in_amount,
+            params.token_in_net_amount,
+        )?;
+
+        // Transfer fee amount directly to boss account
+        if params.token_in_fee_amount > 0 {
+            msg!("Transferring fee amount to boss account");
+            transfer_tokens(
+                params.token_in_mint,
+                params.token_in_program,
+                params.token_in_source_account,
+                params.token_in_destination_account,
+                params.token_in_authority,
+                params.token_in_source_signer_seeds,
+                params.token_in_fee_amount,
+            )?;
+        }
+    } else {
+        // When program lacks mint authority: transfer full amount to boss
+        transfer_tokens(
+            params.token_in_mint,
+            params.token_in_program,
+            params.token_in_source_account,
+            params.token_in_destination_account,
+            params.token_in_authority,
+            params.token_in_source_signer_seeds,
+            params.token_in_net_amount + params.token_in_fee_amount,
         )?;
     }
 
