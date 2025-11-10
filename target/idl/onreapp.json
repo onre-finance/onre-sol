@@ -4709,6 +4709,19 @@
       ]
     },
     {
+      "name": "OfferVectorRetiredEvent",
+      "discriminator": [
+        180,
+        96,
+        184,
+        169,
+        32,
+        32,
+        243,
+        215
+      ]
+    },
+    {
       "name": "OnycTokensMintedEvent",
       "discriminator": [
         241,
@@ -5653,6 +5666,38 @@
             "name": "vector_start_time",
             "docs": [
               "Start time of the deleted pricing vector"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OfferVectorRetiredEvent",
+      "docs": [
+        "Event emitted when old pricing vectors are retired from an offer"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offer_token_in_mint",
+            "docs": [
+              "The token in mint of the offer"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "offer_token_out_mint",
+            "docs": [
+              "The token out mint of the offer"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "vector_start_time",
+            "docs": [
+              "Start time of the retired pricing vector"
             ],
             "type": "u64"
           }
