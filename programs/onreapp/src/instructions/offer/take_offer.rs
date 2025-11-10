@@ -271,7 +271,8 @@ pub fn take_offer(
         // Token in params
         token_in_program: &ctx.accounts.token_in_program,
         token_in_mint: &ctx.accounts.token_in_mint,
-        token_in_amount, // Including fee
+        token_in_net_amount: result.token_in_net_amount,
+        token_in_fee_amount: result.token_in_fee_amount,
         token_in_authority: &ctx.accounts.user,
         token_in_source_signer_seeds: None,
         vault_authority_signer_seeds: Some(&[&[
@@ -297,8 +298,8 @@ pub fn take_offer(
     msg!(
         "Offer taken - PDA: {}, token_in(+fee): {}(+{}), token_out: {}, user: {}, price: {}",
         ctx.accounts.offer.key(),
-        result.token_in_amount,
-        result.fee_amount,
+        result.token_in_net_amount,
+        result.token_in_fee_amount,
         result.token_out_amount,
         ctx.accounts.user.key,
         u64_to_dec9(result.current_price)
@@ -306,9 +307,9 @@ pub fn take_offer(
 
     emit!(TakeOfferEvent {
         offer_pda: ctx.accounts.offer.key(),
-        token_in_amount: result.token_in_amount,
+        token_in_amount: result.token_in_net_amount,
         token_out_amount: result.token_out_amount,
-        fee_amount: result.fee_amount,
+        fee_amount: result.token_in_fee_amount,
         user: ctx.accounts.user.key(),
     });
 

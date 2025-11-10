@@ -35,11 +35,11 @@ pub struct OfferProcessResult {
     /// Current price with scale=9 (1_000_000_000 = 1.0) at the time of processing
     pub current_price: u64,
     /// Amount of token_in after fee deduction
-    pub token_in_amount: u64,
+    pub token_in_net_amount: u64,
+    /// Fee amount deducted from the original token_in amount
+    pub token_in_fee_amount: u64,
     /// Calculated amount of token_out to be provided to the user
     pub token_out_amount: u64,
-    /// Fee amount deducted from the original token_in amount
-    pub fee_amount: u64,
 }
 
 /// Verifies approval requirements for offer operations
@@ -138,7 +138,7 @@ pub fn process_offer_core(
 
     // Calculate how many token_out to give for the provided token_in_amount
     let token_out_amount = calculate_token_out_amount(
-        fee_amounts.remaining_token_in_amount,
+        fee_amounts.token_in_net_amount,
         current_price,
         token_in_mint.decimals,
         token_out_mint.decimals,
@@ -146,9 +146,9 @@ pub fn process_offer_core(
 
     Ok(OfferProcessResult {
         current_price,
-        token_in_amount: fee_amounts.remaining_token_in_amount,
+        token_in_net_amount: fee_amounts.token_in_net_amount,
         token_out_amount,
-        fee_amount: fee_amounts.fee_amount,
+        token_in_fee_amount: fee_amounts.token_in_fee_amount,
     })
 }
 
@@ -292,7 +292,6 @@ pub fn calculate_step_price_at(
     // Use the vector price calculation with the effective elapsed time
     calculate_vector_price(apr, base_price, step_end_time)
 }
-
 
 /// Finds the array index of a pricing vector by its start time
 ///
