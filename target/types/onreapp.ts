@@ -4715,6 +4715,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "offerVectorRetiredEvent",
+      "discriminator": [
+        180,
+        96,
+        184,
+        169,
+        32,
+        32,
+        243,
+        215
+      ]
+    },
+    {
       "name": "onycTokensMintedEvent",
       "discriminator": [
         241,
@@ -5659,6 +5672,38 @@ export type Onreapp = {
             "name": "vectorStartTime",
             "docs": [
               "Start time of the deleted pricing vector"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "offerVectorRetiredEvent",
+      "docs": [
+        "Event emitted when old pricing vectors are retired from an offer"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerTokenInMint",
+            "docs": [
+              "The token in mint of the offer"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "offerTokenOutMint",
+            "docs": [
+              "The token out mint of the offer"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "vectorStartTime",
+            "docs": [
+              "Start time of the retired pricing vector"
             ],
             "type": "u64"
           }

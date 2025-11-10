@@ -26,6 +26,17 @@ pub struct OfferVectorAddedEvent {
     pub price_fix_duration: u64,
 }
 
+/// Event emitted when old pricing vectors are retired from an offer
+#[event]
+pub struct OfferVectorRetiredEvent {
+    /// The token in mint of the offer
+    pub offer_token_in_mint: Pubkey,
+    /// The token out mint of the offer
+    pub offer_token_out_mint: Pubkey,
+    /// Start time of the retired pricing vector
+    pub vector_start_time: u64,
+}
+
 /// Account structure for adding a pricing vector to an offer
 ///
 /// This struct defines the accounts required to add a time-based pricing vector
@@ -256,6 +267,11 @@ fn clean_old_vectors(offer: &mut Offer, new_vector: &OfferVector, current_time: 
             // Keep all future vectors
             && vector.start_time < active_vector_start_time
         {
+            emit!(OfferVectorRetiredEvent {
+                offer_token_in_mint: offer.token_in_mint,
+                offer_token_out_mint: offer.token_out_mint,
+                vector_start_time: vector.start_time
+            });
             *vector = OfferVector::default(); // Clear the vector
         }
     }
