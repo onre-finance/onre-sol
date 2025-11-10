@@ -1,3 +1,4 @@
+use crate::constants::MAX_ADMINS;
 use anchor_lang::prelude::*;
 
 /// Global program state containing governance and configuration settings
@@ -42,6 +43,3 @@ pub struct PermissionlessAuthority {
     /// PDA bump seed for account derivation
     pub bump: u8,
 }
-
-/// Maximum number of admin accounts that can be stored in program state
-pub const MAX_ADMINS: usize = 20;

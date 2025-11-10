@@ -1,4 +1,4 @@
-use crate::constants::seeds;
+use crate::constants::{seeds, MAX_ADMINS};
 use crate::state::State;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
@@ -108,7 +108,7 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
     state.onyc_mint = ctx.accounts.onyc_mint.key();
 
     // Initialize admin list as empty
-    state.admins = [Pubkey::default(); crate::state::MAX_ADMINS];
+    state.admins = [Pubkey::default(); MAX_ADMINS];
 
     // Leave approvers unset initially (must be configured via add_approver)
     state.approver1 = Pubkey::default();

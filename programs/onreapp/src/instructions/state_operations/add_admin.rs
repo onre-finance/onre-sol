@@ -1,5 +1,5 @@
-use crate::constants::seeds;
-use crate::state::{State, MAX_ADMINS};
+use crate::constants::{seeds, MAX_ADMINS};
+use crate::state::State;
 use anchor_lang::prelude::*;
 
 /// Account structure for adding a new admin to the program state

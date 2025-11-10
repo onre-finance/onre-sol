@@ -1,5 +1,5 @@
-use crate::constants::seeds;
-use crate::state::{State, MAX_ADMINS};
+use crate::constants::{seeds, MAX_ADMINS};
+use crate::state::State;
 use crate::AccountInfo;
 use anchor_lang::prelude::*;
 

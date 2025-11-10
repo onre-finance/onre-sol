@@ -1,13 +1,10 @@
-use crate::constants::seeds;
+use crate::constants::{seeds, MAX_BASIS_POINTS, PRICE_DECIMALS};
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program_option::COption;
 use anchor_spl::token_interface;
 use anchor_spl::token_interface::{
     BurnChecked, Mint, MintToChecked, TokenAccount, TokenInterface, TransferChecked,
 };
-
-pub const MAX_BASIS_POINTS: u16 = 10000;
-pub const PRICE_DECIMALS: u8 = 9;
 
 #[error_code]
 pub enum TokenUtilsErrorCode {

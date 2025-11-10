@@ -1,7 +1,6 @@
-use crate::constants::seeds;
+use crate::constants::{seeds, MAX_ALLOWED_FEE_BPS};
 use crate::instructions::Offer;
 use crate::state::State;
-use crate::utils::MAX_BASIS_POINTS;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
@@ -44,7 +43,7 @@ pub struct MakeOffer<'info> {
 
     /// The input token mint for the offer
     pub token_in_mint: InterfaceAccount<'info, Mint>,
-    
+
     /// Token program interface for the input token
     pub token_in_program: Interface<'info, TokenInterface>,
 
@@ -135,7 +134,7 @@ pub fn make_offer(
 ) -> Result<()> {
     // Validate fee is within valid range (0-10000 basis points = 0-100%)
     require!(
-        fee_basis_points <= MAX_BASIS_POINTS,
+        fee_basis_points <= MAX_ALLOWED_FEE_BPS,
         MakeOfferErrorCode::InvalidFee
     );
 
@@ -169,11 +168,11 @@ pub enum MakeOfferErrorCode {
     /// The offer account is full and cannot accommodate more offers
     #[msg("Offer account is full, cannot create more offers")]
     AccountFull,
-    
+
     /// Fee basis points exceeds maximum allowed value of 10000 (100%)
     #[msg("Invalid fee: fee_basis_points must be <= 10000")]
     InvalidFee,
-    
+
     /// Invalid token program interface provided
     #[msg("Invalid token program")]
     InvalidTokenProgram,
