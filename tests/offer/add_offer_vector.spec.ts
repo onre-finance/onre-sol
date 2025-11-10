@@ -3,7 +3,7 @@ import { TestHelper } from "../test_helper";
 import { BN } from "@coral-xyz/anchor";
 import { OnreProgram } from "../onre_program.ts";
 
-const MAX_SEGMENTS = 10;
+const MAX_VECTORS = 10;
 
 describe("Add Offer Vector", () => {
     let testHelper: TestHelper;
@@ -293,7 +293,7 @@ describe("Add Offer Vector", () => {
         const priceFixDuration = 3600;
 
         // Add maximum number of vectors
-        for (let i = 1; i <= MAX_SEGMENTS; i++) {
+        for (let i = 1; i <= MAX_VECTORS; i++) {
             const vectorStartTime = currentTime + (i * vectorTimeOffset);
 
             await program.addOfferVector({
@@ -307,7 +307,7 @@ describe("Add Offer Vector", () => {
         }
 
         // Try to add one more vector (should fail)
-        const vectorStartTime = currentTime + ((MAX_SEGMENTS + 1) * vectorTimeOffset);
+        const vectorStartTime = currentTime + ((MAX_VECTORS + 1) * vectorTimeOffset);
 
         await expect(
             program.addOfferVector({
@@ -551,5 +551,58 @@ describe("Add Offer Vector", () => {
         // Verify vector 1 and 2 were cleaned up (oldest past vector)
         expect(remainingPrices).not.toContain(1000000); // Vector 1 price
         expect(remainingPrices).not.toContain(2000000); // Vector 2 price
+    });
+
+    it("Should fail to add vector when array is full even if cleanup would make space (W6 bug)", async () => {
+        await program.makeOffer({
+            tokenInMint,
+            tokenOutMint
+        });
+        let currentTime = await testHelper.getCurrentClockTime();
+
+        // Add MAX_VECTORS vectors all in the future to avoid cleanup
+        for (let i = 1; i <= MAX_VECTORS; i++) {
+            await program.addOfferVector({
+                tokenInMint,
+                tokenOutMint,
+                startTime: currentTime + (i * 1000),
+                startPrice: i * 1000000,
+                apr: 5000,
+                priceFixDuration: 3600
+            });
+        }
+
+        const lastVectorStartTime = currentTime + (MAX_VECTORS * 1000);
+
+        // Verify all MAX_VECTORS vectors were added
+        let offer = await program.getOffer(tokenInMint, tokenOutMint);
+        let activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
+        expect(activeVectors.length).toBe(MAX_VECTORS);
+        let loggedVectors = activeVectors.map(v => v.startTime.toNumber());
+        console.log("Vectors:", JSON.stringify(loggedVectors, null, 2));
+
+        // Time travel far into the future so all vectors are now in the past
+        await testHelper.advanceClockBy(100_000);
+        currentTime = await testHelper.getCurrentClockTime();
+
+        // Try to add another vector with base time in past, start time should be NOW - should NOT fail because clean up should free up space before adding the vector
+        await program.addOfferVector({
+            tokenInMint,
+            tokenOutMint,
+            startTime: currentTime - 1000,
+            startPrice: 11000000,
+            apr: 5000,
+            priceFixDuration: 3600
+        });
+
+        // Verify that we have only two vectors
+        offer = await program.getOffer(tokenInMint, tokenOutMint);
+        activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
+        expect(activeVectors.length).toBe(2);
+        expect(activeVectors[0].startTime.toNumber()).toBe(currentTime);
+        expect(activeVectors[0].baseTime.toNumber()).toBe(currentTime - 1000);
+
+        expect(activeVectors[1].startTime.toNumber()).toBe(lastVectorStartTime);
+        expect(activeVectors[1].baseTime.toNumber()).toBe(lastVectorStartTime);
     });
 });
