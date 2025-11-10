@@ -6,7 +6,6 @@ use crate::instructions::Offer;
 use crate::OfferCoreError;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 
-use crate::state::OfferVaultAuthority;
 use crate::utils::PRICE_DECIMALS;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
@@ -78,8 +77,9 @@ pub struct GetTVL<'info> {
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 
     /// The vault authority PDA that controls vault token accounts
-    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump = vault_authority.bump)]
-    pub vault_authority: Account<'info, OfferVaultAuthority>,
+    /// CHECK: PDA derivation is validated by seeds constraint
+    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
+    pub vault_authority: AccountInfo<'info>,
 
     /// The vault's token_out account to exclude from circulating supply
     ///

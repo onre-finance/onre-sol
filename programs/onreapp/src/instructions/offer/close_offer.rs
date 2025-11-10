@@ -55,7 +55,6 @@ pub struct CloseOffer<'info> {
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 
     /// The boss account authorized to close offers and receive rent
-    #[account(mut)]
     pub boss: Signer<'info>,
 
     /// Program state account containing boss authorization

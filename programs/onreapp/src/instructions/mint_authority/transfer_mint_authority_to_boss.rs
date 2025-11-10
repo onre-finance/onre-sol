@@ -1,5 +1,5 @@
 use crate::constants::seeds;
-use crate::state::{MintAuthority, State};
+use crate::state::State;
 use anchor_lang::prelude::*;
 use anchor_spl::token::spl_token::instruction::AuthorityType;
 use anchor_spl::token::{set_authority, SetAuthority};
@@ -48,7 +48,6 @@ pub struct TransferMintAuthorityToBoss<'info> {
     ///
     /// Must be the current boss stored in program state and sign the transaction
     /// to authorize the mint authority transfer.
-    #[account(mut)]
     pub boss: Signer<'info>,
 
     /// Program state account containing boss validation
@@ -72,9 +71,9 @@ pub struct TransferMintAuthorityToBoss<'info> {
     /// CHECK: PDA derivation is validated by seeds constraint, authority is validated by mint constraint
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
-        bump = mint_authority.bump
+        bump
     )]
-    pub mint_authority: Account<'info, MintAuthority>,
+    pub mint_authority: AccountInfo<'info>,
 
     /// SPL Token program for mint authority operations
     pub token_program: Interface<'info, TokenInterface>,
@@ -106,7 +105,7 @@ pub struct TransferMintAuthorityToBoss<'info> {
 /// * `MintAuthorityTransferredToBossEvent` - Emitted on successful authority transfer
 pub fn transfer_mint_authority_to_boss(ctx: Context<TransferMintAuthorityToBoss>) -> Result<()> {
     // Construct PDA signer seeds for authorization
-    let seeds = &[seeds::MINT_AUTHORITY, &[ctx.accounts.mint_authority.bump]];
+    let seeds = &[seeds::MINT_AUTHORITY, &[ctx.bumps.mint_authority]];
     let signer_seeds = &[seeds.as_slice()];
 
     // Transfer mint authority from program PDA back to boss using program signature

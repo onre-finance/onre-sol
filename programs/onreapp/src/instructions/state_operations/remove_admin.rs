@@ -1,5 +1,5 @@
-use crate::state::{State, MAX_ADMINS};
 use crate::constants::seeds;
+use crate::state::{State, MAX_ADMINS};
 use anchor_lang::prelude::*;
 
 /// Account structure for removing an admin from the program state
@@ -21,8 +21,7 @@ pub struct RemoveAdmin<'info> {
     pub state: Account<'info, State>,
 
     /// The boss account authorized to remove admin privileges
-    #[account(mut)]
-    pub boss: Signer<'info>
+    pub boss: Signer<'info>,
 }
 
 /// Removes admin privileges from a specific account

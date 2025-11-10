@@ -1,19 +1,20 @@
 use crate::constants::seeds;
-use crate::state::{OfferVaultAuthority, State};
+use crate::state::State;
 use anchor_lang::prelude::*;
 
 /// Account structure for initializing vault authority account.
 #[derive(Accounts)]
 pub struct InitializeVaultAuthority<'info> {
     /// The offer vault authority account to initialize, rent paid by `boss`.
+    /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
         init,
         payer = boss,
-        space = 8 + OfferVaultAuthority::INIT_SPACE,
+        space = 8,
         seeds = [seeds::OFFER_VAULT_AUTHORITY],
         bump
     )]
-    pub offer_vault_authority: Account<'info, OfferVaultAuthority>,
+    pub offer_vault_authority: AccountInfo<'info>,
 
     /// Program state, ensures `boss` is authorized.
     #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss)]
@@ -37,8 +38,7 @@ pub struct InitializeVaultAuthority<'info> {
 ///
 /// # Returns
 /// A `Result` indicating success or failure.
-pub fn initialize_vault_authority(ctx: Context<InitializeVaultAuthority>) -> Result<()> {
-    ctx.accounts.offer_vault_authority.bump = ctx.bumps.offer_vault_authority;
+pub fn initialize_vault_authority(_ctx: Context<InitializeVaultAuthority>) -> Result<()> {
     msg!("Vault authority initialized successfully");
     Ok(())
 }

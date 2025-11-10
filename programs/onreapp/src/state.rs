@@ -29,28 +29,6 @@ pub struct State {
     pub reserved: [u8; 128],
 }
 
-/// Program-derived authority for controlling offer vault token accounts
-///
-/// This PDA manages token transfers and burning operations for the vault accounts
-/// used in burn/mint token exchange architecture.
-#[account]
-#[derive(InitSpace)]
-pub struct OfferVaultAuthority {
-    /// PDA bump seed for account derivation
-    pub bump: u8,
-}
-
-/// Program-derived authority for direct token minting operations
-///
-/// This PDA enables the program to mint tokens directly when it has mint authority,
-/// supporting efficient burn/mint token exchange mechanisms.
-#[account]
-#[derive(InitSpace)]
-pub struct MintAuthority {
-    /// PDA bump seed for account derivation
-    pub bump: u8,
-}
-
 /// Program-derived authority for permissionless token routing operations
 ///
 /// This PDA manages intermediary accounts used for permissionless offer execution,

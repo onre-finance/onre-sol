@@ -153,7 +153,6 @@ export type Onreapp = {
           "docs": [
             "The boss account authorized to add new admins"
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -320,7 +319,6 @@ export type Onreapp = {
           "docs": [
             "The boss account authorized to add pricing vectors to offers"
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -400,7 +398,6 @@ export type Onreapp = {
           "docs": [
             "The boss account authorized to clear all admin privileges"
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -481,7 +478,6 @@ export type Onreapp = {
           "docs": [
             "The boss account authorized to close offers and receive rent"
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -678,7 +674,6 @@ export type Onreapp = {
           "docs": [
             "The boss account authorized to delete pricing vectors from offers"
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -2649,7 +2644,6 @@ export type Onreapp = {
           "docs": [
             "The boss account authorized to remove admin privileges"
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -4153,7 +4147,6 @@ export type Onreapp = {
             "Must be the current boss stored in program state and sign the transaction",
             "to authorize the mint authority transfer."
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -4262,7 +4255,6 @@ export type Onreapp = {
             "Must be the current boss stored in program state and currently hold",
             "mint authority for the specified token."
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -4432,7 +4424,6 @@ export type Onreapp = {
           "docs": [
             "The boss account authorized to update offer fees"
           ],
-          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -4449,19 +4440,6 @@ export type Onreapp = {
   ],
   "accounts": [
     {
-      "name": "mintAuthority",
-      "discriminator": [
-        148,
-        0,
-        219,
-        228,
-        254,
-        237,
-        76,
-        128
-      ]
-    },
-    {
       "name": "offer",
       "discriminator": [
         215,
@@ -4472,19 +4450,6 @@ export type Onreapp = {
         162,
         73,
         229
-      ]
-    },
-    {
-      "name": "offerVaultAuthority",
-      "discriminator": [
-        68,
-        19,
-        219,
-        165,
-        51,
-        111,
-        201,
-        255
       ]
     },
     {
@@ -4792,13 +4757,53 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "mathOverflow",
-      "msg": "Math overflow"
+      "name": "expired",
+      "msg": "The approval message has expired."
     },
     {
       "code": 6001,
-      "name": "maxSupplyExceeded",
-      "msg": "Minting would exceed maximum supply cap"
+      "name": "wrongProgram",
+      "msg": "The approval message is for the wrong program."
+    },
+    {
+      "code": 6002,
+      "name": "wrongUser",
+      "msg": "The approval message is for the wrong user."
+    },
+    {
+      "code": 6003,
+      "name": "missingEd25519Ix",
+      "msg": "Missing Ed25519 instruction."
+    },
+    {
+      "code": 6004,
+      "name": "wrongIxProgram",
+      "msg": "The instruction is for the wrong program."
+    },
+    {
+      "code": 6005,
+      "name": "malformedEd25519Ix",
+      "msg": "Malformed Ed25519 instruction."
+    },
+    {
+      "code": 6006,
+      "name": "multipleSigs",
+      "msg": "Multiple signatures found in Ed25519 instruction."
+    },
+    {
+      "code": 6007,
+      "name": "wrongAuthority",
+      "msg": "The authority public key does not match."
+    },
+    {
+      "code": 6008,
+      "name": "msgMismatch",
+      "msg": "The message in the Ed25519 instruction does not match the approval message."
+    },
+    {
+      "code": 6009,
+      "name": "msgDeserialize",
+      "msg": "Failed to deserialize the approval message."
     }
   ],
   "types": [
@@ -5167,27 +5172,6 @@ export type Onreapp = {
       }
     },
     {
-      "name": "mintAuthority",
-      "docs": [
-        "Program-derived authority for direct token minting operations",
-        "",
-        "This PDA enables the program to mint tokens directly when it has mint authority,",
-        "supporting efficient burn/mint token exchange mechanisms."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "bump",
-            "docs": [
-              "PDA bump seed for account derivation"
-            ],
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
       "name": "mintAuthorityTransferredToBossEvent",
       "docs": [
         "Event emitted when mint authority is successfully transferred from program PDA to boss",
@@ -5470,27 +5454,6 @@ export type Onreapp = {
               "Whether the offer allows permissionless operations"
             ],
             "type": "bool"
-          }
-        ]
-      }
-    },
-    {
-      "name": "offerVaultAuthority",
-      "docs": [
-        "Program-derived authority for controlling offer vault token accounts",
-        "",
-        "This PDA manages token transfers and burning operations for the vault accounts",
-        "used in burn/mint token exchange architecture."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "bump",
-            "docs": [
-              "PDA bump seed for account derivation"
-            ],
-            "type": "u8"
           }
         ]
       }

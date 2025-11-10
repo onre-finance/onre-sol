@@ -1,5 +1,5 @@
-use crate::state::{State, MAX_ADMINS};
 use crate::constants::seeds;
+use crate::state::{State, MAX_ADMINS};
 use anchor_lang::prelude::*;
 
 /// Account structure for adding a new admin to the program state
@@ -21,7 +21,6 @@ pub struct AddAdmin<'info> {
     pub state: Account<'info, State>,
 
     /// The boss account authorized to add new admins
-    #[account(mut)]
     pub boss: Signer<'info>,
 }
 

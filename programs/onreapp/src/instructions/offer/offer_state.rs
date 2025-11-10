@@ -1,7 +1,6 @@
 use anchor_lang::prelude::*;
 
 pub const MAX_VECTORS: usize = 10;
-pub const MAX_OFFERS: usize = 10;
 
 /// Token exchange offer with dynamic APR-based pricing
 ///

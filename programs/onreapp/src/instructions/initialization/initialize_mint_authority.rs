@@ -1,19 +1,20 @@
 use crate::constants::seeds;
-use crate::state::{MintAuthority, State};
+use crate::state::State;
 use anchor_lang::prelude::*;
 
 /// Account structure for initializing mint authority account.
 #[derive(Accounts)]
 pub struct InitializeMintAuthority<'info> {
     /// The offer mint authority account to initialize, rent paid by `boss`.
+    /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
         init,
         payer = boss,
-        space = 8 + MintAuthority::INIT_SPACE,
+        space = 8,
         seeds = [seeds::MINT_AUTHORITY],
         bump
     )]
-    pub mint_authority: Account<'info, MintAuthority>,
+    pub mint_authority: AccountInfo<'info>,
 
     /// Program state, ensures `boss` is authorized.
     #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss)]
@@ -37,8 +38,7 @@ pub struct InitializeMintAuthority<'info> {
 ///
 /// # Returns
 /// A `Result` indicating success or failure.
-pub fn initialize_mint_authority(ctx: Context<InitializeMintAuthority>) -> Result<()> {
-    ctx.accounts.mint_authority.bump = ctx.bumps.mint_authority;
+pub fn initialize_mint_authority(_ctx: Context<InitializeMintAuthority>) -> Result<()> {
     msg!("Mint authority initialized successfully");
     Ok(())
 }

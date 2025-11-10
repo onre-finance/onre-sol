@@ -1,5 +1,5 @@
 use crate::constants::seeds;
-use crate::state::{MintAuthority, State};
+use crate::state::State;
 use crate::utils::token_utils::mint_tokens;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
@@ -73,10 +73,10 @@ pub struct MintTo<'info> {
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
-        bump = mint_authority.bump,
-        constraint = onyc_mint.mint_authority.unwrap() == mint_authority.key() @ MintToErrorCode::NoMintAuthority
+        constraint = onyc_mint.mint_authority.unwrap() == mint_authority.key() @ MintToErrorCode::NoMintAuthority,
+        bump
     )]
-    pub mint_authority: Account<'info, MintAuthority>,
+    pub mint_authority: AccountInfo<'info>,
 
     /// SPL Token program for minting operations
     pub token_program: Interface<'info, TokenInterface>,
@@ -114,7 +114,7 @@ pub struct MintTo<'info> {
 /// # Events
 /// * `OnycTokensMinted` - Emitted on successful minting with details
 pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
-    let mint_authority_seeds = &[seeds::MINT_AUTHORITY, &[ctx.accounts.mint_authority.bump]];
+    let mint_authority_seeds = &[seeds::MINT_AUTHORITY, &[ctx.bumps.mint_authority]];
     let mint_authority_signer_seeds = &[mint_authority_seeds.as_slice()];
 
     // Mint tokens to the boss's ONyc account with max supply validation
