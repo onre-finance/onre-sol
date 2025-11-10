@@ -89,11 +89,12 @@ pub struct DeleteOfferVector<'info> {
 /// * `OfferVectorDeletedEvent` - Emitted with offer PDA and deleted vector start time
 pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_start_time: u64) -> Result<()> {
     let offer = &mut ctx.accounts.offer.load_mut()?;
+    let now = Clock::get()?.unix_timestamp as u64;
 
     // Validate inputs
     require!(
-        vector_start_time != 0,
-        DeleteOfferVectorErrorCode::VectorNotFound
+        vector_start_time > now,
+        DeleteOfferVectorErrorCode::StartTimeInPast
     );
 
     // Find and delete the vector by vector_start_time
@@ -123,4 +124,7 @@ pub enum DeleteOfferVectorErrorCode {
     /// The specified start_time is zero or no vector exists with that start_time
     #[msg("Vector not found")]
     VectorNotFound,
+    /// The specified start_time is in the past
+    #[msg("Invalid input: start_time must be in the future")]
+    StartTimeInPast,
 }
