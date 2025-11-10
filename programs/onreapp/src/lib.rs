@@ -226,13 +226,6 @@ pub mod onreapp {
         initialize_permissionless_authority::initialize_permissionless_authority(ctx, name)
     }
 
-    /// Updates the boss in the program state.
-    ///
-    /// Delegates to `set_boss::set_boss` to change the boss, emitting a `BossUpdated` event.
-    pub fn set_boss(ctx: Context<SetBoss>, new_boss: Pubkey) -> Result<()> {
-        state_operations::set_boss(ctx, new_boss)
-    }
-
     /// Proposes a new boss for ownership transfer.
     ///
     /// Delegates to `propose_boss::propose_boss` to propose a new boss authority.

@@ -2721,73 +2721,6 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "setBoss",
-      "docs": [
-        "Updates the boss in the program state.",
-        "",
-        "Delegates to `set_boss::set_boss` to change the boss, emitting a `BossUpdated` event."
-      ],
-      "discriminator": [
-        144,
-        141,
-        235,
-        104,
-        167,
-        250,
-        41,
-        54
-      ],
-      "accounts": [
-        {
-          "name": "state",
-          "docs": [
-            "Program state account containing the boss authority to be updated",
-            "",
-            "Must be mutable to allow boss field modification and have the current",
-            "boss account as the authorized signer for ownership transfer."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "boss",
-          "docs": [
-            "The current boss account authorizing the ownership transfer"
-          ],
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "systemProgram",
-          "docs": [
-            "System program for potential account operations"
-          ],
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "newBoss",
-          "type": "pubkey"
-        }
-      ]
-    },
-    {
       "name": "setKillSwitch",
       "docs": [
         "Enables or disables the kill switch.",
@@ -4609,19 +4542,6 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "bossUpdatedEvent",
-      "discriminator": [
-        50,
-        213,
-        189,
-        211,
-        27,
-        13,
-        194,
-        199
-      ]
-    },
-    {
       "name": "closeOfferEvent",
       "discriminator": [
         254,
@@ -4971,33 +4891,6 @@ export type Onreapp = {
             "name": "proposedBoss",
             "docs": [
               "The proposed new boss's public key"
-            ],
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "bossUpdatedEvent",
-      "docs": [
-        "Event emitted when the boss authority is successfully updated",
-        "",
-        "Provides transparency for tracking ownership transfers and authority changes."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "oldBoss",
-            "docs": [
-              "The previous boss's public key before the update"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "newBoss",
-            "docs": [
-              "The new boss's public key after the update"
             ],
             "type": "pubkey"
           }
