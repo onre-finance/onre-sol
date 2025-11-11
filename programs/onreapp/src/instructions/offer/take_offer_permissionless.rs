@@ -81,10 +81,6 @@ pub struct TakeOfferPermissionless<'info> {
     /// This PDA manages token transfers and burning operations for the
     /// burn/mint architecture when program has mint authority.
     /// CHECK: PDA derivation is validated by seeds constraint
-    #[account(
-        seeds = [seeds::OFFER_VAULT_AUTHORITY],
-        bump
-    )]
     pub vault_authority: UncheckedAccount<'info>,
 
     /// Vault account for temporary token_in storage during burn operations
@@ -116,10 +112,6 @@ pub struct TakeOfferPermissionless<'info> {
     /// This PDA manages the intermediary accounts used for permissionless token
     /// routing, enabling secure transfers without direct user-boss relationships.
     /// CHECK: PDA derivation is validated by seeds constraint
-    #[account(
-        seeds = [seeds::PERMISSIONLESS_AUTHORITY],
-        bump
-    )]
     pub permissionless_authority: UncheckedAccount<'info>,
 
     /// Intermediary account for routing token_in payments
@@ -208,10 +200,6 @@ pub struct TakeOfferPermissionless<'info> {
     /// Used when the program has mint authority and can mint token_out
     /// directly instead of transferring from vault.
     /// CHECK: PDA derivation is validated through seeds constraint
-    #[account(
-        seeds = [seeds::MINT_AUTHORITY],
-        bump
-    )]
     pub mint_authority: UncheckedAccount<'info>,
 
     /// Instructions sysvar for approval signature verification
@@ -271,6 +259,15 @@ pub fn take_offer_permissionless(
     token_in_amount: u64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
+    let (va, va_bump) =
+        Pubkey::find_program_address(&[seeds::OFFER_VAULT_AUTHORITY], ctx.program_id);
+        require_keys_eq!(va, ctx.accounts.vault_authority.key());
+    let (pa, pa_bump) =
+        Pubkey::find_program_address(&[seeds::PERMISSIONLESS_AUTHORITY], ctx.program_id);
+    require_keys_eq!(pa, ctx.accounts.permissionless_authority.key());
+    let (ma, ma_bump) =
+        Pubkey::find_program_address(&[seeds::MINT_AUTHORITY], ctx.program_id);
+    require_keys_eq!(ma, ctx.accounts.mint_authority.key());
     // validate state account
     {
         let state = &ctx.accounts.state;
@@ -345,11 +342,11 @@ pub fn take_offer_permissionless(
         token_in_authority: &ctx.accounts.permissionless_authority.to_account_info(),
         token_in_source_signer_seeds: Some(&[&[
             seeds::PERMISSIONLESS_AUTHORITY,
-            &[ctx.bumps.permissionless_authority],
+            &[pa_bump],
         ]]),
         vault_authority_signer_seeds: Some(&[&[
             seeds::OFFER_VAULT_AUTHORITY,
-            &[ctx.bumps.vault_authority],
+            &[va_bump],
         ]]),
         token_in_source_account: &ctx.accounts.permissionless_token_in_account,
         token_in_destination_account: &ctx.accounts.boss_token_in_account,
@@ -363,7 +360,7 @@ pub fn take_offer_permissionless(
         token_out_source_account: &ctx.accounts.vault_token_out_account,
         token_out_destination_account: &ctx.accounts.permissionless_token_out_account,
         mint_authority_pda: &ctx.accounts.mint_authority.to_account_info(),
-        mint_authority_bump: &[ctx.bumps.mint_authority],
+        mint_authority_bump: &[ma_bump],
         token_out_max_supply: ctx.accounts.state.max_supply,
     })?;
 
@@ -375,7 +372,7 @@ pub fn take_offer_permissionless(
         &ctx.accounts.permissionless_authority.to_account_info(),
         Some(&[&[
             seeds::PERMISSIONLESS_AUTHORITY,
-            &[ctx.bumps.permissionless_authority],
+            &[pa_bump],
         ]]),
         result.token_out_amount,
     )?;

@@ -3494,37 +3494,7 @@ export type Onreapp = {
             "",
             "This PDA manages token transfers and burning operations for the",
             "burn/mint architecture when program has mint authority."
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
+          ]
         },
         {
           "name": "vaultTokenInAccount",
@@ -3659,32 +3629,7 @@ export type Onreapp = {
             "",
             "This PDA manages the intermediary accounts used for permissionless token",
             "routing, enabling secure transfers without direct user-boss relationships."
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  101,
-                  114,
-                  109,
-                  105,
-                  115,
-                  115,
-                  105,
-                  111,
-                  110,
-                  108,
-                  101,
-                  115,
-                  115,
-                  45,
-                  49
-                ]
-              }
-            ]
-          }
+          ]
         },
         {
           "name": "permissionlessTokenInAccount",
@@ -4040,30 +3985,7 @@ export type Onreapp = {
             "",
             "Used when the program has mint authority and can mint token_out",
             "directly instead of transferring from vault."
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  105,
-                  110,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
+          ]
         },
         {
           "name": "instructionsSysvar",
