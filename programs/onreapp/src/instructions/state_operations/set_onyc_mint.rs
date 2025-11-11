@@ -8,7 +8,7 @@ use anchor_spl::token_interface::Mint;
 ///
 /// Provides transparency for tracking ONyc mint configuration changes.
 #[event]
-pub struct ONycMintUpdated {
+pub struct ONycMintUpdatedEvent {
     /// The previous ONyc mint public key before the update
     pub old_onyc_mint: Pubkey,
     /// The new ONyc mint public key after the update
@@ -70,7 +70,7 @@ pub fn set_onyc_mint(ctx: Context<SetOnycMint>) -> Result<()> {
     state.onyc_mint = ctx.accounts.onyc_mint.key();
 
     msg!("ONyc mint updated: {}", state.onyc_mint);
-    emit!(ONycMintUpdated {
+    emit!(ONycMintUpdatedEvent {
         old_onyc_mint,
         new_onyc_mint: state.onyc_mint,
     });

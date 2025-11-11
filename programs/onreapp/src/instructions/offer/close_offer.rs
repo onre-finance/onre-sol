@@ -9,7 +9,7 @@ use anchor_spl::token_interface::Mint;
 ///
 /// Provides transparency for tracking offer lifecycle and account cleanup operations.
 #[event]
-pub struct CloseOfferEvent {
+pub struct OfferClosedEvent {
     /// The PDA address of the offer that was closed
     pub offer_pda: Pubkey,
     /// The boss account that initiated the closure and received the rent
@@ -93,7 +93,7 @@ pub struct CloseOffer<'info> {
 /// # Events
 /// * `CloseOfferEvent` - Emitted with offer PDA and boss details
 pub fn close_offer(ctx: Context<CloseOffer>) -> Result<()> {
-    emit!(CloseOfferEvent {
+    emit!(OfferClosedEvent {
         offer_pda: ctx.accounts.offer.key(),
         boss: ctx.accounts.boss.key(),
     });

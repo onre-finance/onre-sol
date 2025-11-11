@@ -1,6 +1,17 @@
-use crate::constants::seeds;
-use crate::state::{State, MAX_ADMINS};
+use crate::constants::{seeds, MAX_ADMINS};
+use crate::state::State;
 use anchor_lang::prelude::*;
+
+/// Event emitted when a new admin is successfully added
+///
+/// Provides transparency for tracking admin privilege changes.
+#[event]
+pub struct AdminAddedEvent {
+    /// The public key of the newly added admin
+    pub admin: Pubkey,
+    /// The boss who added the admin
+    pub boss: Pubkey,
+}
 
 /// Account structure for adding a new admin to the program state
 ///
@@ -59,6 +70,12 @@ pub fn add_admin(ctx: Context<AddAdmin>, new_admin: Pubkey) -> Result<()> {
     for i in 0..MAX_ADMINS {
         if state.admins[i] == Pubkey::default() {
             state.admins[i] = new_admin;
+
+            emit!(AdminAddedEvent {
+                admin: new_admin,
+                boss: ctx.accounts.boss.key(),
+            });
+
             return Ok(());
         }
     }

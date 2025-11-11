@@ -1,6 +1,5 @@
+use crate::constants::MAX_VECTORS;
 use anchor_lang::prelude::*;
-
-pub const MAX_VECTORS: usize = 10;
 
 /// Token exchange offer with dynamic APR-based pricing
 ///

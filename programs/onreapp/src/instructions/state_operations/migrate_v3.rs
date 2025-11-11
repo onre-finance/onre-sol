@@ -5,6 +5,15 @@ use anchor_lang::solana_program::hash::hash;
 use anchor_lang::solana_program::system_instruction;
 use anchor_lang::Discriminator;
 
+/// Event emitted when accounts are successfully migrated to v3
+///
+/// Provides transparency for tracking migration operations.
+#[event]
+pub struct AccountsMigratedEvent {
+    /// The boss who performed the migration
+    pub boss: Pubkey,
+}
+
 /// Size of the old State account including 8-byte discriminator
 /// Old State structure only contained: boss (32 bytes)
 const OLD_STATE_SPACE: usize = 8 + 32;
@@ -98,6 +107,10 @@ pub struct MigrateV3<'info> {
 pub fn migrate_v3(ctx: Context<MigrateV3>) -> Result<()> {
     migrate_state(&ctx)?; // Signer == boss is validated inside migrate_state
     migrate_permissionless(&ctx)?;
+
+    emit!(AccountsMigratedEvent {
+        boss: ctx.accounts.boss.key(),
+    });
 
     Ok(())
 }

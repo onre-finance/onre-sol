@@ -97,7 +97,7 @@ pub struct AddOfferVector<'info> {
 /// max(base_time, current_time) is used.
 /// * `base_time` - Unix timestamp when the vector should become active
 /// * `base_price` - Initial price with scale=9 (1_000_000_000 = 1.0)
-/// * `apr` - Annual Percentage Rate scaled by 1,000,000 (1_000_000 = 1% APR)
+/// * `apr` - Annual Percentage Rate scaled by 1,000,000 (0.01 = 1% APR = 10_000)
 /// * `price_fix_duration` - Duration in seconds for each discrete pricing step
 ///
 /// # Returns
@@ -301,4 +301,10 @@ pub enum AddOfferVectorErrorCode {
     /// The offer has reached the maximum number of pricing vectors allowed
     #[msg("Offer already has the maximum number of vectors")]
     TooManyVectors,
+
+    #[msg("Invalid input: apr must be <= 10000000")]
+    InvalidAPR,
+
+    #[msg("Invalid input: price_fix_duration must be <= 31536000")]
+    InvalidPriceFixDuration,
 }

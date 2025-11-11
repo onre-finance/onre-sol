@@ -28,7 +28,7 @@ pub enum TakeOfferPermissionlessErrorCode {
 ///
 /// Provides transparency for tracking permissionless offer execution with intermediary routing.
 #[event]
-pub struct TakeOfferPermissionlessEvent {
+pub struct OfferTakenPermissionlessEvent {
     /// The PDA address of the offer that was executed
     pub offer_pda: Pubkey,
     /// Amount of token_in paid by the user after fee deduction
@@ -390,7 +390,7 @@ pub fn take_offer_permissionless(
         u64_to_dec9(result.current_price)
     );
 
-    emit!(TakeOfferPermissionlessEvent {
+    emit!(OfferTakenPermissionlessEvent {
         offer_pda: ctx.accounts.offer.key(),
         token_in_amount: result.token_in_net_amount,
         token_out_amount: result.token_out_amount,

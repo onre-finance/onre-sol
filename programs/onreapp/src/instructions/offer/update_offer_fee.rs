@@ -1,7 +1,6 @@
-use crate::constants::seeds;
+use crate::constants::{seeds, MAX_BASIS_POINTS};
 use crate::instructions::Offer;
 use crate::state::State;
-use crate::utils::MAX_BASIS_POINTS;
 use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;

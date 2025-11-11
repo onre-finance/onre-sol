@@ -28,7 +28,7 @@ pub enum TakeOfferErrorCode {
 ///
 /// Provides transparency for tracking offer execution and token exchange details.
 #[event]
-pub struct TakeOfferEvent {
+pub struct OfferTakenEvent {
     /// The PDA address of the offer that was executed
     pub offer_pda: Pubkey,
     /// Amount of token_in paid by the user after fee deduction
@@ -306,7 +306,7 @@ pub fn take_offer(
         u64_to_dec9(result.current_price)
     );
 
-    emit!(TakeOfferEvent {
+    emit!(OfferTakenEvent {
         offer_pda: ctx.accounts.offer.key(),
         token_in_amount: result.token_in_net_amount,
         token_out_amount: result.token_out_amount,

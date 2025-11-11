@@ -6,7 +6,7 @@ use anchor_lang::prelude::*;
 ///
 /// Provides transparency for tracking max supply configuration changes.
 #[event]
-pub struct MaxSupplyConfigured {
+pub struct MaxSupplyConfiguredEvent {
     /// The previous maximum supply cap (0 = no cap)
     pub old_max_supply: u64,
     /// The new maximum supply cap (0 = no cap)
@@ -71,7 +71,7 @@ pub fn configure_max_supply(ctx: Context<ConfigureMaxSupply>, max_supply: u64) -
         old_max_supply
     );
 
-    emit!(MaxSupplyConfigured {
+    emit!(MaxSupplyConfiguredEvent {
         old_max_supply,
         new_max_supply: max_supply,
     });

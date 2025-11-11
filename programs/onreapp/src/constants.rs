@@ -15,3 +15,18 @@ pub mod seeds {
     /// Seed for mint authority PDA accounts
     pub const MINT_AUTHORITY: &[u8] = b"mint_authority";
 }
+
+/// Maximum number of pricing vectors allowed per offer
+pub const MAX_VECTORS: usize = 10;
+
+/// Maximum number of admin accounts that can be stored in program state
+pub const MAX_ADMINS: usize = 20;
+
+/// Number of decimals used for price representation
+pub const PRICE_DECIMALS: u8 = 9;
+
+/// Maximum possible value of basis points (100%)
+pub const MAX_BASIS_POINTS: u16 = 10000;
+
+/// Maximum allowed fee in basis points (10% = 1000 basis points)
+pub const MAX_ALLOWED_FEE_BPS: u16 = 1000;
