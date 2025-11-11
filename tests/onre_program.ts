@@ -195,7 +195,10 @@ export class OnreProgram {
                 user: params.user,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
                 tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
-                boss: this.program.provider.publicKey
+                boss: this.program.provider.publicKey,
+                vaultAuthority: this.pdas.offerVaultAuthorityPda,
+                permissionlessAuthority: this.pdas.permissionlessAuthorityPda,
+                mintAuthority: this.pdas.mintAuthorityPda
             });
 
         if (params.signer) {
