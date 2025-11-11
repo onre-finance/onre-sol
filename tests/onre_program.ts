@@ -395,6 +395,17 @@ export class OnreProgram {
         await tx.rpc();
     }
 
+    async closeState(params?: { signer?: Keypair }) {
+        const tx = this.program.methods
+            .closeState();
+
+        if (params?.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
     async getNAV(params: { tokenInMint: PublicKey, tokenOutMint: PublicKey }): Promise<number> {
         const tx = this.program.methods
             .getNav()

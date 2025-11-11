@@ -468,4 +468,23 @@ pub mod onreapp {
     pub fn configure_max_supply(ctx: Context<ConfigureMaxSupply>, max_supply: u64) -> Result<()> {
         state_operations::configure_max_supply(ctx, max_supply)
     }
+
+    /// Closes the program state account and returns the rent to the boss.
+    ///
+    /// Delegates to `state_operations::close_state`.
+    /// This instruction permanently deletes the program's main state account
+    /// and transfers its rent balance back to the boss. Once closed, the state
+    /// cannot be recovered and the program becomes effectively non-functional.
+    /// Only the boss can call this instruction.
+    /// Emits a `StateClosedEvent` upon success.
+    ///
+    /// # Warning
+    /// This is a destructive operation that effectively disables the program.
+    /// Use with extreme caution.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `CloseState`.
+    pub fn close_state(ctx: Context<CloseState>) -> Result<()> {
+        state_operations::close_state(ctx)
+    }
 }

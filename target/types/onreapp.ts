@@ -514,6 +514,84 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "closeState",
+      "docs": [
+        "Closes the program state account and returns the rent to the boss.",
+        "",
+        "Delegates to `state_operations::close_state`.",
+        "This instruction permanently deletes the program's main state account",
+        "and transfers its rent balance back to the boss. Once closed, the state",
+        "cannot be recovered and the program becomes effectively non-functional.",
+        "Only the boss can call this instruction.",
+        "Emits a `StateClosedEvent` upon success.",
+        "",
+        "# Warning",
+        "This is a destructive operation that effectively disables the program.",
+        "Use with extreme caution.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `CloseState`."
+      ],
+      "discriminator": [
+        25,
+        1,
+        184,
+        101,
+        200,
+        245,
+        210,
+        246
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "The state account to be closed and its rent reclaimed",
+            "",
+            "This account is validated as a PDA derived from the \"state\" seed.",
+            "The account will be closed and its rent transferred to the boss."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account authorized to close the state and receive rent",
+            "",
+            "Must match the boss stored in the state account.",
+            "This signer will receive the rent from the closed state account."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program required for account closure and rent transfer"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "configureMaxSupply",
       "docs": [
         "Configures the maximum supply cap for ONyc token minting.",
@@ -4603,6 +4681,19 @@ export type Onreapp = {
         178,
         120
       ]
+    },
+    {
+      "name": "stateClosedEvent",
+      "discriminator": [
+        205,
+        52,
+        85,
+        250,
+        177,
+        119,
+        155,
+        198
+      ]
     }
   ],
   "errors": [
@@ -5918,6 +6009,33 @@ export type Onreapp = {
                 128
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "stateClosedEvent",
+      "docs": [
+        "Event emitted when the state account is successfully closed",
+        "",
+        "Provides transparency for tracking the closure of the program's main state account."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "statePda",
+            "docs": [
+              "The PDA address of the state account that was closed"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "boss",
+            "docs": [
+              "The boss account that initiated the closure and received the rent"
+            ],
+            "type": "pubkey"
           }
         ]
       }
