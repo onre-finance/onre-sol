@@ -261,13 +261,13 @@ pub fn take_offer_permissionless(
 ) -> Result<()> {
     let (va, va_bump) =
         Pubkey::find_program_address(&[seeds::OFFER_VAULT_AUTHORITY], ctx.program_id);
-        require_keys_eq!(va, ctx.accounts.vault_authority.key());
+    require_keys_eq!(va, ctx.accounts.vault_authority.key());
     let (pa, pa_bump) =
         Pubkey::find_program_address(&[seeds::PERMISSIONLESS_AUTHORITY], ctx.program_id);
     require_keys_eq!(pa, ctx.accounts.permissionless_authority.key());
-    let (ma, ma_bump) =
-        Pubkey::find_program_address(&[seeds::MINT_AUTHORITY], ctx.program_id);
+    let (ma, ma_bump) = Pubkey::find_program_address(&[seeds::MINT_AUTHORITY], ctx.program_id);
     require_keys_eq!(ma, ctx.accounts.mint_authority.key());
+
     // validate state account
     {
         let state = &ctx.accounts.state;
@@ -340,14 +340,8 @@ pub fn take_offer_permissionless(
         token_in_net_amount: result.token_in_net_amount,
         token_in_fee_amount: result.token_in_fee_amount,
         token_in_authority: &ctx.accounts.permissionless_authority.to_account_info(),
-        token_in_source_signer_seeds: Some(&[&[
-            seeds::PERMISSIONLESS_AUTHORITY,
-            &[pa_bump],
-        ]]),
-        vault_authority_signer_seeds: Some(&[&[
-            seeds::OFFER_VAULT_AUTHORITY,
-            &[va_bump],
-        ]]),
+        token_in_source_signer_seeds: Some(&[&[seeds::PERMISSIONLESS_AUTHORITY, &[pa_bump]]]),
+        vault_authority_signer_seeds: Some(&[&[seeds::OFFER_VAULT_AUTHORITY, &[va_bump]]]),
         token_in_source_account: &ctx.accounts.permissionless_token_in_account,
         token_in_destination_account: &ctx.accounts.boss_token_in_account,
         token_in_burn_account: &ctx.accounts.vault_token_in_account,
@@ -370,10 +364,7 @@ pub fn take_offer_permissionless(
         &ctx.accounts.permissionless_token_out_account,
         &ctx.accounts.user_token_out_account,
         &ctx.accounts.permissionless_authority.to_account_info(),
-        Some(&[&[
-            seeds::PERMISSIONLESS_AUTHORITY,
-            &[pa_bump],
-        ]]),
+        Some(&[&[seeds::PERMISSIONLESS_AUTHORITY, &[pa_bump]]]),
         result.token_out_amount,
     )?;
 

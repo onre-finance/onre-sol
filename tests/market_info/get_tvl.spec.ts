@@ -23,8 +23,6 @@ describe("Get TVL", () => {
 
             // Initialize program and offers
             await program.initialize({ onycMint: tokenOutMint });
-            await program.initializeMintAuthority();
-            await program.initializeVaultAuthority();
 
             // Create an offer
             await program.makeOffer({
@@ -299,7 +297,6 @@ describe("Get TVL", () => {
 
             // Initialize program and offers
             await program.initialize({ onycMint: testHelper.createMint(9) });
-            await program.initializeVaultAuthority();
 
             // Create an offer
             await program.makeOffer({

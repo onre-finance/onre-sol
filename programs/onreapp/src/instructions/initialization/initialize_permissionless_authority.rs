@@ -73,6 +73,5 @@ pub fn initialize_permissionless_authority(
     );
     let permissionless_authority = &mut ctx.accounts.permissionless_authority;
     permissionless_authority.name = name_cleaned.to_string();
-    permissionless_authority.bump = ctx.bumps.permissionless_authority;
     Ok(())
 }

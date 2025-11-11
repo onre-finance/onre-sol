@@ -23,8 +23,6 @@ describe("Get Circulating Supply", () => {
 
             // Initialize program and offers
             await program.initialize({ onycMint: tokenOutMint });
-            await program.initializeVaultAuthority();
-            await program.initializeMintAuthority();
         });
 
         describe("Basic Functionality Tests", () => {
@@ -137,7 +135,6 @@ describe("Get Circulating Supply", () => {
 
             // Initialize program and offers
             await program.initialize({ onycMint: tokenOutMint });
-            await program.initializeVaultAuthority();
 
             // Create an offer
             await program.makeOffer({

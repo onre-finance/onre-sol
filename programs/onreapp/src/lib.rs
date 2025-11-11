@@ -44,12 +44,23 @@ pub mod utils;
 pub mod onreapp {
     use super::*;
 
-    pub fn initialize_vault_authority(ctx: Context<InitializeVaultAuthority>) -> Result<()> {
-        initialize_vault_authority::initialize_vault_authority(ctx)
+    /// Initializes the program state and authority accounts.
+    ///
+    /// Delegates to `initialize::initialize` to set the initial boss in the state account.
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+        initialize::initialize(ctx)
     }
 
-    pub fn initialize_mint_authority(ctx: Context<InitializeMintAuthority>) -> Result<()> {
-        initialize_mint_authority::initialize_mint_authority(ctx)
+    /// Initializes a permissionless account.
+    ///
+    /// Delegates to `initialize::initialize_permissionless_authority` to create a new permissionless account.
+    /// The account is created as a PDA with the seed "permissionless-1".
+    /// Only the boss can initialize permissionless accounts.
+    pub fn initialize_permissionless_authority(
+        ctx: Context<InitializePermissionlessAuthority>,
+        name: String,
+    ) -> Result<()> {
+        initialize_permissionless_authority::initialize_permissionless_authority(ctx, name)
     }
 
     /// Deposits tokens into the offer vault.
@@ -207,25 +218,6 @@ pub mod onreapp {
         offer::take_offer_permissionless(ctx, token_in_amount, approval_message)
     }
 
-    /// Initializes the program state.
-    ///
-    /// Delegates to `initialize::initialize` to set the initial boss in the state account.
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        initialize::initialize(ctx)
-    }
-
-    /// Initializes a permissionless account.
-    ///
-    /// Delegates to `initialize::initialize_permissionless_authority` to create a new permissionless account.
-    /// The account is created as a PDA with the seed "permissionless-1".
-    /// Only the boss can initialize permissionless accounts.
-    pub fn initialize_permissionless_authority(
-        ctx: Context<InitializePermissionlessAuthority>,
-        name: String,
-    ) -> Result<()> {
-        initialize_permissionless_authority::initialize_permissionless_authority(ctx, name)
-    }
-
     /// Proposes a new boss for ownership transfer.
     ///
     /// Delegates to `propose_boss::propose_boss` to propose a new boss authority.
@@ -356,22 +348,6 @@ pub mod onreapp {
         mint_authority::mint_to(ctx, amount)
     }
 
-    /// Migrates the State account to include the new is_killed field.
-    ///
-    /// This instruction is required after deploying the updated program that includes
-    /// the is_killed field in the State struct. It reallocates the account to the new size
-    /// and initializes the kill switch to disabled (false) by default.
-    ///
-    /// # Security
-    /// - Only the boss can perform this migration
-    /// - The migration can only be performed once (subsequent calls will fail due to size constraints)
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `MigrateState`.
-    pub fn migrate_v3(ctx: Context<MigrateV3>) -> Result<()> {
-        state_operations::migrate_v3(ctx)
-    }
-
     /// Gets the current NAV (price) for a specific offer.
     ///
     /// Delegates to `market_info::get_nav`.
@@ -491,5 +467,24 @@ pub mod onreapp {
     /// - `max_supply`: The maximum supply cap in base units (0 = no cap).
     pub fn configure_max_supply(ctx: Context<ConfigureMaxSupply>, max_supply: u64) -> Result<()> {
         state_operations::configure_max_supply(ctx, max_supply)
+    }
+
+    /// Closes the program state account and returns the rent to the boss.
+    ///
+    /// Delegates to `state_operations::close_state`.
+    /// This instruction permanently deletes the program's main state account
+    /// and transfers its rent balance back to the boss. Once closed, the state
+    /// cannot be recovered and the program becomes effectively non-functional.
+    /// Only the boss can call this instruction.
+    /// Emits a `StateClosedEvent` upon success.
+    ///
+    /// # Warning
+    /// This is a destructive operation that effectively disables the program.
+    /// Use with extreme caution.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `CloseState`.
+    pub fn close_state(ctx: Context<CloseState>) -> Result<()> {
+        state_operations::close_state(ctx)
     }
 }

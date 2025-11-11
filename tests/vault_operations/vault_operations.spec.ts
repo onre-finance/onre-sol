@@ -16,7 +16,6 @@ describe("Vault Operations", () => {
 
         // Initialize program and vault authorities
         await program.initialize({ onycMint: testHelper.createMint(9) });
-        await program.initializeVaultAuthority();
     });
 
     test("Vault is initialized correctly", async () => {
