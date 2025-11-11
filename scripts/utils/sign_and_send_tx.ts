@@ -1,10 +1,10 @@
-import { Connection, Keypair, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
+import { Connection, Keypair, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
 import fs from "fs";
 import os from "os";
 import path from "path";
 import bs58 from "bs58";
 
-import { RPC_URL } from "../utils/script-commons";
+import { RPC_URL } from "../utils/script-helper";
 
 // Function to load wallet from ~/.config/solana/id.json
 function loadWalletKey(): Keypair {
@@ -16,7 +16,7 @@ function loadWalletKey(): Keypair {
 
 async function signAndSendTransaction(base58Transaction: string) {
     const connection = new Connection(RPC_URL, {
-        commitment: "confirmed",
+        commitment: "confirmed"
     });
 
     const wallet = loadWalletKey();
@@ -28,7 +28,7 @@ async function signAndSendTransaction(base58Transaction: string) {
         const signature = await sendAndConfirmTransaction(connection, transaction, [wallet], {
             skipPreflight: false,
             commitment: "confirmed",
-            preflightCommitment: "confirmed",
+            preflightCommitment: "confirmed"
         });
 
         console.log("Transaction sent successfully!");

@@ -1,9 +1,4 @@
-import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper } from "../utils/script-helper";
-
-// Token mint addresses
-const TOKEN_IN_MINT = new PublicKey("YOUR_TOKEN_IN_MINT");
-const TOKEN_OUT_MINT = new PublicKey("YOUR_TOKEN_OUT_MINT");
+import { ScriptHelper, TOKEN_IN_MINT, TOKEN_OUT_MINT } from "../utils/script-helper";
 
 async function getNAVAdjustment() {
     const helper = await ScriptHelper.create();
