@@ -16,6 +16,9 @@ pub mod seeds {
     pub const MINT_AUTHORITY: &[u8] = b"mint_authority";
 }
 
+/// Maximum number of pricing vectors allowed per offer
+pub const MAX_VECTORS: usize = 10;
+
 /// Maximum number of admin accounts that can be stored in program state
 pub const MAX_ADMINS: usize = 20;
 

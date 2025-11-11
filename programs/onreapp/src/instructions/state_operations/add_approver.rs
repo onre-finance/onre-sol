@@ -2,6 +2,17 @@ use crate::constants::seeds;
 use crate::state::State;
 use anchor_lang::prelude::*;
 
+/// Event emitted when an approver is successfully added
+///
+/// Provides transparency for tracking approver changes.
+#[event]
+pub struct ApproverAddedEvent {
+    /// The public key of the newly added approver
+    pub approver: Pubkey,
+    /// The boss who added the approver
+    pub boss: Pubkey,
+}
+
 #[derive(Accounts)]
 pub struct AddApprover<'info> {
     #[account(mut,
@@ -53,12 +64,24 @@ pub fn add_approver(ctx: Context<AddApprover>, approver: Pubkey) -> Result<()> {
     // Check if approver1 is empty (default pubkey)
     if state.approver1 == Pubkey::default() {
         state.approver1 = approver;
+
+        emit!(ApproverAddedEvent {
+            approver,
+            boss: ctx.accounts.boss.key(),
+        });
+
         return Ok(());
     }
 
     // Check if approver2 is empty
     if state.approver2 == Pubkey::default() {
         state.approver2 = approver;
+
+        emit!(ApproverAddedEvent {
+            approver,
+            boss: ctx.accounts.boss.key(),
+        });
+
         return Ok(());
     }
 

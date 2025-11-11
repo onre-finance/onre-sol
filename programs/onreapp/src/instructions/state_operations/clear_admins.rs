@@ -3,6 +3,15 @@ use crate::state::State;
 use crate::AccountInfo;
 use anchor_lang::prelude::*;
 
+/// Event emitted when all admins are successfully cleared
+///
+/// Provides transparency for tracking admin privilege changes.
+#[event]
+pub struct AdminsClearedEvent {
+    /// The boss who cleared all admins
+    pub boss: Pubkey,
+}
+
 /// Account structure for clearing all admins from the program state
 ///
 /// This struct defines the accounts required to remove all admin privileges
@@ -52,6 +61,10 @@ pub fn clear_admins(ctx: Context<ClearAdmins>) -> Result<()> {
     for i in 0..MAX_ADMINS {
         state.admins[i] = Pubkey::default();
     }
+
+    emit!(AdminsClearedEvent {
+        boss: ctx.accounts.boss.key(),
+    });
 
     Ok(())
 }

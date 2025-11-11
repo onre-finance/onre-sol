@@ -2,7 +2,7 @@ use crate::constants::seeds;
 use crate::instructions::offer::offer_utils::{
     calculate_current_step_price, find_active_vector_at,
 };
-use crate::instructions::Offer;
+use crate::instructions::{Offer, OfferVector};
 use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
@@ -19,6 +19,8 @@ pub struct GetNAVEvent {
     pub current_price: u64,
     /// Unix timestamp when the price calculation was performed
     pub timestamp: u64,
+    /// Unix timestamp when the next price change will occur
+    pub next_price_change_timestamp: u64,
 }
 
 /// Account structure for querying NAV (Net Asset Value) information
@@ -92,18 +94,62 @@ pub fn get_nav(ctx: Context<GetNAV>) -> Result<u64> {
         active_vector.price_fix_duration,
     )?;
 
+    // Calculate when the next NAV change will occur
+    let elapsed_since_base = current_time.saturating_sub(active_vector.base_time);
+    let current_step = elapsed_since_base / active_vector.price_fix_duration;
+    let next_interval_timestamp = active_vector
+        .base_time
+        .checked_add(
+            (current_step + 1)
+                .checked_mul(active_vector.price_fix_duration)
+                .ok_or(OfferCoreError::OverflowError)?,
+        )
+        .ok_or(OfferCoreError::OverflowError)?;
+
+    // Find the next vector that will become active
+    let next_vector = find_next_vector_after(&offer, current_time);
+
+    // Next NAV change is the minimum of next interval and next vector start time
+    let next_price_change_timestamp = match next_vector {
+        Some(vector) => next_interval_timestamp.min(vector.start_time),
+        None => next_interval_timestamp,
+    };
+
     msg!(
-        "NAV Info - Offer PDA: {}, Current Price: {}, Timestamp: {}",
+        "NAV Info - Offer PDA: {}, Current Timestamp: {}, Current Price: {}, Next Change: {}",
         ctx.accounts.offer.key(),
+        current_time,
         current_price,
-        current_time
+        next_price_change_timestamp,
     );
 
     emit!(GetNAVEvent {
         offer_pda: ctx.accounts.offer.key(),
         current_price,
         timestamp: current_time,
+        next_price_change_timestamp,
     });
 
     Ok(current_price)
+}
+
+/// Finds the next vector that will become active after the current time
+///
+/// Searches through all vectors to find the one with the smallest start_time
+/// that is still in the future (greater than current_time).
+///
+/// # Arguments
+/// * `offer` - The offer containing pricing vectors to search
+/// * `current_time` - The current Unix timestamp
+///
+/// # Returns
+/// * `Some(OfferVector)` - The next future vector if one exists
+/// * `None` - If no vectors are scheduled in the future
+fn find_next_vector_after(offer: &Offer, current_time: u64) -> Option<OfferVector> {
+    offer
+        .vectors
+        .iter()
+        .filter(|vector| vector.start_time > current_time)
+        .min_by_key(|vector| vector.start_time)
+        .copied()
 }

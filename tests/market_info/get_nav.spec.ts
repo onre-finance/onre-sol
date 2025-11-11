@@ -48,6 +48,39 @@ describe("Get NAV", () => {
             expect(nav).toBe(1.0001e9);
         });
 
+        it("Should successfully get NAV for offer with multiple vectors", async () => {
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            // Add first vector
+            await program.addOfferVector({
+                tokenInMint,
+                tokenOutMint,
+                baseTime: currentTime,
+                basePrice: 1e9,
+                apr: 36_500,
+                priceFixDuration: 86400
+            });
+
+            // Add second vector
+            await program.addOfferVector({
+                tokenInMint,
+                tokenOutMint,
+                baseTime: currentTime + (4 * 86400) - 1, // 1 day later
+                basePrice: 2e9, // 2.0 with 9 decimals
+                apr: 73_000, // 7.3% APR (scaled by 1M)
+                priceFixDuration: 86400
+            });
+
+            // Advance time to the last interval in first vector, but before second vector is active
+            await testHelper.advanceClockBy(3 * 86400);
+
+            // Get NAV
+            const nav = await program.getNAV({ tokenInMint, tokenOutMint });
+
+            // Validate price
+            expect(nav).toBe(1.0004e9);
+        });
+
         it("Should be read-only instruction (no state changes)", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 

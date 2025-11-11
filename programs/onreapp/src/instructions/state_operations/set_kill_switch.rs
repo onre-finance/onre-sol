@@ -3,6 +3,17 @@ use anchor_lang::prelude::*;
 use crate::constants::seeds;
 use crate::state::State;
 
+/// Event emitted when the kill switch state is changed
+///
+/// Provides transparency for tracking emergency control changes.
+#[event]
+pub struct KillSwitchToggledEvent {
+    /// Whether the kill switch was enabled (true) or disabled (false)
+    pub enabled: bool,
+    /// The account that toggled the kill switch
+    pub signer: Pubkey,
+}
+
 /// Account structure for controlling the program kill switch
 ///
 /// This struct defines the accounts required to enable or disable the emergency
@@ -61,6 +72,11 @@ pub fn set_kill_switch(ctx: Context<SetKillSwitch>, enable: bool) -> Result<()> 
         require!(boss_signed, ErrorCode::OnlyBossCanDisable);
         state.is_killed = false;
     }
+
+    emit!(KillSwitchToggledEvent {
+        enabled: enable,
+        signer: signer.key(),
+    });
 
     Ok(())
 }

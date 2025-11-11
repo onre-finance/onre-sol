@@ -2,6 +2,17 @@ use crate::constants::seeds;
 use crate::state::State;
 use anchor_lang::prelude::*;
 
+/// Event emitted when an approver is successfully removed
+///
+/// Provides transparency for tracking approver changes.
+#[event]
+pub struct ApproverRemovedEvent {
+    /// The public key of the removed approver
+    pub approver: Pubkey,
+    /// The boss who removed the approver
+    pub boss: Pubkey,
+}
+
 #[derive(Accounts)]
 pub struct RemoveApprover<'info> {
     #[account(mut,
@@ -53,12 +64,24 @@ pub fn remove_approver(ctx: Context<RemoveApprover>, approver: Pubkey) -> Result
     // Check if the approver matches approver1
     if state.approver1 == approver {
         state.approver1 = Pubkey::default();
+
+        emit!(ApproverRemovedEvent {
+            approver,
+            boss: ctx.accounts.boss.key(),
+        });
+
         return Ok(());
     }
 
     // Check if the approver matches approver2
     if state.approver2 == approver {
         state.approver2 = Pubkey::default();
+
+        emit!(ApproverRemovedEvent {
+            approver,
+            boss: ctx.accounts.boss.key(),
+        });
+
         return Ok(());
     }
 

@@ -4481,6 +4481,84 @@ export type Onreapp = {
   ],
   "events": [
     {
+      "name": "accountsMigratedEvent",
+      "discriminator": [
+        112,
+        223,
+        148,
+        151,
+        150,
+        93,
+        249,
+        226
+      ]
+    },
+    {
+      "name": "adminAddedEvent",
+      "discriminator": [
+        68,
+        183,
+        187,
+        200,
+        190,
+        214,
+        20,
+        77
+      ]
+    },
+    {
+      "name": "adminRemovedEvent",
+      "discriminator": [
+        226,
+        5,
+        12,
+        53,
+        69,
+        56,
+        172,
+        132
+      ]
+    },
+    {
+      "name": "adminsClearedEvent",
+      "discriminator": [
+        202,
+        81,
+        156,
+        32,
+        66,
+        208,
+        159,
+        153
+      ]
+    },
+    {
+      "name": "approverAddedEvent",
+      "discriminator": [
+        130,
+        197,
+        173,
+        181,
+        53,
+        38,
+        162,
+        134
+      ]
+    },
+    {
+      "name": "approverRemovedEvent",
+      "discriminator": [
+        234,
+        1,
+        25,
+        206,
+        97,
+        119,
+        7,
+        23
+      ]
+    },
+    {
       "name": "bossAcceptedEvent",
       "discriminator": [
         11,
@@ -4504,19 +4582,6 @@ export type Onreapp = {
         57,
         141,
         17
-      ]
-    },
-    {
-      "name": "closeOfferEvent",
-      "discriminator": [
-        254,
-        189,
-        199,
-        59,
-        229,
-        2,
-        175,
-        126
       ]
     },
     {
@@ -4585,16 +4650,29 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "maxSupplyConfigured",
+      "name": "killSwitchToggledEvent",
       "discriminator": [
-        141,
-        204,
-        147,
-        220,
-        107,
-        188,
-        62,
-        224
+        104,
+        2,
+        90,
+        20,
+        64,
+        132,
+        228,
+        122
+      ]
+    },
+    {
+      "name": "maxSupplyConfiguredEvent",
+      "discriminator": [
+        180,
+        54,
+        16,
+        115,
+        92,
+        70,
+        168,
+        123
       ]
     },
     {
@@ -4624,16 +4702,29 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "oNycMintUpdated",
+      "name": "oNycMintUpdatedEvent",
       "discriminator": [
-        158,
-        135,
-        98,
-        110,
-        129,
-        39,
-        9,
-        176
+        221,
+        248,
+        176,
+        184,
+        134,
+        249,
+        29,
+        1
+      ]
+    },
+    {
+      "name": "offerClosedEvent",
+      "discriminator": [
+        52,
+        107,
+        250,
+        206,
+        40,
+        209,
+        249,
+        150
       ]
     },
     {
@@ -4660,6 +4751,32 @@ export type Onreapp = {
         177,
         83,
         200
+      ]
+    },
+    {
+      "name": "offerTakenEvent",
+      "discriminator": [
+        64,
+        121,
+        49,
+        21,
+        184,
+        132,
+        139,
+        54
+      ]
+    },
+    {
+      "name": "offerTakenPermissionlessEvent",
+      "discriminator": [
+        201,
+        45,
+        242,
+        200,
+        95,
+        48,
+        126,
+        143
       ]
     },
     {
@@ -4739,32 +4856,6 @@ export type Onreapp = {
         178,
         120
       ]
-    },
-    {
-      "name": "takeOfferEvent",
-      "discriminator": [
-        146,
-        209,
-        78,
-        101,
-        43,
-        83,
-        167,
-        4
-      ]
-    },
-    {
-      "name": "takeOfferPermissionlessEvent",
-      "discriminator": [
-        77,
-        13,
-        9,
-        252,
-        35,
-        255,
-        82,
-        134
-      ]
     }
   ],
   "errors": [
@@ -4780,6 +4871,100 @@ export type Onreapp = {
     }
   ],
   "types": [
+    {
+      "name": "accountsMigratedEvent",
+      "docs": [
+        "Event emitted when accounts are successfully migrated to v3",
+        "",
+        "Provides transparency for tracking migration operations."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "docs": [
+              "The boss who performed the migration"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "adminAddedEvent",
+      "docs": [
+        "Event emitted when a new admin is successfully added",
+        "",
+        "Provides transparency for tracking admin privilege changes."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "docs": [
+              "The public key of the newly added admin"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "boss",
+            "docs": [
+              "The boss who added the admin"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "adminRemovedEvent",
+      "docs": [
+        "Event emitted when an admin is successfully removed",
+        "",
+        "Provides transparency for tracking admin privilege changes."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "docs": [
+              "The public key of the removed admin"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "boss",
+            "docs": [
+              "The boss who removed the admin"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "adminsClearedEvent",
+      "docs": [
+        "Event emitted when all admins are successfully cleared",
+        "",
+        "Provides transparency for tracking admin privilege changes."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "docs": [
+              "The boss who cleared all admins"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
     {
       "name": "approvalMessage",
       "docs": [
@@ -4817,6 +5002,60 @@ export type Onreapp = {
               "Unix timestamp when this approval expires"
             ],
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "approverAddedEvent",
+      "docs": [
+        "Event emitted when an approver is successfully added",
+        "",
+        "Provides transparency for tracking approver changes."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "approver",
+            "docs": [
+              "The public key of the newly added approver"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "boss",
+            "docs": [
+              "The boss who added the approver"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "approverRemovedEvent",
+      "docs": [
+        "Event emitted when an approver is successfully removed",
+        "",
+        "Provides transparency for tracking approver changes."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "approver",
+            "docs": [
+              "The public key of the removed approver"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "boss",
+            "docs": [
+              "The boss who removed the approver"
+            ],
+            "type": "pubkey"
           }
         ]
       }
@@ -4869,33 +5108,6 @@ export type Onreapp = {
             "name": "proposedBoss",
             "docs": [
               "The proposed new boss's public key"
-            ],
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "closeOfferEvent",
-      "docs": [
-        "Event emitted when an offer is successfully closed and account is reclaimed",
-        "",
-        "Provides transparency for tracking offer lifecycle and account cleanup operations."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "offerPda",
-            "docs": [
-              "The PDA address of the offer that was closed"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "boss",
-            "docs": [
-              "The boss account that initiated the closure and received the rent"
             ],
             "type": "pubkey"
           }
@@ -5015,6 +5227,13 @@ export type Onreapp = {
               "Unix timestamp when the price calculation was performed"
             ],
             "type": "u64"
+          },
+          {
+            "name": "nextPriceChangeTimestamp",
+            "docs": [
+              "Unix timestamp when the next price change will occur"
+            ],
+            "type": "u64"
           }
         ]
       }
@@ -5118,7 +5337,34 @@ export type Onreapp = {
       }
     },
     {
-      "name": "maxSupplyConfigured",
+      "name": "killSwitchToggledEvent",
+      "docs": [
+        "Event emitted when the kill switch state is changed",
+        "",
+        "Provides transparency for tracking emergency control changes."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "enabled",
+            "docs": [
+              "Whether the kill switch was enabled (true) or disabled (false)"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "signer",
+            "docs": [
+              "The account that toggled the kill switch"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "maxSupplyConfiguredEvent",
       "docs": [
         "Event emitted when the ONyc maximum supply is successfully configured",
         "",
@@ -5213,7 +5459,7 @@ export type Onreapp = {
       }
     },
     {
-      "name": "oNycMintUpdated",
+      "name": "oNycMintUpdatedEvent",
       "docs": [
         "Event emitted when the ONyc token mint is successfully updated",
         "",
@@ -5329,6 +5575,33 @@ export type Onreapp = {
       }
     },
     {
+      "name": "offerClosedEvent",
+      "docs": [
+        "Event emitted when an offer is successfully closed and account is reclaimed",
+        "",
+        "Provides transparency for tracking offer lifecycle and account cleanup operations."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerPda",
+            "docs": [
+              "The PDA address of the offer that was closed"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "boss",
+            "docs": [
+              "The boss account that initiated the closure and received the rent"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "offerFeeUpdatedEvent",
       "docs": [
         "Event emitted when an offer's fee is successfully updated",
@@ -5427,6 +5700,102 @@ export type Onreapp = {
               "Whether the offer allows permissionless operations"
             ],
             "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "offerTakenEvent",
+      "docs": [
+        "Event emitted when an offer is successfully taken",
+        "",
+        "Provides transparency for tracking offer execution and token exchange details."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerPda",
+            "docs": [
+              "The PDA address of the offer that was executed"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenInAmount",
+            "docs": [
+              "Amount of token_in paid by the user after fee deduction"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tokenOutAmount",
+            "docs": [
+              "Amount of token_out received by the user"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "feeAmount",
+            "docs": [
+              "Fee amount deducted from the original token_in payment"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "user",
+            "docs": [
+              "Public key of the user who executed the offer"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "offerTakenPermissionlessEvent",
+      "docs": [
+        "Event emitted when an offer is successfully executed via permissionless flow",
+        "",
+        "Provides transparency for tracking permissionless offer execution with intermediary routing."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerPda",
+            "docs": [
+              "The PDA address of the offer that was executed"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenInAmount",
+            "docs": [
+              "Amount of token_in paid by the user after fee deduction"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tokenOutAmount",
+            "docs": [
+              "Amount of token_out received by the user"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "feeAmount",
+            "docs": [
+              "Fee amount deducted from the original token_in payment"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "user",
+            "docs": [
+              "Public key of the user who executed the offer"
+            ],
+            "type": "pubkey"
           }
         ]
       }
@@ -5822,102 +6191,6 @@ export type Onreapp = {
                 128
               ]
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "takeOfferEvent",
-      "docs": [
-        "Event emitted when an offer is successfully taken",
-        "",
-        "Provides transparency for tracking offer execution and token exchange details."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "offerPda",
-            "docs": [
-              "The PDA address of the offer that was executed"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "tokenInAmount",
-            "docs": [
-              "Amount of token_in paid by the user after fee deduction"
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "tokenOutAmount",
-            "docs": [
-              "Amount of token_out received by the user"
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "feeAmount",
-            "docs": [
-              "Fee amount deducted from the original token_in payment"
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "user",
-            "docs": [
-              "Public key of the user who executed the offer"
-            ],
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "takeOfferPermissionlessEvent",
-      "docs": [
-        "Event emitted when an offer is successfully executed via permissionless flow",
-        "",
-        "Provides transparency for tracking permissionless offer execution with intermediary routing."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "offerPda",
-            "docs": [
-              "The PDA address of the offer that was executed"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "tokenInAmount",
-            "docs": [
-              "Amount of token_in paid by the user after fee deduction"
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "tokenOutAmount",
-            "docs": [
-              "Amount of token_out received by the user"
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "feeAmount",
-            "docs": [
-              "Fee amount deducted from the original token_in payment"
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "user",
-            "docs": [
-              "Public key of the user who executed the offer"
-            ],
-            "type": "pubkey"
           }
         ]
       }

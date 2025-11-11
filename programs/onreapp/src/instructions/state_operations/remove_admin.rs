@@ -2,6 +2,17 @@ use crate::constants::{seeds, MAX_ADMINS};
 use crate::state::State;
 use anchor_lang::prelude::*;
 
+/// Event emitted when an admin is successfully removed
+///
+/// Provides transparency for tracking admin privilege changes.
+#[event]
+pub struct AdminRemovedEvent {
+    /// The public key of the removed admin
+    pub admin: Pubkey,
+    /// The boss who removed the admin
+    pub boss: Pubkey,
+}
+
 /// Account structure for removing an admin from the program state
 ///
 /// This struct defines the accounts required to revoke admin privileges
@@ -53,6 +64,12 @@ pub fn remove_admin(ctx: Context<RemoveAdmin>, admin_to_remove: Pubkey) -> Resul
     for i in 0..MAX_ADMINS {
         if state.admins[i] == admin_to_remove {
             state.admins[i] = Pubkey::default();
+
+            emit!(AdminRemovedEvent {
+                admin: admin_to_remove,
+                boss: ctx.accounts.boss.key(),
+            });
+
             return Ok(());
         }
     }
