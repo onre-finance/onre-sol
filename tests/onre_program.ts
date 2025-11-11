@@ -7,6 +7,10 @@ import { BankrunProvider } from "anchor-bankrun";
 import { ProgramTestContext } from "solana-bankrun";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
+export const BPF_LOADER_PROGRAM_ID = new PublicKey(
+    "BPFLoader2111111111111111111111111111111111"
+);
+
 export class OnreProgram {
     program: Program<Onreapp>;
 
@@ -37,7 +41,14 @@ export class OnreProgram {
             .initialize()
             .accounts({
                 boss: this.program.provider.publicKey,
-                onycMint: params.onycMint
+                onycMint: params.onycMint,
+                offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
+                mintAuthority: this.pdas.mintAuthorityPda,
+                program: this.program.programId,
+                programData: PublicKey.findProgramAddressSync(
+                    [this.program.programId.toBuffer()],
+                    BPF_LOADER_PROGRAM_ID
+                )[0]
             })
             .rpc();
     }
@@ -208,18 +219,6 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async initializeVaultAuthority() {
-        await this.program.methods
-            .initializeVaultAuthority()
-            .rpc();
-    }
-
-    async initializeMintAuthority() {
-        await this.program.methods
-            .initializeMintAuthority()
-            .rpc();
-    }
-
     async offerVaultDeposit(params: {
         amount: number,
         tokenMint: PublicKey,
@@ -352,22 +351,6 @@ export class OnreProgram {
 
         if (params.signer) {
             tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
-    }
-
-    async migrateV3(signer?: Keypair) {
-        const tx = this.program.methods
-            .migrateV3()
-            .accounts({
-                state: this.pdas.statePda,
-                permissionlessAuthority: this.pdas.permissionlessAuthorityPda,
-                boss: signer ? signer.publicKey : this.program.provider.publicKey
-            });
-
-        if (signer) {
-            tx.signers([signer]);
         }
 
         await tx.rpc();

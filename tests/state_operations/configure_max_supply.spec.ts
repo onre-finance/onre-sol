@@ -21,8 +21,6 @@ describe("Configure Max Supply and Enforcement", () => {
 
             // Initialize state with ONyc mint
             await program.initialize({ onycMint: onycMint });
-            await program.initializeMintAuthority();
-            await program.initializeVaultAuthority();
         });
 
         test("Boss can configure max supply", async () => {
@@ -80,8 +78,6 @@ describe("Configure Max Supply and Enforcement", () => {
 
             // Initialize state with ONyc mint
             await program.initialize({ onycMint: onycMint });
-            await program.initializeMintAuthority();
-            await program.initializeVaultAuthority();
             await program.transferMintAuthorityToProgram({ mint: onycMint });
         });
 
@@ -173,8 +169,6 @@ describe("Configure Max Supply and Enforcement", () => {
 
             // Initialize state with ONyc mint
             await program.initialize({ onycMint: onycMint });
-            await program.initializeMintAuthority();
-            await program.initializeVaultAuthority();
 
             // Transfer mint authority to program
             await program.transferMintAuthorityToProgram({ mint: onycMint });
@@ -307,8 +301,6 @@ describe("Configure Max Supply and Enforcement", () => {
 
             // Initialize state with ONyc mint
             await program.initialize({ onycMint: onycMint });
-            await program.initializeMintAuthority();
-            await program.initializeVaultAuthority();
             // Initialize permissionless authority
             await program.initializePermissionlessAuthority({ accountName: "test" });
 

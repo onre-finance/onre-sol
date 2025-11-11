@@ -35,7 +35,6 @@ describe("Take Offer Permissionless", () => {
 
         // Initialize program and offers
         await program.initialize({ onycMint: tokenOutMint });
-        await program.initializeMintAuthority();
 
         // Create an offer with permissionless enabled
         await program.makeOffer({
@@ -45,7 +44,6 @@ describe("Take Offer Permissionless", () => {
         });
 
         // Initialize
-        await program.initializeVaultAuthority();
         await program.initializePermissionlessAuthority({
             accountName: "test-account"
         });

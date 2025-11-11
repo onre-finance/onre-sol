@@ -44,12 +44,23 @@ pub mod utils;
 pub mod onreapp {
     use super::*;
 
-    pub fn initialize_vault_authority(ctx: Context<InitializeVaultAuthority>) -> Result<()> {
-        initialize_vault_authority::initialize_vault_authority(ctx)
+    /// Initializes the program state and authority accounts.
+    ///
+    /// Delegates to `initialize::initialize` to set the initial boss in the state account.
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+        initialize::initialize(ctx)
     }
 
-    pub fn initialize_mint_authority(ctx: Context<InitializeMintAuthority>) -> Result<()> {
-        initialize_mint_authority::initialize_mint_authority(ctx)
+    /// Initializes a permissionless account.
+    ///
+    /// Delegates to `initialize::initialize_permissionless_authority` to create a new permissionless account.
+    /// The account is created as a PDA with the seed "permissionless-1".
+    /// Only the boss can initialize permissionless accounts.
+    pub fn initialize_permissionless_authority(
+        ctx: Context<InitializePermissionlessAuthority>,
+        name: String,
+    ) -> Result<()> {
+        initialize_permissionless_authority::initialize_permissionless_authority(ctx, name)
     }
 
     /// Deposits tokens into the offer vault.
@@ -207,25 +218,6 @@ pub mod onreapp {
         offer::take_offer_permissionless(ctx, token_in_amount, approval_message)
     }
 
-    /// Initializes the program state.
-    ///
-    /// Delegates to `initialize::initialize` to set the initial boss in the state account.
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        initialize::initialize(ctx)
-    }
-
-    /// Initializes a permissionless account.
-    ///
-    /// Delegates to `initialize::initialize_permissionless_authority` to create a new permissionless account.
-    /// The account is created as a PDA with the seed "permissionless-1".
-    /// Only the boss can initialize permissionless accounts.
-    pub fn initialize_permissionless_authority(
-        ctx: Context<InitializePermissionlessAuthority>,
-        name: String,
-    ) -> Result<()> {
-        initialize_permissionless_authority::initialize_permissionless_authority(ctx, name)
-    }
-
     /// Proposes a new boss for ownership transfer.
     ///
     /// Delegates to `propose_boss::propose_boss` to propose a new boss authority.
@@ -354,22 +346,6 @@ pub mod onreapp {
     /// - `amount`: Amount of ONyc tokens to mint.
     pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
         mint_authority::mint_to(ctx, amount)
-    }
-
-    /// Migrates the State account to include the new is_killed field.
-    ///
-    /// This instruction is required after deploying the updated program that includes
-    /// the is_killed field in the State struct. It reallocates the account to the new size
-    /// and initializes the kill switch to disabled (false) by default.
-    ///
-    /// # Security
-    /// - Only the boss can perform this migration
-    /// - The migration can only be performed once (subsequent calls will fail due to size constraints)
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `MigrateState`.
-    pub fn migrate_v3(ctx: Context<MigrateV3>) -> Result<()> {
-        state_operations::migrate_v3(ctx)
     }
 
     /// Gets the current NAV (price) for a specific offer.

@@ -39,11 +39,6 @@ describe("Take Offer With Approval", () => {
             withApproval: true
         });
 
-
-        // Initialize authorities
-        await program.initializeVaultAuthority();
-        await program.initializeMintAuthority();
-
         // Create token accounts
         user = testHelper.createUserAccount();
         testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(10_000e6), true);

@@ -1161,7 +1161,7 @@ export type Onreapp = {
     {
       "name": "initialize",
       "docs": [
-        "Initializes the program state.",
+        "Initializes the program state and authority accounts.",
         "",
         "Delegates to `initialize::initialize` to set the initial boss in the state account."
       ],
@@ -1208,53 +1208,6 @@ export type Onreapp = {
           }
         },
         {
-          "name": "boss",
-          "docs": [
-            "The initial boss who will have full authority over the program",
-            "",
-            "This signer becomes the program's boss and gains the ability to:",
-            "- Create and manage offers",
-            "- Update program state (boss, admins, kill switch, approver)",
-            "- Perform administrative operations",
-            "- Pay for the state account creation"
-          ],
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "onycMint",
-          "docs": [
-            "The ONyc token mint that this program will manage",
-            "",
-            "This mint represents the protocol's native token and is used for:",
-            "- Token minting operations when program has mint authority",
-            "- Reference in various program calculations and operations"
-          ]
-        },
-        {
-          "name": "systemProgram",
-          "docs": [
-            "Solana System program required for account creation and rent payment"
-          ],
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "initializeMintAuthority",
-      "discriminator": [
-        174,
-        153,
-        136,
-        197,
-        49,
-        34,
-        167,
-        3
-      ],
-      "accounts": [
-        {
           "name": "mintAuthority",
           "docs": [
             "The offer mint authority account to initialize, rent paid by `boss`."
@@ -1285,20 +1238,37 @@ export type Onreapp = {
           }
         },
         {
-          "name": "state",
+          "name": "offerVaultAuthority",
           "docs": [
-            "Program state, ensures `boss` is authorized."
+            "The offer vault authority account to initialize, rent paid by `boss`."
           ],
+          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  115,
-                  116,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
                   97,
+                  117,
+                  108,
                   116,
-                  101
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
                 ]
               }
             ]
@@ -1307,18 +1277,42 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The signer authorizing the initialization, must be the boss."
+            "The initial boss who will have full authority over the program",
+            "",
+            "This signer becomes the program's boss and gains the ability to:",
+            "- Create and manage offers",
+            "- Update program state (boss, admins, kill switch, approver)",
+            "- Perform administrative operations",
+            "- Pay for the state account creation"
           ],
           "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
+          "signer": true
+        },
+        {
+          "name": "program",
+          "address": "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe"
+        },
+        {
+          "name": "programData",
+          "docs": [
+            "We'll verify its address in code."
+          ],
+          "optional": true
+        },
+        {
+          "name": "onycMint",
+          "docs": [
+            "The ONyc token mint that this program will manage",
+            "",
+            "This mint represents the protocol's native token and is used for:",
+            "- Token minting operations when program has mint authority",
+            "- Reference in various program calculations and operations"
           ]
         },
         {
           "name": "systemProgram",
           "docs": [
-            "Solana System program for account creation and rent payment."
+            "Solana System program required for account creation and rent payment"
           ],
           "address": "11111111111111111111111111111111"
         }
@@ -1426,97 +1420,6 @@ export type Onreapp = {
           "type": "string"
         }
       ]
-    },
-    {
-      "name": "initializeVaultAuthority",
-      "discriminator": [
-        47,
-        125,
-        11,
-        209,
-        248,
-        240,
-        52,
-        77
-      ],
-      "accounts": [
-        {
-          "name": "offerVaultAuthority",
-          "docs": [
-            "The offer vault authority account to initialize, rent paid by `boss`."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "state",
-          "docs": [
-            "Program state, ensures `boss` is authorized."
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "boss",
-          "docs": [
-            "The signer authorizing the initialization, must be the boss."
-          ],
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "systemProgram",
-          "docs": [
-            "Solana System program for account creation and rent payment."
-          ],
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
     },
     {
       "name": "makeOffer",
@@ -1756,71 +1659,6 @@ export type Onreapp = {
           "type": "bool"
         }
       ]
-    },
-    {
-      "name": "migrateV3",
-      "docs": [
-        "Migrates the State account to include the new is_killed field.",
-        "",
-        "This instruction is required after deploying the updated program that includes",
-        "the is_killed field in the State struct. It reallocates the account to the new size",
-        "and initializes the kill switch to disabled (false) by default.",
-        "",
-        "# Security",
-        "- Only the boss can perform this migration",
-        "- The migration can only be performed once (subsequent calls will fail due to size constraints)",
-        "",
-        "# Arguments",
-        "- `ctx`: Context for `MigrateState`."
-      ],
-      "discriminator": [
-        245,
-        170,
-        103,
-        124,
-        144,
-        187,
-        21,
-        102
-      ],
-      "accounts": [
-        {
-          "name": "state",
-          "docs": [
-            "State account to be migrated from old to new layout",
-            "",
-            "Handled manually to avoid deserialization conflicts between old and new structures.",
-            "Will be expanded from 40 bytes to include new fields for enhanced functionality."
-          ],
-          "writable": true
-        },
-        {
-          "name": "permissionlessAuthority",
-          "docs": [
-            "PermissionlessAuthority account to be migrated from old to new layout",
-            "",
-            "Handled manually to avoid deserialization conflicts between old and new structures.",
-            "Will be expanded from 8 bytes to include bump and name fields."
-          ],
-          "writable": true
-        },
-        {
-          "name": "boss",
-          "docs": [
-            "The boss account authorized to perform the migration and pay for additional rent"
-          ],
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "systemProgram",
-          "docs": [
-            "System program for account reallocation and rent transfers"
-          ],
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
     },
     {
       "name": "mintTo",
@@ -4403,19 +4241,6 @@ export type Onreapp = {
   ],
   "events": [
     {
-      "name": "accountsMigratedEvent",
-      "discriminator": [
-        112,
-        223,
-        148,
-        151,
-        150,
-        93,
-        249,
-        226
-      ]
-    },
-    {
       "name": "adminAddedEvent",
       "discriminator": [
         68,
@@ -4793,26 +4618,6 @@ export type Onreapp = {
     }
   ],
   "types": [
-    {
-      "name": "accountsMigratedEvent",
-      "docs": [
-        "Event emitted when accounts are successfully migrated to v3",
-        "",
-        "Provides transparency for tracking migration operations."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "boss",
-            "docs": [
-              "The boss who performed the migration"
-            ],
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
     {
       "name": "adminAddedEvent",
       "docs": [

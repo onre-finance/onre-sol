@@ -40,10 +40,6 @@ describe("Take Offer", () => {
             tokenOutMint
         });
 
-        // Initialize vault authority
-        await program.initializeVaultAuthority();
-        await program.initializeMintAuthority();
-
         // Create token accounts
         user = testHelper.createUserAccount();
         userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(10_000e6), true);

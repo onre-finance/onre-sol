@@ -20,7 +20,6 @@ describe("Mint Authority Transfer", () => {
 
         // Initialize the program state
         await program.initialize({ onycMint: tokenMint });
-        await program.initializeMintAuthority();
     });
 
     describe("transfer_mint_authority_to_program", () => {

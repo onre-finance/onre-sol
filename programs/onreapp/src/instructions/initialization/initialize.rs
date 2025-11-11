@@ -1,6 +1,10 @@
 use crate::constants::{seeds, MAX_ADMINS};
 use crate::state::State;
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::bpf_loader;
+use anchor_lang::solana_program::bpf_loader_upgradeable::{
+    self, get_program_data_address, UpgradeableLoaderState,
+};
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::Mint;
 
@@ -10,6 +14,27 @@ pub enum InitializeErrorCode {
     /// Triggered when attempting to re-initialize a state that already has a boss set
     #[msg("Boss is already set, state has been initialized")]
     BossAlreadySet,
+
+    #[msg("Signer does not match the program's upgrade authority")]
+    WrongBoss,
+
+    #[msg("Wrong owner")]
+    WrongOwner,
+
+    #[msg("Program has no upgrade authority")]
+    ImmutableProgram,
+
+    #[msg("Wrong program data")]
+    WrongProgramData,
+
+    #[msg("Program data account not provided")]
+    MissingProgramData,
+
+    #[msg("Failed to deserialize program data")]
+    DeserializeProgramDataFailed,
+
+    #[msg("Account is not ProgramData")]
+    NotProgramData,
 }
 
 /// Account structure for initializing the program state
@@ -49,6 +74,28 @@ pub struct Initialize<'info> {
     )]
     pub state: Account<'info, State>,
 
+    /// The offer mint authority account to initialize, rent paid by `boss`.
+    /// CHECK: PDA derivation is validated by seeds constraint
+    #[account(
+        init_if_needed,
+        payer = boss,
+        space = 8,
+        seeds = [seeds::MINT_AUTHORITY],
+        bump
+    )]
+    pub mint_authority: AccountInfo<'info>,
+
+    /// The offer vault authority account to initialize, rent paid by `boss`.
+    /// CHECK: PDA derivation is validated by seeds constraint
+    #[account(
+        init_if_needed,
+        payer = boss,
+        space = 8,
+        seeds = [seeds::OFFER_VAULT_AUTHORITY],
+        bump
+    )]
+    pub offer_vault_authority: AccountInfo<'info>,
+
     /// The initial boss who will have full authority over the program
     ///
     /// This signer becomes the program's boss and gains the ability to:
@@ -58,6 +105,14 @@ pub struct Initialize<'info> {
     /// - Pay for the state account creation
     #[account(mut)]
     pub boss: Signer<'info>,
+
+    /// CHECK: This must be *this* program's executable account
+    #[account(executable, address = crate::ID)]
+    pub program: AccountInfo<'info>,
+
+    /// CHECK: ProgramData PDA for `program` under the upgradeable loader
+    /// We'll verify its address in code.
+    pub program_data: Option<AccountInfo<'info>>,
 
     /// The ONyc token mint that this program will manage
     ///
@@ -95,6 +150,18 @@ pub struct Initialize<'info> {
 /// # Security
 /// - Only allows initialization if boss is currently unset (default pubkey)
 pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+    let upgrade_authority =
+        get_upgrade_authority(&ctx.accounts.program, ctx.accounts.program_data.as_ref())?;
+
+    if upgrade_authority.is_some() {
+        // Check that the boss is the upgrade authority
+        require_keys_eq!(
+            ctx.accounts.boss.key(),
+            upgrade_authority.unwrap(),
+            InitializeErrorCode::WrongOwner
+        );
+    }
+
     let state = &mut ctx.accounts.state;
 
     // Ensure this is the first initialization
@@ -123,9 +190,6 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
     // Initialize proposed_boss as unset
     state.proposed_boss = Pubkey::default();
 
-    // Reserved space is automatically zero-initialized
-    state.reserved = [0u8; 128];
-
     msg!(
         "Program state initialized: boss={}, onyc_mint={}, bump={}",
         state.boss,
@@ -134,4 +198,55 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
     );
 
     Ok(())
+}
+
+/// Returns the Option<Pubkey> of the upgrade authority for an upgradeable program.
+///
+/// Required accounts:
+/// - `program`: the *executable* program AccountInfo (must equal crate::ID)
+/// - `program_data`: the ProgramData account for `program`
+pub fn get_upgrade_authority(
+    program: &AccountInfo,
+    program_data: Option<&AccountInfo>,
+) -> Result<Option<Pubkey>> {
+    let owner = program.owner;
+
+    if owner == &bpf_loader_upgradeable::id() {
+        let program_data =
+            program_data.ok_or_else(|| error!(InitializeErrorCode::MissingProgramData))?;
+        require!(
+            program_data.owner == &bpf_loader_upgradeable::id(),
+            InitializeErrorCode::WrongOwner
+        );
+
+        // Ensure the ProgramData really belongs to this program
+        let expected_pd = get_program_data_address(program.key);
+        require_keys_eq!(
+            expected_pd,
+            *program_data.key,
+            InitializeErrorCode::WrongProgramData
+        );
+
+        // Read ProgramData and extract the authority
+        let data = program_data
+            .try_borrow_data()
+            .map_err(|_| error!(InitializeErrorCode::DeserializeProgramDataFailed))?;
+        // Newer Solana crates provide `deserialize`; if not, switch to bincode.
+        let state = bincode::deserialize(&data).map_err(|_| ProgramError::InvalidAccountData)?;
+
+        if let UpgradeableLoaderState::ProgramData {
+            upgrade_authority_address,
+            ..
+        } = state
+        {
+            Ok(upgrade_authority_address) // Some(pubkey) or None
+        } else {
+            err!(InitializeErrorCode::NotProgramData)
+        }
+    } else if owner == &bpf_loader::id() {
+        // Required for tests to work. For BPF_LOADER, there is no upgrade_authority so we can't actually check it
+        Ok(None)
+    } else {
+        err!(InitializeErrorCode::WrongOwner)
+    }
 }
