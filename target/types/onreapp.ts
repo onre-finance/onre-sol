@@ -549,23 +549,10 @@ export type Onreapp = {
             "The state account to be closed and its rent reclaimed",
             "",
             "This account is validated as a PDA derived from the \"state\" seed.",
-            "The account will be closed and its rent transferred to the boss."
+            "The account will be closed and its rent transferred to the boss.",
+            ""
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "boss",
@@ -576,10 +563,7 @@ export type Onreapp = {
             "This signer will receive the rent from the closed state account."
           ],
           "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
+          "signer": true
         },
         {
           "name": "systemProgram",
@@ -5908,13 +5892,6 @@ export type Onreapp = {
               "Optional name identifier for the authority (max 50 characters)"
             ],
             "type": "string"
-          },
-          {
-            "name": "bump",
-            "docs": [
-              "PDA bump seed for account derivation"
-            ],
-            "type": "u8"
           }
         ]
       }

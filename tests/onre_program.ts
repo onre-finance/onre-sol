@@ -397,7 +397,9 @@ export class OnreProgram {
 
     async closeState(params?: { signer?: Keypair }) {
         const tx = this.program.methods
-            .closeState();
+            .closeState().accounts({
+                state: this.pdas.statePda
+            });
 
         if (params?.signer) {
             tx.signers([params.signer]);

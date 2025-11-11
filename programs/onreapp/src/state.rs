@@ -40,6 +40,4 @@ pub struct PermissionlessAuthority {
     /// Optional name identifier for the authority (max 50 characters)
     #[max_len(50)]
     pub name: String,
-    /// PDA bump seed for account derivation
-    pub bump: u8,
 }
