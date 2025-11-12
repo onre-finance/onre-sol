@@ -1,5 +1,6 @@
 import { TransactionInstruction } from "@solana/web3.js";
 import { ScriptHelper, TOKEN_IN_MINT, TOKEN_OUT_MINT } from "../utils/script-helper";
+import { TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 
 async function createMakeOfferTransaction() {
     const helper = await ScriptHelper.create();
@@ -20,7 +21,8 @@ async function createMakeOfferTransaction() {
         if (allowPermissionless) {
             const permissionlessIxs = await helper.buildCreatePermissionlessTokenAccountsIxs({
                 tokenInMint: TOKEN_IN_MINT,
-                tokenOutMint: TOKEN_OUT_MINT
+                tokenOutMint: TOKEN_OUT_MINT,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
             });
             instructions.push(...permissionlessIxs);
 
@@ -31,14 +33,15 @@ async function createMakeOfferTransaction() {
             }
         }
 
-        // const makeOfferIx = await helper.buildMakeOfferIx({
-        //     tokenInMint: TOKEN_IN_MINT,
-        //     tokenOutMint: TOKEN_OUT_MINT,
-        //     feeBasisPoints: 0, // 0% fee
-        //     needsApproval: false, // No approval required
-        //     allowPermissionless: allowPermissionless
-        // });
-        // instructions.push(makeOfferIx);
+        const makeOfferIx = await helper.buildMakeOfferIx({
+            tokenInMint: TOKEN_IN_MINT,
+            tokenOutMint: TOKEN_OUT_MINT,
+            feeBasisPoints: 0, // 0% fee
+            needsApproval: false, // No approval required
+            allowPermissionless: allowPermissionless,
+            tokenInProgram: TOKEN_2022_PROGRAM_ID,
+        });
+        instructions.push(makeOfferIx);
 
         const tx = await helper.prepareTransactionMultipleIxs(instructions);
 

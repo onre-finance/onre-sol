@@ -1,10 +1,11 @@
 import { PublicKey } from "@solana/web3.js";
 import { ScriptHelper } from "../utils/script-helper";
-import { getMint } from "@solana/spl-token";
+import { getMint, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
+import { CommitmentLevel } from "solana-bankrun/dist/internal";
 
 // Token addresses
-const TOKEN_IN_MINT = new PublicKey("5XCS4paUDKJL9cJaywgVsrT3jTD5JGcmou5bvNbcuniw"); // USDC-like (6 decimals)
-const TOKEN_OUT_MINT = new PublicKey("HQmHPQLhuXTj8dbsLUoFsJeCZWBkK75Zwczxork8Byzh"); // ONyc-like (9 decimals)
+const TOKEN_IN_MINT = new PublicKey("HyVoVvMHRr6p1FfGSWrWDPk6bn4FAmCjajzv6SY3DHk"); // USDC-like (6 decimals)
+const TOKEN_OUT_MINT = new PublicKey("6WLYBF2o3RSkZ9SoNhhFYxUPYzLaa83xSTZ3o46cg4CN"); // ONyc-like (9 decimals)
 
 // Helper function to format timestamp to human readable date
 function formatTimestamp(timestamp: number): string {
@@ -36,7 +37,7 @@ async function fetchOffer() {
 
         // Fetch token mint info for better display
         try {
-            const tokenInMint = await getMint(helper.connection, offer.tokenInMint);
+            const tokenInMint = await getMint(helper.connection, offer.tokenInMint, 'confirmed', TOKEN_2022_PROGRAM_ID);
             const tokenOutMint = await getMint(helper.connection, offer.tokenOutMint);
             console.log(`Token In Decimals: ${tokenInMint.decimals}`);
             console.log(`Token Out Decimals: ${tokenOutMint.decimals}`);
@@ -58,7 +59,7 @@ async function fetchOffer() {
                 console.log(`  Start Time: ${formatTimestamp(vector.startTime.toNumber())}`);
                 console.log(`  Base Time:  ${formatTimestamp(vector.baseTime.toNumber())}`);
                 console.log(`  Base Price: ${vector.basePrice.toString()}`);
-                console.log(`  APR: ${(vector.apr.toNumber() / 1_000_000).toFixed(4)}%`);
+                console.log(`  APR: ${(vector.apr.toNumber() / 10_000).toFixed(4)}%`);
                 console.log(`  Price Fix Duration: ${vector.priceFixDuration.toNumber()}s`);
 
                 // Check if vector is currently active

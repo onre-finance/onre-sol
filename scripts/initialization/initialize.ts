@@ -2,7 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 import { ScriptHelper } from "../utils/script-helper";
 
 // Use DEV Squad for initialization
-const BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC"); // DEV Squad
+const BOSS = new PublicKey("EVdiVScB7LX1P3bn7ZLmLJTBrSSgRXPqRU3bVxrEpRb5"); // DEV Squad
 
 async function createInitializeTransaction() {
     const helper = await ScriptHelper.create();

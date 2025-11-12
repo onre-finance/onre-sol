@@ -23,8 +23,8 @@ export const BOSS = new PublicKey("EVdiVScB7LX1P3bn7ZLmLJTBrSSgRXPqRU3bVxrEpRb5"
 // Note: In production, the actual boss is fetched from the program state, these are just for reference
 
 // Default token mints - UPDATE THESE for your environment
-export const TOKEN_IN_MINT = new PublicKey("5XCS4paUDKJL9cJaywgVsrT3jTD5JGcmou5bvNbcuniw"); // USDC-like (6 decimals)
-export const TOKEN_OUT_MINT = new PublicKey("HQmHPQLhuXTj8dbsLUoFsJeCZWBkK75Zwczxork8Byzh"); // ONyc-like (9 decimals)
+export const TOKEN_IN_MINT = new PublicKey("HyVoVvMHRr6p1FfGSWrWDPk6bn4FAmCjajzv6SY3DHk"); // USDC-like (6 decimals)
+export const TOKEN_OUT_MINT = new PublicKey("6WLYBF2o3RSkZ9SoNhhFYxUPYzLaa83xSTZ3o46cg4CN"); // ONyc-like (9 decimals)
 
 /**
  * Helper class for Onre scripts - provides clean abstraction similar to test OnreProgram
@@ -106,6 +106,7 @@ export class ScriptHelper {
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
         payer?: PublicKey | null;
+        tokenProgram?: PublicKey;
     }): Promise<TransactionInstruction[]> {
         const instructions: TransactionInstruction[] = [];
         const permissionlessAuthority = this.pdas.permissionlessVaultAuthorityPda;
@@ -116,7 +117,7 @@ export class ScriptHelper {
             params.tokenInMint,
             permissionlessAuthority,
             true,
-            TOKEN_PROGRAM_ID
+            params.tokenProgram ?? TOKEN_PROGRAM_ID
         );
 
         const tokenInAccountInfo = await this.connection.getAccountInfo(permissionlessTokenInAccount);
@@ -126,7 +127,7 @@ export class ScriptHelper {
                 permissionlessTokenInAccount,
                 permissionlessAuthority,
                 params.tokenInMint,
-                TOKEN_PROGRAM_ID
+                params.tokenProgram ?? TOKEN_PROGRAM_ID
             );
             instructions.push(createTokenInIx);
         }
@@ -190,10 +191,11 @@ export class ScriptHelper {
     }) {
         return await this.program.methods
             .addOfferVector(
+                null,
                 new BN(params.baseTime),
                 new BN(params.basePrice),
                 new BN(params.apr),
-                new BN(params.priceFixDuration)
+                new BN(params.priceFixDuration),
             )
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
@@ -368,45 +370,30 @@ export class ScriptHelper {
         return await this.program.methods
             .initialize()
             .accountsPartial({
-                boss: params?.payer ?? BOSS
+                boss: params?.payer ?? BOSS,
+                programData: new PublicKey("H2ryo165jMeADu4vpKEZy84ows2WR4imRmU8Em7vztZW"),
+                onycMint: new PublicKey("6WLYBF2o3RSkZ9SoNhhFYxUPYzLaa83xSTZ3o46cg4CN")
             })
             .instruction();
     }
 
-    async buildMigrateStateIx(params?: { boss?: PublicKey }) {
-        return await this.program.methods
-            .migrateV3()
-            .accountsPartial({
-                state: this.statePda,
-                permissionlessAuthority: this.pdas.permissionlessVaultAuthorityPda,
-                boss: params?.boss ?? BOSS
-            })
-            .instruction();
-    }
 
-    async buildInitializeVaultAuthorityIx(params?: { boss?: PublicKey }) {
-        return await this.program.methods
-            .initializeVaultAuthority()
-            .accountsPartial({
-                boss: params?.boss ?? BOSS
-            })
-            .instruction();
-    }
-
-    async buildInitializeMintAuthorityIx(params?: { boss?: PublicKey }) {
-        return await this.program.methods
-            .initializeMintAuthority()
-            .accountsPartial({
-                boss: params?.boss ?? BOSS
-            })
-            .instruction();
-    }
 
     async buildInitializePermissionlessAuthorityIx(params: { name: string; boss?: PublicKey }) {
         return await this.program.methods
             .initializePermissionlessAuthority(params.name)
             .accountsPartial({
                 boss: params.boss ?? BOSS
+            })
+            .instruction();
+    }
+
+    async buildCloseStateIx(params?: { boss?: PublicKey }) {
+        return await this.program.methods
+            .closeState()
+            .accountsPartial({
+                state: this.statePda,
+                boss: params?.boss ?? BOSS
             })
             .instruction();
     }

@@ -2,13 +2,13 @@ import { PublicKey } from "@solana/web3.js";
 import { ScriptHelper } from "../utils/script-helper";
 
 // Token addresses
-const TOKEN_IN_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // USDC
-const TOKEN_OUT_MINT = new PublicKey("5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5"); // ONyc
+const TOKEN_IN_MINT = new PublicKey("HyVoVvMHRr6p1FfGSWrWDPk6bn4FAmCjajzv6SY3DHk"); // USDC
+const TOKEN_OUT_MINT = new PublicKey("6WLYBF2o3RSkZ9SoNhhFYxUPYzLaa83xSTZ3o46cg4CN"); // ONyc
 
 // Configuration for the offer vector
-const BASE_TIME = Math.floor(new Date(Date.UTC(2025, 4, 27, 0, 0, 0)).getTime() / 1000); // May 27, 2025
+const BASE_TIME = Math.floor(new Date(Date.UTC(2025, 10, 10, 0, 0, 0)).getTime() / 1000); // May 27, 2025
 const BASE_PRICE = 1_000_000_000; // 1.0 (scaled by 1,000,000,000) all prices are scaled by 9 decimals
-const APR = 36_500; // 0.0365% APR (scaled by 1,000,000)
+const APR = 36_500; // 3,65% APR
 const PRICE_FIX_DURATION = 60 * 60 * 24; // 1 day
 
 async function createAddOfferVectorTransaction() {

@@ -2,7 +2,7 @@ import { ScriptHelper, TOKEN_OUT_MINT } from "../utils/script-helper";
 
 // Configuration - UPDATE THESE
 const TOKEN_MINT = TOKEN_OUT_MINT; // Using default TOKEN_OUT_MINT from script-helper
-const AMOUNT = 10_000_000_000; // 100 000 tokens with 6 decimals for USDC
+const AMOUNT = 1_000_000_000_000_000; // 100 000 tokens with 6 decimals for USDC
 
 async function createVaultDepositTransaction() {
     const helper = await ScriptHelper.create();
