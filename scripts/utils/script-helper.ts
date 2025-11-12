@@ -377,34 +377,7 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildMigrateStateIx(params?: { boss?: PublicKey }) {
-        return await this.program.methods
-            .migrateV3()
-            .accountsPartial({
-                state: this.statePda,
-                permissionlessAuthority: this.pdas.permissionlessVaultAuthorityPda,
-                boss: params?.boss ?? BOSS
-            })
-            .instruction();
-    }
 
-    async buildInitializeVaultAuthorityIx(params?: { boss?: PublicKey }) {
-        return await this.program.methods
-            .initializeVaultAuthority()
-            .accountsPartial({
-                boss: params?.boss ?? BOSS
-            })
-            .instruction();
-    }
-
-    async buildInitializeMintAuthorityIx(params?: { boss?: PublicKey }) {
-        return await this.program.methods
-            .initializeMintAuthority()
-            .accountsPartial({
-                boss: params?.boss ?? BOSS
-            })
-            .instruction();
-    }
 
     async buildInitializePermissionlessAuthorityIx(params: { name: string; boss?: PublicKey }) {
         return await this.program.methods
