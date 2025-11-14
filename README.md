@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **OnreApp Solana Program** is a custom smart contract built using the [Anchor framework](https://project-serum.github.io/anchor/), designed to manage tokenized (re)insurance pools and related operations on the Solana blockchain. This program facilitates the creation, management, and redemption of **ONe tokens**, which represent fractional ownership in a regulated investment pool specializing in (re)insurance underwriting.
+The **OnreApp Solana Program** is a custom smart contract built using the [Anchor framework](https://github.com/project-serum/anchor-book-cn), designed to manage tokenized (re)insurance pools and related operations on the Solana blockchain. This program facilitates the creation, management, and redemption of **ONe tokens**, which represent fractional ownership in a regulated investment pool specializing in (re)insurance underwriting.
 
 The program integrates blockchain technology to provide **transparency, liquidity, and efficiency** to the traditionally exclusive (re)insurance market. It supports key operations such as minting, burning, and managing offers, while ensuring compliance with Bermuda’s regulatory framework.
 
