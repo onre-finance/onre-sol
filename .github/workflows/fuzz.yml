@@ -1,0 +1,68 @@
+
+name: Test Fuzz Tests
+
+on:
+  workflow_dispatch: # Update this to trigger on PR
+
+env:
+  CARGO_TERM_COLOR: always
+  SOLANA_VERSION: "v2.2.16"
+  RUST_VERSION: "1.86"
+  TRIDENT_VERSION: "0.12.0-rc.2"
+
+jobs:
+  fuzz-tests:
+    name: Fuzz Tests - ${{ matrix.test.name }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - name: "OnRe App"
+            cache-key: "onre-app"
+    
+    steps:
+      - uses: actions/checkout@v3
+        name: Checkout Repository
+
+      - name: Install system packages
+        run: sudo apt-get update && sudo apt-get install -y build-essential libudev-dev protobuf-compiler libprotobuf-dev
+        shell: bash
+
+      - uses: hubbleprotocol/solana-setup-action@v0.5
+        id: solana-setup
+        with:
+          solana-version: ${{ env.SOLANA_VERSION }}
+          rust-version: ${{ env.RUST_VERSION }}
+          rust-shared-key: "trident-testing"
+
+      - name: Rust Cache
+        id: rust-cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+          shared-key: "trident-fuzzing"
+          key: fuzz-tests-${{ runner.os }}-${{ matrix.test.cache-key }}
+          workspaces: |
+            .
+            trident-tests
+
+      - name: Install Trident
+        if: steps.rust-cache.outputs.cache-hit != 'true'
+        uses: ./.github/actions/setup-trident/
+
+      - name: Build Solana Program
+        working-directory: .
+        run: cargo build-sbf
+
+      - name: Run Fuzz Test
+        working-directory: trident-tests
+        run: trident fuzz run fuzz_0 --with-exit-code
+
+
+  checks:
+    name: Fuzz Tests (Checks)
+    needs: fuzz-tests
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo "All fuzz tests completed successfully"
