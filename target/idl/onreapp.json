@@ -4684,6 +4684,11 @@
       "code": 6001,
       "name": "MaxSupplyExceeded",
       "msg": "Minting would exceed maximum supply cap"
+    },
+    {
+      "code": 6002,
+      "name": "TransferFeeNotSupported",
+      "msg": "Token-2022 with transfer fees not supported"
     }
   ],
   "types": [

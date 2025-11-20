@@ -5,6 +5,8 @@ use anchor_spl::token_interface;
 use anchor_spl::token_interface::{
     BurnChecked, Mint, MintToChecked, TokenAccount, TokenInterface, TransferChecked,
 };
+use spl_token_2022::extension::transfer_fee::TransferFeeConfig;
+use spl_token_2022::extension::{BaseStateWithExtensions, StateWithExtensions};
 
 #[error_code]
 pub enum TokenUtilsErrorCode {
@@ -12,6 +14,8 @@ pub enum TokenUtilsErrorCode {
     MathOverflow,
     #[msg("Minting would exceed maximum supply cap")]
     MaxSupplyExceeded,
+    #[msg("Token-2022 with transfer fees not supported")]
+    TransferFeeNotSupported,
 }
 
 /// Generic token transfer function that handles both regular and PDA-signed transfers
@@ -309,12 +313,14 @@ pub struct ExecTokenOpsParams<'a, 'info> {
 /// to provide maximum flexibility for different token configurations.
 ///
 /// # Token In Processing
+/// - Validates that token_in does not have Token-2022 transfer fees
 /// - If program has mint authority:
 ///   - Transfers net amount (after fees) to vault → burns only net amount
 ///   - Transfers fee amount directly to boss account
 /// - If program lacks mint authority: transfers full amount directly to boss/destination (standard transfer)
 ///
 /// # Token Out Processing
+/// - Validates that token_out does not have Token-2022 transfer fees
 /// - If program has mint authority: mints directly to user (inflationary)
 /// - If program lacks mint authority: transfers from vault to user (standard transfer)
 ///
@@ -329,12 +335,24 @@ pub struct ExecTokenOpsParams<'a, 'info> {
 /// - All operations use checked token instructions for decimal validation
 /// - PDA seeds are used for program-signed operations
 /// - Authority validation ensures only authorized transfers
+/// - Token-2022 tokens with transfer fees are completely blocked to prevent burn path issues and transfer discrepancies
 pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
+    // Validate that neither token has Token-2022 transfer fees
+    require!(
+        !has_transfer_fee(params.token_in_mint)?,
+        TokenUtilsErrorCode::TransferFeeNotSupported
+    );
+    require!(
+        !has_transfer_fee(params.token_out_mint)?,
+        TokenUtilsErrorCode::TransferFeeNotSupported
+    );
+
     // Step 1: User pays token_in
     let controls_token_in_mint =
         program_controls_mint(params.token_in_mint, params.mint_authority_pda);
 
     if controls_token_in_mint {
+
         // Transfer net amount to burn account
         transfer_tokens(
             params.token_in_mint,
@@ -417,4 +435,46 @@ pub fn program_controls_mint<'info>(
     mint_authority_pda: &AccountInfo<'info>,
 ) -> bool {
     matches!(mint.mint_authority, COption::Some(pk) if pk == mint_authority_pda.key())
+}
+
+/// Checks if a mint has Token-2022 transfer fee extension enabled with a non-zero fee
+///
+/// # Arguments
+/// * `mint` - The token mint to check
+///
+/// # Returns
+/// * `Ok(true)` - If the mint has transfer fees enabled AND the fee is non-zero
+/// * `Ok(false)` - If the mint does not have transfer fees, or has zero fees
+/// * `Err(_)` - If there's an error reading the mint data
+pub fn has_transfer_fee(mint: &InterfaceAccount<Mint>) -> Result<bool> {
+    let mint_info = mint.to_account_info();
+    let mint_data = mint_info.try_borrow_data()?;
+
+    // Try to parse as Token-2022 mint with extensions
+    let mint_with_extension = StateWithExtensions::<spl_token_2022::state::Mint>::unpack(&mint_data);
+
+    match mint_with_extension {
+        Ok(mint_state) => {
+            // Check if TransferFeeConfig extension exists
+            match mint_state.get_extension::<TransferFeeConfig>() {
+                Ok(transfer_fee_config) => {
+                    // Get the current epoch's transfer fee
+                    // TransferFeeConfig has two fee configs: older and newer
+                    // We need to check both transfer_fee_basis_points fields
+                    let clock = Clock::get()?;
+                    let fee_config = transfer_fee_config.get_epoch_fee(clock.epoch);
+                    Ok(u16::from(fee_config.transfer_fee_basis_points) > 0
+                        || u64::from(fee_config.maximum_fee) > 0)
+                }
+                Err(_) => {
+                    // No TransferFeeConfig extension
+                    Ok(false)
+                }
+            }
+        }
+        Err(_) => {
+            // Not a Token-2022 mint with extensions, or failed to parse
+            Ok(false)
+        }
+    }
 }
