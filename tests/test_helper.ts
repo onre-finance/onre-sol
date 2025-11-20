@@ -1,5 +1,5 @@
 import { AddedProgram, Clock, ProgramTestContext, startAnchor } from "solana-bankrun";
-import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
+import { Keypair, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import {
     ACCOUNT_SIZE,
     AccountLayout,
@@ -7,7 +7,17 @@ import {
     MINT_SIZE,
     MintLayout,
     TOKEN_2022_PROGRAM_ID,
-    TOKEN_PROGRAM_ID
+    TOKEN_PROGRAM_ID,
+    ExtensionType,
+    getMintLen,
+    createInitializeMint2Instruction,
+    createInitializeTransferFeeConfigInstruction,
+    createAssociatedTokenAccountInstruction,
+    createMintToInstruction,
+    getAccountLen,
+    createInitializeAccountInstruction,
+    createTransferCheckedWithFeeInstruction,
+    getMint,
 } from "@solana/spl-token";
 import idl from "../target/idl/onreapp.json";
 
@@ -55,6 +65,109 @@ export class TestHelper {
 
     createMint2022(decimals: number, mintAuthority: PublicKey | null = null, freezeAuthority: PublicKey | null = mintAuthority): PublicKey {
         return this.createMint(decimals, mintAuthority, BigInt(999_999_999 * 10 ** decimals), freezeAuthority, TOKEN_2022_PROGRAM_ID);
+    }
+
+    /**
+     * Creates a Token-2022 mint with transfer fee extension using proper SPL Token instructions
+     * @param decimals Number of decimals for the token
+     * @param transferFeeBasisPoints Transfer fee in basis points (e.g., 100 = 1%)
+     * @param maxFee Maximum fee per transfer
+     * @param mintAuthority Optional mint authority (defaults to boss)
+     * @param freezeAuthority Optional freeze authority (defaults to mintAuthority)
+     * @returns PublicKey of the created mint
+     */
+    async createMint2022WithTransferFee(
+        decimals: number,
+        transferFeeBasisPoints: number,
+        maxFee: bigint,
+        mintAuthority: PublicKey | null = null,
+        freezeAuthority: PublicKey | null = mintAuthority
+    ): Promise<PublicKey> {
+        const mint = Keypair.generate();
+        const mintAuth = mintAuthority || this.getBoss();
+        const freezeAuth = freezeAuthority || mintAuth;
+
+        // Calculate the space required for the mint with TransferFeeConfig extension
+        const extensions = [ExtensionType.TransferFeeConfig];
+        const mintLen = getMintLen(extensions);
+
+        // Create account for the mint
+        const createAccountIx = SystemProgram.createAccount({
+            fromPubkey: this.context.payer.publicKey,
+            newAccountPubkey: mint.publicKey,
+            space: mintLen,
+            lamports: INITIAL_LAMPORTS,
+            programId: TOKEN_2022_PROGRAM_ID,
+        });
+
+        // Initialize the transfer fee config extension
+        const initTransferFeeIx = createInitializeTransferFeeConfigInstruction(
+            mint.publicKey,
+            mintAuth,
+            mintAuth,
+            transferFeeBasisPoints,
+            maxFee,
+            TOKEN_2022_PROGRAM_ID
+        );
+
+        // Initialize the mint
+        const initMintIx = createInitializeMint2Instruction(
+            mint.publicKey,
+            decimals,
+            mintAuth,
+            freezeAuth,
+            TOKEN_2022_PROGRAM_ID
+        );
+
+        // Create transaction with mint initialization
+        const tx = new Transaction().add(
+            createAccountIx,
+            initTransferFeeIx,
+            initMintIx
+        );
+
+        // Only mint initial supply if mint authority is not a PDA
+        // PDAs can't sign transactions, only CPIs
+        const isMintAuthorityPda = mintAuthority !== null && mintAuthority.toBase58() !== this.getBoss().toBase58();
+
+        if (!isMintAuthorityPda) {
+            // Create ATA for boss to receive initial supply
+            const bossAta = getAssociatedTokenAddressSync(
+                mint.publicKey,
+                this.getBoss(),
+                false,
+                TOKEN_2022_PROGRAM_ID
+            );
+
+            const createAtaIx = createAssociatedTokenAccountInstruction(
+                this.context.payer.publicKey,
+                bossAta,
+                this.getBoss(),
+                mint.publicKey,
+                TOKEN_2022_PROGRAM_ID
+            );
+
+            // Mint initial supply to boss (999,999,999 tokens)
+            const initialSupply = BigInt(999_999_999 * 10 ** decimals);
+            const mintToIx = createMintToInstruction(
+                mint.publicKey,
+                bossAta,
+                mintAuth,
+                initialSupply,
+                [],
+                TOKEN_2022_PROGRAM_ID
+            );
+
+            tx.add(createAtaIx, mintToIx);
+        }
+
+        // Sign and process transaction
+        tx.recentBlockhash = this.context.lastBlockhash;
+        tx.sign(this.context.payer, mint);
+
+        await this.context.banksClient.processTransaction(tx);
+
+        return mint.publicKey;
     }
 
     createMint(decimals: number, mintAuthority: PublicKey | null = null, supply: bigint = BigInt(999_999_999 * 10 ** decimals), freezeAuthority: PublicKey | null = mintAuthority, owner: PublicKey = TOKEN_PROGRAM_ID): PublicKey {
@@ -106,6 +219,37 @@ export class TestHelper {
         });
 
         return tokenAccountAddress;
+    }
+
+    /**
+     * Creates a Token-2022 token account using proper SPL Token instructions
+     * This is needed for Token-2022 mints with extensions like TransferFee
+     * For PDAs, creates a regular account; for regular owners, creates an ATA
+     */
+    async createToken2022Account(mint: PublicKey, owner: PublicKey): Promise<PublicKey> {
+            // For regular owners, use ATA
+            const tokenAccount = getAssociatedTokenAddressSync(
+                mint,
+                owner,
+                true,
+                TOKEN_2022_PROGRAM_ID
+            );
+
+            const createAtaIx = createAssociatedTokenAccountInstruction(
+                this.context.payer.publicKey,
+                tokenAccount,
+                owner,
+                mint,
+                TOKEN_2022_PROGRAM_ID
+            );
+
+            const tx = new Transaction().add(createAtaIx);
+            tx.recentBlockhash = this.context.lastBlockhash;
+            tx.sign(this.context.payer);
+
+            await this.context.banksClient.processTransaction(tx);
+
+            return tokenAccount;
     }
 
     async getTokenAccountBalance(tokenAccount: PublicKey): Promise<bigint> {

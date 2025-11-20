@@ -4690,6 +4690,11 @@ export type Onreapp = {
       "code": 6001,
       "name": "maxSupplyExceeded",
       "msg": "Minting would exceed maximum supply cap"
+    },
+    {
+      "code": 6002,
+      "name": "transferFeeNotSupported",
+      "msg": "Token-2022 with transfer fees not supported"
     }
   ],
   "types": [
