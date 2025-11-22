@@ -15,7 +15,7 @@
     "transfer-usdc-v2": "tsx scripts/cross_chain_transfer/cctp_v2/transfer-v2.ts"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "^0.31.1",
+    "@coral-xyz/anchor": "^0.32.1",
     "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
     "@solana/spl-token": "0.4.14",
     "@solana/web3.js": "^1.98.4",
