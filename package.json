@@ -13,7 +13,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "set-program:dev": "cp ~/.config/solana/devHfQHgiFNifkLW49RCXpyTUZMyKuBNnFSbrQ8XsbX.json target/deploy/onreapp-keypair.json && anchor keys sync && anchor build",
-    "set-program:test": "cp ~/.config/solana/onreapp-keypair-test-program.json target/deploy/onreapp-keypair.json && anchor keys sync && anchor build",
+    "set-program:test": "cp ~/.config/solana/J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2.json target/deploy/onreapp-keypair.json && anchor keys sync && anchor build",
     "set-program:prod": "cp ~/.config/solana/onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe.json target/deploy/onreapp-keypair.json && anchor keys sync && anchor build",
     "transfer-usdc-v2": "tsx scripts/cross_chain_transfer/cctp_v2/transfer-v2.ts"
   },
