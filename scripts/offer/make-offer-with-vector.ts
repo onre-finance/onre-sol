@@ -1,12 +1,13 @@
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { ScriptHelper } from "../utils/script-helper";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 // Token addresses - UPDATE THESE
-const TOKEN_IN_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // USDC
-// const TOKEN_IN_MINT = new PublicKey("2u1tszSeqZ3qBWF3uNGPFc8TzMk2tdiwknnRMWGWjGWH"); // USDG
-const TOKEN_OUT_MINT = new PublicKey("5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5"); // ONyc
-const TOKEN_IN_PROGRAM = TOKEN_PROGRAM_ID; // Token program for TOKEN_IN_MINT (use TOKEN_PROGRAM_ID or TOKEN_2022_PROGRAM_ID)
+// const TOKEN_IN_MINT = new PublicKey("qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWeQu"); // USDC
+const TOKEN_IN_MINT = new PublicKey("Fuisp2hZfWdqZJoRjbfoTR47DnvB8gVJFJp2ANstzbDc"); // USDG
+const TOKEN_OUT_MINT = new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C"); // ONyc
+// const TOKEN_IN_PROGRAM = TOKEN_PROGRAM_ID; // Token program for TOKEN_IN_MINT (use TOKEN_PROGRAM_ID or TOKEN_2022_PROGRAM_ID)
+const TOKEN_IN_PROGRAM = TOKEN_2022_PROGRAM_ID;
 
 // Offer configuration
 const FEE_BASIS_POINTS = 0; // 0% fee
@@ -14,9 +15,9 @@ const NEEDS_APPROVAL = false; // No approval required
 const ALLOW_PERMISSIONLESS = true; // Enable permissionless
 
 // Vector configuration
-const BASE_TIME = Math.floor(new Date(Date.UTC(2025, 4, 27, 0, 0, 0)).getTime() / 1000); // May 27, 2025
-const BASE_PRICE = 1_000_000_000; // 1.0 (scaled by 1,000,000,000) all prices are scaled by 9 decimals
-const APR = 36_500; // 3.65% APR
+const BASE_TIME = Math.floor(Date.UTC(2025, 10, 26, 0, 0, 0) / 1000); // Nov 26, 2025
+const BASE_PRICE = 1_051_600_000; // 1.0516 (scaled by 1,000,000,000) all prices are scaled by 9 decimals
+const APR = 125_332; // 12.5332 % APR
 const PRICE_FIX_DURATION = 60 * 60 * 24; // 1 day
 
 async function createMakeOfferWithVectorTransaction() {

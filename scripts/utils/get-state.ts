@@ -11,6 +11,7 @@ async function getStateInfo() {
         console.log("\n=== Program State ===");
         console.log("Boss:", state.boss.toBase58());
         console.log("Kill switch enabled:", state.isKilled);
+        console.log("Proposed new boss:", state.proposedBoss ? state.proposedBoss.toBase58() : "None");
         console.log("\nAdmins:");
         if (state.admins && state.admins.length > 0) {
             state.admins.forEach((admin, index) => {

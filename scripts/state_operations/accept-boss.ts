@@ -2,7 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 import { ScriptHelper } from "../utils/script-helper";
 
 // New boss that will accept the transfer - UPDATE THIS
-const NEW_BOSS = new PublicKey("GBR7NtVLiapW8YxebyYf6EYFJJytarj6ixqiXCSq4xth");
+const NEW_BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC");
 
 async function createAcceptBossTransaction() {
     const helper = await ScriptHelper.create();

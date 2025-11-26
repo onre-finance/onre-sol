@@ -1,3 +1,4 @@
+import { PublicKey } from "@solana/web3.js";
 import { ScriptHelper } from "../utils/script-helper";
 
 async function createCloseStateTransaction() {
@@ -5,7 +6,8 @@ async function createCloseStateTransaction() {
 
     console.log("Creating close state transaction...");
 
-    const boss = await helper.getBoss();
+    // const boss = await helper.getBoss();
+    const boss = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC");
     console.log("Boss:", boss.toBase58());
 
     try {

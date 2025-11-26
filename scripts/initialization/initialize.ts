@@ -2,7 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 import { ScriptHelper } from "../utils/script-helper";
 
 // Use DEV Squad for initialization
-const BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC"); // DEV Squad
+const BOSS = new PublicKey("69YoSiSLEAJrTbZGy7Ry3p4jvJBjJpwn8g8HKcXcCguJ"); // DEV Squad
 
 async function createInitializeTransaction() {
     const helper = await ScriptHelper.create();
@@ -11,7 +11,7 @@ async function createInitializeTransaction() {
     console.log("Boss (DEV Squad):", BOSS.toBase58());
 
     try {
-        const ix = await helper.buildInitializeIx();
+        const ix = await helper.buildInitializeIx({ payer: BOSS });
 
         const tx = await helper.prepareTransaction(ix, BOSS);
 
