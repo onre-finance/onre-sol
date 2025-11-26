@@ -1,5 +1,5 @@
-import { Keypair, PublicKey } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
+import { Keypair, PublicKey, Transaction } from "@solana/web3.js";
+import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID, createMintToInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { TestHelper } from "../test_helper";
 import { OnreProgram } from "../onre_program.ts";
 
@@ -508,6 +508,229 @@ describe("Take Offer", () => {
             expect(userTokenOutAfter).toBe(BigInt(1e9));
             expect(bossTokenInAfter - bossTokenInBefore).toBe(BigInt(tokenInAmount));
             expect(vaultTokenOutBefore - vaultTokenOutAfter).toBe(BigInt(1e9));
+        });
+
+        it("Should correctly handle Token2022 with zero transfer fees", async () => {
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            // Create Token-2022 mints with transfer fee EXTENSION enabled but set to ZERO
+            // This tests that we only block non-zero fees, not the extension itself
+            const tokenInMint = await testHelper.createMint2022WithTransferFee(
+                6,
+                0, // 0% fee - extension enabled but fee is zero
+                BigInt(0) // max fee also zero
+            );
+            const tokenOutMint = await testHelper.createMint2022WithTransferFee(
+                9,
+                0, // 0% fee - extension enabled but fee is zero
+                BigInt(0) // max fee also zero
+            );
+
+            // Create an offer
+            await program.makeOffer({
+                tokenInMint,
+                tokenOutMint,
+                tokenInProgram: TOKEN_2022_PROGRAM_ID
+            });
+
+            // Create token accounts
+            const user = testHelper.createUserAccount();
+            testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(10_000e6), false, TOKEN_2022_PROGRAM_ID);
+            testHelper.createTokenAccount(tokenInMint, testHelper.getBoss(), BigInt(0), false, TOKEN_2022_PROGRAM_ID);
+            const userTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, user.publicKey, false, TOKEN_2022_PROGRAM_ID);
+            testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(10_000e9), false, TOKEN_2022_PROGRAM_ID);
+
+            // Create and fund vault
+            testHelper.createTokenAccount(tokenInMint, program.pdas.offerVaultAuthorityPda, BigInt(0), true, TOKEN_2022_PROGRAM_ID);
+            testHelper.createTokenAccount(tokenOutMint, program.pdas.offerVaultAuthorityPda, BigInt(0), true, TOKEN_2022_PROGRAM_ID);
+
+            // Fund vault
+            await program.offerVaultDeposit({
+                amount: 10_000e9,
+                tokenMint: tokenOutMint,
+                tokenProgram: TOKEN_2022_PROGRAM_ID
+            });
+
+            await program.addOfferVector({
+                tokenInMint,
+                tokenOutMint,
+                baseTime: currentTime,
+                basePrice: 1e9,
+                apr: 36_500,
+                priceFixDuration: 86400
+            });
+
+            const tokenInAmount = 1_000_100;
+
+            // Should succeed with Token-2022 that has zero (or no) transfer fees
+            await program.takeOffer({
+                tokenInAmount,
+                tokenInMint,
+                tokenOutMint,
+                user: user.publicKey,
+                signer: user,
+                tokenInProgram: TOKEN_2022_PROGRAM_ID,
+                tokenOutProgram: TOKEN_2022_PROGRAM_ID
+            });
+
+            const userTokenOutAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+            expect(userTokenOutAfter).toBe(BigInt(1e9));
+        });
+
+        it("Should reject token_out with non-zero transfer fees", async () => {
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            // Create token_in (regular SPL token)
+            const tokenInMint = testHelper.createMint(6);
+
+            // Create token_out with Token-2022 and 2% transfer fee
+            const tokenOutMint = await testHelper.createMint2022WithTransferFee(
+                9,
+                200, // 2% fee in basis points
+                BigInt(1000000) // max fee
+            );
+
+            // Create offer where program lacks mint authority for token_out
+            await program.makeOffer({
+                tokenInMint,
+                tokenOutMint
+            });
+
+            // Create token accounts
+            const user = testHelper.createUserAccount();
+            testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(10_000e6), true);
+            testHelper.createTokenAccount(tokenInMint, testHelper.getBoss(), BigInt(0));
+            // Note: boss token account for tokenOutMint is already created by createMint2022WithTransferFee
+            // Create vault token account using proper Token-2022 instructions
+            await testHelper.createToken2022Account(tokenOutMint, program.pdas.offerVaultAuthorityPda);
+
+            // Fund vault
+            await program.offerVaultDeposit({
+                amount: 10_000e9,
+                tokenMint: tokenOutMint,
+                tokenProgram: TOKEN_2022_PROGRAM_ID
+            });
+
+            await program.addOfferVector({
+                tokenInMint,
+                tokenOutMint,
+                baseTime: currentTime,
+                basePrice: 1e9,
+                apr: 0,
+                priceFixDuration: 86400
+            });
+
+            // Should fail because token_out has non-zero transfer fees
+            await expect(
+                program.takeOffer({
+                    tokenInAmount: 1e6,
+                    tokenInMint,
+                    tokenOutMint,
+                    user: user.publicKey,
+                    signer: user,
+                    tokenOutProgram: TOKEN_2022_PROGRAM_ID
+                })
+            ).rejects.toThrow("Token-2022 with transfer fees not supported");
+        });
+
+        it("Should reject token_in with non-zero transfer fees", async () => {
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            // Create token_in with Token-2022 and 5% transfer fee (boss as mint authority initially)
+            const tokenInMint = await testHelper.createMint2022WithTransferFee(
+                9,
+                500, // 5% fee in basis points
+                BigInt(5000000) // max fee
+            );
+
+            // Create token_out (regular SPL token)
+            const tokenOutMint = testHelper.createMint(6);
+
+            // Create token accounts FIRST
+            const user = testHelper.createUserAccount();
+
+            // Create vault Token-2022 account (PDA owner - creates regular account)
+            await testHelper.createToken2022Account(tokenInMint, program.pdas.offerVaultAuthorityPda);
+
+            // Create user Token-2022 ATA manually (helper's PDA detection doesn't work for regular users)
+            const userTokenInAccount = getAssociatedTokenAddressSync(
+                tokenInMint,
+                user.publicKey,
+                false,
+                TOKEN_2022_PROGRAM_ID
+            );
+
+            const createUserAtaIx = createAssociatedTokenAccountInstruction(
+                testHelper.context.payer.publicKey,
+                userTokenInAccount,
+                user.publicKey,
+                tokenInMint,
+                TOKEN_2022_PROGRAM_ID
+            );
+
+            const createAtaTx = new Transaction().add(createUserAtaIx);
+            createAtaTx.recentBlockhash = testHelper.context.lastBlockhash;
+            createAtaTx.sign(testHelper.context.payer);
+            await testHelper.context.banksClient.processTransaction(createAtaTx);
+
+            // Mint tokens directly to user (boss still has mint authority at this point)
+            const mintToIx = createMintToInstruction(
+                tokenInMint,
+                userTokenInAccount,
+                testHelper.getBoss(),
+                BigInt(10_000e9),
+                [],
+                TOKEN_2022_PROGRAM_ID
+            );
+
+            const mintTx = new Transaction().add(mintToIx);
+            mintTx.recentBlockhash = testHelper.context.lastBlockhash;
+            mintTx.sign(testHelper.context.payer);
+            await testHelper.context.banksClient.processTransaction(mintTx);
+
+            // Create offer
+            await program.makeOffer({
+                tokenInMint,
+                tokenOutMint,
+                tokenInProgram: TOKEN_2022_PROGRAM_ID
+            });
+
+            // Transfer mint authority to program (to test burn path) - AFTER minting to user
+            await program.transferMintAuthorityToProgram({
+                mint: tokenInMint,
+                tokenProgram: TOKEN_2022_PROGRAM_ID
+            });
+
+            // Create boss and vault accounts for token_out
+            testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(10_000e6));
+            testHelper.createTokenAccount(tokenOutMint, program.pdas.offerVaultAuthorityPda, BigInt(0), true);
+
+            // Fund vault with token_out
+            await program.offerVaultDeposit({
+                amount: 10_000e6,
+                tokenMint: tokenOutMint
+            });
+
+            await program.addOfferVector({
+                tokenInMint,
+                tokenOutMint,
+                baseTime: currentTime,
+                basePrice: 1e9,
+                apr: 0,
+                priceFixDuration: 86400
+            });
+
+            // Should fail because token_in has non-zero transfer fees
+            await expect(
+                program.takeOffer({
+                    tokenInAmount: 1e9,
+                    tokenInMint,
+                    tokenOutMint,
+                    user: user.publicKey,
+                    signer: user,
+                    tokenInProgram: TOKEN_2022_PROGRAM_ID
+                })
+            ).rejects.toThrow("Token-2022 with transfer fees not supported");
         });
     });
 

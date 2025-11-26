@@ -4641,16 +4641,16 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "offerVectorRetiredEvent",
+      "name": "offerVectorEvictedEvent",
       "discriminator": [
-        180,
-        96,
-        184,
-        169,
-        32,
-        32,
-        243,
-        215
+        52,
+        231,
+        183,
+        68,
+        181,
+        24,
+        100,
+        243
       ]
     },
     {
@@ -4690,6 +4690,11 @@ export type Onreapp = {
       "code": 6001,
       "name": "maxSupplyExceeded",
       "msg": "Minting would exceed maximum supply cap"
+    },
+    {
+      "code": 6002,
+      "name": "transferFeeNotSupported",
+      "msg": "Token-2022 with transfer fees not supported"
     }
   ],
   "types": [
@@ -5810,7 +5815,7 @@ export type Onreapp = {
       }
     },
     {
-      "name": "offerVectorRetiredEvent",
+      "name": "offerVectorEvictedEvent",
       "docs": [
         "Event emitted when old pricing vectors are retired from an offer"
       ],

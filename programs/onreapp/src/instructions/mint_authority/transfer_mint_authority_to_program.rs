@@ -1,8 +1,8 @@
 use crate::constants::seeds;
 use crate::state::State;
 use anchor_lang::prelude::*;
-use anchor_spl::token::spl_token::instruction::AuthorityType;
-use anchor_spl::token::{set_authority, SetAuthority};
+use anchor_spl::token_2022::spl_token_2022::instruction::AuthorityType;
+use anchor_spl::token_interface::{set_authority, SetAuthority};
 use anchor_spl::token_interface::{Mint, TokenInterface};
 
 /// Handles transferring mint authority from the boss account to a program PDA
