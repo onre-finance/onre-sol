@@ -28,7 +28,7 @@ pub struct OfferVectorAddedEvent {
 
 /// Event emitted when old pricing vectors are retired from an offer
 #[event]
-pub struct OfferVectorRetiredEvent {
+pub struct OfferVectorEvictedEvent {
     /// The token in mint of the offer
     pub offer_token_in_mint: Pubkey,
     /// The token out mint of the offer
@@ -267,7 +267,7 @@ fn clean_old_vectors(offer: &mut Offer, new_vector: &OfferVector, current_time: 
             // Keep all future vectors
             && vector.start_time < active_vector_start_time
         {
-            emit!(OfferVectorRetiredEvent {
+            emit!(OfferVectorEvictedEvent {
                 offer_token_in_mint: offer.token_in_mint,
                 offer_token_out_mint: offer.token_out_mint,
                 vector_start_time: vector.start_time
