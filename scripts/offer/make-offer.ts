@@ -31,14 +31,14 @@ async function createMakeOfferTransaction() {
             }
         }
 
-        // const makeOfferIx = await helper.buildMakeOfferIx({
-        //     tokenInMint: TOKEN_IN_MINT,
-        //     tokenOutMint: TOKEN_OUT_MINT,
-        //     feeBasisPoints: 0, // 0% fee
-        //     needsApproval: false, // No approval required
-        //     allowPermissionless: allowPermissionless
-        // });
-        // instructions.push(makeOfferIx);
+        const makeOfferIx = await helper.buildMakeOfferIx({
+            tokenInMint: TOKEN_IN_MINT,
+            tokenOutMint: TOKEN_OUT_MINT,
+            feeBasisPoints: 0, // 0% fee
+            needsApproval: false, // No approval required
+            allowPermissionless: allowPermissionless
+        });
+        instructions.push(makeOfferIx);
 
         const tx = await helper.prepareTransactionMultipleIxs(instructions);
 

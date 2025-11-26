@@ -8,7 +8,7 @@ const TOKEN_OUT_MINT = new PublicKey("5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcx
 // Configuration for the offer vector
 const BASE_TIME = Math.floor(new Date(Date.UTC(2025, 4, 27, 0, 0, 0)).getTime() / 1000); // May 27, 2025
 const BASE_PRICE = 1_000_000_000; // 1.0 (scaled by 1,000,000,000) all prices are scaled by 9 decimals
-const APR = 36_500; // 0.0365% APR (scaled by 1,000,000)
+const APR = 36_500; // 3.65% APR
 const PRICE_FIX_DURATION = 60 * 60 * 24; // 1 day
 
 async function createAddOfferVectorTransaction() {
@@ -19,7 +19,7 @@ async function createAddOfferVectorTransaction() {
     console.log("Token Out (ONe):", TOKEN_OUT_MINT.toBase58());
     console.log("Base Time:", new Date(BASE_TIME * 1000).toISOString());
     console.log("Base Price:", BASE_PRICE);
-    console.log("APR:", APR / 1_000_000, "%");
+    console.log("APR:", APR / 10_000, "%");
     console.log("Price Fix Duration:", PRICE_FIX_DURATION, "seconds");
 
     const boss = await helper.getBoss();

@@ -18,8 +18,10 @@ export const BOSS = new PublicKey("EVdiVScB7LX1P3bn7ZLmLJTBrSSgRXPqRU3bVxrEpRb5"
 // Note: In production, the actual boss is fetched from the program state, these are just for reference
 
 // Default token mints - UPDATE THESE for your environment
-export const TOKEN_IN_MINT = new PublicKey("2eW3HJzbgrCnV1fd7dUbyPj5T95D35oBPcJyfXtoGNrw"); // USDC-like (6 decimals)
-export const TOKEN_OUT_MINT = new PublicKey("6WLYBF2o3RSkZ9SoNhhFYxUPYzLaa83xSTZ3o46cg4CN"); // ONyc-like (9 decimals)
+export const TOKEN_IN_MINT = new PublicKey("5XCS4paUDKJL9cJaywgVsrT3jTD5JGcmou5bvNbcuniw"); // USDC-like (6 decimals)
+// export const TOKEN_IN_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // USDC (6 decimals)
+export const TOKEN_OUT_MINT = new PublicKey("HQmHPQLhuXTj8dbsLUoFsJeCZWBkK75Zwczxork8Byzh"); // ONyc-like (9 decimals)
+// export const TOKEN_OUT_MINT = new PublicKey("5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5"); // ONyc (9 decimals)
 
 /**
  * Helper class for Onre scripts - provides clean abstraction similar to test OnreProgram
@@ -185,6 +187,7 @@ export class ScriptHelper {
     }) {
         return await this.program.methods
             .addOfferVector(
+                null,
                 new BN(params.baseTime),
                 new BN(params.basePrice),
                 new BN(params.apr),
@@ -350,6 +353,24 @@ export class ScriptHelper {
             .instruction();
     }
 
+    async buildProposeBossIx(params: { newBoss: PublicKey; boss?: PublicKey }) {
+        return await this.program.methods
+            .proposeBoss(params.newBoss)
+            .accountsPartial({
+                boss: params.boss ?? BOSS
+            })
+            .instruction();
+    }
+
+    async buildAcceptBossIx(params: { newBoss: PublicKey }) {
+        return await this.program.methods
+            .acceptBoss()
+            .accountsPartial({
+                newBoss: params.newBoss
+            })
+            .instruction();
+    }
+
     async buildSetKillSwitchIx(params: { enable: boolean; boss?: PublicKey }) {
         return await this.program.methods
             .setKillSwitch(params.enable)
@@ -359,40 +380,48 @@ export class ScriptHelper {
             .instruction();
     }
 
+    async buildCloseStateIx(params?: { boss?: PublicKey }) {
+        return await this.program.methods
+            .closeState()
+            .accountsPartial({
+                boss: params?.boss ?? BOSS,
+                state: this.statePda
+            })
+            .instruction();
+    }
+
+    async buildConfigureMaxSupplyIx(params: { maxSupply: BN; boss?: PublicKey }) {
+        return await this.program.methods
+            .configureMaxSupply(params.maxSupply)
+            .accountsPartial({
+                boss: params.boss ?? BOSS
+            })
+            .instruction();
+    }
+
+    async buildAddApproverIx(params: { approver: PublicKey; boss?: PublicKey }) {
+        return await this.program.methods
+            .addApprover(params.approver)
+            .accountsPartial({
+                boss: params.boss ?? BOSS
+            })
+            .instruction();
+    }
+
+    async buildRemoveApproverIx(params: { approver: PublicKey; boss?: PublicKey }) {
+        return await this.program.methods
+            .removeApprover(params.approver)
+            .accountsPartial({
+                boss: params.boss ?? BOSS
+            })
+            .instruction();
+    }
+
     async buildInitializeIx(params?: { payer?: PublicKey }) {
         return await this.program.methods
             .initialize()
             .accountsPartial({
                 boss: params?.payer ?? BOSS
-            })
-            .instruction();
-    }
-
-    async buildMigrateStateIx(params?: { boss?: PublicKey }) {
-        return await this.program.methods
-            .migrateV3()
-            .accountsPartial({
-                state: this.statePda,
-                permissionlessAuthority: this.pdas.permissionlessVaultAuthorityPda,
-                boss: params?.boss ?? BOSS
-            })
-            .instruction();
-    }
-
-    async buildInitializeVaultAuthorityIx(params?: { boss?: PublicKey }) {
-        return await this.program.methods
-            .initializeVaultAuthority()
-            .accountsPartial({
-                boss: params?.boss ?? BOSS
-            })
-            .instruction();
-    }
-
-    async buildInitializeMintAuthorityIx(params?: { boss?: PublicKey }) {
-        return await this.program.methods
-            .initializeMintAuthority()
-            .accountsPartial({
-                boss: params?.boss ?? BOSS
             })
             .instruction();
     }
