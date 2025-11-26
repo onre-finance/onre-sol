@@ -4,12 +4,12 @@ import os from "os";
 import path from "path";
 import bs58 from "bs58";
 
-import { RPC_URL } from "../utils/script-commons";
+import { RPC_URL } from "./script-helper";
 
 // Function to load wallet from ~/.config/solana/id.json
 function loadWalletKey(): Keypair {
     const home = os.homedir();
-    const walletPath = path.join(home, ".config", "solana", "id.json");
+    const walletPath = path.join(home, ".config", "solana", "69YoSiSLEAJrTbZGy7Ry3p4jvJBjJpwn8g8HKcXcCguJ.json");
     const walletKeypair = JSON.parse(fs.readFileSync(walletPath, "utf-8"));
     return Keypair.fromSecretKey(new Uint8Array(walletKeypair));
 }

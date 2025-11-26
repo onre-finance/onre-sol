@@ -1,27 +1,31 @@
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { BN } from "bn.js";
 import { Onreapp } from "../../target/types/onreapp";
 import idl from "../../target/idl/onreapp.json";
 import bs58 from "bs58";
 
 // Environment configuration
-// export const RPC_URL = process.env.SOL_MAINNET_RPC_URL || "https://api.mainnet-beta.solana.com";
-export const RPC_URL = "https://api.devnet.solana.com";
+export const RPC_URL = process.env.SOL_MAINNET_RPC_URL || "https://api.mainnet-beta.solana.com";
+// export const RPC_URL = "https://api.devnet.solana.com";
 
 // BOSS wallet addresses (Squad multisig accounts)
 // export const BOSS = new PublicKey("45YnzauhsBM8CpUz96Djf8UG5vqq2Dua62wuW9H3jaJ5"); // WARN: SQUAD MAIN ACCOUNT!!!
-// export const BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC"); // DEV Squad
-export const BOSS = new PublicKey("EVdiVScB7LX1P3bn7ZLmLJTBrSSgRXPqRU3bVxrEpRb5"); // devnet Squad
+export const BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC"); // DEV Squad
+// export const BOSS = new PublicKey("EVdiVScB7LX1P3bn7ZLmLJTBrSSgRXPqRU3bVxrEpRb5"); // devnet Squad
 // Note: In production, the actual boss is fetched from the program state, these are just for reference
 
 // Default token mints - UPDATE THESE for your environment
-export const TOKEN_IN_MINT = new PublicKey("5XCS4paUDKJL9cJaywgVsrT3jTD5JGcmou5bvNbcuniw"); // USDC-like (6 decimals)
+// export const TOKEN_IN_MINT = new PublicKey("5XCS4paUDKJL9cJaywgVsrT3jTD5JGcmou5bvNbcuniw"); // USDC-like (6 decimals)
 // export const TOKEN_IN_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // USDC (6 decimals)
-export const TOKEN_OUT_MINT = new PublicKey("HQmHPQLhuXTj8dbsLUoFsJeCZWBkK75Zwczxork8Byzh"); // ONyc-like (9 decimals)
+export const TOKEN_IN_MINT = new PublicKey("qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWeQu"); // TestUSDC (9 decimals)
+
+// export const TOKEN_OUT_MINT = new PublicKey("HQmHPQLhuXTj8dbsLUoFsJeCZWBkK75Zwczxork8Byzh"); // ONyc-like (9 decimals)
 // export const TOKEN_OUT_MINT = new PublicKey("5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5"); // ONyc (9 decimals)
+export const TOKEN_OUT_MINT = new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C"); // TestONyc (9 decimals)
+
 
 /**
  * Helper class for Onre scripts - provides clean abstraction similar to test OnreProgram
@@ -88,6 +92,7 @@ export class ScriptHelper {
             [Buffer.from("offer"), tokenInMint.toBuffer(), tokenOutMint.toBuffer()],
             this.program.programId
         )[0];
+        console.log(`Offer PDA: ${offerPda}`)
         return await this.program.account.offer.fetch(offerPda);
     }
 
@@ -113,7 +118,7 @@ export class ScriptHelper {
             params.tokenInMint,
             permissionlessAuthority,
             true,
-            TOKEN_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID 
         );
 
         const tokenInAccountInfo = await this.connection.getAccountInfo(permissionlessTokenInAccount);
@@ -123,7 +128,7 @@ export class ScriptHelper {
                 permissionlessTokenInAccount,
                 permissionlessAuthority,
                 params.tokenInMint,
-                TOKEN_PROGRAM_ID
+                TOKEN_2022_PROGRAM_ID 
             );
             instructions.push(createTokenInIx);
         }
@@ -421,7 +426,9 @@ export class ScriptHelper {
         return await this.program.methods
             .initialize()
             .accountsPartial({
-                boss: params?.payer ?? BOSS
+                boss: params?.payer ?? BOSS,
+                programData: new PublicKey("H2ryo165jMeADu4vpKEZy84ows2WR4imRmU8Em7vztZW"),
+                onycMint: new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C")
             })
             .instruction();
     }

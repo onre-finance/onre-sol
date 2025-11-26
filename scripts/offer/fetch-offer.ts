@@ -3,8 +3,8 @@ import { ScriptHelper } from "../utils/script-helper";
 import { getMint } from "@solana/spl-token";
 
 // Token addresses
-const TOKEN_IN_MINT = new PublicKey("2eW3HJzbgrCnV1fd7dUbyPj5T95D35oBPcJyfXtoGNrw"); // USDC-like (6 decimals)
-const TOKEN_OUT_MINT = new PublicKey("6WLYBF2o3RSkZ9SoNhhFYxUPYzLaa83xSTZ3o46cg4CN"); // ONyc-like (9 decimals)
+const TOKEN_IN_MINT = new PublicKey("qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWeQu"); // USDC-like (6 decimals)
+const TOKEN_OUT_MINT = new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C"); // ONyc-like (9 decimals)
 
 // Helper function to format timestamp to human readable date
 function formatTimestamp(timestamp: number): string {

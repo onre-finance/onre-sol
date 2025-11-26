@@ -2,7 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 import { ScriptHelper } from "../utils/script-helper";
 
 // New boss to propose - UPDATE THIS
-const NEW_BOSS = new PublicKey("GBR7NtVLiapW8YxebyYf6EYFJJytarj6ixqiXCSq4xth");
+const NEW_BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC");
 
 async function createProposeBossTransaction() {
     const helper = await ScriptHelper.create();
@@ -15,10 +15,11 @@ async function createProposeBossTransaction() {
 
     try {
         const ix = await helper.buildProposeBossIx({
+            boss: currentBoss,
             newBoss: NEW_BOSS
         });
 
-        const tx = await helper.prepareTransaction(ix);
+        const tx = await helper.prepareTransaction(ix, currentBoss);
 
         console.log("\nThis is STEP 1 of the two-step ownership transfer:");
         console.log("  1. Current boss proposes a new boss (this transaction)");
