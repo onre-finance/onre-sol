@@ -1,5 +1,9 @@
 import { Keypair, PublicKey, Transaction } from "@solana/web3.js";
-import { BOSS, ScriptHelper, TOKEN_IN_MINT, TOKEN_OUT_MINT } from "../utils/script-helper";
+import { BOSS, ScriptHelper, USDC_MINT, ONYC_MINT } from "../utils/script-helper";
+
+// Configure which mints to use for smoke tests
+const TOKEN_IN_MINT = USDC_MINT;
+const TOKEN_OUT_MINT = ONYC_MINT;
 
 /**
  * Smoke tests for Onre program - validates core functionality

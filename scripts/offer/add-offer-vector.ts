@@ -1,9 +1,9 @@
 import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper } from "../utils/script-helper";
+import { ScriptHelper, USDC_MINT, ONYC_MINT, USDC_TEST_MAINNET, ONYC_TEST_MAINNET } from "../utils/script-helper";
 
-// Token addresses
-const TOKEN_IN_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // USDC
-const TOKEN_OUT_MINT = new PublicKey("5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5"); // ONyc
+// Configure which mints to add vector to
+const TOKEN_IN_MINT = USDC_TEST_MAINNET;
+const TOKEN_OUT_MINT = ONYC_TEST_MAINNET;
 
 // Configuration for the offer vector
 const BASE_TIME = Math.floor(new Date(Date.UTC(2025, 4, 27, 0, 0, 0)).getTime() / 1000); // May 27, 2025
@@ -47,7 +47,8 @@ async function createAddOfferVectorTransaction() {
             baseTime: BASE_TIME,
             basePrice: BASE_PRICE,
             apr: APR,
-            priceFixDuration: PRICE_FIX_DURATION
+            priceFixDuration: PRICE_FIX_DURATION,
+            boss: boss,
         });
 
         const tx = await helper.prepareTransaction(ix);

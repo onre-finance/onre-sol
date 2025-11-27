@@ -1,26 +1,53 @@
 import { ScriptHelper } from "../utils/script-helper";
 import { BN } from "bn.js";
 
-// Maximum supply configuration - UPDATE THIS
-// Set to 0 to remove the cap (unlimited supply)
-// Otherwise, specify the maximum supply in base units (considering token decimals)
-// Example: For a token with 9 decimals, 100_000_000 * 1e9 = 100 million tokens
-const MAX_SUPPLY = new BN(100_000_000).mul(new BN(1e9)); // 100 million tokens with 9 decimals
-// const MAX_SUPPLY = new BN(0); // 0 = no cap
+const MAX_SUPPLY = new BN(100_000_000).mul(new BN(1e9)); // 100 million ONyc tokens (9 decimals)
+const TOKEN_DECIMALS = 9; // ONyc has 9 decimals
 
 async function createConfigureMaxSupplyTransaction() {
     const helper = await ScriptHelper.create();
 
     console.log("Creating configure max supply transaction...");
-    console.log("Max Supply:", MAX_SUPPLY.isZero() ? "No cap (unlimited)" : MAX_SUPPLY.toString());
 
     const boss = await helper.getBoss();
     console.log("Boss:", boss.toBase58());
 
     try {
+        // Fetch current state to show existing max supply
         const state = await helper.getState();
-        console.log("\nCurrent State:");
-        console.log("  Current Max Supply:", state.maxSupply?.toString() || "Not set");
+
+        console.log("\n=== Max Supply Configuration ===");
+        console.log("\nCurrent Configuration:");
+        console.log("  Raw value:", state.maxSupply.toString());
+
+        // Helper function to format BN values safely (avoids toNumber() overflow)
+        const formatSupply = (supply: any): string => {
+            if (supply.isZero()) {
+                return "Unlimited (no cap)";
+            }
+            // Divide by 10^decimals using BN arithmetic to avoid overflow
+            const divisor = new BN(10).pow(new BN(TOKEN_DECIMALS));
+            const tokens = supply.div(divisor);
+            // Add thousands separator
+            return tokens.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ",") + " tokens";
+        };
+
+        const currentFormatted = formatSupply(state.maxSupply);
+        console.log("  Formatted:", currentFormatted);
+
+        console.log("\nNew Configuration:");
+        console.log("  Raw value:", MAX_SUPPLY.toString());
+
+        const newFormatted = formatSupply(MAX_SUPPLY);
+        console.log("  Formatted:", newFormatted);
+
+        // Check if already set to this value
+        if (state.maxSupply.eq(MAX_SUPPLY)) {
+            console.log("\n⚠️  Max supply is already set to this value - no change needed");
+            return;
+        }
+
+        console.log("\nBuilding transaction to configure max supply...");
 
         const ix = await helper.buildConfigureMaxSupplyIx({
             maxSupply: MAX_SUPPLY
@@ -28,12 +55,18 @@ async function createConfigureMaxSupplyTransaction() {
 
         const tx = await helper.prepareTransaction(ix);
 
+        console.log("\n=== Transaction Effects ===");
+        console.log("This transaction will:");
+        console.log("  1. Update the program state's max_supply field");
+        console.log("  2. Apply the new cap to all future minting operations");
+        console.log("  3. Emit MaxSupplyConfiguredEvent");
+
         if (MAX_SUPPLY.isZero()) {
-            console.log("\n⚠️  This will REMOVE the maximum supply cap!");
-            console.log("ONyc tokens will be mintable without limit.");
+            console.log("\n⚠️  WARNING: Setting max supply to 0 removes the cap");
+            console.log("   ONyc tokens will be mintable without limit!");
         } else {
-            console.log("\n⚠️  This will set the maximum supply cap to:", MAX_SUPPLY.toString());
-            console.log("ONyc token minting will be restricted by this cap.");
+            console.log("\n✓ Future minting will be capped at:", newFormatted);
+            console.log("  Any mint operation that would exceed this cap will fail");
         }
 
         return helper.printTransaction(tx, "Configure Max Supply Transaction");

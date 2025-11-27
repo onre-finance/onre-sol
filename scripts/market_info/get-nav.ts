@@ -1,9 +1,9 @@
 import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper } from "../utils/script-helper";
+import { ScriptHelper, USDC_MINT, ONYC_MINT } from "../utils/script-helper";
 
-// Token mint addresses
-const TOKEN_IN_MINT = new PublicKey("YOUR_TOKEN_IN_MINT");
-const TOKEN_OUT_MINT = new PublicKey("YOUR_TOKEN_OUT_MINT");
+// Configure which mints to query
+const TOKEN_IN_MINT = USDC_MINT;
+const TOKEN_OUT_MINT = ONYC_MINT;
 
 async function getNAV() {
     const helper = await ScriptHelper.create();

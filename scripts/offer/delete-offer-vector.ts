@@ -1,9 +1,9 @@
 import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper } from "../utils/script-helper";
+import { ScriptHelper, USDC_MINT, ONYC_MINT } from "../utils/script-helper";
 
-// Token addresses
-const TOKEN_IN_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // USDC
-const TOKEN_OUT_MINT = new PublicKey("5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5"); // ONyc
+// Configure which mints to delete vector from
+const TOKEN_IN_MINT = USDC_MINT;
+const TOKEN_OUT_MINT = ONYC_MINT;
 
 // Configuration
 const VECTOR_START_TIMESTAMP = new Date(2025, 4, 27).getTime() / 1000; // May 27, 2025

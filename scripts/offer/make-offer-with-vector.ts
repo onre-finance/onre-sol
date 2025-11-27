@@ -1,13 +1,12 @@
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
-import { ScriptHelper } from "../utils/script-helper";
+import { ScriptHelper, USDC_MINT, USDG_MINT, ONYC_MINT } from "../utils/script-helper";
 import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
-// Token addresses - UPDATE THESE
-// const TOKEN_IN_MINT = new PublicKey("qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWeQu"); // USDC
-const TOKEN_IN_MINT = new PublicKey("Fuisp2hZfWdqZJoRjbfoTR47DnvB8gVJFJp2ANstzbDc"); // USDG
-const TOKEN_OUT_MINT = new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C"); // ONyc
-// const TOKEN_IN_PROGRAM = TOKEN_PROGRAM_ID; // Token program for TOKEN_IN_MINT (use TOKEN_PROGRAM_ID or TOKEN_2022_PROGRAM_ID)
-const TOKEN_IN_PROGRAM = TOKEN_2022_PROGRAM_ID;
+// Configure which mints to use - UPDATE THESE
+const TOKEN_IN_MINT = USDC_MINT;  // Can also use USDG_MINT
+const TOKEN_OUT_MINT = ONYC_MINT;
+const TOKEN_IN_PROGRAM = TOKEN_PROGRAM_ID;
+const TOKEN_OUT_PROGRAM = TOKEN_PROGRAM_ID;
 
 // Offer configuration
 const FEE_BASIS_POINTS = 0; // 0% fee
@@ -48,7 +47,9 @@ async function createMakeOfferWithVectorTransaction() {
         if (ALLOW_PERMISSIONLESS) {
             const permissionlessIxs = await helper.buildCreatePermissionlessTokenAccountsIxs({
                 tokenInMint: TOKEN_IN_MINT,
-                tokenOutMint: TOKEN_OUT_MINT
+                tokenOutMint: TOKEN_OUT_MINT,
+                tokenInProgram: TOKEN_IN_PROGRAM,
+                tokenOutProgram: TOKEN_OUT_PROGRAM
             });
             instructions.push(...permissionlessIxs);
 

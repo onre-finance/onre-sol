@@ -1,5 +1,12 @@
 import { TransactionInstruction } from "@solana/web3.js";
-import { ScriptHelper, TOKEN_IN_MINT, TOKEN_OUT_MINT } from "../utils/script-helper";
+import { ScriptHelper, USDC_MINT, ONYC_MINT } from "../utils/script-helper";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+
+// Configure which mints to use for the offer
+const TOKEN_IN_MINT = USDC_MINT;
+const TOKEN_OUT_MINT = ONYC_MINT;
+const TOKEN_IN_PROGRAM = TOKEN_PROGRAM_ID;
+const TOKEN_OUT_PROGRAM = TOKEN_PROGRAM_ID;
 
 async function createMakeOfferTransaction() {
     const helper = await ScriptHelper.create();
@@ -20,7 +27,9 @@ async function createMakeOfferTransaction() {
         if (allowPermissionless) {
             const permissionlessIxs = await helper.buildCreatePermissionlessTokenAccountsIxs({
                 tokenInMint: TOKEN_IN_MINT,
-                tokenOutMint: TOKEN_OUT_MINT
+                tokenOutMint: TOKEN_OUT_MINT,
+                tokenInProgram: TOKEN_IN_PROGRAM,
+                tokenOutProgram: TOKEN_OUT_PROGRAM
             });
             instructions.push(...permissionlessIxs);
 
