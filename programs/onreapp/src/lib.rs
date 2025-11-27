@@ -3,7 +3,7 @@ use instructions::*;
 use utils::ApprovalMessage;
 
 // Program ID declaration
-declare_id!("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2");
+declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
 
 pub mod constants;
 pub mod instructions;
