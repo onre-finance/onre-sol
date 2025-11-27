@@ -5,7 +5,7 @@
 Install Trident CLI tool
 
 ```bash
-cargo install trident-cli@0.12.0-rc.2
+cargo install trident-cli@0.12.0
 ```
 
 Verify that Trident is installed

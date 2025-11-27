@@ -10,7 +10,7 @@ edition = "2021"
 borsh = "1.5.3"
 
 [dependencies.trident-fuzz]
-version = "0.12.0-rc.2"
+version = "0.12.0"
 features = ["token"]
 
 [[bin]]
