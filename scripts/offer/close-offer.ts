@@ -1,9 +1,8 @@
-import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper } from "../utils/script-helper";
+import { ONYC_MINT, ScriptHelper, USDC_MINT,  } from "../utils/script-helper";
 
-// Token addresses
-const TOKEN_IN_MINT = new PublicKey("HQmHPQLhuXTj8dbsLUoFsJeCZWBkK75Zwczxork8Byzh"); // USDC
-const TOKEN_OUT_MINT = new PublicKey("5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5"); // ONyc
+// Configure which mints to close
+const TOKEN_IN_MINT = USDC_MINT;
+const TOKEN_OUT_MINT = ONYC_MINT;
 
 async function createCloseOfferTransaction() {
     const helper = await ScriptHelper.create();

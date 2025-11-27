@@ -17,15 +17,16 @@ export const BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC"
 // export const BOSS = new PublicKey("EVdiVScB7LX1P3bn7ZLmLJTBrSSgRXPqRU3bVxrEpRb5"); // devnet Squad
 // Note: In production, the actual boss is fetched from the program state, these are just for reference
 
-// Default token mints - UPDATE THESE for your environment
-// export const TOKEN_IN_MINT = new PublicKey("5XCS4paUDKJL9cJaywgVsrT3jTD5JGcmou5bvNbcuniw"); // USDC-like (6 decimals)
-// export const TOKEN_IN_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // USDC (6 decimals)
-export const TOKEN_IN_MINT = new PublicKey("qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWeQu"); // TestUSDC (9 decimals)
-
-// export const TOKEN_OUT_MINT = new PublicKey("HQmHPQLhuXTj8dbsLUoFsJeCZWBkK75Zwczxork8Byzh"); // ONyc-like (9 decimals)
-// export const TOKEN_OUT_MINT = new PublicKey("5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5"); // ONyc (9 decimals)
-export const TOKEN_OUT_MINT = new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C"); // TestONyc (9 decimals)
-
+// Token mint addresses
+export const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // USDC mainnet (6 decimals)
+export const USDC_TEST_MAINNET = new PublicKey("qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWeQu");
+export const USDC_DEVNET = new PublicKey("2eW3HJzbgrCnV1fd7dUbyPj5T95D35oBPcJyfXtoGNrw"); // USDC devnet (6 decimals)
+export const ONYC_MINT = new PublicKey("5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5"); // ONyc mainnet (9 decimals)
+export const ONYC_TEST_MAINNET = new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C");
+export const ONYC_DEVNET = new PublicKey("6WLYBF2o3RSkZ9SoNhhFYxUPYzLaa83xSTZ3o46cg4CN"); // ONyc devnet (9 decimals)
+export const USDG_MINT = new PublicKey("2u1tszSeqZ3qBWF3uNGPFc8TzMk2tdiwknnRMWGWjGWH"); // USDG mainnet
+export const USDG_DEVNET = new PublicKey("HyVoVvMHRr6p1FfGSWrWDPk6bn4FAmCjajzv6SY3DHk");
+export const USDG_TEST_MAINNET = new PublicKey("Fuisp2hZfWdqZJoRjbfoTR47DnvB8gVJFJp2ANstzbDc");
 
 /**
  * Helper class for Onre scripts - provides clean abstraction similar to test OnreProgram
@@ -107,6 +108,8 @@ export class ScriptHelper {
     async buildCreatePermissionlessTokenAccountsIxs(params: {
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
+        tokenInProgram: PublicKey;
+        tokenOutProgram: PublicKey;
         payer?: PublicKey | null;
     }): Promise<TransactionInstruction[]> {
         const instructions: TransactionInstruction[] = [];
@@ -118,7 +121,7 @@ export class ScriptHelper {
             params.tokenInMint,
             permissionlessAuthority,
             true,
-            TOKEN_2022_PROGRAM_ID 
+            params.tokenInProgram,
         );
 
         const tokenInAccountInfo = await this.connection.getAccountInfo(permissionlessTokenInAccount);
@@ -128,7 +131,7 @@ export class ScriptHelper {
                 permissionlessTokenInAccount,
                 permissionlessAuthority,
                 params.tokenInMint,
-                TOKEN_2022_PROGRAM_ID 
+                params.tokenInProgram,
             );
             instructions.push(createTokenInIx);
         }
@@ -138,7 +141,7 @@ export class ScriptHelper {
             params.tokenOutMint,
             permissionlessAuthority,
             true,
-            TOKEN_PROGRAM_ID
+            params.tokenOutProgram,
         );
 
         const tokenOutAccountInfo = await this.connection.getAccountInfo(permissionlessTokenOutAccount);
@@ -148,7 +151,7 @@ export class ScriptHelper {
                 permissionlessTokenOutAccount,
                 permissionlessAuthority,
                 params.tokenOutMint,
-                TOKEN_PROGRAM_ID
+                params.tokenOutProgram,
             );
             instructions.push(createTokenOutIx);
         }
@@ -438,6 +441,36 @@ export class ScriptHelper {
             .initializePermissionlessAuthority(params.name)
             .accountsPartial({
                 boss: params.boss ?? BOSS
+            })
+            .instruction();
+    }
+
+    async buildTransferMintAuthorityToProgramIx(params: {
+        mint: PublicKey;
+        tokenProgram?: PublicKey;
+        boss?: PublicKey;
+    }) {
+        return await this.program.methods
+            .transferMintAuthorityToProgram()
+            .accountsPartial({
+                boss: params.boss ?? BOSS,
+                mint: params.mint,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
+            })
+            .instruction();
+    }
+
+    async buildTransferMintAuthorityToBossIx(params: {
+        mint: PublicKey;
+        tokenProgram?: PublicKey;
+        boss?: PublicKey;
+    }) {
+        return await this.program.methods
+            .transferMintAuthorityToBoss()
+            .accountsPartial({
+                boss: params.boss ?? BOSS,
+                mint: params.mint,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             })
             .instruction();
     }

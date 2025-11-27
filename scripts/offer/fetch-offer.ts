@@ -1,10 +1,12 @@
 import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper } from "../utils/script-helper";
-import { getMint } from "@solana/spl-token";
+import { ScriptHelper, USDC_MINT, ONYC_MINT, USDC_TEST_MAINNET, ONYC_TEST_MAINNET, USDG_TEST_MAINNET } from "../utils/script-helper";
+import { getMint, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 // Token addresses
-const TOKEN_IN_MINT = new PublicKey("qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWeQu"); // USDC-like (6 decimals)
-const TOKEN_OUT_MINT = new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C"); // ONyc-like (9 decimals)
+const TOKEN_IN_MINT = USDG_TEST_MAINNET;
+const TOKEN_OUT_MINT = ONYC_TEST_MAINNET;
+const TOKEN_IN_PROGRAM = TOKEN_2022_PROGRAM_ID;
+const TOKEN_OUT_PROGRAM = TOKEN_PROGRAM_ID;
 
 // Helper function to format timestamp to human readable date
 function formatTimestamp(timestamp: number): string {
@@ -36,8 +38,8 @@ async function fetchOffer() {
 
         // Fetch token mint info for better display
         try {
-            const tokenInMint = await getMint(helper.connection, offer.tokenInMint);
-            const tokenOutMint = await getMint(helper.connection, offer.tokenOutMint);
+            const tokenInMint = await getMint(helper.connection, offer.tokenInMint, 'confirmed', TOKEN_IN_PROGRAM);
+            const tokenOutMint = await getMint(helper.connection, offer.tokenOutMint, 'confirmed', TOKEN_OUT_PROGRAM);
             console.log(`Token In Decimals: ${tokenInMint.decimals}`);
             console.log(`Token Out Decimals: ${tokenOutMint.decimals}`);
         } catch (error) {
