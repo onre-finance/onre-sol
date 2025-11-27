@@ -1,5 +1,5 @@
 {
-  "address": "J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2",
+  "address": "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe",
   "metadata": {
     "name": "onreapp",
     "version": "0.1.0",
@@ -1346,7 +1346,7 @@
         },
         {
           "name": "program",
-          "address": "J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2"
+          "address": "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe"
         },
         {
           "name": "program_data",
@@ -4677,18 +4677,53 @@
   "errors": [
     {
       "code": 6000,
-      "name": "MathOverflow",
-      "msg": "Math overflow"
+      "name": "Expired",
+      "msg": "The approval message has expired."
     },
     {
       "code": 6001,
-      "name": "MaxSupplyExceeded",
-      "msg": "Minting would exceed maximum supply cap"
+      "name": "WrongProgram",
+      "msg": "The approval message is for the wrong program."
     },
     {
       "code": 6002,
-      "name": "TransferFeeNotSupported",
-      "msg": "Token-2022 with transfer fees not supported"
+      "name": "WrongUser",
+      "msg": "The approval message is for the wrong user."
+    },
+    {
+      "code": 6003,
+      "name": "MissingEd25519Ix",
+      "msg": "Missing Ed25519 instruction."
+    },
+    {
+      "code": 6004,
+      "name": "WrongIxProgram",
+      "msg": "The instruction is for the wrong program."
+    },
+    {
+      "code": 6005,
+      "name": "MalformedEd25519Ix",
+      "msg": "Malformed Ed25519 instruction."
+    },
+    {
+      "code": 6006,
+      "name": "MultipleSigs",
+      "msg": "Multiple signatures found in Ed25519 instruction."
+    },
+    {
+      "code": 6007,
+      "name": "WrongAuthority",
+      "msg": "The authority public key does not match."
+    },
+    {
+      "code": 6008,
+      "name": "MsgMismatch",
+      "msg": "The message in the Ed25519 instruction does not match the approval message."
+    },
+    {
+      "code": 6009,
+      "name": "MsgDeserialize",
+      "msg": "Failed to deserialize the approval message."
     }
   ],
   "types": [
