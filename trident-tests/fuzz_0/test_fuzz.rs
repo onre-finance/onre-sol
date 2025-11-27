@@ -55,7 +55,11 @@ impl FuzzTest {
     fn start(&mut self) {
         self.fuzz_accounts.boss.insert_with_address(BOSS);
 
-        let boss = self.fuzz_accounts.boss.get(&mut self.trident);
+        let boss = self
+            .fuzz_accounts
+            .boss
+            .get(&mut self.trident)
+            .expect("Boss Storage empty");
 
         self.trident.airdrop(&boss, 500 * LAMPORTS_PER_SOL);
 
@@ -205,7 +209,8 @@ impl FuzzTest {
         let vault_authority = self
             .fuzz_accounts
             .offer_vault_authority
-            .get(&mut self.trident);
+            .get(&mut self.trident)
+            .expect("Offer Vault Authority Storage empty");
 
         self.mint_to_ata(
             token_mint_a,
@@ -299,7 +304,11 @@ impl FuzzTest {
 
         self.trident.forward_in_time(100_000_000);
 
-        let user = self.fuzz_accounts.user.get(&mut self.trident);
+        let user = self
+            .fuzz_accounts
+            .user
+            .get(&mut self.trident)
+            .expect("User Storage empty");
 
         self.take_offer(
             user,
@@ -312,7 +321,10 @@ impl FuzzTest {
     fn flow2(&mut self) {
         let x = self.trident.random_from_range(0..2);
         let old_boss = if x == 0 {
-            self.fuzz_accounts.boss.get(&mut self.trident)
+            self.fuzz_accounts
+                .boss
+                .get(&mut self.trident)
+                .expect("Boss Storage empty")
         } else {
             self.trident.random_pubkey()
         };
@@ -346,7 +358,10 @@ impl FuzzTest {
             if self.fuzz_accounts.admins.is_empty() {
                 self.trident.random_pubkey()
             } else {
-                self.fuzz_accounts.admins.get(&mut self.trident)
+                self.fuzz_accounts
+                    .admins
+                    .get(&mut self.trident)
+                    .expect("Admins Storage empty")
             }
         } else {
             self.trident.random_pubkey()
@@ -367,8 +382,16 @@ impl FuzzTest {
     // ##################################################################################################################
 
     fn remove_admin(&mut self, removed_admin: Pubkey) {
-        let state = self.fuzz_accounts.state.get(&mut self.trident);
-        let boss = self.fuzz_accounts.boss.get(&mut self.trident);
+        let state = self
+            .fuzz_accounts
+            .state
+            .get(&mut self.trident)
+            .expect("State Storage empty");
+        let boss = self
+            .fuzz_accounts
+            .boss
+            .get(&mut self.trident)
+            .expect("Boss Storage empty");
 
         let state_before = self
             .trident
@@ -407,8 +430,16 @@ impl FuzzTest {
         }
     }
     fn set_admin(&mut self, new_admin: Pubkey) {
-        let state = self.fuzz_accounts.state.get(&mut self.trident);
-        let boss = self.fuzz_accounts.boss.get(&mut self.trident);
+        let state = self
+            .fuzz_accounts
+            .state
+            .get(&mut self.trident)
+            .expect("State Storage empty");
+        let boss = self
+            .fuzz_accounts
+            .boss
+            .get(&mut self.trident)
+            .expect("Boss Storage empty");
 
         let state_before = self
             .trident
@@ -441,7 +472,11 @@ impl FuzzTest {
     }
 
     fn propose_boss(&mut self, old_boss: Pubkey, new_boss: Pubkey) {
-        let state = self.fuzz_accounts.state.get(&mut self.trident);
+        let state = self
+            .fuzz_accounts
+            .state
+            .get(&mut self.trident)
+            .expect("State Storage empty");
 
         let state_before = self
             .trident
@@ -474,7 +509,11 @@ impl FuzzTest {
     }
 
     fn accept_boss(&mut self, new_boss: Pubkey) {
-        let state = self.fuzz_accounts.state.get(&mut self.trident);
+        let state = self
+            .fuzz_accounts
+            .state
+            .get(&mut self.trident)
+            .expect("State Storage empty");
 
         let state_before = self
             .trident
@@ -508,18 +547,32 @@ impl FuzzTest {
 
     #[allow(clippy::too_many_arguments)]
     fn take_offer(&mut self, user: Pubkey, token_in_amount: u64, message: Option<&str>) {
-        let offer = self.fuzz_accounts.offer.get(&mut self.trident);
-        let state = self.fuzz_accounts.state.get(&mut self.trident);
-        let boss = self.fuzz_accounts.boss.get(&mut self.trident);
+        let offer = self
+            .fuzz_accounts
+            .offer
+            .get(&mut self.trident)
+            .expect("Offer Storage empty");
+        let state = self
+            .fuzz_accounts
+            .state
+            .get(&mut self.trident)
+            .expect("State Storage empty");
+        let boss = self
+            .fuzz_accounts
+            .boss
+            .get(&mut self.trident)
+            .expect("Boss Storage empty");
         let vault_authority = self
             .fuzz_accounts
             .offer_vault_authority
-            .get(&mut self.trident);
+            .get(&mut self.trident)
+            .expect("Offer Vault Authority Storage empty");
 
         let mint_authority = self
             .fuzz_accounts
             .offer_mint_authority
-            .get(&mut self.trident);
+            .get(&mut self.trident)
+            .expect("Offer Mint Authority Storage empty");
 
         let user_token_in_account = self.trident.get_associated_token_address(
             &self.token_mixing.token_in,
@@ -687,9 +740,21 @@ impl FuzzTest {
         price_fix_duration: u64,
         message: Option<&str>,
     ) {
-        let state = self.fuzz_accounts.state.get(&mut self.trident);
-        let boss = self.fuzz_accounts.boss.get(&mut self.trident);
-        let offer = self.fuzz_accounts.offer.get(&mut self.trident);
+        let state = self
+            .fuzz_accounts
+            .state
+            .get(&mut self.trident)
+            .expect("State Storage empty");
+        let boss = self
+            .fuzz_accounts
+            .boss
+            .get(&mut self.trident)
+            .expect("Boss Storage empty");
+        let offer = self
+            .fuzz_accounts
+            .offer
+            .get(&mut self.trident)
+            .expect("Offer Storage empty");
 
         let offer_before = self
             .trident
@@ -755,13 +820,22 @@ impl FuzzTest {
         allow_permissionless: bool,
         message: Option<&str>,
     ) {
-        let boss = self.fuzz_accounts.boss.get(&mut self.trident);
-        let state = self.fuzz_accounts.state.get(&mut self.trident);
+        let boss = self
+            .fuzz_accounts
+            .boss
+            .get(&mut self.trident)
+            .expect("Boss Storage empty");
+        let state = self
+            .fuzz_accounts
+            .state
+            .get(&mut self.trident)
+            .expect("State Storage empty");
 
         let vault_authority = self
             .fuzz_accounts
             .offer_vault_authority
-            .get(&mut self.trident);
+            .get(&mut self.trident)
+            .expect("Offer Vault Authority Storage empty");
 
         let vault_token_account_a = self.trident.get_associated_token_address(
             &self.token_mixing.token_in,
@@ -944,7 +1018,8 @@ impl FuzzTest {
         let offer_vault_authority = self
             .fuzz_accounts
             .offer_vault_authority
-            .get(&mut self.trident);
+            .get(&mut self.trident)
+            .expect("Offer Vault Authority Storage empty");
 
         let boss_ata =
             self.trident
@@ -964,11 +1039,20 @@ impl FuzzTest {
         let offer_vault_authority = self
             .fuzz_accounts
             .offer_vault_authority
-            .get(&mut self.trident);
+            .get(&mut self.trident)
+            .expect("Offer Vault Authority Storage empty");
 
-        let state = self.fuzz_accounts.state.get(&mut self.trident);
+        let state = self
+            .fuzz_accounts
+            .state
+            .get(&mut self.trident)
+            .expect("State Storage empty");
 
-        let boss = self.fuzz_accounts.boss.get(&mut self.trident);
+        let boss = self
+            .fuzz_accounts
+            .boss
+            .get(&mut self.trident)
+            .expect("Boss Storage empty");
 
         let vault_token_account_before_deposit =
             self.trident.get_token_account(vault_token_account).ok();
@@ -1025,7 +1109,8 @@ impl FuzzTest {
         let offer_vault_authority = self
             .fuzz_accounts
             .offer_vault_authority
-            .get(&mut self.trident);
+            .get(&mut self.trident)
+            .expect("Offer Vault Authority Storage empty");
 
         let boss_ata =
             self.trident
@@ -1037,8 +1122,16 @@ impl FuzzTest {
             &token_program_id,
         );
 
-        let boss = self.fuzz_accounts.boss.get(&mut self.trident);
-        let state = self.fuzz_accounts.state.get(&mut self.trident);
+        let boss = self
+            .fuzz_accounts
+            .boss
+            .get(&mut self.trident)
+            .expect("Boss Storage empty");
+        let state = self
+            .fuzz_accounts
+            .state
+            .get(&mut self.trident)
+            .expect("State Storage empty");
 
         let boss_before_withdraw = self
             .trident
@@ -1161,8 +1254,16 @@ impl FuzzTest {
     }
 
     fn setup_permissionless_authority(&mut self, name: String) {
-        let state = self.fuzz_accounts.state.get(&mut self.trident);
-        let boss = self.fuzz_accounts.boss.get(&mut self.trident);
+        let state = self
+            .fuzz_accounts
+            .state
+            .get(&mut self.trident)
+            .expect("State Storage empty");
+        let boss = self
+            .fuzz_accounts
+            .boss
+            .get(&mut self.trident)
+            .expect("Boss Storage empty");
         let permissionless_authority = self.fuzz_accounts.permissionless_authority.insert(
             &mut self.trident,
             Some(PdaSeeds::new(
