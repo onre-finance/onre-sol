@@ -41,3 +41,16 @@ pub struct PermissionlessAuthority {
     #[max_len(50)]
     pub name: String,
 }
+
+#[account]
+#[derive(InitSpace)]
+pub struct RedemptionState {
+    pub redemption_limit: u128,
+    pub total_redeemed: u128,
+    pub executor: Pubkey,
+    pub fee_basis_points: u16,
+    // redemption_limit - total_redeemed = remaining redemption capacity
+    // basis points tells how much can be taken from the remaining capacity per redemption
+    pub user_basis_points: u16,
+    pub bump: u8,
+}
