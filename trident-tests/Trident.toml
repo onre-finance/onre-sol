@@ -1,0 +1,8 @@
+[fuzz.metrics]
+enabled = true
+
+
+[[fuzz.programs]]
+address = "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe"
+program = "../target/deploy/onreapp.so"
+upgrade_authority = "DSnL9GnR7kbAXHwCvcXBuDTfFvezcszUGGyiMz9Nug4o"
