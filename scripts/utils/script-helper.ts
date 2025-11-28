@@ -19,7 +19,7 @@ export const BOSS = new PublicKey("7rzEKejyAXJXMkGfRhMV9Vg1k7tFznBBEFu3sfLNz8LC"
 
 // Token mint addresses
 export const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // USDC mainnet (6 decimals)
-export const USDC_TEST_MAINNET = new PublicKey("qaegW5BccnepuexbHkVqcqQUuEwgDMqCCo1wJ4fWeQu");
+export const USDC_TEST_MAINNET = new PublicKey("6ioCVbecopp6AfrPvzgZdtoaftMq4hXouDun2ekkkVvt"); // tUSDC mainnet (6 decimals)
 export const USDC_DEVNET = new PublicKey("2eW3HJzbgrCnV1fd7dUbyPj5T95D35oBPcJyfXtoGNrw"); // USDC devnet (6 decimals)
 export const ONYC_MINT = new PublicKey("5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5"); // ONyc mainnet (9 decimals)
 export const ONYC_TEST_MAINNET = new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C");

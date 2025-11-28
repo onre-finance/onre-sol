@@ -9,9 +9,15 @@ async function getStateInfo() {
         const state = await helper.getState();
 
         console.log("\n=== Program State ===");
-        console.log("Boss:", state.boss.toBase58());
-        console.log("Kill switch enabled:", state.isKilled);
-        console.log("Proposed new boss:", state.proposedBoss ? state.proposedBoss.toBase58() : "None");
+        console.log("");
+        console.log("Boss:                ", state.boss.toBase58());
+        console.log("Proposed new boss:   ", state.proposedBoss ? state.proposedBoss.toBase58() : "None");
+        console.log("Kill switch enabled: ", state.isKilled);
+        console.log("ONyc Mint:           ", state.onycMint.toBase58());
+        console.log("Approver1:           ", state.approver1.toBase58());
+        console.log("Approver2:           ", state.approver2.toBase58());
+        console.log("Max Supply:          ", state.maxSupply);
+        console.log("");
         console.log("\nAdmins:");
         if (state.admins && state.admins.length > 0) {
             state.admins.forEach((admin, index) => {
