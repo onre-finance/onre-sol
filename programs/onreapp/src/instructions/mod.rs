@@ -4,6 +4,7 @@ pub mod mint_authority;
 pub mod offer;
 pub mod state_operations;
 pub mod vault_operations;
+mod redemption;
 
 pub use initialization::*;
 pub use market_info::*;
