@@ -17,7 +17,7 @@ async function getAPY() {
             .getApy()
             .accounts({
                 tokenInMint: TOKEN_IN_MINT,
-                tokenOutMint: TOKEN_OUT_MINT
+                tokenOutMint: TOKEN_OUT_MINT,
             })
             .view();
 
