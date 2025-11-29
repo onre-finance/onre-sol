@@ -434,8 +434,8 @@ export class ScriptHelper {
             .initialize()
             .accountsPartial({
                 boss: params?.payer ?? BOSS,
-                programData: new PublicKey("H2ryo165jMeADu4vpKEZy84ows2WR4imRmU8Em7vztZW"),
-                onycMint: new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C")
+                programData: new PublicKey("91o8wFyxszM4DeQ5R6X6wJdyn9e8VRnsreVBTLb7Yrpg"),
+                onycMint: ONYC_MINT
             })
             .instruction();
     }
