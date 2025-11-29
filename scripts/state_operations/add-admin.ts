@@ -2,7 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 import { ScriptHelper } from "../utils/script-helper";
 
 // Admin to add - UPDATE THIS
-const NEW_ADMIN = new PublicKey("GBR7NtVLiapW8YxebyYf6EYFJJytarj6ixqiXCSq4xth");
+const NEW_ADMIN = new PublicKey("DHcViDjSYyPaeSE8QzoasqbDeZHDVXGoC1ReM9FtRFCq");
 
 async function createAddAdminTransaction() {
     const helper = await ScriptHelper.create();

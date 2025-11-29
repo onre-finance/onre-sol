@@ -14,8 +14,8 @@ const NEEDS_APPROVAL = false; // No approval required
 const ALLOW_PERMISSIONLESS = true; // Enable permissionless
 
 // Vector configuration
-const BASE_TIME = Math.floor(Date.UTC(2025, 10, 26, 0, 0, 0) / 1000); // Nov 26, 2025
-const BASE_PRICE = 1_051_600_000; // 1.0516 (scaled by 1,000,000,000) all prices are scaled by 9 decimals
+const BASE_TIME = Math.floor(Date.UTC(2025, 10, 29, 0, 0, 0) / 1000); // Nov 29, 2025
+const BASE_PRICE = 1_052_345_126; // 1.0523 (scaled by 1,000,000,000) all prices are scaled by 9 decimals
 const APR = 125_332; // 12.5332 % APR
 const PRICE_FIX_DURATION = 60 * 60 * 24; // 1 day
 

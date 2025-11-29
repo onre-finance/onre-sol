@@ -2,7 +2,7 @@ import { ScriptHelper, ONYC_MINT } from "../utils/script-helper";
 
 // Configuration - UPDATE THESE
 const TOKEN_MINT = ONYC_MINT; // ONyc token mint
-const AMOUNT = 100_000_000_000; // 100 tokens with 9 decimals for USDC
+const AMOUNT = 1_000_000_000; // 1 tokens with 9 decimals for USDC
 
 async function createVaultDepositTransaction() {
     const helper = await ScriptHelper.create();
