@@ -1,0 +1,32 @@
+use anchor_lang::prelude::*;
+
+/// Redemption offer for converting ONyc tokens back to stable tokens
+///
+/// Manages the redemption process where users can exchange ONyc (in-token)
+/// for stable tokens like USDC (out-token) at the current NAV price.
+/// This is the inverse of the standard Offer which exchanges stable tokens for ONyc.
+#[account(zero_copy)]
+#[repr(C)]
+#[derive(InitSpace)]
+pub struct RedemptionOffer {
+    /// Reference to the original Offer PDA that this redemption offer is associated with
+    pub offer: Pubkey,
+    /// Input token mint for redemptions (must be ONyc mint from State)
+    pub token_in_mint: Pubkey,
+    /// Output token mint for redemptions (e.g., USDC)
+    pub token_out_mint: Pubkey,
+    /// Cumulative total of all executed redemptions over the contract's lifetime
+    ///
+    /// This tracks the total amount of ONyc that has been redeemed and burned.
+    /// Uses u128 because cumulative redemptions can exceed the current total supply.
+    pub executed_redemptions: u128,
+    /// Total amount of pending redemption requests
+    ///
+    /// This tracks ONyc tokens that are locked in pending redemption requests.
+    /// Uses u64 because pending redemptions cannot exceed the token's total supply.
+    pub requested_redemptions: u64,
+    /// PDA bump seed for account derivation
+    pub bump: u8,
+    /// Reserved space for future fields
+    pub reserved: [u8; 119],
+}

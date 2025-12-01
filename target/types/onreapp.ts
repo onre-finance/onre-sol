@@ -1723,6 +1723,358 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "makeRedemptionOffer",
+      "docs": [
+        "Creates a redemption offer for converting ONyc back to stable tokens.",
+        "",
+        "Delegates to `redemption::make_redemption_offer`.",
+        "This instruction initializes a new redemption offer that allows users to redeem",
+        "ONyc tokens for stable tokens (e.g., USDC) at the current NAV price. The redemption",
+        "offer is the inverse of the standard Offer - it takes ONyc as input and provides",
+        "stable tokens as output.",
+        "",
+        "The redemption offer PDA is derived with reversed token order compared to the",
+        "original offer, reflecting the inverse nature of the redemption operation.",
+        "Emits a `RedemptionOfferCreatedEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `MakeRedemptionOffer`.",
+        "",
+        "# Access Control",
+        "- Only the boss or redemption_admin can call this instruction"
+      ],
+      "discriminator": [
+        6,
+        130,
+        180,
+        160,
+        163,
+        166,
+        51,
+        41
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing boss and redemption_admin authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "offer",
+          "docs": [
+            "The original offer that this redemption offer is associated with",
+            "",
+            "The redemption offer uses the inverse token pair of the original offer.",
+            "The offer must be derived from token_out_mint (our token_in) and token_in_mint (our token_out)."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemptionVaultAuthority",
+          "docs": [
+            "Program-derived authority that controls redemption offer vault token accounts",
+            "",
+            "This PDA manages token transfers for redemption operations."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "The input token mint for redemptions (must be ONyc mint from State)",
+            "",
+            "This is the token_out_mint from the original offer."
+          ]
+        },
+        {
+          "name": "tokenInProgram",
+          "docs": [
+            "Token program interface for the input token"
+          ]
+        },
+        {
+          "name": "vaultTokenInAccount",
+          "docs": [
+            "Vault account for storing input tokens (ONyc) during redemption operations",
+            "",
+            "Created automatically if needed. Used for holding ONyc tokens before burning."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenOutMint",
+          "docs": [
+            "The output token mint for redemptions (e.g., USDC)",
+            "",
+            "This is the token_in_mint from the original offer."
+          ]
+        },
+        {
+          "name": "tokenOutProgram",
+          "docs": [
+            "Token program interface for the output token"
+          ]
+        },
+        {
+          "name": "vaultTokenOutAccount",
+          "docs": [
+            "Vault account for storing output tokens (e.g., USDC) for redemption payouts",
+            "",
+            "Created automatically if needed. Used for distributing stable tokens to redeemers."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "redemptionOffer",
+          "docs": [
+            "The redemption offer account storing redemption configuration",
+            "",
+            "This account is derived from token mint addresses in the same order as Offer",
+            "but with the tokens reversed (token_in from Offer becomes token_out here)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "signer",
+          "docs": [
+            "The account creating the redemption offer (must be boss or redemption_admin)"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program for account creation and rent payment"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "mintTo",
       "docs": [
         "Mints ONyc tokens to the boss's account.",
@@ -4354,6 +4706,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "redemptionOffer",
+      "discriminator": [
+        170,
+        229,
+        178,
+        15,
+        184,
+        107,
+        140,
+        41
+      ]
+    },
+    {
       "name": "state",
       "discriminator": [
         216,
@@ -4743,6 +5108,19 @@ export type Onreapp = {
         230,
         199,
         178
+      ]
+    },
+    {
+      "name": "redemptionOfferCreatedEvent",
+      "discriminator": [
+        171,
+        25,
+        200,
+        106,
+        108,
+        123,
+        70,
+        65
       ]
     },
     {
@@ -6001,6 +6379,126 @@ export type Onreapp = {
             "name": "newRedemptionAdmin",
             "docs": [
               "The new redemption admin public key after the update"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionOffer",
+      "docs": [
+        "Redemption offer for converting ONyc tokens back to stable tokens",
+        "",
+        "Manages the redemption process where users can exchange ONyc (in-token)",
+        "for stable tokens like USDC (out-token) at the current NAV price.",
+        "This is the inverse of the standard Offer which exchanges stable tokens for ONyc."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offer",
+            "docs": [
+              "Reference to the original Offer PDA that this redemption offer is associated with"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenInMint",
+            "docs": [
+              "Input token mint for redemptions (must be ONyc mint from State)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenOutMint",
+            "docs": [
+              "Output token mint for redemptions (e.g., USDC)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "executedRedemptions",
+            "docs": [
+              "Cumulative total of all executed redemptions over the contract's lifetime",
+              "",
+              "This tracks the total amount of ONyc that has been redeemed and burned.",
+              "Uses u128 because cumulative redemptions can exceed the current total supply."
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "requestedRedemptions",
+            "docs": [
+              "Total amount of pending redemption requests",
+              "",
+              "This tracks ONyc tokens that are locked in pending redemption requests.",
+              "Uses u64 because pending redemptions cannot exceed the token's total supply."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed for account derivation"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "docs": [
+              "Reserved space for future fields"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                119
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionOfferCreatedEvent",
+      "docs": [
+        "Event emitted when a redemption offer is successfully created",
+        "",
+        "Provides transparency for tracking redemption offer creation and configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "redemptionOfferPda",
+            "docs": [
+              "The PDA address of the newly created redemption offer"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "offer",
+            "docs": [
+              "Reference to the original offer"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenInMint",
+            "docs": [
+              "The input token mint for redemptions (ONyc)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenOutMint",
+            "docs": [
+              "The output token mint for redemptions (e.g., USDC)"
             ],
             "type": "pubkey"
           }
