@@ -1,4 +1,8 @@
 import * as anchor from "@coral-xyz/anchor";
+
+import * as fs from "fs";
+import * as os from "os";
+
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import {
@@ -78,6 +82,25 @@ export class ScriptHelper {
      */
     static async createWithWallet(wallet: anchor.Wallet): Promise<ScriptHelper> {
         const connection = new Connection(RPC_URL);
+        const provider = new AnchorProvider(connection, wallet);
+        const program = new Program<Onreapp>(idl as Onreapp, provider);
+
+        anchor.setProvider(provider);
+
+        return new ScriptHelper(program, connection);
+    }
+
+    /**
+     * Create new ScriptHelper instance with a local wallet from ~/.config/solana/
+     */
+    static async createWithLocalWallet(walletAddress: string = "id"): Promise<ScriptHelper> {
+        const connection = new Connection(RPC_URL);
+
+        const keypairPath = `${os.homedir()}/.config/solana/${walletAddress}.json`;
+        const keypairData = JSON.parse(fs.readFileSync(keypairPath, "utf-8"));
+        const keypair = Keypair.fromSecretKey(new Uint8Array(keypairData));
+
+        const wallet = new anchor.Wallet(keypair);
         const provider = new AnchorProvider(connection, wallet);
         const program = new Program<Onreapp>(idl as Onreapp, provider);
 

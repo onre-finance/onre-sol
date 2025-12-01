@@ -8,7 +8,7 @@ const TOKEN_OUT_MINT = ONYC_MINT;
 const TOKEN_OUT_PROGRAM = TOKEN_2022_PROGRAM_ID; // or TOKEN_PROGRAM_ID
 
 async function getTVL() {
-    const helper = await ScriptHelper.create();
+    const helper = await ScriptHelper.createWithLocalWallet();
 
     console.log("Fetching TVL (Total Value Locked) for offer...");
     console.log("Token In Mint:", TOKEN_IN_MINT.toBase58());
@@ -32,7 +32,7 @@ async function getTVL() {
             })
             .view();
 
-        const tvlNumber = tvl.toNumber();
+        const tvlNumber = tvl; //.toNumber();
 
         console.log("\n=== TVL Results ===");
         console.log(`TVL (raw): ${tvlNumber}`);

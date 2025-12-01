@@ -5,7 +5,7 @@ import { ScriptHelper } from "../utils/script-helper";
 const TOKEN_PROGRAM = TOKEN_2022_PROGRAM_ID; // or TOKEN_PROGRAM_ID
 
 async function getCirculatingSupply() {
-    const helper = await ScriptHelper.create();
+    const helper = await ScriptHelper.createWithLocalWallet();
 
     console.log("Fetching circulating supply...");
 
@@ -30,7 +30,7 @@ async function getCirculatingSupply() {
             })
             .view();
 
-        const supplyNumber = circulatingSupply.toNumber();
+        const supplyNumber = circulatingSupply; //.toNumber();
 
         console.log("\n=== Circulating Supply Results ===");
         console.log(`Circulating Supply (raw): ${supplyNumber}`);

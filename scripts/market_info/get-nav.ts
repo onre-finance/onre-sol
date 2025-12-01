@@ -6,7 +6,7 @@ const TOKEN_IN_MINT = USDC_MINT;
 const TOKEN_OUT_MINT = ONYC_MINT;
 
 async function getNAV() {
-    const helper = await ScriptHelper.create();
+    const helper = await ScriptHelper.createWithLocalWallet();
 
     console.log("Fetching NAV (Net Asset Value) for offer...");
     console.log("Token In Mint:", TOKEN_IN_MINT.toBase58());
