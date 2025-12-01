@@ -1780,7 +1780,8 @@ export type Onreapp = {
             "The original offer that this redemption offer is associated with",
             "",
             "The redemption offer uses the inverse token pair of the original offer.",
-            "The offer must be derived from token_out_mint (our token_in) and token_in_mint (our token_out)."
+            "The offer must be derived from redemption offer token_out_mint (token_in in original offer)",
+            "and token_in_mint (token_out in original offer)."
           ],
           "pda": {
             "seeds": [

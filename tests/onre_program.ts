@@ -17,11 +17,13 @@ export class OnreProgram {
     pdas: {
         statePda: PublicKey;
         offerVaultAuthorityPda: PublicKey;
+        redemptionVaultAuthorityPda: PublicKey;
         permissionlessAuthorityPda: PublicKey;
         mintAuthorityPda: PublicKey;
     } = {
         statePda: PublicKey.findProgramAddressSync([Buffer.from("state")], ONREAPP_PROGRAM_ID)[0],
         offerVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("offer_vault_authority")], ONREAPP_PROGRAM_ID)[0],
+        redemptionVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("redemption_offer_vault_authority")], ONREAPP_PROGRAM_ID)[0],
         permissionlessAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], ONREAPP_PROGRAM_ID)[0],
         mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], ONREAPP_PROGRAM_ID)[0]
     };
@@ -382,6 +384,32 @@ export class OnreProgram {
         await tx.rpc();
     }
 
+    async makeRedemptionOffer(params: {
+        offer: PublicKey;
+        signer?: Keypair;
+        tokenInProgram?: PublicKey;
+        tokenOutProgram?: PublicKey;
+    }) {
+        // Fetch the offer to get token mints
+        const offer = await this.program.account.offer.fetch(params.offer);
+
+        const tx = this.program.methods
+            .makeRedemptionOffer()
+            .accounts({
+                tokenInMint: offer.tokenOutMint,
+                tokenOutMint: offer.tokenInMint,
+                tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
+                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
+                signer: params.signer ? params.signer.publicKey : this.program.provider.publicKey
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
     async mintTo(params: { amount: number, signer?: Keypair }) {
         const tx = this.program.methods
             .mintTo(new BN(params.amount))
@@ -549,6 +577,14 @@ export class OnreProgram {
 
     getOfferPda(tokenInMint: PublicKey, tokenOutMint: PublicKey) {
         return PublicKey.findProgramAddressSync([Buffer.from("offer"), tokenInMint.toBuffer(), tokenOutMint.toBuffer()], this.program.programId)[0];
+    }
+
+    async getRedemptionOffer(tokenInMint: PublicKey, tokenOutMint: PublicKey) {
+        return await this.program.account.redemptionOffer.fetch(this.getRedemptionOfferPda(tokenInMint, tokenOutMint));
+    }
+
+    getRedemptionOfferPda(tokenInMint: PublicKey, tokenOutMint: PublicKey) {
+        return PublicKey.findProgramAddressSync([Buffer.from("redemption_offer"), tokenInMint.toBuffer(), tokenOutMint.toBuffer()], this.program.programId)[0];
     }
 
     async getState() {
