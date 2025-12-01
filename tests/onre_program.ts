@@ -370,6 +370,18 @@ export class OnreProgram {
         await tx.rpc();
     }
 
+    async setRedemptionAdmin(params: { redemptionAdmin: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods
+            .setRedemptionAdmin(params.redemptionAdmin)
+            .accounts({});
+
+        if (params?.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
     async mintTo(params: { amount: number, signer?: Keypair }) {
         const tx = this.program.methods
             .mintTo(new BN(params.amount))

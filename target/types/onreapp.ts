@@ -2748,6 +2748,72 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "setRedemptionAdmin",
+      "docs": [
+        "Sets the redemption admin in the state.",
+        "",
+        "Delegates to `state_operations::set_redemption_admin` to change the redemption admin.",
+        "Only the boss can call this instruction to set the redemption admin.",
+        "Emits a `RedemptionAdminUpdatedEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `SetRedemptionAdmin`.",
+        "- `new_redemption_admin`: Public key of the new redemption admin."
+      ],
+      "discriminator": [
+        122,
+        95,
+        205,
+        126,
+        218,
+        93,
+        18,
+        173
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing the redemption admin configuration",
+            "",
+            "Must be mutable to allow redemption admin updates and have the boss account",
+            "as the authorized signer for redemption admin configuration management."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account authorized to configure the redemption admin"
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newRedemptionAdmin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "takeOffer",
       "docs": [
         "Takes a offer.",
@@ -4667,6 +4733,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "redemptionAdminUpdatedEvent",
+      "discriminator": [
+        110,
+        117,
+        47,
+        219,
+        133,
+        230,
+        199,
+        178
+      ]
+    },
+    {
       "name": "stateClosedEvent",
       "discriminator": [
         205,
@@ -5902,6 +5981,33 @@ export type Onreapp = {
       }
     },
     {
+      "name": "redemptionAdminUpdatedEvent",
+      "docs": [
+        "Event emitted when the redemption admin is successfully updated",
+        "",
+        "Provides transparency for tracking redemption admin configuration changes."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldRedemptionAdmin",
+            "docs": [
+              "The previous redemption admin public key before the update"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "newRedemptionAdmin",
+            "docs": [
+              "The new redemption admin public key after the update"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "state",
       "docs": [
         "Global program state containing governance and configuration settings",
@@ -5981,6 +6087,13 @@ export type Onreapp = {
             "type": "u64"
           },
           {
+            "name": "redemptionAdmin",
+            "docs": [
+              "Admin account authorized to manage ONr token mints and redemptions"
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "reserved",
             "docs": [
               "Reserved space for future program state extensions"
@@ -5988,7 +6101,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                128
+                96
               ]
             }
           }
