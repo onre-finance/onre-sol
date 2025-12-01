@@ -3,9 +3,9 @@ import { ScriptHelper, USDC_MINT, ONYC_MINT, USDC_TEST_MAINNET, ONYC_TEST_MAINNE
 import { getMint, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 // Token addresses
-const TOKEN_IN_MINT = USDG_TEST_MAINNET;
-const TOKEN_OUT_MINT = ONYC_TEST_MAINNET;
-const TOKEN_IN_PROGRAM = TOKEN_2022_PROGRAM_ID;
+const TOKEN_IN_MINT = USDC_MINT;
+const TOKEN_OUT_MINT = ONYC_MINT;
+const TOKEN_IN_PROGRAM = TOKEN_PROGRAM_ID;
 const TOKEN_OUT_PROGRAM = TOKEN_PROGRAM_ID;
 
 // Helper function to format timestamp to human readable date
@@ -57,8 +57,8 @@ async function fetchOffer() {
             for (let i = 0; i < activeVectors.length; i++) {
                 const vector = activeVectors[i];
                 console.log(`\nVector #${i}:`);
-                console.log(`  Start Time: ${formatTimestamp(vector.startTime.toNumber())}`);
-                console.log(`  Base Time:  ${formatTimestamp(vector.baseTime.toNumber())}`);
+                console.log(`  Start Time: ${formatTimestamp(vector.startTime.toNumber())} (${vector.startTime})`);
+                console.log(`  Base Time:  ${formatTimestamp(vector.baseTime.toNumber())} (${vector.baseTime})`);
                 console.log(`  Base Price: ${vector.basePrice.toString()}`);
                 console.log(`  APR: ${(vector.apr.toNumber() / 1_000_000).toFixed(4)}%`);
                 console.log(`  Price Fix Duration: ${vector.priceFixDuration.toNumber()}s`);
