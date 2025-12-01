@@ -334,6 +334,22 @@ pub mod onreapp {
         state_operations::set_onyc_mint(ctx)
     }
 
+    /// Sets the redemption admin in the state.
+    ///
+    /// Delegates to `state_operations::set_redemption_admin` to change the redemption admin.
+    /// Only the boss can call this instruction to set the redemption admin.
+    /// Emits a `RedemptionAdminUpdatedEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `SetRedemptionAdmin`.
+    /// - `new_redemption_admin`: Public key of the new redemption admin.
+    pub fn set_redemption_admin(
+        ctx: Context<SetRedemptionAdmin>,
+        new_redemption_admin: Pubkey,
+    ) -> Result<()> {
+        state_operations::set_redemption_admin(ctx, new_redemption_admin)
+    }
+
     /// Mints ONyc tokens to the boss's account.
     ///
     /// Delegates to `state_operations::mint_to` to mint ONyc tokens.
