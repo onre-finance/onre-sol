@@ -503,4 +503,25 @@ pub mod onreapp {
     pub fn close_state(ctx: Context<CloseState>) -> Result<()> {
         state_operations::close_state(ctx)
     }
+
+    /// Creates a redemption offer for converting ONyc back to stable tokens.
+    ///
+    /// Delegates to `redemption::make_redemption_offer`.
+    /// This instruction initializes a new redemption offer that allows users to redeem
+    /// ONyc tokens for stable tokens (e.g., USDC) at the current NAV price. The redemption
+    /// offer is the inverse of the standard Offer - it takes ONyc as input and provides
+    /// stable tokens as output.
+    ///
+    /// The redemption offer PDA is derived with reversed token order compared to the
+    /// original offer, reflecting the inverse nature of the redemption operation.
+    /// Emits a `RedemptionOfferCreatedEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `MakeRedemptionOffer`.
+    ///
+    /// # Access Control
+    /// - Only the boss or redemption_admin can call this instruction
+    pub fn make_redemption_offer(ctx: Context<MakeRedemptionOffer>) -> Result<()> {
+        redemption::make_redemption_offer(ctx)
+    }
 }
