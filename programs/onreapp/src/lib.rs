@@ -91,6 +91,34 @@ pub mod onreapp {
         vault_operations::offer_vault_withdraw(ctx, amount)
     }
 
+    /// Deposits tokens into the redemption vault.
+    ///
+    /// Delegates to `vault_operations::redemption_vault_deposit`.
+    /// Transfers tokens from boss's account to redemption vault's token account for the specified mint.
+    /// Creates vault token account if it doesn't exist using init_if_needed.
+    /// Only the boss can call this instruction.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `RedemptionVaultDeposit`.
+    /// - `amount`: Amount of tokens to deposit.
+    pub fn redemption_vault_deposit(ctx: Context<RedemptionVaultDeposit>, amount: u64) -> Result<()> {
+        vault_operations::redemption_vault_deposit(ctx, amount)
+    }
+
+    /// Withdraws tokens from the redemption vault.
+    ///
+    /// Delegates to `vault_operations::redemption_vault_withdraw`.
+    /// Transfers tokens from redemption vault's token account to boss's account for the specified mint.
+    /// Creates boss token account if it doesn't exist using init_if_needed.
+    /// Only the boss can call this instruction.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `RedemptionVaultWithdraw`.
+    /// - `amount`: Amount of tokens to withdraw.
+    pub fn redemption_vault_withdraw(ctx: Context<RedemptionVaultWithdraw>, amount: u64) -> Result<()> {
+        vault_operations::redemption_vault_withdraw(ctx, amount)
+    }
+
     /// Creates an offer.
     ///
     /// Delegates to `offer::make_offer`.

@@ -3021,6 +3021,537 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "redemptionVaultDeposit",
+      "docs": [
+        "Deposits tokens into the redemption vault.",
+        "",
+        "Delegates to `vault_operations::redemption_vault_deposit`.",
+        "Transfers tokens from boss's account to redemption vault's token account for the specified mint.",
+        "Creates vault token account if it doesn't exist using init_if_needed.",
+        "Only the boss can call this instruction.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `RedemptionVaultDeposit`.",
+        "- `amount`: Amount of tokens to deposit."
+      ],
+      "discriminator": [
+        67,
+        104,
+        107,
+        131,
+        141,
+        2,
+        140,
+        122
+      ],
+      "accounts": [
+        {
+          "name": "redemptionVaultAuthority",
+          "docs": [
+            "Program-derived authority that controls redemption vault token accounts",
+            "",
+            "This PDA manages the redemption vault token accounts and enables the program",
+            "to distribute tokens during redemption executions."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenMint",
+          "docs": [
+            "The token mint for the deposit operation"
+          ]
+        },
+        {
+          "name": "bossTokenAccount",
+          "docs": [
+            "Boss's token account serving as the source of deposited tokens",
+            "",
+            "Must have sufficient balance to cover the requested deposit amount."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenAccount",
+          "docs": [
+            "Redemption vault's token account serving as the destination for deposited tokens",
+            "",
+            "Created automatically if it doesn't exist. Stores tokens that can be",
+            "distributed during redemption executions when minting is not available."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account authorized to deposit tokens and pay for account creation"
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing boss authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "Token program interface for transfer operations"
+          ]
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program for account creation and rent payment"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "redemptionVaultWithdraw",
+      "docs": [
+        "Withdraws tokens from the redemption vault.",
+        "",
+        "Delegates to `vault_operations::redemption_vault_withdraw`.",
+        "Transfers tokens from redemption vault's token account to boss's account for the specified mint.",
+        "Creates boss token account if it doesn't exist using init_if_needed.",
+        "Only the boss can call this instruction.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `RedemptionVaultWithdraw`.",
+        "- `amount`: Amount of tokens to withdraw."
+      ],
+      "discriminator": [
+        48,
+        214,
+        145,
+        15,
+        168,
+        122,
+        39,
+        48
+      ],
+      "accounts": [
+        {
+          "name": "redemptionVaultAuthority",
+          "docs": [
+            "Program-derived authority that controls redemption vault token accounts",
+            "",
+            "This PDA manages the redemption vault token accounts and signs the withdrawal",
+            "transfer using program-derived signatures."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenMint",
+          "docs": [
+            "The token mint for the withdrawal operation"
+          ]
+        },
+        {
+          "name": "bossTokenAccount",
+          "docs": [
+            "Boss's token account serving as the destination for withdrawn tokens",
+            "",
+            "Created automatically if it doesn't exist. Receives tokens withdrawn",
+            "from the redemption vault for boss fund management."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenAccount",
+          "docs": [
+            "Redemption vault's token account serving as the source of withdrawn tokens",
+            "",
+            "Must have sufficient balance to cover the requested withdrawal amount.",
+            "Controlled by the redemption vault authority PDA."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account authorized to withdraw tokens and pay for account creation"
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing boss authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "Token program interface for transfer operations"
+          ]
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program for account creation and rent payment"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "removeAdmin",
       "docs": [
         "Removes an admin from the state.",
@@ -5338,6 +5869,32 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "redemptionVaultDepositEvent",
+      "discriminator": [
+        229,
+        187,
+        130,
+        152,
+        236,
+        139,
+        239,
+        108
+      ]
+    },
+    {
+      "name": "redemptionVaultWithdrawEvent",
+      "discriminator": [
+        255,
+        92,
+        199,
+        233,
+        33,
+        6,
+        21,
+        78
+      ]
+    },
+    {
       "name": "stateClosedEvent",
       "discriminator": [
         205,
@@ -6879,6 +7436,74 @@ export type Onreapp = {
               "New nonce, which should be used for the next request"
             ],
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionVaultDepositEvent",
+      "docs": [
+        "Event emitted when tokens are successfully deposited to the redemption vault",
+        "",
+        "Provides transparency for tracking redemption vault funding and token availability."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "docs": [
+              "The token mint that was deposited"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Amount of tokens deposited to the vault"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "docs": [
+              "The boss account that made the deposit"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionVaultWithdrawEvent",
+      "docs": [
+        "Event emitted when tokens are successfully withdrawn from the redemption vault",
+        "",
+        "Provides transparency for tracking redemption vault withdrawals and fund management."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "docs": [
+              "The token mint that was withdrawn"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Amount of tokens withdrawn from the vault"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "docs": [
+              "The boss account that performed the withdrawal"
+            ],
+            "type": "pubkey"
           }
         ]
       }
