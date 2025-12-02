@@ -125,23 +125,6 @@ describe("Make redemption offer", () => {
         ).rejects.toThrow();
     });
 
-    test("Should reject when token_in is not onyc_mint", async () => {
-        // given - Create an offer with wrong token order
-        const otherMint = testHelper.createMint(9);
-        await program.makeOffer({
-            tokenInMint: otherMint,
-            tokenOutMint: usdcMint
-        });
-        const wrongOfferPda = program.getOfferPda(otherMint, usdcMint);
-
-        // when/then
-        await expect(
-            program.makeRedemptionOffer({
-                offer: wrongOfferPda
-            })
-        ).rejects.toThrow();
-    });
-
     test("Should reject when offer PDA is invalid", async () => {
         // given - Use a random public key as offer
         const invalidOfferPda = new PublicKey(

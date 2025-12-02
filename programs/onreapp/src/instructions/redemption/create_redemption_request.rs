@@ -19,13 +19,15 @@ pub struct RedemptionRequestCreatedEvent {
     /// Unix timestamp when the request expires
     pub expires_at: u64,
     /// Nonce used for this request
+    pub used_nonce: u64,
+    /// New nonce, which should be used for the next request
     pub new_nonce: u64,
 }
 
 /// Account structure for creating a redemption request
 ///
 /// This struct defines the accounts required to create a redemption request
-/// where users can request to redeem ONyc tokens for stable tokens.
+/// where users can request to redeem token_out tokens from standard Offer for token_in tokens.
 #[derive(Accounts)]
 #[instruction(amount: u64, expires_at: u64, nonce: u64)]
 pub struct CreateRedemptionRequest<'info> {
@@ -82,10 +84,10 @@ pub struct CreateRedemptionRequest<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Creates a redemption request for converting ONyc to stable tokens
+/// Creates a redemption request
 ///
 /// This instruction creates a new redemption request that allows users to request
-/// redemption of ONyc tokens for stable tokens at a future time. The request must
+/// redemption of input tokens for output tokens at a future time. The request must
 /// be authorized by the redemption admin and uses a nonce to prevent replay attacks.
 ///
 /// # Arguments
@@ -152,11 +154,6 @@ pub fn create_redemption_request(
         .checked_add(1)
         .ok_or(CreateRedemptionRequestErrorCode::ArithmeticOverflow)?;
 
-    // Store bump if this is first initialization
-    if ctx.accounts.user_nonce_account.bump == 0 {
-        ctx.accounts.user_nonce_account.bump = ctx.bumps.user_nonce_account;
-    }
-
     msg!(
         "Redemption request created at: {} for amount: {} by redeemer: {}",
         ctx.accounts.redemption_request.key(),
@@ -170,6 +167,7 @@ pub fn create_redemption_request(
         redeemer: ctx.accounts.redeemer.key(),
         amount,
         expires_at,
+        used_nonce: nonce,
         new_nonce: ctx.accounts.user_nonce_account.nonce,
     });
 

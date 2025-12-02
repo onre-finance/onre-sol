@@ -54,19 +54,16 @@ pub struct MakeRedemptionOffer<'info> {
     #[account(seeds = [seeds::REDEMPTION_OFFER_VAULT_AUTHORITY], bump)]
     pub redemption_vault_authority: UncheckedAccount<'info>,
 
-    /// The input token mint for redemptions (must be ONyc mint from State)
+    /// The input token mint for redemptions
     ///
     /// This is the token_out_mint from the original offer.
-    #[account(
-        constraint = token_in_mint.key() == state.onyc_mint
-            @ MakeRedemptionOfferErrorCode::InvalidTokenIn
-    )]
+    #[account()]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
 
     /// Token program interface for the input token
     pub token_in_program: Interface<'info, TokenInterface>,
 
-    /// Vault account for storing input tokens (ONyc) during redemption operations
+    /// Vault account for storing input tokens during redemption operations
     ///
     /// Created automatically if needed. Used for holding ONyc tokens before burning.
     #[account(
@@ -133,9 +130,9 @@ pub struct MakeRedemptionOffer<'info> {
 /// Creates a redemption offer for converting ONyc back to stable tokens
 ///
 /// This instruction initializes a new redemption offer that allows users to redeem
-/// ONyc tokens for stable tokens (e.g., USDC) at the current NAV price. The redemption
-/// offer is the inverse of the standard Offer - it takes ONyc as input and provides
-/// stable tokens as output.
+/// input tokens for output tokens (e.g., USDC) at the current NAV price. The redemption
+/// offer is the inverse of the standard Offer - it takes the output token of the standard Offer
+/// as input token and provides the input token of the standard Offer as output token.
 ///
 /// # Arguments
 /// * `ctx` - The instruction context containing validated accounts
@@ -186,8 +183,4 @@ pub enum MakeRedemptionOfferErrorCode {
     /// Caller is not authorized (must be boss or redemption_admin)
     #[msg("Unauthorized: only boss or redemption_admin can create redemption offers")]
     Unauthorized,
-
-    /// The token_in must be the ONyc mint from State
-    #[msg("Invalid token_in: must be the ONyc mint")]
-    InvalidTokenIn,
 }
