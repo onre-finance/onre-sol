@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{sysvar, ed25519_program};
+use anchor_lang::solana_program::sysvar;
+use solana_program::ed25519_program;
 use crate::utils::approver::message::ApprovalMessage;
 use crate::utils::ed25519_parser::parse_ed25519_ix;
 
