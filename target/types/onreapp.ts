@@ -351,6 +351,81 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "cancelRedemptionRequest",
+      "docs": [
+        "Cancels a redemption request.",
+        "",
+        "Delegates to `redemption::cancel_redemption_request`.",
+        "This instruction cancels a pending redemption request. The request can be cancelled",
+        "by the redeemer, redemption_admin, or boss. Upon cancellation, the status is changed",
+        "to cancelled and the amount is subtracted from the redemption offer's requested_redemptions.",
+        "The redemption request account is NOT closed.",
+        "Emits a `RedemptionRequestCancelledEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `CancelRedemptionRequest`.",
+        "",
+        "# Access Control",
+        "- Signer must be one of: redeemer, redemption_admin, or boss",
+        "- Request must be in pending state (status = 0)"
+      ],
+      "discriminator": [
+        77,
+        155,
+        4,
+        179,
+        114,
+        233,
+        162,
+        45
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing redemption_admin and boss for authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemptionOffer",
+          "docs": [
+            "The redemption offer account"
+          ],
+          "writable": true
+        },
+        {
+          "name": "redemptionRequest",
+          "docs": [
+            "The redemption request account to cancel"
+          ],
+          "writable": true
+        },
+        {
+          "name": "signer",
+          "docs": [
+            "The signer who is cancelling the request",
+            "Can be either the redeemer, redemption_admin, or boss"
+          ],
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "clearAdmins",
       "docs": [
         "Clears all admins from the state.",
@@ -5856,6 +5931,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "redemptionRequestCancelledEvent",
+      "discriminator": [
+        51,
+        146,
+        195,
+        92,
+        134,
+        230,
+        73,
+        134
+      ]
+    },
+    {
       "name": "redemptionRequestCreatedEvent",
       "discriminator": [
         30,
@@ -5911,53 +5999,18 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "expired",
-      "msg": "The approval message has expired."
+      "name": "mathOverflow",
+      "msg": "Math overflow"
     },
     {
       "code": 6001,
-      "name": "wrongProgram",
-      "msg": "The approval message is for the wrong program."
+      "name": "maxSupplyExceeded",
+      "msg": "Minting would exceed maximum supply cap"
     },
     {
       "code": 6002,
-      "name": "wrongUser",
-      "msg": "The approval message is for the wrong user."
-    },
-    {
-      "code": 6003,
-      "name": "missingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
-    },
-    {
-      "code": 6004,
-      "name": "wrongIxProgram",
-      "msg": "The instruction is for the wrong program."
-    },
-    {
-      "code": 6005,
-      "name": "malformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
-    },
-    {
-      "code": 6006,
-      "name": "multipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
-    },
-    {
-      "code": 6007,
-      "name": "wrongAuthority",
-      "msg": "The authority public key does not match."
-    },
-    {
-      "code": 6008,
-      "name": "msgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
-    },
-    {
-      "code": 6009,
-      "name": "msgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "name": "transferFeeNotSupported",
+      "msg": "Token-2022 with transfer fees not supported"
     }
   ],
   "types": [
@@ -7374,6 +7427,54 @@ export type Onreapp = {
                 126
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionRequestCancelledEvent",
+      "docs": [
+        "Event emitted when a redemption request is successfully cancelled",
+        "",
+        "Provides transparency for tracking cancelled redemption requests."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "redemptionRequestPda",
+            "docs": [
+              "The PDA address of the cancelled redemption request"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "redemptionOffer",
+            "docs": [
+              "Reference to the redemption offer"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "redeemer",
+            "docs": [
+              "User who requested the redemption"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Amount of token_in tokens that was requested for redemption"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "cancelledBy",
+            "docs": [
+              "The signer who cancelled the request"
+            ],
+            "type": "pubkey"
           }
         ]
       }

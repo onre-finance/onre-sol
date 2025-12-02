@@ -1,5 +1,7 @@
 use crate::constants::seeds;
-use crate::instructions::redemption::{RedemptionOffer, RedemptionRequest, UserNonceAccount};
+use crate::instructions::redemption::{
+    RedemptionOffer, RedemptionRequest, RedemptionRequestStatus, UserNonceAccount,
+};
 use crate::state::State;
 use anchor_lang::prelude::*;
 
@@ -136,7 +138,7 @@ pub fn create_redemption_request(
     redemption_request.redeemer = ctx.accounts.redeemer.key();
     redemption_request.amount = amount;
     redemption_request.expires_at = expires_at;
-    redemption_request.status = 0; // Pending
+    redemption_request.status = RedemptionRequestStatus::Pending.as_u8();
     redemption_request.bump = ctx.bumps.redemption_request;
 
     // Update requested redemptions in the offer

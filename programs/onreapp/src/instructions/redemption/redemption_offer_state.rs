@@ -52,6 +52,21 @@ pub struct RedemptionRequest {
     pub reserved: [u8; 126],
 }
 
+/// Status of a redemption request
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum RedemptionRequestStatus {
+    Pending = 0,
+    Executed = 1,
+    Cancelled = 2,
+}
+
+impl RedemptionRequestStatus {
+    pub fn as_u8(self) -> u8 {
+        self as u8
+    }
+}
+
 /// User nonce account for preventing replay attacks.
 ///
 /// Each user has a unique nonce account that is incremented with each successful transaction.
