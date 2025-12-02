@@ -1893,13 +1893,13 @@
     {
       "name": "make_redemption_offer",
       "docs": [
-        "Creates a redemption offer for converting ONyc back to stable tokens.",
+        "Creates a redemption offer for converting output tokens from standard offers back",
+        "to input tokens.",
         "",
         "Delegates to `redemption::make_redemption_offer`.",
         "This instruction initializes a new redemption offer that allows users to redeem",
-        "ONyc tokens for stable tokens (e.g., USDC) at the current NAV price. The redemption",
-        "offer is the inverse of the standard Offer - it takes ONyc as input and provides",
-        "stable tokens as output.",
+        "token_out tokens from standard Offer (e.g. ONyc) for token_in tokens (e.g., USDC) at",
+        "the current NAV price. The redemption offer is the inverse of the standard Offer.",
         "",
         "The redemption offer PDA is derived with reversed token order compared to the",
         "original offer, reflecting the inverse nature of the redemption operation.",
@@ -2026,7 +2026,7 @@
         {
           "name": "token_in_mint",
           "docs": [
-            "The input token mint for redemptions (must be ONyc mint from State)",
+            "The input token mint for redemptions",
             "",
             "This is the token_out_mint from the original offer."
           ]
@@ -2040,7 +2040,7 @@
         {
           "name": "vault_token_in_account",
           "docs": [
-            "Vault account for storing input tokens (ONyc) during redemption operations",
+            "Vault account for storing input tokens during redemption operations",
             "",
             "Created automatically if needed. Used for holding ONyc tokens before burning."
           ],
@@ -5348,18 +5348,53 @@
   "errors": [
     {
       "code": 6000,
-      "name": "MathOverflow",
-      "msg": "Math overflow"
+      "name": "Expired",
+      "msg": "The approval message has expired."
     },
     {
       "code": 6001,
-      "name": "MaxSupplyExceeded",
-      "msg": "Minting would exceed maximum supply cap"
+      "name": "WrongProgram",
+      "msg": "The approval message is for the wrong program."
     },
     {
       "code": 6002,
-      "name": "TransferFeeNotSupported",
-      "msg": "Token-2022 with transfer fees not supported"
+      "name": "WrongUser",
+      "msg": "The approval message is for the wrong user."
+    },
+    {
+      "code": 6003,
+      "name": "MissingEd25519Ix",
+      "msg": "Missing Ed25519 instruction."
+    },
+    {
+      "code": 6004,
+      "name": "WrongIxProgram",
+      "msg": "The instruction is for the wrong program."
+    },
+    {
+      "code": 6005,
+      "name": "MalformedEd25519Ix",
+      "msg": "Malformed Ed25519 instruction."
+    },
+    {
+      "code": 6006,
+      "name": "MultipleSigs",
+      "msg": "Multiple signatures found in Ed25519 instruction."
+    },
+    {
+      "code": 6007,
+      "name": "WrongAuthority",
+      "msg": "The authority public key does not match."
+    },
+    {
+      "code": 6008,
+      "name": "MsgMismatch",
+      "msg": "The message in the Ed25519 instruction does not match the approval message."
+    },
+    {
+      "code": 6009,
+      "name": "MsgDeserialize",
+      "msg": "Failed to deserialize the approval message."
     }
   ],
   "types": [
@@ -6826,9 +6861,16 @@
             "type": "u64"
           },
           {
-            "name": "new_nonce",
+            "name": "used_nonce",
             "docs": [
               "Nonce used for this request"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "new_nonce",
+            "docs": [
+              "New nonce, which should be used for the next request"
             ],
             "type": "u64"
           }
@@ -6976,10 +7018,6 @@
           {
             "name": "nonce",
             "type": "u64"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
           }
         ]
       }

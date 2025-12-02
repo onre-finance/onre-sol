@@ -59,5 +59,4 @@ pub struct RedemptionRequest {
 #[derive(InitSpace)]
 pub struct UserNonceAccount {
     pub nonce: u64,
-    pub bump: u8,
 }

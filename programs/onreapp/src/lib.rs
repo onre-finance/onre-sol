@@ -504,13 +504,13 @@ pub mod onreapp {
         state_operations::close_state(ctx)
     }
 
-    /// Creates a redemption offer for converting ONyc back to stable tokens.
+    /// Creates a redemption offer for converting output tokens from standard offers back
+    /// to input tokens.
     ///
     /// Delegates to `redemption::make_redemption_offer`.
     /// This instruction initializes a new redemption offer that allows users to redeem
-    /// ONyc tokens for stable tokens (e.g., USDC) at the current NAV price. The redemption
-    /// offer is the inverse of the standard Offer - it takes ONyc as input and provides
-    /// stable tokens as output.
+    /// token_out tokens from standard Offer (e.g. ONyc) for token_in tokens (e.g., USDC) at
+    /// the current NAV price. The redemption offer is the inverse of the standard Offer.
     ///
     /// The redemption offer PDA is derived with reversed token order compared to the
     /// original offer, reflecting the inverse nature of the redemption operation.

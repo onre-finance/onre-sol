@@ -1899,13 +1899,13 @@ export type Onreapp = {
     {
       "name": "makeRedemptionOffer",
       "docs": [
-        "Creates a redemption offer for converting ONyc back to stable tokens.",
+        "Creates a redemption offer for converting output tokens from standard offers back",
+        "to input tokens.",
         "",
         "Delegates to `redemption::make_redemption_offer`.",
         "This instruction initializes a new redemption offer that allows users to redeem",
-        "ONyc tokens for stable tokens (e.g., USDC) at the current NAV price. The redemption",
-        "offer is the inverse of the standard Offer - it takes ONyc as input and provides",
-        "stable tokens as output.",
+        "token_out tokens from standard Offer (e.g. ONyc) for token_in tokens (e.g., USDC) at",
+        "the current NAV price. The redemption offer is the inverse of the standard Offer.",
         "",
         "The redemption offer PDA is derived with reversed token order compared to the",
         "original offer, reflecting the inverse nature of the redemption operation.",
@@ -2032,7 +2032,7 @@ export type Onreapp = {
         {
           "name": "tokenInMint",
           "docs": [
-            "The input token mint for redemptions (must be ONyc mint from State)",
+            "The input token mint for redemptions",
             "",
             "This is the token_out_mint from the original offer."
           ]
@@ -2046,7 +2046,7 @@ export type Onreapp = {
         {
           "name": "vaultTokenInAccount",
           "docs": [
-            "Vault account for storing input tokens (ONyc) during redemption operations",
+            "Vault account for storing input tokens during redemption operations",
             "",
             "Created automatically if needed. Used for holding ONyc tokens before burning."
           ],
@@ -5354,18 +5354,53 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "mathOverflow",
-      "msg": "Math overflow"
+      "name": "expired",
+      "msg": "The approval message has expired."
     },
     {
       "code": 6001,
-      "name": "maxSupplyExceeded",
-      "msg": "Minting would exceed maximum supply cap"
+      "name": "wrongProgram",
+      "msg": "The approval message is for the wrong program."
     },
     {
       "code": 6002,
-      "name": "transferFeeNotSupported",
-      "msg": "Token-2022 with transfer fees not supported"
+      "name": "wrongUser",
+      "msg": "The approval message is for the wrong user."
+    },
+    {
+      "code": 6003,
+      "name": "missingEd25519Ix",
+      "msg": "Missing Ed25519 instruction."
+    },
+    {
+      "code": 6004,
+      "name": "wrongIxProgram",
+      "msg": "The instruction is for the wrong program."
+    },
+    {
+      "code": 6005,
+      "name": "malformedEd25519Ix",
+      "msg": "Malformed Ed25519 instruction."
+    },
+    {
+      "code": 6006,
+      "name": "multipleSigs",
+      "msg": "Multiple signatures found in Ed25519 instruction."
+    },
+    {
+      "code": 6007,
+      "name": "wrongAuthority",
+      "msg": "The authority public key does not match."
+    },
+    {
+      "code": 6008,
+      "name": "msgMismatch",
+      "msg": "The message in the Ed25519 instruction does not match the approval message."
+    },
+    {
+      "code": 6009,
+      "name": "msgDeserialize",
+      "msg": "Failed to deserialize the approval message."
     }
   ],
   "types": [
@@ -6832,9 +6867,16 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "newNonce",
+            "name": "usedNonce",
             "docs": [
               "Nonce used for this request"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "newNonce",
+            "docs": [
+              "New nonce, which should be used for the next request"
             ],
             "type": "u64"
           }
@@ -6982,10 +7024,6 @@ export type Onreapp = {
           {
             "name": "nonce",
             "type": "u64"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
           }
         ]
       }
