@@ -261,6 +261,46 @@ export class OnreProgram {
         await tx.rpc();
     }
 
+    async redemptionVaultDeposit(params: {
+        amount: number,
+        tokenMint: PublicKey,
+        signer?: Keypair,
+        tokenProgram?: PublicKey
+    }) {
+        const tx = this.program.methods
+            .redemptionVaultDeposit(new BN(params.amount))
+            .accounts({
+                tokenMint: params.tokenMint,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
+    async redemptionVaultWithdraw(params: {
+        amount: number,
+        tokenMint: PublicKey,
+        signer?: Keypair,
+        tokenProgram?: PublicKey
+    }) {
+        const tx = this.program.methods
+            .redemptionVaultWithdraw(new BN(params.amount))
+            .accounts({
+                tokenMint: params.tokenMint,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
     async initializePermissionlessAuthority(params: { accountName: string }) {
         await this.program.methods
             .initializePermissionlessAuthority(params.accountName)
