@@ -57,7 +57,6 @@ pub struct MakeRedemptionOffer<'info> {
     /// The input token mint for redemptions
     ///
     /// This is the token_out_mint from the original offer.
-    #[account()]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
 
     /// Token program interface for the input token
