@@ -14,6 +14,12 @@ pub mod seeds {
 
     /// Seed for mint authority PDA accounts
     pub const MINT_AUTHORITY: &[u8] = b"mint_authority";
+
+    /// Seed for the redemption offer account
+    pub const REDEMPTION_OFFER: &[u8] = b"redemption_offer";
+
+    /// Seed for the redemption offer vault authority account
+    pub const REDEMPTION_OFFER_VAULT_AUTHORITY: &[u8] = b"redemption_offer_vault_authority";
 }
 
 /// Maximum number of pricing vectors allowed per offer
