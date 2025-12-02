@@ -612,4 +612,57 @@ export class OnreProgram {
         }
         await tx.rpc();
     }
+
+    async createRedemptionRequest(params: {
+        redemptionOffer: PublicKey;
+        redeemer: Keypair;
+        redemptionAdmin: Keypair;
+        amount: number;
+        expiresAt: number;
+        nonce: number;
+    }) {
+        const tx = this.program.methods
+            .createRedemptionRequest(
+                new BN(params.amount),
+                new BN(params.expiresAt),
+                new BN(params.nonce)
+            )
+            .accounts({
+                redemptionOffer: params.redemptionOffer,
+                redeemer: params.redeemer.publicKey,
+                redemptionAdmin: params.redemptionAdmin.publicKey
+            })
+            .signers([params.redeemer, params.redemptionAdmin]);
+
+        await tx.rpc();
+    }
+
+    async getRedemptionRequest(redemptionOffer: PublicKey, redeemer: PublicKey, nonce: number) {
+        const pda = this.getRedemptionRequestPda(redemptionOffer, redeemer, nonce);
+        return await this.program.account.redemptionRequest.fetch(pda);
+    }
+
+    getRedemptionRequestPda(redemptionOffer: PublicKey, redeemer: PublicKey, nonce: number) {
+        return PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("redemption_request"),
+                redemptionOffer.toBuffer(),
+                redeemer.toBuffer(),
+                new BN(nonce).toArrayLike(Buffer, "le", 8)
+            ],
+            this.program.programId
+        )[0];
+    }
+
+    async getUserNonceAccount(redeemer: PublicKey) {
+        const pda = this.getUserNonceAccountPda(redeemer);
+        return await this.program.account.userNonceAccount.fetch(pda);
+    }
+
+    getUserNonceAccountPda(redeemer: PublicKey) {
+        return PublicKey.findProgramAddressSync(
+            [Buffer.from("nonce_account"), redeemer.toBuffer()],
+            this.program.programId
+        )[0];
+    }
 }

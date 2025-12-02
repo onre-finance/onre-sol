@@ -643,6 +643,180 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "createRedemptionRequest",
+      "docs": [
+        "Creates a redemption request.",
+        "",
+        "Delegates to `redemption::create_redemption_request`.",
+        "This instruction creates a new redemption request that allows users to request",
+        "redemption of token_in tokens for token_out tokens at a future time. The request must",
+        "be authorized by the redemption admin and uses a nonce to prevent replay attacks.",
+        "Emits a `RedemptionRequestCreatedEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `CreateRedemptionRequest`.",
+        "- `amount`: Amount of token_in tokens to redeem.",
+        "- `expires_at`: Unix timestamp when the request expires.",
+        "- `nonce`: User's nonce for replay attack prevention (must match UserNonceAccount)."
+      ],
+      "discriminator": [
+        201,
+        53,
+        181,
+        254,
+        115,
+        137,
+        70,
+        151
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing redemption_admin authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemptionOffer",
+          "docs": [
+            "The redemption offer account"
+          ],
+          "writable": true
+        },
+        {
+          "name": "redemptionRequest",
+          "docs": [
+            "The redemption request account"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  114,
+                  101,
+                  113,
+                  117,
+                  101,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemptionOffer"
+              },
+              {
+                "kind": "account",
+                "path": "redeemer"
+              },
+              {
+                "kind": "arg",
+                "path": "nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "userNonceAccount",
+          "docs": [
+            "User nonce account for preventing replay attacks",
+            "",
+            "This account tracks the user's current nonce to ensure each request is unique."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  111,
+                  110,
+                  99,
+                  101,
+                  95,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redeemer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "redeemer",
+          "docs": [
+            "User requesting the redemption (pays for account creation)"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "redemptionAdmin",
+          "docs": [
+            "Redemption admin must sign to authorize the request"
+          ],
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "expiresAt",
+          "type": "u64"
+        },
+        {
+          "name": "nonce",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "deleteOfferVector",
       "docs": [
         "Deletes a time vector from an offer.",
@@ -4720,6 +4894,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "redemptionRequest",
+      "discriminator": [
+        117,
+        157,
+        214,
+        214,
+        64,
+        160,
+        31,
+        58
+      ]
+    },
+    {
       "name": "state",
       "discriminator": [
         216,
@@ -4730,6 +4917,19 @@ export type Onreapp = {
         75,
         182,
         177
+      ]
+    },
+    {
+      "name": "userNonceAccount",
+      "discriminator": [
+        199,
+        159,
+        144,
+        48,
+        120,
+        187,
+        62,
+        2
       ]
     }
   ],
@@ -5122,6 +5322,19 @@ export type Onreapp = {
         123,
         70,
         65
+      ]
+    },
+    {
+      "name": "redemptionRequestCreatedEvent",
+      "discriminator": [
+        30,
+        61,
+        76,
+        2,
+        36,
+        82,
+        84,
+        201
       ]
     },
     {
@@ -6507,6 +6720,128 @@ export type Onreapp = {
       }
     },
     {
+      "name": "redemptionRequest",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offer",
+            "docs": [
+              "Reference to the RedemptionOffer PDA"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "redeemer",
+            "docs": [
+              "User requesting the redemption"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Amount of token_in tokens requested for redemption"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "expiresAt",
+            "docs": [
+              "Unix timestamp when the request expires"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "docs": [
+              "Status of the redemption request",
+              "0: Pending, 1: Executed, 2: Cancelled"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed for account derivation"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "docs": [
+              "Reserved space for future fields"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                126
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionRequestCreatedEvent",
+      "docs": [
+        "Event emitted when a redemption request is successfully created",
+        "",
+        "Provides transparency for tracking redemption requests and their configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "redemptionRequestPda",
+            "docs": [
+              "The PDA address of the newly created redemption request"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "redemptionOffer",
+            "docs": [
+              "Reference to the redemption offer"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "redeemer",
+            "docs": [
+              "User requesting the redemption"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Amount of token_in tokens requested for redemption"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "expiresAt",
+            "docs": [
+              "Unix timestamp when the request expires"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "newNonce",
+            "docs": [
+              "Nonce used for this request"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "state",
       "docs": [
         "Global program state containing governance and configuration settings",
@@ -6630,6 +6965,27 @@ export type Onreapp = {
               "The boss account that initiated the closure and received the rent"
             ],
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "userNonceAccount",
+      "docs": [
+        "User nonce account for preventing replay attacks.",
+        "",
+        "Each user has a unique nonce account that is incremented with each successful transaction."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }

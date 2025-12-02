@@ -30,3 +30,34 @@ pub struct RedemptionOffer {
     /// Reserved space for future fields
     pub reserved: [u8; 119],
 }
+
+#[account(zero_copy)]
+#[repr(C)]
+#[derive(InitSpace)]
+pub struct RedemptionRequest {
+    /// Reference to the RedemptionOffer PDA
+    pub offer: Pubkey,
+    /// User requesting the redemption
+    pub redeemer: Pubkey,
+    /// Amount of token_in tokens requested for redemption
+    pub amount: u64,
+    /// Unix timestamp when the request expires
+    pub expires_at: u64,
+    /// Status of the redemption request
+    /// 0: Pending, 1: Executed, 2: Cancelled
+    pub status: u8,
+    /// PDA bump seed for account derivation
+    pub bump: u8,
+    /// Reserved space for future fields
+    pub reserved: [u8; 126],
+}
+
+/// User nonce account for preventing replay attacks.
+///
+/// Each user has a unique nonce account that is incremented with each successful transaction.
+#[account]
+#[derive(InitSpace)]
+pub struct UserNonceAccount {
+    pub nonce: u64,
+    pub bump: u8,
+}
