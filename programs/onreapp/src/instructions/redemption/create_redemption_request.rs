@@ -197,7 +197,6 @@ pub fn create_redemption_request(
     redemption_request.offer = ctx.accounts.redemption_offer.key();
     redemption_request.redeemer = ctx.accounts.redeemer.key();
     redemption_request.amount = amount;
-    redemption_request.expires_at = expires_at;
     redemption_request.status = RedemptionRequestStatus::Pending.as_u8();
     redemption_request.bump = ctx.bumps.redemption_request;
 

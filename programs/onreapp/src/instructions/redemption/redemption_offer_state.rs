@@ -39,8 +39,6 @@ pub struct RedemptionRequest {
     pub redeemer: Pubkey,
     /// Amount of token_in tokens requested for redemption
     pub amount: u64,
-    /// Unix timestamp when the request expires
-    pub expires_at: u64,
     /// Status of the redemption request
     /// 0: Pending, 1: Executed, 2: Cancelled
     pub status: u8,

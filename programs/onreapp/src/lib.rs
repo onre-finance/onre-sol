@@ -575,6 +575,24 @@ pub mod onreapp {
         redemption::create_redemption_request(ctx, amount, expires_at, nonce)
     }
 
+    /// Fulfills a redemption request.
+    ///
+    /// Delegates to `redemption::fulfill_redemption_request`.
+    /// This instruction fulfills a pending redemption request by handling token operations:
+    /// - Burns token_in (ONyc) if program has mint authority, else sends to boss
+    /// - Mints token_out if program has mint authority, else transfers from vault
+    /// - Uses current price from the underlying offer to calculate token_out amount
+    /// Emits a `RedemptionRequestFulfilledEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `FulfillRedemptionRequest`.
+    ///
+    /// # Access Control
+    /// - Only redemption_admin can fulfill redemptions
+    pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Result<()> {
+        redemption::fulfill_redemption_request(ctx)
+    }
+
     /// Cancels a redemption request.
     ///
     /// Delegates to `redemption::cancel_redemption_request`.
