@@ -1,6 +1,7 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { TestHelper } from "../test_helper";
 import { OnreProgram } from "../onre_program.ts";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 describe("Create redemption request", () => {
     let testHelper: TestHelper;
@@ -33,6 +34,13 @@ describe("Create redemption request", () => {
         // Create user accounts
         redeemer = testHelper.createUserAccount();
 
+        // Create token account for redeemer with ONyc tokens
+        testHelper.createTokenAccount(onycMint, redeemer.publicKey, BigInt(10_000_000_000)); // 10 ONyc
+
+        // Create token account for boss with ONyc tokens for vault deposit
+        const bossPublicKey = testHelper.context.payer.publicKey;
+        testHelper.createTokenAccount(onycMint, bossPublicKey, BigInt(100_000_000_000)); // 100 ONyc
+
         // Create the base offer (USDC -> ONyc)
         await program.makeOffer({
             tokenInMint: usdcMint,
@@ -47,6 +55,12 @@ describe("Create redemption request", () => {
         });
 
         redemptionOfferPda = program.getRedemptionOfferPda(onycMint, usdcMint);
+
+        // Deposit into redemption vault to create the vault token account
+        await program.redemptionVaultDeposit({
+            amount: 1_000_000_000, // 1 ONyc (enough for initial setup)
+            tokenMint: onycMint
+        });
     });
 
     test("Create redemption request should succeed with valid params", async () => {
@@ -151,6 +165,7 @@ describe("Create redemption request", () => {
         // given
         const expiresAt = Math.floor(Date.now() / 1000) + 3600;
         const redeemer2 = testHelper.createUserAccount();
+        testHelper.createTokenAccount(onycMint, redeemer2.publicKey, BigInt(10_000_000_000)); // 10 ONyc
 
         // when - First redeemer makes a request
         await program.createRedemptionRequest({
@@ -261,6 +276,7 @@ describe("Create redemption request", () => {
     test("Should allow multiple users to create requests with same nonce value", async () => {
         // given
         const redeemer2 = testHelper.createUserAccount();
+        testHelper.createTokenAccount(onycMint, redeemer2.publicKey, BigInt(10_000_000_000)); // 10 ONyc
         const expiresAt = Math.floor(Date.now() / 1000) + 3600;
         const nonce = 0;
 
@@ -362,5 +378,38 @@ describe("Create redemption request", () => {
 
         // Balance should decrease (account rent + transaction fees)
         expect(finalBalance).toBeLessThan(initialBalance);
+    });
+
+    test("Should lock tokens in redemption vault", async () => {
+        // given
+        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+        const redeemerTokenAccountAddress = getAssociatedTokenAddressSync(onycMint, redeemer.publicKey);
+        const redeemerTokenAccount = await testHelper.getTokenAccount(redeemerTokenAccountAddress);
+        const initialRedeemerBalance = redeemerTokenAccount.amount;
+
+        const vaultTokenAccountAddress = getAssociatedTokenAddressSync(
+            onycMint,
+            program.pdas.redemptionVaultAuthorityPda,
+            true
+        );
+        const initialVaultTokenAccount = await testHelper.getTokenAccount(vaultTokenAccountAddress);
+        const initialVaultBalance = initialVaultTokenAccount.amount;
+
+        // when
+        await program.createRedemptionRequest({
+            redemptionOffer: redemptionOfferPda,
+            redeemer,
+            redemptionAdmin,
+            amount: REDEMPTION_AMOUNT,
+            expiresAt,
+            nonce: 0
+        });
+
+        // then
+        const updatedRedeemerTokenAccount = await testHelper.getTokenAccount(redeemerTokenAccountAddress);
+        const vaultTokenAccount = await testHelper.getTokenAccount(vaultTokenAccountAddress);
+
+        expect(updatedRedeemerTokenAccount.amount).toBe(initialRedeemerBalance - BigInt(REDEMPTION_AMOUNT));
+        expect(vaultTokenAccount.amount).toBe(initialVaultBalance + BigInt(REDEMPTION_AMOUNT));
     });
 });

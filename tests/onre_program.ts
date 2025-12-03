@@ -660,7 +660,25 @@ export class OnreProgram {
         amount: number;
         expiresAt: number;
         nonce: number;
+        tokenProgram?: PublicKey;
     }) {
+        const redemptionOffer = await this.program.account.redemptionOffer.fetch(params.redemptionOffer);
+        const tokenProgram = params.tokenProgram ?? TOKEN_PROGRAM_ID;
+
+        const redeemerTokenAccount = getAssociatedTokenAddressSync(
+            redemptionOffer.tokenInMint,
+            params.redeemer.publicKey,
+            false,
+            tokenProgram
+        );
+
+        const vaultTokenAccount = getAssociatedTokenAddressSync(
+            redemptionOffer.tokenInMint,
+            this.pdas.redemptionVaultAuthorityPda,
+            true,
+            tokenProgram
+        );
+
         const tx = this.program.methods
             .createRedemptionRequest(
                 new BN(params.amount),
@@ -670,9 +688,54 @@ export class OnreProgram {
             .accounts({
                 redemptionOffer: params.redemptionOffer,
                 redeemer: params.redeemer.publicKey,
-                redemptionAdmin: params.redemptionAdmin.publicKey
+                redemptionAdmin: params.redemptionAdmin.publicKey,
+                tokenInMint: redemptionOffer.tokenInMint,
+                redeemerTokenAccount,
+                vaultTokenAccount,
+                tokenProgram,
             })
             .signers([params.redeemer, params.redemptionAdmin]);
+
+        await tx.rpc();
+    }
+
+    async cancelRedemptionRequest(params: {
+        redemptionOffer: PublicKey;
+        redemptionRequest: PublicKey;
+        signer: Keypair;
+        tokenProgram?: PublicKey;
+    }) {
+        const redemptionOffer = await this.program.account.redemptionOffer.fetch(params.redemptionOffer);
+        const redemptionRequest = await this.program.account.redemptionRequest.fetch(params.redemptionRequest);
+        const tokenProgram = params.tokenProgram ?? TOKEN_PROGRAM_ID;
+
+        const redeemerTokenAccount = getAssociatedTokenAddressSync(
+            redemptionOffer.tokenInMint,
+            redemptionRequest.redeemer,
+            false,
+            tokenProgram
+        );
+
+        const vaultTokenAccount = getAssociatedTokenAddressSync(
+            redemptionOffer.tokenInMint,
+            this.pdas.redemptionVaultAuthorityPda,
+            true,
+            tokenProgram
+        );
+
+        const tx = this.program.methods
+            .cancelRedemptionRequest()
+            .accounts({
+                redemptionOffer: params.redemptionOffer,
+                redemptionRequest: params.redemptionRequest,
+                signer: params.signer.publicKey,
+                tokenInMint: redemptionOffer.tokenInMint,
+                redeemer: redemptionRequest.redeemer,
+                vaultTokenAccount,
+                redeemerTokenAccount,
+                tokenProgram,
+            })
+            .signers([params.signer]);
 
         await tx.rpc();
     }

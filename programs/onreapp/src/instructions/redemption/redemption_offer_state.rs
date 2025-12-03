@@ -5,8 +5,7 @@ use anchor_lang::prelude::*;
 /// Manages the redemption process where users can exchange ONyc (in-token)
 /// for stable tokens like USDC (out-token) at the current NAV price.
 /// This is the inverse of the standard Offer which exchanges stable tokens for ONyc.
-#[account(zero_copy)]
-#[repr(C)]
+#[account]
 #[derive(InitSpace)]
 pub struct RedemptionOffer {
     /// Reference to the original Offer PDA that this redemption offer is associated with
@@ -31,8 +30,7 @@ pub struct RedemptionOffer {
     pub reserved: [u8; 119],
 }
 
-#[account(zero_copy)]
-#[repr(C)]
+#[account]
 #[derive(InitSpace)]
 pub struct RedemptionRequest {
     /// Reference to the RedemptionOffer PDA
@@ -50,6 +48,21 @@ pub struct RedemptionRequest {
     pub bump: u8,
     /// Reserved space for future fields
     pub reserved: [u8; 126],
+}
+
+/// Status of a redemption request
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum RedemptionRequestStatus {
+    Pending = 0,
+    Executed = 1,
+    Cancelled = 2,
+}
+
+impl RedemptionRequestStatus {
+    pub fn as_u8(self) -> u8 {
+        self as u8
+    }
 }
 
 /// User nonce account for preventing replay attacks.

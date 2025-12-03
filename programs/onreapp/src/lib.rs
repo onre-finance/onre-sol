@@ -574,4 +574,23 @@ pub mod onreapp {
     ) -> Result<()> {
         redemption::create_redemption_request(ctx, amount, expires_at, nonce)
     }
+
+    /// Cancels a redemption request.
+    ///
+    /// Delegates to `redemption::cancel_redemption_request`.
+    /// This instruction cancels a pending redemption request. The request can be cancelled
+    /// by the redeemer, redemption_admin, or boss. Upon cancellation, the status is changed
+    /// to cancelled and the amount is subtracted from the redemption offer's requested_redemptions.
+    /// The redemption request account is NOT closed.
+    /// Emits a `RedemptionRequestCancelledEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `CancelRedemptionRequest`.
+    ///
+    /// # Access Control
+    /// - Signer must be one of: redeemer, redemption_admin, or boss
+    /// - Request must be in pending state (status = 0)
+    pub fn cancel_redemption_request(ctx: Context<CancelRedemptionRequest>) -> Result<()> {
+        redemption::cancel_redemption_request(ctx)
+    }
 }

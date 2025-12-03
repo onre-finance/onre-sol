@@ -351,6 +351,289 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "cancelRedemptionRequest",
+      "docs": [
+        "Cancels a redemption request.",
+        "",
+        "Delegates to `redemption::cancel_redemption_request`.",
+        "This instruction cancels a pending redemption request. The request can be cancelled",
+        "by the redeemer, redemption_admin, or boss. Upon cancellation, the status is changed",
+        "to cancelled and the amount is subtracted from the redemption offer's requested_redemptions.",
+        "The redemption request account is NOT closed.",
+        "Emits a `RedemptionRequestCancelledEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `CancelRedemptionRequest`.",
+        "",
+        "# Access Control",
+        "- Signer must be one of: redeemer, redemption_admin, or boss",
+        "- Request must be in pending state (status = 0)"
+      ],
+      "discriminator": [
+        77,
+        155,
+        4,
+        179,
+        114,
+        233,
+        162,
+        45
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing redemption_admin and boss for authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemptionOffer",
+          "docs": [
+            "The redemption offer account"
+          ],
+          "writable": true
+        },
+        {
+          "name": "redemptionRequest",
+          "docs": [
+            "The redemption request account to cancel"
+          ],
+          "writable": true
+        },
+        {
+          "name": "signer",
+          "docs": [
+            "The signer who is cancelling the request",
+            "Can be either the redeemer, redemption_admin, or boss"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "redeemer",
+          "docs": [
+            "The redeemer's account (authority for the token account)"
+          ]
+        },
+        {
+          "name": "redemptionVaultAuthority",
+          "docs": [
+            "Program-derived authority that controls redemption vault token accounts",
+            "",
+            "This PDA manages the redemption vault token accounts and enables the program",
+            "to return locked tokens when requests are cancelled."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "The token mint for token_in (input token)"
+          ]
+        },
+        {
+          "name": "vaultTokenAccount",
+          "docs": [
+            "Redemption vault's token account serving as the source of locked tokens",
+            "",
+            "Contains the tokens that were locked when the request was created."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "redeemerTokenAccount",
+          "docs": [
+            "Redeemer's token account serving as the destination for returned tokens",
+            "",
+            "Receives back the tokens that were locked in the redemption request.",
+            "Created if needed in case the redeemer closed their account after locking all tokens."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redeemer"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "Token program interface for transfer operations"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program for account creation and rent payment"
+          ],
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "clearAdmins",
       "docs": [
         "Clears all admins from the state.",
@@ -792,6 +1075,200 @@ export type Onreapp = {
             "Redemption admin must sign to authorize the request"
           ],
           "signer": true
+        },
+        {
+          "name": "redemptionVaultAuthority",
+          "docs": [
+            "Program-derived authority that controls redemption vault token accounts",
+            "",
+            "This PDA manages the redemption vault token accounts and enables the program",
+            "to hold tokens until redemption requests are fulfilled or cancelled."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "The token mint for token_in (input token)"
+          ]
+        },
+        {
+          "name": "redeemerTokenAccount",
+          "docs": [
+            "Redeemer's token account serving as the source of deposited tokens",
+            "",
+            "Must have sufficient balance to cover the requested amount."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redeemer"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenAccount",
+          "docs": [
+            "Redemption vault's token account serving as the destination for locked tokens",
+            "",
+            "Must exist. Stores tokens that are locked until the redemption request is",
+            "fulfilled or cancelled."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "Token program interface for transfer operations"
+          ]
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         },
         {
           "name": "systemProgram",
@@ -5856,6 +6333,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "redemptionRequestCancelledEvent",
+      "discriminator": [
+        51,
+        146,
+        195,
+        92,
+        134,
+        230,
+        73,
+        134
+      ]
+    },
+    {
       "name": "redemptionRequestCreatedEvent",
       "discriminator": [
         30,
@@ -5911,53 +6401,18 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "expired",
-      "msg": "The approval message has expired."
+      "name": "mathOverflow",
+      "msg": "Math overflow"
     },
     {
       "code": 6001,
-      "name": "wrongProgram",
-      "msg": "The approval message is for the wrong program."
+      "name": "maxSupplyExceeded",
+      "msg": "Minting would exceed maximum supply cap"
     },
     {
       "code": 6002,
-      "name": "wrongUser",
-      "msg": "The approval message is for the wrong user."
-    },
-    {
-      "code": 6003,
-      "name": "missingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
-    },
-    {
-      "code": 6004,
-      "name": "wrongIxProgram",
-      "msg": "The instruction is for the wrong program."
-    },
-    {
-      "code": 6005,
-      "name": "malformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
-    },
-    {
-      "code": 6006,
-      "name": "multipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
-    },
-    {
-      "code": 6007,
-      "name": "wrongAuthority",
-      "msg": "The authority public key does not match."
-    },
-    {
-      "code": 6008,
-      "name": "msgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
-    },
-    {
-      "code": 6009,
-      "name": "msgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "name": "transferFeeNotSupported",
+      "msg": "Token-2022 with transfer fees not supported"
     }
   ],
   "types": [
@@ -7200,10 +7655,6 @@ export type Onreapp = {
         "for stable tokens like USDC (out-token) at the current NAV price.",
         "This is the inverse of the standard Offer which exchanges stable tokens for ONyc."
       ],
-      "serialization": "bytemuck",
-      "repr": {
-        "kind": "c"
-      },
       "type": {
         "kind": "struct",
         "fields": [
@@ -7313,10 +7764,6 @@ export type Onreapp = {
     },
     {
       "name": "redemptionRequest",
-      "serialization": "bytemuck",
-      "repr": {
-        "kind": "c"
-      },
       "type": {
         "kind": "struct",
         "fields": [
@@ -7374,6 +7821,54 @@ export type Onreapp = {
                 126
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionRequestCancelledEvent",
+      "docs": [
+        "Event emitted when a redemption request is successfully cancelled",
+        "",
+        "Provides transparency for tracking cancelled redemption requests."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "redemptionRequestPda",
+            "docs": [
+              "The PDA address of the cancelled redemption request"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "redemptionOffer",
+            "docs": [
+              "Reference to the redemption offer"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "redeemer",
+            "docs": [
+              "User who requested the redemption"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Amount of token_in tokens that was requested for redemption"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "cancelledBy",
+            "docs": [
+              "The signer who cancelled the request"
+            ],
+            "type": "pubkey"
           }
         ]
       }

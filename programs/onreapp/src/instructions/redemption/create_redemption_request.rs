@@ -1,7 +1,12 @@
 use crate::constants::seeds;
-use crate::instructions::redemption::{RedemptionOffer, RedemptionRequest, UserNonceAccount};
+use crate::instructions::redemption::{
+    RedemptionOffer, RedemptionRequest, RedemptionRequestStatus, UserNonceAccount,
+};
 use crate::state::State;
+use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 /// Event emitted when a redemption request is successfully created
 ///
@@ -37,7 +42,7 @@ pub struct CreateRedemptionRequest<'info> {
 
     /// The redemption offer account
     #[account(mut)]
-    pub redemption_offer: AccountLoader<'info, RedemptionOffer>,
+    pub redemption_offer: Account<'info, RedemptionOffer>,
 
     /// The redemption request account
     #[account(
@@ -52,7 +57,7 @@ pub struct CreateRedemptionRequest<'info> {
         ],
         bump
     )]
-    pub redemption_request: AccountLoader<'info, RedemptionRequest>,
+    pub redemption_request: Account<'info, RedemptionRequest>,
 
     /// User nonce account for preventing replay attacks
     ///
@@ -79,6 +84,50 @@ pub struct CreateRedemptionRequest<'info> {
             @ CreateRedemptionRequestErrorCode::Unauthorized
     )]
     pub redemption_admin: Signer<'info>,
+
+    /// Program-derived authority that controls redemption vault token accounts
+    ///
+    /// This PDA manages the redemption vault token accounts and enables the program
+    /// to hold tokens until redemption requests are fulfilled or cancelled.
+    /// CHECK: PDA derivation is validated by seeds constraint
+    #[account(seeds = [seeds::REDEMPTION_OFFER_VAULT_AUTHORITY], bump)]
+    pub redemption_vault_authority: AccountInfo<'info>,
+
+    /// The token mint for token_in (input token)
+    #[account(
+        constraint = token_in_mint.key() == redemption_offer.token_in_mint
+            @ CreateRedemptionRequestErrorCode::InvalidMint
+    )]
+    pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
+
+    /// Redeemer's token account serving as the source of deposited tokens
+    ///
+    /// Must have sufficient balance to cover the requested amount.
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = redeemer,
+        associated_token::token_program = token_program
+    )]
+    pub redeemer_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    /// Redemption vault's token account serving as the destination for locked tokens
+    ///
+    /// Must exist. Stores tokens that are locked until the redemption request is
+    /// fulfilled or cancelled.
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = redemption_vault_authority,
+        associated_token::token_program = token_program
+    )]
+    pub vault_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    /// Token program interface for transfer operations
+    pub token_program: Interface<'info, TokenInterface>,
+
+    /// Associated Token Program for automatic token account creation
+    pub associated_token_program: Program<'info, AssociatedToken>,
 
     /// System program for account creation
     pub system_program: Program<'info, System>,
@@ -107,9 +156,11 @@ pub struct CreateRedemptionRequest<'info> {
 ///
 /// # Effects
 /// - Creates new redemption request account
+/// - Transfers token_in tokens from redeemer to redemption vault (locking them)
 /// - Increments user's nonce in UserNonceAccount
 /// - Updates requested_redemptions in RedemptionOffer
 /// - Initializes UserNonceAccount if needed (paid by redeemer)
+/// - Initializes vault token account if needed (paid by redeemer)
 ///
 /// # Events
 /// * `RedemptionRequestCreatedEvent` - Emitted with redemption request details
@@ -130,18 +181,30 @@ pub fn create_redemption_request(
         CreateRedemptionRequestErrorCode::InvalidExpiration
     );
 
+    // Transfer tokens from redeemer to redemption vault (locking them)
+    transfer_tokens(
+        &ctx.accounts.token_in_mint,
+        &ctx.accounts.token_program,
+        &ctx.accounts.redeemer_token_account,
+        &ctx.accounts.vault_token_account,
+        &ctx.accounts.redeemer,
+        None,
+        amount,
+    )?;
+
     // Initialize the redemption request
-    let mut redemption_request = ctx.accounts.redemption_request.load_init()?;
+    let redemption_request = &mut ctx.accounts.redemption_request;
     redemption_request.offer = ctx.accounts.redemption_offer.key();
     redemption_request.redeemer = ctx.accounts.redeemer.key();
     redemption_request.amount = amount;
     redemption_request.expires_at = expires_at;
-    redemption_request.status = 0; // Pending
+    redemption_request.status = RedemptionRequestStatus::Pending.as_u8();
     redemption_request.bump = ctx.bumps.redemption_request;
 
     // Update requested redemptions in the offer
-    let mut redemption_offer = ctx.accounts.redemption_offer.load_mut()?;
-    redemption_offer.requested_redemptions = redemption_offer
+    ctx.accounts.redemption_offer.requested_redemptions = ctx
+        .accounts
+        .redemption_offer
         .requested_redemptions
         .checked_add(amount)
         .ok_or(CreateRedemptionRequestErrorCode::ArithmeticOverflow)?;
@@ -192,4 +255,8 @@ pub enum CreateRedemptionRequestErrorCode {
     /// Expiration is in the past
     #[msg("Invalid expiration: must be in the future")]
     InvalidExpiration,
+
+    /// Invalid mint (doesn't match redemption offer's token_in_mint)
+    #[msg("Invalid mint: provided mint doesn't match redemption offer's token_in_mint")]
+    InvalidMint,
 }
