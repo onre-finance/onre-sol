@@ -52,9 +52,9 @@ pub struct FulfillRedemptionRequest<'info> {
 
     /// The underlying offer that defines pricing
     #[account(
-        constraint = offer.load()?.token_in_mint == redemption_offer.load()?.token_out_mint
+        constraint = offer.load()?.token_in_mint == redemption_offer.token_out_mint
             @ FulfillRedemptionRequestErrorCode::OfferMintMismatch,
-        constraint = offer.load()?.token_out_mint == redemption_offer.load()?.token_in_mint
+        constraint = offer.load()?.token_out_mint == redemption_offer.token_in_mint
             @ FulfillRedemptionRequestErrorCode::OfferMintMismatch
     )]
     pub offer: AccountLoader<'info, Offer>,
@@ -62,20 +62,20 @@ pub struct FulfillRedemptionRequest<'info> {
     /// The redemption offer account
     #[account(
         mut,
-        constraint = redemption_offer.load()?.offer == offer.key()
+        constraint = redemption_offer.offer == offer.key()
             @ FulfillRedemptionRequestErrorCode::OfferMismatch
     )]
-    pub redemption_offer: AccountLoader<'info, RedemptionOffer>,
+    pub redemption_offer: Box<Account<'info, RedemptionOffer>>,
 
     /// The redemption request account to fulfill
     #[account(
         mut,
-        constraint = redemption_request.load()?.status == 0
+        constraint = redemption_request.status == 0
             @ FulfillRedemptionRequestErrorCode::RequestAlreadyProcessed,
-        constraint = redemption_request.load()?.offer == redemption_offer.key()
+        constraint = redemption_request.offer == redemption_offer.key()
             @ FulfillRedemptionRequestErrorCode::OfferMismatch
     )]
-    pub redemption_request: AccountLoader<'info, RedemptionRequest>,
+    pub redemption_request: Box<Account<'info, RedemptionRequest>>,
 
     /// Program-derived redemption vault authority that controls token operations
     ///
@@ -116,7 +116,7 @@ pub struct FulfillRedemptionRequest<'info> {
     /// Must be mutable to allow burning operations when program has mint authority.
     #[account(
         mut,
-        constraint = token_in_mint.key() == redemption_offer.load()?.token_in_mint
+        constraint = token_in_mint.key() == redemption_offer.token_in_mint
             @ FulfillRedemptionRequestErrorCode::InvalidTokenInMint
     )]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
@@ -129,7 +129,7 @@ pub struct FulfillRedemptionRequest<'info> {
     /// Must be mutable to allow minting operations when program has mint authority.
     #[account(
         mut,
-        constraint = token_out_mint.key() == redemption_offer.load()?.token_out_mint
+        constraint = token_out_mint.key() == redemption_offer.token_out_mint
             @ FulfillRedemptionRequestErrorCode::InvalidTokenOutMint
     )]
     pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
@@ -164,7 +164,8 @@ pub struct FulfillRedemptionRequest<'info> {
     ///
     /// Only used when token_in is ONyc and program doesn't have mint authority.
     #[account(
-        mut,
+        init_if_needed,
+        payer = redemption_admin,
         associated_token::mint = token_in_mint,
         associated_token::authority = boss,
         associated_token::token_program = token_in_program
@@ -183,7 +184,7 @@ pub struct FulfillRedemptionRequest<'info> {
 
     /// The user who created the redemption request
     /// CHECK: Validated against redemption_request.redeemer
-    #[account(constraint = redeemer.key() == redemption_request.load()?.redeemer
+    #[account(constraint = redeemer.key() == redemption_request.redeemer
         @ FulfillRedemptionRequestErrorCode::InvalidRedeemer)]
     pub redeemer: UncheckedAccount<'info>,
 
@@ -236,9 +237,8 @@ pub struct FulfillRedemptionRequest<'info> {
 /// # Events
 /// * `RedemptionRequestFulfilledEvent` - Emitted with fulfillment details
 pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Result<()> {
-    let redemption_request = ctx.accounts.redemption_request.load()?;
+    let redemption_request = &mut ctx.accounts.redemption_request;
     let token_in_amount = redemption_request.amount;
-    drop(redemption_request);
 
     // Use shared core processing logic for redemption
     let offer = ctx.accounts.offer.load()?;
@@ -272,10 +272,10 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
         token_out_max_supply: 0, // No max supply cap for redemptions
     })?;
 
-    let mut redemption_request = ctx.accounts.redemption_request.load_mut()?;
+    let redemption_request = &mut ctx.accounts.redemption_request;
     redemption_request.status = 1;
 
-    let mut redemption_offer = ctx.accounts.redemption_offer.load_mut()?;
+    let redemption_offer = &mut ctx.accounts.redemption_offer;
     redemption_offer.executed_redemptions = redemption_offer
         .executed_redemptions
         .checked_add(token_in_amount as u128)

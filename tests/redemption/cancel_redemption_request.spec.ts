@@ -432,7 +432,6 @@ describe("Cancel redemption request", () => {
         expect(cancelledRequest.offer.toString()).toBe(originalRequest.offer.toString());
         expect(cancelledRequest.redeemer.toString()).toBe(originalRequest.redeemer.toString());
         expect(cancelledRequest.amount.toString()).toBe(originalRequest.amount.toString());
-        expect(cancelledRequest.expiresAt.toString()).toBe(originalRequest.expiresAt.toString());
         expect(cancelledRequest.status).toBe(2); // Only status should change
     });
 

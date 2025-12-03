@@ -592,5 +592,352 @@ describe("Fulfill redemption request", () => {
             const userUsdcBalance = await testHelper.getTokenAccountBalance(userUsdcAccount);
             expect(userUsdcBalance).toBe(BigInt(4_000_000)); // 4 USDC
         });
+
+        test("Should handle fractional price 1.003 correctly", async () => {
+            // given - Price of 1.003 USDC per ONyc
+            await program.transferMintAuthorityToProgram({ mint: onycMint });
+            await program.transferMintAuthorityToProgram({ mint: usdcMint });
+
+            const boss = testHelper.getBoss();
+            testHelper.createTokenAccount(onycMint, boss, BigInt(0), true);
+            testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
+
+            const currentTime = await testHelper.getCurrentClockTime();
+            await program.addOfferVector({
+                tokenInMint: usdcMint,
+                tokenOutMint: onycMint,
+                baseTime: currentTime + 200,
+                basePrice: 1_003_000_000, // 1.003 USDC per ONyc (9 decimals)
+                apr: 0,
+                priceFixDuration: 86400
+            });
+            await testHelper.advanceClockBy(200);
+
+            // Redeem 10 ONyc -> should get 10 * 1.003 = 10.03 USDC
+            const amountIn = 10_000_000_000; // 10 ONyc (9 decimals)
+            const nonce = 0;
+            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+
+            await program.createRedemptionRequest({
+                redemptionOffer: redemptionOfferPda,
+                redeemer,
+                redemptionAdmin,
+                amount: amountIn,
+                expiresAt,
+                nonce
+            });
+
+            const redemptionRequestPda = program.getRedemptionRequestPda(
+                redemptionOfferPda,
+                redeemer.publicKey,
+                nonce
+            );
+
+            // when
+            await program.fulfillRedemptionRequest({
+                offer: offerPda,
+                redemptionOffer: redemptionOfferPda,
+                redemptionRequest: redemptionRequestPda,
+                redeemer: redeemer.publicKey,
+                redemptionAdmin,
+                tokenInMint: onycMint,
+                tokenOutMint: usdcMint
+            });
+
+            // then - Should receive 10.03 USDC
+            const userUsdcAccount = getAssociatedTokenAddressSync(usdcMint, redeemer.publicKey);
+            const userUsdcBalance = await testHelper.getTokenAccountBalance(userUsdcAccount);
+            expect(userUsdcBalance).toBe(BigInt(10_030_000)); // 10.03 USDC (6 decimals)
+        });
+
+        test("Should handle tokens with different decimals (9 vs 6)", async () => {
+            // given - ONyc has 9 decimals, USDC has 6 decimals, price 0.5
+            await program.transferMintAuthorityToProgram({ mint: onycMint });
+            await program.transferMintAuthorityToProgram({ mint: usdcMint });
+
+            const boss = testHelper.getBoss();
+            testHelper.createTokenAccount(onycMint, boss, BigInt(0), true);
+            testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
+
+            const currentTime = await testHelper.getCurrentClockTime();
+            await program.addOfferVector({
+                tokenInMint: usdcMint,
+                tokenOutMint: onycMint,
+                baseTime: currentTime + 300,
+                basePrice: 500_000_000, // 0.5 USDC per ONyc
+                apr: 0,
+                priceFixDuration: 86400
+            });
+            await testHelper.advanceClockBy(300);
+
+            // Redeem 100 ONyc -> should get 100 * 0.5 = 50 USDC
+            const amountIn = 100_000_000_000; // 100 ONyc (9 decimals)
+            const nonce = 0;
+            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+
+            await program.createRedemptionRequest({
+                redemptionOffer: redemptionOfferPda,
+                redeemer,
+                redemptionAdmin,
+                amount: amountIn,
+                expiresAt,
+                nonce
+            });
+
+            const redemptionRequestPda = program.getRedemptionRequestPda(
+                redemptionOfferPda,
+                redeemer.publicKey,
+                nonce
+            );
+
+            // when
+            await program.fulfillRedemptionRequest({
+                offer: offerPda,
+                redemptionOffer: redemptionOfferPda,
+                redemptionRequest: redemptionRequestPda,
+                redeemer: redeemer.publicKey,
+                redemptionAdmin,
+                tokenInMint: onycMint,
+                tokenOutMint: usdcMint
+            });
+
+            // then - Should receive 50 USDC
+            const userUsdcAccount = getAssociatedTokenAddressSync(usdcMint, redeemer.publicKey);
+            const userUsdcBalance = await testHelper.getTokenAccountBalance(userUsdcAccount);
+            expect(userUsdcBalance).toBe(BigInt(50_000_000)); // 50 USDC (6 decimals)
+        });
+
+        test("Should handle high precision price 3.141592653", async () => {
+            // given - Price of π (pi) approximation
+            await program.transferMintAuthorityToProgram({ mint: onycMint });
+            await program.transferMintAuthorityToProgram({ mint: usdcMint });
+
+            const boss = testHelper.getBoss();
+            testHelper.createTokenAccount(onycMint, boss, BigInt(0), true);
+            testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
+
+            const currentTime = await testHelper.getCurrentClockTime();
+            await program.addOfferVector({
+                tokenInMint: usdcMint,
+                tokenOutMint: onycMint,
+                baseTime: currentTime + 400,
+                basePrice: 3_141_592_653, // π ≈ 3.141592653 USDC per ONyc (9 decimals)
+                apr: 0,
+                priceFixDuration: 86400
+            });
+            await testHelper.advanceClockBy(400);
+
+            // Redeem 7 ONyc -> should get 7 * 3.141592653 = 21.991148571 USDC
+            const amountIn = 7_000_000_000; // 7 ONyc (9 decimals)
+            const nonce = 0;
+            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+
+            await program.createRedemptionRequest({
+                redemptionOffer: redemptionOfferPda,
+                redeemer,
+                redemptionAdmin,
+                amount: amountIn,
+                expiresAt,
+                nonce
+            });
+
+            const redemptionRequestPda = program.getRedemptionRequestPda(
+                redemptionOfferPda,
+                redeemer.publicKey,
+                nonce
+            );
+
+            // when
+            await program.fulfillRedemptionRequest({
+                offer: offerPda,
+                redemptionOffer: redemptionOfferPda,
+                redemptionRequest: redemptionRequestPda,
+                redeemer: redeemer.publicKey,
+                redemptionAdmin,
+                tokenInMint: onycMint,
+                tokenOutMint: usdcMint
+            });
+
+            // then - Should receive 21.991148 USDC (truncated to 6 decimals)
+            const userUsdcAccount = getAssociatedTokenAddressSync(usdcMint, redeemer.publicKey);
+            const userUsdcBalance = await testHelper.getTokenAccountBalance(userUsdcAccount);
+            expect(userUsdcBalance).toBe(BigInt(21_991_148)); // 21.991148 USDC (6 decimals, truncated)
+        });
+
+        test("Should handle very small amounts correctly", async () => {
+            // given - Price of 100 USDC per ONyc
+            await program.transferMintAuthorityToProgram({ mint: onycMint });
+            await program.transferMintAuthorityToProgram({ mint: usdcMint });
+
+            const boss = testHelper.getBoss();
+            testHelper.createTokenAccount(onycMint, boss, BigInt(0), true);
+            testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
+
+            const currentTime = await testHelper.getCurrentClockTime();
+            await program.addOfferVector({
+                tokenInMint: usdcMint,
+                tokenOutMint: onycMint,
+                baseTime: currentTime + 500,
+                basePrice: 100_000_000_000, // 100 USDC per ONyc (9 decimals)
+                apr: 0,
+                priceFixDuration: 86400
+            });
+            await testHelper.advanceClockBy(500);
+
+            // Redeem 0.001 ONyc -> should get 0.001 * 100 = 0.1 USDC
+            const amountIn = 1_000_000; // 0.001 ONyc (9 decimals)
+            const nonce = 0;
+            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+
+            await program.createRedemptionRequest({
+                redemptionOffer: redemptionOfferPda,
+                redeemer,
+                redemptionAdmin,
+                amount: amountIn,
+                expiresAt,
+                nonce
+            });
+
+            const redemptionRequestPda = program.getRedemptionRequestPda(
+                redemptionOfferPda,
+                redeemer.publicKey,
+                nonce
+            );
+
+            // when
+            await program.fulfillRedemptionRequest({
+                offer: offerPda,
+                redemptionOffer: redemptionOfferPda,
+                redemptionRequest: redemptionRequestPda,
+                redeemer: redeemer.publicKey,
+                redemptionAdmin,
+                tokenInMint: onycMint,
+                tokenOutMint: usdcMint
+            });
+
+            // then - Should receive 0.1 USDC
+            const userUsdcAccount = getAssociatedTokenAddressSync(usdcMint, redeemer.publicKey);
+            const userUsdcBalance = await testHelper.getTokenAccountBalance(userUsdcAccount);
+            expect(userUsdcBalance).toBe(BigInt(100_000)); // 0.1 USDC (6 decimals)
+        });
+
+        test("Should handle price with many decimal places 0.123456789", async () => {
+            // given - Very precise fractional price
+            await program.transferMintAuthorityToProgram({ mint: onycMint });
+            await program.transferMintAuthorityToProgram({ mint: usdcMint });
+
+            const boss = testHelper.getBoss();
+            testHelper.createTokenAccount(onycMint, boss, BigInt(0), true);
+            testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
+
+            const currentTime = await testHelper.getCurrentClockTime();
+            await program.addOfferVector({
+                tokenInMint: usdcMint,
+                tokenOutMint: onycMint,
+                baseTime: currentTime + 600,
+                basePrice: 123_456_789, // 0.123456789 USDC per ONyc (9 decimals)
+                apr: 0,
+                priceFixDuration: 86400
+            });
+            await testHelper.advanceClockBy(600);
+
+            // Redeem 1000 ONyc -> should get 1000 * 0.123456789 = 123.456789 USDC
+            const amountIn = 1000_000_000_000; // 1000 ONyc (9 decimals)
+            const nonce = 0;
+            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+
+            await program.createRedemptionRequest({
+                redemptionOffer: redemptionOfferPda,
+                redeemer,
+                redemptionAdmin,
+                amount: amountIn,
+                expiresAt,
+                nonce
+            });
+
+            const redemptionRequestPda = program.getRedemptionRequestPda(
+                redemptionOfferPda,
+                redeemer.publicKey,
+                nonce
+            );
+
+            // when
+            await program.fulfillRedemptionRequest({
+                offer: offerPda,
+                redemptionOffer: redemptionOfferPda,
+                redemptionRequest: redemptionRequestPda,
+                redeemer: redeemer.publicKey,
+                redemptionAdmin,
+                tokenInMint: onycMint,
+                tokenOutMint: usdcMint
+            });
+
+            // then - Should receive 123.456789 USDC (truncated to 6 decimals)
+            const userUsdcAccount = getAssociatedTokenAddressSync(usdcMint, redeemer.publicKey);
+            const userUsdcBalance = await testHelper.getTokenAccountBalance(userUsdcAccount);
+            expect(userUsdcBalance).toBe(BigInt(123_456_789)); // 123.456789 USDC (6 decimals)
+        });
+
+        test("Should handle APR-based price growth correctly", async () => {
+            // given - Base price 1.0 with 3.65% APR
+            await program.transferMintAuthorityToProgram({ mint: onycMint });
+            await program.transferMintAuthorityToProgram({ mint: usdcMint });
+
+            const boss = testHelper.getBoss();
+            testHelper.createTokenAccount(onycMint, boss, BigInt(0), true);
+            testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
+
+            const currentTime = await testHelper.getCurrentClockTime();
+            await program.addOfferVector({
+                tokenInMint: usdcMint,
+                tokenOutMint: onycMint,
+                baseTime: currentTime + 700,
+                basePrice: 1_000_000_000, // 1.0 USDC per ONyc (9 decimals)
+                apr: 36_500, // 3.65% APR (scaled by 1M)
+                priceFixDuration: 86400 // 1 day intervals
+            });
+
+            // Advance to first interval (1 day)
+            // With discrete intervals, price snaps to end of interval
+            // At 1 day: interval_end = 2 * 86400, Price = 1.0 * (1 + 0.0365 * 2/365) = 1.0002
+            await testHelper.advanceClockBy(700 + 86400);
+
+            // Redeem 100 ONyc -> should get 100 * 1.0002 = 100.02 USDC
+            const amountIn = 100_000_000_000; // 100 ONyc (9 decimals)
+            const nonce = 0;
+            const currentTimeAfterAdvance = await testHelper.getCurrentClockTime();
+            const expiresAt = currentTimeAfterAdvance + 3600;
+
+            await program.createRedemptionRequest({
+                redemptionOffer: redemptionOfferPda,
+                redeemer,
+                redemptionAdmin,
+                amount: amountIn,
+                expiresAt,
+                nonce
+            });
+
+            const redemptionRequestPda = program.getRedemptionRequestPda(
+                redemptionOfferPda,
+                redeemer.publicKey,
+                nonce
+            );
+
+            // when
+            await program.fulfillRedemptionRequest({
+                offer: offerPda,
+                redemptionOffer: redemptionOfferPda,
+                redemptionRequest: redemptionRequestPda,
+                redeemer: redeemer.publicKey,
+                redemptionAdmin,
+                tokenInMint: onycMint,
+                tokenOutMint: usdcMint
+            });
+
+            // then - Should receive 100.02 USDC (price grew with APR)
+            const userUsdcAccount = getAssociatedTokenAddressSync(usdcMint, redeemer.publicKey);
+            const userUsdcBalance = await testHelper.getTokenAccountBalance(userUsdcAccount);
+            expect(userUsdcBalance).toBe(BigInt(100_020_000)); // 100.02 USDC (6 decimals)
+        });
     });
 });
