@@ -109,7 +109,7 @@ pub struct MakeRedemptionOffer<'info> {
         ],
         bump
     )]
-    pub redemption_offer: AccountLoader<'info, RedemptionOffer>,
+    pub redemption_offer: Account<'info, RedemptionOffer>,
 
     /// The account creating the redemption offer (must be boss or redemption_admin)
     #[account(
@@ -153,7 +153,7 @@ pub struct MakeRedemptionOffer<'info> {
 /// * `RedemptionOfferCreatedEvent` - Emitted with redemption offer details and configuration
 pub fn make_redemption_offer(ctx: Context<MakeRedemptionOffer>) -> Result<()> {
     // Initialize the redemption offer
-    let mut redemption_offer = ctx.accounts.redemption_offer.load_init()?;
+    let redemption_offer = &mut ctx.accounts.redemption_offer;
     redemption_offer.offer = ctx.accounts.offer.key();
     redemption_offer.token_in_mint = ctx.accounts.token_in_mint.key();
     redemption_offer.token_out_mint = ctx.accounts.token_out_mint.key();

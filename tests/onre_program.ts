@@ -730,6 +730,7 @@ export class OnreProgram {
                 redemptionRequest: params.redemptionRequest,
                 signer: params.signer.publicKey,
                 tokenInMint: redemptionOffer.tokenInMint,
+                redeemer: redemptionRequest.redeemer,
                 vaultTokenAccount,
                 redeemerTokenAccount,
                 tokenProgram,

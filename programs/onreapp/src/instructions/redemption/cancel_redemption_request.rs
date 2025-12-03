@@ -5,6 +5,7 @@ use crate::instructions::redemption::{
 use crate::state::State;
 use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 /// Event emitted when a redemption request is successfully cancelled
@@ -36,15 +37,29 @@ pub struct CancelRedemptionRequest<'info> {
 
     /// The redemption offer account
     #[account(mut)]
-    pub redemption_offer: AccountLoader<'info, RedemptionOffer>,
+    pub redemption_offer: Account<'info, RedemptionOffer>,
 
     /// The redemption request account to cancel
     #[account(mut)]
-    pub redemption_request: AccountLoader<'info, RedemptionRequest>,
+    pub redemption_request: Account<'info, RedemptionRequest>,
 
     /// The signer who is cancelling the request
     /// Can be either the redeemer, redemption_admin, or boss
+    #[account(mut,
+        constraint = signer.key() == state.boss ||
+            signer.key() == state.redemption_admin ||
+            signer.key() == redemption_request.redeemer
+        @ CancelRedemptionRequestErrorCode::Unauthorized
+    )]
     pub signer: Signer<'info>,
+
+    /// The redeemer's account (authority for the token account)
+    /// CHECK: Must match redemption_request.redeemer
+    #[account(
+      constraint = redeemer.key() == redemption_request.redeemer
+          @ CancelRedemptionRequestErrorCode::InvalidRedeemer
+    )]
+    pub redeemer: UncheckedAccount<'info>,
 
     /// Program-derived authority that controls redemption vault token accounts
     ///
@@ -56,7 +71,7 @@ pub struct CancelRedemptionRequest<'info> {
 
     /// The token mint for token_in (input token)
     #[account(
-        constraint = token_in_mint.key() == redemption_offer.load()?.token_in_mint
+        constraint = token_in_mint.key() == redemption_offer.token_in_mint
             @ CancelRedemptionRequestErrorCode::InvalidMint
     )]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
@@ -75,16 +90,24 @@ pub struct CancelRedemptionRequest<'info> {
     /// Redeemer's token account serving as the destination for returned tokens
     ///
     /// Receives back the tokens that were locked in the redemption request.
+    /// Created if needed in case the redeemer closed their account after locking all tokens.
     #[account(
-        mut,
+        init_if_needed,
+        payer = signer,
         associated_token::mint = token_in_mint,
-        associated_token::authority = redemption_request.load()?.redeemer,
+        associated_token::authority = redeemer,
         associated_token::token_program = token_program,
     )]
     pub redeemer_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Token program interface for transfer operations
     pub token_program: Interface<'info, TokenInterface>,
+
+    /// System program for account creation and rent payment
+    pub system_program: Program<'info, System>,
+
+    /// Associated Token Program for automatic token account creation
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 /// Cancels a redemption request
@@ -115,19 +138,8 @@ pub struct CancelRedemptionRequest<'info> {
 /// # Events
 /// * `RedemptionRequestCancelledEvent` - Emitted with cancellation details
 pub fn cancel_redemption_request(ctx: Context<CancelRedemptionRequest>) -> Result<()> {
-    let redemption_request = ctx.accounts.redemption_request.load()?;
-    let state = &ctx.accounts.state;
+    let redemption_request = &ctx.accounts.redemption_request;
     let signer = ctx.accounts.signer.key();
-
-    // Verify authorization - signer must be redeemer, redemption_admin, or boss
-    let is_authorized = signer == redemption_request.redeemer
-        || signer == state.redemption_admin
-        || signer == state.boss;
-
-    require!(
-        is_authorized,
-        CancelRedemptionRequestErrorCode::Unauthorized
-    );
 
     // Verify the request is in pending state
     require_eq!(
@@ -138,11 +150,9 @@ pub fn cancel_redemption_request(ctx: Context<CancelRedemptionRequest>) -> Resul
 
     let amount = redemption_request.amount;
     let redeemer = redemption_request.redeemer;
-    drop(redemption_request);
 
     // Update the redemption request status to cancelled
-    let mut redemption_request_mut = ctx.accounts.redemption_request.load_mut()?;
-    redemption_request_mut.status = RedemptionRequestStatus::Cancelled.as_u8();
+    ctx.accounts.redemption_request.status = RedemptionRequestStatus::Cancelled.as_u8();
 
     // Return locked tokens from vault to redeemer
     let vault_authority_bump = ctx.bumps.redemption_vault_authority;
@@ -163,8 +173,9 @@ pub fn cancel_redemption_request(ctx: Context<CancelRedemptionRequest>) -> Resul
     )?;
 
     // Subtract the amount from requested_redemptions in the offer
-    let mut redemption_offer = ctx.accounts.redemption_offer.load_mut()?;
-    redemption_offer.requested_redemptions = redemption_offer
+    ctx.accounts.redemption_offer.requested_redemptions = ctx
+        .accounts
+        .redemption_offer
         .requested_redemptions
         .checked_sub(amount)
         .ok_or(CancelRedemptionRequestErrorCode::ArithmeticUnderflow)?;
@@ -205,4 +216,8 @@ pub enum CancelRedemptionRequestErrorCode {
     /// Invalid mint (doesn't match redemption offer's token_in_mint)
     #[msg("Invalid mint: provided mint doesn't match redemption offer's token_in_mint")]
     InvalidMint,
+
+    /// Invalid redeemer (doesn't match redemption request's redeemer)
+    #[msg("Invalid redeemer: provided redeemer doesn't match redemption request's redeemer")]
+    InvalidRedeemer,
 }

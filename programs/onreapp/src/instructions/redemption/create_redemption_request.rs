@@ -42,7 +42,7 @@ pub struct CreateRedemptionRequest<'info> {
 
     /// The redemption offer account
     #[account(mut)]
-    pub redemption_offer: AccountLoader<'info, RedemptionOffer>,
+    pub redemption_offer: Account<'info, RedemptionOffer>,
 
     /// The redemption request account
     #[account(
@@ -57,7 +57,7 @@ pub struct CreateRedemptionRequest<'info> {
         ],
         bump
     )]
-    pub redemption_request: AccountLoader<'info, RedemptionRequest>,
+    pub redemption_request: Account<'info, RedemptionRequest>,
 
     /// User nonce account for preventing replay attacks
     ///
@@ -95,7 +95,7 @@ pub struct CreateRedemptionRequest<'info> {
 
     /// The token mint for token_in (input token)
     #[account(
-        constraint = token_in_mint.key() == redemption_offer.load()?.token_in_mint
+        constraint = token_in_mint.key() == redemption_offer.token_in_mint
             @ CreateRedemptionRequestErrorCode::InvalidMint
     )]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
@@ -193,7 +193,7 @@ pub fn create_redemption_request(
     )?;
 
     // Initialize the redemption request
-    let mut redemption_request = ctx.accounts.redemption_request.load_init()?;
+    let redemption_request = &mut ctx.accounts.redemption_request;
     redemption_request.offer = ctx.accounts.redemption_offer.key();
     redemption_request.redeemer = ctx.accounts.redeemer.key();
     redemption_request.amount = amount;
@@ -202,8 +202,9 @@ pub fn create_redemption_request(
     redemption_request.bump = ctx.bumps.redemption_request;
 
     // Update requested redemptions in the offer
-    let mut redemption_offer = ctx.accounts.redemption_offer.load_mut()?;
-    redemption_offer.requested_redemptions = redemption_offer
+    ctx.accounts.redemption_offer.requested_redemptions = ctx
+        .accounts
+        .redemption_offer
         .requested_redemptions
         .checked_add(amount)
         .ok_or(CreateRedemptionRequestErrorCode::ArithmeticOverflow)?;

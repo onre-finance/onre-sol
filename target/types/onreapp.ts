@@ -420,7 +420,14 @@ export type Onreapp = {
             "The signer who is cancelling the request",
             "Can be either the redeemer, redemption_admin, or boss"
           ],
+          "writable": true,
           "signer": true
+        },
+        {
+          "name": "redeemer",
+          "docs": [
+            "The redeemer's account (authority for the token account)"
+          ]
         },
         {
           "name": "redemptionVaultAuthority",
@@ -545,14 +552,15 @@ export type Onreapp = {
           "docs": [
             "Redeemer's token account serving as the destination for returned tokens",
             "",
-            "Receives back the tokens that were locked in the redemption request."
+            "Receives back the tokens that were locked in the redemption request.",
+            "Created if needed in case the redeemer closed their account after locking all tokens."
           ],
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "redemptionRequest"
+                "path": "redeemer"
               },
               {
                 "kind": "account",
@@ -607,6 +615,20 @@ export type Onreapp = {
           "docs": [
             "Token program interface for transfer operations"
           ]
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program for account creation and rent payment"
+          ],
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         }
       ],
       "args": []
@@ -6379,53 +6401,18 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "expired",
-      "msg": "The approval message has expired."
+      "name": "mathOverflow",
+      "msg": "Math overflow"
     },
     {
       "code": 6001,
-      "name": "wrongProgram",
-      "msg": "The approval message is for the wrong program."
+      "name": "maxSupplyExceeded",
+      "msg": "Minting would exceed maximum supply cap"
     },
     {
       "code": 6002,
-      "name": "wrongUser",
-      "msg": "The approval message is for the wrong user."
-    },
-    {
-      "code": 6003,
-      "name": "missingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
-    },
-    {
-      "code": 6004,
-      "name": "wrongIxProgram",
-      "msg": "The instruction is for the wrong program."
-    },
-    {
-      "code": 6005,
-      "name": "malformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
-    },
-    {
-      "code": 6006,
-      "name": "multipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
-    },
-    {
-      "code": 6007,
-      "name": "wrongAuthority",
-      "msg": "The authority public key does not match."
-    },
-    {
-      "code": 6008,
-      "name": "msgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
-    },
-    {
-      "code": 6009,
-      "name": "msgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "name": "transferFeeNotSupported",
+      "msg": "Token-2022 with transfer fees not supported"
     }
   ],
   "types": [
@@ -7668,10 +7655,6 @@ export type Onreapp = {
         "for stable tokens like USDC (out-token) at the current NAV price.",
         "This is the inverse of the standard Offer which exchanges stable tokens for ONyc."
       ],
-      "serialization": "bytemuck",
-      "repr": {
-        "kind": "c"
-      },
       "type": {
         "kind": "struct",
         "fields": [
@@ -7781,10 +7764,6 @@ export type Onreapp = {
     },
     {
       "name": "redemptionRequest",
-      "serialization": "bytemuck",
-      "repr": {
-        "kind": "c"
-      },
       "type": {
         "kind": "struct",
         "fields": [

@@ -5,8 +5,7 @@ use anchor_lang::prelude::*;
 /// Manages the redemption process where users can exchange ONyc (in-token)
 /// for stable tokens like USDC (out-token) at the current NAV price.
 /// This is the inverse of the standard Offer which exchanges stable tokens for ONyc.
-#[account(zero_copy)]
-#[repr(C)]
+#[account]
 #[derive(InitSpace)]
 pub struct RedemptionOffer {
     /// Reference to the original Offer PDA that this redemption offer is associated with
@@ -31,8 +30,7 @@ pub struct RedemptionOffer {
     pub reserved: [u8; 119],
 }
 
-#[account(zero_copy)]
-#[repr(C)]
+#[account]
 #[derive(InitSpace)]
 pub struct RedemptionRequest {
     /// Reference to the RedemptionOffer PDA
