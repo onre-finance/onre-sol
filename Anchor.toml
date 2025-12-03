@@ -16,7 +16,7 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "mkdir -p ./tests/fixtures && cp target/deploy/onreapp.so ./tests/fixtures/ && ./node_modules/.bin/jest --env=node --maxWorkers=2 --config jest.config.js"
+test = "mkdir -p ./tests/fixtures && cp target/deploy/onreapp.so ./tests/fixtures/ && NODE_OPTIONS='--max-old-space-size=4096' ./node_modules/.bin/jest --env=node --maxWorkers=2 --logHeapUsage --config jest.config.js"
 
 [test]
 startup_wait = 5000
