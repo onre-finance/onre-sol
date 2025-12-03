@@ -1,6 +1,7 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { TestHelper } from "../test_helper";
 import { OnreProgram } from "../onre_program.ts";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 describe("Cancel redemption request", () => {
     let testHelper: TestHelper;
@@ -37,6 +38,12 @@ describe("Cancel redemption request", () => {
         // Create user accounts
         redeemer = testHelper.createUserAccount();
 
+        // Create token account for redeemer with ONyc tokens
+        testHelper.createTokenAccount(onycMint, redeemer.publicKey, BigInt(10_000_000_000)); // 10 ONyc
+
+        // Create token account for boss with ONyc tokens for vault deposit
+        testHelper.createTokenAccount(onycMint, boss.publicKey, BigInt(100_000_000_000)); // 100 ONyc
+
         // Create the base offer (USDC -> ONyc)
         await program.makeOffer({
             tokenInMint: usdcMint,
@@ -51,6 +58,12 @@ describe("Cancel redemption request", () => {
         });
 
         redemptionOfferPda = program.getRedemptionOfferPda(onycMint, usdcMint);
+
+        // Deposit into redemption vault to create the vault token account
+        await program.redemptionVaultDeposit({
+            amount: 1_000_000_000, // 1 ONyc (enough for initial setup)
+            tokenMint: onycMint
+        });
     });
 
     test("Should cancel redemption request as redeemer", async () => {
@@ -204,6 +217,7 @@ describe("Cancel redemption request", () => {
         // given
         const expiresAt = Math.floor(Date.now() / 1000) + 3600;
         const redeemer2 = testHelper.createUserAccount();
+        testHelper.createTokenAccount(onycMint, redeemer2.publicKey, BigInt(10_000_000_000)); // 10 ONyc
 
         // Create two requests
         await program.createRedemptionRequest({
@@ -478,5 +492,62 @@ describe("Cancel redemption request", () => {
         expect(redemptionOffer.requestedRedemptions.toString()).toBe(
             (REDEMPTION_AMOUNT * 2).toString()
         );
+    });
+
+    test("Should return locked tokens to redeemer", async () => {
+        // given
+        const nonce = 0;
+        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+        const redeemerTokenAccountAddress = getAssociatedTokenAddressSync(onycMint, redeemer.publicKey);
+
+        // Get initial balance
+        const initialRedeemerTokenAccount = await testHelper.getTokenAccount(redeemerTokenAccountAddress);
+        const initialRedeemerBalance = initialRedeemerTokenAccount.amount;
+
+        const vaultTokenAccountAddress = getAssociatedTokenAddressSync(
+            onycMint,
+            program.pdas.redemptionVaultAuthorityPda,
+            true
+        );
+        const initialVaultTokenAccount = await testHelper.getTokenAccount(vaultTokenAccountAddress);
+        const initialVaultBalance = initialVaultTokenAccount.amount;
+
+        // Create redemption request (locks tokens)
+        await program.createRedemptionRequest({
+            redemptionOffer: redemptionOfferPda,
+            redeemer,
+            redemptionAdmin,
+            amount: REDEMPTION_AMOUNT,
+            expiresAt,
+            nonce
+        });
+
+        // Verify tokens were locked
+        const afterLockRedeemerTokenAccount = await testHelper.getTokenAccount(redeemerTokenAccountAddress);
+        expect(afterLockRedeemerTokenAccount.amount).toBe(initialRedeemerBalance - BigInt(REDEMPTION_AMOUNT));
+
+        const afterLockVaultTokenAccount = await testHelper.getTokenAccount(vaultTokenAccountAddress);
+        expect(afterLockVaultTokenAccount.amount).toBe(initialVaultBalance + BigInt(REDEMPTION_AMOUNT));
+
+        const redemptionRequestPda = program.getRedemptionRequestPda(
+            redemptionOfferPda,
+            redeemer.publicKey,
+            nonce
+        );
+
+        // when - Cancel the request
+        await program.cancelRedemptionRequest({
+            redemptionOffer: redemptionOfferPda,
+            redemptionRequest: redemptionRequestPda,
+            signer: redeemer
+        });
+
+        // then - Tokens should be returned
+        const finalRedeemerTokenAccount = await testHelper.getTokenAccount(redeemerTokenAccountAddress);
+        expect(finalRedeemerTokenAccount.amount).toBe(initialRedeemerBalance);
+
+        // Vault should be back to initial balance
+        const finalVaultTokenAccount = await testHelper.getTokenAccount(vaultTokenAccountAddress);
+        expect(finalVaultTokenAccount.amount).toBe(initialVaultBalance);
     });
 });

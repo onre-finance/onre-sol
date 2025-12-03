@@ -3,7 +3,9 @@ use crate::instructions::redemption::{
     RedemptionOffer, RedemptionRequest, RedemptionRequestStatus,
 };
 use crate::state::State;
+use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
+use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 /// Event emitted when a redemption request is successfully cancelled
 ///
@@ -43,6 +45,46 @@ pub struct CancelRedemptionRequest<'info> {
     /// The signer who is cancelling the request
     /// Can be either the redeemer, redemption_admin, or boss
     pub signer: Signer<'info>,
+
+    /// Program-derived authority that controls redemption vault token accounts
+    ///
+    /// This PDA manages the redemption vault token accounts and enables the program
+    /// to return locked tokens when requests are cancelled.
+    /// CHECK: PDA derivation is validated by seeds constraint
+    #[account(seeds = [seeds::REDEMPTION_OFFER_VAULT_AUTHORITY], bump)]
+    pub redemption_vault_authority: AccountInfo<'info>,
+
+    /// The token mint for token_in (input token)
+    #[account(
+        constraint = token_in_mint.key() == redemption_offer.load()?.token_in_mint
+            @ CancelRedemptionRequestErrorCode::InvalidMint
+    )]
+    pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
+
+    /// Redemption vault's token account serving as the source of locked tokens
+    ///
+    /// Contains the tokens that were locked when the request was created.
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = redemption_vault_authority,
+        associated_token::token_program = token_program
+    )]
+    pub vault_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    /// Redeemer's token account serving as the destination for returned tokens
+    ///
+    /// Receives back the tokens that were locked in the redemption request.
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = redemption_request.load()?.redeemer,
+        associated_token::token_program = token_program,
+    )]
+    pub redeemer_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    /// Token program interface for transfer operations
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 /// Cancels a redemption request
@@ -66,6 +108,7 @@ pub struct CancelRedemptionRequest<'info> {
 ///
 /// # Effects
 /// - Changes redemption request status to cancelled (2)
+/// - Returns locked token_in tokens from vault to redeemer
 /// - Subtracts amount from RedemptionOffer::requested_redemptions
 /// - Does NOT close the redemption request account
 ///
@@ -100,6 +143,24 @@ pub fn cancel_redemption_request(ctx: Context<CancelRedemptionRequest>) -> Resul
     // Update the redemption request status to cancelled
     let mut redemption_request_mut = ctx.accounts.redemption_request.load_mut()?;
     redemption_request_mut.status = RedemptionRequestStatus::Cancelled.as_u8();
+
+    // Return locked tokens from vault to redeemer
+    let vault_authority_bump = ctx.bumps.redemption_vault_authority;
+    let vault_authority_seeds = &[
+        seeds::REDEMPTION_OFFER_VAULT_AUTHORITY,
+        &[vault_authority_bump],
+    ];
+    let vault_authority_signer_seeds = &[vault_authority_seeds.as_slice()];
+
+    transfer_tokens(
+        &ctx.accounts.token_in_mint,
+        &ctx.accounts.token_program,
+        &ctx.accounts.vault_token_account,
+        &ctx.accounts.redeemer_token_account,
+        &ctx.accounts.redemption_vault_authority,
+        Some(vault_authority_signer_seeds),
+        amount,
+    )?;
 
     // Subtract the amount from requested_redemptions in the offer
     let mut redemption_offer = ctx.accounts.redemption_offer.load_mut()?;
@@ -140,4 +201,8 @@ pub enum CancelRedemptionRequestErrorCode {
     /// Arithmetic underflow occurred
     #[msg("Arithmetic underflow")]
     ArithmeticUnderflow,
+
+    /// Invalid mint (doesn't match redemption offer's token_in_mint)
+    #[msg("Invalid mint: provided mint doesn't match redemption offer's token_in_mint")]
+    InvalidMint,
 }

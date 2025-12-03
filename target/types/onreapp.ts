@@ -421,6 +421,192 @@ export type Onreapp = {
             "Can be either the redeemer, redemption_admin, or boss"
           ],
           "signer": true
+        },
+        {
+          "name": "redemptionVaultAuthority",
+          "docs": [
+            "Program-derived authority that controls redemption vault token accounts",
+            "",
+            "This PDA manages the redemption vault token accounts and enables the program",
+            "to return locked tokens when requests are cancelled."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "The token mint for token_in (input token)"
+          ]
+        },
+        {
+          "name": "vaultTokenAccount",
+          "docs": [
+            "Redemption vault's token account serving as the source of locked tokens",
+            "",
+            "Contains the tokens that were locked when the request was created."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "redeemerTokenAccount",
+          "docs": [
+            "Redeemer's token account serving as the destination for returned tokens",
+            "",
+            "Receives back the tokens that were locked in the redemption request."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionRequest"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "Token program interface for transfer operations"
+          ]
         }
       ],
       "args": []
@@ -867,6 +1053,200 @@ export type Onreapp = {
             "Redemption admin must sign to authorize the request"
           ],
           "signer": true
+        },
+        {
+          "name": "redemptionVaultAuthority",
+          "docs": [
+            "Program-derived authority that controls redemption vault token accounts",
+            "",
+            "This PDA manages the redemption vault token accounts and enables the program",
+            "to hold tokens until redemption requests are fulfilled or cancelled."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "The token mint for token_in (input token)"
+          ]
+        },
+        {
+          "name": "redeemerTokenAccount",
+          "docs": [
+            "Redeemer's token account serving as the source of deposited tokens",
+            "",
+            "Must have sufficient balance to cover the requested amount."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redeemer"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenAccount",
+          "docs": [
+            "Redemption vault's token account serving as the destination for locked tokens",
+            "",
+            "Must exist. Stores tokens that are locked until the redemption request is",
+            "fulfilled or cancelled."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "Token program interface for transfer operations"
+          ]
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         },
         {
           "name": "systemProgram",
@@ -5999,18 +6379,53 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "mathOverflow",
-      "msg": "Math overflow"
+      "name": "expired",
+      "msg": "The approval message has expired."
     },
     {
       "code": 6001,
-      "name": "maxSupplyExceeded",
-      "msg": "Minting would exceed maximum supply cap"
+      "name": "wrongProgram",
+      "msg": "The approval message is for the wrong program."
     },
     {
       "code": 6002,
-      "name": "transferFeeNotSupported",
-      "msg": "Token-2022 with transfer fees not supported"
+      "name": "wrongUser",
+      "msg": "The approval message is for the wrong user."
+    },
+    {
+      "code": 6003,
+      "name": "missingEd25519Ix",
+      "msg": "Missing Ed25519 instruction."
+    },
+    {
+      "code": 6004,
+      "name": "wrongIxProgram",
+      "msg": "The instruction is for the wrong program."
+    },
+    {
+      "code": 6005,
+      "name": "malformedEd25519Ix",
+      "msg": "Malformed Ed25519 instruction."
+    },
+    {
+      "code": 6006,
+      "name": "multipleSigs",
+      "msg": "Multiple signatures found in Ed25519 instruction."
+    },
+    {
+      "code": 6007,
+      "name": "wrongAuthority",
+      "msg": "The authority public key does not match."
+    },
+    {
+      "code": 6008,
+      "name": "msgMismatch",
+      "msg": "The message in the Ed25519 instruction does not match the approval message."
+    },
+    {
+      "code": 6009,
+      "name": "msgDeserialize",
+      "msg": "Failed to deserialize the approval message."
     }
   ],
   "types": [
