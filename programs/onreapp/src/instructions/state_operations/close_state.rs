@@ -126,7 +126,7 @@ pub fn close_state(ctx: Context<CloseState>) -> Result<()> {
 
     // 5) Deallocate & hand ownership back to System Program
     // (Make sure we no longer hold any data borrows at this point.)
-    state.realloc(0, false)?;
+    state.resize(0)?;
     state.assign(&system_program::ID);
 
     emit!(StateClosedEvent {
