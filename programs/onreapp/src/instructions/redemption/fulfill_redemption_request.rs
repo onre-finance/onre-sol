@@ -1,12 +1,14 @@
 use crate::constants::seeds;
-use crate::instructions::offer::offer_utils::process_offer_core;
-use crate::instructions::redemption::{RedemptionOffer, RedemptionRequest};
+use crate::instructions::redemption::{
+    execute_redemption_operations, process_redemption_core, ExecuteRedemptionOpsParams,
+    RedemptionOffer, RedemptionRequest,
+};
 use crate::instructions::Offer;
 use crate::state::State;
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_interface::{burn, mint_to, transfer_checked, Burn, Mint, MintTo, TokenAccount, TokenInterface, TransferChecked},
+    token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
 /// Event emitted when a redemption request is successfully fulfilled
@@ -238,118 +240,37 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
     let token_in_amount = redemption_request.amount;
     drop(redemption_request);
 
-    // Get current price from the offer and calculate token_out amount
-    // For redemption: token_in is ONyc (offer's token_out), token_out is stable (offer's token_in)
-    // So we use inverse calculation: token_out = token_in * price
+    // Use shared core processing logic for redemption
     let offer = ctx.accounts.offer.load()?;
-    let result = process_offer_core(
+    let result = process_redemption_core(
         &offer,
         token_in_amount,
-        &ctx.accounts.token_out_mint, // Inverted: offer's token_in is redemption's token_out
-        &ctx.accounts.token_in_mint,  // Inverted: offer's token_out is redemption's token_in
+        &ctx.accounts.token_in_mint,
+        &ctx.accounts.token_out_mint,
     )?;
-
-    // For redemption, the token_out_amount from the offer calculation is what user receives
+    let inverted_price = result.inverted_price;
     let token_out_amount = result.token_out_amount;
     drop(offer);
 
-    // Token_in is already locked in the vault from create_redemption_request
-    // Now we burn or transfer it based on mint authority
-
-    let is_onyc = ctx.accounts.token_in_mint.key() == ctx.accounts.state.onyc_mint;
-    let has_mint_authority = ctx.accounts.token_in_mint.mint_authority
-        .as_ref()
-        .map(|auth| auth == &ctx.accounts.mint_authority.key())
-        .unwrap_or(false);
-
-    if is_onyc && has_mint_authority {
-        // Burn token_in from vault
-        let redemption_vault_authority_bump = ctx.bumps.redemption_vault_authority;
-        let signer_seeds: &[&[&[u8]]] = &[&[
-            seeds::REDEMPTION_OFFER_VAULT_AUTHORITY,
-            &[redemption_vault_authority_bump],
-        ]];
-
-        burn(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_in_program.to_account_info(),
-                Burn {
-                    mint: ctx.accounts.token_in_mint.to_account_info(),
-                    from: ctx.accounts.vault_token_in_account.to_account_info(),
-                    authority: ctx.accounts.redemption_vault_authority.to_account_info(),
-                },
-                signer_seeds,
-            ),
-            token_in_amount,
-        )?;
-    } else {
-        let redemption_vault_authority_bump = ctx.bumps.redemption_vault_authority;
-        let signer_seeds: &[&[&[u8]]] = &[&[
-            seeds::REDEMPTION_OFFER_VAULT_AUTHORITY,
-            &[redemption_vault_authority_bump],
-        ]];
-
-        transfer_checked(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_in_program.to_account_info(),
-                TransferChecked {
-                    from: ctx.accounts.vault_token_in_account.to_account_info(),
-                    to: ctx.accounts.boss_token_in_account.to_account_info(),
-                    authority: ctx.accounts.redemption_vault_authority.to_account_info(),
-                    mint: ctx.accounts.token_in_mint.to_account_info(),
-                },
-                signer_seeds,
-            ),
-            token_in_amount,
-            ctx.accounts.token_in_mint.decimals,
-        )?;
-    }
-
-    let has_token_out_mint_authority = ctx.accounts.token_out_mint.mint_authority
-        .as_ref()
-        .map(|auth| auth == &ctx.accounts.mint_authority.key())
-        .unwrap_or(false);
-
-    if has_token_out_mint_authority {
-        // Mint token_out directly to user
-        let mint_authority_bump = ctx.bumps.mint_authority;
-        let signer_seeds: &[&[&[u8]]] = &[&[seeds::MINT_AUTHORITY, &[mint_authority_bump]]];
-
-        mint_to(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_out_program.to_account_info(),
-                MintTo {
-                    mint: ctx.accounts.token_out_mint.to_account_info(),
-                    to: ctx.accounts.user_token_out_account.to_account_info(),
-                    authority: ctx.accounts.mint_authority.to_account_info(),
-                },
-                signer_seeds,
-            ),
-            token_out_amount,
-        )?;
-    } else {
-        // Transfer token_out from vault to user
-        let redemption_vault_authority_bump = ctx.bumps.redemption_vault_authority;
-        let signer_seeds: &[&[&[u8]]] = &[&[
-            seeds::REDEMPTION_OFFER_VAULT_AUTHORITY,
-            &[redemption_vault_authority_bump],
-        ]];
-
-        transfer_checked(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_out_program.to_account_info(),
-                TransferChecked {
-                    from: ctx.accounts.vault_token_out_account.to_account_info(),
-                    to: ctx.accounts.user_token_out_account.to_account_info(),
-                    authority: ctx.accounts.redemption_vault_authority.to_account_info(),
-                    mint: ctx.accounts.token_out_mint.to_account_info(),
-                },
-                signer_seeds,
-            ),
-            token_out_amount,
-            ctx.accounts.token_out_mint.decimals,
-        )?;
-    }
+    // Execute token operations (burn/transfer token_in, mint/transfer token_out)
+    execute_redemption_operations(ExecuteRedemptionOpsParams {
+        token_in_program: &ctx.accounts.token_in_program,
+        token_out_program: &ctx.accounts.token_out_program,
+        token_in_mint: &ctx.accounts.token_in_mint,
+        token_in_amount,
+        vault_token_in_account: &ctx.accounts.vault_token_in_account,
+        boss_token_in_account: &ctx.accounts.boss_token_in_account,
+        redemption_vault_authority: &ctx.accounts.redemption_vault_authority,
+        redemption_vault_authority_bump: ctx.bumps.redemption_vault_authority,
+        token_out_mint: &ctx.accounts.token_out_mint,
+        token_out_amount,
+        vault_token_out_account: &ctx.accounts.vault_token_out_account,
+        user_token_out_account: &ctx.accounts.user_token_out_account,
+        mint_authority_pda: &ctx.accounts.mint_authority,
+        mint_authority_bump: ctx.bumps.mint_authority,
+        onyc_mint: ctx.accounts.state.onyc_mint,
+        token_out_max_supply: 0, // No max supply cap for redemptions
+    })?;
 
     let mut redemption_request = ctx.accounts.redemption_request.load_mut()?;
     redemption_request.status = 1;
@@ -369,7 +290,7 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
         ctx.accounts.redemption_request.key(),
         token_in_amount,
         token_out_amount,
-        result.current_price,
+        inverted_price,
         ctx.accounts.redeemer.key()
     );
 
@@ -379,7 +300,7 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
         redeemer: ctx.accounts.redeemer.key(),
         token_in_amount,
         token_out_amount,
-        current_price: result.current_price,
+        current_price: inverted_price,
     });
 
     Ok(())

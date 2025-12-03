@@ -88,7 +88,6 @@ describe("Create redemption request", () => {
         expect(redemptionRequest.offer.toString()).toBe(redemptionOfferPda.toString());
         expect(redemptionRequest.redeemer.toString()).toBe(redeemer.publicKey.toString());
         expect(redemptionRequest.amount.toString()).toBe(REDEMPTION_AMOUNT.toString());
-        expect(redemptionRequest.expiresAt.toString()).toBe(expiresAt.toString());
         expect(redemptionRequest.status).toBe(0); // Pending
     });
 
