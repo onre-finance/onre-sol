@@ -9,6 +9,7 @@ pub mod remove_admin;
 pub mod remove_approver;
 pub mod set_kill_switch;
 pub mod set_onyc_mint;
+pub mod set_redemption_admin;
 
 pub use accept_boss::*;
 pub use add_admin::*;
@@ -21,3 +22,4 @@ pub use remove_admin::*;
 pub use remove_approver::*;
 pub use set_kill_switch::*;
 pub use set_onyc_mint::*;
+pub use set_redemption_admin::*;

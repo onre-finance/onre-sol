@@ -26,8 +26,10 @@ pub struct State {
     pub bump: u8,
     /// Optional maximum supply cap for ONyc token minting (0 = no cap)
     pub max_supply: u64,
+    /// Admin account authorized to manage ONr token mints and redemptions
+    pub redemption_admin: Pubkey,
     /// Reserved space for future program state extensions
-    pub reserved: [u8; 128],
+    pub reserved: [u8; 96],
 }
 
 /// Program-derived authority for permissionless token routing operations

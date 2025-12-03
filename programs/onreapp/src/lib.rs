@@ -91,6 +91,34 @@ pub mod onreapp {
         vault_operations::offer_vault_withdraw(ctx, amount)
     }
 
+    /// Deposits tokens into the redemption vault.
+    ///
+    /// Delegates to `vault_operations::redemption_vault_deposit`.
+    /// Transfers tokens from boss's account to redemption vault's token account for the specified mint.
+    /// Creates vault token account if it doesn't exist using init_if_needed.
+    /// Only the boss can call this instruction.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `RedemptionVaultDeposit`.
+    /// - `amount`: Amount of tokens to deposit.
+    pub fn redemption_vault_deposit(ctx: Context<RedemptionVaultDeposit>, amount: u64) -> Result<()> {
+        vault_operations::redemption_vault_deposit(ctx, amount)
+    }
+
+    /// Withdraws tokens from the redemption vault.
+    ///
+    /// Delegates to `vault_operations::redemption_vault_withdraw`.
+    /// Transfers tokens from redemption vault's token account to boss's account for the specified mint.
+    /// Creates boss token account if it doesn't exist using init_if_needed.
+    /// Only the boss can call this instruction.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `RedemptionVaultWithdraw`.
+    /// - `amount`: Amount of tokens to withdraw.
+    pub fn redemption_vault_withdraw(ctx: Context<RedemptionVaultWithdraw>, amount: u64) -> Result<()> {
+        vault_operations::redemption_vault_withdraw(ctx, amount)
+    }
+
     /// Creates an offer.
     ///
     /// Delegates to `offer::make_offer`.
@@ -334,6 +362,22 @@ pub mod onreapp {
         state_operations::set_onyc_mint(ctx)
     }
 
+    /// Sets the redemption admin in the state.
+    ///
+    /// Delegates to `state_operations::set_redemption_admin` to change the redemption admin.
+    /// Only the boss can call this instruction to set the redemption admin.
+    /// Emits a `RedemptionAdminUpdatedEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `SetRedemptionAdmin`.
+    /// - `new_redemption_admin`: Public key of the new redemption admin.
+    pub fn set_redemption_admin(
+        ctx: Context<SetRedemptionAdmin>,
+        new_redemption_admin: Pubkey,
+    ) -> Result<()> {
+        state_operations::set_redemption_admin(ctx, new_redemption_admin)
+    }
+
     /// Mints ONyc tokens to the boss's account.
     ///
     /// Delegates to `state_operations::mint_to` to mint ONyc tokens.
@@ -486,5 +530,48 @@ pub mod onreapp {
     /// - `ctx`: Context for `CloseState`.
     pub fn close_state(ctx: Context<CloseState>) -> Result<()> {
         state_operations::close_state(ctx)
+    }
+
+    /// Creates a redemption offer for converting output tokens from standard offers back
+    /// to input tokens.
+    ///
+    /// Delegates to `redemption::make_redemption_offer`.
+    /// This instruction initializes a new redemption offer that allows users to redeem
+    /// token_out tokens from standard Offer (e.g. ONyc) for token_in tokens (e.g., USDC) at
+    /// the current NAV price. The redemption offer is the inverse of the standard Offer.
+    ///
+    /// The redemption offer PDA is derived with reversed token order compared to the
+    /// original offer, reflecting the inverse nature of the redemption operation.
+    /// Emits a `RedemptionOfferCreatedEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `MakeRedemptionOffer`.
+    ///
+    /// # Access Control
+    /// - Only the boss or redemption_admin can call this instruction
+    pub fn make_redemption_offer(ctx: Context<MakeRedemptionOffer>) -> Result<()> {
+        redemption::make_redemption_offer(ctx)
+    }
+
+    /// Creates a redemption request.
+    ///
+    /// Delegates to `redemption::create_redemption_request`.
+    /// This instruction creates a new redemption request that allows users to request
+    /// redemption of token_in tokens for token_out tokens at a future time. The request must
+    /// be authorized by the redemption admin and uses a nonce to prevent replay attacks.
+    /// Emits a `RedemptionRequestCreatedEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `CreateRedemptionRequest`.
+    /// - `amount`: Amount of token_in tokens to redeem.
+    /// - `expires_at`: Unix timestamp when the request expires.
+    /// - `nonce`: User's nonce for replay attack prevention (must match UserNonceAccount).
+    pub fn create_redemption_request(
+        ctx: Context<CreateRedemptionRequest>,
+        amount: u64,
+        expires_at: u64,
+        nonce: u64,
+    ) -> Result<()> {
+        redemption::create_redemption_request(ctx, amount, expires_at, nonce)
     }
 }

@@ -17,11 +17,13 @@ export class OnreProgram {
     pdas: {
         statePda: PublicKey;
         offerVaultAuthorityPda: PublicKey;
+        redemptionVaultAuthorityPda: PublicKey;
         permissionlessAuthorityPda: PublicKey;
         mintAuthorityPda: PublicKey;
     } = {
         statePda: PublicKey.findProgramAddressSync([Buffer.from("state")], ONREAPP_PROGRAM_ID)[0],
         offerVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("offer_vault_authority")], ONREAPP_PROGRAM_ID)[0],
+        redemptionVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("redemption_offer_vault_authority")], ONREAPP_PROGRAM_ID)[0],
         permissionlessAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], ONREAPP_PROGRAM_ID)[0],
         mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], ONREAPP_PROGRAM_ID)[0]
     };
@@ -259,6 +261,46 @@ export class OnreProgram {
         await tx.rpc();
     }
 
+    async redemptionVaultDeposit(params: {
+        amount: number,
+        tokenMint: PublicKey,
+        signer?: Keypair,
+        tokenProgram?: PublicKey
+    }) {
+        const tx = this.program.methods
+            .redemptionVaultDeposit(new BN(params.amount))
+            .accounts({
+                tokenMint: params.tokenMint,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
+    async redemptionVaultWithdraw(params: {
+        amount: number,
+        tokenMint: PublicKey,
+        signer?: Keypair,
+        tokenProgram?: PublicKey
+    }) {
+        const tx = this.program.methods
+            .redemptionVaultWithdraw(new BN(params.amount))
+            .accounts({
+                tokenMint: params.tokenMint,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
     async initializePermissionlessAuthority(params: { accountName: string }) {
         await this.program.methods
             .initializePermissionlessAuthority(params.accountName)
@@ -364,6 +406,44 @@ export class OnreProgram {
             });
 
         if (params?.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
+    async setRedemptionAdmin(params: { redemptionAdmin: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods
+            .setRedemptionAdmin(params.redemptionAdmin)
+            .accounts({});
+
+        if (params?.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
+    async makeRedemptionOffer(params: {
+        offer: PublicKey;
+        signer?: Keypair;
+        tokenInProgram?: PublicKey;
+        tokenOutProgram?: PublicKey;
+    }) {
+        // Fetch the offer to get token mints
+        const offer = await this.program.account.offer.fetch(params.offer);
+
+        const tx = this.program.methods
+            .makeRedemptionOffer()
+            .accounts({
+                tokenInMint: offer.tokenOutMint,
+                tokenOutMint: offer.tokenInMint,
+                tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
+                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
+                signer: params.signer ? params.signer.publicKey : this.program.provider.publicKey
+            });
+
+        if (params.signer) {
             tx.signers([params.signer]);
         }
 
@@ -539,6 +619,14 @@ export class OnreProgram {
         return PublicKey.findProgramAddressSync([Buffer.from("offer"), tokenInMint.toBuffer(), tokenOutMint.toBuffer()], this.program.programId)[0];
     }
 
+    async getRedemptionOffer(tokenInMint: PublicKey, tokenOutMint: PublicKey) {
+        return await this.program.account.redemptionOffer.fetch(this.getRedemptionOfferPda(tokenInMint, tokenOutMint));
+    }
+
+    getRedemptionOfferPda(tokenInMint: PublicKey, tokenOutMint: PublicKey) {
+        return PublicKey.findProgramAddressSync([Buffer.from("redemption_offer"), tokenInMint.toBuffer(), tokenOutMint.toBuffer()], this.program.programId)[0];
+    }
+
     async getState() {
         return await this.program.account.state.fetch(this.pdas.statePda);
     }
@@ -563,5 +651,58 @@ export class OnreProgram {
             tx.signers([params.signer]);
         }
         await tx.rpc();
+    }
+
+    async createRedemptionRequest(params: {
+        redemptionOffer: PublicKey;
+        redeemer: Keypair;
+        redemptionAdmin: Keypair;
+        amount: number;
+        expiresAt: number;
+        nonce: number;
+    }) {
+        const tx = this.program.methods
+            .createRedemptionRequest(
+                new BN(params.amount),
+                new BN(params.expiresAt),
+                new BN(params.nonce)
+            )
+            .accounts({
+                redemptionOffer: params.redemptionOffer,
+                redeemer: params.redeemer.publicKey,
+                redemptionAdmin: params.redemptionAdmin.publicKey
+            })
+            .signers([params.redeemer, params.redemptionAdmin]);
+
+        await tx.rpc();
+    }
+
+    async getRedemptionRequest(redemptionOffer: PublicKey, redeemer: PublicKey, nonce: number) {
+        const pda = this.getRedemptionRequestPda(redemptionOffer, redeemer, nonce);
+        return await this.program.account.redemptionRequest.fetch(pda);
+    }
+
+    getRedemptionRequestPda(redemptionOffer: PublicKey, redeemer: PublicKey, nonce: number) {
+        return PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("redemption_request"),
+                redemptionOffer.toBuffer(),
+                redeemer.toBuffer(),
+                new BN(nonce).toArrayLike(Buffer, "le", 8)
+            ],
+            this.program.programId
+        )[0];
+    }
+
+    async getUserNonceAccount(redeemer: PublicKey) {
+        const pda = this.getUserNonceAccountPda(redeemer);
+        return await this.program.account.userNonceAccount.fetch(pda);
+    }
+
+    getUserNonceAccountPda(redeemer: PublicKey) {
+        return PublicKey.findProgramAddressSync(
+            [Buffer.from("nonce_account"), redeemer.toBuffer()],
+            this.program.programId
+        )[0];
     }
 }

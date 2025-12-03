@@ -1,12 +1,12 @@
 use crate::constants::{seeds, MAX_ADMINS};
 use crate::state::State;
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::bpf_loader;
 use anchor_lang::solana_program::bpf_loader_upgradeable::{
     self, get_program_data_address, UpgradeableLoaderState,
 };
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::Mint;
+use solana_program::bpf_loader;
 
 /// Error codes for the initialize instruction
 #[error_code]

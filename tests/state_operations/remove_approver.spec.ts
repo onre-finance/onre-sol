@@ -110,6 +110,8 @@ describe("Remove Approver", () => {
         expect(state.approver1).toEqual(PublicKey.default);
         expect(state.approver2).toEqual(approver2.publicKey);
 
+        await testHelper.advanceSlot();
+
         // when - re-add approver1
         await program.addApprover({ trusted: approver1.publicKey });
 
