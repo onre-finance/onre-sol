@@ -174,18 +174,12 @@ describe("Fulfill redemption request", () => {
             // Transfer ONyc mint authority to program for burning token_in
             await program.transferMintAuthorityToProgram({ mint: onycMint });
 
-            // Create boss token accounts
+            // Create boss token accounts and fund with USDC for vault deposit
             const boss = testHelper.getBoss();
             testHelper.createTokenAccount(onycMint, boss, BigInt(0), true);
-            testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
+            testHelper.createTokenAccount(usdcMint, boss, BigInt(10_000e6), true); // Fund boss with USDC
 
-            // Fund redemption vault with USDC
-            testHelper.createTokenAccount(
-                usdcMint,
-                program.pdas.redemptionVaultAuthorityPda,
-                BigInt(10_000e6),
-                true
-            );
+            // Deposit USDC to redemption vault (boss deposits)
             await program.redemptionVaultDeposit({
                 amount: 10_000e6,
                 tokenMint: usdcMint
@@ -223,7 +217,8 @@ describe("Fulfill redemption request", () => {
             // then - Check USDC transferred from vault
             const vaultUsdcAccount = getAssociatedTokenAddressSync(
                 usdcMint,
-                program.pdas.redemptionVaultAuthorityPda
+                program.pdas.redemptionVaultAuthorityPda,
+                true
             );
             const vaultBalance = await testHelper.getTokenAccountBalance(vaultUsdcAccount);
             expect(vaultBalance).toBe(BigInt(10_000e6 - TOKEN_OUT_AMOUNT));
@@ -547,16 +542,19 @@ describe("Fulfill redemption request", () => {
 
             const currentTime = await testHelper.getCurrentClockTime();
 
-            // Delete existing vector and add new one with price 2.0
-            await program.deleteOfferVector(usdcMint, onycMint, 0);
+            // Add new vector with price 2.0 (will be the most recent active vector)
+            // Use a unique timestamp to avoid duplicate start_time error
             await program.addOfferVector({
                 tokenInMint: usdcMint,
                 tokenOutMint: onycMint,
-                baseTime: currentTime,
+                baseTime: currentTime + 100, // Start 100 seconds in the future
                 basePrice: 2e9, // 2.0 (9 decimals) - 2 USDC per 1 ONyc
                 apr: 0,
                 priceFixDuration: 86400
             });
+
+            // Advance clock so the new vector becomes active
+            await testHelper.advanceClockBy(100);
 
             // Create redemption request for 2 ONyc
             const nonce = 0;
@@ -589,10 +587,10 @@ describe("Fulfill redemption request", () => {
                 tokenOutMint: usdcMint
             });
 
-            // then - User should receive 1 USDC (2 ONyc / 2.0 price = 1 USDC)
+            // then - User should receive 4 USDC (2 ONyc × 2.0 USDC/ONyc = 4 USDC)
             const userUsdcAccount = getAssociatedTokenAddressSync(usdcMint, redeemer.publicKey);
             const userUsdcBalance = await testHelper.getTokenAccountBalance(userUsdcAccount);
-            expect(userUsdcBalance).toBe(BigInt(1_000_000)); // 1 USDC
+            expect(userUsdcBalance).toBe(BigInt(4_000_000)); // 4 USDC
         });
     });
 });
