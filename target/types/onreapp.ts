@@ -1684,68 +1684,6 @@ export type Onreapp = {
           ]
         },
         {
-          "name": "userTokenInAccount",
-          "docs": [
-            "User's input token account",
-            "",
-            "Included for validation but not used in transfer since tokens are already locked in vault."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "redeemer"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
           "name": "userTokenOutAccount",
           "docs": [
             "User's output token account (destination for redeemed tokens)",
@@ -1812,7 +1750,7 @@ export type Onreapp = {
           "docs": [
             "Boss's input token account for receiving tokens when program lacks mint authority",
             "",
-            "Only used when token_in is ONyc and program doesn't have mint authority."
+            "Only used when program doesn't have mint authority of token_in."
           ],
           "writable": true,
           "pda": {

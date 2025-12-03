@@ -136,8 +136,6 @@ pub struct ExecuteRedemptionOpsParams<'a, 'info> {
     pub mint_authority_bump: u8,
 
     // State params
-    /// ONyc mint address for checking if token_in is ONyc
-    pub onyc_mint: Pubkey,
     /// Maximum supply cap for token_out minting (0 = no cap)
     pub token_out_max_supply: u64,
 }
@@ -168,13 +166,12 @@ pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Resu
     ]];
 
     // Step 1: Handle token_in (burn or transfer to boss)
-    let is_onyc = params.token_in_mint.key() == params.onyc_mint;
     let has_token_in_mint_authority = params.token_in_mint.mint_authority
         .as_ref()
         .map(|auth| auth == &params.mint_authority_pda.key())
         .unwrap_or(false);
 
-    if is_onyc && has_token_in_mint_authority {
+    if has_token_in_mint_authority {
         // Burn token_in from vault
         burn_tokens(
             params.token_in_program,

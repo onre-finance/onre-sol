@@ -1,7 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::redemption::{
     execute_redemption_operations, process_redemption_core, ExecuteRedemptionOpsParams,
-    RedemptionOffer, RedemptionRequest,
+    RedemptionOffer, RedemptionRequest, RedemptionRequestStatus,
 };
 use crate::instructions::Offer;
 use crate::state::State;
@@ -51,12 +51,7 @@ pub struct FulfillRedemptionRequest<'info> {
     pub boss: UncheckedAccount<'info>,
 
     /// The underlying offer that defines pricing
-    #[account(
-        constraint = offer.load()?.token_in_mint == redemption_offer.token_out_mint
-            @ FulfillRedemptionRequestErrorCode::OfferMintMismatch,
-        constraint = offer.load()?.token_out_mint == redemption_offer.token_in_mint
-            @ FulfillRedemptionRequestErrorCode::OfferMintMismatch
-    )]
+    /// CHECK: offer address is validated through redemption_offer constraint
     pub offer: AccountLoader<'info, Offer>,
 
     /// The redemption offer account
@@ -70,7 +65,7 @@ pub struct FulfillRedemptionRequest<'info> {
     /// The redemption request account to fulfill
     #[account(
         mut,
-        constraint = redemption_request.status == 0
+        constraint = redemption_request.status == RedemptionRequestStatus::Pending.as_u8()
             @ FulfillRedemptionRequestErrorCode::RequestAlreadyProcessed,
         constraint = redemption_request.offer == redemption_offer.key()
             @ FulfillRedemptionRequestErrorCode::OfferMismatch
@@ -137,17 +132,6 @@ pub struct FulfillRedemptionRequest<'info> {
     /// Token program interface for output token operations
     pub token_out_program: Interface<'info, TokenInterface>,
 
-    /// User's input token account
-    ///
-    /// Included for validation but not used in transfer since tokens are already locked in vault.
-    #[account(
-        mut,
-        associated_token::mint = token_in_mint,
-        associated_token::authority = redeemer,
-        associated_token::token_program = token_in_program
-    )]
-    pub user_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
-
     /// User's output token account (destination for redeemed tokens)
     ///
     /// Created automatically if it doesn't exist.
@@ -162,7 +146,7 @@ pub struct FulfillRedemptionRequest<'info> {
 
     /// Boss's input token account for receiving tokens when program lacks mint authority
     ///
-    /// Only used when token_in is ONyc and program doesn't have mint authority.
+    /// Only used when program doesn't have mint authority of token_in.
     #[account(
         init_if_needed,
         payer = redemption_admin,
@@ -208,8 +192,8 @@ pub struct FulfillRedemptionRequest<'info> {
 /// This instruction fulfills a pending redemption request by:
 /// 1. Getting the current price from the underlying offer (inverse calculation)
 /// 2. Calculating token_out amount based on token_in and current price
-/// 3. If token_in is ONyc and program has mint authority: burn it from vault
-/// 4. If token_in is ONyc and program lacks mint authority: send to boss from vault
+/// 3. If program has mint authority of token_in : burn it from vault
+/// 4. If program lacks mint authority of token_int: send to boss from vault
 /// 5. If token_out program has mint authority: mint token_out to user
 /// 6. If token_out program lacks mint authority: transfer from vault to user
 /// 7. Update redemption request status and offer statistics
@@ -268,7 +252,6 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
         user_token_out_account: &ctx.accounts.user_token_out_account,
         mint_authority_pda: &ctx.accounts.mint_authority,
         mint_authority_bump: ctx.bumps.mint_authority,
-        onyc_mint: ctx.accounts.state.onyc_mint,
         token_out_max_supply: 0, // No max supply cap for redemptions
     })?;
 
