@@ -451,6 +451,25 @@ export class OnreProgram {
         await tx.rpc();
     }
 
+    async updateRedemptionOfferFee(params: {
+        redemptionOffer: PublicKey;
+        newFeeBasisPoints: number;
+        signer?: Keypair;
+    }) {
+        const tx = this.program.methods
+            .updateRedemptionOfferFee(params.newFeeBasisPoints)
+            .accounts({
+                redemptionOffer: params.redemptionOffer,
+                boss: params.signer ? params.signer.publicKey : this.program.provider.publicKey
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
     async mintTo(params: { amount: number, signer?: Keypair }) {
         const tx = this.program.methods
             .mintTo(new BN(params.amount))
