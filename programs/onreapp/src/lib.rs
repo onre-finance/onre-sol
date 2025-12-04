@@ -546,11 +546,15 @@ pub mod onreapp {
     ///
     /// # Arguments
     /// - `ctx`: Context for `MakeRedemptionOffer`.
+    /// - `fee_basis_points`: Fee in basis points (10000 = 100%) charged when fulfilling redemption requests
     ///
     /// # Access Control
     /// - Only the boss or redemption_admin can call this instruction
-    pub fn make_redemption_offer(ctx: Context<MakeRedemptionOffer>) -> Result<()> {
-        redemption::make_redemption_offer(ctx)
+    pub fn make_redemption_offer(
+        ctx: Context<MakeRedemptionOffer>,
+        fee_basis_points: u16,
+    ) -> Result<()> {
+        redemption::make_redemption_offer(ctx, fee_basis_points)
     }
 
     /// Creates a redemption request.
@@ -610,5 +614,23 @@ pub mod onreapp {
     /// - Request must be in pending state (status = 0)
     pub fn cancel_redemption_request(ctx: Context<CancelRedemptionRequest>) -> Result<()> {
         redemption::cancel_redemption_request(ctx)
+    }
+
+    /// Updates the fee configuration for a specific redemption offer.
+    ///
+    /// This instruction allows the boss to modify the fee charged when fulfilling
+    /// redemption requests for a specific redemption offer. Only the boss can call this instruction.
+    ///
+    /// # Arguments
+    /// * `ctx` - The instruction context
+    /// * `new_fee_basis_points` - New fee in basis points (10000 = 100%, 500 = 5%)
+    ///
+    /// # Access Control
+    /// - Boss only
+    pub fn update_redemption_offer_fee(
+        ctx: Context<UpdateRedemptionOfferFee>,
+        new_fee_basis_points: u16,
+    ) -> Result<()> {
+        redemption::update_redemption_offer_fee(ctx, new_fee_basis_points)
     }
 }

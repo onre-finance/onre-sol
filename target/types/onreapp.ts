@@ -2859,6 +2859,7 @@ export type Onreapp = {
         "",
         "# Arguments",
         "- `ctx`: Context for `MakeRedemptionOffer`.",
+        "- `fee_basis_points`: Fee in basis points (10000 = 100%) charged when fulfilling redemption requests",
         "",
         "# Access Control",
         "- Only the boss or redemption_admin can call this instruction"
@@ -3193,7 +3194,12 @@ export type Onreapp = {
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "feeBasisPoints",
+          "type": "u16"
+        }
+      ]
     },
     {
       "name": "mintTo",
@@ -6328,6 +6334,112 @@ export type Onreapp = {
           "type": "u16"
         }
       ]
+    },
+    {
+      "name": "updateRedemptionOfferFee",
+      "docs": [
+        "Updates the fee configuration for a specific redemption offer.",
+        "",
+        "This instruction allows the boss to modify the fee charged when fulfilling",
+        "redemption requests for a specific redemption offer. Only the boss can call this instruction.",
+        "",
+        "# Arguments",
+        "* `ctx` - The instruction context",
+        "* `new_fee_basis_points` - New fee in basis points (10000 = 100%, 500 = 5%)",
+        "",
+        "# Access Control",
+        "- Boss only"
+      ],
+      "discriminator": [
+        73,
+        11,
+        35,
+        194,
+        219,
+        147,
+        159,
+        3
+      ],
+      "accounts": [
+        {
+          "name": "redemptionOffer",
+          "docs": [
+            "The redemption offer account whose fee will be updated"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_in_mint",
+                "account": "redemptionOffer"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_out_mint",
+                "account": "redemptionOffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing boss authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account authorized to update redemption offer fees"
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newFeeBasisPoints",
+          "type": "u16"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -6799,6 +6911,19 @@ export type Onreapp = {
         123,
         70,
         65
+      ]
+    },
+    {
+      "name": "redemptionOfferFeeUpdatedEvent",
+      "discriminator": [
+        221,
+        254,
+        77,
+        118,
+        205,
+        154,
+        166,
+        156
       ]
     },
     {
@@ -8217,6 +8342,13 @@ export type Onreapp = {
             "type": "u64"
           },
           {
+            "name": "feeBasisPoints",
+            "docs": [
+              "Fee in basis points (10000 = 100%) charged when fulfilling redemption requests"
+            ],
+            "type": "u16"
+          },
+          {
             "name": "bump",
             "docs": [
               "PDA bump seed for account derivation"
@@ -8231,7 +8363,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                119
+                117
               ]
             }
           }
@@ -8273,6 +8405,54 @@ export type Onreapp = {
             "name": "tokenOutMint",
             "docs": [
               "The output token mint for redemptions (e.g., USDC)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "feeBasisPoints",
+            "docs": [
+              "Fee in basis points (10000 = 100%) charged when fulfilling redemption requests"
+            ],
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionOfferFeeUpdatedEvent",
+      "docs": [
+        "Event emitted when a redemption offer's fee is successfully updated",
+        "",
+        "Provides transparency for tracking fee changes and redemption offer configuration modifications."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "redemptionOfferPda",
+            "docs": [
+              "The PDA address of the redemption offer whose fee was updated"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "oldFeeBasisPoints",
+            "docs": [
+              "Previous fee in basis points (10000 = 100%)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "newFeeBasisPoints",
+            "docs": [
+              "New fee in basis points (10000 = 100%)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "boss",
+            "docs": [
+              "The boss account that authorized the fee update"
             ],
             "type": "pubkey"
           }

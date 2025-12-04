@@ -24,10 +24,12 @@ pub struct RedemptionOffer {
     /// This tracks ONyc tokens that are locked in pending redemption requests.
     /// Uses u64 because pending redemptions cannot exceed the token's total supply.
     pub requested_redemptions: u64,
+    /// Fee in basis points (10000 = 100%) charged when fulfilling redemption requests
+    pub fee_basis_points: u16,
     /// PDA bump seed for account derivation
     pub bump: u8,
     /// Reserved space for future fields
-    pub reserved: [u8; 119],
+    pub reserved: [u8; 117],
 }
 
 #[account]
