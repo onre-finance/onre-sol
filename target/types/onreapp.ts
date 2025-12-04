@@ -8463,9 +8463,9 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
-            "name": "redemptionOffer",
+            "name": "redemptionOfferPda",
             "docs": [
-              "Reference to the redemption offer"
+              "Reference to the redemption offer pda"
             ],
             "type": "pubkey"
           },

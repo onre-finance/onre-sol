@@ -42,7 +42,7 @@ pub struct FulfillRedemptionRequest<'info> {
         seeds = [seeds::STATE],
         bump = state.bump,
         has_one = boss @ FulfillRedemptionRequestErrorCode::InvalidBoss,
-        constraint = state.is_killed == false @ FulfillRedemptionRequestErrorCode::KillSwitchActivated
+        constraint = !state.is_killed @ FulfillRedemptionRequestErrorCode::KillSwitchActivated
     )]
     pub state: Box<Account<'info, State>>,
 
@@ -232,7 +232,7 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
     )?;
-    let inverted_price = result.inverted_price;
+    let price = result.price;
     let token_out_amount = result.token_out_amount;
     drop(offer);
 
@@ -273,7 +273,7 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
         ctx.accounts.redemption_request.key(),
         token_in_amount,
         token_out_amount,
-        inverted_price,
+        price,
         ctx.accounts.redeemer.key()
     );
 
@@ -283,7 +283,7 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
         redeemer: ctx.accounts.redeemer.key(),
         token_in_amount,
         token_out_amount,
-        current_price: inverted_price,
+        current_price: price,
     });
 
     Ok(())

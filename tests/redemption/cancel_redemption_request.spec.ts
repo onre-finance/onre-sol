@@ -549,4 +549,80 @@ describe("Cancel redemption request", () => {
         const finalVaultTokenAccount = await testHelper.getTokenAccount(vaultTokenAccountAddress);
         expect(finalVaultTokenAccount.amount).toBe(initialVaultBalance);
     });
+
+    test("Should reject when kill switch is activated", async () => {
+        // given
+        const nonce = 0;
+        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+
+        // Create redemption request first
+        await program.createRedemptionRequest({
+            redemptionOffer: redemptionOfferPda,
+            redeemer,
+            redemptionAdmin,
+            amount: REDEMPTION_AMOUNT,
+            expiresAt,
+            nonce
+        });
+
+        const redemptionRequestPda = program.getRedemptionRequestPda(
+            redemptionOfferPda,
+            redeemer.publicKey,
+            nonce
+        );
+
+        // Activate kill switch
+        await program.setKillSwitch({ enable: true });
+
+        // when/then
+        await expect(
+            program.cancelRedemptionRequest({
+                redemptionOffer: redemptionOfferPda,
+                redemptionRequest: redemptionRequestPda,
+                signer: redeemer
+            })
+        ).rejects.toThrow("Operation not allowed: program is in kill switch state");
+    });
+
+    test("Should succeed after kill switch is deactivated", async () => {
+        // given
+        const nonce = 0;
+        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+
+        // Create redemption request first
+        await program.createRedemptionRequest({
+            redemptionOffer: redemptionOfferPda,
+            redeemer,
+            redemptionAdmin,
+            amount: REDEMPTION_AMOUNT,
+            expiresAt,
+            nonce
+        });
+
+        const redemptionRequestPda = program.getRedemptionRequestPda(
+            redemptionOfferPda,
+            redeemer.publicKey,
+            nonce
+        );
+
+        // Activate then deactivate kill switch
+        await program.setKillSwitch({ enable: true });
+        await program.setKillSwitch({ enable: false });
+
+        // when
+        await program.cancelRedemptionRequest({
+            redemptionOffer: redemptionOfferPda,
+            redemptionRequest: redemptionRequestPda,
+            signer: redeemer
+        });
+
+        // then
+        const redemptionRequest = await program.getRedemptionRequest(
+            redemptionOfferPda,
+            redeemer.publicKey,
+            nonce
+        );
+
+        expect(redemptionRequest.status).toBe(2); // Cancelled
+    });
 });

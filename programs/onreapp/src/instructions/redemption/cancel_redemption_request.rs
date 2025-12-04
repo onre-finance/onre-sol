@@ -32,7 +32,11 @@ pub struct RedemptionRequestCancelledEvent {
 #[derive(Accounts)]
 pub struct CancelRedemptionRequest<'info> {
     /// Program state account containing redemption_admin and boss for authorization
-    #[account(seeds = [seeds::STATE], bump = state.bump)]
+    #[account(
+        seeds = [seeds::STATE],
+        bump = state.bump,
+        constraint = !state.is_killed @ CancelRedemptionRequestErrorCode::KillSwitchActivated
+    )]
     pub state: Box<Account<'info, State>>,
 
     /// The redemption offer account
@@ -204,6 +208,10 @@ pub enum CancelRedemptionRequestErrorCode {
     /// Caller is not authorized (must be redeemer, redemption_admin, or boss)
     #[msg("Unauthorized: signer must be redeemer, redemption_admin, or boss")]
     Unauthorized,
+
+    /// Program is in kill switch state
+    #[msg("Operation not allowed: program is in kill switch state")]
+    KillSwitchActivated,
 
     /// Request is not in pending state
     #[msg("Invalid status: redemption request must be in pending state")]

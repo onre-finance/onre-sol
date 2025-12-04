@@ -17,18 +17,17 @@ pub enum RedemptionCoreError {
 
 /// Result structure containing redemption processing calculations
 pub struct RedemptionProcessResult {
-    /// Inverted price with scale=9 (1_000_000_000 = 1.0) at the time of processing
-    /// This is the inverted price from the offer's perspective for redemption context
-    pub inverted_price: u64,
+    /// Price with scale=9 (1_000_000_000 = 1.0) at the time of processing
+    pub price: u64,
     /// Calculated amount of token_out to be provided to the user
     pub token_out_amount: u64,
 }
 
 /// Core processing logic for redemption execution calculations
 ///
-/// Performs price inversion and token amount calculation for redemption offers.
+/// Calculates token amount for redemption offers using direct price multiplication.
 /// The underlying offer has price "X token_out per token_in" (e.g., "2 USDC per ONyc"),
-/// but for redemption we need to invert this to get "Y token_in per token_out".
+/// and we multiply the token_in amount by this price to get the token_out amount.
 ///
 /// # Arguments
 /// * `offer` - The underlying offer containing pricing vectors and configuration
@@ -37,16 +36,15 @@ pub struct RedemptionProcessResult {
 /// * `token_out_mint` - The token_out mint for decimal information (what user receives)
 ///
 /// # Returns
-/// * `Ok(RedemptionProcessResult)` - Containing inverted price and token_out amount
+/// * `Ok(RedemptionProcessResult)` - Containing price and token_out amount
 /// * `Err(_)` - If validation fails or no active vector exists
 ///
-/// # Price Inversion
-/// The offer's price is inverted using: `inverted_price = 10^18 / price`
-/// This maintains 9 decimal precision after inverting a 9-decimal price.
+/// # Price Calculation
+/// Uses the formula: `token_out = (token_in * price * 10^token_out_decimals) / (10^token_in_decimals * 10^9)`
+/// Price has 9 decimal places, so we divide by 10^9 to account for this.
 ///
 /// # Example
 /// - Offer price: 2.0 USDC per ONyc (2_000_000_000 with 9 decimals)
-/// - Inverted: 0.5 ONyc per USDC (500_000_000 with 9 decimals)
 /// - User redeems: 10 ONyc
 /// - User receives: 20 USDC (10 ONyc * 2.0 USDC/ONyc)
 pub fn process_redemption_core(
@@ -68,28 +66,27 @@ pub fn process_redemption_core(
         active_vector.price_fix_duration,
     )?;
 
-    // Invert the price to get the correct redemption calculation
-    // price has 9 decimals, so inverted_price = 10^18 / price maintains 9 decimals
+    // Calculate token_out using direct multiplication with price
+    // token_out_amount = (token_in_amount * price * 10^token_out_decimals) / (10^(token_in_decimals + 9))
+    // price has 9 decimals, so we need to account for that in our calculation
     const PRICE_SCALE: u128 = 1_000_000_000; // 10^9
     let price_u128 = current_price as u128;
-    let inverted_price_u128 = (PRICE_SCALE * PRICE_SCALE)
-        .checked_div(price_u128)
-        .ok_or(RedemptionCoreError::OverflowError)?;
-    let inverted_price = inverted_price_u128 as u64;
-
-    // Calculate token_out using the inverted price
-    // token_out_amount = (token_in_amount * 10^(token_out_decimals + 9)) / (inverted_price * 10^token_in_decimals)
     let token_in_amount_u128 = token_in_amount as u128;
+
     let numerator = token_in_amount_u128
-        .checked_mul(10_u128.pow((token_out_mint.decimals + 9) as u32))
+        .checked_mul(price_u128)
+        .ok_or(RedemptionCoreError::OverflowError)?
+        .checked_mul(10_u128.pow(token_out_mint.decimals as u32))
         .ok_or(RedemptionCoreError::OverflowError)?;
-    let denominator = inverted_price_u128
-        .checked_mul(10_u128.pow(token_in_mint.decimals as u32))
+
+    let denominator = 10_u128.pow(token_in_mint.decimals as u32)
+        .checked_mul(PRICE_SCALE)
         .ok_or(RedemptionCoreError::OverflowError)?;
+
     let token_out_amount = (numerator / denominator) as u64;
 
     Ok(RedemptionProcessResult {
-        inverted_price,
+        price: current_price,
         token_out_amount,
     })
 }

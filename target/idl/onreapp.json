@@ -8457,9 +8457,9 @@
             "type": "pubkey"
           },
           {
-            "name": "redemption_offer",
+            "name": "redemption_offer_pda",
             "docs": [
-              "Reference to the redemption offer"
+              "Reference to the redemption offer pda"
             ],
             "type": "pubkey"
           },
