@@ -37,7 +37,11 @@ pub struct RedemptionRequestCreatedEvent {
 #[instruction(amount: u64, expires_at: u64, nonce: u64)]
 pub struct CreateRedemptionRequest<'info> {
     /// Program state account containing redemption_admin authorization
-    #[account(seeds = [seeds::STATE], bump = state.bump)]
+    #[account(
+        seeds = [seeds::STATE],
+        bump = state.bump,
+        constraint = !state.is_killed @ CreateRedemptionRequestErrorCode::KillSwitchActivated
+    )]
     pub state: Box<Account<'info, State>>,
 
     /// The redemption offer account
@@ -197,7 +201,6 @@ pub fn create_redemption_request(
     redemption_request.offer = ctx.accounts.redemption_offer.key();
     redemption_request.redeemer = ctx.accounts.redeemer.key();
     redemption_request.amount = amount;
-    redemption_request.expires_at = expires_at;
     redemption_request.status = RedemptionRequestStatus::Pending.as_u8();
     redemption_request.bump = ctx.bumps.redemption_request;
 
@@ -243,6 +246,10 @@ pub enum CreateRedemptionRequestErrorCode {
     /// Caller is not authorized (redemption_admin mismatch)
     #[msg("Unauthorized: redemption_admin signature required")]
     Unauthorized,
+
+    /// Redemption system is paused via kill switch
+    #[msg("Redemption system is paused: kill switch activated")]
+    KillSwitchActivated,
 
     /// Nonce doesn't match user's current nonce
     #[msg("Invalid nonce: provided nonce doesn't match user's current nonce")]

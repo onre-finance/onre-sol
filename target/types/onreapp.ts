@@ -1401,6 +1401,475 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "fulfillRedemptionRequest",
+      "docs": [
+        "Fulfills a redemption request.",
+        "",
+        "Delegates to `redemption::fulfill_redemption_request`.",
+        "This instruction fulfills a pending redemption request by handling token operations:",
+        "- Burns token_in (ONyc) if program has mint authority, else sends to boss",
+        "- Mints token_out if program has mint authority, else transfers from vault",
+        "- Uses current price from the underlying offer to calculate token_out amount",
+        "Emits a `RedemptionRequestFulfilledEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `FulfillRedemptionRequest`.",
+        "",
+        "# Access Control",
+        "- Only redemption_admin can fulfill redemptions"
+      ],
+      "discriminator": [
+        140,
+        124,
+        139,
+        242,
+        179,
+        153,
+        208,
+        66
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing redemption_admin and boss authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account that may receive tokens when program lacks mint authority"
+          ],
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offer",
+          "docs": [
+            "The underlying offer that defines pricing"
+          ]
+        },
+        {
+          "name": "redemptionOffer",
+          "docs": [
+            "The redemption offer account"
+          ],
+          "writable": true
+        },
+        {
+          "name": "redemptionRequest",
+          "docs": [
+            "The redemption request account to fulfill"
+          ],
+          "writable": true
+        },
+        {
+          "name": "redemptionVaultAuthority",
+          "docs": [
+            "Program-derived redemption vault authority that controls token operations",
+            "",
+            "This PDA manages token transfers and burning operations."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vaultTokenInAccount",
+          "docs": [
+            "Redemption vault account for token_in (to receive tokens for burning or storage)",
+            "",
+            "Used as intermediate account when burning token_in or as permanent storage",
+            "when program lacks mint authority."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenOutAccount",
+          "docs": [
+            "Redemption vault account for token_out distribution when using transfer mechanism",
+            "",
+            "Source of output tokens when the program lacks mint authority",
+            "and must transfer from pre-funded vault instead of minting."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "Input token mint (typically ONyc)",
+            "",
+            "Must be mutable to allow burning operations when program has mint authority."
+          ],
+          "writable": true
+        },
+        {
+          "name": "tokenInProgram",
+          "docs": [
+            "Token program interface for input token operations"
+          ]
+        },
+        {
+          "name": "tokenOutMint",
+          "docs": [
+            "Output token mint (typically stablecoin like USDC)",
+            "",
+            "Must be mutable to allow minting operations when program has mint authority."
+          ],
+          "writable": true
+        },
+        {
+          "name": "tokenOutProgram",
+          "docs": [
+            "Token program interface for output token operations"
+          ]
+        },
+        {
+          "name": "userTokenOutAccount",
+          "docs": [
+            "User's output token account (destination for redeemed tokens)",
+            "",
+            "Created automatically if it doesn't exist."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redeemer"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "bossTokenInAccount",
+          "docs": [
+            "Boss's input token account for receiving tokens when program lacks mint authority",
+            "",
+            "Only used when program doesn't have mint authority of token_in."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "mintAuthority",
+          "docs": [
+            "Program-derived mint authority for direct token minting",
+            "",
+            "Used when the program has mint authority and can mint token_out directly."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "redeemer",
+          "docs": [
+            "The user who created the redemption request"
+          ]
+        },
+        {
+          "name": "redemptionAdmin",
+          "docs": [
+            "Redemption admin must sign to authorize fulfillment"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program required for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "getApy",
       "docs": [
         "Gets the current APY (Annual Percentage Yield) for a specific offer.",
@@ -6359,6 +6828,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "redemptionRequestFulfilledEvent",
+      "discriminator": [
+        154,
+        40,
+        115,
+        4,
+        42,
+        232,
+        47,
+        230
+      ]
+    },
+    {
       "name": "redemptionVaultDepositEvent",
       "discriminator": [
         229,
@@ -6401,18 +6883,53 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "mathOverflow",
-      "msg": "Math overflow"
+      "name": "expired",
+      "msg": "The approval message has expired."
     },
     {
       "code": 6001,
-      "name": "maxSupplyExceeded",
-      "msg": "Minting would exceed maximum supply cap"
+      "name": "wrongProgram",
+      "msg": "The approval message is for the wrong program."
     },
     {
       "code": 6002,
-      "name": "transferFeeNotSupported",
-      "msg": "Token-2022 with transfer fees not supported"
+      "name": "wrongUser",
+      "msg": "The approval message is for the wrong user."
+    },
+    {
+      "code": 6003,
+      "name": "missingEd25519Ix",
+      "msg": "Missing Ed25519 instruction."
+    },
+    {
+      "code": 6004,
+      "name": "wrongIxProgram",
+      "msg": "The instruction is for the wrong program."
+    },
+    {
+      "code": 6005,
+      "name": "malformedEd25519Ix",
+      "msg": "Malformed Ed25519 instruction."
+    },
+    {
+      "code": 6006,
+      "name": "multipleSigs",
+      "msg": "Multiple signatures found in Ed25519 instruction."
+    },
+    {
+      "code": 6007,
+      "name": "wrongAuthority",
+      "msg": "The authority public key does not match."
+    },
+    {
+      "code": 6008,
+      "name": "msgMismatch",
+      "msg": "The message in the Ed25519 instruction does not match the approval message."
+    },
+    {
+      "code": 6009,
+      "name": "msgDeserialize",
+      "msg": "Failed to deserialize the approval message."
     }
   ],
   "types": [
@@ -7789,13 +8306,6 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "expiresAt",
-            "docs": [
-              "Unix timestamp when the request expires"
-            ],
-            "type": "u64"
-          },
-          {
             "name": "status",
             "docs": [
               "Status of the redemption request",
@@ -7929,6 +8439,61 @@ export type Onreapp = {
             "name": "newNonce",
             "docs": [
               "New nonce, which should be used for the next request"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionRequestFulfilledEvent",
+      "docs": [
+        "Event emitted when a redemption request is successfully fulfilled",
+        "",
+        "Provides transparency for tracking redemption fulfillment and token exchange details."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "redemptionRequestPda",
+            "docs": [
+              "The PDA address of the fulfilled redemption request"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "redemptionOfferPda",
+            "docs": [
+              "Reference to the redemption offer pda"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "redeemer",
+            "docs": [
+              "User who created the redemption request"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenInAmount",
+            "docs": [
+              "Amount of token_in tokens burned/transferred"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tokenOutAmount",
+            "docs": [
+              "Amount of token_out tokens received by the user"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "currentPrice",
+            "docs": [
+              "Current price used for the redemption"
             ],
             "type": "u64"
           }

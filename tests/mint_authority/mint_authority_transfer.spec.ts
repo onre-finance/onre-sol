@@ -29,7 +29,7 @@ describe("Mint Authority Transfer", () => {
 
             // then - verify mint authority has been transferred to PDA
             const mintAccount = await getMint(program.program.provider.connection, tokenMint);
-            expect(mintAccount.mintAuthority.toBase58()).toBe(program.pdas.mintAuthorityPda.toBase58());
+            expect(mintAccount.mintAuthority?.toBase58()).toBe(program.pdas.mintAuthorityPda.toBase58());
         });
 
         test("Should fail if caller is not the boss", async () => {

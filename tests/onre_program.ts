@@ -740,6 +740,35 @@ export class OnreProgram {
         await tx.rpc();
     }
 
+    async fulfillRedemptionRequest(params: {
+        offer: PublicKey;
+        redemptionOffer: PublicKey;
+        redemptionRequest: PublicKey;
+        redeemer: PublicKey;
+        redemptionAdmin: Keypair;
+        tokenInMint: PublicKey;
+        tokenOutMint: PublicKey;
+        tokenInProgram?: PublicKey;
+        tokenOutProgram?: PublicKey;
+    }) {
+        const tx = this.program.methods
+            .fulfillRedemptionRequest()
+            .accounts({
+                offer: params.offer,
+                redemptionOffer: params.redemptionOffer,
+                redemptionRequest: params.redemptionRequest,
+                tokenInMint: params.tokenInMint,
+                tokenOutMint: params.tokenOutMint,
+                tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
+                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
+                redeemer: params.redeemer,
+                redemptionAdmin: params.redemptionAdmin.publicKey
+            })
+            .signers([params.redemptionAdmin]);
+
+        await tx.rpc();
+    }
+
     async getRedemptionRequest(redemptionOffer: PublicKey, redeemer: PublicKey, nonce: number) {
         const pda = this.getRedemptionRequestPda(redemptionOffer, redeemer, nonce);
         return await this.program.account.redemptionRequest.fetch(pda);

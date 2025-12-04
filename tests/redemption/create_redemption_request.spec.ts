@@ -88,7 +88,6 @@ describe("Create redemption request", () => {
         expect(redemptionRequest.offer.toString()).toBe(redemptionOfferPda.toString());
         expect(redemptionRequest.redeemer.toString()).toBe(redeemer.publicKey.toString());
         expect(redemptionRequest.amount.toString()).toBe(REDEMPTION_AMOUNT.toString());
-        expect(redemptionRequest.expiresAt.toString()).toBe(expiresAt.toString());
         expect(redemptionRequest.status).toBe(0); // Pending
     });
 
@@ -411,5 +410,54 @@ describe("Create redemption request", () => {
 
         expect(updatedRedeemerTokenAccount.amount).toBe(initialRedeemerBalance - BigInt(REDEMPTION_AMOUNT));
         expect(vaultTokenAccount.amount).toBe(initialVaultBalance + BigInt(REDEMPTION_AMOUNT));
+    });
+
+    test("Should reject when kill switch is activated", async () => {
+        // given
+        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+
+        // Activate kill switch
+        await program.setKillSwitch({ enable: true });
+
+        // when/then
+        await expect(
+            program.createRedemptionRequest({
+                redemptionOffer: redemptionOfferPda,
+                redeemer,
+                redemptionAdmin,
+                amount: REDEMPTION_AMOUNT,
+                expiresAt,
+                nonce: 0
+            })
+        ).rejects.toThrow("Redemption system is paused: kill switch activated");
+    });
+
+    test("Should succeed after kill switch is deactivated", async () => {
+        // given
+        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+
+        // Activate then deactivate kill switch
+        await program.setKillSwitch({ enable: true });
+        await program.setKillSwitch({ enable: false });
+
+        // when
+        await program.createRedemptionRequest({
+            redemptionOffer: redemptionOfferPda,
+            redeemer,
+            redemptionAdmin,
+            amount: REDEMPTION_AMOUNT,
+            expiresAt,
+            nonce: 0
+        });
+
+        // then
+        const redemptionRequest = await program.getRedemptionRequest(
+            redemptionOfferPda,
+            redeemer.publicKey,
+            0
+        );
+
+        expect(redemptionRequest.status).toBe(0); // Pending
+        expect(redemptionRequest.amount.toString()).toBe(REDEMPTION_AMOUNT.toString());
     });
 });
