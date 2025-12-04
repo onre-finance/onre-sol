@@ -256,7 +256,7 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
     })?;
 
     let redemption_request = &mut ctx.accounts.redemption_request;
-    redemption_request.status = 1;
+    redemption_request.status = RedemptionRequestStatus::Executed.as_u8();
 
     let redemption_offer = &mut ctx.accounts.redemption_offer;
     redemption_offer.executed_redemptions = redemption_offer

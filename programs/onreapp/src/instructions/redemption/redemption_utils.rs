@@ -1,4 +1,4 @@
-use crate::constants::seeds;
+use crate::constants::{seeds, PRICE_DECIMALS};
 use crate::instructions::{calculate_current_step_price, find_active_vector_at, Offer};
 use crate::utils::{burn_tokens, mint_tokens, transfer_tokens};
 use anchor_lang::prelude::*;
@@ -69,7 +69,6 @@ pub fn process_redemption_core(
     // Calculate token_out using direct multiplication with price
     // token_out_amount = (token_in_amount * price * 10^token_out_decimals) / (10^(token_in_decimals + 9))
     // price has 9 decimals, so we need to account for that in our calculation
-    const PRICE_SCALE: u128 = 1_000_000_000; // 10^9
     let price_u128 = current_price as u128;
     let token_in_amount_u128 = token_in_amount as u128;
 
@@ -80,7 +79,7 @@ pub fn process_redemption_core(
         .ok_or(RedemptionCoreError::OverflowError)?;
 
     let denominator = 10_u128.pow(token_in_mint.decimals as u32)
-        .checked_mul(PRICE_SCALE)
+        .checked_mul(10_u128.pow(PRICE_DECIMALS as u32))
         .ok_or(RedemptionCoreError::OverflowError)?;
 
     let token_out_amount = (numerator / denominator) as u64;
