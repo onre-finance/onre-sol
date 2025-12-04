@@ -18,8 +18,8 @@ use anchor_spl::{
 pub struct RedemptionRequestFulfilledEvent {
     /// The PDA address of the fulfilled redemption request
     pub redemption_request_pda: Pubkey,
-    /// Reference to the redemption offer
-    pub redemption_offer: Pubkey,
+    /// Reference to the redemption offer pda
+    pub redemption_offer_pda: Pubkey,
     /// User who created the redemption request
     pub redeemer: Pubkey,
     /// Amount of token_in tokens burned/transferred
@@ -279,7 +279,7 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
 
     emit!(RedemptionRequestFulfilledEvent {
         redemption_request_pda: ctx.accounts.redemption_request.key(),
-        redemption_offer: ctx.accounts.redemption_offer.key(),
+        redemption_offer_pda: ctx.accounts.redemption_offer.key(),
         redeemer: ctx.accounts.redeemer.key(),
         token_in_amount,
         token_out_amount,
