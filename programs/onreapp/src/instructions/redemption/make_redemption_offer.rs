@@ -158,7 +158,7 @@ pub fn make_redemption_offer(
     ctx: Context<MakeRedemptionOffer>,
     fee_basis_points: u16,
 ) -> Result<()> {
-    // Validate fee is within valid range (0-10000 basis points = 0-100%)
+    // Validate fee is within valid range (0-1000 basis points = 0-10%)
     require!(
         fee_basis_points <= MAX_ALLOWED_FEE_BPS,
         MakeRedemptionOfferErrorCode::InvalidFee

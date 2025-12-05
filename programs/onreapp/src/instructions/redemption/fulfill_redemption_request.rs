@@ -22,8 +22,10 @@ pub struct RedemptionRequestFulfilledEvent {
     pub redemption_offer_pda: Pubkey,
     /// User who created the redemption request
     pub redeemer: Pubkey,
-    /// Amount of token_in tokens burned/transferred
-    pub token_in_amount: u64,
+    /// Net amount of token_in tokens burned/transferred (after fees)
+    pub token_in_net_amount: u64,
+    /// Fee amount deducted from token_in
+    pub token_in_fee_amount: u64,
     /// Amount of token_out tokens received by the user
     pub token_out_amount: u64,
     /// Current price used for the redemption
@@ -268,10 +270,6 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
         .executed_redemptions
         .checked_add(token_in_amount as u128)
         .ok_or(FulfillRedemptionRequestErrorCode::ArithmeticOverflow)?;
-    redemption_offer.requested_redemptions = redemption_offer
-        .requested_redemptions
-        .checked_sub(token_in_amount)
-        .ok_or(FulfillRedemptionRequestErrorCode::ArithmeticOverflow)?;
 
     msg!(
         "Redemption request fulfilled: request={}, token_in={} (net={}, fee={}), token_out={}, price={}, redeemer={}",
@@ -288,7 +286,8 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
         redemption_request_pda: ctx.accounts.redemption_request.key(),
         redemption_offer_pda: ctx.accounts.redemption_offer.key(),
         redeemer: ctx.accounts.redeemer.key(),
-        token_in_amount: token_in_net_amount,
+        token_in_net_amount,
+        token_in_fee_amount,
         token_out_amount,
         current_price: price,
     });

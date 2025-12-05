@@ -8240,7 +8240,7 @@ export type Onreapp = {
           {
             "name": "tokenInMint",
             "docs": [
-              "Input token mint for redemptions (must be ONyc mint from State)"
+              "Input token mint for redemptions (e.g., ONyc)"
             ],
             "type": "pubkey"
           },
@@ -8269,12 +8269,12 @@ export type Onreapp = {
               "This tracks ONyc tokens that are locked in pending redemption requests.",
               "Uses u64 because pending redemptions cannot exceed the token's total supply."
             ],
-            "type": "u64"
+            "type": "u128"
           },
           {
             "name": "feeBasisPoints",
             "docs": [
-              "Fee in basis points (10000 = 100%) charged when fulfilling redemption requests"
+              "Fee in basis points (1000 = 10%) charged when fulfilling redemption requests"
             ],
             "type": "u16"
           },
@@ -8511,7 +8511,7 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
-            "name": "redemptionOffer",
+            "name": "redemptionOfferPda",
             "docs": [
               "Reference to the redemption offer"
             ],
@@ -8528,13 +8528,6 @@ export type Onreapp = {
             "name": "amount",
             "docs": [
               "Amount of token_in tokens requested for redemption"
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "expiresAt",
-            "docs": [
-              "Unix timestamp when the request expires"
             ],
             "type": "u64"
           },
@@ -8587,9 +8580,16 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
-            "name": "tokenInAmount",
+            "name": "tokenInNetAmount",
             "docs": [
-              "Amount of token_in tokens burned/transferred"
+              "Net amount of token_in tokens burned/transferred (after fees)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tokenInFeeAmount",
+            "docs": [
+              "Fee amount deducted from token_in"
             ],
             "type": "u64"
           },

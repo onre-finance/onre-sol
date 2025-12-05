@@ -1,6 +1,6 @@
 use crate::constants::{seeds, PRICE_DECIMALS};
 use crate::instructions::{calculate_current_step_price, find_active_vector_at, Offer};
-use crate::utils::{burn_tokens, calculate_fees, mint_tokens, transfer_tokens};
+use crate::utils::{burn_tokens, calculate_fees, mint_tokens, program_controls_mint, transfer_tokens};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
@@ -182,10 +182,10 @@ pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Resu
     ]];
 
     // Step 1: Handle token_in (burn or transfer to boss)
-    let has_token_in_mint_authority = params.token_in_mint.mint_authority
-        .as_ref()
-        .map(|auth| auth == &params.mint_authority_pda.key())
-        .unwrap_or(false);
+    let has_token_in_mint_authority = program_controls_mint(
+        params.token_in_mint,
+        params.mint_authority_pda,
+    );
 
     if has_token_in_mint_authority {
         // Burn net amount from vault
@@ -225,10 +225,10 @@ pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Resu
     }
 
     // Step 2: Distribute token_out to user
-    let has_token_out_mint_authority = params.token_out_mint.mint_authority
-        .as_ref()
-        .map(|auth| auth == &params.mint_authority_pda.key())
-        .unwrap_or(false);
+    let has_token_out_mint_authority = program_controls_mint(
+        params.token_out_mint,
+        params.mint_authority_pda,
+    );
 
     if has_token_out_mint_authority {
         // Mint token_out directly to user

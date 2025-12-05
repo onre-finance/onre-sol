@@ -8234,7 +8234,7 @@
           {
             "name": "token_in_mint",
             "docs": [
-              "Input token mint for redemptions (must be ONyc mint from State)"
+              "Input token mint for redemptions (e.g., ONyc)"
             ],
             "type": "pubkey"
           },
@@ -8263,12 +8263,12 @@
               "This tracks ONyc tokens that are locked in pending redemption requests.",
               "Uses u64 because pending redemptions cannot exceed the token's total supply."
             ],
-            "type": "u64"
+            "type": "u128"
           },
           {
             "name": "fee_basis_points",
             "docs": [
-              "Fee in basis points (10000 = 100%) charged when fulfilling redemption requests"
+              "Fee in basis points (1000 = 10%) charged when fulfilling redemption requests"
             ],
             "type": "u16"
           },
@@ -8505,7 +8505,7 @@
             "type": "pubkey"
           },
           {
-            "name": "redemption_offer",
+            "name": "redemption_offer_pda",
             "docs": [
               "Reference to the redemption offer"
             ],
@@ -8522,13 +8522,6 @@
             "name": "amount",
             "docs": [
               "Amount of token_in tokens requested for redemption"
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "expires_at",
-            "docs": [
-              "Unix timestamp when the request expires"
             ],
             "type": "u64"
           },
@@ -8581,9 +8574,16 @@
             "type": "pubkey"
           },
           {
-            "name": "token_in_amount",
+            "name": "token_in_net_amount",
             "docs": [
-              "Amount of token_in tokens burned/transferred"
+              "Net amount of token_in tokens burned/transferred (after fees)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "token_in_fee_amount",
+            "docs": [
+              "Fee amount deducted from token_in"
             ],
             "type": "u64"
           },

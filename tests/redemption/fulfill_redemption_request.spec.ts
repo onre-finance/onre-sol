@@ -317,7 +317,8 @@ describe("Fulfill redemption request", () => {
 
             // then
             redemptionOffer = await program.getRedemptionOffer(onycMint, usdcMint);
-            expect(redemptionOffer.requestedRedemptions.toString()).toBe("0");
+            // Requested redemptions is a running sum of all created requests, so it should remain unchanged
+            expect(redemptionOffer.requestedRedemptions.toString()).toBe("1000000000");
         });
 
         test("Should accumulate executed_redemptions from multiple fulfillments", async () => {

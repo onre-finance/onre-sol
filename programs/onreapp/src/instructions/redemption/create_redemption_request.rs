@@ -16,13 +16,11 @@ pub struct RedemptionRequestCreatedEvent {
     /// The PDA address of the newly created redemption request
     pub redemption_request_pda: Pubkey,
     /// Reference to the redemption offer
-    pub redemption_offer: Pubkey,
+    pub redemption_offer_pda: Pubkey,
     /// User requesting the redemption
     pub redeemer: Pubkey,
     /// Amount of token_in tokens requested for redemption
     pub amount: u64,
-    /// Unix timestamp when the request expires
-    pub expires_at: u64,
     /// Nonce used for this request
     pub used_nonce: u64,
     /// New nonce, which should be used for the next request
@@ -209,7 +207,7 @@ pub fn create_redemption_request(
         .accounts
         .redemption_offer
         .requested_redemptions
-        .checked_add(amount)
+        .checked_add(amount as u128)
         .ok_or(CreateRedemptionRequestErrorCode::ArithmeticOverflow)?;
 
     // Increment user's nonce
@@ -229,10 +227,9 @@ pub fn create_redemption_request(
 
     emit!(RedemptionRequestCreatedEvent {
         redemption_request_pda: ctx.accounts.redemption_request.key(),
-        redemption_offer: ctx.accounts.redemption_offer.key(),
+        redemption_offer_pda: ctx.accounts.redemption_offer.key(),
         redeemer: ctx.accounts.redeemer.key(),
         amount,
-        expires_at,
         used_nonce: nonce,
         new_nonce: ctx.accounts.user_nonce_account.nonce,
     });

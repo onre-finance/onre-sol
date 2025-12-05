@@ -10,7 +10,7 @@ use anchor_lang::prelude::*;
 pub struct RedemptionOffer {
     /// Reference to the original Offer PDA that this redemption offer is associated with
     pub offer: Pubkey,
-    /// Input token mint for redemptions (must be ONyc mint from State)
+    /// Input token mint for redemptions (e.g., ONyc)
     pub token_in_mint: Pubkey,
     /// Output token mint for redemptions (e.g., USDC)
     pub token_out_mint: Pubkey,
@@ -23,8 +23,8 @@ pub struct RedemptionOffer {
     ///
     /// This tracks ONyc tokens that are locked in pending redemption requests.
     /// Uses u64 because pending redemptions cannot exceed the token's total supply.
-    pub requested_redemptions: u64,
-    /// Fee in basis points (10000 = 100%) charged when fulfilling redemption requests
+    pub requested_redemptions: u128,
+    /// Fee in basis points (1000 = 10%) charged when fulfilling redemption requests
     pub fee_basis_points: u16,
     /// PDA bump seed for account derivation
     pub bump: u8,

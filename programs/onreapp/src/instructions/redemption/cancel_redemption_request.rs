@@ -181,7 +181,7 @@ pub fn cancel_redemption_request(ctx: Context<CancelRedemptionRequest>) -> Resul
         .accounts
         .redemption_offer
         .requested_redemptions
-        .checked_sub(amount)
+        .checked_sub(amount as u128)
         .ok_or(CancelRedemptionRequestErrorCode::ArithmeticUnderflow)?;
 
     msg!(
