@@ -1,4 +1,4 @@
-use crate::constants::{seeds, MAX_BASIS_POINTS};
+use crate::constants::{seeds, MAX_ALLOWED_FEE_BPS};
 use crate::instructions::redemption::RedemptionOffer;
 use crate::state::State;
 use anchor_lang::prelude::*;
@@ -25,15 +25,7 @@ pub struct RedemptionOfferFeeUpdatedEvent {
 #[derive(Accounts)]
 pub struct UpdateRedemptionOfferFee<'info> {
     /// The redemption offer account whose fee will be updated
-    #[account(
-        mut,
-        seeds = [
-            seeds::REDEMPTION_OFFER,
-            redemption_offer.token_in_mint.as_ref(),
-            redemption_offer.token_out_mint.as_ref()
-        ],
-        bump = redemption_offer.bump
-    )]
+    #[account(mut)]
     pub redemption_offer: Account<'info, RedemptionOffer>,
 
     /// Program state account containing boss authorization
@@ -81,7 +73,7 @@ pub fn update_redemption_offer_fee(
 ) -> Result<()> {
     // Validate fee is within valid range (0-10000 basis points = 0-100%)
     require!(
-        new_fee_basis_points <= MAX_BASIS_POINTS,
+        new_fee_basis_points <= MAX_ALLOWED_FEE_BPS,
         UpdateRedemptionOfferFeeErrorCode::InvalidFee
     );
 

@@ -85,9 +85,9 @@ describe("Update redemption offer fee", () => {
             expect(redemptionOffer.feeBasisPoints).toBe(0);
         });
 
-        test("Should update fee to maximum allowed (100%)", async () => {
+        test("Should update fee to maximum allowed (10%)", async () => {
             // given
-            const newFeeBasisPoints = 10000; // 100%
+            const newFeeBasisPoints = 1000; // 10%
 
             // when
             await program.updateRedemptionOfferFee({
@@ -97,7 +97,7 @@ describe("Update redemption offer fee", () => {
 
             // then
             const redemptionOffer = await program.program.account.redemptionOffer.fetch(redemptionOfferPda);
-            expect(redemptionOffer.feeBasisPoints).toBe(10000);
+            expect(redemptionOffer.feeBasisPoints).toBe(1000);
         });
 
         test("Should update fee multiple times", async () => {
@@ -183,9 +183,6 @@ describe("Update redemption offer fee", () => {
                 { fee: 125, description: "1.25%" },
                 { fee: 333, description: "3.33%" },
                 { fee: 999, description: "9.99%" },
-                { fee: 1234, description: "12.34%" },
-                { fee: 5555, description: "55.55%" },
-                { fee: 9999, description: "99.99%" }
             ];
 
             for (const testCase of testCases) {
