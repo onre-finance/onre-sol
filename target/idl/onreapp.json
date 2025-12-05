@@ -2853,6 +2853,7 @@
         "",
         "# Arguments",
         "- `ctx`: Context for `MakeRedemptionOffer`.",
+        "- `fee_basis_points`: Fee in basis points (10000 = 100%) charged when fulfilling redemption requests",
         "",
         "# Access Control",
         "- Only the boss or redemption_admin can call this instruction"
@@ -3187,7 +3188,12 @@
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "fee_basis_points",
+          "type": "u16"
+        }
+      ]
     },
     {
       "name": "mint_to",
@@ -6322,6 +6328,77 @@
           "type": "u16"
         }
       ]
+    },
+    {
+      "name": "update_redemption_offer_fee",
+      "docs": [
+        "Updates the fee configuration for a specific redemption offer.",
+        "",
+        "This instruction allows the boss to modify the fee charged when fulfilling",
+        "redemption requests for a specific redemption offer. Only the boss can call this instruction.",
+        "",
+        "# Arguments",
+        "* `ctx` - The instruction context",
+        "* `new_fee_basis_points` - New fee in basis points (10000 = 100%, 500 = 5%)",
+        "",
+        "# Access Control",
+        "- Boss only"
+      ],
+      "discriminator": [
+        73,
+        11,
+        35,
+        194,
+        219,
+        147,
+        159,
+        3
+      ],
+      "accounts": [
+        {
+          "name": "redemption_offer",
+          "docs": [
+            "The redemption offer account whose fee will be updated"
+          ],
+          "writable": true
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing boss authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account authorized to update redemption offer fees"
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_fee_basis_points",
+          "type": "u16"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -6796,6 +6873,19 @@
       ]
     },
     {
+      "name": "RedemptionOfferFeeUpdatedEvent",
+      "discriminator": [
+        221,
+        254,
+        77,
+        118,
+        205,
+        154,
+        166,
+        156
+      ]
+    },
+    {
       "name": "RedemptionRequestCancelledEvent",
       "discriminator": [
         51,
@@ -6877,53 +6967,18 @@
   "errors": [
     {
       "code": 6000,
-      "name": "Expired",
-      "msg": "The approval message has expired."
+      "name": "MathOverflow",
+      "msg": "Math overflow"
     },
     {
       "code": 6001,
-      "name": "WrongProgram",
-      "msg": "The approval message is for the wrong program."
+      "name": "MaxSupplyExceeded",
+      "msg": "Minting would exceed maximum supply cap"
     },
     {
       "code": 6002,
-      "name": "WrongUser",
-      "msg": "The approval message is for the wrong user."
-    },
-    {
-      "code": 6003,
-      "name": "MissingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
-    },
-    {
-      "code": 6004,
-      "name": "WrongIxProgram",
-      "msg": "The instruction is for the wrong program."
-    },
-    {
-      "code": 6005,
-      "name": "MalformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
-    },
-    {
-      "code": 6006,
-      "name": "MultipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
-    },
-    {
-      "code": 6007,
-      "name": "WrongAuthority",
-      "msg": "The authority public key does not match."
-    },
-    {
-      "code": 6008,
-      "name": "MsgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
-    },
-    {
-      "code": 6009,
-      "name": "MsgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "name": "TransferFeeNotSupported",
+      "msg": "Token-2022 with transfer fees not supported"
     }
   ],
   "types": [
@@ -8211,6 +8266,13 @@
             "type": "u64"
           },
           {
+            "name": "fee_basis_points",
+            "docs": [
+              "Fee in basis points (10000 = 100%) charged when fulfilling redemption requests"
+            ],
+            "type": "u16"
+          },
+          {
             "name": "bump",
             "docs": [
               "PDA bump seed for account derivation"
@@ -8225,7 +8287,7 @@
             "type": {
               "array": [
                 "u8",
-                119
+                117
               ]
             }
           }
@@ -8267,6 +8329,54 @@
             "name": "token_out_mint",
             "docs": [
               "The output token mint for redemptions (e.g., USDC)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_basis_points",
+            "docs": [
+              "Fee in basis points (10000 = 100%) charged when fulfilling redemption requests"
+            ],
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RedemptionOfferFeeUpdatedEvent",
+      "docs": [
+        "Event emitted when a redemption offer's fee is successfully updated",
+        "",
+        "Provides transparency for tracking fee changes and redemption offer configuration modifications."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "redemption_offer_pda",
+            "docs": [
+              "The PDA address of the redemption offer whose fee was updated"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "old_fee_basis_points",
+            "docs": [
+              "Previous fee in basis points (10000 = 100%)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "new_fee_basis_points",
+            "docs": [
+              "New fee in basis points (10000 = 100%)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "boss",
+            "docs": [
+              "The boss account that authorized the fee update"
             ],
             "type": "pubkey"
           }

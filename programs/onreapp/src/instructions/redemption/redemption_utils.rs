@@ -1,6 +1,6 @@
 use crate::constants::{seeds, PRICE_DECIMALS};
 use crate::instructions::{calculate_current_step_price, find_active_vector_at, Offer};
-use crate::utils::{burn_tokens, mint_tokens, transfer_tokens};
+use crate::utils::{burn_tokens, calculate_fees, mint_tokens, transfer_tokens};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
@@ -19,6 +19,10 @@ pub enum RedemptionCoreError {
 pub struct RedemptionProcessResult {
     /// Price with scale=9 (1_000_000_000 = 1.0) at the time of processing
     pub price: u64,
+    /// Amount of token_in after fee deduction
+    pub token_in_net_amount: u64,
+    /// Fee amount deducted from the original token_in amount
+    pub token_in_fee_amount: u64,
     /// Calculated amount of token_out to be provided to the user
     pub token_out_amount: u64,
 }
@@ -28,30 +32,36 @@ pub struct RedemptionProcessResult {
 /// Calculates token amount for redemption offers using direct price multiplication.
 /// The underlying offer has price "X token_out per token_in" (e.g., "2 USDC per ONyc"),
 /// and we multiply the token_in amount by this price to get the token_out amount.
+/// Fees are deducted from the token_in amount before calculating token_out.
 ///
 /// # Arguments
 /// * `offer` - The underlying offer containing pricing vectors and configuration
 /// * `token_in_amount` - Amount of token_in being redeemed by the user
 /// * `token_in_mint` - The token_in mint for decimal information (what user is redeeming)
 /// * `token_out_mint` - The token_out mint for decimal information (what user receives)
+/// * `redemption_fee_basis_points` - Fee in basis points (10000 = 100%)
 ///
 /// # Returns
-/// * `Ok(RedemptionProcessResult)` - Containing price and token_out amount
+/// * `Ok(RedemptionProcessResult)` - Containing price, fees, and token_out amount
 /// * `Err(_)` - If validation fails or no active vector exists
 ///
 /// # Price Calculation
-/// Uses the formula: `token_out = (token_in * price * 10^token_out_decimals) / (10^token_in_decimals * 10^9)`
+/// Uses the formula: `token_out = (token_in_net * price * 10^token_out_decimals) / (10^token_in_decimals * 10^9)`
 /// Price has 9 decimal places, so we divide by 10^9 to account for this.
+/// Fees are calculated as: `fee = token_in_amount * fee_basis_points / 10000`
 ///
 /// # Example
 /// - Offer price: 2.0 USDC per ONyc (2_000_000_000 with 9 decimals)
 /// - User redeems: 10 ONyc
-/// - User receives: 20 USDC (10 ONyc * 2.0 USDC/ONyc)
+/// - Fee: 1% (100 basis points) = 0.1 ONyc
+/// - Net: 9.9 ONyc
+/// - User receives: 19.8 USDC (9.9 ONyc * 2.0 USDC/ONyc)
 pub fn process_redemption_core(
     offer: &Offer,
     token_in_amount: u64,
     token_in_mint: &InterfaceAccount<Mint>,
     token_out_mint: &InterfaceAccount<Mint>,
+    redemption_fee_basis_points: u16,
 ) -> Result<RedemptionProcessResult> {
     let current_time = Clock::get()?.unix_timestamp as u64;
 
@@ -66,13 +76,16 @@ pub fn process_redemption_core(
         active_vector.price_fix_duration,
     )?;
 
-    // Calculate token_out using direct multiplication with price
-    // token_out_amount = (token_in_amount * price * 10^token_out_decimals) / (10^(token_in_decimals + 9))
+    // Calculate fees
+    let fee_amounts = calculate_fees(token_in_amount, redemption_fee_basis_points)?;
+
+    // Calculate token_out using direct multiplication with price (after fee deduction)
+    // token_out_amount = (token_in_net_amount * price * 10^token_out_decimals) / (10^(token_in_decimals + 9))
     // price has 9 decimals, so we need to account for that in our calculation
     let price_u128 = current_price as u128;
-    let token_in_amount_u128 = token_in_amount as u128;
+    let token_in_net_amount_u128 = fee_amounts.token_in_net_amount as u128;
 
-    let numerator = token_in_amount_u128
+    let numerator = token_in_net_amount_u128
         .checked_mul(price_u128)
         .ok_or(RedemptionCoreError::OverflowError)?
         .checked_mul(10_u128.pow(token_out_mint.decimals as u32))
@@ -86,6 +99,8 @@ pub fn process_redemption_core(
 
     Ok(RedemptionProcessResult {
         price: current_price,
+        token_in_net_amount: fee_amounts.token_in_net_amount,
+        token_in_fee_amount: fee_amounts.token_in_fee_amount,
         token_out_amount,
     })
 }
@@ -104,11 +119,13 @@ pub struct ExecuteRedemptionOpsParams<'a, 'info> {
     // Token in params (what user is redeeming)
     /// Mint account for the input token
     pub token_in_mint: &'a InterfaceAccount<'info, Mint>,
-    /// Amount of token_in to process
-    pub token_in_amount: u64,
+    /// Amount of token_in to process (net amount after fee)
+    pub token_in_net_amount: u64,
+    /// Fee amount to transfer to boss
+    pub token_in_fee_amount: u64,
     /// Vault account containing locked token_in
     pub vault_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
-    /// Boss's account for receiving token_in when program lacks mint authority
+    /// Boss's account for receiving token_in when program lacks mint authority (or fees)
     pub boss_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Authority for vault operations
     pub redemption_vault_authority: &'a AccountInfo<'info>,
@@ -142,8 +159,11 @@ pub struct ExecuteRedemptionOpsParams<'a, 'info> {
 /// routing based on mint authority ownership.
 ///
 /// # Token In Processing (already locked in vault)
-/// - If token_in is ONyc AND program has mint authority: burn it from vault
-/// - Otherwise: transfer from vault to boss account
+/// - If program has mint authority:
+///   1. Burn net amount from vault
+///   2. Transfer fee amount to boss (if fee > 0)
+/// - If program lacks mint authority:
+///   - Transfer full amount (net + fee) from vault to boss
 ///
 /// # Token Out Processing
 /// - If program has mint authority: mint directly to user
@@ -168,17 +188,31 @@ pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Resu
         .unwrap_or(false);
 
     if has_token_in_mint_authority {
-        // Burn token_in from vault
+        // Burn net amount from vault
         burn_tokens(
             params.token_in_program,
             params.token_in_mint,
             params.vault_token_in_account,
             params.redemption_vault_authority,
             vault_authority_signer_seeds,
-            params.token_in_amount,
+            params.token_in_net_amount,
         )?;
+
+        // Transfer fee amount to boss if there is a fee
+        if params.token_in_fee_amount > 0 {
+            msg!("Transferring fee amount to boss account");
+            transfer_tokens(
+                params.token_in_mint,
+                params.token_in_program,
+                params.vault_token_in_account,
+                params.boss_token_in_account,
+                params.redemption_vault_authority,
+                Some(vault_authority_signer_seeds),
+                params.token_in_fee_amount,
+            )?;
+        }
     } else {
-        // Transfer token_in from vault to boss
+        // When program lacks mint authority: transfer full amount (net + fee) to boss
         transfer_tokens(
             params.token_in_mint,
             params.token_in_program,
@@ -186,7 +220,7 @@ pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Resu
             params.boss_token_in_account,
             params.redemption_vault_authority,
             Some(vault_authority_signer_seeds),
-            params.token_in_amount,
+            params.token_in_net_amount + params.token_in_fee_amount,
         )?;
     }
 

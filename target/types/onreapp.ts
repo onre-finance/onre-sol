@@ -2859,6 +2859,7 @@ export type Onreapp = {
         "",
         "# Arguments",
         "- `ctx`: Context for `MakeRedemptionOffer`.",
+        "- `fee_basis_points`: Fee in basis points (10000 = 100%) charged when fulfilling redemption requests",
         "",
         "# Access Control",
         "- Only the boss or redemption_admin can call this instruction"
@@ -3193,7 +3194,12 @@ export type Onreapp = {
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "feeBasisPoints",
+          "type": "u16"
+        }
+      ]
     },
     {
       "name": "mintTo",
@@ -6328,6 +6334,77 @@ export type Onreapp = {
           "type": "u16"
         }
       ]
+    },
+    {
+      "name": "updateRedemptionOfferFee",
+      "docs": [
+        "Updates the fee configuration for a specific redemption offer.",
+        "",
+        "This instruction allows the boss to modify the fee charged when fulfilling",
+        "redemption requests for a specific redemption offer. Only the boss can call this instruction.",
+        "",
+        "# Arguments",
+        "* `ctx` - The instruction context",
+        "* `new_fee_basis_points` - New fee in basis points (10000 = 100%, 500 = 5%)",
+        "",
+        "# Access Control",
+        "- Boss only"
+      ],
+      "discriminator": [
+        73,
+        11,
+        35,
+        194,
+        219,
+        147,
+        159,
+        3
+      ],
+      "accounts": [
+        {
+          "name": "redemptionOffer",
+          "docs": [
+            "The redemption offer account whose fee will be updated"
+          ],
+          "writable": true
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing boss authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account authorized to update redemption offer fees"
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newFeeBasisPoints",
+          "type": "u16"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -6802,6 +6879,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "redemptionOfferFeeUpdatedEvent",
+      "discriminator": [
+        221,
+        254,
+        77,
+        118,
+        205,
+        154,
+        166,
+        156
+      ]
+    },
+    {
       "name": "redemptionRequestCancelledEvent",
       "discriminator": [
         51,
@@ -6883,53 +6973,18 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "expired",
-      "msg": "The approval message has expired."
+      "name": "mathOverflow",
+      "msg": "Math overflow"
     },
     {
       "code": 6001,
-      "name": "wrongProgram",
-      "msg": "The approval message is for the wrong program."
+      "name": "maxSupplyExceeded",
+      "msg": "Minting would exceed maximum supply cap"
     },
     {
       "code": 6002,
-      "name": "wrongUser",
-      "msg": "The approval message is for the wrong user."
-    },
-    {
-      "code": 6003,
-      "name": "missingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
-    },
-    {
-      "code": 6004,
-      "name": "wrongIxProgram",
-      "msg": "The instruction is for the wrong program."
-    },
-    {
-      "code": 6005,
-      "name": "malformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
-    },
-    {
-      "code": 6006,
-      "name": "multipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
-    },
-    {
-      "code": 6007,
-      "name": "wrongAuthority",
-      "msg": "The authority public key does not match."
-    },
-    {
-      "code": 6008,
-      "name": "msgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
-    },
-    {
-      "code": 6009,
-      "name": "msgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "name": "transferFeeNotSupported",
+      "msg": "Token-2022 with transfer fees not supported"
     }
   ],
   "types": [
@@ -8217,6 +8272,13 @@ export type Onreapp = {
             "type": "u64"
           },
           {
+            "name": "feeBasisPoints",
+            "docs": [
+              "Fee in basis points (10000 = 100%) charged when fulfilling redemption requests"
+            ],
+            "type": "u16"
+          },
+          {
             "name": "bump",
             "docs": [
               "PDA bump seed for account derivation"
@@ -8231,7 +8293,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                119
+                117
               ]
             }
           }
@@ -8273,6 +8335,54 @@ export type Onreapp = {
             "name": "tokenOutMint",
             "docs": [
               "The output token mint for redemptions (e.g., USDC)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "feeBasisPoints",
+            "docs": [
+              "Fee in basis points (10000 = 100%) charged when fulfilling redemption requests"
+            ],
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionOfferFeeUpdatedEvent",
+      "docs": [
+        "Event emitted when a redemption offer's fee is successfully updated",
+        "",
+        "Provides transparency for tracking fee changes and redemption offer configuration modifications."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "redemptionOfferPda",
+            "docs": [
+              "The PDA address of the redemption offer whose fee was updated"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "oldFeeBasisPoints",
+            "docs": [
+              "Previous fee in basis points (10000 = 100%)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "newFeeBasisPoints",
+            "docs": [
+              "New fee in basis points (10000 = 100%)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "boss",
+            "docs": [
+              "The boss account that authorized the fee update"
             ],
             "type": "pubkey"
           }

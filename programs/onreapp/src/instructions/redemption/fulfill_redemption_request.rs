@@ -231,17 +231,22 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
         token_in_amount,
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
+        ctx.accounts.redemption_offer.fee_basis_points,
     )?;
     let price = result.price;
+    let token_in_net_amount = result.token_in_net_amount;
+    let token_in_fee_amount = result.token_in_fee_amount;
     let token_out_amount = result.token_out_amount;
     drop(offer);
 
-    // Execute token operations (burn/transfer token_in, mint/transfer token_out)
+    // Execute token operations (burn/transfer token_in_net, mint/transfer token_out)
+    // Fee transfer is handled inside execute_redemption_operations
     execute_redemption_operations(ExecuteRedemptionOpsParams {
         token_in_program: &ctx.accounts.token_in_program,
         token_out_program: &ctx.accounts.token_out_program,
         token_in_mint: &ctx.accounts.token_in_mint,
-        token_in_amount,
+        token_in_net_amount,
+        token_in_fee_amount,
         vault_token_in_account: &ctx.accounts.vault_token_in_account,
         boss_token_in_account: &ctx.accounts.boss_token_in_account,
         redemption_vault_authority: &ctx.accounts.redemption_vault_authority,
@@ -269,9 +274,11 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
         .ok_or(FulfillRedemptionRequestErrorCode::ArithmeticOverflow)?;
 
     msg!(
-        "Redemption request fulfilled: request={}, token_in={}, token_out={}, price={}, redeemer={}",
+        "Redemption request fulfilled: request={}, token_in={} (net={}, fee={}), token_out={}, price={}, redeemer={}",
         ctx.accounts.redemption_request.key(),
         token_in_amount,
+        token_in_net_amount,
+        token_in_fee_amount,
         token_out_amount,
         price,
         ctx.accounts.redeemer.key()
@@ -281,7 +288,7 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
         redemption_request_pda: ctx.accounts.redemption_request.key(),
         redemption_offer_pda: ctx.accounts.redemption_offer.key(),
         redeemer: ctx.accounts.redeemer.key(),
-        token_in_amount,
+        token_in_amount: token_in_net_amount,
         token_out_amount,
         current_price: price,
     });

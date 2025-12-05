@@ -426,6 +426,7 @@ export class OnreProgram {
 
     async makeRedemptionOffer(params: {
         offer: PublicKey;
+        feeBasisPoints?: number;
         signer?: Keypair;
         tokenInProgram?: PublicKey;
         tokenOutProgram?: PublicKey;
@@ -434,13 +435,32 @@ export class OnreProgram {
         const offer = await this.program.account.offer.fetch(params.offer);
 
         const tx = this.program.methods
-            .makeRedemptionOffer()
+            .makeRedemptionOffer(params.feeBasisPoints ?? 0)
             .accounts({
                 tokenInMint: offer.tokenOutMint,
                 tokenOutMint: offer.tokenInMint,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
                 tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
                 signer: params.signer ? params.signer.publicKey : this.program.provider.publicKey
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
+    async updateRedemptionOfferFee(params: {
+        redemptionOffer: PublicKey;
+        newFeeBasisPoints: number;
+        signer?: Keypair;
+    }) {
+        const tx = this.program.methods
+            .updateRedemptionOfferFee(params.newFeeBasisPoints)
+            .accounts({
+                redemptionOffer: params.redemptionOffer,
+                boss: params.signer ? params.signer.publicKey : this.program.provider.publicKey
             });
 
         if (params.signer) {
@@ -690,8 +710,6 @@ export class OnreProgram {
                 redeemer: params.redeemer.publicKey,
                 redemptionAdmin: params.redemptionAdmin.publicKey,
                 tokenInMint: redemptionOffer.tokenInMint,
-                redeemerTokenAccount,
-                vaultTokenAccount,
                 tokenProgram,
             })
             .signers([params.redeemer, params.redemptionAdmin]);

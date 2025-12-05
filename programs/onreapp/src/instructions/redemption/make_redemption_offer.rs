@@ -1,4 +1,4 @@
-use crate::constants::seeds;
+use crate::constants::{seeds, MAX_ALLOWED_FEE_BPS};
 use crate::instructions::redemption::RedemptionOffer;
 use crate::instructions::Offer;
 use crate::state::State;
@@ -19,6 +19,8 @@ pub struct RedemptionOfferCreatedEvent {
     pub token_in_mint: Pubkey,
     /// The output token mint for redemptions (e.g., USDC)
     pub token_out_mint: Pubkey,
+    /// Fee in basis points (10000 = 100%) charged when fulfilling redemption requests
+    pub fee_basis_points: u16,
 }
 
 /// Account structure for creating a redemption offer
@@ -135,35 +137,47 @@ pub struct MakeRedemptionOffer<'info> {
 ///
 /// # Arguments
 /// * `ctx` - The instruction context containing validated accounts
+/// * `fee_basis_points` - Fee in basis points (10000 = 100%) charged when fulfilling redemption requests
 ///
 /// # Returns
 /// * `Ok(())` - If the redemption offer is successfully created
 /// * `Err(MakeRedemptionOfferErrorCode::Unauthorized)` - If caller is neither boss nor redemption_admin (validated in accounts)
-/// * `Err(MakeRedemptionOfferErrorCode::InvalidTokenIn)` - If token_in is not the ONyc mint (validated in accounts)
+/// * `Err(MakeRedemptionOfferErrorCode::InvalidFee)` - If fee_basis_points exceeds 10000
 ///
 /// # Access Control
 /// - Only the boss or redemption_admin can call this instruction
 ///
 /// # Effects
-/// - Creates new redemption offer account with reference to the original offer
+/// - Creates new redemption offer account with reference to the original offer and fee configuration
 /// - Initializes vault token accounts if needed for both token_in and token_out
 /// - Sets up redemption tracking counters (executed_redemptions, requested_redemptions)
 ///
 /// # Events
 /// * `RedemptionOfferCreatedEvent` - Emitted with redemption offer details and configuration
-pub fn make_redemption_offer(ctx: Context<MakeRedemptionOffer>) -> Result<()> {
+pub fn make_redemption_offer(
+    ctx: Context<MakeRedemptionOffer>,
+    fee_basis_points: u16,
+) -> Result<()> {
+    // Validate fee is within valid range (0-10000 basis points = 0-100%)
+    require!(
+        fee_basis_points <= MAX_ALLOWED_FEE_BPS,
+        MakeRedemptionOfferErrorCode::InvalidFee
+    );
+
     // Initialize the redemption offer
     let redemption_offer = &mut ctx.accounts.redemption_offer;
     redemption_offer.offer = ctx.accounts.offer.key();
     redemption_offer.token_in_mint = ctx.accounts.token_in_mint.key();
     redemption_offer.token_out_mint = ctx.accounts.token_out_mint.key();
+    redemption_offer.fee_basis_points = fee_basis_points;
     redemption_offer.executed_redemptions = 0;
     redemption_offer.requested_redemptions = 0;
     redemption_offer.bump = ctx.bumps.redemption_offer;
 
     msg!(
-        "Redemption offer created at: {}",
-        ctx.accounts.redemption_offer.key()
+        "Redemption offer created at: {}, fee: {}",
+        ctx.accounts.redemption_offer.key(),
+        fee_basis_points
     );
 
     emit!(RedemptionOfferCreatedEvent {
@@ -171,6 +185,7 @@ pub fn make_redemption_offer(ctx: Context<MakeRedemptionOffer>) -> Result<()> {
         offer: ctx.accounts.offer.key(),
         token_in_mint: ctx.accounts.token_in_mint.key(),
         token_out_mint: ctx.accounts.token_out_mint.key(),
+        fee_basis_points,
     });
 
     Ok(())
@@ -182,4 +197,8 @@ pub enum MakeRedemptionOfferErrorCode {
     /// Caller is not authorized (must be boss or redemption_admin)
     #[msg("Unauthorized: only boss or redemption_admin can create redemption offers")]
     Unauthorized,
+
+    /// Fee basis points exceeds maximum allowed value of 10000 (100%)
+    #[msg("Invalid fee: fee_basis_points must be <= 10000")]
+    InvalidFee,
 }
