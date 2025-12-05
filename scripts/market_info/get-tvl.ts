@@ -1,11 +1,11 @@
 import { PublicKey } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { ScriptHelper, USDC_MINT, ONYC_MINT } from "../utils/script-helper";
 
 // Configure which mints to query
 const TOKEN_IN_MINT = USDC_MINT;
 const TOKEN_OUT_MINT = ONYC_MINT;
-const TOKEN_OUT_PROGRAM = TOKEN_2022_PROGRAM_ID; // or TOKEN_PROGRAM_ID
+const TOKEN_OUT_PROGRAM = TOKEN_PROGRAM_ID; // or TOKEN_PROGRAM_ID
 
 async function getTVL() {
     const helper = await ScriptHelper.createWithLocalWallet();
