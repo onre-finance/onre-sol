@@ -678,31 +678,15 @@ export class OnreProgram {
         redeemer: Keypair;
         redemptionAdmin: Keypair;
         amount: number;
-        expiresAt: number;
         nonce: number;
         tokenProgram?: PublicKey;
     }) {
         const redemptionOffer = await this.program.account.redemptionOffer.fetch(params.redemptionOffer);
         const tokenProgram = params.tokenProgram ?? TOKEN_PROGRAM_ID;
 
-        const redeemerTokenAccount = getAssociatedTokenAddressSync(
-            redemptionOffer.tokenInMint,
-            params.redeemer.publicKey,
-            false,
-            tokenProgram
-        );
-
-        const vaultTokenAccount = getAssociatedTokenAddressSync(
-            redemptionOffer.tokenInMint,
-            this.pdas.redemptionVaultAuthorityPda,
-            true,
-            tokenProgram
-        );
-
         const tx = this.program.methods
             .createRedemptionRequest(
                 new BN(params.amount),
-                new BN(params.expiresAt),
                 new BN(params.nonce)
             )
             .accounts({
@@ -710,7 +694,7 @@ export class OnreProgram {
                 redeemer: params.redeemer.publicKey,
                 redemptionAdmin: params.redemptionAdmin.publicKey,
                 tokenInMint: redemptionOffer.tokenInMint,
-                tokenProgram,
+                tokenProgram
             })
             .signers([params.redeemer, params.redemptionAdmin]);
 
@@ -751,7 +735,7 @@ export class OnreProgram {
                 redeemer: redemptionRequest.redeemer,
                 vaultTokenAccount,
                 redeemerTokenAccount,
-                tokenProgram,
+                tokenProgram
             })
             .signers([params.signer]);
 

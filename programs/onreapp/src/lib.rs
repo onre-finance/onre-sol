@@ -101,7 +101,10 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `RedemptionVaultDeposit`.
     /// - `amount`: Amount of tokens to deposit.
-    pub fn redemption_vault_deposit(ctx: Context<RedemptionVaultDeposit>, amount: u64) -> Result<()> {
+    pub fn redemption_vault_deposit(
+        ctx: Context<RedemptionVaultDeposit>,
+        amount: u64,
+    ) -> Result<()> {
         vault_operations::redemption_vault_deposit(ctx, amount)
     }
 
@@ -115,7 +118,10 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `RedemptionVaultWithdraw`.
     /// - `amount`: Amount of tokens to withdraw.
-    pub fn redemption_vault_withdraw(ctx: Context<RedemptionVaultWithdraw>, amount: u64) -> Result<()> {
+    pub fn redemption_vault_withdraw(
+        ctx: Context<RedemptionVaultWithdraw>,
+        amount: u64,
+    ) -> Result<()> {
         vault_operations::redemption_vault_withdraw(ctx, amount)
     }
 
@@ -568,15 +574,13 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `CreateRedemptionRequest`.
     /// - `amount`: Amount of token_in tokens to redeem.
-    /// - `expires_at`: Unix timestamp when the request expires.
     /// - `nonce`: User's nonce for replay attack prevention (must match UserNonceAccount).
     pub fn create_redemption_request(
         ctx: Context<CreateRedemptionRequest>,
         amount: u64,
-        expires_at: u64,
         nonce: u64,
     ) -> Result<()> {
-        redemption::create_redemption_request(ctx, amount, expires_at, nonce)
+        redemption::create_redemption_request(ctx, amount, nonce)
     }
 
     /// Fulfills a redemption request.

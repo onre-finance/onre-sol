@@ -66,7 +66,6 @@ describe("Create redemption request", () => {
     test("Create redemption request should succeed with valid params", async () => {
         // given
         const nonce = 0;
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
 
         // when
         await program.createRedemptionRequest({
@@ -74,7 +73,6 @@ describe("Create redemption request", () => {
             redeemer,
             redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
             nonce
         });
 
@@ -94,7 +92,6 @@ describe("Create redemption request", () => {
     test("Should initialize UserNonceAccount on first request", async () => {
         // given
         const nonce = 0;
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
 
         // when
         await program.createRedemptionRequest({
@@ -102,7 +99,6 @@ describe("Create redemption request", () => {
             redeemer,
             redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
             nonce
         });
 
@@ -113,7 +109,6 @@ describe("Create redemption request", () => {
 
     test("Should increment nonce after each request", async () => {
         // given
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
 
         // First request
         await program.createRedemptionRequest({
@@ -121,7 +116,6 @@ describe("Create redemption request", () => {
             redeemer,
             redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
             nonce: 0
         });
 
@@ -131,7 +125,6 @@ describe("Create redemption request", () => {
             redeemer,
             redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt: expiresAt + 1000,
             nonce: 1
         });
 
@@ -143,7 +136,6 @@ describe("Create redemption request", () => {
     test("Should update requested_redemptions in RedemptionOffer", async () => {
         // given
         const nonce = 0;
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
 
         // when
         await program.createRedemptionRequest({
@@ -151,7 +143,6 @@ describe("Create redemption request", () => {
             redeemer,
             redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
             nonce
         });
 
@@ -162,7 +153,6 @@ describe("Create redemption request", () => {
 
     test("Should accumulate requested_redemptions from multiple requests", async () => {
         // given
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
         const redeemer2 = testHelper.createUserAccount();
         testHelper.createTokenAccount(onycMint, redeemer2.publicKey, BigInt(10_000_000_000)); // 10 ONyc
 
@@ -172,7 +162,6 @@ describe("Create redemption request", () => {
             redeemer,
             redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
             nonce: 0
         });
 
@@ -182,7 +171,6 @@ describe("Create redemption request", () => {
             redeemer: redeemer2,
             redemptionAdmin,
             amount: REDEMPTION_AMOUNT * 2,
-            expiresAt,
             nonce: 0
         });
 
@@ -195,7 +183,6 @@ describe("Create redemption request", () => {
 
     test("Should reject when nonce doesn't match", async () => {
         // given
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
 
         // when/then - Try with wrong nonce
         await expect(
@@ -204,7 +191,6 @@ describe("Create redemption request", () => {
                 redeemer,
                 redemptionAdmin,
                 amount: REDEMPTION_AMOUNT,
-                expiresAt,
                 nonce: 5 // Wrong nonce, should be 0
             })
         ).rejects.toThrow();
@@ -213,7 +199,6 @@ describe("Create redemption request", () => {
     test("Should reject when redemption_admin is not authorized", async () => {
         // given
         const unauthorizedAdmin = testHelper.createUserAccount();
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
 
         // when/then
         await expect(
@@ -222,24 +207,6 @@ describe("Create redemption request", () => {
                 redeemer,
                 redemptionAdmin: unauthorizedAdmin,
                 amount: REDEMPTION_AMOUNT,
-                expiresAt,
-                nonce: 0
-            })
-        ).rejects.toThrow();
-    });
-
-    test("Should reject when expires_at is in the past", async () => {
-        // given
-        const expiresAt = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
-
-        // when/then
-        await expect(
-            program.createRedemptionRequest({
-                redemptionOffer: redemptionOfferPda,
-                redeemer,
-                redemptionAdmin,
-                amount: REDEMPTION_AMOUNT,
-                expiresAt,
                 nonce: 0
             })
         ).rejects.toThrow();
@@ -247,7 +214,6 @@ describe("Create redemption request", () => {
 
     test("Should prevent replay attacks with same nonce", async () => {
         // given
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
 
         // First request succeeds
         await program.createRedemptionRequest({
@@ -255,7 +221,6 @@ describe("Create redemption request", () => {
             redeemer,
             redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
             nonce: 0
         });
 
@@ -266,7 +231,6 @@ describe("Create redemption request", () => {
                 redeemer,
                 redemptionAdmin,
                 amount: REDEMPTION_AMOUNT,
-                expiresAt: expiresAt + 1000,
                 nonce: 0
             })
         ).rejects.toThrow();
@@ -276,7 +240,6 @@ describe("Create redemption request", () => {
         // given
         const redeemer2 = testHelper.createUserAccount();
         testHelper.createTokenAccount(onycMint, redeemer2.publicKey, BigInt(10_000_000_000)); // 10 ONyc
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
         const nonce = 0;
 
         // when - Both users create requests with nonce 0 (their first request)
@@ -285,7 +248,6 @@ describe("Create redemption request", () => {
             redeemer,
             redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
             nonce
         });
 
@@ -294,7 +256,6 @@ describe("Create redemption request", () => {
             redeemer: redeemer2,
             redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
             nonce
         });
 
@@ -316,7 +277,6 @@ describe("Create redemption request", () => {
 
     test("Should create unique PDAs for different nonces", async () => {
         // given
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
 
         // when - Create multiple requests with different nonces
         await program.createRedemptionRequest({
@@ -324,7 +284,6 @@ describe("Create redemption request", () => {
             redeemer,
             redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
             nonce: 0
         });
 
@@ -333,7 +292,6 @@ describe("Create redemption request", () => {
             redeemer,
             redemptionAdmin,
             amount: REDEMPTION_AMOUNT * 2,
-            expiresAt: expiresAt + 1000,
             nonce: 1
         });
 
@@ -355,7 +313,6 @@ describe("Create redemption request", () => {
 
     test("Redeemer pays for account creation", async () => {
         // given
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
         const initialBalance = await testHelper.context.banksClient.getBalance(
             redeemer.publicKey
         );
@@ -366,7 +323,6 @@ describe("Create redemption request", () => {
             redeemer,
             redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
             nonce: 0
         });
 
@@ -381,7 +337,6 @@ describe("Create redemption request", () => {
 
     test("Should lock tokens in redemption vault", async () => {
         // given
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
         const redeemerTokenAccountAddress = getAssociatedTokenAddressSync(onycMint, redeemer.publicKey);
         const redeemerTokenAccount = await testHelper.getTokenAccount(redeemerTokenAccountAddress);
         const initialRedeemerBalance = redeemerTokenAccount.amount;
@@ -400,7 +355,6 @@ describe("Create redemption request", () => {
             redeemer,
             redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
             nonce: 0
         });
 
@@ -414,7 +368,6 @@ describe("Create redemption request", () => {
 
     test("Should reject when kill switch is activated", async () => {
         // given
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
 
         // Activate kill switch
         await program.setKillSwitch({ enable: true });
@@ -426,7 +379,6 @@ describe("Create redemption request", () => {
                 redeemer,
                 redemptionAdmin,
                 amount: REDEMPTION_AMOUNT,
-                expiresAt,
                 nonce: 0
             })
         ).rejects.toThrow("Redemption system is paused: kill switch activated");
@@ -434,7 +386,6 @@ describe("Create redemption request", () => {
 
     test("Should succeed after kill switch is deactivated", async () => {
         // given
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
 
         // Activate then deactivate kill switch
         await program.setKillSwitch({ enable: true });
@@ -446,7 +397,6 @@ describe("Create redemption request", () => {
             redeemer,
             redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
             nonce: 0
         });
 

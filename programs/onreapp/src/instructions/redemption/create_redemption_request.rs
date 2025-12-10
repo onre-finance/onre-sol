@@ -32,7 +32,7 @@ pub struct RedemptionRequestCreatedEvent {
 /// This struct defines the accounts required to create a redemption request
 /// where users can request to redeem token_out tokens from standard Offer for token_in tokens.
 #[derive(Accounts)]
-#[instruction(amount: u64, expires_at: u64, nonce: u64)]
+#[instruction(amount: u64, nonce: u64)]
 pub struct CreateRedemptionRequest<'info> {
     /// Program state account containing redemption_admin authorization
     #[account(
@@ -144,7 +144,6 @@ pub struct CreateRedemptionRequest<'info> {
 /// # Arguments
 /// * `ctx` - The instruction context containing validated accounts
 /// * `amount` - Amount of token_in tokens to redeem
-/// * `expires_at` - Unix timestamp when the request expires
 /// * `nonce` - User's nonce for replay attack prevention (must match UserNonceAccount)
 ///
 /// # Returns
@@ -169,7 +168,6 @@ pub struct CreateRedemptionRequest<'info> {
 pub fn create_redemption_request(
     ctx: Context<CreateRedemptionRequest>,
     amount: u64,
-    expires_at: u64,
     nonce: u64,
 ) -> Result<()> {
     // Verify nonce matches user's current nonce
@@ -177,10 +175,6 @@ pub fn create_redemption_request(
         ctx.accounts.user_nonce_account.nonce,
         nonce,
         CreateRedemptionRequestErrorCode::InvalidNonce
-    );
-    require!(
-        expires_at > Clock::get()?.unix_timestamp as u64,
-        CreateRedemptionRequestErrorCode::InvalidExpiration
     );
 
     // Transfer tokens from redeemer to redemption vault (locking them)
