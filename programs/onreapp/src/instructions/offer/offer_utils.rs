@@ -1,6 +1,5 @@
 use crate::instructions::{Offer, OfferVector};
-use crate::utils::approver::approver_utils;
-use crate::utils::{calculate_fees, calculate_token_out_amount, ApprovalMessage};
+use crate::utils::{calculate_fees, calculate_token_out_amount};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
 
@@ -25,9 +24,12 @@ pub enum OfferCoreError {
     /// The provided token_out mint does not match the offer's expected mint
     #[msg("Invalid token out mint")]
     InvalidTokenOutMint,
-    /// The offer requires approval but none was provided or verification failed
-    #[msg("Approval required for this offer")]
-    ApprovalRequired,
+    /// The offer requires approver signature but none was provided
+    #[msg("Missing approver signature")]
+    MissingApproverSignature,
+    /// The provided approver signature is invalid
+    #[msg("Invalid approver signature")]
+    InvalidApproverSignature,
 }
 
 /// Result structure containing offer processing calculations
@@ -62,30 +64,19 @@ pub struct OfferProcessResult {
 /// * `Err(_)` - If approval verification fails with both approvers
 pub fn verify_offer_approval(
     offer: &Offer,
-    approval_message: &Option<ApprovalMessage>,
-    program_id: &Pubkey,
-    user_pubkey: &Pubkey,
+    approver_opt: Option<Pubkey>,
     approver1: &Pubkey,
     approver2: &Pubkey,
-    instructions_sysvar: &UncheckedAccount,
 ) -> Result<()> {
     if offer.needs_approval() {
-        match approval_message {
-            Some(msg) => {
-                msg!(
-                    "Offer requires approval, verifying message {}",
-                    msg.expiry_unix
+        match approver_opt {
+            Some(approver) => {
+                require!(
+                    approver == *approver1 || approver == *approver2,
+                    OfferCoreError::InvalidApproverSignature
                 );
-                approver_utils::verify_approval_message_generic(
-                    program_id,
-                    user_pubkey,
-                    approver1,
-                    approver2,
-                    instructions_sysvar,
-                    msg,
-                )?;
             }
-            None => return Err(error!(OfferCoreError::ApprovalRequired)),
+            None => return Err(error!(OfferCoreError::MissingApproverSignature)),
         }
     }
     Ok(())

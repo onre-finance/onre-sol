@@ -2,11 +2,9 @@ use crate::constants::seeds;
 use crate::instructions::offer::offer_utils::{process_offer_core, verify_offer_approval};
 use crate::instructions::Offer;
 use crate::state::State;
-use crate::utils::{
-    execute_token_operations, transfer_tokens, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams,
-};
+use crate::utils::{execute_token_operations, transfer_tokens, u64_to_dec9, ExecTokenOpsParams};
 use crate::OfferCoreError;
-use anchor_lang::{prelude::*, solana_program::sysvar, Accounts};
+use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
@@ -202,17 +200,11 @@ pub struct TakeOfferPermissionless<'info> {
     /// CHECK: PDA derivation is validated through seeds constraint
     pub mint_authority: UncheckedAccount<'info>,
 
-    /// Instructions sysvar for approval signature verification
-    ///
-    /// Required for cryptographic verification of approval messages
-    /// when offers require boss approval for execution.
-    /// CHECK: Validated through address constraint to instructions sysvar
-    #[account(address = sysvar::instructions::id())]
-    pub instructions_sysvar: UncheckedAccount<'info>,
-
     /// The user executing the offer and paying for account creation
     #[account(mut)]
     pub user: Signer<'info>,
+
+    pub approver: Option<Signer<'info>>,
 
     /// Associated Token Program for automatic token account creation
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -257,7 +249,6 @@ pub struct TakeOfferPermissionless<'info> {
 pub fn take_offer_permissionless(
     ctx: Context<TakeOfferPermissionless>,
     token_in_amount: u64,
-    approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
     let (va, va_bump) =
         Pubkey::find_program_address(&[seeds::OFFER_VAULT_AUTHORITY], ctx.program_id);
@@ -304,12 +295,9 @@ pub fn take_offer_permissionless(
     // Verify approval if needed
     verify_offer_approval(
         &offer,
-        &approval_message,
-        ctx.program_id,
-        &ctx.accounts.user.key(),
+        ctx.accounts.approver.as_ref().map(|s| s.key()),
         &ctx.accounts.state.approver1,
         &ctx.accounts.state.approver2,
-        &ctx.accounts.instructions_sysvar,
     )?;
 
     // Use shared core processing logic

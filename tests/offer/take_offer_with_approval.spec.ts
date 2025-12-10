@@ -2,7 +2,6 @@ import { Keypair, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { TestHelper } from "../test_helper";
 import { OnreProgram } from "../onre_program";
-import { Ed25519Helper } from "../helpers/ed25519_helper";
 
 describe("Take Offer With Approval", () => {
     let testHelper: TestHelper;
@@ -10,7 +9,7 @@ describe("Take Offer With Approval", () => {
     let tokenInMint: PublicKey;
     let tokenOutMint: PublicKey;
     let user: Keypair;
-    let trustedAuthority: Keypair;
+    let approver: Keypair;
     let userTokenOutAccount: PublicKey;
 
     beforeAll(async () => {
@@ -21,15 +20,15 @@ describe("Take Offer With Approval", () => {
         tokenInMint = testHelper.createMint(6); // USDC-like (6 decimals)
         tokenOutMint = testHelper.createMint(9); // ONyc-like (9 decimals)
 
-        // Create trusted authority keypair
-        trustedAuthority = testHelper.createUserAccount();
+        // Create approver keypair
+        approver = testHelper.createUserAccount();
 
         // Initialize program and offers
         await program.initialize({ onycMint: tokenOutMint });
 
-        // Set trusted authority
+        // Set approver
         await program.addApprover({
-            trusted: trustedAuthority.publicKey
+            trusted: approver.publicKey
         });
 
         // Create an offer that requires approval
@@ -68,8 +67,8 @@ describe("Take Offer With Approval", () => {
         });
     });
 
-    it("Should fail to take offer requiring approval without approval message", async () => {
-        // Try to take offer without approval - should fail with ApprovalRequired error
+    it("Should fail to take offer requiring approval without approver signer", async () => {
+        // Try to take offer without approver - should fail with MissingApproverSignature error
         await expect(
             program.takeOffer({
                 tokenInAmount: 1_000_100,
@@ -78,20 +77,18 @@ describe("Take Offer With Approval", () => {
                 user: user.publicKey,
                 signer: user
             })
-        ).rejects.toThrow("ApprovalRequired");
+        ).rejects.toThrow("Missing approver signature");
     });
 
-    it("Should successfully take offer with valid Ed25519 approval signature", async () => {
-        // Use the helper to execute the approved take offer
-        await Ed25519Helper.executeApprovedTakeOffer({
-            program,
+    it("Should successfully take offer with valid approver signature", async () => {
+        // Take offer with approver signer
+        await program.takeOffer({
             tokenInAmount: 1_000_100,
             tokenInMint,
             tokenOutMint,
             user: user.publicKey,
-            userKeypair: user,
-            trustedAuthority,
-            boss: testHelper.getBoss()
+            signer: user,
+            approver: approver
         });
 
         // Verify user received tokens
@@ -99,21 +96,19 @@ describe("Take Offer With Approval", () => {
         expect(userTokenOutBalance).toBe(BigInt(1e9));
     });
 
-    it("Should fail with expired approval message", async () => {
-        const expiredTime = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
+    it("Should fail with invalid approver signature", async () => {
+        // Create a different keypair that is not registered as approver
+        const invalidApprover = testHelper.createUserAccount();
 
         await expect(
-            Ed25519Helper.executeApprovedTakeOffer({
-                program,
+            program.takeOffer({
                 tokenInAmount: 1_000_100,
                 tokenInMint,
                 tokenOutMint,
                 user: user.publicKey,
-                userKeypair: user,
-                trustedAuthority,
-                boss: testHelper.getBoss(),
-                expiryTime: expiredTime
+                signer: user,
+                approver: invalidApprover
             })
-        ).rejects.toThrow();
+        ).rejects.toThrow("Invalid approver signature");
     });
 });

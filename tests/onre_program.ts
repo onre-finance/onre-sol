@@ -171,21 +171,30 @@ export class OnreProgram {
         tokenOutMint: PublicKey,
         user: PublicKey,
         signer?: Keypair,
+        approver?: Keypair,
         tokenInProgram?: PublicKey,
         tokenOutProgram?: PublicKey
     }) {
         const tx = this.program.methods
-            .takeOffer(new BN(params.tokenInAmount), null)
+            .takeOffer(new BN(params.tokenInAmount))
             .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
                 user: params.user,
+                approver: params.approver?.publicKey ?? null,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
                 tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID
             });
 
+        const signers = [];
         if (params.signer) {
-            tx.signers([params.signer]);
+            signers.push(params.signer);
+        }
+        if (params.approver) {
+            signers.push(params.approver);
+        }
+        if (signers.length > 0) {
+            tx.signers(signers);
         }
 
         await tx.rpc();
@@ -197,15 +206,17 @@ export class OnreProgram {
         tokenOutMint: PublicKey,
         user: PublicKey,
         signer?: Keypair,
+        approver?: Keypair,
         tokenInProgram?: PublicKey,
         tokenOutProgram?: PublicKey
     }) {
         const tx = this.program.methods
-            .takeOfferPermissionless(new BN(params.tokenInAmount), null)
+            .takeOfferPermissionless(new BN(params.tokenInAmount))
             .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
                 user: params.user,
+                approver: params.approver?.publicKey ?? null,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
                 tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
                 boss: this.program.provider.publicKey,
@@ -214,8 +225,15 @@ export class OnreProgram {
                 mintAuthority: this.pdas.mintAuthorityPda
             });
 
+        const signers = [];
         if (params.signer) {
-            tx.signers([params.signer]);
+            signers.push(params.signer);
+        }
+        if (params.approver) {
+            signers.push(params.approver);
+        }
+        if (signers.length > 0) {
+            tx.signers(signers);
         }
 
         await tx.rpc();

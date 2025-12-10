@@ -5324,22 +5324,17 @@ export type Onreapp = {
           }
         },
         {
-          "name": "instructionsSysvar",
-          "docs": [
-            "Instructions sysvar for approval signature verification",
-            "",
-            "Required for cryptographic verification of approval messages",
-            "when offers require boss approval for execution."
-          ],
-          "address": "Sysvar1nstructions1111111111111111111111111"
-        },
-        {
           "name": "user",
           "docs": [
             "The user executing the offer and paying for account creation"
           ],
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "approver",
+          "signer": true,
+          "optional": true
         },
         {
           "name": "associatedTokenProgram",
@@ -5360,16 +5355,6 @@ export type Onreapp = {
         {
           "name": "tokenInAmount",
           "type": "u64"
-        },
-        {
-          "name": "approvalMessage",
-          "type": {
-            "option": {
-              "defined": {
-                "name": "approvalMessage"
-              }
-            }
-          }
         }
       ]
     },
@@ -5959,22 +5944,17 @@ export type Onreapp = {
           ]
         },
         {
-          "name": "instructionsSysvar",
-          "docs": [
-            "Instructions sysvar for approval signature verification",
-            "",
-            "Required for cryptographic verification of approval messages",
-            "when offers require boss approval for execution."
-          ],
-          "address": "Sysvar1nstructions1111111111111111111111111"
-        },
-        {
           "name": "user",
           "docs": [
             "The user executing the offer and paying for account creation"
           ],
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "approver",
+          "signer": true,
+          "optional": true
         },
         {
           "name": "associatedTokenProgram",
@@ -5995,16 +5975,6 @@ export type Onreapp = {
         {
           "name": "tokenInAmount",
           "type": "u64"
-        },
-        {
-          "name": "approvalMessage",
-          "type": {
-            "option": {
-              "defined": {
-                "name": "approvalMessage"
-              }
-            }
-          }
         }
       ]
     },
@@ -6968,53 +6938,18 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "expired",
-      "msg": "The approval message has expired."
+      "name": "mathOverflow",
+      "msg": "Math overflow"
     },
     {
       "code": 6001,
-      "name": "wrongProgram",
-      "msg": "The approval message is for the wrong program."
+      "name": "maxSupplyExceeded",
+      "msg": "Minting would exceed maximum supply cap"
     },
     {
       "code": 6002,
-      "name": "wrongUser",
-      "msg": "The approval message is for the wrong user."
-    },
-    {
-      "code": 6003,
-      "name": "missingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
-    },
-    {
-      "code": 6004,
-      "name": "wrongIxProgram",
-      "msg": "The instruction is for the wrong program."
-    },
-    {
-      "code": 6005,
-      "name": "malformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
-    },
-    {
-      "code": 6006,
-      "name": "multipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
-    },
-    {
-      "code": 6007,
-      "name": "wrongAuthority",
-      "msg": "The authority public key does not match."
-    },
-    {
-      "code": 6008,
-      "name": "msgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
-    },
-    {
-      "code": 6009,
-      "name": "msgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "name": "transferFeeNotSupported",
+      "msg": "Token-2022 with transfer fees not supported"
     }
   ],
   "types": [
@@ -7088,47 +7023,6 @@ export type Onreapp = {
               "The boss who cleared all admins"
             ],
             "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "approvalMessage",
-      "docs": [
-        "Message structure for approval verification",
-        "",
-        "This structure contains the data required to verify that a user has received",
-        "approval from a trusted authority to perform a specific action within the program.",
-        "The message is signed by the trusted authority using Ed25519 signature.",
-        "",
-        "# Fields",
-        "- `program_id`: The ID of the program for which this approval is valid",
-        "- `user_pubkey`: The public key of the user who is approved to perform the action",
-        "- `expiry_unix`: Unix timestamp when this approval expires"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "programId",
-            "docs": [
-              "The program ID this approval is valid for"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "userPubkey",
-            "docs": [
-              "The user public key that is approved"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "expiryUnix",
-            "docs": [
-              "Unix timestamp when this approval expires"
-            ],
-            "type": "u64"
           }
         ]
       }
