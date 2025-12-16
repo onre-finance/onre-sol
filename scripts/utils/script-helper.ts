@@ -537,4 +537,22 @@ export class ScriptHelper {
         console.log(base58Tx);
         return base58Tx;
     }
+
+    async buildMakeRedemptionOfferIx(params: {
+        tokenInMint: PublicKey;
+        tokenInProgram: PublicKey;
+        tokenOutMint: PublicKey;
+        tokenOutProgram: PublicKey;
+        feeBasisPoints: number;
+    }) {
+        return await this.program.methods
+            .makeRedemptionOffer(params.feeBasisPoints)
+            .accountsPartial({
+                tokenInMint: params.tokenInMint,
+                tokenInProgram: params.tokenInProgram,
+                tokenOutMint: params.tokenOutMint,
+                tokenOutProgram: params.tokenOutProgram,
+            })
+            .instruction();
+    }
 }
