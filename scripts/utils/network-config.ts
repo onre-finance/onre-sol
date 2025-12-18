@@ -1,4 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
+import { Wallet } from "@coral-xyz/anchor";
 
 /**
  * Supported network environments
@@ -58,6 +59,15 @@ const MOCK_ONYC_DEVNET = new PublicKey("6WLYBF2o3RSkZ9SoNhhFYxUPYzLaa83xSTZ3o46c
 const MOCK_USDG_DEVNET = new PublicKey("HyVoVvMHRr6p1FfGSWrWDPk6bn4FAmCjajzv6SY3DHk");
 
 const DEV_ONYC_DEVNET = new PublicKey("HQmHPQLhuXTj8dbsLUoFsJeCZWBkK75Zwczxork8Byzh");
+
+export interface CliContext {
+
+    /** Network configuration */
+    config: NetworkConfig;
+
+    /** Wallet to use for transactions */
+    wallet: Wallet;
+}
 
 /**
  * All network configurations

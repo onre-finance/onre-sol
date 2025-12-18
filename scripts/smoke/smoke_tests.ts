@@ -114,8 +114,8 @@ async function buildSmokeTestTransactions() {
     console.log(`  Base58: ${serializedTx1}`);
     console.log();
 
-    // Transaction 2: Take Offer (both flows)
-    console.log("Transaction 2: Execute Offers (2 instructions)");
+    // Transaction 2: Take Offer (both flows) + Close Offer
+    console.log("Transaction 2: Execute & Close (3 instructions)");
 
     console.log("  1. Building Take Offer (Standard) instruction...");
     const takeOfferIx = await helper.buildTakeOfferIx({
@@ -135,9 +135,18 @@ async function buildSmokeTestTransactions() {
     });
     console.log("     ✓ Take Offer (Permissionless) instruction built");
 
+    console.log("  3. Building Close Offer instruction...");
+    const closeOfferIx = await helper.buildCloseOfferIx({
+        tokenInMint: TOKEN_IN_MINT,
+        tokenOutMint: TOKEN_OUT_MINT,
+        boss
+    });
+    console.log("     ✓ Close Offer instruction built");
+
     const tx2 = new Transaction();
     tx2.add(takeOfferIx);
     tx2.add(takeOfferPermissionlessIx);
+    tx2.add(closeOfferIx);
     tx2.feePayer = boss;
     tx2.recentBlockhash = (await helper.connection.getLatestBlockhash()).blockhash;
 
