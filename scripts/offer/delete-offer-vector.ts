@@ -1,9 +1,8 @@
-import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper, USDC_MINT, ONYC_MINT } from "../utils/script-helper";
+import { config, ScriptHelper } from "../utils/script-helper";
 
-// Configure which mints to delete vector from
-const TOKEN_IN_MINT = USDC_MINT;
-const TOKEN_OUT_MINT = ONYC_MINT;
+// Token addresses - automatically use the correct mints for the selected network
+const TOKEN_IN_MINT = config.mints.usdc;
+const TOKEN_OUT_MINT = config.mints.onyc;
 
 // Configuration
 const VECTOR_START_TIMESTAMP = new Date(2025, 4, 27).getTime() / 1000; // May 27, 2025
@@ -53,10 +52,11 @@ async function createDeleteOfferVectorTransaction() {
         const ix = await helper.buildDeleteOfferVectorIx({
             tokenInMint: TOKEN_IN_MINT,
             tokenOutMint: TOKEN_OUT_MINT,
-            vectorStartTimestamp: VECTOR_START_TIMESTAMP
+            vectorStartTimestamp: VECTOR_START_TIMESTAMP,
+            boss
         });
 
-        const tx = await helper.prepareTransaction(ix);
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
 
         return helper.printTransaction(tx, "Delete Offer Vector Transaction");
     } catch (error) {

@@ -1,8 +1,8 @@
-import { ONYC_MINT, ScriptHelper, USDC_MINT,  } from "../utils/script-helper";
+import { config, ScriptHelper } from "../utils/script-helper";
 
-// Configure which mints to close
-const TOKEN_IN_MINT = USDC_MINT;
-const TOKEN_OUT_MINT = ONYC_MINT;
+// Token addresses - automatically use the correct mints for the selected network
+const TOKEN_IN_MINT = config.mints.usdc;
+const TOKEN_OUT_MINT = config.mints.onyc;
 
 async function createCloseOfferTransaction() {
     const helper = await ScriptHelper.create();
@@ -32,10 +32,11 @@ async function createCloseOfferTransaction() {
 
         const ix = await helper.buildCloseOfferIx({
             tokenInMint: TOKEN_IN_MINT,
-            tokenOutMint: TOKEN_OUT_MINT
+            tokenOutMint: TOKEN_OUT_MINT,
+            boss
         });
 
-        const tx = await helper.prepareTransaction(ix);
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
 
         return helper.printTransaction(tx, "Close Offer Transaction");
     } catch (error) {

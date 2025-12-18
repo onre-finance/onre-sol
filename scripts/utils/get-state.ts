@@ -1,6 +1,8 @@
-import { ScriptHelper } from "../utils/script-helper";
+import { ScriptHelper, config, printConfigSummary } from "../utils/script-helper";
 
 async function getStateInfo() {
+    printConfigSummary(config);
+
     const helper = await ScriptHelper.create();
 
     console.log("Fetching program state...");

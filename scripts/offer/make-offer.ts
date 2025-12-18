@@ -1,10 +1,10 @@
 import { TransactionInstruction } from "@solana/web3.js";
-import { ScriptHelper, USDC_MINT, ONYC_MINT } from "../utils/script-helper";
+import { config, ScriptHelper } from "../utils/script-helper";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
-// Configure which mints to use for the offer
-const TOKEN_IN_MINT = USDC_MINT;
-const TOKEN_OUT_MINT = ONYC_MINT;
+// Token addresses - automatically use the correct mints for the selected network
+const TOKEN_IN_MINT = config.mints.usdc;
+const TOKEN_OUT_MINT = config.mints.onyc;
 const TOKEN_IN_PROGRAM = TOKEN_PROGRAM_ID;
 const TOKEN_OUT_PROGRAM = TOKEN_PROGRAM_ID;
 
@@ -29,7 +29,8 @@ async function createMakeOfferTransaction() {
                 tokenInMint: TOKEN_IN_MINT,
                 tokenOutMint: TOKEN_OUT_MINT,
                 tokenInProgram: TOKEN_IN_PROGRAM,
-                tokenOutProgram: TOKEN_OUT_PROGRAM
+                tokenOutProgram: TOKEN_OUT_PROGRAM,
+                payer: boss
             });
             instructions.push(...permissionlessIxs);
 
@@ -45,11 +46,12 @@ async function createMakeOfferTransaction() {
             tokenOutMint: TOKEN_OUT_MINT,
             feeBasisPoints: 0, // 0% fee
             needsApproval: false, // No approval required
-            allowPermissionless: allowPermissionless
+            allowPermissionless: allowPermissionless,
+            boss: boss
         });
         instructions.push(makeOfferIx);
 
-        const tx = await helper.prepareTransactionMultipleIxs(instructions);
+        const tx = await helper.prepareTransactionMultipleIxs({ ixs: instructions, payer: boss });
 
         return helper.printTransaction(tx, "Make Offer Transaction");
     } catch (error) {
