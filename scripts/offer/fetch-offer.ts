@@ -1,10 +1,10 @@
 import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper, USDC_MINT, ONYC_MINT, USDC_TEST_MAINNET, ONYC_TEST_MAINNET, USDG_TEST_MAINNET } from "../utils/script-helper";
+import { ScriptHelper, config, printConfigSummary } from "../utils/script-helper";
 import { getMint, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
-// Token addresses
-const TOKEN_IN_MINT = USDC_MINT;
-const TOKEN_OUT_MINT = ONYC_MINT;
+// Token addresses - automatically use the correct mints for the selected network
+const TOKEN_IN_MINT = config.mints.usdc;
+const TOKEN_OUT_MINT = config.mints.onyc;
 const TOKEN_IN_PROGRAM = TOKEN_PROGRAM_ID;
 const TOKEN_OUT_PROGRAM = TOKEN_PROGRAM_ID;
 

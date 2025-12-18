@@ -1,7 +1,7 @@
-import { ScriptHelper, ONYC_MINT } from "../utils/script-helper";
+import { config, ScriptHelper } from "../utils/script-helper";
 
-// Configuration - UPDATE THESE
-const TOKEN_MINT = ONYC_MINT; // ONyc token mint
+// Configuration - uses the selected network's ONyc mint
+const TOKEN_MINT = config.mints.onyc;
 const AMOUNT = 1_000_000_000; // 1 tokens with 9 decimals for USDC
 
 async function createVaultDepositTransaction() {
@@ -25,10 +25,11 @@ async function createVaultDepositTransaction() {
     try {
         const ix = await helper.buildOfferVaultDepositIx({
             amount: AMOUNT,
-            tokenMint: TOKEN_MINT
+            tokenMint: TOKEN_MINT,
+            boss
         });
 
-        const tx = await helper.prepareTransaction(ix);
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
 
         return helper.printTransaction(tx, "Vault Deposit Transaction");
     } catch (error) {
