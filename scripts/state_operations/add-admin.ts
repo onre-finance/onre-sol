@@ -15,10 +15,11 @@ async function createAddAdminTransaction() {
 
     try {
         const ix = await helper.buildAddAdminIx({
-            admin: NEW_ADMIN
+            admin: NEW_ADMIN,
+            boss
         });
 
-        const tx = await helper.prepareTransaction(ix);
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
 
         return helper.printTransaction(tx, "Add Admin Transaction");
     } catch (error) {

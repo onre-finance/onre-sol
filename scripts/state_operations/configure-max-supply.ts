@@ -50,10 +50,11 @@ async function createConfigureMaxSupplyTransaction() {
         console.log("\nBuilding transaction to configure max supply...");
 
         const ix = await helper.buildConfigureMaxSupplyIx({
-            maxSupply: MAX_SUPPLY
+            maxSupply: MAX_SUPPLY.toNumber(),
+            boss
         });
 
-        const tx = await helper.prepareTransaction(ix);
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
 
         console.log("\n=== Transaction Effects ===");
         console.log("This transaction will:");

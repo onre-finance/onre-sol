@@ -36,7 +36,7 @@ async function createAcceptBossTransaction() {
             newBoss: NEW_BOSS
         });
 
-        const tx = await helper.prepareTransaction(ix, NEW_BOSS);
+        const tx = await helper.prepareTransaction({ ix, payer: NEW_BOSS });
 
         console.log("\nThis is STEP 2 of the two-step ownership transfer:");
         console.log("  1. Current boss proposed a new boss (already completed)");

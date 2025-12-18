@@ -92,10 +92,11 @@ async function createRemoveApproverTransaction() {
         console.log("\nBuilding transaction...");
 
         const ix = await helper.buildRemoveApproverIx({
-            approver: APPROVER
+            approver: APPROVER,
+            boss
         });
 
-        const tx = await helper.prepareTransaction(ix);
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
 
         console.log("\n=== Transaction Effects ===");
         console.log("This transaction will:");

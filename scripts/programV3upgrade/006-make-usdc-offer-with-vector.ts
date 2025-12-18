@@ -1,10 +1,10 @@
-import { PublicKey, TransactionInstruction } from "@solana/web3.js";
-import { ScriptHelper, USDC_MINT, USDG_MINT, ONYC_MINT } from "../utils/script-helper";
-import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { TransactionInstruction } from "@solana/web3.js";
+import { config, ScriptHelper } from "../utils/script-helper";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
-// Configure which mints to use - UPDATE THESE
-const TOKEN_IN_MINT = USDC_MINT;  // Can also use USDG_MINT
-const TOKEN_OUT_MINT = ONYC_MINT;
+// Token addresses - automatically use the correct mints for the selected network
+const TOKEN_IN_MINT = config.mints.usdc;
+const TOKEN_OUT_MINT = config.mints.onyc;
 const TOKEN_IN_PROGRAM = TOKEN_PROGRAM_ID;
 const TOKEN_OUT_PROGRAM = TOKEN_PROGRAM_ID;
 
@@ -49,7 +49,8 @@ async function createMakeOfferWithVectorTransaction() {
                 tokenInMint: TOKEN_IN_MINT,
                 tokenOutMint: TOKEN_OUT_MINT,
                 tokenInProgram: TOKEN_IN_PROGRAM,
-                tokenOutProgram: TOKEN_OUT_PROGRAM
+                tokenOutProgram: TOKEN_OUT_PROGRAM,
+                payer: boss
             });
             instructions.push(...permissionlessIxs);
 
@@ -67,7 +68,8 @@ async function createMakeOfferWithVectorTransaction() {
             feeBasisPoints: FEE_BASIS_POINTS,
             needsApproval: NEEDS_APPROVAL,
             allowPermissionless: ALLOW_PERMISSIONLESS,
-            tokenInProgram: TOKEN_IN_PROGRAM
+            tokenInProgram: TOKEN_IN_PROGRAM,
+            boss: boss
         });
         instructions.push(makeOfferIx);
         console.log("\n1. Added make offer instruction");
@@ -79,12 +81,13 @@ async function createMakeOfferWithVectorTransaction() {
             baseTime: BASE_TIME,
             basePrice: BASE_PRICE,
             apr: APR,
-            priceFixDuration: PRICE_FIX_DURATION
+            priceFixDuration: PRICE_FIX_DURATION,
+            boss: boss
         });
         instructions.push(addVectorIx);
         console.log("2. Added offer vector instruction");
 
-        const tx = await helper.prepareTransactionMultipleIxs(instructions);
+        const tx = await helper.prepareTransactionMultipleIxs({ ixs: instructions, payer: boss });
 
         console.log("\nThis transaction will:");
         console.log("  1. Create the offer (if permissionless: also create intermediary token accounts)");

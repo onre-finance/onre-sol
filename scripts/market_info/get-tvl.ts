@@ -1,13 +1,14 @@
-import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { ONYC_MINT, ScriptHelper, USDC_MINT } from "../utils/script-helper";
+import { PublicKey } from "@solana/web3.js";
+import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
+import { ScriptHelper, config } from "../utils/script-helper";
 
-// Configure which mints to query
-const TOKEN_IN_MINT = USDC_MINT;
-const TOKEN_OUT_MINT = ONYC_MINT;
-const TOKEN_OUT_PROGRAM = TOKEN_PROGRAM_ID;
+// Token addresses - automatically use the correct mints for the selected network
+const TOKEN_IN_MINT = config.mints.usdc;
+const TOKEN_OUT_MINT = config.mints.onyc;
+const TOKEN_OUT_PROGRAM = TOKEN_2022_PROGRAM_ID; // or TOKEN_PROGRAM_ID
 
 async function getTVL() {
-    const helper = await ScriptHelper.createWithLocalWallet();
+    const helper = await ScriptHelper.create();
 
     console.log("Fetching TVL (Total Value Locked) for offer...");
     console.log("Token In Mint:", TOKEN_IN_MINT.toBase58());

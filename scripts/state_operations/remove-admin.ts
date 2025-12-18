@@ -15,10 +15,11 @@ async function createRemoveAdminTransaction() {
 
     try {
         const ix = await helper.buildRemoveAdminIx({
-            admin: ADMIN_TO_REMOVE
+            admin: ADMIN_TO_REMOVE,
+            boss
         });
 
-        const tx = await helper.prepareTransaction(ix);
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
 
         return helper.printTransaction(tx, "Remove Admin Transaction");
     } catch (error) {
