@@ -1,9 +1,8 @@
-import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper, USDC_MINT, ONYC_MINT } from "../utils/script-helper";
+import { config, ScriptHelper } from "../utils/script-helper";
 
-// Configure which mints to update
-const TOKEN_IN_MINT = USDC_MINT;
-const TOKEN_OUT_MINT = ONYC_MINT;
+// Token addresses - automatically use the correct mints for the selected network
+const TOKEN_IN_MINT = config.mints.usdc;
+const TOKEN_OUT_MINT = config.mints.onyc;
 
 // Configuration
 const NEW_FEE_BASIS_POINTS = 250; // 2.5% fee
@@ -38,10 +37,11 @@ async function createUpdateOfferFeeTransaction() {
         const ix = await helper.buildUpdateOfferFeeIx({
             tokenInMint: TOKEN_IN_MINT,
             tokenOutMint: TOKEN_OUT_MINT,
-            newFeeBasisPoints: NEW_FEE_BASIS_POINTS
+            newFeeBasisPoints: NEW_FEE_BASIS_POINTS,
+            boss
         });
 
-        const tx = await helper.prepareTransaction(ix);
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
 
         return helper.printTransaction(tx, "Update Offer Fee Transaction");
     } catch (error) {

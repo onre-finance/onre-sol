@@ -10,10 +10,11 @@ async function createKillSwitchEnableTransaction() {
 
     try {
         const ix = await helper.buildSetKillSwitchIx({
-            enable: true
+            enable: true,
+            boss
         });
 
-        const tx = await helper.prepareTransaction(ix);
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
 
         console.log("\n⚠️  WARNING: This will ENABLE the kill switch!");
         console.log("This will disable critical program operations.");

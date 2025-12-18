@@ -1,12 +1,12 @@
 import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper, USDC_MINT, ONYC_MINT } from "../utils/script-helper";
+import { ScriptHelper, config } from "../utils/script-helper";
 
-// Configure which mints to query
-const TOKEN_IN_MINT = USDC_MINT;
-const TOKEN_OUT_MINT = ONYC_MINT;
+// Token addresses - automatically use the correct mints for the selected network
+const TOKEN_IN_MINT = config.mints.usdc;
+const TOKEN_OUT_MINT = config.mints.onyc;
 
 async function getAPY() {
-    const helper = await ScriptHelper.createWithLocalWallet();
+    const helper = await ScriptHelper.create();
 
     console.log("Fetching APY for offer...");
     console.log("Token In Mint:", TOKEN_IN_MINT.toBase58());
