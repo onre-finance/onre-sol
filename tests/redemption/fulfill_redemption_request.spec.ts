@@ -208,6 +208,56 @@ describe("Fulfill redemption request", () => {
             const vaultBalance = await testHelper.getTokenAccountBalance(vaultUsdcAccount);
             expect(vaultBalance).toBe(BigInt(10_000e6 - TOKEN_OUT_AMOUNT));
         });
+
+        test("Should close redemption request account and return rent to redemption_admin", async () => {
+            // given
+            await program.transferMintAuthorityToProgram({ mint: onycMint });
+            await program.transferMintAuthorityToProgram({ mint: usdcMint });
+
+            const boss = testHelper.getBoss();
+            testHelper.createTokenAccount(onycMint, boss, BigInt(0), true);
+            testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
+
+            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+            await program.createRedemptionRequest({
+                redemptionOffer: redemptionOfferPda,
+                redeemer,
+                amount: REDEMPTION_AMOUNT,
+                expiresAt
+            });
+
+            const redemptionRequestPda = program.getRedemptionRequestPda(
+                redemptionOfferPda,
+                0
+            );
+
+            // Get initial redemption_admin balance
+            const initialAdminBalance = await testHelper.context.banksClient.getBalance(
+                redemptionAdmin.publicKey
+            );
+
+            // when
+            await program.fulfillRedemptionRequest({
+                offer: offerPda,
+                redemptionOffer: redemptionOfferPda,
+                redemptionRequest: redemptionRequestPda,
+                redeemer: redeemer.publicKey,
+                redemptionAdmin,
+                tokenInMint: onycMint,
+                tokenOutMint: usdcMint
+            });
+
+            // then - Account should be closed
+            await expect(
+                program.getRedemptionRequest(redemptionOfferPda, 0)
+            ).rejects.toThrow();
+
+            // and - Rent should be returned to redemption_admin
+            const finalAdminBalance = await testHelper.context.banksClient.getBalance(
+                redemptionAdmin.publicKey
+            );
+            expect(finalAdminBalance).toBeGreaterThan(initialAdminBalance);
+        });
     });
 
     describe("Redemption statistics", () => {
@@ -294,8 +344,8 @@ describe("Fulfill redemption request", () => {
 
             // then
             redemptionOffer = await program.getRedemptionOffer(onycMint, usdcMint);
-            // Requested redemptions is a running sum of all created requests, so it should remain unchanged
-            expect(redemptionOffer.requestedRedemptions.toString()).toBe("1000000000");
+            // Requested redemptions should be decremented after fulfillment
+            expect(redemptionOffer.requestedRedemptions.toString()).toBe("0");
         });
 
         test("Should accumulate executed_redemptions from multiple fulfillments", async () => {

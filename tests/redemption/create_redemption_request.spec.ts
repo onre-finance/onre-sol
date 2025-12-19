@@ -339,4 +339,37 @@ describe("Create redemption request", () => {
         expect(redemptionRequest.redeemer.toString()).toBe(randomUser.publicKey.toString());
         expect(redemptionRequest.amount.toString()).toBe(REDEMPTION_AMOUNT.toString());
     });
+
+    test("Same redeemer can create multiple requests", async () => {
+        // given
+        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+
+        // when - Same redeemer creates multiple requests
+        await program.createRedemptionRequest({
+            redemptionOffer: redemptionOfferPda,
+            redeemer,
+            amount: REDEMPTION_AMOUNT,
+            expiresAt
+        });
+
+        await program.createRedemptionRequest({
+            redemptionOffer: redemptionOfferPda,
+            redeemer,  // Same redeemer
+            amount: REDEMPTION_AMOUNT * 2,
+            expiresAt
+        });
+
+        // then - Both requests should exist with different counters
+        const request1 = await program.getRedemptionRequest(redemptionOfferPda, 0);
+        const request2 = await program.getRedemptionRequest(redemptionOfferPda, 1);
+
+        expect(request1.redeemer.toString()).toBe(redeemer.publicKey.toString());
+        expect(request2.redeemer.toString()).toBe(redeemer.publicKey.toString());
+        expect(request1.amount.toString()).toBe(REDEMPTION_AMOUNT.toString());
+        expect(request2.amount.toString()).toBe((REDEMPTION_AMOUNT * 2).toString());
+
+        // Counter should be at 2
+        const redemptionOffer = await program.getRedemptionOffer(onycMint, usdcMint);
+        expect(redemptionOffer.counter.toString()).toBe("2");
+    });
 });

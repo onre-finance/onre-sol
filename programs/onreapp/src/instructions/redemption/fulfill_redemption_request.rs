@@ -268,6 +268,11 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
         .checked_add(token_in_amount as u128)
         .ok_or(FulfillRedemptionRequestErrorCode::ArithmeticOverflow)?;
 
+    redemption_offer.requested_redemptions = redemption_offer
+        .requested_redemptions
+        .checked_sub(token_in_amount as u128)
+        .ok_or(FulfillRedemptionRequestErrorCode::ArithmeticUnderflow)?;
+
     msg!(
         "Redemption request fulfilled: request={}, token_in={} (net={}, fee={}), token_out={}, price={}, redeemer={}",
         ctx.accounts.redemption_request.key(),
@@ -330,4 +335,8 @@ pub enum FulfillRedemptionRequestErrorCode {
     /// Arithmetic overflow occurred
     #[msg("Arithmetic overflow")]
     ArithmeticOverflow,
+
+    /// Arithmetic underflow occurred
+    #[msg("Arithmetic underflow")]
+    ArithmeticUnderflow,
 }
