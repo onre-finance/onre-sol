@@ -118,7 +118,6 @@ pub struct CreateRedemptionRequest<'info> {
 /// # Arguments
 /// * `ctx` - The instruction context containing validated accounts
 /// * `amount` - Amount of token_in tokens to redeem
-/// * `expires_at` - Unix timestamp when the request expires
 ///
 /// # Returns
 /// * `Ok(())` - If the redemption request is successfully created
@@ -138,12 +137,7 @@ pub struct CreateRedemptionRequest<'info> {
 pub fn create_redemption_request(
     ctx: Context<CreateRedemptionRequest>,
     amount: u64,
-    expires_at: u64,
 ) -> Result<()> {
-    require!(
-        expires_at > Clock::get()?.unix_timestamp as u64,
-        CreateRedemptionRequestErrorCode::InvalidExpiration
-    );
 
     // Capture counter before incrementing (used for PDA derivation)
     let request_id = ctx.accounts.redemption_offer.counter;
@@ -211,10 +205,6 @@ pub enum CreateRedemptionRequestErrorCode {
     /// Arithmetic overflow occurred
     #[msg("Arithmetic overflow")]
     ArithmeticOverflow,
-
-    /// Expiration is in the past
-    #[msg("Invalid expiration: must be in the future")]
-    InvalidExpiration,
 
     /// Invalid mint (doesn't match redemption offer's token_in_mint)
     #[msg("Invalid mint: provided mint doesn't match redemption offer's token_in_mint")]

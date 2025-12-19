@@ -677,7 +677,6 @@ export class OnreProgram {
         redemptionOffer: PublicKey;
         redeemer: Keypair;
         amount: number;
-        expiresAt: number;
         tokenProgram?: PublicKey;
     }) {
         const redemptionOffer = await this.program.account.redemptionOffer.fetch(params.redemptionOffer);
@@ -699,8 +698,7 @@ export class OnreProgram {
 
         const tx = this.program.methods
             .createRedemptionRequest(
-                new BN(params.amount),
-                new BN(params.expiresAt)
+                new BN(params.amount)
             )
             .accounts({
                 redemptionOffer: params.redemptionOffer,

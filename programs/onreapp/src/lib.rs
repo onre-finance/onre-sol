@@ -568,13 +568,11 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `CreateRedemptionRequest`.
     /// - `amount`: Amount of token_in tokens to redeem.
-    /// - `expires_at`: Unix timestamp when the request expires.
     pub fn create_redemption_request(
         ctx: Context<CreateRedemptionRequest>,
         amount: u64,
-        expires_at: u64,
     ) -> Result<()> {
-        redemption::create_redemption_request(ctx, amount, expires_at)
+        redemption::create_redemption_request(ctx, amount)
     }
 
     /// Fulfills a redemption request.
