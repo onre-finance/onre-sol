@@ -68,127 +68,103 @@ describe("Cancel redemption request", () => {
 
     test("Should cancel redemption request as redeemer", async () => {
         // given
-        const nonce = 0;
         const expiresAt = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
 
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce
+            expiresAt
         });
 
         const redemptionRequestPda = program.getRedemptionRequestPda(
             redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
+            0
         );
 
         // when
         await program.cancelRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redemptionRequest: redemptionRequestPda,
-            signer: redeemer
+            signer: redeemer,
+            redemptionAdmin: redemptionAdmin.publicKey
         });
 
-        // then
-        const redemptionRequest = await program.getRedemptionRequest(
-            redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
-        );
-
-        expect(redemptionRequest.status).toBe(2); // Cancelled
+        // then - account should be closed
+        await expect(
+            program.getRedemptionRequest(redemptionOfferPda, 0)
+        ).rejects.toThrow();
     });
 
     test("Should cancel redemption request as redemption_admin", async () => {
         // given
-        const nonce = 0;
         const expiresAt = Math.floor(Date.now() / 1000) + 3600;
 
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce
+            expiresAt
         });
 
         const redemptionRequestPda = program.getRedemptionRequestPda(
             redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
+            0
         );
 
         // when
         await program.cancelRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redemptionRequest: redemptionRequestPda,
-            signer: redemptionAdmin
+            signer: redemptionAdmin,
+            redemptionAdmin: redemptionAdmin.publicKey
         });
 
-        // then
-        const redemptionRequest = await program.getRedemptionRequest(
-            redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
-        );
-
-        expect(redemptionRequest.status).toBe(2); // Cancelled
+        // then - account should be closed
+        await expect(
+            program.getRedemptionRequest(redemptionOfferPda, 0)
+        ).rejects.toThrow();
     });
 
     test("Should cancel redemption request as boss", async () => {
         // given
-        const nonce = 0;
         const expiresAt = Math.floor(Date.now() / 1000) + 3600;
 
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce
+            expiresAt
         });
 
         const redemptionRequestPda = program.getRedemptionRequestPda(
             redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
+            0
         );
 
         // when
         await program.cancelRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redemptionRequest: redemptionRequestPda,
-            signer: boss
+            signer: boss,
+            redemptionAdmin: redemptionAdmin.publicKey
         });
 
-        // then
-        const redemptionRequest = await program.getRedemptionRequest(
-            redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
-        );
-
-        expect(redemptionRequest.status).toBe(2); // Cancelled
+        // then - account should be closed
+        await expect(
+            program.getRedemptionRequest(redemptionOfferPda, 0)
+        ).rejects.toThrow();
     });
 
     test("Should subtract amount from requested_redemptions", async () => {
         // given
-        const nonce = 0;
         const expiresAt = Math.floor(Date.now() / 1000) + 3600;
 
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce
+            expiresAt
         });
 
         // Verify requested_redemptions was incremented
@@ -197,15 +173,15 @@ describe("Cancel redemption request", () => {
 
         const redemptionRequestPda = program.getRedemptionRequestPda(
             redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
+            0
         );
 
         // when
         await program.cancelRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redemptionRequest: redemptionRequestPda,
-            signer: redeemer
+            signer: redeemer,
+            redemptionAdmin: redemptionAdmin.publicKey
         });
 
         // then
@@ -219,23 +195,19 @@ describe("Cancel redemption request", () => {
         const redeemer2 = testHelper.createUserAccount();
         testHelper.createTokenAccount(onycMint, redeemer2.publicKey, BigInt(10_000_000_000)); // 10 ONyc
 
-        // Create two requests
+        // Create two requests (each gets a unique counter)
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce: 0
+            expiresAt
         });
 
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer: redeemer2,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT * 2,
-            expiresAt,
-            nonce: 0
+            expiresAt
         });
 
         // Verify total requested_redemptions
@@ -244,17 +216,17 @@ describe("Cancel redemption request", () => {
             (REDEMPTION_AMOUNT * 3).toString()
         );
 
-        // when - Cancel first request
+        // when - Cancel first request (counter 0)
         const redemptionRequestPda1 = program.getRedemptionRequestPda(
             redemptionOfferPda,
-            redeemer.publicKey,
             0
         );
 
         await program.cancelRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redemptionRequest: redemptionRequestPda1,
-            signer: redeemer
+            signer: redeemer,
+            redemptionAdmin: redemptionAdmin.publicKey
         });
 
         // then - Should be decremented by REDEMPTION_AMOUNT
@@ -263,17 +235,17 @@ describe("Cancel redemption request", () => {
             (REDEMPTION_AMOUNT * 2).toString()
         );
 
-        // when - Cancel second request
+        // when - Cancel second request (counter 1)
         const redemptionRequestPda2 = program.getRedemptionRequestPda(
             redemptionOfferPda,
-            redeemer2.publicKey,
-            0
+            1
         );
 
         await program.cancelRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redemptionRequest: redemptionRequestPda2,
-            signer: redeemer2
+            signer: redeemer2,
+            redemptionAdmin: redemptionAdmin.publicKey
         });
 
         // then - Should be back to 0
@@ -281,64 +253,62 @@ describe("Cancel redemption request", () => {
         expect(redemptionOffer.requestedRedemptions.toString()).toBe("0");
     });
 
-    test("Should NOT close the redemption request account", async () => {
+    test("Should close the redemption request account and return rent to redemption_admin", async () => {
         // given
-        const nonce = 0;
         const expiresAt = Math.floor(Date.now() / 1000) + 3600;
 
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce
+            expiresAt
         });
 
         const redemptionRequestPda = program.getRedemptionRequestPda(
             redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
+            0
+        );
+
+        // Get initial redemption_admin balance
+        const initialAdminBalance = await testHelper.context.banksClient.getBalance(
+            redemptionAdmin.publicKey
         );
 
         // when
         await program.cancelRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redemptionRequest: redemptionRequestPda,
-            signer: redeemer
+            signer: redeemer,
+            redemptionAdmin: redemptionAdmin.publicKey
         });
 
-        // then - Account should still exist and be fetchable
-        const redemptionRequest = await program.getRedemptionRequest(
-            redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
-        );
+        // then - Account should be closed
+        await expect(
+            program.getRedemptionRequest(redemptionOfferPda, 0)
+        ).rejects.toThrow();
 
-        expect(redemptionRequest).toBeDefined();
-        expect(redemptionRequest.status).toBe(2); // Cancelled
-        expect(redemptionRequest.amount.toString()).toBe(REDEMPTION_AMOUNT.toString());
+        // and - Rent should be returned to redemption_admin
+        const finalAdminBalance = await testHelper.context.banksClient.getBalance(
+            redemptionAdmin.publicKey
+        );
+        expect(finalAdminBalance).toBeGreaterThan(initialAdminBalance);
     });
 
     test("Should reject when signer is unauthorized", async () => {
         // given
-        const nonce = 0;
         const expiresAt = Math.floor(Date.now() / 1000) + 3600;
         const unauthorizedUser = testHelper.createUserAccount();
 
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce
+            expiresAt
         });
 
         const redemptionRequestPda = program.getRedemptionRequestPda(
             redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
+            0
         );
 
         // when/then
@@ -346,121 +316,35 @@ describe("Cancel redemption request", () => {
             program.cancelRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
-                signer: unauthorizedUser
+                signer: unauthorizedUser,
+                redemptionAdmin: redemptionAdmin.publicKey
             })
         ).rejects.toThrow();
-    });
-
-    test("Should reject when request is already cancelled", async () => {
-        // given
-        const nonce = 0;
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
-
-        await program.createRedemptionRequest({
-            redemptionOffer: redemptionOfferPda,
-            redeemer,
-            redemptionAdmin,
-            amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce
-        });
-
-        const redemptionRequestPda = program.getRedemptionRequestPda(
-            redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
-        );
-
-        // First cancellation succeeds
-        await program.cancelRedemptionRequest({
-            redemptionOffer: redemptionOfferPda,
-            redemptionRequest: redemptionRequestPda,
-            signer: redeemer
-        });
-
-        // when/then - Second cancellation should fail
-        await expect(
-            program.cancelRedemptionRequest({
-                redemptionOffer: redemptionOfferPda,
-                redemptionRequest: redemptionRequestPda,
-                signer: redeemer
-            })
-        ).rejects.toThrow();
-    });
-
-    test("Should preserve all other redemption request fields", async () => {
-        // given
-        const nonce = 0;
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
-
-        await program.createRedemptionRequest({
-            redemptionOffer: redemptionOfferPda,
-            redeemer,
-            redemptionAdmin,
-            amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce
-        });
-
-        const redemptionRequestPda = program.getRedemptionRequestPda(
-            redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
-        );
-
-        // Get original values
-        const originalRequest = await program.getRedemptionRequest(
-            redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
-        );
-
-        // when
-        await program.cancelRedemptionRequest({
-            redemptionOffer: redemptionOfferPda,
-            redemptionRequest: redemptionRequestPda,
-            signer: redeemer
-        });
-
-        // then
-        const cancelledRequest = await program.getRedemptionRequest(
-            redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
-        );
-
-        expect(cancelledRequest.offer.toString()).toBe(originalRequest.offer.toString());
-        expect(cancelledRequest.redeemer.toString()).toBe(originalRequest.redeemer.toString());
-        expect(cancelledRequest.amount.toString()).toBe(originalRequest.amount.toString());
-        expect(cancelledRequest.status).toBe(2); // Only status should change
     });
 
     test("Should allow cancelling one request while others remain active", async () => {
         // given
         const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+        const redeemer2 = testHelper.createUserAccount();
+        testHelper.createTokenAccount(onycMint, redeemer2.publicKey, BigInt(10_000_000_000));
 
-        // Create two requests for the same user (different nonces)
+        // Create two requests
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce: 0
+            expiresAt
         });
 
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
-            redeemer,
-            redemptionAdmin,
+            redeemer: redeemer2,
             amount: REDEMPTION_AMOUNT * 2,
-            expiresAt: expiresAt + 1000,
-            nonce: 1
+            expiresAt
         });
 
         const redemptionRequestPda1 = program.getRedemptionRequestPda(
             redemptionOfferPda,
-            redeemer.publicKey,
             0
         );
 
@@ -468,23 +352,21 @@ describe("Cancel redemption request", () => {
         await program.cancelRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redemptionRequest: redemptionRequestPda1,
-            signer: redeemer
+            signer: redeemer,
+            redemptionAdmin: redemptionAdmin.publicKey
         });
 
-        // then
-        const request1 = await program.getRedemptionRequest(
-            redemptionOfferPda,
-            redeemer.publicKey,
-            0
-        );
+        // then - First request should be closed
+        await expect(
+            program.getRedemptionRequest(redemptionOfferPda, 0)
+        ).rejects.toThrow();
+
+        // Second request should still exist
         const request2 = await program.getRedemptionRequest(
             redemptionOfferPda,
-            redeemer.publicKey,
             1
         );
-
-        expect(request1.status).toBe(2); // Cancelled
-        expect(request2.status).toBe(0); // Still pending
+        expect(request2.amount.toString()).toBe((REDEMPTION_AMOUNT * 2).toString());
 
         // Verify requested_redemptions only decremented by first amount
         const redemptionOffer = await program.getRedemptionOffer(onycMint, usdcMint);
@@ -495,7 +377,6 @@ describe("Cancel redemption request", () => {
 
     test("Should return locked tokens to redeemer", async () => {
         // given
-        const nonce = 0;
         const expiresAt = Math.floor(Date.now() / 1000) + 3600;
         const redeemerTokenAccountAddress = getAssociatedTokenAddressSync(onycMint, redeemer.publicKey);
 
@@ -515,10 +396,8 @@ describe("Cancel redemption request", () => {
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce
+            expiresAt
         });
 
         // Verify tokens were locked
@@ -530,15 +409,15 @@ describe("Cancel redemption request", () => {
 
         const redemptionRequestPda = program.getRedemptionRequestPda(
             redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
+            0
         );
 
         // when - Cancel the request
         await program.cancelRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redemptionRequest: redemptionRequestPda,
-            signer: redeemer
+            signer: redeemer,
+            redemptionAdmin: redemptionAdmin.publicKey
         });
 
         // then - Tokens should be returned
@@ -552,23 +431,19 @@ describe("Cancel redemption request", () => {
 
     test("Should reject when kill switch is activated", async () => {
         // given
-        const nonce = 0;
         const expiresAt = Math.floor(Date.now() / 1000) + 3600;
 
         // Create redemption request first
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce
+            expiresAt
         });
 
         const redemptionRequestPda = program.getRedemptionRequestPda(
             redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
+            0
         );
 
         // Activate kill switch
@@ -579,30 +454,27 @@ describe("Cancel redemption request", () => {
             program.cancelRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
-                signer: redeemer
+                signer: redeemer,
+                redemptionAdmin: redemptionAdmin.publicKey
             })
         ).rejects.toThrow("Operation not allowed: program is in kill switch state");
     });
 
     test("Should succeed after kill switch is deactivated", async () => {
         // given
-        const nonce = 0;
         const expiresAt = Math.floor(Date.now() / 1000) + 3600;
 
         // Create redemption request first
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce
+            expiresAt
         });
 
         const redemptionRequestPda = program.getRedemptionRequestPda(
             redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
+            0
         );
 
         // Activate then deactivate kill switch
@@ -613,16 +485,13 @@ describe("Cancel redemption request", () => {
         await program.cancelRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redemptionRequest: redemptionRequestPda,
-            signer: redeemer
+            signer: redeemer,
+            redemptionAdmin: redemptionAdmin.publicKey
         });
 
-        // then
-        const redemptionRequest = await program.getRedemptionRequest(
-            redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
-        );
-
-        expect(redemptionRequest.status).toBe(2); // Cancelled
+        // then - account should be closed
+        await expect(
+            program.getRedemptionRequest(redemptionOfferPda, 0)
+        ).rejects.toThrow();
     });
 });

@@ -1,7 +1,5 @@
 use crate::constants::seeds;
-use crate::instructions::redemption::{
-    RedemptionOffer, RedemptionRequest, RedemptionRequestStatus, UserNonceAccount,
-};
+use crate::instructions::redemption::{RedemptionOffer, RedemptionRequest};
 use crate::state::State;
 use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
@@ -21,20 +19,18 @@ pub struct RedemptionRequestCreatedEvent {
     pub redeemer: Pubkey,
     /// Amount of token_in tokens requested for redemption
     pub amount: u64,
-    /// Nonce used for this request
-    pub used_nonce: u64,
-    /// New nonce, which should be used for the next request
-    pub new_nonce: u64,
+    /// Unique identifier for this request (counter value used for PDA derivation)
+    pub id: u64,
 }
 
 /// Account structure for creating a redemption request
 ///
 /// This struct defines the accounts required to create a redemption request
 /// where users can request to redeem token_out tokens from standard Offer for token_in tokens.
+/// Anyone can create a redemption request by paying for the PDA rent.
 #[derive(Accounts)]
-#[instruction(amount: u64, expires_at: u64, nonce: u64)]
 pub struct CreateRedemptionRequest<'info> {
-    /// Program state account containing redemption_admin authorization
+    /// Program state account for kill switch validation
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
@@ -47,6 +43,7 @@ pub struct CreateRedemptionRequest<'info> {
     pub redemption_offer: Account<'info, RedemptionOffer>,
 
     /// The redemption request account
+    /// PDA derived from redemption_offer and its counter value
     #[account(
         init,
         payer = redeemer,
@@ -54,38 +51,15 @@ pub struct CreateRedemptionRequest<'info> {
         seeds = [
             seeds::REDEMPTION_REQUEST,
             redemption_offer.key().as_ref(),
-            redeemer.key().as_ref(),
-            nonce.to_le_bytes().as_ref()
+            redemption_offer.counter.to_le_bytes().as_ref()
         ],
         bump
     )]
     pub redemption_request: Account<'info, RedemptionRequest>,
 
-    /// User nonce account for preventing replay attacks
-    ///
-    /// This account tracks the user's current nonce to ensure each request is unique.
-    #[account(
-        init_if_needed,
-        payer = redeemer,
-        space = 8 + UserNonceAccount::INIT_SPACE,
-        seeds = [
-            seeds::NONCE_ACCOUNT,
-            redeemer.key().as_ref()
-        ],
-        bump
-    )]
-    pub user_nonce_account: Account<'info, UserNonceAccount>,
-
     /// User requesting the redemption (pays for account creation)
     #[account(mut)]
     pub redeemer: Signer<'info>,
-
-    /// Redemption admin must sign to authorize the request
-    #[account(
-        constraint = redemption_admin.key() == state.redemption_admin
-            @ CreateRedemptionRequestErrorCode::Unauthorized
-    )]
-    pub redemption_admin: Signer<'info>,
 
     /// Program-derived authority that controls redemption vault token accounts
     ///
@@ -138,31 +112,26 @@ pub struct CreateRedemptionRequest<'info> {
 /// Creates a redemption request
 ///
 /// This instruction creates a new redemption request that allows users to request
-/// redemption of input tokens for output tokens at a future time. The request must
-/// be authorized by the redemption admin and uses a nonce to prevent replay attacks.
+/// redemption of input tokens for output tokens at a future time. Anyone can create
+/// a redemption request by paying for the PDA rent.
 ///
 /// # Arguments
 /// * `ctx` - The instruction context containing validated accounts
 /// * `amount` - Amount of token_in tokens to redeem
 /// * `expires_at` - Unix timestamp when the request expires
-/// * `nonce` - User's nonce for replay attack prevention (must match UserNonceAccount)
 ///
 /// # Returns
 /// * `Ok(())` - If the redemption request is successfully created
-/// * `Err(CreateRedemptionRequestErrorCode::Unauthorized)` - If redemption_admin is not authorized
-/// * `Err(CreateRedemptionRequestErrorCode::InvalidNonce)` - If nonce doesn't match user's current nonce
 ///
 /// # Access Control
-/// - Requires both redeemer and redemption_admin signatures
-/// - Nonce must match the user's current nonce in UserNonceAccount
+/// - Anyone can create a redemption request (no admin signature required)
+/// - Redeemer pays for the redemption request PDA rent
 ///
 /// # Effects
-/// - Creates new redemption request account
+/// - Creates new redemption request account (PDA derived from offer and counter)
 /// - Transfers token_in tokens from redeemer to redemption vault (locking them)
-/// - Increments user's nonce in UserNonceAccount
+/// - Increments counter on RedemptionOffer for next request
 /// - Updates requested_redemptions in RedemptionOffer
-/// - Initializes UserNonceAccount if needed (paid by redeemer)
-/// - Initializes vault token account if needed (paid by redeemer)
 ///
 /// # Events
 /// * `RedemptionRequestCreatedEvent` - Emitted with redemption request details
@@ -170,18 +139,14 @@ pub fn create_redemption_request(
     ctx: Context<CreateRedemptionRequest>,
     amount: u64,
     expires_at: u64,
-    nonce: u64,
 ) -> Result<()> {
-    // Verify nonce matches user's current nonce
-    require_eq!(
-        ctx.accounts.user_nonce_account.nonce,
-        nonce,
-        CreateRedemptionRequestErrorCode::InvalidNonce
-    );
     require!(
         expires_at > Clock::get()?.unix_timestamp as u64,
         CreateRedemptionRequestErrorCode::InvalidExpiration
     );
+
+    // Capture counter before incrementing (used for PDA derivation)
+    let request_id = ctx.accounts.redemption_offer.counter;
 
     // Transfer tokens from redeemer to redemption vault (locking them)
     transfer_tokens(
@@ -199,7 +164,6 @@ pub fn create_redemption_request(
     redemption_request.offer = ctx.accounts.redemption_offer.key();
     redemption_request.redeemer = ctx.accounts.redeemer.key();
     redemption_request.amount = amount;
-    redemption_request.status = RedemptionRequestStatus::Pending.as_u8();
     redemption_request.bump = ctx.bumps.redemption_request;
 
     // Update requested redemptions in the offer
@@ -210,19 +174,20 @@ pub fn create_redemption_request(
         .checked_add(amount as u128)
         .ok_or(CreateRedemptionRequestErrorCode::ArithmeticOverflow)?;
 
-    // Increment user's nonce
-    ctx.accounts.user_nonce_account.nonce = ctx
+    // Increment counter for next request
+    ctx.accounts.redemption_offer.counter = ctx
         .accounts
-        .user_nonce_account
-        .nonce
+        .redemption_offer
+        .counter
         .checked_add(1)
         .ok_or(CreateRedemptionRequestErrorCode::ArithmeticOverflow)?;
 
     msg!(
-        "Redemption request created at: {} for amount: {} by redeemer: {}",
+        "Redemption request created at: {} for amount: {} by redeemer: {} (id: {})",
         ctx.accounts.redemption_request.key(),
         amount,
-        ctx.accounts.redeemer.key()
+        ctx.accounts.redeemer.key(),
+        request_id
     );
 
     emit!(RedemptionRequestCreatedEvent {
@@ -230,8 +195,7 @@ pub fn create_redemption_request(
         redemption_offer_pda: ctx.accounts.redemption_offer.key(),
         redeemer: ctx.accounts.redeemer.key(),
         amount,
-        used_nonce: nonce,
-        new_nonce: ctx.accounts.user_nonce_account.nonce,
+        id: request_id,
     });
 
     Ok(())
@@ -240,17 +204,9 @@ pub fn create_redemption_request(
 /// Error codes for redemption request creation operations
 #[error_code]
 pub enum CreateRedemptionRequestErrorCode {
-    /// Caller is not authorized (redemption_admin mismatch)
-    #[msg("Unauthorized: redemption_admin signature required")]
-    Unauthorized,
-
     /// Redemption system is paused via kill switch
     #[msg("Redemption system is paused: kill switch activated")]
     KillSwitchActivated,
-
-    /// Nonce doesn't match user's current nonce
-    #[msg("Invalid nonce: provided nonce doesn't match user's current nonce")]
-    InvalidNonce,
 
     /// Arithmetic overflow occurred
     #[msg("Arithmetic overflow")]

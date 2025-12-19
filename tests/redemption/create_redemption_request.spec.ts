@@ -65,94 +65,73 @@ describe("Create redemption request", () => {
 
     test("Create redemption request should succeed with valid params", async () => {
         // given
-        const nonce = 0;
         const expiresAt = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
 
         // when
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce
+            expiresAt
         });
 
-        // then
+        // then - counter starts at 0
         const redemptionRequest = await program.getRedemptionRequest(
             redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
+            0
         );
 
         expect(redemptionRequest.offer.toString()).toBe(redemptionOfferPda.toString());
         expect(redemptionRequest.redeemer.toString()).toBe(redeemer.publicKey.toString());
         expect(redemptionRequest.amount.toString()).toBe(REDEMPTION_AMOUNT.toString());
-        expect(redemptionRequest.status).toBe(0); // Pending
     });
 
-    test("Should initialize UserNonceAccount on first request", async () => {
-        // given
-        const nonce = 0;
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
-
-        // when
-        await program.createRedemptionRequest({
-            redemptionOffer: redemptionOfferPda,
-            redeemer,
-            redemptionAdmin,
-            amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce
-        });
-
-        // then
-        const userNonceAccount = await program.getUserNonceAccount(redeemer.publicKey);
-        expect(userNonceAccount.nonce.toString()).toBe("1"); // Should be incremented to 1
-    });
-
-    test("Should increment nonce after each request", async () => {
+    test("Should increment counter after each request", async () => {
         // given
         const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+
+        // Check initial counter
+        const initialOffer = await program.getRedemptionOffer(onycMint, usdcMint);
+        expect(initialOffer.counter.toString()).toBe("0");
 
         // First request
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce: 0
+            expiresAt
         });
 
-        // Second request
+        // Check counter after first request
+        const offerAfterFirst = await program.getRedemptionOffer(onycMint, usdcMint);
+        expect(offerAfterFirst.counter.toString()).toBe("1");
+
+        // Second request (different redeemer to avoid same tx issue)
+        const redeemer2 = testHelper.createUserAccount();
+        testHelper.createTokenAccount(onycMint, redeemer2.publicKey, BigInt(10_000_000_000));
+
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
-            redeemer,
-            redemptionAdmin,
+            redeemer: redeemer2,
             amount: REDEMPTION_AMOUNT,
-            expiresAt: expiresAt + 1000,
-            nonce: 1
+            expiresAt
         });
 
         // then
-        const userNonceAccount = await program.getUserNonceAccount(redeemer.publicKey);
-        expect(userNonceAccount.nonce.toString()).toBe("2");
+        const offerAfterSecond = await program.getRedemptionOffer(onycMint, usdcMint);
+        expect(offerAfterSecond.counter.toString()).toBe("2");
     });
 
     test("Should update requested_redemptions in RedemptionOffer", async () => {
         // given
-        const nonce = 0;
         const expiresAt = Math.floor(Date.now() / 1000) + 3600;
 
         // when
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce
+            expiresAt
         });
 
         // then
@@ -170,20 +149,16 @@ describe("Create redemption request", () => {
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce: 0
+            expiresAt
         });
 
         // Second redeemer makes a request
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer: redeemer2,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT * 2,
-            expiresAt,
-            nonce: 0
+            expiresAt
         });
 
         // then
@@ -191,41 +166,6 @@ describe("Create redemption request", () => {
         expect(redemptionOffer.requestedRedemptions.toString()).toBe(
             (REDEMPTION_AMOUNT * 3).toString()
         );
-    });
-
-    test("Should reject when nonce doesn't match", async () => {
-        // given
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
-
-        // when/then - Try with wrong nonce
-        await expect(
-            program.createRedemptionRequest({
-                redemptionOffer: redemptionOfferPda,
-                redeemer,
-                redemptionAdmin,
-                amount: REDEMPTION_AMOUNT,
-                expiresAt,
-                nonce: 5 // Wrong nonce, should be 0
-            })
-        ).rejects.toThrow();
-    });
-
-    test("Should reject when redemption_admin is not authorized", async () => {
-        // given
-        const unauthorizedAdmin = testHelper.createUserAccount();
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
-
-        // when/then
-        await expect(
-            program.createRedemptionRequest({
-                redemptionOffer: redemptionOfferPda,
-                redeemer,
-                redemptionAdmin: unauthorizedAdmin,
-                amount: REDEMPTION_AMOUNT,
-                expiresAt,
-                nonce: 0
-            })
-        ).rejects.toThrow();
     });
 
     test("Should reject when expires_at is in the past", async () => {
@@ -237,115 +177,40 @@ describe("Create redemption request", () => {
             program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
                 amount: REDEMPTION_AMOUNT,
-                expiresAt,
-                nonce: 0
+                expiresAt
             })
         ).rejects.toThrow();
     });
 
-    test("Should prevent replay attacks with same nonce", async () => {
+    test("Should create unique PDAs for different counters", async () => {
         // given
         const expiresAt = Math.floor(Date.now() / 1000) + 3600;
-
-        // First request succeeds
-        await program.createRedemptionRequest({
-            redemptionOffer: redemptionOfferPda,
-            redeemer,
-            redemptionAdmin,
-            amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce: 0
-        });
-
-        // when/then - Try to reuse same nonce (nonce is now 1, not 0)
-        await expect(
-            program.createRedemptionRequest({
-                redemptionOffer: redemptionOfferPda,
-                redeemer,
-                redemptionAdmin,
-                amount: REDEMPTION_AMOUNT,
-                expiresAt: expiresAt + 1000,
-                nonce: 0
-            })
-        ).rejects.toThrow();
-    });
-
-    test("Should allow multiple users to create requests with same nonce value", async () => {
-        // given
         const redeemer2 = testHelper.createUserAccount();
-        testHelper.createTokenAccount(onycMint, redeemer2.publicKey, BigInt(10_000_000_000)); // 10 ONyc
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
-        const nonce = 0;
+        testHelper.createTokenAccount(onycMint, redeemer2.publicKey, BigInt(10_000_000_000));
 
-        // when - Both users create requests with nonce 0 (their first request)
+        // when - Create multiple requests (each gets unique counter)
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce
+            expiresAt
         });
 
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer: redeemer2,
-            redemptionAdmin,
-            amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce
-        });
-
-        // then - Both requests should exist
-        const request1 = await program.getRedemptionRequest(
-            redemptionOfferPda,
-            redeemer.publicKey,
-            nonce
-        );
-        const request2 = await program.getRedemptionRequest(
-            redemptionOfferPda,
-            redeemer2.publicKey,
-            nonce
-        );
-
-        expect(request1.redeemer.toString()).toBe(redeemer.publicKey.toString());
-        expect(request2.redeemer.toString()).toBe(redeemer2.publicKey.toString());
-    });
-
-    test("Should create unique PDAs for different nonces", async () => {
-        // given
-        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
-
-        // when - Create multiple requests with different nonces
-        await program.createRedemptionRequest({
-            redemptionOffer: redemptionOfferPda,
-            redeemer,
-            redemptionAdmin,
-            amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce: 0
-        });
-
-        await program.createRedemptionRequest({
-            redemptionOffer: redemptionOfferPda,
-            redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT * 2,
-            expiresAt: expiresAt + 1000,
-            nonce: 1
+            expiresAt
         });
 
         // then - Both requests should exist with different amounts
         const request1 = await program.getRedemptionRequest(
             redemptionOfferPda,
-            redeemer.publicKey,
             0
         );
         const request2 = await program.getRedemptionRequest(
             redemptionOfferPda,
-            redeemer.publicKey,
             1
         );
 
@@ -364,10 +229,8 @@ describe("Create redemption request", () => {
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce: 0
+            expiresAt
         });
 
         // then
@@ -398,10 +261,8 @@ describe("Create redemption request", () => {
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce: 0
+            expiresAt
         });
 
         // then
@@ -424,10 +285,8 @@ describe("Create redemption request", () => {
             program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
                 amount: REDEMPTION_AMOUNT,
-                expiresAt,
-                nonce: 0
+                expiresAt
             })
         ).rejects.toThrow("Redemption system is paused: kill switch activated");
     });
@@ -444,20 +303,40 @@ describe("Create redemption request", () => {
         await program.createRedemptionRequest({
             redemptionOffer: redemptionOfferPda,
             redeemer,
-            redemptionAdmin,
             amount: REDEMPTION_AMOUNT,
-            expiresAt,
-            nonce: 0
+            expiresAt
         });
 
         // then
         const redemptionRequest = await program.getRedemptionRequest(
             redemptionOfferPda,
-            redeemer.publicKey,
             0
         );
 
-        expect(redemptionRequest.status).toBe(0); // Pending
+        expect(redemptionRequest.amount.toString()).toBe(REDEMPTION_AMOUNT.toString());
+    });
+
+    test("Anyone can create a redemption request without admin approval", async () => {
+        // given - a random user with tokens
+        const randomUser = testHelper.createUserAccount();
+        testHelper.createTokenAccount(onycMint, randomUser.publicKey, BigInt(10_000_000_000));
+        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+
+        // when - create request without any admin involvement
+        await program.createRedemptionRequest({
+            redemptionOffer: redemptionOfferPda,
+            redeemer: randomUser,
+            amount: REDEMPTION_AMOUNT,
+            expiresAt
+        });
+
+        // then - request should be created
+        const redemptionRequest = await program.getRedemptionRequest(
+            redemptionOfferPda,
+            0
+        );
+
+        expect(redemptionRequest.redeemer.toString()).toBe(randomUser.publicKey.toString());
         expect(redemptionRequest.amount.toString()).toBe(REDEMPTION_AMOUNT.toString());
     });
 });

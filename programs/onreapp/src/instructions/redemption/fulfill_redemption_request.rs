@@ -1,7 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::redemption::{
     execute_redemption_operations, process_redemption_core, ExecuteRedemptionOpsParams,
-    RedemptionOffer, RedemptionRequest, RedemptionRequestStatus,
+    RedemptionOffer, RedemptionRequest,
 };
 use crate::instructions::Offer;
 use crate::state::State;
@@ -65,10 +65,10 @@ pub struct FulfillRedemptionRequest<'info> {
     pub redemption_offer: Box<Account<'info, RedemptionOffer>>,
 
     /// The redemption request account to fulfill
+    /// Account is closed after fulfillment and rent is returned to redemption_admin
     #[account(
         mut,
-        constraint = redemption_request.status == RedemptionRequestStatus::Pending.as_u8()
-            @ FulfillRedemptionRequestErrorCode::RequestAlreadyProcessed,
+        close = redemption_admin,
         constraint = redemption_request.offer == redemption_offer.key()
             @ FulfillRedemptionRequestErrorCode::OfferMismatch
     )]
@@ -262,9 +262,6 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
         token_out_max_supply: 0, // No max supply cap for redemptions
     })?;
 
-    let redemption_request = &mut ctx.accounts.redemption_request;
-    redemption_request.status = RedemptionRequestStatus::Executed.as_u8();
-
     let redemption_offer = &mut ctx.accounts.redemption_offer;
     redemption_offer.executed_redemptions = redemption_offer
         .executed_redemptions
@@ -309,10 +306,6 @@ pub enum FulfillRedemptionRequestErrorCode {
     /// The program kill switch is activated
     #[msg("Kill switch is activated")]
     KillSwitchActivated,
-
-    /// Redemption request has already been processed
-    #[msg("Redemption request has already been processed")]
-    RequestAlreadyProcessed,
 
     /// Redemption offer mismatch
     #[msg("Redemption offer does not match request")]

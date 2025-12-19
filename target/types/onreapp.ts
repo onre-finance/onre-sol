@@ -410,7 +410,8 @@ export type Onreapp = {
         {
           "name": "redemptionRequest",
           "docs": [
-            "The redemption request account to cancel"
+            "The redemption request account to cancel",
+            "Account is closed after cancellation and rent is returned to redemption_admin"
           ],
           "writable": true
         },
@@ -428,6 +429,13 @@ export type Onreapp = {
           "docs": [
             "The redeemer's account (authority for the token account)"
           ]
+        },
+        {
+          "name": "redemptionAdmin",
+          "docs": [
+            "Redemption admin receives the rent from closing the redemption request"
+          ],
+          "writable": true
         },
         {
           "name": "redemptionVaultAuthority",
@@ -932,15 +940,14 @@ export type Onreapp = {
         "",
         "Delegates to `redemption::create_redemption_request`.",
         "This instruction creates a new redemption request that allows users to request",
-        "redemption of token_in tokens for token_out tokens at a future time. The request must",
-        "be authorized by the redemption admin and uses a nonce to prevent replay attacks.",
+        "redemption of token_in tokens for token_out tokens at a future time. Anyone can",
+        "create a redemption request by paying for the PDA rent.",
         "Emits a `RedemptionRequestCreatedEvent` upon success.",
         "",
         "# Arguments",
         "- `ctx`: Context for `CreateRedemptionRequest`.",
         "- `amount`: Amount of token_in tokens to redeem.",
-        "- `expires_at`: Unix timestamp when the request expires.",
-        "- `nonce`: User's nonce for replay attack prevention (must match UserNonceAccount)."
+        "- `expires_at`: Unix timestamp when the request expires."
       ],
       "discriminator": [
         201,
@@ -956,7 +963,7 @@ export type Onreapp = {
         {
           "name": "state",
           "docs": [
-            "Program state account containing redemption_admin authorization"
+            "Program state account for kill switch validation"
           ],
           "pda": {
             "seeds": [
@@ -983,7 +990,8 @@ export type Onreapp = {
         {
           "name": "redemptionRequest",
           "docs": [
-            "The redemption request account"
+            "The redemption request account",
+            "PDA derived from redemption_offer and its counter value"
           ],
           "writable": true,
           "pda": {
@@ -1017,46 +1025,8 @@ export type Onreapp = {
               },
               {
                 "kind": "account",
-                "path": "redeemer"
-              },
-              {
-                "kind": "arg",
-                "path": "nonce"
-              }
-            ]
-          }
-        },
-        {
-          "name": "userNonceAccount",
-          "docs": [
-            "User nonce account for preventing replay attacks",
-            "",
-            "This account tracks the user's current nonce to ensure each request is unique."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  110,
-                  111,
-                  110,
-                  99,
-                  101,
-                  95,
-                  97,
-                  99,
-                  99,
-                  111,
-                  117,
-                  110,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "redeemer"
+                "path": "redemption_offer.counter",
+                "account": "redemptionOffer"
               }
             ]
           }
@@ -1067,13 +1037,6 @@ export type Onreapp = {
             "User requesting the redemption (pays for account creation)"
           ],
           "writable": true,
-          "signer": true
-        },
-        {
-          "name": "redemptionAdmin",
-          "docs": [
-            "Redemption admin must sign to authorize the request"
-          ],
           "signer": true
         },
         {
@@ -1286,10 +1249,6 @@ export type Onreapp = {
         {
           "name": "expiresAt",
           "type": "u64"
-        },
-        {
-          "name": "nonce",
-          "type": "u64"
         }
       ]
     },
@@ -1474,7 +1433,8 @@ export type Onreapp = {
         {
           "name": "redemptionRequest",
           "docs": [
-            "The redemption request account to fulfill"
+            "The redemption request account to fulfill",
+            "Account is closed after fulfillment and rent is returned to redemption_admin"
           ],
           "writable": true
         },
@@ -6472,19 +6432,6 @@ export type Onreapp = {
         182,
         177
       ]
-    },
-    {
-      "name": "userNonceAccount",
-      "discriminator": [
-        199,
-        159,
-        144,
-        48,
-        120,
-        187,
-        62,
-        2
-      ]
     }
   ],
   "events": [
@@ -6973,18 +6920,53 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "mathOverflow",
-      "msg": "Math overflow"
+      "name": "expired",
+      "msg": "The approval message has expired."
     },
     {
       "code": 6001,
-      "name": "maxSupplyExceeded",
-      "msg": "Minting would exceed maximum supply cap"
+      "name": "wrongProgram",
+      "msg": "The approval message is for the wrong program."
     },
     {
       "code": 6002,
-      "name": "transferFeeNotSupported",
-      "msg": "Token-2022 with transfer fees not supported"
+      "name": "wrongUser",
+      "msg": "The approval message is for the wrong user."
+    },
+    {
+      "code": 6003,
+      "name": "missingEd25519Ix",
+      "msg": "Missing Ed25519 instruction."
+    },
+    {
+      "code": 6004,
+      "name": "wrongIxProgram",
+      "msg": "The instruction is for the wrong program."
+    },
+    {
+      "code": 6005,
+      "name": "malformedEd25519Ix",
+      "msg": "Malformed Ed25519 instruction."
+    },
+    {
+      "code": 6006,
+      "name": "multipleSigs",
+      "msg": "Multiple signatures found in Ed25519 instruction."
+    },
+    {
+      "code": 6007,
+      "name": "wrongAuthority",
+      "msg": "The authority public key does not match."
+    },
+    {
+      "code": 6008,
+      "name": "msgMismatch",
+      "msg": "The message in the Ed25519 instruction does not match the approval message."
+    },
+    {
+      "code": 6009,
+      "name": "msgDeserialize",
+      "msg": "Failed to deserialize the approval message."
     }
   ],
   "types": [
@@ -8279,6 +8261,14 @@ export type Onreapp = {
             "type": "u16"
           },
           {
+            "name": "counter",
+            "docs": [
+              "Counter for sequential redemption request numbering",
+              "Increments with each new redemption request created"
+            ],
+            "type": "u64"
+          },
+          {
             "name": "bump",
             "docs": [
               "PDA bump seed for account derivation"
@@ -8293,7 +8283,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                117
+                109
               ]
             }
           }
@@ -8416,14 +8406,6 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "status",
-            "docs": [
-              "Status of the redemption request",
-              "0: Pending, 1: Executed, 2: Cancelled"
-            ],
-            "type": "u8"
-          },
-          {
             "name": "bump",
             "docs": [
               "PDA bump seed for account derivation"
@@ -8438,7 +8420,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                126
+                127
               ]
             }
           }
@@ -8532,16 +8514,9 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "usedNonce",
+            "name": "id",
             "docs": [
-              "Nonce used for this request"
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "newNonce",
-            "docs": [
-              "New nonce, which should be used for the next request"
+              "Unique identifier for this request (counter value used for PDA derivation)"
             ],
             "type": "u64"
           }
@@ -8802,23 +8777,6 @@ export type Onreapp = {
               "The boss account that initiated the closure and received the rent"
             ],
             "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "userNonceAccount",
-      "docs": [
-        "User nonce account for preventing replay attacks.",
-        "",
-        "Each user has a unique nonce account that is incremented with each successful transaction."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "nonce",
-            "type": "u64"
           }
         ]
       }

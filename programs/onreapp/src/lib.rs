@@ -561,22 +561,20 @@ pub mod onreapp {
     ///
     /// Delegates to `redemption::create_redemption_request`.
     /// This instruction creates a new redemption request that allows users to request
-    /// redemption of token_in tokens for token_out tokens at a future time. The request must
-    /// be authorized by the redemption admin and uses a nonce to prevent replay attacks.
+    /// redemption of token_in tokens for token_out tokens at a future time. Anyone can
+    /// create a redemption request by paying for the PDA rent.
     /// Emits a `RedemptionRequestCreatedEvent` upon success.
     ///
     /// # Arguments
     /// - `ctx`: Context for `CreateRedemptionRequest`.
     /// - `amount`: Amount of token_in tokens to redeem.
     /// - `expires_at`: Unix timestamp when the request expires.
-    /// - `nonce`: User's nonce for replay attack prevention (must match UserNonceAccount).
     pub fn create_redemption_request(
         ctx: Context<CreateRedemptionRequest>,
         amount: u64,
         expires_at: u64,
-        nonce: u64,
     ) -> Result<()> {
-        redemption::create_redemption_request(ctx, amount, expires_at, nonce)
+        redemption::create_redemption_request(ctx, amount, expires_at)
     }
 
     /// Fulfills a redemption request.
