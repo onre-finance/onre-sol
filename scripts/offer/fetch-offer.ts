@@ -60,7 +60,7 @@ async function fetchOffer() {
                 console.log(`  Start Time: ${formatTimestamp(vector.startTime.toNumber())} (${vector.startTime})`);
                 console.log(`  Base Time:  ${formatTimestamp(vector.baseTime.toNumber())} (${vector.baseTime})`);
                 console.log(`  Base Price: ${vector.basePrice.toString()}`);
-                console.log(`  APR: ${(vector.apr.toNumber() / 1_000_000).toFixed(4)}%`);
+                console.log(`  APR: ${(vector.apr.toNumber() / 1_000_000).toFixed(4)}% (${vector.apr.toNumber()})`);
                 console.log(`  Price Fix Duration: ${vector.priceFixDuration.toNumber()}s`);
 
                 // Check if vector is currently active

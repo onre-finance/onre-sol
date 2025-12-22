@@ -71,13 +71,12 @@ async function createAddOfferVectorTransaction(vector: VectorInput) {
 async function main() {
     try {
         await createAddOfferVectorTransaction({
-            baseTime: Date.UTC(2025, 11, 4, 0, 0, 0),
-            basePrice: 1.0541519,
-            apr: 12.665,
+            baseTime: Date.UTC(2025, 11, 23, 0, 0, 0),
+            basePrice: 1.06110165,
+            apr: 10.3203,
             tokenIn: USDG_MINT,
             tokenOut: ONYC_MINT,
         });
-
     } catch (error) {
         console.error("Failed to create add offer vector transaction:", error);
     }
