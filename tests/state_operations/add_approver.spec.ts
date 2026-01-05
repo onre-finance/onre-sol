@@ -115,4 +115,14 @@ describe("Add Approver", () => {
         expect(state.approver2).toEqual(approver2.publicKey);
         expect(state.approver1).not.toEqual(state.approver2);
     });
+
+    test("Cannot add the same approver twice", async () => {
+        // given - add first approver
+        await program.addApprover({ trusted: approver1.publicKey });
+
+        // when & then - try to add the same approver again
+        await expect(
+            program.addApprover({ trusted: approver1.publicKey })
+        ).rejects.toThrow("ApproverAlreadyExists");
+    });
 });

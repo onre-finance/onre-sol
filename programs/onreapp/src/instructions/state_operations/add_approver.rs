@@ -30,6 +30,8 @@ pub enum AddApproverError {
     BothApproversFilled,
     #[msg("Invalid approver")]
     InvalidApprover,
+    #[msg("Approver already exists")]
+    ApproverAlreadyExists,
 }
 
 /// Adds a trusted authority for cryptographic approval verification
@@ -59,6 +61,10 @@ pub fn add_approver(ctx: Context<AddApprover>, approver: Pubkey) -> Result<()> {
 
     if approver == Pubkey::default() {
         return Err(error!(AddApproverError::InvalidApprover));
+    }
+
+    if state.approver1 == approver || state.approver2 == approver {
+        return Err(error!(AddApproverError::ApproverAlreadyExists));
     }
 
     // Check if approver1 is empty (default pubkey)
