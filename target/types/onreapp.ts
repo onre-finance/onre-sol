@@ -405,7 +405,42 @@ export type Onreapp = {
           "docs": [
             "The redemption offer account"
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_in_mint",
+                "account": "redemptionOffer"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_out_mint",
+                "account": "redemptionOffer"
+              }
+            ]
+          }
         },
         {
           "name": "redemptionRequest",
@@ -413,7 +448,44 @@ export type Onreapp = {
             "The redemption request account to cancel",
             "Account is closed after cancellation and rent is returned to redemption_admin"
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  114,
+                  101,
+                  113,
+                  117,
+                  101,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_request.offer",
+                "account": "redemptionRequest"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_request.request_id",
+                "account": "redemptionRequest"
+              }
+            ]
+          }
         },
         {
           "name": "signer",
@@ -984,7 +1056,42 @@ export type Onreapp = {
           "docs": [
             "The redemption offer account"
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_in_mint",
+                "account": "redemptionOffer"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_out_mint",
+                "account": "redemptionOffer"
+              }
+            ]
+          }
         },
         {
           "name": "redemptionRequest",
@@ -1024,7 +1131,7 @@ export type Onreapp = {
               },
               {
                 "kind": "account",
-                "path": "redemption_offer.counter",
+                "path": "redemption_offer.request_counter",
                 "account": "redemptionOffer"
               }
             ]
@@ -1423,7 +1530,42 @@ export type Onreapp = {
           "docs": [
             "The redemption offer account"
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_in_mint",
+                "account": "redemptionOffer"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_out_mint",
+                "account": "redemptionOffer"
+              }
+            ]
+          }
         },
         {
           "name": "redemptionRequest",
@@ -1431,7 +1573,44 @@ export type Onreapp = {
             "The redemption request account to fulfill",
             "Account is closed after fulfillment and rent is returned to redemption_admin"
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  114,
+                  101,
+                  113,
+                  117,
+                  101,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_request.offer",
+                "account": "redemptionRequest"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_request.request_id",
+                "account": "redemptionRequest"
+              }
+            ]
+          }
         },
         {
           "name": "redemptionVaultAuthority",
@@ -6321,7 +6500,42 @@ export type Onreapp = {
           "docs": [
             "The redemption offer account whose fee will be updated"
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_in_mint",
+                "account": "redemptionOffer"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_out_mint",
+                "account": "redemptionOffer"
+              }
+            ]
+          }
         },
         {
           "name": "state",
@@ -8256,7 +8470,7 @@ export type Onreapp = {
             "type": "u16"
           },
           {
-            "name": "counter",
+            "name": "requestCounter",
             "docs": [
               "Counter for sequential redemption request numbering",
               "Increments with each new redemption request created"
@@ -8385,6 +8599,13 @@ export type Onreapp = {
               "Reference to the RedemptionOffer PDA"
             ],
             "type": "pubkey"
+          },
+          {
+            "name": "requestId",
+            "docs": [
+              "Unique sequential identifier for this request (counter value used for PDA derivation)"
+            ],
+            "type": "u64"
           },
           {
             "name": "redeemer",

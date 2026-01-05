@@ -25,7 +25,15 @@ pub struct RedemptionOfferFeeUpdatedEvent {
 #[derive(Accounts)]
 pub struct UpdateRedemptionOfferFee<'info> {
     /// The redemption offer account whose fee will be updated
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [
+            seeds::REDEMPTION_OFFER,
+            redemption_offer.token_in_mint.as_ref(),
+            redemption_offer.token_out_mint.as_ref()
+        ],
+        bump = redemption_offer.bump
+    )]
     pub redemption_offer: Account<'info, RedemptionOffer>,
 
     /// Program state account containing boss authorization

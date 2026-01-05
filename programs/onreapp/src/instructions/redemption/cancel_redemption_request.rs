@@ -38,13 +38,27 @@ pub struct CancelRedemptionRequest<'info> {
     pub state: Box<Account<'info, State>>,
 
     /// The redemption offer account
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [
+            seeds::REDEMPTION_OFFER,
+            redemption_offer.token_in_mint.as_ref(),
+            redemption_offer.token_out_mint.as_ref()
+        ],
+        bump = redemption_offer.bump
+    )]
     pub redemption_offer: Account<'info, RedemptionOffer>,
 
     /// The redemption request account to cancel
     /// Account is closed after cancellation and rent is returned to redemption_admin
     #[account(
         mut,
+        seeds = [
+            seeds::REDEMPTION_REQUEST,
+            redemption_request.offer.as_ref(),
+            redemption_request.request_id.to_le_bytes().as_ref()
+        ],
+        bump = redemption_request.bump,
         close = redemption_admin,
         constraint = redemption_request.offer == redemption_offer.key()
             @ CancelRedemptionRequestErrorCode::OfferMismatch

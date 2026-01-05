@@ -59,6 +59,12 @@ pub struct FulfillRedemptionRequest<'info> {
     /// The redemption offer account
     #[account(
         mut,
+        seeds = [
+            seeds::REDEMPTION_OFFER,
+            redemption_offer.token_in_mint.as_ref(),
+            redemption_offer.token_out_mint.as_ref()
+        ],
+        bump = redemption_offer.bump,
         constraint = redemption_offer.offer == offer.key()
             @ FulfillRedemptionRequestErrorCode::OfferMismatch
     )]
@@ -68,6 +74,12 @@ pub struct FulfillRedemptionRequest<'info> {
     /// Account is closed after fulfillment and rent is returned to redemption_admin
     #[account(
         mut,
+        seeds = [
+            seeds::REDEMPTION_REQUEST,
+            redemption_request.offer.as_ref(),
+            redemption_request.request_id.to_le_bytes().as_ref()
+        ],
+        bump = redemption_request.bump,
         close = redemption_admin,
         constraint = redemption_request.offer == redemption_offer.key()
             @ FulfillRedemptionRequestErrorCode::OfferMismatch
