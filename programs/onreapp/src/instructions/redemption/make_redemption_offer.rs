@@ -172,6 +172,7 @@ pub fn make_redemption_offer(
     redemption_offer.fee_basis_points = fee_basis_points;
     redemption_offer.executed_redemptions = 0;
     redemption_offer.requested_redemptions = 0;
+    redemption_offer.counter = 0;
     redemption_offer.bump = ctx.bumps.redemption_offer;
 
     msg!(

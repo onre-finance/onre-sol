@@ -1,7 +1,5 @@
 use crate::constants::seeds;
-use crate::instructions::redemption::{
-    RedemptionOffer, RedemptionRequest, RedemptionRequestStatus,
-};
+use crate::instructions::redemption::{RedemptionOffer, RedemptionRequest};
 use crate::state::State;
 use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
@@ -44,7 +42,13 @@ pub struct CancelRedemptionRequest<'info> {
     pub redemption_offer: Account<'info, RedemptionOffer>,
 
     /// The redemption request account to cancel
-    #[account(mut)]
+    /// Account is closed after cancellation and rent is returned to redemption_admin
+    #[account(
+        mut,
+        close = redemption_admin,
+        constraint = redemption_request.offer == redemption_offer.key()
+            @ CancelRedemptionRequestErrorCode::OfferMismatch
+    )]
     pub redemption_request: Account<'info, RedemptionRequest>,
 
     /// The signer who is cancelling the request
@@ -64,6 +68,15 @@ pub struct CancelRedemptionRequest<'info> {
           @ CancelRedemptionRequestErrorCode::InvalidRedeemer
     )]
     pub redeemer: UncheckedAccount<'info>,
+
+    /// Redemption admin receives the rent from closing the redemption request
+    /// CHECK: Validated against state.redemption_admin
+    #[account(
+        mut,
+        constraint = redemption_admin.key() == state.redemption_admin
+            @ CancelRedemptionRequestErrorCode::InvalidRedemptionAdmin
+    )]
+    pub redemption_admin: UncheckedAccount<'info>,
 
     /// Program-derived authority that controls redemption vault token accounts
     ///
@@ -118,8 +131,8 @@ pub struct CancelRedemptionRequest<'info> {
 ///
 /// This instruction cancels a pending redemption request. The request can be cancelled
 /// by the redeemer, redemption_admin, or boss. The request must be in pending state.
-/// Upon cancellation, the status is changed to cancelled and the amount is subtracted
-/// from the redemption offer's requested_redemptions counter.
+/// Upon cancellation, the redemption request account is closed and rent is returned
+/// to the redemption_admin.
 ///
 /// # Arguments
 /// * `ctx` - The instruction context containing validated accounts
@@ -127,17 +140,14 @@ pub struct CancelRedemptionRequest<'info> {
 /// # Returns
 /// * `Ok(())` - If the redemption request is successfully cancelled
 /// * `Err(CancelRedemptionRequestErrorCode::Unauthorized)` - If signer is not authorized
-/// * `Err(CancelRedemptionRequestErrorCode::InvalidStatus)` - If request is not in pending state
 ///
 /// # Access Control
 /// - Signer must be one of: redeemer, redemption_admin, or boss
-/// - Request must be in pending state (status = 0)
 ///
 /// # Effects
-/// - Changes redemption request status to cancelled (2)
+/// - Closes redemption request account and returns rent to redemption_admin
 /// - Returns locked token_in tokens from vault to redeemer
 /// - Subtracts amount from RedemptionOffer::requested_redemptions
-/// - Does NOT close the redemption request account
 ///
 /// # Events
 /// * `RedemptionRequestCancelledEvent` - Emitted with cancellation details
@@ -145,18 +155,8 @@ pub fn cancel_redemption_request(ctx: Context<CancelRedemptionRequest>) -> Resul
     let redemption_request = &ctx.accounts.redemption_request;
     let signer = ctx.accounts.signer.key();
 
-    // Verify the request is in pending state
-    require_eq!(
-        redemption_request.status,
-        RedemptionRequestStatus::Pending.as_u8(),
-        CancelRedemptionRequestErrorCode::InvalidStatus
-    );
-
     let amount = redemption_request.amount;
     let redeemer = redemption_request.redeemer;
-
-    // Update the redemption request status to cancelled
-    ctx.accounts.redemption_request.status = RedemptionRequestStatus::Cancelled.as_u8();
 
     // Return locked tokens from vault to redeemer
     let vault_authority_bump = ctx.bumps.redemption_vault_authority;
@@ -213,10 +213,6 @@ pub enum CancelRedemptionRequestErrorCode {
     #[msg("Operation not allowed: program is in kill switch state")]
     KillSwitchActivated,
 
-    /// Request is not in pending state
-    #[msg("Invalid status: redemption request must be in pending state")]
-    InvalidStatus,
-
     /// Arithmetic underflow occurred
     #[msg("Arithmetic underflow")]
     ArithmeticUnderflow,
@@ -228,4 +224,12 @@ pub enum CancelRedemptionRequestErrorCode {
     /// Invalid redeemer (doesn't match redemption request's redeemer)
     #[msg("Invalid redeemer: provided redeemer doesn't match redemption request's redeemer")]
     InvalidRedeemer,
+
+    /// Invalid redemption admin (doesn't match state.redemption_admin)
+    #[msg("Invalid redemption admin: provided account doesn't match state.redemption_admin")]
+    InvalidRedemptionAdmin,
+
+    /// Redemption request offer doesn't match provided redemption offer
+    #[msg("Offer mismatch: redemption request's offer doesn't match provided redemption offer")]
+    OfferMismatch,
 }

@@ -77,21 +77,15 @@ describe("Fulfill redemption request", () => {
             testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
 
             // Create redemption request
-            const nonce = 0;
-            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
-                amount: REDEMPTION_AMOUNT,
-                expiresAt,
-                nonce
+                amount: REDEMPTION_AMOUNT
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             // when
@@ -105,13 +99,10 @@ describe("Fulfill redemption request", () => {
                 tokenOutMint: usdcMint
             });
 
-            // then - Check redemption request status is updated
-            const redemptionRequest = await program.getRedemptionRequest(
-                redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
-            );
-            expect(redemptionRequest.status).toBe(1); // Executed
+            // then - Redemption request account should be closed
+            await expect(
+                program.getRedemptionRequest(redemptionOfferPda, 0)
+            ).rejects.toThrow();
 
             // Check user received USDC tokens
             const userUsdcAccount = getAssociatedTokenAddressSync(usdcMint, redeemer.publicKey);
@@ -135,21 +126,15 @@ describe("Fulfill redemption request", () => {
             testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
 
             // Create redemption request
-            const nonce = 0;
-            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
-                amount: REDEMPTION_AMOUNT,
-                expiresAt,
-                nonce
+                amount: REDEMPTION_AMOUNT
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             // when
@@ -186,21 +171,15 @@ describe("Fulfill redemption request", () => {
             });
 
             // Create redemption request
-            const nonce = 0;
-            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
-                amount: REDEMPTION_AMOUNT,
-                expiresAt,
-                nonce
+                amount: REDEMPTION_AMOUNT
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             // when
@@ -223,6 +202,54 @@ describe("Fulfill redemption request", () => {
             const vaultBalance = await testHelper.getTokenAccountBalance(vaultUsdcAccount);
             expect(vaultBalance).toBe(BigInt(10_000e6 - TOKEN_OUT_AMOUNT));
         });
+
+        test("Should close redemption request account and return rent to redemption_admin", async () => {
+            // given
+            await program.transferMintAuthorityToProgram({ mint: onycMint });
+            await program.transferMintAuthorityToProgram({ mint: usdcMint });
+
+            const boss = testHelper.getBoss();
+            testHelper.createTokenAccount(onycMint, boss, BigInt(0), true);
+            testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
+
+            await program.createRedemptionRequest({
+                redemptionOffer: redemptionOfferPda,
+                redeemer,
+                amount: REDEMPTION_AMOUNT
+            });
+
+            const redemptionRequestPda = program.getRedemptionRequestPda(
+                redemptionOfferPda,
+                0
+            );
+
+            // Get initial redemption_admin balance
+            const initialAdminBalance = await testHelper.context.banksClient.getBalance(
+                redemptionAdmin.publicKey
+            );
+
+            // when
+            await program.fulfillRedemptionRequest({
+                offer: offerPda,
+                redemptionOffer: redemptionOfferPda,
+                redemptionRequest: redemptionRequestPda,
+                redeemer: redeemer.publicKey,
+                redemptionAdmin,
+                tokenInMint: onycMint,
+                tokenOutMint: usdcMint
+            });
+
+            // then - Account should be closed
+            await expect(
+                program.getRedemptionRequest(redemptionOfferPda, 0)
+            ).rejects.toThrow();
+
+            // and - Rent should be returned to redemption_admin
+            const finalAdminBalance = await testHelper.context.banksClient.getBalance(
+                redemptionAdmin.publicKey
+            );
+            expect(finalAdminBalance).toBeGreaterThan(initialAdminBalance);
+        });
     });
 
     describe("Redemption statistics", () => {
@@ -236,21 +263,15 @@ describe("Fulfill redemption request", () => {
             testHelper.createTokenAccount(onycMint, boss, BigInt(0), true);
             testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
 
-            const nonce = 0;
-            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
-                amount: REDEMPTION_AMOUNT,
-                expiresAt,
-                nonce
+                amount: REDEMPTION_AMOUNT
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             // when
@@ -281,15 +302,10 @@ describe("Fulfill redemption request", () => {
             testHelper.createTokenAccount(onycMint, boss, BigInt(0), true);
             testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
 
-            const nonce = 0;
-            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
-                amount: REDEMPTION_AMOUNT,
-                expiresAt,
-                nonce
+                amount: REDEMPTION_AMOUNT
             });
 
             // Verify requested_redemptions increased
@@ -300,8 +316,7 @@ describe("Fulfill redemption request", () => {
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             // when
@@ -317,8 +332,8 @@ describe("Fulfill redemption request", () => {
 
             // then
             redemptionOffer = await program.getRedemptionOffer(onycMint, usdcMint);
-            // Requested redemptions is a running sum of all created requests, so it should remain unchanged
-            expect(redemptionOffer.requestedRedemptions.toString()).toBe("1000000000");
+            // Requested redemptions should be decremented after fulfillment
+            expect(redemptionOffer.requestedRedemptions.toString()).toBe("0");
         });
 
         test("Should accumulate executed_redemptions from multiple fulfillments", async () => {
@@ -335,24 +350,16 @@ describe("Fulfill redemption request", () => {
             testHelper.createTokenAccount(onycMint, redeemer2.publicKey, BigInt(10_000e9), true);
 
             // Create two redemption requests
-            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
-
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
-                amount: REDEMPTION_AMOUNT,
-                expiresAt,
-                nonce: 0
+                amount: REDEMPTION_AMOUNT
             });
 
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer: redeemer2,
-                redemptionAdmin,
-                amount: REDEMPTION_AMOUNT * 2,
-                expiresAt,
-                nonce: 0
+                amount: REDEMPTION_AMOUNT * 2
             });
 
             // when - Fulfill both requests
@@ -361,7 +368,6 @@ describe("Fulfill redemption request", () => {
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: program.getRedemptionRequestPda(
                     redemptionOfferPda,
-                    redeemer.publicKey,
                     0
                 ),
                 redeemer: redeemer.publicKey,
@@ -375,8 +381,7 @@ describe("Fulfill redemption request", () => {
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: program.getRedemptionRequestPda(
                     redemptionOfferPda,
-                    redeemer2.publicKey,
-                    0
+                    1
                 ),
                 redeemer: redeemer2.publicKey,
                 redemptionAdmin,
@@ -397,21 +402,15 @@ describe("Fulfill redemption request", () => {
             // given
             const unauthorizedAdmin = testHelper.createUserAccount();
 
-            const nonce = 0;
-            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
-                amount: REDEMPTION_AMOUNT,
-                expiresAt,
-                nonce
+                amount: REDEMPTION_AMOUNT
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             // when/then
@@ -438,21 +437,15 @@ describe("Fulfill redemption request", () => {
             testHelper.createTokenAccount(onycMint, boss, BigInt(0), true);
             testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
 
-            const nonce = 0;
-            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
-                amount: REDEMPTION_AMOUNT,
-                expiresAt,
-                nonce
+                amount: REDEMPTION_AMOUNT
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             // Activate kill switch
@@ -482,21 +475,15 @@ describe("Fulfill redemption request", () => {
             testHelper.createTokenAccount(onycMint, boss, BigInt(0), true);
             testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
 
-            const nonce = 0;
-            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
-                amount: REDEMPTION_AMOUNT,
-                expiresAt,
-                nonce
+                amount: REDEMPTION_AMOUNT
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             // Fulfill once
@@ -558,23 +545,17 @@ describe("Fulfill redemption request", () => {
             await testHelper.advanceClockBy(100);
 
             // Create redemption request for 2 ONyc
-            const nonce = 0;
-            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
             const amountIn = 2_000_000_000; // 2 ONyc
 
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
-                amount: amountIn,
-                expiresAt,
-                nonce
+                amount: amountIn
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             // when
@@ -616,22 +597,15 @@ describe("Fulfill redemption request", () => {
 
             // Redeem 10 ONyc -> should get 10 * 1.003 = 10.03 USDC
             const amountIn = 10_000_000_000; // 10 ONyc (9 decimals)
-            const nonce = 0;
-            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
-
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
-                amount: amountIn,
-                expiresAt,
-                nonce
+                amount: amountIn
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             // when
@@ -673,22 +647,15 @@ describe("Fulfill redemption request", () => {
 
             // Redeem 100 ONyc -> should get 100 * 0.5 = 50 USDC
             const amountIn = 100_000_000_000; // 100 ONyc (9 decimals)
-            const nonce = 0;
-            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
-
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
-                amount: amountIn,
-                expiresAt,
-                nonce
+                amount: amountIn
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             // when
@@ -730,22 +697,15 @@ describe("Fulfill redemption request", () => {
 
             // Redeem 7 ONyc -> should get 7 * 3.141592653 = 21.991148571 USDC
             const amountIn = 7_000_000_000; // 7 ONyc (9 decimals)
-            const nonce = 0;
-            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
-
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
-                amount: amountIn,
-                expiresAt,
-                nonce
+                amount: amountIn
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             // when
@@ -787,22 +747,15 @@ describe("Fulfill redemption request", () => {
 
             // Redeem 0.001 ONyc -> should get 0.001 * 100 = 0.1 USDC
             const amountIn = 1_000_000; // 0.001 ONyc (9 decimals)
-            const nonce = 0;
-            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
-
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
-                amount: amountIn,
-                expiresAt,
-                nonce
+                amount: amountIn
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             // when
@@ -844,22 +797,15 @@ describe("Fulfill redemption request", () => {
 
             // Redeem 1000 ONyc -> should get 1000 * 0.123456789 = 123.456789 USDC
             const amountIn = 1000_000_000_000; // 1000 ONyc (9 decimals)
-            const nonce = 0;
-            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
-
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
-                amount: amountIn,
-                expiresAt,
-                nonce
+                amount: amountIn
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             // when
@@ -905,23 +851,16 @@ describe("Fulfill redemption request", () => {
 
             // Redeem 100 ONyc -> should get 100 * 1.0002 = 100.02 USDC
             const amountIn = 100_000_000_000; // 100 ONyc (9 decimals)
-            const nonce = 0;
-            const currentTimeAfterAdvance = await testHelper.getCurrentClockTime();
-            const expiresAt = currentTimeAfterAdvance + 3600;
 
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
-                amount: amountIn,
-                expiresAt,
-                nonce
+                amount: amountIn
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             // when
@@ -981,21 +920,15 @@ describe("Fulfill redemption request", () => {
 
             // Create redemption request for 10 ONyc
             const amount = 10_000_000_000; // 10 ONyc
-            const nonce = 0;
-            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPdaWithFee,
                 redeemer,
-                redemptionAdmin,
-                amount,
-                expiresAt,
-                nonce
+                amount
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPdaWithFee,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onycMint, boss);
@@ -1065,21 +998,15 @@ describe("Fulfill redemption request", () => {
 
             // Create redemption request for 5 ONyc
             const amount = 5_000_000_000; // 5 ONyc
-            const nonce = 0;
-            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPdaWithFee,
                 redeemer,
-                redemptionAdmin,
-                amount,
-                expiresAt,
-                nonce
+                amount
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPdaWithFee,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onycMint, boss);
@@ -1146,21 +1073,15 @@ describe("Fulfill redemption request", () => {
             testHelper.createTokenAccount(usdcMint4, boss, BigInt(0), true);
 
             const amount = 1_000_000_000; // 1 ONyc
-            const nonce = 0;
-            const expiresAt = Math.floor(Date.now() / 1000) + 3600;
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPdaNoFee,
                 redeemer,
-                redemptionAdmin,
-                amount,
-                expiresAt,
-                nonce
+                amount
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPdaNoFee,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onycMint, boss);
@@ -1230,22 +1151,15 @@ describe("Fulfill redemption request", () => {
 
             // Create redemption request for 100 ONyc
             const amount = 100_000_000_000; // 100 ONyc
-            const nonce = 0;
-            const currentTime = await testHelper.getCurrentClockTime();
-            const expiresAt = currentTime + 7200; // 2 hours from advanced time
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPdaWithFee,
                 redeemer,
-                redemptionAdmin,
-                amount,
-                expiresAt,
-                nonce
+                amount
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPdaWithFee,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onycMint, boss);
@@ -1322,22 +1236,15 @@ describe("Fulfill redemption request", () => {
 
             // Create redemption request for 50 ONyc
             const amount = 50_000_000_000; // 50 ONyc
-            const nonce = 0;
-            const currentTime = await testHelper.getCurrentClockTime();
-            const expiresAt = currentTime + 7200; // 2 hours from advanced time
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPdaWithFee,
                 redeemer,
-                redemptionAdmin,
-                amount,
-                expiresAt,
-                nonce
+                amount
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPdaWithFee,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onycMint, boss);
@@ -1417,27 +1324,19 @@ describe("Fulfill redemption request", () => {
             await testHelper.advanceClockBy(30 * 86400);
 
             const amount = 50_000_000_000; // 50 ONyc
-            const nonce = 0;
-            const currentTime = await testHelper.getCurrentClockTime();
-            const expiresAt = currentTime + 7200;
-
             // Create redeemer's Token2022 account for token_in
             testHelper.createTokenAccount(onyc2022, redeemer.publicKey, BigInt(amount), true, TOKEN_2022_PROGRAM_ID);
 
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
                 amount,
-                expiresAt,
-                nonce,
                 tokenProgram: TOKEN_2022_PROGRAM_ID
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
@@ -1507,27 +1406,19 @@ describe("Fulfill redemption request", () => {
             await testHelper.advanceClockBy(90 * 86400); // 90 days
 
             const amount = 100_000_000_000; // 100 ONyc
-            const nonce = 0;
-            const currentTime = await testHelper.getCurrentClockTime();
-            const expiresAt = currentTime + 7200;
-
             // Create redeemer's Token2022 account for token_in
             testHelper.createTokenAccount(onyc2022, redeemer.publicKey, BigInt(amount), true, TOKEN_2022_PROGRAM_ID);
 
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
                 amount,
-                expiresAt,
-                nonce,
                 tokenProgram: TOKEN_2022_PROGRAM_ID
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
@@ -1597,27 +1488,19 @@ describe("Fulfill redemption request", () => {
             await testHelper.advanceClockBy(180 * 86400); // 180 days
 
             const amount = 200_000_000_000; // 200 ONyc
-            const nonce = 0;
-            const currentTime = await testHelper.getCurrentClockTime();
-            const expiresAt = currentTime + 7200;
-
             // Create redeemer's Token2022 account for token_in
             testHelper.createTokenAccount(onyc2022, redeemer.publicKey, BigInt(amount), true, TOKEN_2022_PROGRAM_ID);
 
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
                 amount,
-                expiresAt,
-                nonce,
                 tokenProgram: TOKEN_2022_PROGRAM_ID
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
@@ -1687,27 +1570,19 @@ describe("Fulfill redemption request", () => {
             await testHelper.advanceClockBy(45 * 86400); // 45 days
 
             const amount = 75_000_000_000; // 75 ONyc
-            const nonce = 0;
-            const currentTime = await testHelper.getCurrentClockTime();
-            const expiresAt = currentTime + 7200;
-
             // Create redeemer's Token2022 account for token_in
             testHelper.createTokenAccount(onyc2022, redeemer.publicKey, BigInt(amount), true, TOKEN_2022_PROGRAM_ID);
 
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
                 amount,
-                expiresAt,
-                nonce,
                 tokenProgram: TOKEN_2022_PROGRAM_ID
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
@@ -1777,27 +1652,19 @@ describe("Fulfill redemption request", () => {
             await testHelper.advanceClockBy(60 * 86400); // 60 days
 
             const amount = 120_000_000_000; // 120 ONyc
-            const nonce = 0;
-            const currentTime = await testHelper.getCurrentClockTime();
-            const expiresAt = currentTime + 7200;
-
             // Create redeemer's Token2022 account for token_in
             testHelper.createTokenAccount(onyc2022, redeemer.publicKey, BigInt(amount), true, TOKEN_2022_PROGRAM_ID);
 
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
                 amount,
-                expiresAt,
-                nonce,
                 tokenProgram: TOKEN_2022_PROGRAM_ID
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
@@ -1867,27 +1734,19 @@ describe("Fulfill redemption request", () => {
             await testHelper.advanceClockBy(15 * 86400); // 15 days
 
             const amount = 30_000_000_000; // 30 ONyc
-            const nonce = 0;
-            const currentTime = await testHelper.getCurrentClockTime();
-            const expiresAt = currentTime + 7200;
-
             // Create redeemer's Token2022 account for token_in
             testHelper.createTokenAccount(onyc2022, redeemer.publicKey, BigInt(amount), true, TOKEN_2022_PROGRAM_ID);
 
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
                 amount,
-                expiresAt,
-                nonce,
                 tokenProgram: TOKEN_2022_PROGRAM_ID
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
@@ -1957,27 +1816,19 @@ describe("Fulfill redemption request", () => {
             await testHelper.advanceClockBy(120 * 86400); // 120 days
 
             const amount = 80_000_000_000; // 80 ONyc
-            const nonce = 0;
-            const currentTime = await testHelper.getCurrentClockTime();
-            const expiresAt = currentTime + 7200;
-
             // Create redeemer's Token2022 account for token_in
             testHelper.createTokenAccount(onyc2022, redeemer.publicKey, BigInt(amount), true, TOKEN_2022_PROGRAM_ID);
 
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
                 amount,
-                expiresAt,
-                nonce,
                 tokenProgram: TOKEN_2022_PROGRAM_ID
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
@@ -2047,27 +1898,19 @@ describe("Fulfill redemption request", () => {
             await testHelper.advanceClockBy(270 * 86400); // 270 days
 
             const amount = 150_000_000_000; // 150 ONyc
-            const nonce = 0;
-            const currentTime = await testHelper.getCurrentClockTime();
-            const expiresAt = currentTime + 7200;
-
             // Create redeemer's Token2022 account for token_in
             testHelper.createTokenAccount(onyc2022, redeemer.publicKey, BigInt(amount), true, TOKEN_2022_PROGRAM_ID);
 
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
                 amount,
-                expiresAt,
-                nonce,
                 tokenProgram: TOKEN_2022_PROGRAM_ID
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
@@ -2137,27 +1980,19 @@ describe("Fulfill redemption request", () => {
             await testHelper.advanceClockBy(365 * 86400); // 365 days (1 year)
 
             const amount = 60_000_000_000; // 60 ONyc
-            const nonce = 0;
-            const currentTime = await testHelper.getCurrentClockTime();
-            const expiresAt = currentTime + 7200;
-
             // Create redeemer's Token2022 account for token_in
             testHelper.createTokenAccount(onyc2022, redeemer.publicKey, BigInt(amount), true, TOKEN_2022_PROGRAM_ID);
 
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
                 amount,
-                expiresAt,
-                nonce,
                 tokenProgram: TOKEN_2022_PROGRAM_ID
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
@@ -2227,27 +2062,19 @@ describe("Fulfill redemption request", () => {
             await testHelper.advanceClockBy(7 * 86400); // 7 days
 
             const amount = 25_000_000_000; // 25 ONyc
-            const nonce = 0;
-            const currentTime = await testHelper.getCurrentClockTime();
-            const expiresAt = currentTime + 7200;
-
             // Create redeemer's Token2022 account for token_in
             testHelper.createTokenAccount(onyc2022, redeemer.publicKey, BigInt(amount), true, TOKEN_2022_PROGRAM_ID);
 
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                redemptionAdmin,
                 amount,
-                expiresAt,
-                nonce,
                 tokenProgram: TOKEN_2022_PROGRAM_ID
             });
 
             const redemptionRequestPda = program.getRedemptionRequestPda(
                 redemptionOfferPda,
-                redeemer.publicKey,
-                nonce
+                0
             );
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);

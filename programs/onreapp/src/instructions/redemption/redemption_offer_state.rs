@@ -26,10 +26,13 @@ pub struct RedemptionOffer {
     pub requested_redemptions: u128,
     /// Fee in basis points (1000 = 10%) charged when fulfilling redemption requests
     pub fee_basis_points: u16,
+    /// Counter for sequential redemption request numbering
+    /// Increments with each new redemption request created
+    pub counter: u64,
     /// PDA bump seed for account derivation
     pub bump: u8,
     /// Reserved space for future fields
-    pub reserved: [u8; 117],
+    pub reserved: [u8; 109],
 }
 
 #[account]
@@ -41,35 +44,9 @@ pub struct RedemptionRequest {
     pub redeemer: Pubkey,
     /// Amount of token_in tokens requested for redemption
     pub amount: u64,
-    /// Status of the redemption request
-    /// 0: Pending, 1: Executed, 2: Cancelled
-    pub status: u8,
     /// PDA bump seed for account derivation
     pub bump: u8,
     /// Reserved space for future fields
-    pub reserved: [u8; 126],
+    pub reserved: [u8; 127],
 }
 
-/// Status of a redemption request
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
-pub enum RedemptionRequestStatus {
-    Pending = 0,
-    Executed = 1,
-    Cancelled = 2,
-}
-
-impl RedemptionRequestStatus {
-    pub fn as_u8(self) -> u8 {
-        self as u8
-    }
-}
-
-/// User nonce account for preventing replay attacks.
-///
-/// Each user has a unique nonce account that is incremented with each successful transaction.
-#[account]
-#[derive(InitSpace)]
-pub struct UserNonceAccount {
-    pub nonce: u64,
-}
