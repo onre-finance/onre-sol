@@ -28,7 +28,7 @@ pub struct RedemptionOffer {
     pub fee_basis_points: u16,
     /// Counter for sequential redemption request numbering
     /// Increments with each new redemption request created
-    pub counter: u64,
+    pub request_counter: u64,
     /// PDA bump seed for account derivation
     pub bump: u8,
     /// Reserved space for future fields
@@ -40,6 +40,8 @@ pub struct RedemptionOffer {
 pub struct RedemptionRequest {
     /// Reference to the RedemptionOffer PDA
     pub offer: Pubkey,
+    /// Unique sequential identifier for this request (counter value used for PDA derivation)
+    pub request_id: u64,
     /// User requesting the redemption
     pub redeemer: Pubkey,
     /// Amount of token_in tokens requested for redemption
@@ -49,4 +51,3 @@ pub struct RedemptionRequest {
     /// Reserved space for future fields
     pub reserved: [u8; 127],
 }
-

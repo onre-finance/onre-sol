@@ -39,7 +39,15 @@ pub struct CreateRedemptionRequest<'info> {
     pub state: Box<Account<'info, State>>,
 
     /// The redemption offer account
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [
+            seeds::REDEMPTION_OFFER,
+            redemption_offer.token_in_mint.as_ref(),
+            redemption_offer.token_out_mint.as_ref()
+        ],
+        bump = redemption_offer.bump
+    )]
     pub redemption_offer: Account<'info, RedemptionOffer>,
 
     /// The redemption request account
@@ -51,7 +59,7 @@ pub struct CreateRedemptionRequest<'info> {
         seeds = [
             seeds::REDEMPTION_REQUEST,
             redemption_offer.key().as_ref(),
-            redemption_offer.counter.to_le_bytes().as_ref()
+            redemption_offer.request_counter.to_le_bytes().as_ref()
         ],
         bump
     )]
@@ -134,13 +142,9 @@ pub struct CreateRedemptionRequest<'info> {
 ///
 /// # Events
 /// * `RedemptionRequestCreatedEvent` - Emitted with redemption request details
-pub fn create_redemption_request(
-    ctx: Context<CreateRedemptionRequest>,
-    amount: u64,
-) -> Result<()> {
-
+pub fn create_redemption_request(ctx: Context<CreateRedemptionRequest>, amount: u64) -> Result<()> {
     // Capture counter before incrementing (used for PDA derivation)
-    let request_id = ctx.accounts.redemption_offer.counter;
+    let request_id = ctx.accounts.redemption_offer.request_counter;
 
     // Transfer tokens from redeemer to redemption vault (locking them)
     transfer_tokens(
@@ -156,6 +160,7 @@ pub fn create_redemption_request(
     // Initialize the redemption request
     let redemption_request = &mut ctx.accounts.redemption_request;
     redemption_request.offer = ctx.accounts.redemption_offer.key();
+    redemption_request.request_id = request_id;
     redemption_request.redeemer = ctx.accounts.redeemer.key();
     redemption_request.amount = amount;
     redemption_request.bump = ctx.bumps.redemption_request;
@@ -169,10 +174,10 @@ pub fn create_redemption_request(
         .ok_or(CreateRedemptionRequestErrorCode::ArithmeticOverflow)?;
 
     // Increment counter for next request
-    ctx.accounts.redemption_offer.counter = ctx
+    ctx.accounts.redemption_offer.request_counter = ctx
         .accounts
         .redemption_offer
-        .counter
+        .request_counter
         .checked_add(1)
         .ok_or(CreateRedemptionRequestErrorCode::ArithmeticOverflow)?;
 

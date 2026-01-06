@@ -85,7 +85,7 @@ describe("Create redemption request", () => {
     test("Should increment counter after each request", async () => {
         // Check initial counter
         const initialOffer = await program.getRedemptionOffer(onycMint, usdcMint);
-        expect(initialOffer.counter.toString()).toBe("0");
+        expect(initialOffer.requestCounter.toString()).toBe("0");
 
         // First request
         await program.createRedemptionRequest({
@@ -96,7 +96,7 @@ describe("Create redemption request", () => {
 
         // Check counter after first request
         const offerAfterFirst = await program.getRedemptionOffer(onycMint, usdcMint);
-        expect(offerAfterFirst.counter.toString()).toBe("1");
+        expect(offerAfterFirst.requestCounter.toString()).toBe("1");
 
         // Second request (different redeemer to avoid same tx issue)
         const redeemer2 = testHelper.createUserAccount();
@@ -110,7 +110,7 @@ describe("Create redemption request", () => {
 
         // then
         const offerAfterSecond = await program.getRedemptionOffer(onycMint, usdcMint);
-        expect(offerAfterSecond.counter.toString()).toBe("2");
+        expect(offerAfterSecond.requestCounter.toString()).toBe("2");
     });
 
     test("Should update requested_redemptions in RedemptionOffer", async () => {
@@ -317,6 +317,6 @@ describe("Create redemption request", () => {
 
         // Counter should be at 2
         const redemptionOffer = await program.getRedemptionOffer(onycMint, usdcMint);
-        expect(redemptionOffer.counter.toString()).toBe("2");
+        expect(redemptionOffer.requestCounter.toString()).toBe("2");
     });
 });

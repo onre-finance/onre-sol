@@ -399,7 +399,42 @@
           "docs": [
             "The redemption offer account"
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_in_mint",
+                "account": "RedemptionOffer"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_out_mint",
+                "account": "RedemptionOffer"
+              }
+            ]
+          }
         },
         {
           "name": "redemption_request",
@@ -407,7 +442,44 @@
             "The redemption request account to cancel",
             "Account is closed after cancellation and rent is returned to redemption_admin"
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  114,
+                  101,
+                  113,
+                  117,
+                  101,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_request.offer",
+                "account": "RedemptionRequest"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_request.request_id",
+                "account": "RedemptionRequest"
+              }
+            ]
+          }
         },
         {
           "name": "signer",
@@ -978,7 +1050,42 @@
           "docs": [
             "The redemption offer account"
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_in_mint",
+                "account": "RedemptionOffer"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_out_mint",
+                "account": "RedemptionOffer"
+              }
+            ]
+          }
         },
         {
           "name": "redemption_request",
@@ -1018,7 +1125,7 @@
               },
               {
                 "kind": "account",
-                "path": "redemption_offer.counter",
+                "path": "redemption_offer.request_counter",
                 "account": "RedemptionOffer"
               }
             ]
@@ -1417,7 +1524,42 @@
           "docs": [
             "The redemption offer account"
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_in_mint",
+                "account": "RedemptionOffer"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_out_mint",
+                "account": "RedemptionOffer"
+              }
+            ]
+          }
         },
         {
           "name": "redemption_request",
@@ -1425,7 +1567,44 @@
             "The redemption request account to fulfill",
             "Account is closed after fulfillment and rent is returned to redemption_admin"
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  114,
+                  101,
+                  113,
+                  117,
+                  101,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_request.offer",
+                "account": "RedemptionRequest"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_request.request_id",
+                "account": "RedemptionRequest"
+              }
+            ]
+          }
         },
         {
           "name": "redemption_vault_authority",
@@ -6315,7 +6494,42 @@
           "docs": [
             "The redemption offer account whose fee will be updated"
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_in_mint",
+                "account": "RedemptionOffer"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_out_mint",
+                "account": "RedemptionOffer"
+              }
+            ]
+          }
         },
         {
           "name": "state",
@@ -8250,7 +8464,7 @@
             "type": "u16"
           },
           {
-            "name": "counter",
+            "name": "request_counter",
             "docs": [
               "Counter for sequential redemption request numbering",
               "Increments with each new redemption request created"
@@ -8379,6 +8593,13 @@
               "Reference to the RedemptionOffer PDA"
             ],
             "type": "pubkey"
+          },
+          {
+            "name": "request_id",
+            "docs": [
+              "Unique sequential identifier for this request (counter value used for PDA derivation)"
+            ],
+            "type": "u64"
           },
           {
             "name": "redeemer",
