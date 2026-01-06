@@ -1,4 +1,4 @@
-import { BOSS, ScriptHelper } from "../utils/script-helper";
+import { config, ScriptHelper } from "../utils/script-helper";
 
 const PERMISSIONLESS_NAME = "permissionless-1";
 
@@ -6,15 +6,16 @@ async function createInitializePermissionlessAuthorityTransaction() {
     const helper = await ScriptHelper.create();
 
     console.log("Creating initialize permissionless authority transaction...");
-    console.log("Boss:", BOSS.toBase58());
+    console.log("Boss:", config.boss.toBase58());
     console.log("Name:", PERMISSIONLESS_NAME);
 
     try {
         const ix = await helper.buildInitializePermissionlessAuthorityIx({
-            name: PERMISSIONLESS_NAME
+            name: PERMISSIONLESS_NAME,
+            boss: config.boss
         });
 
-        const tx = await helper.prepareTransaction(ix);
+        const tx = await helper.prepareTransaction({ ix, payer: config.boss });
 
         return helper.printTransaction(tx, "Initialize Permissionless Authority Transaction");
     } catch (error) {

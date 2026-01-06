@@ -11,9 +11,9 @@ async function createInitializeTransaction() {
     console.log("Boss:", BOSS.toBase58());
 
     try {
-        const ix = await helper.buildInitializeIx({ payer: BOSS });
+        const ix = await helper.buildInitializeIx({ boss: BOSS });
 
-        const tx = await helper.prepareTransaction(ix, BOSS);
+        const tx = await helper.prepareTransaction({ ix, payer: BOSS });
 
         return helper.printTransaction(tx, "Initialize Transaction");
     } catch (error) {

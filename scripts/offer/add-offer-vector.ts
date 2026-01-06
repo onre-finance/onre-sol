@@ -1,9 +1,10 @@
 import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper, USDC_MINT, ONYC_MINT, USDC_TEST_MAINNET, ONYC_TEST_MAINNET } from "../utils/script-helper";
+import { ScriptHelper, config } from "../utils/script-helper";
 
-// Configure which mints to add vector to
-const TOKEN_IN_MINT = USDC_TEST_MAINNET;
-const TOKEN_OUT_MINT = ONYC_TEST_MAINNET;
+// Token addresses - automatically use the correct mints for the selected network
+// Run with: NETWORK=mainnet-test tsx scripts/offer/add-offer-vector.ts
+const TOKEN_IN_MINT = config.mints.usdc;
+const TOKEN_OUT_MINT = config.mints.onyc;
 
 // Configuration for the offer vector
 const BASE_TIME = Math.floor(new Date(Date.UTC(2025, 4, 27, 0, 0, 0)).getTime() / 1000); // May 27, 2025
@@ -51,7 +52,7 @@ async function createAddOfferVectorTransaction() {
             boss: boss,
         });
 
-        const tx = await helper.prepareTransaction(ix);
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
 
         return helper.printTransaction(tx, "Add Offer Vector Transaction");
     } catch (error) {

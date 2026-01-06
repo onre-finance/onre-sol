@@ -1,9 +1,8 @@
-import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper, ONYC_MINT, ONYC_TEST_MAINNET } from "../utils/script-helper";
-import { TOKEN_PROGRAM_ID, getMint } from "@solana/spl-token";
+import { config, ScriptHelper } from "../utils/script-helper";
+import { getMint, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
-// Configuration - UPDATE THESE
-const MINT = ONYC_TEST_MAINNET; // The mint whose authority will be transferred back to boss
+// Configuration - uses the selected network's ONyc mint
+const MINT = config.mints.onyc; // The mint whose authority will be transferred back to boss
 const TOKEN_PROGRAM = TOKEN_PROGRAM_ID; // Use TOKEN_2022_PROGRAM_ID for Token-2022 mints
 
 async function createTransferMintAuthorityToBossTransaction() {
@@ -19,7 +18,7 @@ async function createTransferMintAuthorityToBossTransaction() {
 
     try {
         // Fetch current mint info
-        const mintInfo = await getMint(helper.connection, MINT, 'confirmed', TOKEN_PROGRAM);
+        const mintInfo = await getMint(helper.connection, MINT, "confirmed", TOKEN_PROGRAM);
         console.log("\nCurrent Mint Info:");
         console.log("  Decimals:", mintInfo.decimals);
         console.log("  Supply:", mintInfo.supply.toString());
@@ -47,10 +46,11 @@ async function createTransferMintAuthorityToBossTransaction() {
 
         const ix = await helper.buildTransferMintAuthorityToBossIx({
             mint: MINT,
-            tokenProgram: TOKEN_PROGRAM
+            tokenProgram: TOKEN_PROGRAM,
+            boss
         });
 
-        const tx = await helper.prepareTransaction(ix);
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
 
         console.log("\nThis transaction will:");
         console.log("  1. Transfer mint authority from program PDA back to boss");

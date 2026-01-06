@@ -11,9 +11,9 @@ async function createCloseStateTransaction() {
     console.log("Boss:", boss.toBase58());
 
     try {
-        const ix = await helper.buildCloseStateIx();
+        const ix = await helper.buildCloseStateIx({ boss });
 
-        const tx = await helper.prepareTransaction(ix);
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
 
         console.log("\n⚠️  CRITICAL WARNING: This will CLOSE the program state account!");
         console.log("This is a DESTRUCTIVE operation that will:");

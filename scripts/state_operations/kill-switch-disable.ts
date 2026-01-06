@@ -10,10 +10,11 @@ async function createKillSwitchDisableTransaction() {
 
     try {
         const ix = await helper.buildSetKillSwitchIx({
-            enable: false
+            enable: false,
+            boss
         });
 
-        const tx = await helper.prepareTransaction(ix);
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
 
         console.log("\n✅ This will DISABLE the kill switch!");
         console.log("This will restore normal program operations.");

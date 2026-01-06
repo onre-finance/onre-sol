@@ -1,12 +1,12 @@
-import { ONYC_TEST_MAINNET, ScriptHelper } from "../utils/script-helper";
+import { config, printConfigSummary, ScriptHelper } from "../utils/script-helper";
 import { getMint, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
-// Configuration - UPDATE THESE
-const MINT = ONYC_TEST_MAINNET; // The mint whose authority will be transferred to the program
-const TOKEN_PROGRAM = TOKEN_PROGRAM_ID; // Use TOKEN_2022_PROGRAM_ID for Token-2022 mints
-
 async function createTransferMintAuthorityToProgramTransaction() {
+    printConfigSummary(config);
+
     const helper = await ScriptHelper.create();
+    const MINT = config.mints.onyc;
+    const TOKEN_PROGRAM = TOKEN_PROGRAM_ID;
 
     console.log("Creating transfer mint authority to program transaction...");
     console.log("Mint:", MINT.toBase58());
@@ -18,7 +18,7 @@ async function createTransferMintAuthorityToProgramTransaction() {
 
     try {
         // Fetch current mint info
-        const mintInfo = await getMint(helper.connection, MINT, 'confirmed', TOKEN_PROGRAM);
+        const mintInfo = await getMint(helper.connection, MINT, "confirmed", TOKEN_PROGRAM);
         console.log("\nCurrent Mint Info:");
         console.log("  Decimals:", mintInfo.decimals);
         console.log("  Supply:", mintInfo.supply.toString());
@@ -40,10 +40,11 @@ async function createTransferMintAuthorityToProgramTransaction() {
 
         const ix = await helper.buildTransferMintAuthorityToProgramIx({
             mint: MINT,
-            tokenProgram: TOKEN_PROGRAM
+            tokenProgram: TOKEN_PROGRAM,
+            boss
         });
 
-        const tx = await helper.prepareTransaction(ix);
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
 
         console.log("\nThis transaction will:");
         console.log("  1. Transfer mint authority from boss to program PDA");
