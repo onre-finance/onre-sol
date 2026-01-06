@@ -368,34 +368,6 @@ describe("Take Offer", () => {
             ).rejects.toThrow("insufficient funds");
         });
 
-        it("Should fail after offer was closed", async () => {
-            const currentTime = await testHelper.getCurrentClockTime();
-
-            // Add vector with very low price (expensive for vault)
-            await program.addOfferVector({
-                tokenInMint,
-                tokenOutMint,
-                baseTime: currentTime,
-                basePrice: 1e6, // Very low price = 0.001 USDC per token
-                apr: 0, // Zero APR for fixed price
-                priceFixDuration: 86400
-            });
-
-            await program.closeOffer({ tokenInMint, tokenOutMint });
-
-            // This would require giving out 20,000 tokens for 20 USDC, but vault only has 10,000
-            const tokenInAmount = 20e6; // 10 USDC
-
-            await expect(
-                program.takeOffer({
-                    tokenInAmount,
-                    tokenInMint,
-                    tokenOutMint,
-                    user: user.publicKey,
-                    signer: user
-                })
-            ).rejects.toThrow("AnchorError caused by account");
-        });
     });
 
     describe("Token Transfer Tests", () => {

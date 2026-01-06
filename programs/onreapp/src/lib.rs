@@ -21,7 +21,6 @@ pub mod utils;
 /// - Making offers with dynamic pricing (`make_offer`).
 /// - Taking offers with current market pricing (`take_offer`, `take_offer_permissionless`).
 /// - Managing offer vectors for price control (`add_offer_vector`, `delete_offer_vector`).
-/// - Closing offers (`close_offer`).
 /// - Program state initialization and management (`initialize`, `set_boss`, `add_admin`, `remove_admin`).
 /// - Vault operations for token deposits and withdrawals (`offer_vault_deposit`, `offer_vault_withdraw`).
 /// - Market information queries (`get_nav`, `get_apy`, `get_tvl`, `get_circulating_supply`).
@@ -136,18 +135,6 @@ pub mod onreapp {
         allow_permissionless: bool,
     ) -> Result<()> {
         offer::make_offer(ctx, fee_basis_points, needs_approval, allow_permissionless)
-    }
-
-    /// Closes a offer.
-    ///
-    /// Delegates to `offer::close_offer`.
-    /// Removes the offer from the offers account and clears its data.
-    /// Emits a `CloseOfferEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `CloseOffer`.
-    pub fn close_offer(ctx: Context<CloseOffer>) -> Result<()> {
-        offer::close_offer(ctx)
     }
 
     /// Adds a time vector to an existing offer.

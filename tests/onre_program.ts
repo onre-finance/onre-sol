@@ -110,21 +110,6 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async closeOffer(params: { tokenInMint: PublicKey, tokenOutMint: PublicKey, signer?: Keypair }) {
-        const tx = this.program.methods
-            .closeOffer()
-            .accounts({
-                tokenInMint: params.tokenInMint,
-                tokenOutMint: params.tokenOutMint
-            });
-
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
-    }
-
     async updateOfferFee(params: {
         tokenInMint: PublicKey,
         tokenOutMint: PublicKey,
