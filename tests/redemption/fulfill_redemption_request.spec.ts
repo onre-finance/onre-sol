@@ -2103,4 +2103,44 @@ describe("Fulfill redemption request", () => {
             expect(userUsdcBalance).toBeLessThan(BigInt(94_000_000));
         });
     });
+
+    describe("No active vector validation", () => {
+        test("Should fail when no active vector is present on the offer", async () => {
+            // given - Setup with mint authorities
+            await program.transferMintAuthorityToProgram({ mint: onycMint });
+            await program.transferMintAuthorityToProgram({ mint: usdcMint });
+
+            const boss = testHelper.getBoss();
+            testHelper.createTokenAccount(onycMint, boss, BigInt(0), true);
+            testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
+
+            // Create redemption request
+            await program.createRedemptionRequest({
+                redemptionOffer: redemptionOfferPda,
+                redeemer,
+                amount: REDEMPTION_AMOUNT
+            });
+
+            const redemptionRequestPda = program.getRedemptionRequestPda(
+                redemptionOfferPda,
+                0
+            );
+
+            // Delete all vectors from the underlying offer
+            await program.deleteAllOfferVectors(usdcMint, onycMint);
+
+            // when/then - Should fail with no active vector error
+            await expect(
+                program.fulfillRedemptionRequest({
+                    offer: offerPda,
+                    redemptionOffer: redemptionOfferPda,
+                    redemptionRequest: redemptionRequestPda,
+                    redeemer: redeemer.publicKey,
+                    redemptionAdmin,
+                    tokenInMint: onycMint,
+                    tokenOutMint: usdcMint
+                })
+            ).rejects.toThrow("No active vector");
+        });
+    });
 });

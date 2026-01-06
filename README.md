@@ -13,8 +13,7 @@ programs/onreapp/src/
 ├── contexts/ 
 │ ├── mod.rs 
 │ └── offer_context.rs 
-├── instructions/ 
-│ ├── close_offer.rs 
+├── instructions/
 │ ├── initialize.rs 
 │ ├── make_offer.rs 
 │ ├── mod.rs 
@@ -47,7 +46,6 @@ This directory contains the core logic for the program's instructions. Each file
 - **`initialize.rs`**: Handles the initialization of program accounts.
 - **`make_offer.rs`**: Implements the logic for creating an offer.
 - **`take_offer.rs`**: Implements the logic for accepting or taking an offer.
-- **`close_offer.rs`**: Implements the logic for closing an offer.
 - **`set_boss.rs`**: Implements the logic for assigning an administrative role.
 - **`mod.rs`**: Re-exports the instruction modules for easier access.
 
@@ -70,12 +68,7 @@ Allows a user to create an offer. This includes specifying the terms of the offe
 
 Allows a user to accept an existing offer. This involves transferring assets or fulfilling the terms of the offer, enabling participation in the investment pool.
 
-### 4. Close Offer
-**File**: `close_offer.rs`
-
-Allows a user to close an existing offer, removing it from the program's state. This is typically used when an offer is no longer valid or has been fulfilled.
-
-### 5. Set Boss
+### 4. Set Boss
 **File**: `set_boss.rs`
 
 Assigns or updates the administrative role for the program. This role is responsible for managing fund operations, including minting and burning tokens.

@@ -1,5 +1,5 @@
 pub mod add_offer_vector;
-pub mod close_offer;
+pub mod delete_all_offer_vectors;
 pub mod delete_offer_vector;
 pub mod make_offer;
 pub mod offer_state;
@@ -9,7 +9,7 @@ pub mod take_offer_permissionless;
 pub mod update_offer_fee;
 
 pub use add_offer_vector::*;
-pub use close_offer::*;
+pub use delete_all_offer_vectors::*;
 pub use delete_offer_vector::*;
 pub use make_offer::*;
 pub use offer_state::*;

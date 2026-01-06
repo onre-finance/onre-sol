@@ -24,7 +24,6 @@ export type Onreapp = {
     "- Making offers with dynamic pricing (`make_offer`).",
     "- Taking offers with current market pricing (`take_offer`, `take_offer_permissionless`).",
     "- Managing offer vectors for price control (`add_offer_vector`, `delete_offer_vector`).",
-    "- Closing offers (`close_offer`).",
     "- Program state initialization and management (`initialize`, `set_boss`, `add_admin`, `remove_admin`).",
     "- Vault operations for token deposits and withdrawals (`offer_vault_deposit`, `offer_vault_withdraw`).",
     "- Market information queries (`get_nav`, `get_apy`, `get_tvl`, `get_circulating_supply`).",
@@ -770,113 +769,6 @@ export type Onreapp = {
       "args": []
     },
     {
-      "name": "closeOffer",
-      "docs": [
-        "Closes a offer.",
-        "",
-        "Delegates to `offer::close_offer`.",
-        "Removes the offer from the offers account and clears its data.",
-        "Emits a `CloseOfferEvent` upon success.",
-        "",
-        "# Arguments",
-        "- `ctx`: Context for `CloseOffer`."
-      ],
-      "discriminator": [
-        191,
-        72,
-        67,
-        35,
-        239,
-        209,
-        97,
-        132
-      ],
-      "accounts": [
-        {
-          "name": "offer",
-          "docs": [
-            "The offer account to be closed and its rent reclaimed",
-            "",
-            "This account is validated as a PDA derived from token mint addresses.",
-            "The account will be closed and its rent transferred to the boss."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutMint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "tokenInMint",
-          "docs": [
-            "The input token mint account for offer validation"
-          ]
-        },
-        {
-          "name": "tokenOutMint",
-          "docs": [
-            "The output token mint account for offer validation"
-          ]
-        },
-        {
-          "name": "boss",
-          "docs": [
-            "The boss account authorized to close offers and receive rent"
-          ],
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "state",
-          "docs": [
-            "Program state account containing boss authorization"
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "systemProgram",
-          "docs": [
-            "System program required for account closure and rent transfer"
-          ],
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "closeState",
       "docs": [
         "Closes the program state account and returns the rent to the boss.",
@@ -1353,6 +1245,107 @@ export type Onreapp = {
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "deleteAllOfferVectors",
+      "docs": [
+        "Deletes all time vectors from an offer.",
+        "",
+        "Delegates to `offer::delete_all_offer_vectors`.",
+        "Removes all time vectors from the offer regardless of their timing (past, active, or future).",
+        "Only the boss can delete time vectors from offers.",
+        "Emits a `AllOfferVectorsDeletedEvent` event upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `DeleteAllOfferVectors`."
+      ],
+      "discriminator": [
+        26,
+        201,
+        38,
+        207,
+        76,
+        51,
+        79,
+        15
+      ],
+      "accounts": [
+        {
+          "name": "offer",
+          "docs": [
+            "The offer account from which all pricing vectors will be deleted",
+            "",
+            "This account is validated as a PDA derived from token mint addresses",
+            "and contains the array of pricing vectors for the offer."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "The input token mint account for offer validation"
+          ]
+        },
+        {
+          "name": "tokenOutMint",
+          "docs": [
+            "The output token mint account for offer validation"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing boss authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account authorized to delete pricing vectors from offers"
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": []
     },
     {
       "name": "deleteOfferVector",
@@ -6684,6 +6677,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "allOfferVectorsDeletedEvent",
+      "discriminator": [
+        13,
+        237,
+        37,
+        22,
+        175,
+        128,
+        178,
+        200
+      ]
+    },
+    {
       "name": "approverAddedEvent",
       "discriminator": [
         130,
@@ -6863,19 +6869,6 @@ export type Onreapp = {
         249,
         29,
         1
-      ]
-    },
-    {
-      "name": "offerClosedEvent",
-      "discriminator": [
-        52,
-        107,
-        250,
-        206,
-        40,
-        209,
-        249,
-        150
       ]
     },
     {
@@ -7129,18 +7122,53 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "mathOverflow",
-      "msg": "Math overflow"
+      "name": "expired",
+      "msg": "The approval message has expired."
     },
     {
       "code": 6001,
-      "name": "maxSupplyExceeded",
-      "msg": "Minting would exceed maximum supply cap"
+      "name": "wrongProgram",
+      "msg": "The approval message is for the wrong program."
     },
     {
       "code": 6002,
-      "name": "transferFeeNotSupported",
-      "msg": "Token-2022 with transfer fees not supported"
+      "name": "wrongUser",
+      "msg": "The approval message is for the wrong user."
+    },
+    {
+      "code": 6003,
+      "name": "missingEd25519Ix",
+      "msg": "Missing Ed25519 instruction."
+    },
+    {
+      "code": 6004,
+      "name": "wrongIxProgram",
+      "msg": "The instruction is for the wrong program."
+    },
+    {
+      "code": 6005,
+      "name": "malformedEd25519Ix",
+      "msg": "Malformed Ed25519 instruction."
+    },
+    {
+      "code": 6006,
+      "name": "multipleSigs",
+      "msg": "Multiple signatures found in Ed25519 instruction."
+    },
+    {
+      "code": 6007,
+      "name": "wrongAuthority",
+      "msg": "The authority public key does not match."
+    },
+    {
+      "code": 6008,
+      "name": "msgMismatch",
+      "msg": "The message in the Ed25519 instruction does not match the approval message."
+    },
+    {
+      "code": 6009,
+      "name": "msgDeserialize",
+      "msg": "Failed to deserialize the approval message."
     }
   ],
   "types": [
@@ -7214,6 +7242,33 @@ export type Onreapp = {
               "The boss who cleared all admins"
             ],
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "allOfferVectorsDeletedEvent",
+      "docs": [
+        "Event emitted when all pricing vectors are deleted from an offer",
+        "",
+        "Provides transparency for tracking bulk pricing vector removals."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerPda",
+            "docs": [
+              "The PDA address of the offer from which vectors were deleted"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "vectorsDeletedCount",
+            "docs": [
+              "Number of vectors that were deleted (non-empty vectors)"
+            ],
+            "type": "u8"
           }
         ]
       }
@@ -7823,33 +7878,6 @@ export type Onreapp = {
                 131
               ]
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "offerClosedEvent",
-      "docs": [
-        "Event emitted when an offer is successfully closed and account is reclaimed",
-        "",
-        "Provides transparency for tracking offer lifecycle and account cleanup operations."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "offerPda",
-            "docs": [
-              "The PDA address of the offer that was closed"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "boss",
-            "docs": [
-              "The boss account that initiated the closure and received the rent"
-            ],
-            "type": "pubkey"
           }
         ]
       }

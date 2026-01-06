@@ -21,7 +21,6 @@ pub mod utils;
 /// - Making offers with dynamic pricing (`make_offer`).
 /// - Taking offers with current market pricing (`take_offer`, `take_offer_permissionless`).
 /// - Managing offer vectors for price control (`add_offer_vector`, `delete_offer_vector`).
-/// - Closing offers (`close_offer`).
 /// - Program state initialization and management (`initialize`, `set_boss`, `add_admin`, `remove_admin`).
 /// - Vault operations for token deposits and withdrawals (`offer_vault_deposit`, `offer_vault_withdraw`).
 /// - Market information queries (`get_nav`, `get_apy`, `get_tvl`, `get_circulating_supply`).
@@ -138,18 +137,6 @@ pub mod onreapp {
         offer::make_offer(ctx, fee_basis_points, needs_approval, allow_permissionless)
     }
 
-    /// Closes a offer.
-    ///
-    /// Delegates to `offer::close_offer`.
-    /// Removes the offer from the offers account and clears its data.
-    /// Emits a `CloseOfferEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `CloseOffer`.
-    pub fn close_offer(ctx: Context<CloseOffer>) -> Result<()> {
-        offer::close_offer(ctx)
-    }
-
     /// Adds a time vector to an existing offer.
     ///
     /// Delegates to `offer::add_offer_time_vector`.
@@ -196,6 +183,19 @@ pub mod onreapp {
         vector_start_time: u64,
     ) -> Result<()> {
         offer::delete_offer_vector(ctx, vector_start_time)
+    }
+
+    /// Deletes all time vectors from an offer.
+    ///
+    /// Delegates to `offer::delete_all_offer_vectors`.
+    /// Removes all time vectors from the offer regardless of their timing (past, active, or future).
+    /// Only the boss can delete time vectors from offers.
+    /// Emits a `AllOfferVectorsDeletedEvent` event upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `DeleteAllOfferVectors`.
+    pub fn delete_all_offer_vectors(ctx: Context<DeleteAllOfferVectors>) -> Result<()> {
+        offer::delete_all_offer_vectors(ctx)
     }
 
     /// Updates the fee basis points for an offer.
