@@ -1,6 +1,6 @@
 // scripts/fetchOffer.ts
 import { PublicKey } from '@solana/web3.js';
-import { BN } from 'bn.js';
+import { BN } from '@coral-xyz/anchor';
 
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import bs58 from 'bs58';

@@ -10,7 +10,7 @@ import {
   getAssociatedTokenAddressSync,
   TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
-import { BN } from "bn.js";
+import { BN } from "@coral-xyz/anchor";
 import { Onreapp } from "../../target/types/onreapp";
 import idl from "../../target/idl/onreapp.json";
 import bs58 from "bs58";
