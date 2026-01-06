@@ -185,6 +185,19 @@ pub mod onreapp {
         offer::delete_offer_vector(ctx, vector_start_time)
     }
 
+    /// Deletes all time vectors from an offer.
+    ///
+    /// Delegates to `offer::delete_all_offer_vectors`.
+    /// Removes all time vectors from the offer regardless of their timing (past, active, or future).
+    /// Only the boss can delete time vectors from offers.
+    /// Emits a `AllOfferVectorsDeletedEvent` event upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `DeleteAllOfferVectors`.
+    pub fn delete_all_offer_vectors(ctx: Context<DeleteAllOfferVectors>) -> Result<()> {
+        offer::delete_all_offer_vectors(ctx)
+    }
+
     /// Updates the fee basis points for an offer.
     ///
     /// Delegates to `offer::update_offer_fee`.

@@ -1247,6 +1247,107 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "deleteAllOfferVectors",
+      "docs": [
+        "Deletes all time vectors from an offer.",
+        "",
+        "Delegates to `offer::delete_all_offer_vectors`.",
+        "Removes all time vectors from the offer regardless of their timing (past, active, or future).",
+        "Only the boss can delete time vectors from offers.",
+        "Emits a `AllOfferVectorsDeletedEvent` event upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `DeleteAllOfferVectors`."
+      ],
+      "discriminator": [
+        26,
+        201,
+        38,
+        207,
+        76,
+        51,
+        79,
+        15
+      ],
+      "accounts": [
+        {
+          "name": "offer",
+          "docs": [
+            "The offer account from which all pricing vectors will be deleted",
+            "",
+            "This account is validated as a PDA derived from token mint addresses",
+            "and contains the array of pricing vectors for the offer."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "The input token mint account for offer validation"
+          ]
+        },
+        {
+          "name": "tokenOutMint",
+          "docs": [
+            "The output token mint account for offer validation"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing boss authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account authorized to delete pricing vectors from offers"
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "deleteOfferVector",
       "docs": [
         "Deletes a time vector from an offer.",
@@ -6576,6 +6677,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "allOfferVectorsDeletedEvent",
+      "discriminator": [
+        13,
+        237,
+        37,
+        22,
+        175,
+        128,
+        178,
+        200
+      ]
+    },
+    {
       "name": "approverAddedEvent",
       "discriminator": [
         130,
@@ -7008,53 +7122,18 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "expired",
-      "msg": "The approval message has expired."
+      "name": "mathOverflow",
+      "msg": "Math overflow"
     },
     {
       "code": 6001,
-      "name": "wrongProgram",
-      "msg": "The approval message is for the wrong program."
+      "name": "maxSupplyExceeded",
+      "msg": "Minting would exceed maximum supply cap"
     },
     {
       "code": 6002,
-      "name": "wrongUser",
-      "msg": "The approval message is for the wrong user."
-    },
-    {
-      "code": 6003,
-      "name": "missingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
-    },
-    {
-      "code": 6004,
-      "name": "wrongIxProgram",
-      "msg": "The instruction is for the wrong program."
-    },
-    {
-      "code": 6005,
-      "name": "malformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
-    },
-    {
-      "code": 6006,
-      "name": "multipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
-    },
-    {
-      "code": 6007,
-      "name": "wrongAuthority",
-      "msg": "The authority public key does not match."
-    },
-    {
-      "code": 6008,
-      "name": "msgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
-    },
-    {
-      "code": 6009,
-      "name": "msgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "name": "transferFeeNotSupported",
+      "msg": "Token-2022 with transfer fees not supported"
     }
   ],
   "types": [
@@ -7128,6 +7207,33 @@ export type Onreapp = {
               "The boss who cleared all admins"
             ],
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "allOfferVectorsDeletedEvent",
+      "docs": [
+        "Event emitted when all pricing vectors are deleted from an offer",
+        "",
+        "Provides transparency for tracking bulk pricing vector removals."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerPda",
+            "docs": [
+              "The PDA address of the offer from which vectors were deleted"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "vectorsDeletedCount",
+            "docs": [
+              "Number of vectors that were deleted (non-empty vectors)"
+            ],
+            "type": "u8"
           }
         ]
       }

@@ -150,6 +150,25 @@ export class OnreProgram {
         await tx.rpc();
     }
 
+    async deleteAllOfferVectors(
+        tokenInMint: PublicKey,
+        tokenOutMint: PublicKey,
+        signer?: Keypair
+    ) {
+        const tx = this.program.methods
+            .deleteAllOfferVectors()
+            .accounts({
+                tokenInMint: tokenInMint,
+                tokenOutMint: tokenOutMint
+            });
+
+        if (signer) {
+            tx.signers([signer]);
+        }
+
+        await tx.rpc();
+    }
+
     async takeOffer(params: {
         tokenInAmount: number,
         tokenInMint: PublicKey,
