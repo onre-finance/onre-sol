@@ -83,7 +83,7 @@ pub struct Initialize<'info> {
         seeds = [seeds::MINT_AUTHORITY],
         bump
     )]
-    pub mint_authority: AccountInfo<'info>,
+    pub mint_authority: UncheckedAccount<'info>,
 
     /// The offer vault authority account to initialize, rent paid by `boss`.
     /// CHECK: PDA derivation is validated by seeds constraint
@@ -94,7 +94,7 @@ pub struct Initialize<'info> {
         seeds = [seeds::OFFER_VAULT_AUTHORITY],
         bump
     )]
-    pub offer_vault_authority: AccountInfo<'info>,
+    pub offer_vault_authority: UncheckedAccount<'info>,
 
     /// The initial boss who will have full authority over the program
     ///
@@ -108,11 +108,11 @@ pub struct Initialize<'info> {
 
     /// CHECK: This must be *this* program's executable account
     #[account(executable, address = crate::ID)]
-    pub program: AccountInfo<'info>,
+    pub program: UncheckedAccount<'info>,
 
     /// CHECK: ProgramData PDA for `program` under the upgradeable loader
     /// We'll verify its address in code.
-    pub program_data: Option<AccountInfo<'info>>,
+    pub program_data: Option<UncheckedAccount<'info>>,
 
     /// The ONyc token mint that this program will manage
     ///
@@ -151,7 +151,7 @@ pub struct Initialize<'info> {
 /// - Only allows initialization if boss is currently unset (default pubkey)
 pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
     let upgrade_authority =
-        get_upgrade_authority(&ctx.accounts.program, ctx.accounts.program_data.as_ref())?;
+        get_upgrade_authority(&ctx.accounts.program, ctx.accounts.program_data.as_ref().map(|v| v.as_ref()))?;
 
     if upgrade_authority.is_some() {
         // Check that the boss is the upgrade authority

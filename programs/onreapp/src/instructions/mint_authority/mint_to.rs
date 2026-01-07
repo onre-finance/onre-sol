@@ -76,7 +76,7 @@ pub struct MintTo<'info> {
         constraint = onyc_mint.mint_authority.unwrap() == mint_authority.key() @ MintToErrorCode::NoMintAuthority,
         bump
     )]
-    pub mint_authority: AccountInfo<'info>,
+    pub mint_authority: UncheckedAccount<'info>,
 
     /// SPL Token program for minting operations
     pub token_program: Interface<'info, TokenInterface>,

@@ -72,7 +72,7 @@ pub struct TransferMintAuthorityToProgram<'info> {
         seeds = [seeds::MINT_AUTHORITY],
         bump
     )]
-    pub mint_authority: AccountInfo<'info>,
+    pub mint_authority: UncheckedAccount<'info>,
 
     /// SPL Token program for mint authority operations
     pub token_program: Interface<'info, TokenInterface>,

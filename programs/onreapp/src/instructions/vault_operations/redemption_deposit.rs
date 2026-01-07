@@ -31,7 +31,7 @@ pub struct RedemptionVaultDeposit<'info> {
     /// to distribute tokens during redemption executions.
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(seeds = [seeds::REDEMPTION_OFFER_VAULT_AUTHORITY], bump)]
-    pub redemption_vault_authority: AccountInfo<'info>,
+    pub redemption_vault_authority: UncheckedAccount<'info>,
 
     /// The token mint for the deposit operation
     pub token_mint: Box<InterfaceAccount<'info, Mint>>,

@@ -87,7 +87,7 @@ pub struct TakeOffer<'info> {
         seeds = [seeds::OFFER_VAULT_AUTHORITY],
         bump
     )]
-    pub vault_authority: AccountInfo<'info>,
+    pub vault_authority: UncheckedAccount<'info>,
 
     /// Vault account for temporary token_in storage during burn operations
     ///
@@ -189,7 +189,7 @@ pub struct TakeOffer<'info> {
         seeds = [seeds::MINT_AUTHORITY],
         bump
     )]
-    pub mint_authority: AccountInfo<'info>,
+    pub mint_authority: UncheckedAccount<'info>,
 
     /// Instructions sysvar for approval signature verification
     ///

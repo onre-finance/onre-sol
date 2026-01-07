@@ -30,7 +30,7 @@ pub struct CloseState<'info> {
     ///
     /// CHECK: Manual validation of PDA and boss without deserialization
     #[account(mut)]
-    pub state: AccountInfo<'info>,
+    pub state: UncheckedAccount<'info>,
 
     /// The boss account authorized to close the state and receive rent
     ///
