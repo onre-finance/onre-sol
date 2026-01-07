@@ -19,7 +19,7 @@ import idl from "../target/idl/onreapp.json";
 
 export const ONREAPP_PROGRAM_ID = new PublicKey((idl as any).address);
 export const INITIAL_LAMPORTS = 1_000_000_000; // 1 SOL
-export const BPF_LOADER_PROGRAM_ID = new PublicKey("BPFLoader2111111111111111111111111111111111");
+export const BPF_UPGRADEABLE_LOADER_PROGRAM_ID = new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111");
 
 // LiteSVM transaction results are objects with method accessors like:
 // - result.err() - returns error object
@@ -49,24 +49,43 @@ export class TestHelper {
 
         svm.airdrop(payer.publicKey, BigInt(100_000_000_000)); // 100 SOL
 
-        // Load and deploy the program
+        // Load and deploy the program as upgradeable
         const fs = await import("fs");
         const path = await import("path");
         const programPath = path.join(process.cwd(), "target/deploy/onreapp.so");
         const programBytes = fs.readFileSync(programPath);
-        svm.addProgram(ONREAPP_PROGRAM_ID, programBytes);
 
-        // Create programData account (required by Anchor)
+        // Create programData PDA
         const programDataPda = PublicKey.findProgramAddressSync(
             [ONREAPP_PROGRAM_ID.toBuffer()],
-            BPF_LOADER_PROGRAM_ID
+            BPF_UPGRADEABLE_LOADER_PROGRAM_ID
         )[0];
+
+        // Set up the programData account FIRST (contains actual bytecode)
+        const programDataAccountData = Buffer.alloc(45 + programBytes.length);
+        programDataAccountData.writeUInt32LE(3, 0); // UpgradeableLoaderState::ProgramData discriminator
+        programDataAccountData.writeBigUInt64LE(BigInt(0), 4); // slot (u64)
+        programDataAccountData.writeUInt8(1, 12); // Option::Some for upgrade_authority
+        payer.publicKey.toBuffer().copy(programDataAccountData, 13); // upgrade_authority_address (32 bytes)
+        programBytes.copy(programDataAccountData, 45); // actual program bytecode
 
         svm.setAccount(programDataPda, {
             executable: false,
-            data: Buffer.alloc(45),
+            data: programDataAccountData,
+            lamports: 10_000_000,
+            owner: BPF_UPGRADEABLE_LOADER_PROGRAM_ID
+        });
+
+        // Set up the program account (executable, points to programData)
+        const programAccountData = Buffer.alloc(36);
+        programAccountData.writeUInt32LE(2, 0); // UpgradeableLoaderState::Program discriminator
+        programDataPda.toBuffer().copy(programAccountData, 4); // programdata_address (32 bytes)
+
+        svm.setAccount(ONREAPP_PROGRAM_ID, {
+            executable: true,
+            data: programAccountData,
             lamports: 1_000_000,
-            owner: BPF_LOADER_PROGRAM_ID
+            owner: BPF_UPGRADEABLE_LOADER_PROGRAM_ID
         });
 
         return new TestHelper(svm, payer);

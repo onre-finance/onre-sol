@@ -1,7 +1,7 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { AnchorProvider, BN, Program, Wallet } from "@coral-xyz/anchor";
 import { Onreapp } from "../target/types/onreapp";
-import { BPF_LOADER_PROGRAM_ID, ONREAPP_PROGRAM_ID, TestHelper } from "./test_helper.ts";
+import { BPF_LOADER_PROGRAM_ID, BPF_UPGRADEABLE_LOADER_PROGRAM_ID, ONREAPP_PROGRAM_ID, TestHelper } from "./test_helper.ts";
 import idl from "../target/idl/onreapp.json";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
@@ -61,7 +61,7 @@ export class OnreProgram {
                 onycMint: params.onycMint,
                 programData: PublicKey.findProgramAddressSync(
                     [this.program.programId.toBuffer()],
-                    BPF_LOADER_PROGRAM_ID
+                    BPF_UPGRADEABLE_LOADER_PROGRAM_ID
                 )[0]
             })
             .rpc();

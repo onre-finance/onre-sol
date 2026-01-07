@@ -6,7 +6,6 @@ use anchor_lang::solana_program::bpf_loader_upgradeable::{
 };
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::Mint;
-use solana_program::bpf_loader;
 
 /// Error codes for the initialize instruction
 #[error_code]
@@ -248,9 +247,6 @@ pub fn get_upgrade_authority(
         } else {
             err!(InitializeErrorCode::NotProgramData)
         }
-    } else if owner == &bpf_loader::id() {
-        // Required for tests to work. For BPF_LOADER, there is no upgrade_authority so we can't actually check it
-        Ok(None)
     } else {
         err!(InitializeErrorCode::WrongOwner)
     }
