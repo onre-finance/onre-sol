@@ -8,49 +8,13 @@ import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-tok
 export { BPF_LOADER_PROGRAM_ID };
 
 /**
- * Helper to parse view transaction errors and extract meaningful messages
+ * Helper to check view transaction errors and throw with logs
  */
 function parseViewError(result: any): void {
-    const resultStr = result.toString();
-    if (resultStr.includes("FailedTransactionMetadata") || "Err" in result) {
-        // Extract error message from logs
-        const logsMatch = resultStr.match(/logs:\s*\[([^\]]+(?:\][^\]]+)*)\]/);
-        if (logsMatch) {
-            const logsStr = logsMatch[1];
-            const logs: string[] = [];
-            let current = '';
-            let inQuote = false;
-
-            for (let i = 0; i < logsStr.length; i++) {
-                const char = logsStr[i];
-                if (char === '"' && (i === 0 || logsStr[i-1] !== '\\')) {
-                    inQuote = !inQuote;
-                    if (!inQuote && current.startsWith('"')) {
-                        logs.push(current.substring(1));
-                        current = '';
-                    } else if (inQuote) {
-                        current = '"';
-                    }
-                } else if (char === ',' && !inQuote) {
-                    if (logsStr[i+1] === ' ') i++;
-                } else if (inQuote) {
-                    current += char;
-                }
-            }
-
-            // Check for specific error messages
-            const anchorError = logs.find(log => log.includes("AnchorError caused by account:"));
-            if (anchorError) {
-                throw new Error(anchorError);
-            }
-
-            const noActiveVector = logs.find(log => log.includes("No active vector"));
-            if (noActiveVector) {
-                throw new Error("No active vector");
-            }
-        }
-
-        throw new Error("Transaction failed");
+    if ("Err" in result || typeof result.err === 'function') {
+        const logs = result.meta().logs();
+        const errorMessage = logs.join('\n');
+        throw new Error(errorMessage);
     }
 }
 
