@@ -1,24 +1,41 @@
-# Use official Anchor Docker image
-FROM solanafoundation/anchor:v0.32.1
+# Stage 1: Build Solana program with Anchor
+FROM solanafoundation/anchor:v0.32.1 AS builder
+
+WORKDIR /workspace
+COPY . .
+RUN anchor build
+
+# Stage 2: Run tests with newer Ubuntu (has glibc 2.38+)
+FROM ubuntu:24.04
+
+# Install Node.js, Rust, and required tools
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install pnpm
 RUN npm install -g pnpm
 
-# Create Solana keypair for testing
-RUN mkdir -p /root/.config/solana && \
-    solana-keygen new --no-bip39-passphrase --force -o /root/.config/solana/id.json
-
-# Set working directory
 WORKDIR /workspace
 
-# Copy package files
-COPY package.json pnpm-lock.yaml* ./
+# Copy built program from builder stage
+COPY --from=builder /workspace/target ./target
+COPY --from=builder /workspace/Anchor.toml ./Anchor.toml
 
-# Install dependencies with pnpm
+# Copy package files and install dependencies
+COPY package.json pnpm-lock.yaml* ./
 RUN pnpm install --frozen-lockfile || pnpm install
 
 # Copy rest of project
 COPY . .
 
-# Default command: build, test, and copy artifacts to output
-CMD ["sh", "-c", "anchor build && NODE_OPTIONS='--max-old-space-size=2048' pnpm exec vitest run && cp -r target/deploy target/idl /workspace/output/ 2>/dev/null || true"]
+# Default command: run tests and copy artifacts to output
+CMD ["sh", "-c", "NODE_OPTIONS='--max-old-space-size=2048' pnpm exec vitest run && cp -r target/deploy target/idl /workspace/output/ 2>/dev/null || true"]
