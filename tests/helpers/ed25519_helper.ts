@@ -59,16 +59,16 @@ export class Ed25519Helper {
 
             // Signature info
             Buffer.from([signatureOffset & 0xFF, (signatureOffset >> 8) & 0xFF]), // signature_offset (u16 LE)
-            Buffer.from([0, 0]), // signature_instruction_index (u16 LE) - 0 means current instruction
+            Buffer.from([0xFF, 0xFF]), // signature_instruction_index (u16 LE) - u16::MAX means current instruction
 
             // Public key info
             Buffer.from([publicKeyOffset & 0xFF, (publicKeyOffset >> 8) & 0xFF]), // public_key_offset (u16 LE)
-            Buffer.from([0, 0]), // public_key_instruction_index (u16 LE) - 0 means current instruction
+            Buffer.from([0xFF, 0xFF]), // public_key_instruction_index (u16 LE) - u16::MAX means current instruction
 
             // Message info
             Buffer.from([messageOffset & 0xFF, (messageOffset >> 8) & 0xFF]), // message_data_offset (u16 LE)
             Buffer.from([message.length & 0xFF, (message.length >> 8) & 0xFF]), // message_data_size (u16 LE)
-            Buffer.from([0, 0]), // message_instruction_index (u16 LE) - 0 means current instruction
+            Buffer.from([0xFF, 0xFF]), // message_instruction_index (u16 LE) - u16::MAX means current instruction
 
             // Data
             Buffer.from(signature), // signature (64 bytes)
