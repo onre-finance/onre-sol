@@ -120,6 +120,8 @@ describe("Add Approver", () => {
         // given - add first approver
         await program.addApprover({ trusted: approver1.publicKey });
 
+        await testHelper.advanceSlot();
+
         // when & then - try to add the same approver again
         await expect(
             program.addApprover({ trusted: approver1.publicKey })
