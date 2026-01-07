@@ -95,7 +95,12 @@ pub fn process_redemption_core(
         .checked_mul(10_u128.pow(PRICE_DECIMALS as u32))
         .ok_or(RedemptionCoreError::OverflowError)?;
 
-    let token_out_amount = (numerator / denominator) as u64;
+    let result = numerator / denominator;
+
+    // Validate result fits in u64 before casting
+    require!(result <= u64::MAX as u128, RedemptionCoreError::OverflowError);
+
+    let token_out_amount = result as u64;
 
     Ok(RedemptionProcessResult {
         price: current_price,
@@ -213,6 +218,12 @@ pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Resu
         }
     } else {
         // When program lacks mint authority: transfer full amount (net + fee) to boss
+        // Use checked_add to prevent overflow
+        let total_amount = params
+            .token_in_net_amount
+            .checked_add(params.token_in_fee_amount)
+            .ok_or(RedemptionCoreError::OverflowError)?;
+
         transfer_tokens(
             params.token_in_mint,
             params.token_in_program,
@@ -220,7 +231,7 @@ pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Resu
             params.boss_token_in_account,
             params.redemption_vault_authority,
             Some(vault_authority_signer_seeds),
-            params.token_in_net_amount + params.token_in_fee_amount,
+            total_amount,
         )?;
     }
 

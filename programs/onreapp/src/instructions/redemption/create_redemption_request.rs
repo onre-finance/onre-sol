@@ -143,6 +143,18 @@ pub struct CreateRedemptionRequest<'info> {
 /// # Events
 /// * `RedemptionRequestCreatedEvent` - Emitted with redemption request details
 pub fn create_redemption_request(ctx: Context<CreateRedemptionRequest>, amount: u64) -> Result<()> {
+    // Validate the redemption offer is properly initialized (offer is not default)
+    require!(
+        ctx.accounts.redemption_offer.offer != Pubkey::default(),
+        CreateRedemptionRequestErrorCode::InvalidRedemptionOffer
+    );
+
+    // Validate the token_out_mint is properly set
+    require!(
+        ctx.accounts.redemption_offer.token_out_mint != Pubkey::default(),
+        CreateRedemptionRequestErrorCode::InvalidRedemptionOffer
+    );
+
     // Capture counter before incrementing (used for PDA derivation)
     let request_id = ctx.accounts.redemption_offer.request_counter;
 
@@ -214,4 +226,8 @@ pub enum CreateRedemptionRequestErrorCode {
     /// Invalid mint (doesn't match redemption offer's token_in_mint)
     #[msg("Invalid mint: provided mint doesn't match redemption offer's token_in_mint")]
     InvalidMint,
+
+    /// Invalid redemption offer (not properly initialized)
+    #[msg("Invalid redemption offer: offer is not properly initialized")]
+    InvalidRedemptionOffer,
 }

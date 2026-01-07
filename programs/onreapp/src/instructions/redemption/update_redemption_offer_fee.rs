@@ -87,6 +87,12 @@ pub fn update_redemption_offer_fee(
 
     let redemption_offer = &mut ctx.accounts.redemption_offer;
 
+    // Validate this is not a no-op (setting the same fee)
+    require!(
+        new_fee_basis_points != redemption_offer.fee_basis_points,
+        UpdateRedemptionOfferFeeErrorCode::NoChange
+    );
+
     // Store old fee for event
     let old_fee_basis_points = redemption_offer.fee_basis_points;
 
@@ -120,4 +126,8 @@ pub enum UpdateRedemptionOfferFeeErrorCode {
     /// Fee basis points exceeds maximum allowed value of 1000 (10%)
     #[msg("Invalid fee: fee_basis_points must be <= 1000")]
     InvalidFee,
+
+    /// The new fee is the same as the current fee
+    #[msg("No change: new fee is the same as current fee")]
+    NoChange,
 }

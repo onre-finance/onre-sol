@@ -16,6 +16,12 @@ pub enum TokenUtilsErrorCode {
     MaxSupplyExceeded,
     #[msg("Token-2022 with transfer fees not supported")]
     TransferFeeNotSupported,
+    #[msg("Price cannot be zero")]
+    ZeroPriceNotAllowed,
+    #[msg("Token decimals exceed maximum allowed (18)")]
+    DecimalsExceedMax,
+    #[msg("Result exceeds u64 maximum value")]
+    ResultOverflow,
 }
 
 /// Generic token transfer function that handles both regular and PDA-signed transfers
@@ -69,12 +75,28 @@ pub fn transfer_tokens<'info>(
 ///
 /// # Errors
 /// Returns MathOverflow if calculation exceeds u128 limits
+/// Maximum allowed token decimals (prevents overflow in exponentiation)
+pub const MAX_TOKEN_DECIMALS: u8 = 18;
+
 pub fn calculate_token_out_amount(
     token_in_amount: u64,
     price: u64,
     token_in_decimals: u8,
     token_out_decimals: u8,
 ) -> Result<u64> {
+    // Validate price is not zero
+    require!(price > 0, TokenUtilsErrorCode::ZeroPriceNotAllowed);
+
+    // Validate decimal values are within reasonable bounds
+    require!(
+        token_in_decimals <= MAX_TOKEN_DECIMALS,
+        TokenUtilsErrorCode::DecimalsExceedMax
+    );
+    require!(
+        token_out_decimals <= MAX_TOKEN_DECIMALS,
+        TokenUtilsErrorCode::DecimalsExceedMax
+    );
+
     let token_in_amount_u128 = token_in_amount as u128;
     let price_u128 = price as u128;
 
@@ -88,7 +110,15 @@ pub fn calculate_token_out_amount(
         .checked_mul(10_u128.pow(token_in_decimals as u32))
         .ok_or(TokenUtilsErrorCode::MathOverflow)?;
 
-    Ok((numerator / denominator) as u64)
+    let result = numerator / denominator;
+
+    // Validate result fits in u64 before casting
+    require!(
+        result <= u64::MAX as u128,
+        TokenUtilsErrorCode::ResultOverflow
+    );
+
+    Ok(result as u64)
 }
 
 /// Formats a u64 number as a decimal string with 9 decimal places
@@ -354,7 +384,6 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
         program_controls_mint(params.token_in_mint, params.mint_authority_pda);
 
     if controls_token_in_mint {
-
         // Transfer net amount to burn account
         transfer_tokens(
             params.token_in_mint,
@@ -391,6 +420,12 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
         }
     } else {
         // When program lacks mint authority: transfer full amount to boss
+        // Use checked_add to prevent overflow
+        let total_amount = params
+            .token_in_net_amount
+            .checked_add(params.token_in_fee_amount)
+            .ok_or(TokenUtilsErrorCode::MathOverflow)?;
+
         transfer_tokens(
             params.token_in_mint,
             params.token_in_program,
@@ -398,7 +433,7 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
             params.token_in_destination_account,
             params.token_in_authority,
             params.token_in_source_signer_seeds,
-            params.token_in_net_amount + params.token_in_fee_amount,
+            total_amount,
         )?;
     }
 
@@ -453,7 +488,8 @@ pub fn has_transfer_fee(mint: &InterfaceAccount<Mint>) -> Result<bool> {
     let mint_data = mint_info.try_borrow_data()?;
 
     // Try to parse as Token-2022 mint with extensions
-    let mint_with_extension = StateWithExtensions::<spl_token_2022::state::Mint>::unpack(&mint_data);
+    let mint_with_extension =
+        StateWithExtensions::<spl_token_2022::state::Mint>::unpack(&mint_data);
 
     match mint_with_extension {
         Ok(mint_state) => {

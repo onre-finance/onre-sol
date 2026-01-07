@@ -63,6 +63,12 @@ pub fn set_redemption_admin(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
+    // Validate this is not a no-op (setting the same admin)
+    require!(
+        new_redemption_admin != state.redemption_admin,
+        SetRedemptionAdminErrorCode::NoChange
+    );
+
     let old_redemption_admin = state.redemption_admin;
     state.redemption_admin = new_redemption_admin;
 
@@ -73,4 +79,12 @@ pub fn set_redemption_admin(
     });
 
     Ok(())
+}
+
+/// Error codes for set redemption admin operations
+#[error_code]
+pub enum SetRedemptionAdminErrorCode {
+    /// The new redemption admin is the same as the current one
+    #[msg("No change: new redemption admin is the same as current")]
+    NoChange,
 }
