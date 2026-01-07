@@ -147,6 +147,168 @@ describe("Take Offer", () => {
             expect(userTokenOutBalanceAfter).toBe(BigInt(99e7));
         });
 
+        it("Should use ceiling division for fee - prevents zero fee on small amounts", async () => {
+            // REAL SCENARIO: Without ceiling division, users could avoid fees entirely
+            // by using small amounts where (amount * fee_bp) < 10000
+            //
+            // Example with 0.5% fee (50 bp) and 199 tokens:
+            // - Floor: (199 * 50) / 10000 = 9950 / 10000 = 0 (NO FEE!)
+            // - Ceiling: (199 * 50 + 9999) / 10000 = 19949 / 10000 = 1 (minimum 1 unit fee)
+            //
+            // This prevents fee evasion on small transactions
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            const tokenInMint = testHelper.createMint(6);
+            const tokenOutMint = testHelper.createMint(9);
+
+            // Create token accounts
+            testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(10_000e6), true);
+            const bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, testHelper.getBoss(), BigInt(0));
+            const userTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, user.publicKey);
+            testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(10_000e9));
+
+            // Create and fund vault
+            testHelper.createTokenAccount(tokenInMint, program.pdas.offerVaultAuthorityPda, BigInt(0), true);
+            testHelper.createTokenAccount(tokenOutMint, program.pdas.offerVaultAuthorityPda, BigInt(0), true);
+
+            await program.offerVaultDeposit({
+                amount: 10_000e9,
+                tokenMint: tokenOutMint
+            });
+
+            // Create offer with 0.5% fee (50 basis points)
+            await program.makeOffer({
+                tokenInMint,
+                tokenOutMint,
+                feeBasisPoints: 50 // 0.5% fee
+            });
+
+            await program.addOfferVector({
+                tokenInMint,
+                tokenOutMint,
+                baseTime: currentTime,
+                basePrice: 1e9, // 1:1 price for easy calculation
+                apr: 0,
+                priceFixDuration: 86400
+            });
+
+            // Use 199 tokens - small enough that floor division would give 0 fee
+            // 199 * 50 = 9950, which is < 10000
+            // Floor: 9950 / 10000 = 0 (user pays NO fee - bad!)
+            // Ceiling: (9950 + 9999) / 10000 = 19949 / 10000 = 1 (user pays at least 1 unit)
+            const tokenInAmount = 199;
+
+            const bossBalanceBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+
+            await program.takeOffer({
+                tokenInAmount,
+                tokenInMint,
+                tokenOutMint,
+                user: user.publicKey,
+                signer: user
+            });
+
+            const bossBalanceAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+            const userTokenOutBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+
+            // Verify boss received the full amount (including the ceiling-rounded fee)
+            // Since program lacks mint authority, boss receives full token_in amount
+            expect(bossBalanceAfter - bossBalanceBefore).toBe(BigInt(tokenInAmount));
+
+            // With ceiling division:
+            // - Fee = ceil(199 * 50 / 10000) = 1
+            // - Net amount = 199 - 1 = 198
+            // - Token out = 198 * 1e9 / 1e6 = 198_000 (0.000198 with 9 decimals)
+            //
+            // If floor division was used (WRONG):
+            // - Fee = 0
+            // - Net amount = 199
+            // - Token out = 199_000 (user gets more!)
+            //
+            // This verifies ceiling division is working - user gets 198_000 not 199_000
+            expect(userTokenOutBalanceAfter).toBe(BigInt(198_000));
+        });
+
+        it("Should use ceiling division for fee - large realistic transaction", async () => {
+            // REAL SCENARIO: $100,000 USDC transaction with 0.5% fee
+            // Even with large amounts, ceiling division ensures protocol never loses fractions
+            //
+            // Amount: 100,000.000001 USDC (100_000_000_001 with 6 decimals)
+            // Fee: 0.5% (50 bp)
+            //
+            // Floor: (100_000_000_001 * 50) / 10000 = 500_000_000 (loses 0.000001 USDC)
+            // Ceiling: (100_000_000_001 * 50 + 9999) / 10000 = 500_000_001 (rounds up)
+            //
+            // Net amount difference: 99_500_000_001 (floor) vs 99_500_000_000 (ceiling)
+            const currentTime = await testHelper.getCurrentClockTime();
+
+            const tokenInMint = testHelper.createMint(6);  // USDC-like
+            const tokenOutMint = testHelper.createMint(9); // ONyc-like
+
+            // Create token accounts with large balances
+            testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(200_000_000_000), true); // 200k USDC
+            const bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, testHelper.getBoss(), BigInt(0));
+            const userTokenOutAccount = getAssociatedTokenAddressSync(tokenOutMint, user.publicKey);
+            testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(200_000_000_000_000)); // 200k tokens
+
+            // Create and fund vault
+            testHelper.createTokenAccount(tokenInMint, program.pdas.offerVaultAuthorityPda, BigInt(0), true);
+            testHelper.createTokenAccount(tokenOutMint, program.pdas.offerVaultAuthorityPda, BigInt(0), true);
+
+            await program.offerVaultDeposit({
+                amount: 200_000_000_000_000, // 200k tokens with 9 decimals
+                tokenMint: tokenOutMint
+            });
+
+            // Create offer with 0.5% fee (50 basis points)
+            await program.makeOffer({
+                tokenInMint,
+                tokenOutMint,
+                feeBasisPoints: 50 // 0.5% fee
+            });
+
+            await program.addOfferVector({
+                tokenInMint,
+                tokenOutMint,
+                baseTime: currentTime,
+                basePrice: 1e9, // 1:1 price
+                apr: 0,
+                priceFixDuration: 86400
+            });
+
+            // $100,000.000001 USDC - amount chosen so (amount * 50) % 10000 != 0
+            const tokenInAmount = BigInt(100_000_000_001);
+
+            const bossBalanceBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+
+            await program.takeOffer({
+                tokenInAmount: Number(tokenInAmount),
+                tokenInMint,
+                tokenOutMint,
+                user: user.publicKey,
+                signer: user
+            });
+
+            const bossBalanceAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
+            const userTokenOutBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+
+            // Boss receives full amount
+            expect(bossBalanceAfter - bossBalanceBefore).toBe(tokenInAmount);
+
+            // With ceiling division:
+            // - Fee = ceil(100_000_000_001 * 50 / 10000) = 500_000_001 (rounds up the 0.5 extra)
+            // - Net amount = 100_000_000_001 - 500_000_001 = 99_500_000_000
+            // - Token out = 99_500_000_000 * 1e9 / 1e6 = 99_500_000_000_000
+            //
+            // If floor division was used:
+            // - Fee = 500_000_000
+            // - Net = 99_500_000_001
+            // - Token out = 99_500_000_001_000 (user gets 1000 more base units!)
+            //
+            // Ceiling ensures protocol collects the extra micro-USDC as fee
+            expect(userTokenOutBalanceAfter).toBe(BigInt(99_500_000_000_000));
+        });
+
         it("Should maintain price within same interval", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 

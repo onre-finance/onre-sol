@@ -149,11 +149,13 @@ pub struct CalculateFeeResult {
 /// assert_eq!(result.remaining_token_in_amount, 950);
 /// ```
 pub fn calculate_fees(token_in_amount: u64, fee_basis_points: u16) -> Result<CalculateFeeResult> {
-    // Calculate fee amount in token_in tokens
+    // Calculate fee amount in token_in tokens using ceiling division
+    // This ensures fees always round up in favor of the protocol
     let token_fee_amount = (token_in_amount as u128)
         .checked_mul(fee_basis_points as u128)
         .ok_or(TokenUtilsErrorCode::MathOverflow)?
-        .checked_div(MAX_BASIS_POINTS as u128)
+        .checked_add(MAX_BASIS_POINTS as u128 - 1)
+        .and_then(|adjusted| adjusted.checked_div(MAX_BASIS_POINTS as u128))
         .ok_or(TokenUtilsErrorCode::MathOverflow)? as u64;
 
     // Amount after fee deduction for the main offer exchange
