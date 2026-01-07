@@ -56,7 +56,7 @@ pub struct SetRedemptionAdmin<'info> {
 /// - Configures which account is authorized to manage redemptions
 ///
 /// # Events
-/// * `RedemptionAdminUpdated` - Emitted with old and new redemption admin addresses
+/// * `RedemptionAdminUpdatedEvent` - Emitted with old and new redemption admin addresses
 pub fn set_redemption_admin(
     ctx: Context<SetRedemptionAdmin>,
     new_redemption_admin: Pubkey,

@@ -40,6 +40,7 @@ pub struct RedemptionVaultWithdraw<'info> {
     ///
     /// Created automatically if it doesn't exist. Receives tokens withdrawn
     /// from the redemption vault for boss fund management.
+    /// Note: init_if_needed implies mutability.
     #[account(
         init_if_needed,
         payer = boss,

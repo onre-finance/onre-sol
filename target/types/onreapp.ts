@@ -3106,9 +3106,9 @@ export type Onreapp = {
         {
           "name": "tokenInMint",
           "docs": [
-            "The input token mint for redemptions",
+            "The input token mint for redemptions (token_in_mint)",
             "",
-            "This is the token_out_mint from the original offer."
+            "This corresponds to the token_out_mint from the original offer."
           ]
         },
         {
@@ -4451,7 +4451,8 @@ export type Onreapp = {
             "Boss's token account serving as the destination for withdrawn tokens",
             "",
             "Created automatically if it doesn't exist. Receives tokens withdrawn",
-            "from the redemption vault for boss fund management."
+            "from the redemption vault for boss fund management.",
+            "Note: init_if_needed implies mutability."
           ],
           "writable": true,
           "pda": {
@@ -5588,6 +5589,9 @@ export type Onreapp = {
             "The boss account authorized to receive token_in payments",
             "",
             "Must match the boss stored in program state for security validation."
+          ],
+          "relations": [
+            "state"
           ]
         },
         {
@@ -6255,7 +6259,7 @@ export type Onreapp = {
         "",
         "Delegates to `mint_authority::transfer_mint_authority_to_program`.",
         "Only the boss can call this instruction to transfer mint authority for a specific token.",
-        "The PDA is derived from the mint address and can later be used to mint tokens.",
+        "The PDA is derived from the MINT_AUTHORITY seed and can later be used to mint tokens.",
         "Emits a `MintAuthorityTransferredToProgramEvent` upon success.",
         "",
         "# Arguments",

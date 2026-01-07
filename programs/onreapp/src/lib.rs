@@ -307,7 +307,7 @@ pub mod onreapp {
     ///
     /// Delegates to `mint_authority::transfer_mint_authority_to_program`.
     /// Only the boss can call this instruction to transfer mint authority for a specific token.
-    /// The PDA is derived from the mint address and can later be used to mint tokens.
+    /// The PDA is derived from the MINT_AUTHORITY seed and can later be used to mint tokens.
     /// Emits a `MintAuthorityTransferredToProgramEvent` upon success.
     ///
     /// # Arguments

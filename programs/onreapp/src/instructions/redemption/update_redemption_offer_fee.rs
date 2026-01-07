@@ -117,7 +117,7 @@ pub enum UpdateRedemptionOfferFeeErrorCode {
     #[msg("Unauthorized: only boss can update redemption offer fee")]
     Unauthorized,
 
-    /// Fee basis points exceeds maximum allowed value of 10000 (100%)
-    #[msg("Invalid fee: fee_basis_points must be <= 10000")]
+    /// Fee basis points exceeds maximum allowed value of 1000 (10%)
+    #[msg("Invalid fee: fee_basis_points must be <= 1000")]
     InvalidFee,
 }
