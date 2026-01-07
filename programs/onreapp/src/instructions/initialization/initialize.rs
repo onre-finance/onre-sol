@@ -150,8 +150,10 @@ pub struct Initialize<'info> {
 /// # Security
 /// - Only allows initialization if boss is currently unset (default pubkey)
 pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-    let upgrade_authority =
-        get_upgrade_authority(&ctx.accounts.program, ctx.accounts.program_data.as_ref().map(|v| v.as_ref()))?;
+    let upgrade_authority = get_upgrade_authority(
+        &ctx.accounts.program,
+        ctx.accounts.program_data.as_ref().map(|v| v.as_ref()),
+    )?;
 
     if upgrade_authority.is_some() {
         // Check that the boss is the upgrade authority
@@ -189,6 +191,9 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
 
     // Initialize proposed_boss as unset
     state.proposed_boss = Pubkey::default();
+
+    // Initialize redemption_admin as unset
+    state.redemption_admin = Pubkey::default();
 
     msg!(
         "Program state initialized: boss={}, onyc_mint={}, bump={}",
