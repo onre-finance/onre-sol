@@ -10,7 +10,7 @@ describe("Add Admin", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         nonBoss = testHelper.createUserAccount();
         newAdmin = testHelper.createUserAccount();

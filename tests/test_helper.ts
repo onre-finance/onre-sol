@@ -1,4 +1,3 @@
-import { AddedProgram, Clock, ProgramTestContext, startAnchor } from "solana-bankrun";
 import { Keypair, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import {
     ACCOUNT_SIZE,
@@ -14,52 +13,172 @@ import {
     createInitializeTransferFeeConfigInstruction,
     createAssociatedTokenAccountInstruction,
     createMintToInstruction,
-    getAccountLen,
-    createInitializeAccountInstruction,
-    createTransferCheckedWithFeeInstruction,
-    getMint,
 } from "@solana/spl-token";
+import { ComputeBudget, FeatureSet, LiteSVM } from "litesvm";
 import idl from "../target/idl/onreapp.json";
 
 export const ONREAPP_PROGRAM_ID = new PublicKey((idl as any).address);
 export const INITIAL_LAMPORTS = 1_000_000_000; // 1 SOL
+export const BPF_LOADER_PROGRAM_ID = new PublicKey("BPFLoader2111111111111111111111111111111111");
+
+// Type definitions for LiteSVM transaction results
+interface TransactionMetadata {
+    signature: string;
+    logs: string[];
+    inner_instructions: any[][];
+    compute_units_consumed: number;
+    return_data: {
+        program_id: string;
+        data: number[];
+    };
+}
+
+interface FailedTransactionMetadata {
+    err: {
+        InstructionError?: [number, any];
+    };
+    meta: TransactionMetadata;
+}
+
+/**
+ * Helper to parse LiteSVM error and extract logs and error message
+ */
+function parseTransactionError(result: any): { error?: string; logs: string[] } {
+    // Try to get error from Err property
+    if ("Err" in result) {
+        const err = result.Err as FailedTransactionMetadata;
+        const logs = err.meta?.logs || [];
+
+        // Find error message in logs
+        const errorLog = logs.find(log => log.includes("Error Message:") || log.includes("custom program error:"));
+
+        return {
+            error: errorLog || JSON.stringify(err.err),
+            logs
+        };
+    }
+
+    // Try parsing from toString() if Err property doesn't exist
+    const resultStr = result.toString();
+    if (resultStr.includes("FailedTransactionMetadata")) {
+        // Extract logs array from the string - need to handle nested quotes carefully
+        // Look for the logs array in the meta field
+        const logsMatch = resultStr.match(/logs:\s*\[([^\]]+(?:\][^\]]+)*)\]/);
+        if (logsMatch) {
+            const logsStr = logsMatch[1];
+            // Split by ", " but preserve the quotes
+            const logs: string[] = [];
+            let current = '';
+            let inQuote = false;
+
+            for (let i = 0; i < logsStr.length; i++) {
+                const char = logsStr[i];
+                if (char === '"' && (i === 0 || logsStr[i-1] !== '\\')) {
+                    inQuote = !inQuote;
+                    if (!inQuote && current.startsWith('"')) {
+                        logs.push(current.substring(1)); // Remove leading quote
+                        current = '';
+                    } else if (inQuote) {
+                        current = '"';
+                    }
+                } else if (char === ',' && !inQuote) {
+                    // Skip comma and space between entries
+                    if (logsStr[i+1] === ' ') i++;
+                } else if (inQuote) {
+                    current += char;
+                }
+            }
+
+            // Prefer Error Message over Error Code
+            const errorLog = logs.find(log => log.includes("Error Message:"));
+            if (errorLog) {
+                // Extract the actual error message
+                const match = errorLog.match(/Error Message:\s*(.+?)(?:\.|$)/);
+                if (match) {
+                    return {
+                        error: match[1].trim(),
+                        logs
+                    };
+                }
+            }
+
+            // Fallback to custom program error
+            const customError = logs.find(log => log.includes("custom program error:"));
+            if (customError) {
+                return {
+                    error: customError,
+                    logs
+                };
+            }
+
+            return {
+                error: "Transaction failed",
+                logs
+            };
+        }
+    }
+
+    return { logs: [] };
+}
 
 export class TestHelper {
-    context: ProgramTestContext;
+    svm: LiteSVM;
+    payer: Keypair;
 
-    private constructor(context: ProgramTestContext) {
-        this.context = context;
+    private constructor(svm: LiteSVM, payer: Keypair) {
+        this.svm = svm;
+        this.payer = payer;
     }
 
     static async create() {
-        const programInfo: AddedProgram = {
-            programId: ONREAPP_PROGRAM_ID,
-            name: "onreapp"
-        };
-        const context = await startAnchor(process.cwd(), [programInfo], []);
+        const svm = new LiteSVM().withFeatureSet(FeatureSet.allEnabled()).withPrecompiles();
+        const payer = Keypair.generate();
 
-        return new TestHelper(context);
+        // Set initial clock to a non-zero timestamp (e.g., Jan 1, 2024)
+        const clock = svm.getClock();
+        clock.unixTimestamp = BigInt(1704067200); // Jan 1, 2024 00:00:00 UTC
+        svm.setClock(clock);
+
+        svm.airdrop(payer.publicKey, BigInt(100_000_000_000)); // 100 SOL
+
+        // Load and deploy the program
+        const fs = await import("fs");
+        const path = await import("path");
+        const programPath = path.join(process.cwd(), "target/deploy/onreapp.so");
+        const programBytes = fs.readFileSync(programPath);
+        svm.addProgram(ONREAPP_PROGRAM_ID, programBytes);
+
+        // Create programData account (required by Anchor)
+        const programDataPda = PublicKey.findProgramAddressSync(
+            [ONREAPP_PROGRAM_ID.toBuffer()],
+            BPF_LOADER_PROGRAM_ID
+        )[0];
+
+        svm.setAccount(programDataPda, {
+            executable: false,
+            data: Buffer.alloc(45),
+            lamports: 1_000_000,
+            owner: BPF_LOADER_PROGRAM_ID
+        });
+
+        return new TestHelper(svm, payer);
     }
 
+
     async advanceSlot() {
-        const currentSlot = await this.context.banksClient.getSlot();
-        this.context.warpToSlot(currentSlot + BigInt(1));
+        // Advance the slot and expire the blockhash to force new transactions
+        const clock = this.svm.getClock();
+        this.svm.warpToSlot(clock.slot + BigInt(1));
+        this.svm.expireBlockhash();
     }
 
     getBoss(): PublicKey {
-        return this.context.payer.publicKey;
+        return this.payer.publicKey;
     }
 
-    // Account helper functions
     createUserAccount(): Keypair {
         const user = Keypair.generate();
-        this.context.setAccount(user.publicKey, {
-            executable: false,
-            data: new Uint8Array([]),
-            lamports: INITIAL_LAMPORTS,
-            owner: SystemProgram.programId
-        });
-
+        this.svm.airdrop(user.publicKey, BigInt(INITIAL_LAMPORTS));
         return user;
     }
 
@@ -67,15 +186,6 @@ export class TestHelper {
         return this.createMint(decimals, mintAuthority, BigInt(999_999_999 * 10 ** decimals), freezeAuthority, TOKEN_2022_PROGRAM_ID);
     }
 
-    /**
-     * Creates a Token-2022 mint with transfer fee extension using proper SPL Token instructions
-     * @param decimals Number of decimals for the token
-     * @param transferFeeBasisPoints Transfer fee in basis points (e.g., 100 = 1%)
-     * @param maxFee Maximum fee per transfer
-     * @param mintAuthority Optional mint authority (defaults to boss)
-     * @param freezeAuthority Optional freeze authority (defaults to mintAuthority)
-     * @returns PublicKey of the created mint
-     */
     async createMint2022WithTransferFee(
         decimals: number,
         transferFeeBasisPoints: number,
@@ -87,20 +197,17 @@ export class TestHelper {
         const mintAuth = mintAuthority || this.getBoss();
         const freezeAuth = freezeAuthority || mintAuth;
 
-        // Calculate the space required for the mint with TransferFeeConfig extension
         const extensions = [ExtensionType.TransferFeeConfig];
         const mintLen = getMintLen(extensions);
 
-        // Create account for the mint
         const createAccountIx = SystemProgram.createAccount({
-            fromPubkey: this.context.payer.publicKey,
+            fromPubkey: this.payer.publicKey,
             newAccountPubkey: mint.publicKey,
             space: mintLen,
             lamports: INITIAL_LAMPORTS,
             programId: TOKEN_2022_PROGRAM_ID,
         });
 
-        // Initialize the transfer fee config extension
         const initTransferFeeIx = createInitializeTransferFeeConfigInstruction(
             mint.publicKey,
             mintAuth,
@@ -110,7 +217,6 @@ export class TestHelper {
             TOKEN_2022_PROGRAM_ID
         );
 
-        // Initialize the mint
         const initMintIx = createInitializeMint2Instruction(
             mint.publicKey,
             decimals,
@@ -119,19 +225,11 @@ export class TestHelper {
             TOKEN_2022_PROGRAM_ID
         );
 
-        // Create transaction with mint initialization
-        const tx = new Transaction().add(
-            createAccountIx,
-            initTransferFeeIx,
-            initMintIx
-        );
+        const tx = new Transaction().add(createAccountIx, initTransferFeeIx, initMintIx);
 
-        // Only mint initial supply if mint authority is not a PDA
-        // PDAs can't sign transactions, only CPIs
         const isMintAuthorityPda = mintAuthority !== null && mintAuthority.toBase58() !== this.getBoss().toBase58();
 
         if (!isMintAuthorityPda) {
-            // Create ATA for boss to receive initial supply
             const bossAta = getAssociatedTokenAddressSync(
                 mint.publicKey,
                 this.getBoss(),
@@ -140,14 +238,13 @@ export class TestHelper {
             );
 
             const createAtaIx = createAssociatedTokenAccountInstruction(
-                this.context.payer.publicKey,
+                this.payer.publicKey,
                 bossAta,
                 this.getBoss(),
                 mint.publicKey,
                 TOKEN_2022_PROGRAM_ID
             );
 
-            // Mint initial supply to boss (999,999,999 tokens)
             const initialSupply = BigInt(999_999_999 * 10 ** decimals);
             const mintToIx = createMintToInstruction(
                 mint.publicKey,
@@ -161,29 +258,32 @@ export class TestHelper {
             tx.add(createAtaIx, mintToIx);
         }
 
-        // Sign and process transaction
-        tx.recentBlockhash = this.context.lastBlockhash;
-        tx.sign(this.context.payer, mint);
-
-        await this.context.banksClient.processTransaction(tx);
+        await this.sendAndConfirmTransaction(tx, [this.payer, mint]);
 
         return mint.publicKey;
     }
 
-    createMint(decimals: number, mintAuthority: PublicKey | null = null, supply: bigint = BigInt(999_999_999 * 10 ** decimals), freezeAuthority: PublicKey | null = mintAuthority, owner: PublicKey = TOKEN_PROGRAM_ID): PublicKey {
+    createMint(
+        decimals: number,
+        mintAuthority: PublicKey | null = null,
+        supply: bigint = BigInt(999_999_999 * 10 ** decimals),
+        freezeAuthority: PublicKey | null = mintAuthority,
+        owner: PublicKey = TOKEN_PROGRAM_ID
+    ): PublicKey {
         const mintData = Buffer.alloc(MINT_SIZE);
         MintLayout.encode({
-            mintAuthorityOption: 1,  // 1 = Some(authority), 0 = None
+            mintAuthorityOption: 1,
             mintAuthority: mintAuthority ? mintAuthority : this.getBoss(),
             supply: BigInt(supply),
             decimals: decimals,
             isInitialized: true,
-            freezeAuthorityOption: 1,  // 1 = Some(authority), 0 = None
+            freezeAuthorityOption: 1,
             freezeAuthority: freezeAuthority ? freezeAuthority : this.getBoss()
         }, mintData);
 
         const mintAddress = PublicKey.unique();
-        this.context.setAccount(mintAddress, {
+
+        this.svm.setAccount(mintAddress, {
             executable: false,
             data: mintData,
             lamports: INITIAL_LAMPORTS,
@@ -191,9 +291,15 @@ export class TestHelper {
         });
 
         return mintAddress;
-    };
+    }
 
-    createTokenAccount(mint: PublicKey, owner: PublicKey, amount: bigint, allowOwnerOffCurve: boolean = false, programId: PublicKey = TOKEN_PROGRAM_ID): PublicKey {
+    createTokenAccount(
+        mint: PublicKey,
+        owner: PublicKey,
+        amount: bigint,
+        allowOwnerOffCurve: boolean = false,
+        programId: PublicKey = TOKEN_PROGRAM_ID
+    ): PublicKey {
         const tokenAccountData = Buffer.alloc(ACCOUNT_SIZE);
         AccountLayout.encode({
             mint: mint,
@@ -211,7 +317,7 @@ export class TestHelper {
 
         const tokenAccountAddress = getAssociatedTokenAddressSync(mint, owner, allowOwnerOffCurve, programId);
 
-        this.context.setAccount(tokenAccountAddress, {
+        this.svm.setAccount(tokenAccountAddress, {
             executable: false,
             data: tokenAccountData,
             lamports: INITIAL_LAMPORTS,
@@ -221,35 +327,26 @@ export class TestHelper {
         return tokenAccountAddress;
     }
 
-    /**
-     * Creates a Token-2022 token account using proper SPL Token instructions
-     * This is needed for Token-2022 mints with extensions like TransferFee
-     * For PDAs, creates a regular account; for regular owners, creates an ATA
-     */
     async createToken2022Account(mint: PublicKey, owner: PublicKey): Promise<PublicKey> {
-            // For regular owners, use ATA
-            const tokenAccount = getAssociatedTokenAddressSync(
-                mint,
-                owner,
-                true,
-                TOKEN_2022_PROGRAM_ID
-            );
+        const tokenAccount = getAssociatedTokenAddressSync(
+            mint,
+            owner,
+            true,
+            TOKEN_2022_PROGRAM_ID
+        );
 
-            const createAtaIx = createAssociatedTokenAccountInstruction(
-                this.context.payer.publicKey,
-                tokenAccount,
-                owner,
-                mint,
-                TOKEN_2022_PROGRAM_ID
-            );
+        const createAtaIx = createAssociatedTokenAccountInstruction(
+            this.payer.publicKey,
+            tokenAccount,
+            owner,
+            mint,
+            TOKEN_2022_PROGRAM_ID
+        );
 
-            const tx = new Transaction().add(createAtaIx);
-            tx.recentBlockhash = this.context.lastBlockhash;
-            tx.sign(this.context.payer);
+        const tx = new Transaction().add(createAtaIx);
+        await this.sendAndConfirmTransaction(tx, [this.payer]);
 
-            await this.context.banksClient.processTransaction(tx);
-
-            return tokenAccount;
+        return tokenAccount;
     }
 
     async getTokenAccountBalance(tokenAccount: PublicKey): Promise<bigint> {
@@ -258,16 +355,16 @@ export class TestHelper {
     }
 
     async getAccount(accountAddress: PublicKey) {
-        const account = await this.context.banksClient.getAccount(accountAddress);
+        const account = this.svm.getAccount(accountAddress);
         if (!account) {
             throw new Error("Token account not found");
         }
 
-        return AccountLayout.decode(account.data); // TODO: Check if works with mint accounts as well
+        return AccountLayout.decode(account.data);
     }
 
     async getMintInfo(mint: PublicKey): Promise<{ supply: bigint, decimals: number, mintAuthority: PublicKey | null }> {
-        const account = await this.context.banksClient.getAccount(mint);
+        const account = this.svm.getAccount(mint);
         if (!account) {
             throw new Error("Mint account not found");
         }
@@ -280,39 +377,164 @@ export class TestHelper {
     }
 
     async expectTokenAccountAmountToBe(tokenAccount: PublicKey, amount: bigint) {
-        const account = await this.context.banksClient.getAccount(tokenAccount);
+        const account = this.svm.getAccount(tokenAccount);
         const tokenAccountData = AccountLayout.decode(account!.data);
         expect(tokenAccountData.amount).toBe(amount);
     }
 
     async getCurrentClockTime() {
-        const clock = await this.context.banksClient.getClock();
+        const clock = this.svm.getClock();
         return Number(clock.unixTimestamp);
     }
 
     async advanceClockBy(seconds: number) {
-        const clock = await this.context.banksClient.getClock();
-        this.context.setClock(
-            new Clock(
-                clock.slot,
-                clock.epochStartTimestamp,
-                clock.epoch,
-                clock.leaderScheduleEpoch,
-                clock.unixTimestamp + BigInt(seconds)
-            )
-        );
+        const clock = this.svm.getClock();
+        clock.unixTimestamp += BigInt(seconds);
+        this.svm.setClock(clock);
     }
 
     async getAccountInfo(publicKey: PublicKey) {
-        return await this.context.banksClient.getAccount(publicKey);
+        return this.svm.getAccount(publicKey);
     }
 
     async getTokenAccount(tokenAccount: PublicKey) {
-        const account = await this.context.banksClient.getAccount(tokenAccount);
+        const account = this.svm.getAccount(tokenAccount);
         if (!account) {
             throw new Error("Token account not found");
         }
         return AccountLayout.decode(account.data);
     }
-}
 
+    // Helper to send transactions
+    async sendAndConfirmTransaction(tx: Transaction, signers: Keypair[]) {
+        tx.recentBlockhash = this.svm.latestBlockhash();
+        tx.feePayer = this.payer.publicKey;
+        tx.sign(...signers);
+
+        const result = this.svm.sendTransaction(tx);
+
+        if ("Err" in result) {
+            throw new Error(`Transaction failed: ${JSON.stringify(result.Err)}`);
+        }
+
+        return result;
+    }
+
+    // Warp methods for compatibility
+    warpToSlot(slot: bigint) {
+        this.svm.warpToSlot(slot);
+    }
+
+    setClock(clock: any) {
+        this.svm.setClock(clock);
+    }
+
+    setAccount(pubkey: PublicKey, account: { executable: boolean; data: Uint8Array | Buffer; lamports: number; owner: PublicKey }) {
+        this.svm.setAccount(pubkey, account);
+    }
+
+    get context() {
+        // For compatibility with OnreProgram
+        return this;
+    }
+
+    get lastBlockhash() {
+        return this.svm.latestBlockhash();
+    }
+
+    // Create a connection-like object for Anchor provider
+    getConnection() {
+        const svm = this.svm;
+        const payer = this.payer;
+        return {
+            getLatestBlockhash: async () => ({
+                blockhash: svm.latestBlockhash(),
+                lastValidBlockHeight: 0
+            }),
+            getMinimumBalanceForRentExemption: async () => 890880,
+            getAccountInfo: async (pubkey: PublicKey) => {
+                const account = svm.getAccount(pubkey);
+                if (!account) return null;
+                return { ...account, data: Buffer.from(account.data) };
+            },
+            getAccountInfoAndContext: async (pubkey: PublicKey) => {
+                const account = svm.getAccount(pubkey);
+                const value = account ? { ...account, data: Buffer.from(account.data) } : null;
+                return { context: { slot: 0 }, value };
+            },
+            sendRawTransaction: async (rawTransaction: Buffer | Uint8Array) => {
+                const tx = Transaction.from(rawTransaction);
+                const budget = new ComputeBudget();
+                budget.computeUnitLimit = BigInt(1_400_000);
+                svm.withComputeBudget(budget);
+                const result = svm.sendTransaction(tx);
+
+                // LiteSVM returns a special object - check via toString() for error
+                const resultStr = result.toString();
+                if (resultStr.includes("FailedTransactionMetadata") || "Err" in result) {
+                    const errorInfo = parseTransactionError(result);
+
+                    // Parse InstructionError for more details
+                    const instrErrorMatch = resultStr.match(/InstructionError\((\d+),\s*Custom\((\d+)\)\)/);
+                    if (instrErrorMatch) {
+                        const instrIndex = instrErrorMatch[1];
+                        const errorCode = instrErrorMatch[2];
+                        throw new Error(`Instruction ${instrIndex} failed with custom error code ${errorCode}: ${errorInfo.error || "Unknown error"}`);
+                    }
+
+                    // Include full error details for debugging
+                    throw new Error(errorInfo.error || `Transaction failed: ${resultStr.substring(0, 200)}`);
+                }
+                return "signature";
+            },
+            confirmTransaction: async () => ({ value: { err: null } }),
+            _rpcRequest: async (method: string, args: any[]) => {
+                if (method === "simulateTransaction") {
+                    const tx = Transaction.from(Buffer.from(args[0], "base64"));
+
+                    // Sign if not signed
+                    if (!tx.signatures.some(sig => sig.signature !== null)) {
+                        tx.recentBlockhash = svm.latestBlockhash();
+                        tx.feePayer = payer.publicKey;
+                        tx.partialSign(payer);
+                    }
+
+                    const result = svm.simulateTransaction(tx);
+
+                    if ("Err" in result) {
+                        const err = result.Err as FailedTransactionMetadata;
+                        // Return error in Solana RPC format
+                        return {
+                            context: { slot: 0 },
+                            value: {
+                                err: err.err,
+                                logs: err.meta?.logs || [],
+                                accounts: null,
+                                unitsConsumed: Number(err.meta?.compute_units_consumed || 0),
+                                returnData: null
+                            }
+                        };
+                    }
+
+                    const meta = result.meta();
+                    const returnData = meta.returnData();
+
+                    return {
+                        context: { slot: 0 },
+                        value: {
+                            err: null,
+                            logs: meta.logs(),
+                            accounts: null,
+                            unitsConsumed: Number(meta.computeUnitsConsumed()),
+                            returnData: returnData && returnData.data().length > 0 ? {
+                                programId: Buffer.from(returnData.programId()).toString('base64'),
+                                data: [Buffer.from(returnData.data()).toString('base64'), 'base64']
+                            } : null
+                        }
+                    };
+                }
+                throw new Error(`Unsupported RPC method: ${method}`);
+            },
+        };
+    }
+}

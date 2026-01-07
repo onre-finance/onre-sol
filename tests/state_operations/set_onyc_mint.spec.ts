@@ -11,7 +11,7 @@ describe("Set ONyc Mint", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         originalOnycMint = testHelper.createMint(9);
         newOnycMint = testHelper.createMint(9);

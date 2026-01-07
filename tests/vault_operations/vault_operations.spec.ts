@@ -11,7 +11,7 @@ describe("Vault Operations", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
         boss = testHelper.getBoss();
 
         // Initialize program and vault authorities

@@ -11,7 +11,7 @@ describe("Get APY", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         // Create mints with different decimals to test precision handling
         tokenInMint = testHelper.createMint(6); // USDC-like (6 decimals)

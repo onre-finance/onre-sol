@@ -19,7 +19,7 @@ describe("Cancel redemption request", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         // Store boss keypair
         boss = testHelper.context.payer;

@@ -14,7 +14,7 @@ describe("Add Offer Vector", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         // Create mints
         tokenInMint = testHelper.createMint(9);
@@ -524,7 +524,7 @@ describe("Add Offer Vector", () => {
                 apr,
                 priceFixDuration
             })
-        ).rejects.toThrow("Offer already has the maximum number of vectors.");
+        ).rejects.toThrow("Offer already has the maximum number of vectors");
     });
 
     it("Should handle large price and apr values correctly", async () => {

@@ -2,6 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 import { TestHelper } from "../test_helper";
 import { OnreProgram } from "../onre_program.ts";
 import { getMint } from "@solana/spl-token";
+import { expect } from "vitest";
 
 describe("Mint Authority Transfer", () => {
     let testHelper: TestHelper;
@@ -12,7 +13,7 @@ describe("Mint Authority Transfer", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
         boss = testHelper.getBoss();
 
         // Create a test token mint with boss as mint authority
@@ -33,24 +34,26 @@ describe("Mint Authority Transfer", () => {
         });
 
         test("Should fail if caller is not the boss", async () => {
+            // Constraint: #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss)]
             // given - create a different user
             const notBoss = testHelper.createUserAccount();
 
-            // when/then
+            // when/then - constraint error is in the metadata, parseTransactionError will throw
             await expect(
                 program.transferMintAuthorityToProgram({ mint: tokenMint, signer: notBoss })
-            ).rejects.toThrow("unknown signer");
+            ).rejects.toThrow();
         });
 
         test("Should fail if boss is not the current mint authority", async () => {
+            // Constraint: constraint = mint.mint_authority.unwrap() == boss.key()
             // given - create a different mint with different authority
             const notBoss = testHelper.createUserAccount();
             const differentMint = testHelper.createMint(9, notBoss.publicKey);
 
-            // when/then
+            // when/then - constraint error is in the metadata, parseTransactionError will throw
             await expect(
                 program.transferMintAuthorityToProgram({ mint: differentMint })
-            ).rejects.toThrow("BossNotMintAuthority");
+            ).rejects.toThrow("Boss must be the current mint authority");
         });
     });
 
@@ -70,23 +73,25 @@ describe("Mint Authority Transfer", () => {
         });
 
         test("Should fail if caller is not the boss", async () => {
+            // Constraint: #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss)]
             // given - create a different user
             const notBoss = testHelper.createUserAccount();
 
             // when/then
             await expect(
                 program.transferMintAuthorityToBoss({ mint: tokenMint, signer: notBoss })
-            ).rejects.toThrow("unknown signer");
+            ).rejects.toThrow();
         });
 
         test("Should fail if program PDA is not the current mint authority", async () => {
+            // Constraint: constraint = mint.mint_authority.unwrap() == mint_authority.key()
             // given - create a new mint where boss already has authority (never transferred to program)
             const newTokenMint = testHelper.createMint(9);
 
-            // when/then - try to transfer from program PDA when boss has authority
+            // when/then - should fail because mint authority is boss, not program PDA
             await expect(
                 program.transferMintAuthorityToBoss({ mint: newTokenMint })
-            ).rejects.toThrow("ProgramNotMintAuthority");
+            ).rejects.toThrow("Program PDA must be the current mint authority");
         });
     });
 

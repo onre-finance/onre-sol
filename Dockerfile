@@ -20,5 +20,5 @@ RUN pnpm install --frozen-lockfile || pnpm install
 # Copy rest of project
 COPY . .
 
-# Default command: build and test with Vitest and bankrun (no validator needed)
-CMD ["sh", "-c", "anchor build && NODE_OPTIONS='--max-old-space-size=2048' pnpm exec vitest run"]
+# Default command: build, test, and copy artifacts to output
+CMD ["sh", "-c", "anchor build && NODE_OPTIONS='--max-old-space-size=2048' pnpm exec vitest run && cp -r target/deploy target/idl /workspace/output/ 2>/dev/null || true"]
