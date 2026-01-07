@@ -11,9 +11,14 @@ export interface ApprovalMessage {
 
 export class Ed25519Helper {
     /**
-     * Serializes an approval message for signing
+     * Serializes an approval message for signing using Borsh serialization
      */
     static serializeApprovalMessage(message: ApprovalMessage): Buffer {
+        // Use Borsh serialization to match Rust's try_from_slice
+        // Borsh format for the struct:
+        // - program_id: 32 bytes (Pubkey)
+        // - user_pubkey: 32 bytes (Pubkey)
+        // - expiry_unix: 8 bytes (u64, little-endian)
         return Buffer.concat([
             message.programId.toBuffer(),
             message.userPubkey.toBuffer(),

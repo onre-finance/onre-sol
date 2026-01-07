@@ -1,18 +1,26 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
-import { BN, Program } from "@coral-xyz/anchor";
+import { AnchorProvider, BN, Program, Wallet } from "@coral-xyz/anchor";
 import { Onreapp } from "../target/types/onreapp";
-import { ONREAPP_PROGRAM_ID } from "./test_helper.ts";
+import { BPF_LOADER_PROGRAM_ID, BPF_UPGRADEABLE_LOADER_PROGRAM_ID, ONREAPP_PROGRAM_ID, TestHelper } from "./test_helper.ts";
 import idl from "../target/idl/onreapp.json";
-import { BankrunProvider } from "anchor-bankrun";
-import { ProgramTestContext } from "solana-bankrun";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
-export const BPF_LOADER_PROGRAM_ID = new PublicKey(
-    "BPFLoader2111111111111111111111111111111111"
-);
+export { BPF_LOADER_PROGRAM_ID };
+
+/**
+ * Helper to check view transaction errors and throw with logs
+ */
+function parseViewError(result: any): void {
+    if ("Err" in result || typeof result.err === 'function') {
+        const logs = result.meta().logs();
+        const errorMessage = logs.join('\n');
+        throw new Error(errorMessage);
+    }
+}
 
 export class OnreProgram {
     program: Program<Onreapp>;
+    testHelper: TestHelper;
 
     pdas: {
         statePda: PublicKey;
@@ -28,11 +36,18 @@ export class OnreProgram {
         mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], ONREAPP_PROGRAM_ID)[0]
     };
 
-    constructor(context: ProgramTestContext) {
-        const provider = new BankrunProvider(context);
+    constructor(testHelper: TestHelper) {
+        this.testHelper = testHelper;
+
+        const wallet = new Wallet(testHelper.payer);
+        const provider = new AnchorProvider(
+            testHelper.getConnection() as any,
+            wallet,
+            { commitment: "processed" }
+        );
 
         this.program = new Program<Onreapp>(
-            idl,
+            idl as Onreapp,
             provider
         );
     }
@@ -42,14 +57,11 @@ export class OnreProgram {
         await this.program.methods
             .initialize()
             .accounts({
-                boss: this.program.provider.publicKey,
+                boss: this.testHelper.payer.publicKey,
                 onycMint: params.onycMint,
-                offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
-                mintAuthority: this.pdas.mintAuthorityPda,
-                program: this.program.programId,
                 programData: PublicKey.findProgramAddressSync(
                     [this.program.programId.toBuffer()],
-                    BPF_LOADER_PROGRAM_ID
+                    BPF_UPGRADEABLE_LOADER_PROGRAM_ID
                 )[0]
             })
             .rpc();
@@ -212,7 +224,7 @@ export class OnreProgram {
                 user: params.user,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
                 tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
-                boss: this.program.provider.publicKey,
+                boss: this.testHelper.payer.publicKey,
                 vaultAuthority: this.pdas.offerVaultAuthorityPda,
                 permissionlessAuthority: this.pdas.permissionlessAuthorityPda,
                 mintAuthority: this.pdas.mintAuthorityPda
@@ -367,7 +379,7 @@ export class OnreProgram {
         const tx = this.program.methods
             .proposeBoss(params.newBoss)
             .accounts({
-                boss: params.signer ? params.signer.publicKey : this.program.provider.publicKey
+                boss: params.signer ? params.signer.publicKey : this.testHelper.payer.publicKey
             });
 
         if (params.signer) {
@@ -392,7 +404,7 @@ export class OnreProgram {
         const tx = this.program.methods
             .setKillSwitch(params.enable)
             .accounts({
-                signer: params.signer ? params.signer.publicKey : this.program.provider.publicKey
+                signer: params.signer ? params.signer.publicKey : this.testHelper.payer.publicKey
             });
 
         if (params.signer) {
@@ -445,7 +457,7 @@ export class OnreProgram {
                 tokenOutMint: offer.tokenInMint,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
                 tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
-                signer: params.signer ? params.signer.publicKey : this.program.provider.publicKey
+                signer: params.signer ? params.signer.publicKey : this.testHelper.payer.publicKey
             });
 
         if (params.signer) {
@@ -462,9 +474,9 @@ export class OnreProgram {
     }) {
         const tx = this.program.methods
             .updateRedemptionOfferFee(params.newFeeBasisPoints)
-            .accounts({
+            .accountsPartial({
                 redemptionOffer: params.redemptionOffer,
-                boss: params.signer ? params.signer.publicKey : this.program.provider.publicKey
+                boss: params.signer ? params.signer.publicKey : this.testHelper.payer.publicKey
             });
 
         if (params.signer) {
@@ -513,69 +525,102 @@ export class OnreProgram {
     }
 
     async getNAV(params: { tokenInMint: PublicKey, tokenOutMint: PublicKey }): Promise<number> {
-        const tx = this.program.methods
+        const tx = await this.program.methods
             .getNav()
             .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint
             })
-            .signers([this.program.provider.wallet.payer]);
-        try {
-            // First try with view() for the return value
-            const response: BN = await tx.view();
-            return response.toNumber();
-        } catch (error) {
-            // If view() fails with the null data error, try rpc() to get proper error messages
-            // Use rpc() to get the proper anchor error
-            await tx.rpc();
+            .transaction();
 
-            // If rpc doesn't throw, something unexpected happened
-            throw new Error("Unexpected success from rpc after view failure");
+        tx.recentBlockhash = this.testHelper.svm.latestBlockhash();
+        tx.feePayer = this.testHelper.payer.publicKey;
+        tx.sign(this.testHelper.payer);
+
+        const result = this.testHelper.svm.simulateTransaction(tx);
+
+        // Check for errors
+        parseViewError(result);
+
+        const meta = result.meta();
+        const returnData = meta.returnData();
+
+        if (!returnData || returnData.data().length === 0) {
+            throw new Error(`No return data from getNAV`);
         }
+
+        // Parse the return data as u64 (8 bytes, little-endian)
+        const data = returnData.data();
+        const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+        const nav = Number(view.getBigUint64(0, true));
+
+        return nav;
     }
 
     async getAPY(params: { tokenInMint: PublicKey, tokenOutMint: PublicKey }): Promise<number> {
-        const tx = this.program.methods
+        const tx = await this.program.methods
             .getApy()
             .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint
             })
-            .signers([this.program.provider.wallet.payer]);
-        try {
-            // First try with view() for the return value
-            const response: BN = await tx.view();
-            return response.toNumber();
-        } catch (error) {
-            // If view() fails with the null data error, try rpc() to get proper error messages
-            // Use rpc() to get the proper anchor error
-            await tx.rpc();
+            .transaction();
 
-            // If rpc doesn't throw, something unexpected happened
-            throw new Error("Unexpected success from rpc after view failure");
+        tx.recentBlockhash = this.testHelper.svm.latestBlockhash();
+        tx.feePayer = this.testHelper.payer.publicKey;
+        tx.sign(this.testHelper.payer);
+
+        const result = this.testHelper.svm.simulateTransaction(tx);
+
+        // Check for errors
+        parseViewError(result);
+
+        const meta = result.meta();
+        const returnData = meta.returnData();
+
+        if (!returnData || returnData.data().length === 0) {
+            throw new Error(`No return data from getAPY`);
         }
+
+        // Parse the return data as u64 (8 bytes, little-endian)
+        const data = returnData.data();
+        const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+        const apy = Number(view.getBigUint64(0, true));
+
+        return apy;
     }
 
     async getNavAdjustment(params: { tokenInMint: PublicKey, tokenOutMint: PublicKey }): Promise<number> {
-        const tx = this.program.methods
+        const tx = await this.program.methods
             .getNavAdjustment()
             .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint
             })
-            .signers([this.program.provider.wallet.payer]);
-        try {
-            // First try with view() for the return value
-            const response: BN = await tx.view();
-            return response.toNumber();
-        } catch (error) {
-            // If view() fails with the null data error, try rpc() to get proper error messages
-            // Use rpc() to get the proper anchor error
-            await tx.rpc();
+            .transaction();
 
-            // If rpc doesn't throw, something unexpected happened
-            throw new Error("Unexpected success from rpc after view failure");
+        tx.recentBlockhash = this.testHelper.svm.latestBlockhash();
+        tx.feePayer = this.testHelper.payer.publicKey;
+        tx.sign(this.testHelper.payer);
+
+        const result = this.testHelper.svm.simulateTransaction(tx);
+
+        // Check for errors
+        parseViewError(result);
+
+        const meta = result.meta();
+        const returnData = meta.returnData();
+
+        if (!returnData || returnData.data().length === 0) {
+            throw new Error(`No return data from getNavAdjustment`);
         }
+
+        // Parse the return data as i64 (8 bytes, little-endian, signed)
+        const data = returnData.data();
+        const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+        const adjustment = Number(view.getBigInt64(0, true));
+
+        return adjustment;
     }
 
     async getTVL(params: {
@@ -584,7 +629,7 @@ export class OnreProgram {
         tokenOutProgram?: PublicKey
     }): Promise<BN> {
         const tokenOutProgram = params.tokenOutProgram ?? TOKEN_PROGRAM_ID;
-        const tx = this.program.methods
+        const tx = await this.program.methods
             .getTvl()
             .accounts({
                 tokenInMint: params.tokenInMint,
@@ -592,19 +637,30 @@ export class OnreProgram {
                 tokenOutProgram: tokenOutProgram,
                 vaultTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, this.pdas.offerVaultAuthorityPda, true, tokenOutProgram)
             })
-            .signers([this.program.provider.wallet.payer]);
-        try {
-            // First try with view() for the return value
-            return await tx.view();
-        } catch (error) {
-            console.log(error);
-            // If view() fails with the null data error, try rpc() to get proper error messages
-            // Use rpc() to get the proper anchor error
-            await tx.rpc();
+            .transaction();
 
-            // If rpc doesn't throw, something unexpected happened
-            throw new Error("Unexpected success from rpc after view failure");
+        tx.recentBlockhash = this.testHelper.svm.latestBlockhash();
+        tx.feePayer = this.testHelper.payer.publicKey;
+        tx.sign(this.testHelper.payer);
+
+        const result = this.testHelper.svm.simulateTransaction(tx);
+
+        // Check for errors
+        parseViewError(result);
+
+        const meta = result.meta();
+        const returnData = meta.returnData();
+
+        if (!returnData || returnData.data().length === 0) {
+            throw new Error(`No return data from getTVL`);
         }
+
+        // Parse the return data as u64 (8 bytes, little-endian)
+        const data = returnData.data();
+        const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+        const tvl = view.getBigUint64(0, true);
+
+        return new BN(tvl.toString());
     }
 
     async getCirculatingSupply(params: {
@@ -613,25 +669,36 @@ export class OnreProgram {
     }): Promise<BN> {
         const tokenOutProgram = params.tokenOutProgram ?? TOKEN_PROGRAM_ID;
 
-        const tx = this.program.methods
+        const tx = await this.program.methods
             .getCirculatingSupply()
             .accounts({
                 tokenProgram: tokenOutProgram,
                 onycVaultAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, tokenOutProgram)
             })
-            .signers([this.program.provider.wallet.payer]);
+            .transaction();
 
-        try {
-            // First try with view() for the return value
-            return await tx.view();
-        } catch (error) {
-            // If view() fails with the null data error, try rpc() to get proper error messages
-            // Use rpc() to get the proper anchor error
-            await tx.rpc();
+        tx.recentBlockhash = this.testHelper.svm.latestBlockhash();
+        tx.feePayer = this.testHelper.payer.publicKey;
+        tx.sign(this.testHelper.payer);
 
-            // If rpc doesn't throw, something unexpected happened
-            throw new Error("Unexpected success from rpc after view failure");
+        const result = this.testHelper.svm.simulateTransaction(tx);
+
+        // Check for errors
+        parseViewError(result);
+
+        const meta = result.meta();
+        const returnData = meta.returnData();
+
+        if (!returnData || returnData.data().length === 0) {
+            throw new Error(`No return data from getCirculatingSupply`);
         }
+
+        // Parse the return data as u64 (8 bytes, little-endian)
+        const data = returnData.data();
+        const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+        const circulatingSupply = view.getBigUint64(0, true);
+
+        return new BN(circulatingSupply.toString());
     }
 
     // Accounts
@@ -726,20 +793,6 @@ export class OnreProgram {
         const redemptionRequest = await this.program.account.redemptionRequest.fetch(params.redemptionRequest);
         const tokenProgram = params.tokenProgram ?? TOKEN_PROGRAM_ID;
 
-        const redeemerTokenAccount = getAssociatedTokenAddressSync(
-            redemptionOffer.tokenInMint,
-            redemptionRequest.redeemer,
-            false,
-            tokenProgram
-        );
-
-        const vaultTokenAccount = getAssociatedTokenAddressSync(
-            redemptionOffer.tokenInMint,
-            this.pdas.redemptionVaultAuthorityPda,
-            true,
-            tokenProgram
-        );
-
         const tx = this.program.methods
             .cancelRedemptionRequest()
             .accounts({
@@ -749,8 +802,6 @@ export class OnreProgram {
                 tokenInMint: redemptionOffer.tokenInMint,
                 redeemer: redemptionRequest.redeemer,
                 redemptionAdmin: params.redemptionAdmin,
-                vaultTokenAccount,
-                redeemerTokenAccount,
                 tokenProgram,
             })
             .signers([params.signer]);

@@ -13,7 +13,7 @@ describe("Update redemption offer fee", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         // Create mints
         usdcMint = testHelper.createMint(6);

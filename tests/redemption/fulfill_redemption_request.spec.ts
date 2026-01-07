@@ -19,7 +19,7 @@ describe("Fulfill redemption request", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         // Create mints
         usdcMint = testHelper.createMint(6); // USDC (6 decimals)
@@ -224,7 +224,7 @@ describe("Fulfill redemption request", () => {
             );
 
             // Get initial redemption_admin balance
-            const initialAdminBalance = await testHelper.context.banksClient.getBalance(
+            const initialAdminBalance = testHelper.svm.getBalance(
                 redemptionAdmin.publicKey
             );
 
@@ -245,7 +245,7 @@ describe("Fulfill redemption request", () => {
             ).rejects.toThrow();
 
             // and - Rent should be returned to redemption_admin
-            const finalAdminBalance = await testHelper.context.banksClient.getBalance(
+            const finalAdminBalance = testHelper.svm.getBalance(
                 redemptionAdmin.publicKey
             );
             expect(finalAdminBalance).toBeGreaterThan(initialAdminBalance);

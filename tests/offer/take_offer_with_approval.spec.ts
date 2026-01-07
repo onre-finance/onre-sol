@@ -15,7 +15,7 @@ describe("Take Offer With Approval", () => {
 
     beforeAll(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         // Create mints
         tokenInMint = testHelper.createMint(6); // USDC-like (6 decimals)
@@ -78,7 +78,7 @@ describe("Take Offer With Approval", () => {
                 user: user.publicKey,
                 signer: user
             })
-        ).rejects.toThrow("ApprovalRequired");
+        ).rejects.toThrow("Approval required for this offer");
     });
 
     it("Should successfully take offer with valid Ed25519 approval signature", async () => {
@@ -100,7 +100,9 @@ describe("Take Offer With Approval", () => {
     });
 
     it("Should fail with expired approval message", async () => {
-        const expiredTime = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
+        // Get current LiteSVM clock time and set expiry to 1 hour in the past
+        const currentTime = await testHelper.getCurrentClockTime();
+        const expiredTime = currentTime - 3600;
 
         await expect(
             Ed25519Helper.executeApprovedTakeOffer({

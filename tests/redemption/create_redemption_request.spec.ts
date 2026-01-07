@@ -18,7 +18,7 @@ describe("Create redemption request", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         // Create mints
         usdcMint = testHelper.createMint(6);
@@ -38,7 +38,7 @@ describe("Create redemption request", () => {
         testHelper.createTokenAccount(onycMint, redeemer.publicKey, BigInt(10_000_000_000)); // 10 ONyc
 
         // Create token account for boss with ONyc tokens for vault deposit
-        const bossPublicKey = testHelper.context.payer.publicKey;
+        const bossPublicKey = testHelper.getBoss();
         testHelper.createTokenAccount(onycMint, bossPublicKey, BigInt(100_000_000_000)); // 100 ONyc
 
         // Create the base offer (USDC -> ONyc)
@@ -186,9 +186,7 @@ describe("Create redemption request", () => {
 
     test("Redeemer pays for account creation", async () => {
         // given
-        const initialBalance = await testHelper.context.banksClient.getBalance(
-            redeemer.publicKey
-        );
+        const initialBalance = testHelper.svm.getBalance(redeemer.publicKey);
 
         // when
         await program.createRedemptionRequest({
@@ -198,9 +196,7 @@ describe("Create redemption request", () => {
         });
 
         // then
-        const finalBalance = await testHelper.context.banksClient.getBalance(
-            redeemer.publicKey
-        );
+        const finalBalance = testHelper.svm.getBalance(redeemer.publicKey);
 
         // Balance should decrease (account rent + transaction fees)
         expect(finalBalance).toBeLessThan(initialBalance);

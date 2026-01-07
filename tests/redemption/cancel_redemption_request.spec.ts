@@ -19,7 +19,7 @@ describe("Cancel redemption request", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         // Store boss keypair
         boss = testHelper.context.payer;
@@ -252,7 +252,7 @@ describe("Cancel redemption request", () => {
         );
 
         // Get initial redemption_admin balance
-        const initialAdminBalance = await testHelper.context.banksClient.getBalance(
+        const initialAdminBalance = testHelper.svm.getBalance(
             redemptionAdmin.publicKey
         );
 
@@ -270,7 +270,7 @@ describe("Cancel redemption request", () => {
         ).rejects.toThrow();
 
         // and - Rent should be returned to redemption_admin
-        const finalAdminBalance = await testHelper.context.banksClient.getBalance(
+        const finalAdminBalance = testHelper.svm.getBalance(
             redemptionAdmin.publicKey
         );
         expect(finalAdminBalance).toBeGreaterThan(initialAdminBalance);

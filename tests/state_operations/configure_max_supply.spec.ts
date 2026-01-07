@@ -13,7 +13,7 @@ describe("Configure Max Supply and Enforcement", () => {
 
         beforeEach(async () => {
             testHelper = await TestHelper.create();
-            program = new OnreProgram(testHelper.context);
+            program = new OnreProgram(testHelper);
 
             nonBoss = testHelper.createUserAccount();
             onycMint = testHelper.createMint(9);
@@ -70,7 +70,7 @@ describe("Configure Max Supply and Enforcement", () => {
 
         beforeEach(async () => {
             testHelper = await TestHelper.create();
-            program = new OnreProgram(testHelper.context);
+            program = new OnreProgram(testHelper);
 
             nonBoss = testHelper.createUserAccount();
             onycMint = testHelper.createMint(9, testHelper.getBoss(), BigInt(0));
@@ -152,7 +152,7 @@ describe("Configure Max Supply and Enforcement", () => {
 
         beforeEach(async () => {
             testHelper = await TestHelper.create();
-            program = new OnreProgram(testHelper.context);
+            program = new OnreProgram(testHelper);
 
             onycMint = testHelper.createMint(9, testHelper.getBoss(), BigInt(0));
             usdcMint = testHelper.createMint(6, testHelper.getBoss(), BigInt(0));
@@ -180,10 +180,11 @@ describe("Configure Max Supply and Enforcement", () => {
                 feeBasisPoints: 0
             });
 
+            const currentTime = await testHelper.getCurrentClockTime();
             await program.addOfferVector({
                 tokenInMint: usdcMint,
                 tokenOutMint: onycMint,
-                baseTime: Math.floor(Date.now() / 1000) - 1000,
+                baseTime: currentTime - 1000,
                 basePrice: 1_000_000_000, // 1:1 price (9 decimals)
                 apr: 0,
                 priceFixDuration: 3600
@@ -279,7 +280,7 @@ describe("Configure Max Supply and Enforcement", () => {
 
         beforeEach(async () => {
             testHelper = await TestHelper.create();
-            program = new OnreProgram(testHelper.context);
+            program = new OnreProgram(testHelper);
 
             onycMint = testHelper.createMint(9, testHelper.getBoss(), BigInt(0));
             usdcMint = testHelper.createMint(6, testHelper.getBoss(), BigInt(0));
@@ -315,10 +316,11 @@ describe("Configure Max Supply and Enforcement", () => {
                 allowPermissionless: true
             });
 
+            const currentTime = await testHelper.getCurrentClockTime();
             await program.addOfferVector({
                 tokenInMint: usdcMint,
                 tokenOutMint: onycMint,
-                baseTime: Math.floor(Date.now() / 1000) - 1000,
+                baseTime: currentTime - 1000,
                 basePrice: 1_000_000_000,
                 apr: 0,
                 priceFixDuration: 3600

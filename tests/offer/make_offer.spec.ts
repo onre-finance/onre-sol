@@ -12,7 +12,7 @@ describe("Make offer", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         // Create mints
         tokenInMint = testHelper.createMint(9);

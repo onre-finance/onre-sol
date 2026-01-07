@@ -6,7 +6,10 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ./target:/workspace/target
+      # Named volume for building (avoids SIGILL)
+      - target:/workspace/target
+      # Bind mount for output artifacts
+      - ./target:/workspace/output
       - cargo-cache:/root/.cargo/registry
       - cargo-git:/root/.cargo/git
     environment:
@@ -14,5 +17,6 @@ services:
     restart: "no"
 
 volumes:
+  target:
   cargo-cache:
   cargo-git:

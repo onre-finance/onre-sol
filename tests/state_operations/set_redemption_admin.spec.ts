@@ -10,7 +10,7 @@ describe("Set Redemption Admin", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         redemptionAdmin = testHelper.createUserAccount();
 
