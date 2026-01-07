@@ -98,7 +98,7 @@ pub struct CancelRedemptionRequest<'info> {
     /// to return locked tokens when requests are cancelled.
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(seeds = [seeds::REDEMPTION_OFFER_VAULT_AUTHORITY], bump)]
-    pub redemption_vault_authority: AccountInfo<'info>,
+    pub redemption_vault_authority: UncheckedAccount<'info>,
 
     /// The token mint for token_in (input token)
     #[account(

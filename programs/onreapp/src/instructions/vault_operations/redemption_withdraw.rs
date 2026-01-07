@@ -31,7 +31,7 @@ pub struct RedemptionVaultWithdraw<'info> {
     /// transfer using program-derived signatures.
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(seeds = [seeds::REDEMPTION_OFFER_VAULT_AUTHORITY], bump)]
-    pub redemption_vault_authority: AccountInfo<'info>,
+    pub redemption_vault_authority: UncheckedAccount<'info>,
 
     /// The token mint for the withdrawal operation
     pub token_mint: Box<InterfaceAccount<'info, Mint>>,
@@ -40,6 +40,7 @@ pub struct RedemptionVaultWithdraw<'info> {
     ///
     /// Created automatically if it doesn't exist. Receives tokens withdrawn
     /// from the redemption vault for boss fund management.
+    /// Note: init_if_needed implies mutability.
     #[account(
         init_if_needed,
         payer = boss,

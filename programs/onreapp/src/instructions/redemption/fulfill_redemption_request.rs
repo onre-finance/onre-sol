@@ -94,7 +94,7 @@ pub struct FulfillRedemptionRequest<'info> {
         seeds = [seeds::REDEMPTION_OFFER_VAULT_AUTHORITY],
         bump
     )]
-    pub redemption_vault_authority: AccountInfo<'info>,
+    pub redemption_vault_authority: UncheckedAccount<'info>,
 
     /// Redemption vault account for token_in (to receive tokens for burning or storage)
     ///
@@ -178,7 +178,7 @@ pub struct FulfillRedemptionRequest<'info> {
         seeds = [seeds::MINT_AUTHORITY],
         bump
     )]
-    pub mint_authority: AccountInfo<'info>,
+    pub mint_authority: UncheckedAccount<'info>,
 
     /// The user who created the redemption request
     /// CHECK: Validated against redemption_request.redeemer

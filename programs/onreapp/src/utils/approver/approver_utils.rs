@@ -108,7 +108,7 @@ pub fn verify_approval_message_generic(
         .map_err(|_| ErrorCode::MsgDeserialize)?;
     require!(signed_msg.program_id == *program_id, ErrorCode::WrongProgram);
     require!(signed_msg.user_pubkey == *user_pubkey, ErrorCode::WrongUser);
-    require!(signed_msg.expiry_unix >= Clock::get()?.unix_timestamp as u64, ErrorCode::Expired);
+    require!(signed_msg.expiry_unix >= now, ErrorCode::Expired);
     require!(signed_msg == *msg, ErrorCode::MsgMismatch);
 
     Ok(())

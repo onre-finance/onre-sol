@@ -66,14 +66,16 @@ pub struct TakeOfferPermissionless<'info> {
     /// Program state account containing authorization and kill switch status
     #[account(
         seeds = [seeds::STATE],
-        bump = state.bump
+        bump = state.bump,
+        constraint = state.is_killed == false @ TakeOfferPermissionlessErrorCode::KillSwitchActivated,
+        has_one = boss @ TakeOfferPermissionlessErrorCode::InvalidBoss
     )]
     pub state: Box<Account<'info, State>>,
 
     /// The boss account authorized to receive token_in payments
     ///
     /// Must match the boss stored in program state for security validation.
-    /// CHECK: Account validation is enforced through state account constraint
+    /// CHECK: Account validation is enforced through state account has_one constraint
     pub boss: UncheckedAccount<'info>,
 
     /// Program-derived authority that controls vault token operations
@@ -267,20 +269,6 @@ pub fn take_offer_permissionless(
     require_keys_eq!(pa, ctx.accounts.permissionless_authority.key());
     let (ma, ma_bump) = Pubkey::find_program_address(&[seeds::MINT_AUTHORITY], ctx.program_id);
     require_keys_eq!(ma, ctx.accounts.mint_authority.key());
-
-    // validate state account
-    {
-        let state = &ctx.accounts.state;
-        require!(
-            state.is_killed == false,
-            TakeOfferPermissionlessErrorCode::KillSwitchActivated
-        );
-        require_keys_eq!(
-            state.boss,
-            ctx.accounts.boss.key(),
-            TakeOfferPermissionlessErrorCode::InvalidBoss
-        );
-    }
 
     let offer = ctx.accounts.offer.load()?;
 

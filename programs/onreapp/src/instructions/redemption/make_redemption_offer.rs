@@ -56,9 +56,9 @@ pub struct MakeRedemptionOffer<'info> {
     #[account(seeds = [seeds::REDEMPTION_OFFER_VAULT_AUTHORITY], bump)]
     pub redemption_vault_authority: UncheckedAccount<'info>,
 
-    /// The input token mint for redemptions
+    /// The input token mint for redemptions (token_in_mint)
     ///
-    /// This is the token_out_mint from the original offer.
+    /// This corresponds to the token_out_mint from the original offer.
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
 
     /// Token program interface for the input token
@@ -199,7 +199,7 @@ pub enum MakeRedemptionOfferErrorCode {
     #[msg("Unauthorized: only boss or redemption_admin can create redemption offers")]
     Unauthorized,
 
-    /// Fee basis points exceeds maximum allowed value of 10000 (100%)
-    #[msg("Invalid fee: fee_basis_points must be <= 10000")]
+    /// Fee basis points exceeds maximum allowed value of 1000 (10%)
+    #[msg("Invalid fee: fee_basis_points must be <= 1000")]
     InvalidFee,
 }

@@ -31,7 +31,7 @@ pub struct OfferVaultWithdraw<'info> {
     /// transfer using program-derived signatures.
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
-    pub vault_authority: AccountInfo<'info>,
+    pub vault_authority: UncheckedAccount<'info>,
 
     /// The token mint for the withdrawal operation
     pub token_mint: Box<InterfaceAccount<'info, Mint>>,
