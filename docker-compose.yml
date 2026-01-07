@@ -1,0 +1,18 @@
+services:
+  onre-sol:
+    platform: linux/amd64
+    container_name: onre-sol-tests
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./target:/workspace/target
+      - cargo-cache:/root/.cargo/registry
+      - cargo-git:/root/.cargo/git
+    environment:
+      - NODE_ENV=test
+    restart: "no"
+
+volumes:
+  cargo-cache:
+  cargo-git:

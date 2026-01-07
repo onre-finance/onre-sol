@@ -1,6 +1,6 @@
 import { ComputeBudgetProgram, Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { OnreProgram } from "../onre_program";
-import BN from "bn.js";
+import { BN } from "@coral-xyz/anchor";
 import { sign } from "tweetnacl";
 
 export interface ApprovalMessage {
