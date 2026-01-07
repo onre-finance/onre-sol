@@ -786,7 +786,6 @@ describe("Add Offer Vector", () => {
         let activeVectors = offer.vectors.filter(v => v.startTime.toNumber() !== 0);
         expect(activeVectors.length).toBe(MAX_VECTORS);
         let loggedVectors = activeVectors.map(v => v.startTime.toNumber());
-        console.log("Vectors:", JSON.stringify(loggedVectors, null, 2));
 
         // Time travel far into the future so all vectors are now in the past
         await testHelper.advanceClockBy(100_000);

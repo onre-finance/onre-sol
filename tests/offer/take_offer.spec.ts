@@ -450,7 +450,7 @@ describe("Take Offer", () => {
                     user: user.publicKey,
                     signer: user
                 })
-            ).rejects.toThrow("Instruction 0 failed with custom error code 3007: The given account is owned by a different program than expected");
+            ).rejects.toThrow("The given account is owned by a different program than expected");
         });
 
         it("Should fail when no active vector exists", async () => {
@@ -619,9 +619,6 @@ describe("Take Offer", () => {
             const bossTokenInBefore = await testHelper.getTokenAccountBalance(bossTokenInAccount);
             const vaultTokenOutBefore = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
 
-            console.log("Vault authority:", program.pdas.offerVaultAuthorityPda.toBase58());
-            console.log("Token out mint:", tokenOutMint.toBase58());
-            console.log("Vault token_out(" + vaultTokenOutAccount.toBase58() + ") balance before: ", vaultTokenOutBefore);
             await program.takeOffer({
                 tokenInAmount,
                 tokenInMint,

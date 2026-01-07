@@ -438,7 +438,7 @@ describe("Take Offer Permissionless", () => {
                     user: user.publicKey,
                     signer: user
                 })
-            ).rejects.toThrow("Instruction 0 failed with custom error code 3007: The given account is owned by a different program than expected");
+            ).rejects.toThrow("The given account is owned by a different program than expected");
         });
 
         it("Should fail when no active vector exists", async () => {

@@ -95,9 +95,6 @@ export class OnreProgram {
             .accounts({
                 boss: this.testHelper.payer.publicKey,
                 onycMint: params.onycMint,
-                offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
-                mintAuthority: this.pdas.mintAuthorityPda,
-                program: this.program.programId,
                 programData: PublicKey.findProgramAddressSync(
                     [this.program.programId.toBuffer()],
                     BPF_LOADER_PROGRAM_ID
@@ -513,7 +510,7 @@ export class OnreProgram {
     }) {
         const tx = this.program.methods
             .updateRedemptionOfferFee(params.newFeeBasisPoints)
-            .accounts({
+            .accountsPartial({
                 redemptionOffer: params.redemptionOffer,
                 boss: params.signer ? params.signer.publicKey : this.testHelper.payer.publicKey
             });
@@ -832,20 +829,6 @@ export class OnreProgram {
         const redemptionRequest = await this.program.account.redemptionRequest.fetch(params.redemptionRequest);
         const tokenProgram = params.tokenProgram ?? TOKEN_PROGRAM_ID;
 
-        const redeemerTokenAccount = getAssociatedTokenAddressSync(
-            redemptionOffer.tokenInMint,
-            redemptionRequest.redeemer,
-            false,
-            tokenProgram
-        );
-
-        const vaultTokenAccount = getAssociatedTokenAddressSync(
-            redemptionOffer.tokenInMint,
-            this.pdas.redemptionVaultAuthorityPda,
-            true,
-            tokenProgram
-        );
-
         const tx = this.program.methods
             .cancelRedemptionRequest()
             .accounts({
@@ -855,8 +838,6 @@ export class OnreProgram {
                 tokenInMint: redemptionOffer.tokenInMint,
                 redeemer: redemptionRequest.redeemer,
                 redemptionAdmin: params.redemptionAdmin,
-                vaultTokenAccount,
-                redeemerTokenAccount,
                 tokenProgram,
             })
             .signers([params.signer]);

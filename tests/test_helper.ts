@@ -21,105 +21,13 @@ export const ONREAPP_PROGRAM_ID = new PublicKey((idl as any).address);
 export const INITIAL_LAMPORTS = 1_000_000_000; // 1 SOL
 export const BPF_LOADER_PROGRAM_ID = new PublicKey("BPFLoader2111111111111111111111111111111111");
 
-// Type definitions for LiteSVM transaction results
-interface TransactionMetadata {
-    signature: string;
-    logs: string[];
-    inner_instructions: any[][];
-    compute_units_consumed: number;
-    return_data: {
-        program_id: string;
-        data: number[];
-    };
-}
-
-interface FailedTransactionMetadata {
-    err: {
-        InstructionError?: [number, any];
-    };
-    meta: TransactionMetadata;
-}
-
-/**
- * Helper to parse LiteSVM error and extract logs and error message
- */
-function parseTransactionError(result: any): { error?: string; logs: string[] } {
-    // Try to get error from Err property
-    if ("Err" in result) {
-        const err = result.Err as FailedTransactionMetadata;
-        const logs = err.meta?.logs || [];
-
-        // Find error message in logs
-        const errorLog = logs.find(log => log.includes("Error Message:") || log.includes("custom program error:"));
-
-        return {
-            error: errorLog || JSON.stringify(err.err),
-            logs
-        };
-    }
-
-    // Try parsing from toString() if Err property doesn't exist
-    const resultStr = result.toString();
-    if (resultStr.includes("FailedTransactionMetadata")) {
-        // Extract logs array from the string - need to handle nested quotes carefully
-        // Look for the logs array in the meta field
-        const logsMatch = resultStr.match(/logs:\s*\[([^\]]+(?:\][^\]]+)*)\]/);
-        if (logsMatch) {
-            const logsStr = logsMatch[1];
-            // Split by ", " but preserve the quotes
-            const logs: string[] = [];
-            let current = '';
-            let inQuote = false;
-
-            for (let i = 0; i < logsStr.length; i++) {
-                const char = logsStr[i];
-                if (char === '"' && (i === 0 || logsStr[i-1] !== '\\')) {
-                    inQuote = !inQuote;
-                    if (!inQuote && current.startsWith('"')) {
-                        logs.push(current.substring(1)); // Remove leading quote
-                        current = '';
-                    } else if (inQuote) {
-                        current = '"';
-                    }
-                } else if (char === ',' && !inQuote) {
-                    // Skip comma and space between entries
-                    if (logsStr[i+1] === ' ') i++;
-                } else if (inQuote) {
-                    current += char;
-                }
-            }
-
-            // Prefer Error Message over Error Code
-            const errorLog = logs.find(log => log.includes("Error Message:"));
-            if (errorLog) {
-                // Extract the actual error message
-                const match = errorLog.match(/Error Message:\s*(.+?)(?:\.|$)/);
-                if (match) {
-                    return {
-                        error: match[1].trim(),
-                        logs
-                    };
-                }
-            }
-
-            // Fallback to custom program error
-            const customError = logs.find(log => log.includes("custom program error:"));
-            if (customError) {
-                return {
-                    error: customError,
-                    logs
-                };
-            }
-
-            return {
-                error: "Transaction failed",
-                logs
-            };
-        }
-    }
-
-    return { logs: [] };
-}
+// LiteSVM transaction results are objects with method accessors like:
+// - result.err() - returns error object
+// - result.meta() - returns metadata object
+// - meta.logs() - returns array of log strings
+// - meta.computeUnitsConsumed() - returns number
+// - result.toString() - returns formatted error string
+// These are NOT properties, they are methods that must be called
 
 export class TestHelper {
     svm: LiteSVM;
@@ -469,22 +377,15 @@ export class TestHelper {
                 svm.withComputeBudget(budget);
                 const result = svm.sendTransaction(tx);
 
-                // LiteSVM returns a special object - check via toString() for error
-                const resultStr = result.toString();
-                if (resultStr.includes("FailedTransactionMetadata") || "Err" in result) {
-                    const errorInfo = parseTransactionError(result);
-
-                    // Parse InstructionError for more details
-                    const instrErrorMatch = resultStr.match(/InstructionError\((\d+),\s*Custom\((\d+)\)\)/);
-                    if (instrErrorMatch) {
-                        const instrIndex = instrErrorMatch[1];
-                        const errorCode = instrErrorMatch[2];
-                        throw new Error(`Instruction ${instrIndex} failed with custom error code ${errorCode}: ${errorInfo.error || "Unknown error"}`);
-                    }
-
-                    // Include full error details for debugging
-                    throw new Error(errorInfo.error || `Transaction failed: ${resultStr.substring(0, 200)}`);
+                // Check if it's a FailedTransactionMetadata (has err() method)
+                if (typeof result.err === 'function') {
+                    const logs = result.meta().logs();
+                    // Use result.toString() which includes the full error info
+                    const error: any = new Error(result.toString());
+                    error.logs = logs;
+                    throw error;
                 }
+
                 return "signature";
             },
             confirmTransaction: async () => ({ value: { err: null } }),
@@ -502,15 +403,16 @@ export class TestHelper {
                     const result = svm.simulateTransaction(tx);
 
                     if ("Err" in result) {
-                        const err = result.Err as FailedTransactionMetadata;
+                        const err = result.Err;
+                        const meta = err.meta();
                         // Return error in Solana RPC format
                         return {
                             context: { slot: 0 },
                             value: {
-                                err: err.err,
-                                logs: err.meta?.logs || [],
+                                err: err.err(),
+                                logs: meta.logs(),
                                 accounts: null,
-                                unitsConsumed: Number(err.meta?.compute_units_consumed || 0),
+                                unitsConsumed: Number(meta.computeUnitsConsumed()),
                                 returnData: null
                             }
                         };

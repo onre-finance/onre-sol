@@ -60,7 +60,7 @@ describe("Add Approver", () => {
         const approver3 = testHelper.createUserAccount();
         await expect(
             program.addApprover({ trusted: approver3.publicKey })
-        ).rejects.toThrow("Instruction 0 failed with custom error code 6000: Both approver slots are already filled");
+        ).rejects.toThrow("Both approver slots are already filled");
 
         // verify we still have exactly 2 approvers
         const state = await program.getState();
