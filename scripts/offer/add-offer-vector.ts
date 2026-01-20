@@ -71,9 +71,9 @@ async function createAddOfferVectorTransaction(vector: VectorInput) {
 async function main() {
     try {
         await createAddOfferVectorTransaction({
-            baseTime: Date.UTC(2025, 11, 23, 0, 0, 0),
-            basePrice: 1.06110165,
-            apr: 10.3203,
+            baseTime: Date.UTC(2026, 0, 21, 0, 0, 0),
+            basePrice: 1.06980235,
+            apr: 8.8662,
             tokenIn: USDG_MINT,
             tokenOut: ONYC_MINT,
         });
