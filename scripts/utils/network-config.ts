@@ -118,7 +118,7 @@ export const NETWORK_CONFIGS: Record<NetworkName, NetworkConfig> = {
         boss: DEVNET_SQUAD,
         mints: {
             usdc: MOCK_USDC_DEVNET,
-            onyc: DEV_ONYC_DEVNET,
+            onyc: MOCK_ONYC_DEVNET,
             usdg: MOCK_USDG_DEVNET
         }
     }
