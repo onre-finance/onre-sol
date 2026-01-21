@@ -297,21 +297,6 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildCloseOfferIx(params: {
-        tokenInMint: PublicKey;
-        tokenOutMint: PublicKey;
-        boss: PublicKey;
-    }) {
-        return await this.program.methods
-            .closeOffer()
-            .accountsPartial({
-                tokenInMint: params.tokenInMint,
-                tokenOutMint: params.tokenOutMint,
-                boss: params.boss
-            })
-            .instruction();
-    }
-
     async buildUpdateOfferFeeIx(params: {
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
