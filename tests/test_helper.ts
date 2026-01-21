@@ -110,7 +110,7 @@ export class TestHelper {
     }
 
     createMint2022(decimals: number, mintAuthority: PublicKey | null = null, freezeAuthority: PublicKey | null = mintAuthority): PublicKey {
-        return this.createMint(decimals, mintAuthority, BigInt(999_999_999 * 10 ** decimals), freezeAuthority, TOKEN_2022_PROGRAM_ID);
+        return this.createMint(decimals, mintAuthority, BigInt(999_999_999) * (10n ** BigInt(decimals)), freezeAuthority, TOKEN_2022_PROGRAM_ID);
     }
 
     async createMint2022WithTransferFee(
@@ -172,7 +172,7 @@ export class TestHelper {
                 TOKEN_2022_PROGRAM_ID
             );
 
-            const initialSupply = BigInt(999_999_999 * 10 ** decimals);
+            const initialSupply = BigInt(999_999_999) * (10n ** BigInt(decimals));
             const mintToIx = createMintToInstruction(
                 mint.publicKey,
                 bossAta,
@@ -193,7 +193,7 @@ export class TestHelper {
     createMint(
         decimals: number,
         mintAuthority: PublicKey | null = null,
-        supply: bigint = BigInt(999_999_999 * 10 ** decimals),
+        supply: bigint = BigInt(999_999_999) * (10n ** BigInt(decimals)),
         freezeAuthority: PublicKey | null = mintAuthority,
         owner: PublicKey = TOKEN_PROGRAM_ID
     ): PublicKey {

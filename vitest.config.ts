@@ -7,12 +7,11 @@ export default defineConfig({
     environment: 'node',
     testTimeout: 30000,
     hookTimeout: 30000,
-    // Run tests sequentially to avoid bankrun conflicts
+    // Run tests sequentially to avoid bankrun conflicts and minimize memory usage
     pool: 'forks',
     poolOptions: {
       forks: {
-        singleFork: false,
-        maxForks: 2, // Reduced for Docker/VM environments with limited memory
+        singleFork: true, // Sequential execution - minimal memory usage
       },
     },
     // Include test files
