@@ -98,16 +98,6 @@ export function registerOfferCommands(program: Command): void {
             await executeUpdateFee(opts);
         });
 
-    // offer close
-    program
-        .command("close")
-        .description("Close an offer")
-        .option("-i, --token-in <mint>", "Token in mint")
-        .option("-o, --token-out <mint>", "Token out mint")
-        .action(async (options, cmd) => {
-            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
-            await executeCloseOffer(opts);
-        });
 }
 
 // === Command Implementations ===
@@ -389,48 +379,3 @@ async function executeUpdateFee(opts: GlobalOptions & Record<string, any>): Prom
     }
 }
 
-async function executeCloseOffer(opts: GlobalOptions & Record<string, any>): Promise<void> {
-    try {
-        if (!opts.json) {
-            printNetworkBanner(config);
-        }
-
-        const helper = await ScriptHelper.create();
-        const params = await promptForParams(tokenPairParams, opts, config, opts.noInteractive);
-
-        printParamSummary("Closing offer:", {
-            tokenIn: params.tokenIn,
-            tokenOut: params.tokenOut
-        });
-
-        // Confirm dangerous action
-        const { confirm } = await import("@inquirer/prompts");
-        const confirmed = await confirm({
-            message: chalk.yellow("This will permanently close the offer. Continue?"),
-            default: false
-        });
-
-        if (!confirmed) {
-            console.log(chalk.yellow("\nOperation cancelled."));
-            return;
-        }
-
-        const boss = await helper.getBoss();
-        const ix = await helper.buildCloseOfferIx({
-            tokenInMint: params.tokenIn,
-            tokenOutMint: params.tokenOut,
-            boss
-        });
-        const tx = await helper.prepareTransaction({ ix, payer: boss });
-
-        await handleTransaction(tx, helper, {
-            title: "Close Offer Transaction",
-            description: "This will permanently close the offer!",
-            dryRun: opts.dryRun,
-            json: opts.json
-        });
-    } catch (error: any) {
-        console.error(chalk.red("Error:"), error.message || error);
-        process.exit(1);
-    }
-}
