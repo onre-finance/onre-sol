@@ -160,6 +160,34 @@ export class ScriptHelper {
         return await this.program.account.state.fetch(this.statePda);
     }
 
+    getRedemptionOfferPda(tokenInMint: PublicKey, tokenOutMint: PublicKey): PublicKey {
+        return PublicKey.findProgramAddressSync(
+            [Buffer.from("redemption_offer"), tokenInMint.toBuffer(), tokenOutMint.toBuffer()],
+            this.program.programId
+        )[0];
+    }
+
+    getRedemptionRequestPda(redemptionOffer: PublicKey, counter: number): PublicKey {
+        return PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("redemption_request"),
+                redemptionOffer.toBuffer(),
+                new BN(counter).toArrayLike(Buffer, "le", 8)
+            ],
+            this.program.programId
+        )[0];
+    }
+
+    async fetchRedemptionOffer(tokenInMint: PublicKey, tokenOutMint: PublicKey) {
+        const pda = this.getRedemptionOfferPda(tokenInMint, tokenOutMint);
+        return await this.program.account.redemptionOffer.fetch(pda);
+    }
+
+    async fetchRedemptionRequest(redemptionOffer: PublicKey, counter: number) {
+        const pda = this.getRedemptionRequestPda(redemptionOffer, counter);
+        return await this.program.account.redemptionRequest.fetch(pda);
+    }
+
     /**
      * Create instructions for permissionless token accounts if they don't exist
      * Returns an array of instructions (may be empty if accounts already exist)
@@ -561,6 +589,66 @@ export class ScriptHelper {
                 tokenOutMint: params.tokenOutMint,
                 tokenOutProgram: params.tokenOutProgram,
                 signer: params.boss
+            })
+            .instruction();
+    }
+
+    async buildCreateRedemptionRequestIx(params: {
+        redemptionOfferPda: PublicKey;
+        tokenInMint: PublicKey;
+        amount: number;
+        redeemer: PublicKey;
+    }) {
+        return await this.program.methods
+            .createRedemptionRequest(new BN(params.amount))
+            .accountsPartial({
+                redemptionOffer: params.redemptionOfferPda,
+                tokenInMint: params.tokenInMint,
+                redeemer: params.redeemer
+            })
+            .instruction();
+    }
+
+    async buildFulfillRedemptionRequestIx(params: {
+        redemptionOfferPda: PublicKey;
+        redemptionRequestPda: PublicKey;
+        redemptionAdmin: PublicKey;
+    }) {
+        return await this.program.methods
+            .fulfillRedemptionRequest()
+            .accountsPartial({
+                redemptionOffer: params.redemptionOfferPda,
+                redemptionRequest: params.redemptionRequestPda,
+                redemptionAdmin: params.redemptionAdmin
+            })
+            .instruction();
+    }
+
+    async buildCancelRedemptionRequestIx(params: {
+        redemptionOfferPda: PublicKey;
+        redemptionRequestPda: PublicKey;
+        signer: PublicKey;
+    }) {
+        return await this.program.methods
+            .cancelRedemptionRequest()
+            .accountsPartial({
+                redemptionOffer: params.redemptionOfferPda,
+                redemptionRequest: params.redemptionRequestPda,
+                signer: params.signer
+            })
+            .instruction();
+    }
+
+    async buildUpdateRedemptionOfferFeeIx(params: {
+        redemptionOfferPda: PublicKey;
+        newFeeBasisPoints: number;
+        boss: PublicKey;
+    }) {
+        return await this.program.methods
+            .updateRedemptionOfferFee(params.newFeeBasisPoints)
+            .accountsPartial({
+                redemptionOffer: params.redemptionOfferPda,
+                boss: params.boss
             })
             .instruction();
     }

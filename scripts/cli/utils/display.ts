@@ -270,3 +270,112 @@ function formatParamValue(value: any): string {
     }
     return String(value);
 }
+
+/**
+ * Print redemption offer details
+ */
+export function printRedemptionOffer(offer: any, tokenInMint: string, tokenOutMint: string, json: boolean = false): void {
+    if (json) {
+        console.log(JSON.stringify({
+            tokenInMint,
+            tokenOutMint,
+            feeBasisPoints: offer.feeBasisPoints,
+            requestCounter: offer.requestCounter.toString(),
+            executedRedemptions: offer.executedRedemptions.toString(),
+            requestedRedemptions: offer.requestedRedemptions.toString(),
+            offer: offer.offer.toBase58()
+        }, null, 2));
+        return;
+    }
+
+    console.log(chalk.bold.blue("\n=== Redemption Offer Details ===\n"));
+
+    const table = new Table({
+        head: [chalk.white("Field"), chalk.white("Value")],
+        colWidths: [25, 50]
+    });
+
+    table.push(
+        ["Token In Mint", tokenInMint],
+        ["Token Out Mint", tokenOutMint],
+        ["Fee", `${offer.feeBasisPoints / 100}% (${offer.feeBasisPoints} bps)`],
+        ["Underlying Offer", offer.offer.toBase58()],
+        ["Request Counter", offer.requestCounter.toString()],
+        ["Executed Redemptions", offer.executedRedemptions.toString()],
+        ["Requested Redemptions", offer.requestedRedemptions.toString()]
+    );
+
+    console.log(table.toString());
+}
+
+/**
+ * Print redemption request details
+ */
+export function printRedemptionRequest(request: any, requestId: number, json: boolean = false): void {
+    if (json) {
+        console.log(JSON.stringify({
+            requestId,
+            offer: request.offer.toBase58(),
+            redeemer: request.redeemer.toBase58(),
+            amount: request.amount.toString()
+        }, null, 2));
+        return;
+    }
+
+    console.log(chalk.bold.blue("\n=== Redemption Request Details ===\n"));
+
+    const table = new Table({
+        head: [chalk.white("Field"), chalk.white("Value")],
+        colWidths: [20, 50]
+    });
+
+    table.push(
+        ["Request ID", requestId.toString()],
+        ["Redemption Offer", request.offer.toBase58()],
+        ["Redeemer", request.redeemer.toBase58()],
+        ["Amount", request.amount.toString()]
+    );
+
+    console.log(table.toString());
+}
+
+/**
+ * Print redemption requests list
+ */
+export function printRedemptionRequestsList(requests: Array<{id: number, request: any}>, json: boolean = false): void {
+    if (json) {
+        console.log(JSON.stringify(requests.map(r => ({
+            requestId: r.id,
+            offer: r.request.offer.toBase58(),
+            redeemer: r.request.redeemer.toBase58(),
+            amount: r.request.amount.toString()
+        })), null, 2));
+        return;
+    }
+
+    if (requests.length === 0) {
+        console.log(chalk.yellow("\nNo pending redemption requests found."));
+        return;
+    }
+
+    console.log(chalk.bold.blue(`\n=== Redemption Requests (${requests.length} found) ===\n`));
+
+    const table = new Table({
+        head: [
+            chalk.white("ID"),
+            chalk.white("Redeemer"),
+            chalk.white("Amount")
+        ],
+        colWidths: [6, 46, 20]
+    });
+
+    requests.forEach(({ id, request }) => {
+        table.push([
+            id.toString(),
+            request.redeemer.toBase58(),
+            request.amount.toString()
+        ]);
+    });
+
+    console.log(table.toString());
+}
