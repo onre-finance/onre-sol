@@ -10,7 +10,7 @@
  * Fix: Patch BN.prototype.toString to always use base 10 when no radix is provided.
  */
 
-import { BN } from '@coral-xyz/anchor';
+import BN from 'bn.js';
 
 // Save the original toString method
 const originalToString = BN.prototype.toString;
@@ -25,3 +25,14 @@ BN.prototype.toString = function(base?: number | 'hex', padding?: number): strin
 };
 
 console.log('[test setup] Patched BN.prototype.toString to use base 10 by default');
+
+// Verify the patch is working
+const testBN = new BN('999999999000000000');
+const testResult = testBN.toString();
+if (testResult.includes('NaN')) {
+    console.error('[test setup] ERROR: Patch did not work! toString() still produces NaN');
+    console.error('[test setup] Test result:', testResult);
+} else {
+    console.log('[test setup] Patch verified: toString() works correctly')
+    console.log('[test setup] Test result:', testResult);
+}
