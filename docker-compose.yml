@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      # Disable cache to reduce disk usage during build
+      no_cache: false
     volumes:
       # Named volume for building (avoids SIGILL)
       - target:/workspace/target
@@ -15,6 +17,9 @@ services:
     environment:
       - NODE_ENV=test
     restart: "no"
+    # Memory limits to prevent OOM crashes
+    mem_limit: 4g
+    memswap_limit: 4g
 
 volumes:
   target:

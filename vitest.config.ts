@@ -12,7 +12,7 @@ export default defineConfig({
     poolOptions: {
       forks: {
         singleFork: false,
-        maxForks: 10,
+        maxForks: 2, // Reduced for Docker/VM environments with limited memory
       },
     },
     // Include test files

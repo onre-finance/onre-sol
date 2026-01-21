@@ -3,7 +3,10 @@ FROM solanafoundation/anchor:v0.32.1 AS builder
 
 WORKDIR /workspace
 COPY . .
-RUN anchor build
+RUN anchor build && \
+    # Clean up build artifacts to save disk space
+    rm -rf target/deploy/*.txt target/deploy/*.dump target/release/deps target/release/build && \
+    cargo clean --release --target-dir target/sbpf-solana-solana || true
 
 # Stage 2: Run tests with newer Ubuntu (has glibc 2.38+)
 FROM ubuntu:24.04
@@ -32,7 +35,9 @@ COPY --from=builder /workspace/Anchor.toml ./Anchor.toml
 
 # Copy package files and install dependencies
 COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile || pnpm install
+RUN pnpm install --frozen-lockfile || pnpm install && \
+    # Clean pnpm cache to save disk space
+    pnpm store prune
 
 # Copy rest of project
 COPY . .
