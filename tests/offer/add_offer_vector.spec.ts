@@ -557,8 +557,8 @@ describe("Add Offer Vector", () => {
         const offer = await program.getOffer(tokenInMint, tokenOutMint);
         const vector = offer.vectors[0];
 
-        expect(vector.basePrice.toString()).toBe(largeStartPrice.toString());
-        expect(vector.apr.toString()).toBe(largeApr.toString());
+        expect(vector.basePrice.toString(10)).toBe(largeStartPrice.toString());
+        expect(vector.apr.toString(10)).toBe(largeApr.toString());
     });
 
     it("Should handle minimum valid values (1 for all fields)", async () => {

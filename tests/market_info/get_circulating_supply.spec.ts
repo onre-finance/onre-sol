@@ -33,7 +33,7 @@ describe("Get Circulating Supply", () => {
 
                 // Should equal total supply since vault has 0 tokens initially
                 const mintInfo = await testHelper.getMintInfo(tokenOutMint);
-                expect(circulatingSupply.toString()).toBe(mintInfo.supply.toString());
+                expect(circulatingSupply.toString(10)).toBe(mintInfo.supply.toString());
             });
 
             it("Should be read-only instruction (no state changes)", async () => {
@@ -88,7 +88,7 @@ describe("Get Circulating Supply", () => {
                 let circulatingSupply = await program.getCirculatingSupply({ onycMint: tokenOutMint });
 
                 const mintInfo = await testHelper.getMintInfo(tokenOutMint);
-                expect(circulatingSupply.toString()).toBe((mintInfo.supply - vaultTokenOutAccountBalance).toString());
+                expect(circulatingSupply.toString(10)).toBe((mintInfo.supply - vaultTokenOutAccountBalance).toString());
 
                 // Initialize token accounts
                 testHelper.createTokenAccount(tokenInMint, testHelper.getBoss(), BigInt(0));
@@ -119,7 +119,7 @@ describe("Get Circulating Supply", () => {
                 const mintInfo = await testHelper.getMintInfo(tokenOutMint);
 
                 // Should equal total supply when vault is empty
-                expect(circulatingSupply.toString()).toBe(mintInfo.supply.toString());
+                expect(circulatingSupply.toString(10)).toBe(mintInfo.supply.toString());
             });
         });
     });
@@ -164,7 +164,7 @@ describe("Get Circulating Supply", () => {
             });
 
             const mintInfo = await testHelper.getMintInfo(tokenOutMint);
-            expect(circulatingSupply.toString()).toBe(mintInfo.supply.toString());
+            expect(circulatingSupply.toString(10)).toBe(mintInfo.supply.toString());
         });
     });
 });
