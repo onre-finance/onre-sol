@@ -64,6 +64,12 @@
     },
     "anchor-bankrun": {
       "@coral-xyz/anchor": "^0.32.1"
+    },
+    "bn.js": "4.12.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "bn.js": "4.12.2"
     }
   }
 }
