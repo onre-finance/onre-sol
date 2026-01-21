@@ -660,7 +660,7 @@ export class OnreProgram {
         const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
         const tvl = view.getBigUint64(0, true);
 
-        return new BN(tvl.toString());
+        return new BN(tvl.toString(), 10);
     }
 
     async getCirculatingSupply(params: {
@@ -698,7 +698,7 @@ export class OnreProgram {
         const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
         const circulatingSupply = view.getBigUint64(0, true);
 
-        return new BN(circulatingSupply.toString());
+        return new BN(circulatingSupply.toString(), 10);
     }
 
     // Accounts
