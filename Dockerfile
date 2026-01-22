@@ -43,4 +43,4 @@ RUN pnpm install --frozen-lockfile || pnpm install && \
 COPY . .
 
 # Default command: run tests and copy artifacts to output
-CMD ["sh", "-c", "NODE_OPTIONS='--max-old-space-size=1024' pnpm exec vitest run --pool=threads --poolOptions.threads.maxThreads=1 --poolOptions.threads.minThreads=1 && cp -r target/deploy target/idl /workspace/output/ 2>/dev/null || true"]
+CMD ["sh", "-c", "NODE_OPTIONS='--max-old-space-size=1024' pnpm exec vitest run && cp -r target/deploy target/idl /workspace/output/ 2>/dev/null || true"]
