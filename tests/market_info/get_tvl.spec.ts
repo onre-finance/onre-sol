@@ -51,7 +51,7 @@ describe("Get TVL", () => {
                 });
 
                 // price * supply
-                expect(tvl.toString(10)).toBe("1000099998999900000");
+                expect(tvl).toBe(1000099998999900000n);
             });
 
             it("Should be read-only instruction (no state changes)", async () => {
@@ -107,7 +107,7 @@ describe("Get TVL", () => {
                     tokenOutMint
                 });
 
-                expect(tvl.toString(10)).toBe("2000199997999800000");
+                expect(tvl).toBe(2000199997999800000n);
             });
 
             it("Should calculate TVL after time advancement and price change", async () => {
@@ -132,7 +132,7 @@ describe("Get TVL", () => {
                     tokenOutMint
                 });
 
-                expect(tvl.toString(10)).toBe("1000199998999800000");
+                expect(tvl).toBe(1000199998999800000n);
             });
 
             it("Should handle 0 APR values correctly", async () => {
@@ -154,7 +154,7 @@ describe("Get TVL", () => {
                     tokenOutMint
                 });
 
-                expect(tvl.toString(10)).toBe("2999999997000000000");
+                expect(tvl).toBe(2999999997000000000n);
             });
         });
 
@@ -326,7 +326,7 @@ describe("Get TVL", () => {
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID
             });
 
-            expect(tvl.toString(10)).toBe("2000199997999800000");
+            expect(tvl).toBe(2000199997999800000n);
         });
     });
 });

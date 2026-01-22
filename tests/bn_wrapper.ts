@@ -16,5 +16,17 @@ export class BN extends OriginalBN {
     }
 }
 
+/**
+ * Safely convert BN to BigInt by bypassing the toString() bug.
+ * Uses the internal buffer representation instead of toString().
+ */
+export function bnToBigInt(bn: OriginalBN): bigint {
+    // Convert BN to little-endian byte array (8 bytes for u64)
+    const buffer = bn.toArrayLike(Buffer, 'le', 8);
+    // Read as BigInt using DataView
+    const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+    return view.getBigUint64(0, true);
+}
+
 // Also export as default
 export default BN;

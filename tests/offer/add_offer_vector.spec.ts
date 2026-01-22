@@ -2,6 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 import { TestHelper } from "../test_helper";
 import { BN } from "@coral-xyz/anchor";
 import { OnreProgram } from "../onre_program.ts";
+import { bnToBigInt } from "../bn_wrapper";
 
 const MAX_VECTORS = 10;
 
@@ -557,8 +558,9 @@ describe("Add Offer Vector", () => {
         const offer = await program.getOffer(tokenInMint, tokenOutMint);
         const vector = offer.vectors[0];
 
-        expect(vector.basePrice.toString(10)).toBe(largeStartPrice.toString());
-        expect(vector.apr.toString(10)).toBe(largeApr.toString());
+        // Use bnToBigInt to bypass toString() bug on Linux
+        expect(bnToBigInt(vector.basePrice)).toBe(bnToBigInt(largeStartPrice));
+        expect(bnToBigInt(vector.apr)).toBe(bnToBigInt(largeApr));
     });
 
     it("Should handle minimum valid values (1 for all fields)", async () => {

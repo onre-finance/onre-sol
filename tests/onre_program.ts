@@ -627,7 +627,7 @@ export class OnreProgram {
         tokenInMint: PublicKey,
         tokenOutMint: PublicKey,
         tokenOutProgram?: PublicKey
-    }): Promise<BN> {
+    }): Promise<bigint> {
         const tokenOutProgram = params.tokenOutProgram ?? TOKEN_PROGRAM_ID;
         const tx = await this.program.methods
             .getTvl()
@@ -660,13 +660,14 @@ export class OnreProgram {
         const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
         const tvl = view.getBigUint64(0, true);
 
-        return new BN(tvl.toString(), 10);
+        // Return BigInt directly to avoid bn.js toString() bug on Linux
+        return tvl;
     }
 
     async getCirculatingSupply(params: {
         onycMint: PublicKey,
         tokenOutProgram?: PublicKey
-    }): Promise<BN> {
+    }): Promise<bigint> {
         const tokenOutProgram = params.tokenOutProgram ?? TOKEN_PROGRAM_ID;
 
         const tx = await this.program.methods
@@ -698,7 +699,8 @@ export class OnreProgram {
         const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
         const circulatingSupply = view.getBigUint64(0, true);
 
-        return new BN(circulatingSupply.toString(), 10);
+        // Return BigInt directly to avoid bn.js toString() bug on Linux
+        return circulatingSupply;
     }
 
     // Accounts
