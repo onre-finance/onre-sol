@@ -14,9 +14,7 @@ services:
     environment:
       - NODE_ENV=test
     restart: "no"
-    # Generous memory limits - VM has 7.6GB RAM available
     mem_limit: 6g
-    shm_size: 2g
 
 volumes:
   target:

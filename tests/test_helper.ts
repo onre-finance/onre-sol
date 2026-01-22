@@ -14,7 +14,7 @@ import {
     TOKEN_2022_PROGRAM_ID,
     TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
-import { ComputeBudget, LiteSVM } from "litesvm";
+import { ComputeBudget, FeatureSet, LiteSVM } from "litesvm";
 import idl from "../target/idl/onreapp.json";
 
 export const ONREAPP_PROGRAM_ID = new PublicKey((idl as any).address);
@@ -39,7 +39,7 @@ export class TestHelper {
     }
 
     static async create() {
-        const svm = new LiteSVM();
+        const svm = new LiteSVM().withFeatureSet(FeatureSet.allEnabled()).withPrecompiles();
         const payer = Keypair.generate();
 
         // Set initial clock to a non-zero timestamp (e.g., Jan 1, 2024)
