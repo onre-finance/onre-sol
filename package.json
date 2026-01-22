@@ -68,6 +68,19 @@
     "bn.js": "4.12.2"
   },
   "pnpm": {
+    "supportedArchitectures": {
+      "os": [
+        "linux",
+        "darwin"
+      ],
+      "cpu": [
+        "x64",
+        "arm64"
+      ],
+      "libc": [
+        "glibc"
+      ]
+    },
     "overrides": {
       "bn.js": "4.12.2"
     }
