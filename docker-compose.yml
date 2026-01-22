@@ -1,6 +1,5 @@
 services:
   onre-sol:
-    platform: linux/amd64
     container_name: onre-sol-tests
     build:
       context: .
