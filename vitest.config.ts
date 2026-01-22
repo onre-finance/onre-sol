@@ -18,7 +18,5 @@ export default defineConfig({
     include: ['tests/**/*.spec.ts', 'tests/**/*.test.ts'],
     // Globals for Jest-like API (optional, but makes migration easier)
     globals: true,
-    // Setup file to patch bn.js for cross-platform compatibility
-    setupFiles: ['./tests/setup.ts'],
   },
 });
