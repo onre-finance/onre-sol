@@ -20,7 +20,6 @@ services:
     restart: "no"
     # Generous memory limits - VM has 7.6GB RAM available
     mem_limit: 6g
-    memswap_limit: 6g
     shm_size: 2g
 
 volumes:
