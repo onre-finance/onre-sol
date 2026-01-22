@@ -2,19 +2,19 @@ import { Keypair, PublicKey, SystemProgram, Transaction } from "@solana/web3.js"
 import {
     ACCOUNT_SIZE,
     AccountLayout,
+    createAssociatedTokenAccountInstruction,
+    createInitializeMint2Instruction,
+    createInitializeTransferFeeConfigInstruction,
+    createMintToInstruction,
+    ExtensionType,
     getAssociatedTokenAddressSync,
+    getMintLen,
     MINT_SIZE,
     MintLayout,
     TOKEN_2022_PROGRAM_ID,
-    TOKEN_PROGRAM_ID,
-    ExtensionType,
-    getMintLen,
-    createInitializeMint2Instruction,
-    createInitializeTransferFeeConfigInstruction,
-    createAssociatedTokenAccountInstruction,
-    createMintToInstruction,
+    TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
-import { ComputeBudget, FeatureSet, LiteSVM } from "litesvm";
+import { ComputeBudget, LiteSVM } from "litesvm";
 import idl from "../target/idl/onreapp.json";
 
 export const ONREAPP_PROGRAM_ID = new PublicKey((idl as any).address);
@@ -39,7 +39,7 @@ export class TestHelper {
     }
 
     static async create() {
-        const svm = new LiteSVM().withFeatureSet(FeatureSet.allEnabled()).withPrecompiles();
+        const svm = new LiteSVM();
         const payer = Keypair.generate();
 
         // Set initial clock to a non-zero timestamp (e.g., Jan 1, 2024)
@@ -132,7 +132,7 @@ export class TestHelper {
             newAccountPubkey: mint.publicKey,
             space: mintLen,
             lamports: INITIAL_LAMPORTS,
-            programId: TOKEN_2022_PROGRAM_ID,
+            programId: TOKEN_2022_PROGRAM_ID
         });
 
         const initTransferFeeIx = createInitializeTransferFeeConfigInstruction(
@@ -356,7 +356,12 @@ export class TestHelper {
         this.svm.setClock(clock);
     }
 
-    setAccount(pubkey: PublicKey, account: { executable: boolean; data: Uint8Array | Buffer; lamports: number; owner: PublicKey }) {
+    setAccount(pubkey: PublicKey, account: {
+        executable: boolean;
+        data: Uint8Array | Buffer;
+        lamports: number;
+        owner: PublicKey
+    }) {
         this.svm.setAccount(pubkey, account);
     }
 
@@ -397,7 +402,7 @@ export class TestHelper {
                 const result = svm.sendTransaction(tx);
 
                 // Check if it's a FailedTransactionMetadata (has err() method)
-                if (typeof result.err === 'function') {
+                if (typeof result.err === "function") {
                     const logs = result.meta().logs();
                     // Use result.toString() which includes the full error info
                     const error: any = new Error(result.toString());
@@ -448,14 +453,14 @@ export class TestHelper {
                             accounts: null,
                             unitsConsumed: Number(meta.computeUnitsConsumed()),
                             returnData: returnData && returnData.data().length > 0 ? {
-                                programId: Buffer.from(returnData.programId()).toString('base64'),
-                                data: [Buffer.from(returnData.data()).toString('base64'), 'base64']
+                                programId: Buffer.from(returnData.programId()).toString("base64"),
+                                data: [Buffer.from(returnData.data()).toString("base64"), "base64"]
                             } : null
                         }
                     };
                 }
                 throw new Error(`Unsupported RPC method: ${method}`);
-            },
+            }
         };
     }
 }
