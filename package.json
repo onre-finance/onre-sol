@@ -13,9 +13,6 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview",
     "set-program:dev": "cp ~/.config/solana/devHfQHgiFNifkLW49RCXpyTUZMyKuBNnFSbrQ8XsbX.json target/deploy/onreapp-keypair.json && anchor keys sync && anchor build",
     "set-program:test": "cp ~/.config/solana/J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2.json target/deploy/onreapp-keypair.json && anchor keys sync && anchor build",
     "set-program:prod": "cp ~/.config/solana/onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe.json target/deploy/onreapp-keypair.json && anchor keys sync && anchor build",
@@ -23,47 +20,22 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
-    "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
-    "@noble/ed25519": "^3.0.0",
     "@solana/spl-token": "0.4.12",
     "@solana/web3.js": "^1.98.2",
-    "@sqds/multisig": "^2.1.3",
-    "anchor-litesvm": "^0.2.1",
     "bs58": "^6.0.0",
-    "date-fns": "^4.1.0",
     "ethers": "^6.14.1",
-    "jotai": "^2.9.3",
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
-    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
     "@types/node": "^22.10.5",
-    "@types/react": "^19.0.10",
-    "@types/react-dom": "^19.0.4",
-    "@vitejs/plugin-react": "^4.3.4",
-    "@vitest/ui": "^3.0.0",
-    "borsh": "^2.0.0",
     "dotenv": "^16.5.0",
-    "esbuild": "0.25.0",
-    "globals": "^15.9.0",
     "litesvm": "0.4.0",
     "prettier": "^3.5.2",
-    "ts-node": "^10.9.2",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
-    "unplugin-fonts": "^1.3.1",
     "vite": "^6.2.0",
-    "vite-plugin-node-polyfills": "^0.23.0",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.0.0",
     "zx": "^8.6.0"
-  },
-  "overrides": {
-    "react-helmet-async": {
-      "react": "^19.0.0"
-    },
-    "anchor-bankrun": {
-      "@coral-xyz/anchor": "^0.32.1"
-    }
   }
 }
