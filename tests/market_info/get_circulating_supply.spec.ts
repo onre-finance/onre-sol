@@ -9,7 +9,7 @@ describe("Get Circulating Supply", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
     });
 
     describe("SPL Token tests", () => {

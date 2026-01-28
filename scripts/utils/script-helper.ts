@@ -10,7 +10,7 @@ import {
   getAssociatedTokenAddressSync,
   TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
-import { BN } from "bn.js";
+import { BN } from "@coral-xyz/anchor";
 import { Onreapp } from "../../target/types/onreapp";
 import idl from "../../target/idl/onreapp.json";
 import bs58 from "bs58";
@@ -536,5 +536,23 @@ export class ScriptHelper {
         console.log(`${title} (Base58):`);
         console.log(base58Tx);
         return base58Tx;
+    }
+
+    async buildMakeRedemptionOfferIx(params: {
+        tokenInMint: PublicKey;
+        tokenInProgram: PublicKey;
+        tokenOutMint: PublicKey;
+        tokenOutProgram: PublicKey;
+        feeBasisPoints: number;
+    }) {
+        return await this.program.methods
+            .makeRedemptionOffer(params.feeBasisPoints)
+            .accountsPartial({
+                tokenInMint: params.tokenInMint,
+                tokenInProgram: params.tokenInProgram,
+                tokenOutMint: params.tokenOutMint,
+                tokenOutProgram: params.tokenOutProgram,
+            })
+            .instruction();
     }
 }

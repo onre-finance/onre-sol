@@ -12,11 +12,22 @@ target/flycheck*
 
 **/*.rs.bk
 
+# Dependencies
 node_modules
 
-test-ledger
+# Lock files (keep only pnpm-lock.yaml)
+package-lock.json
+yarn.lock
 
-.yarn
+# Package manager logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+test-ledger
+tests/fixtures/
+
 .idea
 onre-sol.iml
 

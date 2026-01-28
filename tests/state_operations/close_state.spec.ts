@@ -10,7 +10,7 @@ describe("Close State", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         nonBoss = testHelper.createUserAccount();
         onycMint = testHelper.createMint(9);

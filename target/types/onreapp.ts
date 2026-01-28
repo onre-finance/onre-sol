@@ -24,7 +24,6 @@ export type Onreapp = {
     "- Making offers with dynamic pricing (`make_offer`).",
     "- Taking offers with current market pricing (`take_offer`, `take_offer_permissionless`).",
     "- Managing offer vectors for price control (`add_offer_vector`, `delete_offer_vector`).",
-    "- Closing offers (`close_offer`).",
     "- Program state initialization and management (`initialize`, `set_boss`, `add_admin`, `remove_admin`).",
     "- Vault operations for token deposits and withdrawals (`offer_vault_deposit`, `offer_vault_withdraw`).",
     "- Market information queries (`get_nav`, `get_apy`, `get_tvl`, `get_circulating_supply`).",
@@ -351,6 +350,369 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "cancelRedemptionRequest",
+      "docs": [
+        "Cancels a redemption request.",
+        "",
+        "Delegates to `redemption::cancel_redemption_request`.",
+        "This instruction cancels a pending redemption request. The request can be cancelled",
+        "by the redeemer, redemption_admin, or boss. Upon cancellation, the status is changed",
+        "to cancelled and the amount is subtracted from the redemption offer's requested_redemptions.",
+        "The redemption request account is NOT closed.",
+        "Emits a `RedemptionRequestCancelledEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `CancelRedemptionRequest`.",
+        "",
+        "# Access Control",
+        "- Signer must be one of: redeemer, redemption_admin, or boss",
+        "- Request must be in pending state (status = 0)"
+      ],
+      "discriminator": [
+        77,
+        155,
+        4,
+        179,
+        114,
+        233,
+        162,
+        45
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing redemption_admin and boss for authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemptionOffer",
+          "docs": [
+            "The redemption offer account"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_in_mint",
+                "account": "redemptionOffer"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_out_mint",
+                "account": "redemptionOffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemptionRequest",
+          "docs": [
+            "The redemption request account to cancel",
+            "Account is closed after cancellation and rent is returned to redemption_admin"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  114,
+                  101,
+                  113,
+                  117,
+                  101,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_request.offer",
+                "account": "redemptionRequest"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_request.request_id",
+                "account": "redemptionRequest"
+              }
+            ]
+          }
+        },
+        {
+          "name": "signer",
+          "docs": [
+            "The signer who is cancelling the request",
+            "Can be either the redeemer, redemption_admin, or boss"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "redeemer",
+          "docs": [
+            "The redeemer's account (authority for the token account)"
+          ]
+        },
+        {
+          "name": "redemptionAdmin",
+          "docs": [
+            "Redemption admin receives the rent from closing the redemption request"
+          ],
+          "writable": true
+        },
+        {
+          "name": "redemptionVaultAuthority",
+          "docs": [
+            "Program-derived authority that controls redemption vault token accounts",
+            "",
+            "This PDA manages the redemption vault token accounts and enables the program",
+            "to return locked tokens when requests are cancelled."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "The token mint for token_in (input token)"
+          ]
+        },
+        {
+          "name": "vaultTokenAccount",
+          "docs": [
+            "Redemption vault's token account serving as the source of locked tokens",
+            "",
+            "Contains the tokens that were locked when the request was created."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "redeemerTokenAccount",
+          "docs": [
+            "Redeemer's token account serving as the destination for returned tokens",
+            "",
+            "Receives back the tokens that were locked in the redemption request.",
+            "Created if needed in case the redeemer closed their account after locking all tokens."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redeemer"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "Token program interface for transfer operations"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program for account creation and rent payment"
+          ],
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "clearAdmins",
       "docs": [
         "Clears all admins from the state.",
@@ -402,113 +764,6 @@ export type Onreapp = {
           "relations": [
             "state"
           ]
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "closeOffer",
-      "docs": [
-        "Closes a offer.",
-        "",
-        "Delegates to `offer::close_offer`.",
-        "Removes the offer from the offers account and clears its data.",
-        "Emits a `CloseOfferEvent` upon success.",
-        "",
-        "# Arguments",
-        "- `ctx`: Context for `CloseOffer`."
-      ],
-      "discriminator": [
-        191,
-        72,
-        67,
-        35,
-        239,
-        209,
-        97,
-        132
-      ],
-      "accounts": [
-        {
-          "name": "offer",
-          "docs": [
-            "The offer account to be closed and its rent reclaimed",
-            "",
-            "This account is validated as a PDA derived from token mint addresses.",
-            "The account will be closed and its rent transferred to the boss."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutMint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "tokenInMint",
-          "docs": [
-            "The input token mint account for offer validation"
-          ]
-        },
-        {
-          "name": "tokenOutMint",
-          "docs": [
-            "The output token mint account for offer validation"
-          ]
-        },
-        {
-          "name": "boss",
-          "docs": [
-            "The boss account authorized to close offers and receive rent"
-          ],
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "state",
-          "docs": [
-            "Program state account containing boss authorization"
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "systemProgram",
-          "docs": [
-            "System program required for account closure and rent transfer"
-          ],
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -643,6 +898,456 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "createRedemptionRequest",
+      "docs": [
+        "Creates a redemption request.",
+        "",
+        "Delegates to `redemption::create_redemption_request`.",
+        "This instruction creates a new redemption request that allows users to request",
+        "redemption of token_in tokens for token_out tokens at a future time. Anyone can",
+        "create a redemption request by paying for the PDA rent.",
+        "Emits a `RedemptionRequestCreatedEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `CreateRedemptionRequest`.",
+        "- `amount`: Amount of token_in tokens to redeem."
+      ],
+      "discriminator": [
+        201,
+        53,
+        181,
+        254,
+        115,
+        137,
+        70,
+        151
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account for kill switch validation"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemptionOffer",
+          "docs": [
+            "The redemption offer account"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_in_mint",
+                "account": "redemptionOffer"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_out_mint",
+                "account": "redemptionOffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemptionRequest",
+          "docs": [
+            "The redemption request account",
+            "PDA derived from redemption_offer and its counter value"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  114,
+                  101,
+                  113,
+                  117,
+                  101,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemptionOffer"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.request_counter",
+                "account": "redemptionOffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "redeemer",
+          "docs": [
+            "User requesting the redemption (pays for account creation)"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "redemptionVaultAuthority",
+          "docs": [
+            "Program-derived authority that controls redemption vault token accounts",
+            "",
+            "This PDA manages the redemption vault token accounts and enables the program",
+            "to hold tokens until redemption requests are fulfilled or cancelled."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "The token mint for token_in (input token)"
+          ]
+        },
+        {
+          "name": "redeemerTokenAccount",
+          "docs": [
+            "Redeemer's token account serving as the source of deposited tokens",
+            "",
+            "Must have sufficient balance to cover the requested amount."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redeemer"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenAccount",
+          "docs": [
+            "Redemption vault's token account serving as the destination for locked tokens",
+            "",
+            "Must exist. Stores tokens that are locked until the redemption request is",
+            "fulfilled or cancelled."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "Token program interface for transfer operations"
+          ]
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "deleteAllOfferVectors",
+      "docs": [
+        "Deletes all time vectors from an offer.",
+        "",
+        "Delegates to `offer::delete_all_offer_vectors`.",
+        "Removes all time vectors from the offer regardless of their timing (past, active, or future).",
+        "Only the boss can delete time vectors from offers.",
+        "Emits a `AllOfferVectorsDeletedEvent` event upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `DeleteAllOfferVectors`."
+      ],
+      "discriminator": [
+        26,
+        201,
+        38,
+        207,
+        76,
+        51,
+        79,
+        15
+      ],
+      "accounts": [
+        {
+          "name": "offer",
+          "docs": [
+            "The offer account from which all pricing vectors will be deleted",
+            "",
+            "This account is validated as a PDA derived from token mint addresses",
+            "and contains the array of pricing vectors for the offer."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "The input token mint account for offer validation"
+          ]
+        },
+        {
+          "name": "tokenOutMint",
+          "docs": [
+            "The output token mint account for offer validation"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing boss authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account authorized to delete pricing vectors from offers"
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "deleteOfferVector",
       "docs": [
         "Deletes a time vector from an offer.",
@@ -748,6 +1453,548 @@ export type Onreapp = {
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "fulfillRedemptionRequest",
+      "docs": [
+        "Fulfills a redemption request.",
+        "",
+        "Delegates to `redemption::fulfill_redemption_request`.",
+        "This instruction fulfills a pending redemption request by handling token operations:",
+        "- Burns token_in (ONyc) if program has mint authority, else sends to boss",
+        "- Mints token_out if program has mint authority, else transfers from vault",
+        "- Uses current price from the underlying offer to calculate token_out amount",
+        "Emits a `RedemptionRequestFulfilledEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `FulfillRedemptionRequest`.",
+        "",
+        "# Access Control",
+        "- Only redemption_admin can fulfill redemptions"
+      ],
+      "discriminator": [
+        140,
+        124,
+        139,
+        242,
+        179,
+        153,
+        208,
+        66
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing redemption_admin and boss authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account that may receive tokens when program lacks mint authority"
+          ],
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offer",
+          "docs": [
+            "The underlying offer that defines pricing"
+          ]
+        },
+        {
+          "name": "redemptionOffer",
+          "docs": [
+            "The redemption offer account"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_in_mint",
+                "account": "redemptionOffer"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_out_mint",
+                "account": "redemptionOffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemptionRequest",
+          "docs": [
+            "The redemption request account to fulfill",
+            "Account is closed after fulfillment and rent is returned to redemption_admin"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  114,
+                  101,
+                  113,
+                  117,
+                  101,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_request.offer",
+                "account": "redemptionRequest"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_request.request_id",
+                "account": "redemptionRequest"
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemptionVaultAuthority",
+          "docs": [
+            "Program-derived redemption vault authority that controls token operations",
+            "",
+            "This PDA manages token transfers and burning operations."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vaultTokenInAccount",
+          "docs": [
+            "Redemption vault account for token_in (to receive tokens for burning or storage)",
+            "",
+            "Used as intermediate account when burning token_in or as permanent storage",
+            "when program lacks mint authority."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenOutAccount",
+          "docs": [
+            "Redemption vault account for token_out distribution when using transfer mechanism",
+            "",
+            "Source of output tokens when the program lacks mint authority",
+            "and must transfer from pre-funded vault instead of minting."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "Input token mint (typically ONyc)",
+            "",
+            "Must be mutable to allow burning operations when program has mint authority."
+          ],
+          "writable": true
+        },
+        {
+          "name": "tokenInProgram",
+          "docs": [
+            "Token program interface for input token operations"
+          ]
+        },
+        {
+          "name": "tokenOutMint",
+          "docs": [
+            "Output token mint (typically stablecoin like USDC)",
+            "",
+            "Must be mutable to allow minting operations when program has mint authority."
+          ],
+          "writable": true
+        },
+        {
+          "name": "tokenOutProgram",
+          "docs": [
+            "Token program interface for output token operations"
+          ]
+        },
+        {
+          "name": "userTokenOutAccount",
+          "docs": [
+            "User's output token account (destination for redeemed tokens)",
+            "",
+            "Created automatically if it doesn't exist."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redeemer"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "bossTokenInAccount",
+          "docs": [
+            "Boss's input token account for receiving tokens when program lacks mint authority",
+            "",
+            "Only used when program doesn't have mint authority of token_in."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "mintAuthority",
+          "docs": [
+            "Program-derived mint authority for direct token minting",
+            "",
+            "Used when the program has mint authority and can mint token_out directly."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "redeemer",
+          "docs": [
+            "The user who created the redemption request"
+          ]
+        },
+        {
+          "name": "redemptionAdmin",
+          "docs": [
+            "Redemption admin must sign to authorize fulfillment"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program required for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     },
     {
       "name": "getApy",
@@ -1723,6 +2970,365 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "makeRedemptionOffer",
+      "docs": [
+        "Creates a redemption offer for converting output tokens from standard offers back",
+        "to input tokens.",
+        "",
+        "Delegates to `redemption::make_redemption_offer`.",
+        "This instruction initializes a new redemption offer that allows users to redeem",
+        "token_out tokens from standard Offer (e.g. ONyc) for token_in tokens (e.g., USDC) at",
+        "the current NAV price. The redemption offer is the inverse of the standard Offer.",
+        "",
+        "The redemption offer PDA is derived with reversed token order compared to the",
+        "original offer, reflecting the inverse nature of the redemption operation.",
+        "Emits a `RedemptionOfferCreatedEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `MakeRedemptionOffer`.",
+        "- `fee_basis_points`: Fee in basis points (10000 = 100%) charged when fulfilling redemption requests",
+        "",
+        "# Access Control",
+        "- Only the boss or redemption_admin can call this instruction"
+      ],
+      "discriminator": [
+        6,
+        130,
+        180,
+        160,
+        163,
+        166,
+        51,
+        41
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing boss and redemption_admin authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "offer",
+          "docs": [
+            "The original offer that this redemption offer is associated with",
+            "",
+            "The redemption offer uses the inverse token pair of the original offer.",
+            "The offer must be derived from redemption offer token_out_mint (token_in in original offer)",
+            "and token_in_mint (token_out in original offer)."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemptionVaultAuthority",
+          "docs": [
+            "Program-derived authority that controls redemption offer vault token accounts",
+            "",
+            "This PDA manages token transfers for redemption operations."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "The input token mint for redemptions (token_in_mint)",
+            "",
+            "This corresponds to the token_out_mint from the original offer."
+          ]
+        },
+        {
+          "name": "tokenInProgram",
+          "docs": [
+            "Token program interface for the input token"
+          ]
+        },
+        {
+          "name": "vaultTokenInAccount",
+          "docs": [
+            "Vault account for storing input tokens during redemption operations",
+            "",
+            "Created automatically if needed. Used for holding ONyc tokens before burning."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenOutMint",
+          "docs": [
+            "The output token mint for redemptions (e.g., USDC)",
+            "",
+            "This is the token_in_mint from the original offer."
+          ]
+        },
+        {
+          "name": "tokenOutProgram",
+          "docs": [
+            "Token program interface for the output token"
+          ]
+        },
+        {
+          "name": "vaultTokenOutAccount",
+          "docs": [
+            "Vault account for storing output tokens (e.g., USDC) for redemption payouts",
+            "",
+            "Created automatically if needed. Used for distributing stable tokens to redeemers."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "redemptionOffer",
+          "docs": [
+            "The redemption offer account storing redemption configuration",
+            "",
+            "This account is derived from token mint addresses in the same order as Offer",
+            "but with the tokens reversed (token_in from Offer becomes token_out here)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "signer",
+          "docs": [
+            "The account creating the redemption offer (must be boss or redemption_admin)"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program for account creation and rent payment"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "feeBasisPoints",
+          "type": "u16"
+        }
+      ]
+    },
+    {
       "name": "mintTo",
       "docs": [
         "Mints ONyc tokens to the boss's account.",
@@ -2494,6 +4100,538 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "redemptionVaultDeposit",
+      "docs": [
+        "Deposits tokens into the redemption vault.",
+        "",
+        "Delegates to `vault_operations::redemption_vault_deposit`.",
+        "Transfers tokens from boss's account to redemption vault's token account for the specified mint.",
+        "Creates vault token account if it doesn't exist using init_if_needed.",
+        "Only the boss can call this instruction.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `RedemptionVaultDeposit`.",
+        "- `amount`: Amount of tokens to deposit."
+      ],
+      "discriminator": [
+        67,
+        104,
+        107,
+        131,
+        141,
+        2,
+        140,
+        122
+      ],
+      "accounts": [
+        {
+          "name": "redemptionVaultAuthority",
+          "docs": [
+            "Program-derived authority that controls redemption vault token accounts",
+            "",
+            "This PDA manages the redemption vault token accounts and enables the program",
+            "to distribute tokens during redemption executions."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenMint",
+          "docs": [
+            "The token mint for the deposit operation"
+          ]
+        },
+        {
+          "name": "bossTokenAccount",
+          "docs": [
+            "Boss's token account serving as the source of deposited tokens",
+            "",
+            "Must have sufficient balance to cover the requested deposit amount."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenAccount",
+          "docs": [
+            "Redemption vault's token account serving as the destination for deposited tokens",
+            "",
+            "Created automatically if it doesn't exist. Stores tokens that can be",
+            "distributed during redemption executions when minting is not available."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account authorized to deposit tokens and pay for account creation"
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing boss authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "Token program interface for transfer operations"
+          ]
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program for account creation and rent payment"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "redemptionVaultWithdraw",
+      "docs": [
+        "Withdraws tokens from the redemption vault.",
+        "",
+        "Delegates to `vault_operations::redemption_vault_withdraw`.",
+        "Transfers tokens from redemption vault's token account to boss's account for the specified mint.",
+        "Creates boss token account if it doesn't exist using init_if_needed.",
+        "Only the boss can call this instruction.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `RedemptionVaultWithdraw`.",
+        "- `amount`: Amount of tokens to withdraw."
+      ],
+      "discriminator": [
+        48,
+        214,
+        145,
+        15,
+        168,
+        122,
+        39,
+        48
+      ],
+      "accounts": [
+        {
+          "name": "redemptionVaultAuthority",
+          "docs": [
+            "Program-derived authority that controls redemption vault token accounts",
+            "",
+            "This PDA manages the redemption vault token accounts and signs the withdrawal",
+            "transfer using program-derived signatures."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenMint",
+          "docs": [
+            "The token mint for the withdrawal operation"
+          ]
+        },
+        {
+          "name": "bossTokenAccount",
+          "docs": [
+            "Boss's token account serving as the destination for withdrawn tokens",
+            "",
+            "Created automatically if it doesn't exist. Receives tokens withdrawn",
+            "from the redemption vault for boss fund management.",
+            "Note: init_if_needed implies mutability."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenAccount",
+          "docs": [
+            "Redemption vault's token account serving as the source of withdrawn tokens",
+            "",
+            "Must have sufficient balance to cover the requested withdrawal amount.",
+            "Controlled by the redemption vault authority PDA."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account authorized to withdraw tokens and pay for account creation"
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing boss authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "Token program interface for transfer operations"
+          ]
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for automatic token account creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program for account creation and rent payment"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "removeAdmin",
       "docs": [
         "Removes an admin from the state.",
@@ -2746,6 +4884,72 @@ export type Onreapp = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "setRedemptionAdmin",
+      "docs": [
+        "Sets the redemption admin in the state.",
+        "",
+        "Delegates to `state_operations::set_redemption_admin` to change the redemption admin.",
+        "Only the boss can call this instruction to set the redemption admin.",
+        "Emits a `RedemptionAdminUpdatedEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `SetRedemptionAdmin`.",
+        "- `new_redemption_admin`: Public key of the new redemption admin."
+      ],
+      "discriminator": [
+        122,
+        95,
+        205,
+        126,
+        218,
+        93,
+        18,
+        173
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing the redemption admin configuration",
+            "",
+            "Must be mutable to allow redemption admin updates and have the boss account",
+            "as the authorized signer for redemption admin configuration management."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account authorized to configure the redemption admin"
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newRedemptionAdmin",
+          "type": "pubkey"
+        }
+      ]
     },
     {
       "name": "takeOffer",
@@ -3385,6 +5589,9 @@ export type Onreapp = {
             "The boss account authorized to receive token_in payments",
             "",
             "Must match the boss stored in program state for security validation."
+          ],
+          "relations": [
+            "state"
           ]
         },
         {
@@ -4052,7 +6259,7 @@ export type Onreapp = {
         "",
         "Delegates to `mint_authority::transfer_mint_authority_to_program`.",
         "Only the boss can call this instruction to transfer mint authority for a specific token.",
-        "The PDA is derived from the mint address and can later be used to mint tokens.",
+        "The PDA is derived from the MINT_AUTHORITY seed and can later be used to mint tokens.",
         "Emits a `MintAuthorityTransferredToProgramEvent` upon success.",
         "",
         "# Arguments",
@@ -4258,6 +6465,112 @@ export type Onreapp = {
           "type": "u16"
         }
       ]
+    },
+    {
+      "name": "updateRedemptionOfferFee",
+      "docs": [
+        "Updates the fee configuration for a specific redemption offer.",
+        "",
+        "This instruction allows the boss to modify the fee charged when fulfilling",
+        "redemption requests for a specific redemption offer. Only the boss can call this instruction.",
+        "",
+        "# Arguments",
+        "* `ctx` - The instruction context",
+        "* `new_fee_basis_points` - New fee in basis points (10000 = 100%, 500 = 5%)",
+        "",
+        "# Access Control",
+        "- Boss only"
+      ],
+      "discriminator": [
+        73,
+        11,
+        35,
+        194,
+        219,
+        147,
+        159,
+        3
+      ],
+      "accounts": [
+        {
+          "name": "redemptionOffer",
+          "docs": [
+            "The redemption offer account whose fee will be updated"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_in_mint",
+                "account": "redemptionOffer"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_out_mint",
+                "account": "redemptionOffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing boss authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account authorized to update redemption offer fees"
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newFeeBasisPoints",
+          "type": "u16"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -4285,6 +6598,32 @@ export type Onreapp = {
         102,
         149,
         52
+      ]
+    },
+    {
+      "name": "redemptionOffer",
+      "discriminator": [
+        170,
+        229,
+        178,
+        15,
+        184,
+        107,
+        140,
+        41
+      ]
+    },
+    {
+      "name": "redemptionRequest",
+      "discriminator": [
+        117,
+        157,
+        214,
+        214,
+        64,
+        160,
+        31,
+        58
       ]
     },
     {
@@ -4339,6 +6678,19 @@ export type Onreapp = {
         208,
         159,
         153
+      ]
+    },
+    {
+      "name": "allOfferVectorsDeletedEvent",
+      "discriminator": [
+        13,
+        237,
+        37,
+        22,
+        175,
+        128,
+        178,
+        200
       ]
     },
     {
@@ -4524,19 +6876,6 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "offerClosedEvent",
-      "discriminator": [
-        52,
-        107,
-        250,
-        206,
-        40,
-        209,
-        249,
-        150
-      ]
-    },
-    {
       "name": "offerFeeUpdatedEvent",
       "discriminator": [
         65,
@@ -4667,6 +7006,110 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "redemptionAdminUpdatedEvent",
+      "discriminator": [
+        110,
+        117,
+        47,
+        219,
+        133,
+        230,
+        199,
+        178
+      ]
+    },
+    {
+      "name": "redemptionOfferCreatedEvent",
+      "discriminator": [
+        171,
+        25,
+        200,
+        106,
+        108,
+        123,
+        70,
+        65
+      ]
+    },
+    {
+      "name": "redemptionOfferFeeUpdatedEvent",
+      "discriminator": [
+        221,
+        254,
+        77,
+        118,
+        205,
+        154,
+        166,
+        156
+      ]
+    },
+    {
+      "name": "redemptionRequestCancelledEvent",
+      "discriminator": [
+        51,
+        146,
+        195,
+        92,
+        134,
+        230,
+        73,
+        134
+      ]
+    },
+    {
+      "name": "redemptionRequestCreatedEvent",
+      "discriminator": [
+        30,
+        61,
+        76,
+        2,
+        36,
+        82,
+        84,
+        201
+      ]
+    },
+    {
+      "name": "redemptionRequestFulfilledEvent",
+      "discriminator": [
+        154,
+        40,
+        115,
+        4,
+        42,
+        232,
+        47,
+        230
+      ]
+    },
+    {
+      "name": "redemptionVaultDepositEvent",
+      "discriminator": [
+        229,
+        187,
+        130,
+        152,
+        236,
+        139,
+        239,
+        108
+      ]
+    },
+    {
+      "name": "redemptionVaultWithdrawEvent",
+      "discriminator": [
+        255,
+        92,
+        199,
+        233,
+        33,
+        6,
+        21,
+        78
+      ]
+    },
+    {
       "name": "stateClosedEvent",
       "discriminator": [
         205,
@@ -4695,6 +7138,21 @@ export type Onreapp = {
       "code": 6002,
       "name": "transferFeeNotSupported",
       "msg": "Token-2022 with transfer fees not supported"
+    },
+    {
+      "code": 6003,
+      "name": "zeroPriceNotAllowed",
+      "msg": "Price cannot be zero"
+    },
+    {
+      "code": 6004,
+      "name": "decimalsExceedMax",
+      "msg": "Token decimals exceed maximum allowed (18)"
+    },
+    {
+      "code": 6005,
+      "name": "resultOverflow",
+      "msg": "Result exceeds u64 maximum value"
     }
   ],
   "types": [
@@ -4768,6 +7226,33 @@ export type Onreapp = {
               "The boss who cleared all admins"
             ],
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "allOfferVectorsDeletedEvent",
+      "docs": [
+        "Event emitted when all pricing vectors are deleted from an offer",
+        "",
+        "Provides transparency for tracking bulk pricing vector removals."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerPda",
+            "docs": [
+              "The PDA address of the offer from which vectors were deleted"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "vectorsDeletedCount",
+            "docs": [
+              "Number of vectors that were deleted (non-empty vectors)"
+            ],
+            "type": "u8"
           }
         ]
       }
@@ -5382,33 +7867,6 @@ export type Onreapp = {
       }
     },
     {
-      "name": "offerClosedEvent",
-      "docs": [
-        "Event emitted when an offer is successfully closed and account is reclaimed",
-        "",
-        "Provides transparency for tracking offer lifecycle and account cleanup operations."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "offerPda",
-            "docs": [
-              "The PDA address of the offer that was closed"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "boss",
-            "docs": [
-              "The boss account that initiated the closure and received the rent"
-            ],
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
       "name": "offerFeeUpdatedEvent",
       "docs": [
         "Event emitted when an offer's fee is successfully updated",
@@ -5902,6 +8360,493 @@ export type Onreapp = {
       }
     },
     {
+      "name": "redemptionAdminUpdatedEvent",
+      "docs": [
+        "Event emitted when the redemption admin is successfully updated",
+        "",
+        "Provides transparency for tracking redemption admin configuration changes."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldRedemptionAdmin",
+            "docs": [
+              "The previous redemption admin public key before the update"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "newRedemptionAdmin",
+            "docs": [
+              "The new redemption admin public key after the update"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionOffer",
+      "docs": [
+        "Redemption offer for converting ONyc tokens back to stable tokens",
+        "",
+        "Manages the redemption process where users can exchange ONyc (in-token)",
+        "for stable tokens like USDC (out-token) at the current NAV price.",
+        "This is the inverse of the standard Offer which exchanges stable tokens for ONyc."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offer",
+            "docs": [
+              "Reference to the original Offer PDA that this redemption offer is associated with"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenInMint",
+            "docs": [
+              "Input token mint for redemptions (e.g., ONyc)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenOutMint",
+            "docs": [
+              "Output token mint for redemptions (e.g., USDC)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "executedRedemptions",
+            "docs": [
+              "Cumulative total of all executed redemptions over the contract's lifetime",
+              "",
+              "This tracks the total amount of ONyc that has been redeemed and burned.",
+              "Uses u128 because cumulative redemptions can exceed the current total supply."
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "requestedRedemptions",
+            "docs": [
+              "Total amount of pending redemption requests",
+              "",
+              "This tracks ONyc tokens that are locked in pending redemption requests.",
+              "Uses u64 because pending redemptions cannot exceed the token's total supply."
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "feeBasisPoints",
+            "docs": [
+              "Fee in basis points (1000 = 10%) charged when fulfilling redemption requests"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "requestCounter",
+            "docs": [
+              "Counter for sequential redemption request numbering",
+              "Increments with each new redemption request created"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed for account derivation"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "docs": [
+              "Reserved space for future fields"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                109
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionOfferCreatedEvent",
+      "docs": [
+        "Event emitted when a redemption offer is successfully created",
+        "",
+        "Provides transparency for tracking redemption offer creation and configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "redemptionOfferPda",
+            "docs": [
+              "The PDA address of the newly created redemption offer"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "offer",
+            "docs": [
+              "Reference to the original offer"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenInMint",
+            "docs": [
+              "The input token mint for redemptions (ONyc)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenOutMint",
+            "docs": [
+              "The output token mint for redemptions (e.g., USDC)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "feeBasisPoints",
+            "docs": [
+              "Fee in basis points (10000 = 100%) charged when fulfilling redemption requests"
+            ],
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionOfferFeeUpdatedEvent",
+      "docs": [
+        "Event emitted when a redemption offer's fee is successfully updated",
+        "",
+        "Provides transparency for tracking fee changes and redemption offer configuration modifications."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "redemptionOfferPda",
+            "docs": [
+              "The PDA address of the redemption offer whose fee was updated"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "oldFeeBasisPoints",
+            "docs": [
+              "Previous fee in basis points (10000 = 100%)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "newFeeBasisPoints",
+            "docs": [
+              "New fee in basis points (10000 = 100%)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "boss",
+            "docs": [
+              "The boss account that authorized the fee update"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionRequest",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offer",
+            "docs": [
+              "Reference to the RedemptionOffer PDA"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "requestId",
+            "docs": [
+              "Unique sequential identifier for this request (counter value used for PDA derivation)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "redeemer",
+            "docs": [
+              "User requesting the redemption"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Amount of token_in tokens requested for redemption"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed for account derivation"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "docs": [
+              "Reserved space for future fields"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                127
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionRequestCancelledEvent",
+      "docs": [
+        "Event emitted when a redemption request is successfully cancelled",
+        "",
+        "Provides transparency for tracking cancelled redemption requests."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "redemptionRequestPda",
+            "docs": [
+              "The PDA address of the cancelled redemption request"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "redemptionOffer",
+            "docs": [
+              "Reference to the redemption offer"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "redeemer",
+            "docs": [
+              "User who requested the redemption"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Amount of token_in tokens that was requested for redemption"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "cancelledBy",
+            "docs": [
+              "The signer who cancelled the request"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionRequestCreatedEvent",
+      "docs": [
+        "Event emitted when a redemption request is successfully created",
+        "",
+        "Provides transparency for tracking redemption requests and their configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "redemptionRequestPda",
+            "docs": [
+              "The PDA address of the newly created redemption request"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "redemptionOfferPda",
+            "docs": [
+              "Reference to the redemption offer"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "redeemer",
+            "docs": [
+              "User requesting the redemption"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Amount of token_in tokens requested for redemption"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "id",
+            "docs": [
+              "Unique identifier for this request (counter value used for PDA derivation)"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionRequestFulfilledEvent",
+      "docs": [
+        "Event emitted when a redemption request is successfully fulfilled",
+        "",
+        "Provides transparency for tracking redemption fulfillment and token exchange details."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "redemptionRequestPda",
+            "docs": [
+              "The PDA address of the fulfilled redemption request"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "redemptionOfferPda",
+            "docs": [
+              "Reference to the redemption offer pda"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "redeemer",
+            "docs": [
+              "User who created the redemption request"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenInNetAmount",
+            "docs": [
+              "Net amount of token_in tokens burned/transferred (after fees)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tokenInFeeAmount",
+            "docs": [
+              "Fee amount deducted from token_in"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tokenOutAmount",
+            "docs": [
+              "Amount of token_out tokens received by the user"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "currentPrice",
+            "docs": [
+              "Current price used for the redemption"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionVaultDepositEvent",
+      "docs": [
+        "Event emitted when tokens are successfully deposited to the redemption vault",
+        "",
+        "Provides transparency for tracking redemption vault funding and token availability."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "docs": [
+              "The token mint that was deposited"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Amount of tokens deposited to the vault"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "docs": [
+              "The boss account that made the deposit"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionVaultWithdrawEvent",
+      "docs": [
+        "Event emitted when tokens are successfully withdrawn from the redemption vault",
+        "",
+        "Provides transparency for tracking redemption vault withdrawals and fund management."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "docs": [
+              "The token mint that was withdrawn"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Amount of tokens withdrawn from the vault"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "docs": [
+              "The boss account that performed the withdrawal"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "state",
       "docs": [
         "Global program state containing governance and configuration settings",
@@ -5981,6 +8926,13 @@ export type Onreapp = {
             "type": "u64"
           },
           {
+            "name": "redemptionAdmin",
+            "docs": [
+              "Admin account authorized to manage ONr token mints and redemptions"
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "reserved",
             "docs": [
               "Reserved space for future program state extensions"
@@ -5988,7 +8940,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                128
+                96
               ]
             }
           }

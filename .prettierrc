@@ -10,7 +10,7 @@
     {
       "files": "*.ts",
       "options": {
-        "parser": "flow",
+        "parser": "typescript",
         "printWidth": 180,
         "tabWidth": 4,
         "useTabs": false,

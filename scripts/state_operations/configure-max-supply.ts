@@ -1,5 +1,5 @@
 import { ScriptHelper } from "../utils/script-helper";
-import { BN } from "bn.js";
+import { BN } from "@coral-xyz/anchor";
 
 const MAX_SUPPLY = new BN(100_000_000).mul(new BN(1e9)); // 100 million ONyc tokens (9 decimals)
 const TOKEN_DECIMALS = 9; // ONyc has 9 decimals

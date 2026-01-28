@@ -11,7 +11,7 @@ describe("Delete Offer Vector", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         // Create mints
         tokenInMint = testHelper.createMint(9);
@@ -66,7 +66,7 @@ describe("Delete Offer Vector", () => {
                 testHelper.createMint(9),
                 1000
             )
-        ).rejects.toThrow("AnchorError caused by account: offer");
+        ).rejects.toThrow("The given account is owned by a different program than expected");
 
         await expect(
             program.deleteOfferVector(
@@ -74,7 +74,7 @@ describe("Delete Offer Vector", () => {
                 tokenOutMint,
                 1000
             )
-        ).rejects.toThrow("AnchorError caused by account: offer");
+        ).rejects.toThrow("The given account is owned by a different program than expected");
     });
 
     it("Should fail when vector start_time is zero", async () => {

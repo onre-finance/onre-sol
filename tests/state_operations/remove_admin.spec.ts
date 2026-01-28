@@ -12,7 +12,7 @@ describe("Remove Admin", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         nonBoss = testHelper.createUserAccount();
         admin1 = testHelper.createUserAccount();
@@ -107,6 +107,8 @@ describe("Remove Admin", () => {
         expect(state.admins).not.toContainEqual(admin1.publicKey);
         let activeAdmins = state.admins.filter(admin => !admin.equals(PublicKey.default));
         expect(activeAdmins).toHaveLength(2);
+
+        await testHelper.advanceSlot();
 
         // when - re-add admin1
         await program.addAdmin({ admin: admin1.publicKey });

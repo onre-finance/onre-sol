@@ -41,6 +41,18 @@ pub fn parse_ed25519_ix(data: &[u8]) -> Option<ParsedEd25519> {
         return None; // extend if you want batching
     }
 
+    // Validate instruction indices are u16::MAX (data must come from current instruction)
+    // The Ed25519 program uses u16::MAX as a sentinel to indicate the signature, public key,
+    // and message should be read from the current instruction, preventing unintended data
+    // from being loaded from other instructions.
+    let sig_ix_index = u16::from_le_bytes([data[4], data[5]]);
+    let pubkey_ix_index = u16::from_le_bytes([data[8], data[9]]);
+    let msg_ix_index = u16::from_le_bytes([data[14], data[15]]);
+
+    if sig_ix_index != u16::MAX || pubkey_ix_index != u16::MAX || msg_ix_index != u16::MAX {
+        return None; // Data must come from current instruction, not external ones
+    }
+
     // read offsets from header
     let sig_offset = u16::from_le_bytes([data[2], data[3]]) as usize;
     let pubkey_offset = u16::from_le_bytes([data[6], data[7]]) as usize;

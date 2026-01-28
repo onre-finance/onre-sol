@@ -11,7 +11,7 @@ describe("Remove Approver", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         nonBoss = testHelper.createUserAccount();
         approver1 = testHelper.createUserAccount();
@@ -69,14 +69,14 @@ describe("Remove Approver", () => {
         // when & then
         await expect(
             program.removeApprover({ approver: nonExistentApprover.publicKey })
-        ).rejects.toThrow("NotAnApprover");
+        ).rejects.toThrow("The provided address is not an approver");
     });
 
     test("Cannot remove default pubkey", async () => {
         // when & then
         await expect(
             program.removeApprover({ approver: PublicKey.default })
-        ).rejects.toThrow("InvalidApprover");
+        ).rejects.toThrow("Invalid approver");
     });
 
     test("Can remove both approvers", async () => {
@@ -109,6 +109,8 @@ describe("Remove Approver", () => {
         let state = await program.getState();
         expect(state.approver1).toEqual(PublicKey.default);
         expect(state.approver2).toEqual(approver2.publicKey);
+
+        await testHelper.advanceSlot();
 
         // when - re-add approver1
         await program.addApprover({ trusted: approver1.publicKey });
@@ -146,7 +148,7 @@ describe("Remove Approver", () => {
         // when & then - try to remove the same approver again
         await expect(
             program.removeApprover({ approver: approver1.publicKey })
-        ).rejects.toThrow("NotAnApprover");
+        ).rejects.toThrow("The provided address is not an approver");
     });
 
     test("After removing an approver, can add a new one to the empty slot", async () => {

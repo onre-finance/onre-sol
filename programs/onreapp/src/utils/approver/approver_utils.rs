@@ -1,8 +1,8 @@
-use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{sysvar, ed25519_program};
 use crate::utils::approver::message::ApprovalMessage;
 use crate::utils::ed25519_parser::parse_ed25519_ix;
-
+use anchor_lang::prelude::*;
+use anchor_lang::solana_program::sysvar;
+use solana_program::ed25519_program;
 
 /// Error codes for approval verification operations
 #[error_code]
@@ -22,6 +22,8 @@ pub enum ErrorCode {
     /// The previous instruction is not an Ed25519 instruction
     #[msg("The instruction is for the wrong program.")]
     WrongIxProgram,
+    #[msg("Ed25519 instruction has accounts.")]
+    BadEd25519Accounts,
     /// The Ed25519 instruction data is malformed or invalid
     #[msg("Malformed Ed25519 instruction.")]
     MalformedEd25519Ix,
@@ -38,7 +40,6 @@ pub enum ErrorCode {
     #[msg("Failed to deserialize the approval message.")]
     MsgDeserialize,
 }
-
 
 /// Verifies cryptographic approval messages signed by trusted authorities
 ///
@@ -93,6 +94,7 @@ pub fn verify_approval_message_generic(
     ).map_err(|_| ErrorCode::MissingEd25519Ix)?;
 
     require!(ix.program_id == ed25519_program::id(), ErrorCode::WrongIxProgram);
+    require!(ix.accounts.is_empty(), ErrorCode::BadEd25519Accounts);
 
     let parsed = parse_ed25519_ix(&ix.data).ok_or(ErrorCode::MalformedEd25519Ix)?;
     require!(parsed.sig_count == 1, ErrorCode::MultipleSigs);
@@ -106,7 +108,8 @@ pub fn verify_approval_message_generic(
         .map_err(|_| ErrorCode::MsgDeserialize)?;
     require!(signed_msg.program_id == *program_id, ErrorCode::WrongProgram);
     require!(signed_msg.user_pubkey == *user_pubkey, ErrorCode::WrongUser);
-    require!(signed_msg.expiry_unix >= Clock::get()?.unix_timestamp as u64, ErrorCode::Expired);
+    require!(signed_msg.expiry_unix >= now, ErrorCode::Expired);
+    require!(signed_msg == *msg, ErrorCode::MsgMismatch);
 
     Ok(())
 }

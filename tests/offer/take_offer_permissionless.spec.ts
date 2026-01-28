@@ -27,7 +27,7 @@ describe("Take Offer Permissionless", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         // Create mints with different decimals to test precision handling
         tokenInMint = testHelper.createMint(6); // USDC-like (6 decimals)
@@ -438,7 +438,7 @@ describe("Take Offer Permissionless", () => {
                     user: user.publicKey,
                     signer: user
                 })
-            ).rejects.toThrow("AnchorError caused by account: offer");
+            ).rejects.toThrow("The given account is owned by a different program than expected");
         });
 
         it("Should fail when no active vector exists", async () => {

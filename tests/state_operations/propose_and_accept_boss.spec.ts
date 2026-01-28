@@ -10,7 +10,7 @@ describe("Propose and Accept Boss", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         newBoss = testHelper.createUserAccount();
         nonBoss = testHelper.createUserAccount();

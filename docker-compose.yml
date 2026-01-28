@@ -1,0 +1,27 @@
+services:
+  onre-sol:
+    platform: linux/amd64
+    container_name: onre-sol-tests
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Disable cache to reduce disk usage during build
+      no_cache: false
+    volumes:
+      # Named volume for building (avoids SIGILL)
+      - target:/workspace/target
+      # Bind mount for output artifacts
+      - ./target:/workspace/output
+      - cargo-cache:/root/.cargo/registry
+      - cargo-git:/root/.cargo/git
+    environment:
+      - NODE_ENV=test
+    restart: "no"
+    # Memory limits to prevent OOM crashes
+    mem_limit: 4g
+    memswap_limit: 4g
+
+volumes:
+  target:
+  cargo-cache:
+  cargo-git:

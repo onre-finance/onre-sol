@@ -10,7 +10,7 @@ describe("Kill Switch Enable", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         nonBoss = testHelper.createUserAccount();
         admin = testHelper.createUserAccount();

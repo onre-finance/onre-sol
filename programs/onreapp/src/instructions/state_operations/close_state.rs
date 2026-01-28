@@ -30,7 +30,7 @@ pub struct CloseState<'info> {
     ///
     /// CHECK: Manual validation of PDA and boss without deserialization
     #[account(mut)]
-    pub state: AccountInfo<'info>,
+    pub state: UncheckedAccount<'info>,
 
     /// The boss account authorized to close the state and receive rent
     ///
@@ -126,7 +126,7 @@ pub fn close_state(ctx: Context<CloseState>) -> Result<()> {
 
     // 5) Deallocate & hand ownership back to System Program
     // (Make sure we no longer hold any data borrows at this point.)
-    state.realloc(0, false)?;
+    state.resize(0)?;
     state.assign(&system_program::ID);
 
     emit!(StateClosedEvent {

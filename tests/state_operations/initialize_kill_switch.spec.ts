@@ -9,7 +9,7 @@ describe("Initialize Kill Switch", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         nonBoss = testHelper.createUserAccount();
     });

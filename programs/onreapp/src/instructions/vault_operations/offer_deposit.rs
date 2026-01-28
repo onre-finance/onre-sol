@@ -31,7 +31,7 @@ pub struct OfferVaultDeposit<'info> {
     /// to distribute tokens during offer executions.
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
-    pub vault_authority: AccountInfo<'info>,
+    pub vault_authority: UncheckedAccount<'info>,
 
     /// The token mint for the deposit operation
     pub token_mint: Box<InterfaceAccount<'info, Mint>>,

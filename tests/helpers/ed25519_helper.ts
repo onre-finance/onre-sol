@@ -1,6 +1,6 @@
 import { ComputeBudgetProgram, Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { OnreProgram } from "../onre_program";
-import BN from "bn.js";
+import { BN } from "@coral-xyz/anchor";
 import { sign } from "tweetnacl";
 
 export interface ApprovalMessage {
@@ -11,9 +11,14 @@ export interface ApprovalMessage {
 
 export class Ed25519Helper {
     /**
-     * Serializes an approval message for signing
+     * Serializes an approval message for signing using Borsh serialization
      */
     static serializeApprovalMessage(message: ApprovalMessage): Buffer {
+        // Use Borsh serialization to match Rust's try_from_slice
+        // Borsh format for the struct:
+        // - program_id: 32 bytes (Pubkey)
+        // - user_pubkey: 32 bytes (Pubkey)
+        // - expiry_unix: 8 bytes (u64, little-endian)
         return Buffer.concat([
             message.programId.toBuffer(),
             message.userPubkey.toBuffer(),
@@ -59,16 +64,16 @@ export class Ed25519Helper {
 
             // Signature info
             Buffer.from([signatureOffset & 0xFF, (signatureOffset >> 8) & 0xFF]), // signature_offset (u16 LE)
-            Buffer.from([0, 0]), // signature_instruction_index (u16 LE) - 0 means current instruction
+            Buffer.from([0xFF, 0xFF]), // signature_instruction_index (u16 LE) - u16::MAX means current instruction
 
             // Public key info
             Buffer.from([publicKeyOffset & 0xFF, (publicKeyOffset >> 8) & 0xFF]), // public_key_offset (u16 LE)
-            Buffer.from([0, 0]), // public_key_instruction_index (u16 LE) - 0 means current instruction
+            Buffer.from([0xFF, 0xFF]), // public_key_instruction_index (u16 LE) - u16::MAX means current instruction
 
             // Message info
             Buffer.from([messageOffset & 0xFF, (messageOffset >> 8) & 0xFF]), // message_data_offset (u16 LE)
             Buffer.from([message.length & 0xFF, (message.length >> 8) & 0xFF]), // message_data_size (u16 LE)
-            Buffer.from([0, 0]), // message_instruction_index (u16 LE) - 0 means current instruction
+            Buffer.from([0xFF, 0xFF]), // message_instruction_index (u16 LE) - u16::MAX means current instruction
 
             // Data
             Buffer.from(signature), // signature (64 bytes)

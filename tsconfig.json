@@ -7,11 +7,13 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
     "jsx": "react-jsx",
     "isolatedModules": true,
+    "types": ["vitest/globals"],
     "paths": {
       "@project/anchor": ["./anchor/src"],
       "@/*": ["./src/*"]

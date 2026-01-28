@@ -11,7 +11,7 @@ describe("Add Approver", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         nonBoss = testHelper.createUserAccount();
         approver1 = testHelper.createUserAccount();
@@ -60,7 +60,7 @@ describe("Add Approver", () => {
         const approver3 = testHelper.createUserAccount();
         await expect(
             program.addApprover({ trusted: approver3.publicKey })
-        ).rejects.toThrow("BothApproversFilled");
+        ).rejects.toThrow("Both approver slots are already filled");
 
         // verify we still have exactly 2 approvers
         const state = await program.getState();
@@ -114,5 +114,17 @@ describe("Add Approver", () => {
         expect(state.approver1).toEqual(approver1.publicKey);
         expect(state.approver2).toEqual(approver2.publicKey);
         expect(state.approver1).not.toEqual(state.approver2);
+    });
+
+    test("Cannot add the same approver twice", async () => {
+        // given - add first approver
+        await program.addApprover({ trusted: approver1.publicKey });
+
+        await testHelper.advanceSlot();
+
+        // when & then - try to add the same approver again
+        await expect(
+            program.addApprover({ trusted: approver1.publicKey })
+        ).rejects.toThrow("ApproverAlreadyExists");
     });
 });

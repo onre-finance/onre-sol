@@ -46,7 +46,7 @@ pub struct GetCirculatingSupply<'info> {
     /// The vault authority PDA that controls vault token accounts
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
-    pub vault_authority: AccountInfo<'info>,
+    pub vault_authority: UncheckedAccount<'info>,
 
     /// The vault's ONyc token account to exclude from circulating supply
     ///

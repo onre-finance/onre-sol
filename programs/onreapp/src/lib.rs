@@ -21,7 +21,6 @@ pub mod utils;
 /// - Making offers with dynamic pricing (`make_offer`).
 /// - Taking offers with current market pricing (`take_offer`, `take_offer_permissionless`).
 /// - Managing offer vectors for price control (`add_offer_vector`, `delete_offer_vector`).
-/// - Closing offers (`close_offer`).
 /// - Program state initialization and management (`initialize`, `set_boss`, `add_admin`, `remove_admin`).
 /// - Vault operations for token deposits and withdrawals (`offer_vault_deposit`, `offer_vault_withdraw`).
 /// - Market information queries (`get_nav`, `get_apy`, `get_tvl`, `get_circulating_supply`).
@@ -91,6 +90,34 @@ pub mod onreapp {
         vault_operations::offer_vault_withdraw(ctx, amount)
     }
 
+    /// Deposits tokens into the redemption vault.
+    ///
+    /// Delegates to `vault_operations::redemption_vault_deposit`.
+    /// Transfers tokens from boss's account to redemption vault's token account for the specified mint.
+    /// Creates vault token account if it doesn't exist using init_if_needed.
+    /// Only the boss can call this instruction.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `RedemptionVaultDeposit`.
+    /// - `amount`: Amount of tokens to deposit.
+    pub fn redemption_vault_deposit(ctx: Context<RedemptionVaultDeposit>, amount: u64) -> Result<()> {
+        vault_operations::redemption_vault_deposit(ctx, amount)
+    }
+
+    /// Withdraws tokens from the redemption vault.
+    ///
+    /// Delegates to `vault_operations::redemption_vault_withdraw`.
+    /// Transfers tokens from redemption vault's token account to boss's account for the specified mint.
+    /// Creates boss token account if it doesn't exist using init_if_needed.
+    /// Only the boss can call this instruction.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `RedemptionVaultWithdraw`.
+    /// - `amount`: Amount of tokens to withdraw.
+    pub fn redemption_vault_withdraw(ctx: Context<RedemptionVaultWithdraw>, amount: u64) -> Result<()> {
+        vault_operations::redemption_vault_withdraw(ctx, amount)
+    }
+
     /// Creates an offer.
     ///
     /// Delegates to `offer::make_offer`.
@@ -108,18 +135,6 @@ pub mod onreapp {
         allow_permissionless: bool,
     ) -> Result<()> {
         offer::make_offer(ctx, fee_basis_points, needs_approval, allow_permissionless)
-    }
-
-    /// Closes a offer.
-    ///
-    /// Delegates to `offer::close_offer`.
-    /// Removes the offer from the offers account and clears its data.
-    /// Emits a `CloseOfferEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `CloseOffer`.
-    pub fn close_offer(ctx: Context<CloseOffer>) -> Result<()> {
-        offer::close_offer(ctx)
     }
 
     /// Adds a time vector to an existing offer.
@@ -168,6 +183,19 @@ pub mod onreapp {
         vector_start_time: u64,
     ) -> Result<()> {
         offer::delete_offer_vector(ctx, vector_start_time)
+    }
+
+    /// Deletes all time vectors from an offer.
+    ///
+    /// Delegates to `offer::delete_all_offer_vectors`.
+    /// Removes all time vectors from the offer regardless of their timing (past, active, or future).
+    /// Only the boss can delete time vectors from offers.
+    /// Emits a `AllOfferVectorsDeletedEvent` event upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `DeleteAllOfferVectors`.
+    pub fn delete_all_offer_vectors(ctx: Context<DeleteAllOfferVectors>) -> Result<()> {
+        offer::delete_all_offer_vectors(ctx)
     }
 
     /// Updates the fee basis points for an offer.
@@ -279,7 +307,7 @@ pub mod onreapp {
     ///
     /// Delegates to `mint_authority::transfer_mint_authority_to_program`.
     /// Only the boss can call this instruction to transfer mint authority for a specific token.
-    /// The PDA is derived from the mint address and can later be used to mint tokens.
+    /// The PDA is derived from the MINT_AUTHORITY seed and can later be used to mint tokens.
     /// Emits a `MintAuthorityTransferredToProgramEvent` upon success.
     ///
     /// # Arguments
@@ -332,6 +360,22 @@ pub mod onreapp {
     /// - `ctx`: Context for `SetOnycMint`.
     pub fn set_onyc_mint(ctx: Context<SetOnycMint>) -> Result<()> {
         state_operations::set_onyc_mint(ctx)
+    }
+
+    /// Sets the redemption admin in the state.
+    ///
+    /// Delegates to `state_operations::set_redemption_admin` to change the redemption admin.
+    /// Only the boss can call this instruction to set the redemption admin.
+    /// Emits a `RedemptionAdminUpdatedEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `SetRedemptionAdmin`.
+    /// - `new_redemption_admin`: Public key of the new redemption admin.
+    pub fn set_redemption_admin(
+        ctx: Context<SetRedemptionAdmin>,
+        new_redemption_admin: Pubkey,
+    ) -> Result<()> {
+        state_operations::set_redemption_admin(ctx, new_redemption_admin)
     }
 
     /// Mints ONyc tokens to the boss's account.
@@ -486,5 +530,103 @@ pub mod onreapp {
     /// - `ctx`: Context for `CloseState`.
     pub fn close_state(ctx: Context<CloseState>) -> Result<()> {
         state_operations::close_state(ctx)
+    }
+
+    /// Creates a redemption offer for converting output tokens from standard offers back
+    /// to input tokens.
+    ///
+    /// Delegates to `redemption::make_redemption_offer`.
+    /// This instruction initializes a new redemption offer that allows users to redeem
+    /// token_out tokens from standard Offer (e.g. ONyc) for token_in tokens (e.g., USDC) at
+    /// the current NAV price. The redemption offer is the inverse of the standard Offer.
+    ///
+    /// The redemption offer PDA is derived with reversed token order compared to the
+    /// original offer, reflecting the inverse nature of the redemption operation.
+    /// Emits a `RedemptionOfferCreatedEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `MakeRedemptionOffer`.
+    /// - `fee_basis_points`: Fee in basis points (10000 = 100%) charged when fulfilling redemption requests
+    ///
+    /// # Access Control
+    /// - Only the boss or redemption_admin can call this instruction
+    pub fn make_redemption_offer(
+        ctx: Context<MakeRedemptionOffer>,
+        fee_basis_points: u16,
+    ) -> Result<()> {
+        redemption::make_redemption_offer(ctx, fee_basis_points)
+    }
+
+    /// Creates a redemption request.
+    ///
+    /// Delegates to `redemption::create_redemption_request`.
+    /// This instruction creates a new redemption request that allows users to request
+    /// redemption of token_in tokens for token_out tokens at a future time. Anyone can
+    /// create a redemption request by paying for the PDA rent.
+    /// Emits a `RedemptionRequestCreatedEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `CreateRedemptionRequest`.
+    /// - `amount`: Amount of token_in tokens to redeem.
+    pub fn create_redemption_request(
+        ctx: Context<CreateRedemptionRequest>,
+        amount: u64,
+    ) -> Result<()> {
+        redemption::create_redemption_request(ctx, amount)
+    }
+
+    /// Fulfills a redemption request.
+    ///
+    /// Delegates to `redemption::fulfill_redemption_request`.
+    /// This instruction fulfills a pending redemption request by handling token operations:
+    /// - Burns token_in (ONyc) if program has mint authority, else sends to boss
+    /// - Mints token_out if program has mint authority, else transfers from vault
+    /// - Uses current price from the underlying offer to calculate token_out amount
+    /// Emits a `RedemptionRequestFulfilledEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `FulfillRedemptionRequest`.
+    ///
+    /// # Access Control
+    /// - Only redemption_admin can fulfill redemptions
+    pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Result<()> {
+        redemption::fulfill_redemption_request(ctx)
+    }
+
+    /// Cancels a redemption request.
+    ///
+    /// Delegates to `redemption::cancel_redemption_request`.
+    /// This instruction cancels a pending redemption request. The request can be cancelled
+    /// by the redeemer, redemption_admin, or boss. Upon cancellation, the status is changed
+    /// to cancelled and the amount is subtracted from the redemption offer's requested_redemptions.
+    /// The redemption request account is NOT closed.
+    /// Emits a `RedemptionRequestCancelledEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `CancelRedemptionRequest`.
+    ///
+    /// # Access Control
+    /// - Signer must be one of: redeemer, redemption_admin, or boss
+    /// - Request must be in pending state (status = 0)
+    pub fn cancel_redemption_request(ctx: Context<CancelRedemptionRequest>) -> Result<()> {
+        redemption::cancel_redemption_request(ctx)
+    }
+
+    /// Updates the fee configuration for a specific redemption offer.
+    ///
+    /// This instruction allows the boss to modify the fee charged when fulfilling
+    /// redemption requests for a specific redemption offer. Only the boss can call this instruction.
+    ///
+    /// # Arguments
+    /// * `ctx` - The instruction context
+    /// * `new_fee_basis_points` - New fee in basis points (10000 = 100%, 500 = 5%)
+    ///
+    /// # Access Control
+    /// - Boss only
+    pub fn update_redemption_offer_fee(
+        ctx: Context<UpdateRedemptionOfferFee>,
+        new_fee_basis_points: u16,
+    ) -> Result<()> {
+        redemption::update_redemption_offer_fee(ctx, new_fee_basis_points)
     }
 }

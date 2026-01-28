@@ -11,7 +11,7 @@ describe("Update Offer Fee", () => {
 
     beforeEach(async () => {
         testHelper = await TestHelper.create();
-        program = new OnreProgram(testHelper.context);
+        program = new OnreProgram(testHelper);
 
         // Create mints
         tokenInMint = testHelper.createMint(9);
@@ -67,11 +67,11 @@ describe("Update Offer Fee", () => {
 
         await expect(
             program.updateOfferFee({ tokenInMint: testHelper.createMint(9), tokenOutMint, newFee })
-        ).rejects.toThrow("AnchorError caused by account: offer");
+        ).rejects.toThrow("The given account is owned by a different program than expected");
 
         await expect(
             program.updateOfferFee({ tokenInMint, tokenOutMint: testHelper.createMint(9), newFee })
-        ).rejects.toThrow("AnchorError caused by account: offer");
+        ).rejects.toThrow("The given account is owned by a different program than expected");
     });
 
     it("Should reject fee greater than 10000 basis points", async () => {
