@@ -33,3 +33,5 @@ onre-sol.iml
 
 **/.env*
 !**/.env_example
+
+trident-tests/target

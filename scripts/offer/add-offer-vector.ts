@@ -1,24 +1,32 @@
 import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper, USDC_MINT, ONYC_MINT, USDC_TEST_MAINNET, ONYC_TEST_MAINNET } from "../utils/script-helper";
+import { ScriptHelper, USDC_MINT, ONYC_MINT, USDC_TEST_MAINNET, ONYC_TEST_MAINNET, USDG_MINT } from "../utils/script-helper";
 
-// Configure which mints to add vector to
-const TOKEN_IN_MINT = USDC_TEST_MAINNET;
-const TOKEN_OUT_MINT = ONYC_TEST_MAINNET;
+type VectorInput = {
+    baseTime: number;
+    basePrice: number;
+    apr: number;
+    tokenIn: PublicKey;
+    tokenOut: PublicKey;
+};
 
-// Configuration for the offer vector
-const BASE_TIME = Math.floor(new Date(Date.UTC(2025, 4, 27, 0, 0, 0)).getTime() / 1000); // May 27, 2025
-const BASE_PRICE = 1_000_000_000; // 1.0 (scaled by 1,000,000,000) all prices are scaled by 9 decimals
-const APR = 36_500; // 3.65% APR
-const PRICE_FIX_DURATION = 60 * 60 * 24; // 1 day
+async function createAddOfferVectorTransaction(vector: VectorInput) {
 
-async function createAddOfferVectorTransaction() {
+    const BASE_TIME = vector.baseTime / 1000;
+    const BASE_PRICE = Math.round(vector.basePrice * 1_000_000_000);
+    const APR = Math.round(vector.apr * 10_000);
+    const PRICE_FIX_DURATION = 60 * 60 * 24; // 1 day in seconds
+
+    const TOKEN_IN_MINT = vector.tokenIn;
+    const TOKEN_OUT_MINT = vector.tokenOut;
+
+
     const helper = await ScriptHelper.create();
 
     console.log("Creating add offer vector transaction...");
     console.log("Token In (USDC):", TOKEN_IN_MINT.toBase58());
     console.log("Token Out (ONe):", TOKEN_OUT_MINT.toBase58());
     console.log("Base Time:", new Date(BASE_TIME * 1000).toISOString());
-    console.log("Base Price:", BASE_PRICE);
+    console.log("Base Price:", BASE_PRICE / 1_000_000_000);
     console.log("APR:", APR / 10_000, "%");
     console.log("Price Fix Duration:", PRICE_FIX_DURATION, "seconds");
 
@@ -62,7 +70,13 @@ async function createAddOfferVectorTransaction() {
 
 async function main() {
     try {
-        await createAddOfferVectorTransaction();
+        await createAddOfferVectorTransaction({
+            baseTime: Date.UTC(2026, 0, 21, 0, 0, 0),
+            basePrice: 1.06980235,
+            apr: 8.8662,
+            tokenIn: USDG_MINT,
+            tokenOut: ONYC_MINT,
+        });
     } catch (error) {
         console.error("Failed to create add offer vector transaction:", error);
     }

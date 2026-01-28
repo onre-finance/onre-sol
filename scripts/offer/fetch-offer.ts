@@ -1,5 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
-import { ScriptHelper, USDC_MINT, ONYC_MINT, USDC_TEST_MAINNET, ONYC_TEST_MAINNET, USDG_TEST_MAINNET } from "../utils/script-helper";
+import { ScriptHelper, USDC_MINT, ONYC_MINT, USDC_TEST_MAINNET, ONYC_TEST_MAINNET, USDG_TEST_MAINNET, USDG_MINT } from "../utils/script-helper";
 import { getMint, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 // Token addresses
@@ -19,7 +19,7 @@ async function fetchOffer() {
 
     console.log("Fetching offer details...");
     console.log("Token In (USDC):", TOKEN_IN_MINT.toBase58());
-    console.log("Token Out (ONe):", TOKEN_OUT_MINT.toBase58());
+    console.log("Token Out (ONyc):", TOKEN_OUT_MINT.toBase58());
 
     try {
         const offer = await helper.getOffer(TOKEN_IN_MINT, TOKEN_OUT_MINT);
@@ -60,7 +60,7 @@ async function fetchOffer() {
                 console.log(`  Start Time: ${formatTimestamp(vector.startTime.toNumber())} (${vector.startTime})`);
                 console.log(`  Base Time:  ${formatTimestamp(vector.baseTime.toNumber())} (${vector.baseTime})`);
                 console.log(`  Base Price: ${vector.basePrice.toString()}`);
-                console.log(`  APR: ${(vector.apr.toNumber() / 1_000_000).toFixed(4)}%`);
+                console.log(`  APR: ${(vector.apr.toNumber() / 1_000_000).toFixed(4)}% (${vector.apr.toNumber()})`);
                 console.log(`  Price Fix Duration: ${vector.priceFixDuration.toNumber()}s`);
 
                 // Check if vector is currently active
