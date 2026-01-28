@@ -1,8 +1,7 @@
-import { PublicKey } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { ScriptHelper } from "../utils/script-helper";
 
-const TOKEN_PROGRAM = TOKEN_2022_PROGRAM_ID; // or TOKEN_PROGRAM_ID
+const TOKEN_PROGRAM = TOKEN_PROGRAM_ID;
 
 async function getCirculatingSupply() {
     const helper = await ScriptHelper.createWithLocalWallet();
