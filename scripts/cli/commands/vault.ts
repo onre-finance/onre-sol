@@ -51,6 +51,28 @@ export function registerVaultCommands(program: Command): void {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeWithdraw(opts);
         });
+
+    // vault redemption-deposit
+    program
+        .command("redemption-deposit")
+        .description("Deposit tokens to the redemption vault")
+        .option("-t, --token <mint>", "Token mint")
+        .option("-a, --amount <value>", "Amount to deposit (raw)")
+        .action(async (options, cmd) => {
+            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            await executeRedemptionDeposit(opts);
+        });
+
+    // vault redemption-withdraw
+    program
+        .command("redemption-withdraw")
+        .description("Withdraw tokens from the redemption vault")
+        .option("-t, --token <mint>", "Token mint")
+        .option("-a, --amount <value>", "Amount to withdraw (raw)")
+        .action(async (options, cmd) => {
+            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            await executeRedemptionWithdraw(opts);
+        });
 }
 
 // === Command Implementations ===
@@ -128,6 +150,88 @@ async function executeWithdraw(opts: GlobalOptions & Record<string, any>): Promi
 
         await handleTransaction(tx, helper, {
             title: "Vault Withdraw Transaction",
+            dryRun: opts.dryRun,
+            json: opts.json
+        });
+    } catch (error: any) {
+        console.error(chalk.red("Error:"), error.message || error);
+        process.exit(1);
+    }
+}
+
+async function executeRedemptionDeposit(opts: GlobalOptions & Record<string, any>): Promise<void> {
+    try {
+        if (!opts.json) {
+            printNetworkBanner(config);
+        }
+
+        const helper = await ScriptHelper.create();
+        const params = await promptForParams(vaultParams, opts, config, opts.noInteractive);
+
+        // Determine decimals based on known mints
+        let decimals = 9;
+        if (params.tokenMint.equals(config.mints.usdc)) {
+            decimals = 6;
+        }
+
+        printParamSummary("Depositing to redemption vault:", {
+            tokenMint: params.tokenMint,
+            amount: params.amount,
+            displayAmount: `${(params.amount / Math.pow(10, decimals)).toLocaleString()} tokens`
+        });
+
+        const boss = await helper.getBoss();
+        const ix = await helper.buildRedemptionVaultDepositIx({
+            amount: params.amount,
+            tokenMint: params.tokenMint,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            boss
+        });
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
+
+        await handleTransaction(tx, helper, {
+            title: "Redemption Vault Deposit Transaction",
+            dryRun: opts.dryRun,
+            json: opts.json
+        });
+    } catch (error: any) {
+        console.error(chalk.red("Error:"), error.message || error);
+        process.exit(1);
+    }
+}
+
+async function executeRedemptionWithdraw(opts: GlobalOptions & Record<string, any>): Promise<void> {
+    try {
+        if (!opts.json) {
+            printNetworkBanner(config);
+        }
+
+        const helper = await ScriptHelper.create();
+        const params = await promptForParams(vaultParams, opts, config, opts.noInteractive);
+
+        // Determine decimals based on known mints
+        let decimals = 9;
+        if (params.tokenMint.equals(config.mints.usdc)) {
+            decimals = 6;
+        }
+
+        printParamSummary("Withdrawing from redemption vault:", {
+            tokenMint: params.tokenMint,
+            amount: params.amount,
+            displayAmount: `${(params.amount / Math.pow(10, decimals)).toLocaleString()} tokens`
+        });
+
+        const boss = await helper.getBoss();
+        const ix = await helper.buildRedemptionVaultWithdrawIx({
+            amount: params.amount,
+            tokenMint: params.tokenMint,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            boss
+        });
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
+
+        await handleTransaction(tx, helper, {
+            title: "Redemption Vault Withdraw Transaction",
             dryRun: opts.dryRun,
             json: opts.json
         });

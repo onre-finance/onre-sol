@@ -98,6 +98,17 @@ export function registerOfferCommands(program: Command): void {
             await executeUpdateFee(opts);
         });
 
+    // offer delete-all-vectors
+    program
+        .command("delete-all-vectors")
+        .description("Delete all pricing vectors from an offer")
+        .option("-i, --token-in <mint>", "Token in mint")
+        .option("-o, --token-out <mint>", "Token out mint")
+        .action(async (options, cmd) => {
+            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            await executeDeleteAllVectors(opts);
+        });
+
 }
 
 // === Command Implementations ===
@@ -370,6 +381,63 @@ async function executeUpdateFee(opts: GlobalOptions & Record<string, any>): Prom
 
         await handleTransaction(tx, helper, {
             title: "Update Offer Fee Transaction",
+            dryRun: opts.dryRun,
+            json: opts.json
+        });
+    } catch (error: any) {
+        console.error(chalk.red("Error:"), error.message || error);
+        process.exit(1);
+    }
+}
+
+async function executeDeleteAllVectors(opts: GlobalOptions & Record<string, any>): Promise<void> {
+    try {
+        if (!opts.json) {
+            printNetworkBanner(config);
+        }
+
+        const helper = await ScriptHelper.create();
+        const params = await promptForParams(tokenPairParams, opts, config, opts.noInteractive);
+
+        // Get current offer to show vector count
+        const offer = await helper.getOffer(params.tokenIn, params.tokenOut);
+        const vectorCount = offer.vectors.filter((v: any) => v.baseTimestamp.toNumber() !== 0).length;
+
+        if (vectorCount === 0 && !opts.json) {
+            console.log(chalk.yellow("No vectors to delete."));
+            return;
+        }
+
+        // Confirmation prompt for dangerous operation
+        if (!opts.noInteractive && !opts.dryRun) {
+            const { confirm } = await import("@inquirer/prompts");
+            const confirmed = await confirm({
+                message: `Delete all ${vectorCount} pricing vector(s) from this offer? This cannot be undone.`,
+                default: false
+            });
+            if (!confirmed) {
+                console.log(chalk.yellow("Operation cancelled"));
+                return;
+            }
+        }
+
+        printParamSummary("Deleting all vectors:", {
+            tokenIn: params.tokenIn,
+            tokenOut: params.tokenOut,
+            vectorCount: `${vectorCount} vector(s) will be deleted`
+        });
+
+        const boss = await helper.getBoss();
+        const ix = await helper.buildDeleteAllOfferVectorsIx({
+            tokenInMint: params.tokenIn,
+            tokenOutMint: params.tokenOut,
+            boss
+        });
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
+
+        await handleTransaction(tx, helper, {
+            title: "Delete All Offer Vectors Transaction",
+            description: `Removes all ${vectorCount} pricing vector(s) from the offer.`,
             dryRun: opts.dryRun,
             json: opts.json
         });

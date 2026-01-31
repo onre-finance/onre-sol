@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import chalk from "chalk";
+import { PublicKey } from "@solana/web3.js";
 import { config, NetworkConfig, ScriptHelper } from "../../utils/script-helper";
 import type { GlobalOptions } from "../prompts";
 import { ParamDefinition, promptForParams } from "../prompts";
@@ -108,6 +109,34 @@ export function registerStateCommands(program: Command): void {
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeConfigureMaxSupply(opts);
+        });
+
+    // state set-redemption-admin
+    program
+        .command("set-redemption-admin")
+        .description("Set the redemption admin who can fulfill redemption requests")
+        .option("--admin <address>", "Redemption admin public key")
+        .action(async (options, cmd) => {
+            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            await executeSetRedemptionAdmin(opts);
+        });
+
+    // state clear-admins
+    program
+        .command("clear-admins")
+        .description("Remove all admins from the program")
+        .action(async (options, cmd) => {
+            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            await executeClearAdmins(opts);
+        });
+
+    // state close
+    program
+        .command("close")
+        .description("Close the program state account (DANGEROUS - reclaims rent)")
+        .action(async (options, cmd) => {
+            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            await executeCloseState(opts);
         });
 }
 
@@ -442,6 +471,141 @@ async function executeConfigureMaxSupply(opts: GlobalOptions & Record<string, an
 
         await handleTransaction(tx, helper, {
             title: "Configure Max Supply Transaction",
+            dryRun: opts.dryRun,
+            json: opts.json
+        });
+    } catch (error: any) {
+        console.error(chalk.red("Error:"), error.message || error);
+        process.exit(1);
+    }
+}
+
+const redemptionAdminParams: ParamDefinition[] = [
+    {
+        name: "redemptionAdmin",
+        type: "publicKey",
+        description: "Redemption admin public key",
+        required: true,
+        flag: "--admin"
+    }
+];
+
+async function executeSetRedemptionAdmin(opts: GlobalOptions & Record<string, any>): Promise<void> {
+    try {
+        if (!opts.json) {
+            printNetworkBanner(config);
+        }
+
+        const helper = await ScriptHelper.create();
+        const params = await promptForParams(redemptionAdminParams, opts, config, opts.noInteractive);
+
+        printParamSummary("Setting redemption admin:", { redemptionAdmin: params.redemptionAdmin });
+
+        const boss = await helper.getBoss();
+        const ix = await helper.buildSetRedemptionAdminIx({
+            redemptionAdmin: params.redemptionAdmin,
+            boss
+        });
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
+
+        await handleTransaction(tx, helper, {
+            title: "Set Redemption Admin Transaction",
+            description: "Sets the admin who can fulfill redemption requests.",
+            dryRun: opts.dryRun,
+            json: opts.json
+        });
+    } catch (error: any) {
+        console.error(chalk.red("Error:"), error.message || error);
+        process.exit(1);
+    }
+}
+
+async function executeClearAdmins(opts: GlobalOptions & Record<string, any>): Promise<void> {
+    try {
+        if (!opts.json) {
+            printNetworkBanner(config);
+        }
+
+        const helper = await ScriptHelper.create();
+
+        // Get current state to show admin count
+        const state = await helper.getState();
+        const adminCount = state.admins.filter((admin: any) => !admin.equals(PublicKey.default)).length;
+
+        if (adminCount === 0 && !opts.json) {
+            console.log(chalk.yellow("No admins to clear."));
+            return;
+        }
+
+        // Confirmation prompt for dangerous operation
+        if (!opts.noInteractive && !opts.dryRun) {
+            const { confirm } = await import("@inquirer/prompts");
+            const confirmed = await confirm({
+                message: `Remove all ${adminCount} admin(s)? This cannot be undone.`,
+                default: false
+            });
+            if (!confirmed) {
+                console.log(chalk.yellow("Operation cancelled"));
+                return;
+            }
+        }
+
+        printParamSummary("Clearing all admins:", {
+            adminCount: `${adminCount} admin(s) will be removed`
+        });
+
+        const boss = await helper.getBoss();
+        const ix = await helper.buildClearAdminsIx({ boss });
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
+
+        await handleTransaction(tx, helper, {
+            title: "Clear Admins Transaction",
+            description: `Removes all ${adminCount} admin(s) from the program.`,
+            dryRun: opts.dryRun,
+            json: opts.json
+        });
+    } catch (error: any) {
+        console.error(chalk.red("Error:"), error.message || error);
+        process.exit(1);
+    }
+}
+
+async function executeCloseState(opts: GlobalOptions & Record<string, any>): Promise<void> {
+    try {
+        if (!opts.json) {
+            printNetworkBanner(config);
+        }
+
+        const helper = await ScriptHelper.create();
+
+        // STRONG warning for dangerous operation
+        if (!opts.noInteractive && !opts.dryRun) {
+            console.log(chalk.red.bold("\n⚠️  DANGER: This will permanently close the program state account!"));
+            console.log(chalk.red("This operation is IRREVERSIBLE and will reclaim rent."));
+            console.log(chalk.yellow("The program will no longer be usable after this operation.\n"));
+
+            const { input } = await import("@inquirer/prompts");
+            const confirmation = await input({
+                message: "Type 'CLOSE' (in uppercase) to confirm:"
+            });
+
+            if (confirmation !== "CLOSE") {
+                console.log(chalk.yellow("Operation cancelled - confirmation did not match."));
+                return;
+            }
+        }
+
+        printParamSummary("Closing program state:", {
+            warning: "⚠️  This will permanently close the program state!"
+        });
+
+        const boss = await helper.getBoss();
+        const ix = await helper.buildCloseStateIx({ boss });
+        const tx = await helper.prepareTransaction({ ix, payer: boss });
+
+        await handleTransaction(tx, helper, {
+            title: "Close State Transaction",
+            description: "⚠️  PERMANENTLY closes the program state account and reclaims rent.",
             dryRun: opts.dryRun,
             json: opts.json
         });

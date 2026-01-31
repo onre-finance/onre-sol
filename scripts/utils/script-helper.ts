@@ -403,6 +403,76 @@ export class ScriptHelper {
             .instruction();
     }
 
+    async buildRedemptionVaultDepositIx(params: {
+        amount: number;
+        tokenMint: PublicKey;
+        tokenProgram?: PublicKey;
+        boss: PublicKey;
+    }) {
+        return await this.program.methods
+            .redemptionVaultDeposit(new BN(params.amount))
+            .accountsPartial({
+                tokenMint: params.tokenMint,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
+                boss: params.boss
+            })
+            .instruction();
+    }
+
+    async buildRedemptionVaultWithdrawIx(params: {
+        amount: number;
+        tokenMint: PublicKey;
+        tokenProgram?: PublicKey;
+        boss: PublicKey;
+    }) {
+        return await this.program.methods
+            .redemptionVaultWithdraw(new BN(params.amount))
+            .accountsPartial({
+                tokenMint: params.tokenMint,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
+                boss: params.boss
+            })
+            .instruction();
+    }
+
+    async buildSetRedemptionAdminIx(params: {
+        redemptionAdmin: PublicKey;
+        boss: PublicKey;
+    }) {
+        return await this.program.methods
+            .setRedemptionAdmin(params.redemptionAdmin)
+            .accountsPartial({
+                boss: params.boss
+            })
+            .instruction();
+    }
+
+    async buildDeleteAllOfferVectorsIx(params: {
+        tokenInMint: PublicKey;
+        tokenOutMint: PublicKey;
+        boss: PublicKey;
+    }) {
+        return await this.program.methods
+            .deleteAllOfferVectors()
+            .accountsPartial({
+                tokenInMint: params.tokenInMint,
+                tokenOutMint: params.tokenOutMint,
+                boss: params.boss
+            })
+            .instruction();
+    }
+
+    async buildClearAdminsIx(params: {
+        boss: PublicKey;
+    }) {
+        return await this.program.methods
+            .clearAdmins()
+            .accountsPartial({
+                boss: params.boss
+            })
+            .instruction();
+    }
+
     async buildAddAdminIx(params: { admin: PublicKey; boss: PublicKey }) {
         return await this.program.methods
             .addAdmin(params.admin)
