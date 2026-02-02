@@ -342,7 +342,7 @@ export class ScriptHelper {
         tokenOutProgram?: PublicKey;
     }) {
         return await this.program.methods
-            .takeOffer(new anchor.BN(params.tokenInAmount))
+            .takeOffer(new anchor.BN(params.tokenInAmount), null)
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
@@ -363,7 +363,7 @@ export class ScriptHelper {
         tokenOutProgram?: PublicKey;
     }) {
         return await this.program.methods
-            .takeOfferPermissionless(new anchor.BN(params.tokenInAmount))
+            .takeOfferPermissionless(new anchor.BN(params.tokenInAmount), null)
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
