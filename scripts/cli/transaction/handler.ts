@@ -143,44 +143,51 @@ async function signAndSendTransaction(
     tx: Transaction,
     helper: ScriptHelper
 ): Promise<TransactionResult> {
-    // Prompt for wallet selection
-    const walletName = await select({
-        message: "Select wallet to sign with:",
-        choices: [
-            { name: "Default (~/.config/solana/id.json)", value: "id" },
-            { name: "Custom wallet file", value: "custom" }
-        ]
-    });
-
-    let keypairPath: string;
-    if (walletName === "custom") {
-        const { input } = await import("@inquirer/prompts");
-        const customPath = await input({
-            message: "Enter path to keypair file:",
-            default: "~/.config/solana/id.json"
-        });
-        keypairPath = customPath.replace("~", os.homedir());
-    } else {
-        keypairPath = `${os.homedir()}/.config/solana/id.json`;
-    }
-
-    // Check if file exists
-    if (!fs.existsSync(keypairPath)) {
-        console.log(chalk.red(`\nKeypair file not found: ${keypairPath}`));
-        return { action: "cancelled" };
-    }
-
-    // Load keypair
     let keypair: Keypair;
-    try {
-        const keypairData = JSON.parse(fs.readFileSync(keypairPath, "utf-8"));
-        keypair = Keypair.fromSecretKey(new Uint8Array(keypairData));
-    } catch (error) {
-        console.log(chalk.red("\nFailed to load keypair:"), error);
-        return { action: "cancelled" };
-    }
 
-    console.log(chalk.gray(`\nSigning with: ${keypair.publicKey.toBase58()}`));
+    // Check if ScriptHelper already has a wallet loaded
+    if (helper.walletKeypair) {
+        console.log(chalk.gray(`\nUsing loaded wallet: ${helper.walletKeypair.publicKey.toBase58()}`));
+        keypair = helper.walletKeypair;
+    } else {
+        // No wallet loaded, prompt for wallet selection
+        const walletName = await select({
+            message: "Select wallet to sign with:",
+            choices: [
+                { name: "Default (~/.config/solana/id.json)", value: "id" },
+                { name: "Custom wallet file", value: "custom" }
+            ]
+        });
+
+        let keypairPath: string;
+        if (walletName === "custom") {
+            const { input } = await import("@inquirer/prompts");
+            const customPath = await input({
+                message: "Enter path to keypair file:",
+                default: "~/.config/solana/id.json"
+            });
+            keypairPath = customPath.replace("~", os.homedir());
+        } else {
+            keypairPath = `${os.homedir()}/.config/solana/id.json`;
+        }
+
+        // Check if file exists
+        if (!fs.existsSync(keypairPath)) {
+            console.log(chalk.red(`\nKeypair file not found: ${keypairPath}`));
+            return { action: "cancelled" };
+        }
+
+        // Load keypair
+        try {
+            const keypairData = JSON.parse(fs.readFileSync(keypairPath, "utf-8"));
+            keypair = Keypair.fromSecretKey(new Uint8Array(keypairData));
+        } catch (error) {
+            console.log(chalk.red("\nFailed to load keypair:"), error);
+            return { action: "cancelled" };
+        }
+
+        console.log(chalk.gray(`\nSigning with: ${keypair.publicKey.toBase58()}`));
+    }
 
     // Confirm before sending
     const confirmed = await confirm({

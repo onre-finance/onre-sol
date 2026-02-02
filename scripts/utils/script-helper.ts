@@ -45,6 +45,8 @@ export class ScriptHelper {
     connection: Connection;
     statePda: PublicKey;
     networkConfig: NetworkConfig;
+    walletKeypair?: Keypair;
+    walletSource?: string;
 
     pdas: {
         offerVaultAuthorityPda: PublicKey;
@@ -52,10 +54,18 @@ export class ScriptHelper {
         mintAuthorityPda: PublicKey;
     };
 
-    private constructor(program: Program<Onreapp>, connection: Connection, networkConfig: NetworkConfig) {
+    private constructor(
+        program: Program<Onreapp>,
+        connection: Connection,
+        networkConfig: NetworkConfig,
+        walletKeypair?: Keypair,
+        walletSource?: string
+    ) {
         this.program = program;
         this.connection = connection;
         this.networkConfig = networkConfig;
+        this.walletKeypair = walletKeypair;
+        this.walletSource = walletSource;
         [this.statePda] = PublicKey.findProgramAddressSync([Buffer.from("state")], program.programId);
 
         this.pdas = {
@@ -87,6 +97,7 @@ export class ScriptHelper {
 
         let wallet: Wallet;
         let walletSource: string;
+        let keypair: Keypair | undefined;
 
         if (walletPath) {
             // Custom path provided
@@ -97,7 +108,7 @@ export class ScriptHelper {
                 keypairPath = `${os.homedir()}/.config/solana/${walletPath}.json`;
             }
             const keypairData = JSON.parse(fs.readFileSync(keypairPath, "utf-8"));
-            const keypair = Keypair.fromSecretKey(new Uint8Array(keypairData));
+            keypair = Keypair.fromSecretKey(new Uint8Array(keypairData));
             wallet = new Wallet(keypair);
             walletSource = keypairPath;
         } else {
@@ -105,12 +116,15 @@ export class ScriptHelper {
             const cliKeypairPath = ScriptHelper.getSolanaCliKeypairPath();
             if (cliKeypairPath && fs.existsSync(cliKeypairPath)) {
                 const keypairData = JSON.parse(fs.readFileSync(cliKeypairPath, "utf-8"));
-                const keypair = Keypair.fromSecretKey(new Uint8Array(keypairData));
+                keypair = Keypair.fromSecretKey(new Uint8Array(keypairData));
                 wallet = new Wallet(keypair);
                 walletSource = cliKeypairPath;
             } else {
-                wallet = new Wallet(Keypair.generate());
+                keypair = Keypair.generate();
+                wallet = new Wallet(keypair);
                 walletSource = "generated (read-only)";
+                // Don't store generated keypair for signing
+                keypair = undefined;
             }
         }
 
@@ -121,7 +135,7 @@ export class ScriptHelper {
 
         console.log(chalk.whiteBright(`Wallet:  ${wallet.publicKey.toBase58()} (${walletSource})\n`));
 
-        return new ScriptHelper(program, connection, config);
+        return new ScriptHelper(program, connection, config, keypair, walletSource);
     }
 
     /**
