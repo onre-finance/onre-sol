@@ -1,6 +1,6 @@
 import type { GlobalOptions } from "../prompts";
 import { executeCommand } from "../helpers";
-import { tokenPairParams } from "../params/redemption";
+import { listRequestsParams } from "../params/redemption";
 import { printRedemptionRequestsList } from "../utils/display";
 
 /**
@@ -9,33 +9,41 @@ import { printRedemptionRequestsList } from "../utils/display";
 export async function executeRedemptionListRequests(
     opts: GlobalOptions & Record<string, any>
 ): Promise<void> {
-    await executeCommand(opts, tokenPairParams, async (context) => {
+    await executeCommand(opts, listRequestsParams, async (context) => {
         const { helper, params } = context;
 
         // Fetch all redemption requests for this token pair
-        const boss = await helper.getBoss();
         const redemptionOfferPda = helper.getRedemptionOfferPda(params.tokenIn, params.tokenOut);
 
-        const requests = await helper.program.account.redemptionRequest.all([
+        // Build filters - always filter by offer
+        const filters: any[] = [
             {
                 memcmp: {
                     offset: 8, // After discriminator - filter by offer PDA
                     bytes: redemptionOfferPda.toBase58()
                 }
-            },
-            {
+            }
+        ];
+
+        // Conditionally add redeemer filter if provided
+        if (params.redeemer) {
+            filters.push({
                 memcmp: {
                     offset: 8 + 32 + 8, // After discriminator + offer + request_id - filter by redeemer
-                    bytes: boss.toBase58()
+                    bytes: params.redeemer.toBase58()
                 }
-            }
-        ]);
+            });
+        }
 
-        // Transform the data to match the expected format
-        const formattedRequests = requests.map(r => ({
-            id: r.account.requestId.toNumber(),
-            request: r.account
-        }));
+        const requests = await helper.program.account.redemptionRequest.all(filters);
+
+        // Transform and sort the data by ID
+        const formattedRequests = requests
+            .map(r => ({
+                id: r.account.requestId.toNumber(),
+                request: r.account
+            }))
+            .sort((a, b) => a.id - b.id);
 
         printRedemptionRequestsList(formattedRequests, opts.json);
     });

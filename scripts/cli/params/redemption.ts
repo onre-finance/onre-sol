@@ -1,6 +1,7 @@
 import type { NetworkConfig } from "../../utils/script-helper";
 import { ParamDefinition } from "../prompts/types";
 import { tokenPairParams as commonTokenPairParams } from "./common";
+import { PublicKey } from "@solana/web3.js";
 
 /**
  * Redemption command parameter definitions
@@ -76,5 +77,36 @@ export const updateRedemptionFeeParams: ParamDefinition[] = [
         required: true,
         flag: "--fee",
         shortFlag: "-f"
+    }
+];
+
+export const listRequestsParams: ParamDefinition[] = [
+    ...redemptionTokenPairParams,
+    {
+        name: "redeemer",
+        type: "string",
+        description: "Filter by redeemer address (leave empty for all)",
+        required: false,
+        flag: "--redeemer",
+        shortFlag: "-r",
+        validate: (value: string) => {
+            // Allow empty values for optional parameter
+            if (!value || value.trim() === "") {
+                return true;
+            }
+            try {
+                new PublicKey(value.trim());
+                return true;
+            } catch {
+                return "Invalid public key format";
+            }
+        },
+        transform: (value: any) => {
+            // Return undefined for empty values
+            if (!value || (typeof value === "string" && value.trim() === "")) {
+                return undefined;
+            }
+            return typeof value === "string" ? new PublicKey(value.trim()) : value;
+        }
     }
 ];
