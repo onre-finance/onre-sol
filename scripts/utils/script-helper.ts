@@ -9,7 +9,6 @@ import {
     getAssociatedTokenAddressSync,
     TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
-import { BN } from "@coral-xyz/anchor";
 import { Onreapp } from "../../target/types/onreapp";
 import idl from "../../target/idl/onreapp.json";
 import bs58 from "bs58";
@@ -148,11 +147,15 @@ export class ScriptHelper {
         return stateAccount.boss;
     }
 
-    async getOffer(tokenInMint: PublicKey, tokenOutMint: PublicKey) {
-        const offerPda = PublicKey.findProgramAddressSync(
+    getOfferPda(tokenInMint: PublicKey, tokenOutMint: PublicKey): PublicKey {
+        return PublicKey.findProgramAddressSync(
             [Buffer.from("offer"), tokenInMint.toBuffer(), tokenOutMint.toBuffer()],
             this.program.programId
         )[0];
+    }
+
+    async getOffer(tokenInMint: PublicKey, tokenOutMint: PublicKey) {
+        const offerPda = this.getOfferPda(tokenInMint, tokenOutMint);
         console.log(`Offer PDA: ${offerPda}`);
         return await this.program.account.offer.fetch(offerPda);
     }
@@ -173,7 +176,7 @@ export class ScriptHelper {
             [
                 Buffer.from("redemption_request"),
                 redemptionOffer.toBuffer(),
-                new BN(counter).toArrayLike(Buffer, "le", 8)
+                new anchor.BN(counter).toArrayLike(Buffer, "le", 8)
             ],
             this.program.programId
         )[0];
@@ -284,10 +287,10 @@ export class ScriptHelper {
         return await this.program.methods
             .addOfferVector(
                 null,
-                new BN(params.baseTime),
-                new BN(params.basePrice),
-                new BN(params.apr),
-                new BN(params.priceFixDuration)
+                new anchor.BN(params.baseTime),
+                new anchor.BN(params.basePrice),
+                new anchor.BN(params.apr),
+                new anchor.BN(params.priceFixDuration)
             )
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
@@ -320,7 +323,7 @@ export class ScriptHelper {
         boss: PublicKey;
     }) {
         return await this.program.methods
-            .deleteOfferVector(new BN(params.vectorStartTimestamp))
+            .deleteOfferVector(new anchor.BN(params.vectorStartTimestamp))
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
@@ -339,7 +342,7 @@ export class ScriptHelper {
         tokenOutProgram?: PublicKey;
     }) {
         return await this.program.methods
-            .takeOffer(new BN(params.tokenInAmount))
+            .takeOffer(new anchor.BN(params.tokenInAmount))
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
@@ -360,7 +363,7 @@ export class ScriptHelper {
         tokenOutProgram?: PublicKey;
     }) {
         return await this.program.methods
-            .takeOfferPermissionless(new BN(params.tokenInAmount))
+            .takeOfferPermissionless(new anchor.BN(params.tokenInAmount))
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
@@ -378,7 +381,7 @@ export class ScriptHelper {
         boss: PublicKey;
     }) {
         return await this.program.methods
-            .offerVaultDeposit(new BN(params.amount))
+            .offerVaultDeposit(new anchor.BN(params.amount))
             .accountsPartial({
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
@@ -394,7 +397,7 @@ export class ScriptHelper {
         boss: PublicKey;
     }) {
         return await this.program.methods
-            .offerVaultWithdraw(new BN(params.amount))
+            .offerVaultWithdraw(new anchor.BN(params.amount))
             .accountsPartial({
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
@@ -410,7 +413,7 @@ export class ScriptHelper {
         boss: PublicKey;
     }) {
         return await this.program.methods
-            .redemptionVaultDeposit(new BN(params.amount))
+            .redemptionVaultDeposit(new anchor.BN(params.amount))
             .accountsPartial({
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
@@ -426,7 +429,7 @@ export class ScriptHelper {
         boss: PublicKey;
     }) {
         return await this.program.methods
-            .redemptionVaultWithdraw(new BN(params.amount))
+            .redemptionVaultWithdraw(new anchor.BN(params.amount))
             .accountsPartial({
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
@@ -530,7 +533,7 @@ export class ScriptHelper {
 
     async buildConfigureMaxSupplyIx(params: { maxSupply: number; boss: PublicKey }) {
         return await this.program.methods
-            .configureMaxSupply(new BN(params.maxSupply))
+            .configureMaxSupply(new anchor.BN(params.maxSupply))
             .accountsPartial({
                 boss: params.boss
             })
@@ -622,7 +625,7 @@ export class ScriptHelper {
 
     async buildMintToIx(params: { amount: number }) {
         return await this.program.methods
-            .mintTo(new BN(params.amount))
+            .mintTo(new anchor.BN(params.amount))
             .accounts({
                 tokenProgram: TOKEN_PROGRAM_ID
             })
@@ -656,7 +659,7 @@ export class ScriptHelper {
         redeemer: PublicKey;
     }) {
         return await this.program.methods
-            .createRedemptionRequest(new BN(params.amount))
+            .createRedemptionRequest(new anchor.BN(params.amount))
             .accountsPartial({
                 redemptionOffer: params.redemptionOfferPda,
                 tokenInMint: params.tokenInMint,
