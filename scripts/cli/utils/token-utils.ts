@@ -4,18 +4,32 @@ import { config } from "../../utils/script-helper";
 /**
  * Get the number of decimals for a given token mint.
  *
- * USDC and USDG use 6 decimals.
- * ONyc and all other tokens use 9 decimals.
+ * Each token must have explicitly defined decimals:
+ * - USDC: 6 decimals
+ * - USDG: 6 decimals
+ * - ONyc: 9 decimals
  *
  * @param tokenMint - The token mint public key
  * @returns The number of decimals for the token
+ * @throws Error if the token mint is not recognized
  */
 export function getTokenDecimals(tokenMint: PublicKey): number {
-    // USDC and USDG have 6 decimals
-    if (tokenMint.equals(config.mints.usdc) || tokenMint.equals(config.mints.usdg)) {
-        return 6;
-    }
+    const mintAddress = tokenMint.toBase58();
 
-    // ONyc and all other tokens have 9 decimals
-    return 9;
+    switch (mintAddress) {
+        case config.mints.usdc.toBase58():
+            return 6;
+
+        case config.mints.usdg.toBase58():
+            return 6;
+
+        case config.mints.onyc.toBase58():
+            return 9;
+
+        default:
+            throw new Error(
+                `Unknown token mint: ${mintAddress}. ` +
+                `Please add explicit decimal configuration for this token.`
+            );
+    }
 }
