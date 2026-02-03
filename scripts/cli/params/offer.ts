@@ -1,0 +1,91 @@
+import { ParamDefinition } from "../prompts/types";
+import { tokenPairParams } from "./common";
+
+/**
+ * Offer command parameter definitions
+ */
+
+export const makeOfferParams: ParamDefinition[] = [
+    ...tokenPairParams,
+    {
+        name: "fee",
+        type: "basisPoints",
+        description: "Fee in basis points",
+        required: false,
+        flag: "--fee",
+        shortFlag: "-f",
+        default: 0
+    },
+    {
+        name: "needsApproval",
+        type: "boolean",
+        description: "Require approval for transactions",
+        required: false,
+        flag: "--needs-approval",
+        default: false
+    },
+    {
+        name: "permissionless",
+        type: "boolean",
+        description: "Allow permissionless transactions",
+        required: false,
+        flag: "--permissionless",
+        default: true
+    }
+];
+
+export const addVectorParams: ParamDefinition[] = [
+    ...tokenPairParams,
+    {
+        name: "baseTime",
+        type: "timestamp",
+        description: "Base time for the vector",
+        required: true,
+        flag: "--base-time"
+    },
+    {
+        name: "basePrice",
+        type: "amount",
+        description: "Base price (scaled by 1e9, so 1.0 = 1000000000)",
+        required: true,
+        flag: "--base-price",
+        default: 1_000_000_000
+    },
+    {
+        name: "apr",
+        type: "apr",
+        description: "APR value (scale=6, so 1% = 10000)",
+        required: true,
+        flag: "--apr"
+    },
+    {
+        name: "duration",
+        type: "duration",
+        description: "Price fix duration in seconds",
+        required: true,
+        flag: "--duration"
+    }
+];
+
+export const deleteVectorParams: ParamDefinition[] = [
+    ...tokenPairParams,
+    {
+        name: "startTime",
+        type: "timestamp",
+        description: "Vector start timestamp to delete",
+        required: true,
+        flag: "--start-time"
+    }
+];
+
+export const updateFeeParams: ParamDefinition[] = [
+    ...tokenPairParams,
+    {
+        name: "fee",
+        type: "basisPoints",
+        description: "New fee in basis points",
+        required: true,
+        flag: "--fee",
+        shortFlag: "-f"
+    }
+];

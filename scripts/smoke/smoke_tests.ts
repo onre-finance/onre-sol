@@ -1,9 +1,10 @@
-import { Keypair, PublicKey, Transaction } from "@solana/web3.js";
-import { BOSS, ScriptHelper, USDC_MINT, ONYC_MINT } from "../utils/script-helper";
+import { Transaction } from "@solana/web3.js";
+import { config, ScriptHelper } from "../utils/script-helper";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
-// Configure which mints to use for smoke tests
-const TOKEN_IN_MINT = USDC_MINT;
-const TOKEN_OUT_MINT = ONYC_MINT;
+// Token addresses - automatically use the correct mints for the selected network
+const TOKEN_IN_MINT = config.mints.usdc;
+const TOKEN_OUT_MINT = config.mints.onyc;
 
 /**
  * Smoke tests for Onre program - validates core functionality
@@ -56,7 +57,10 @@ async function buildSmokeTestTransactions() {
     // Create permissionless token accounts if needed
     const permissionlessIxs = await helper.buildCreatePermissionlessTokenAccountsIxs({
         tokenInMint: TOKEN_IN_MINT,
-        tokenOutMint: TOKEN_OUT_MINT
+        tokenOutMint: TOKEN_OUT_MINT,
+        tokenInProgram: TOKEN_PROGRAM_ID,
+        tokenOutProgram: TOKEN_PROGRAM_ID,
+        payer: boss
     });
 
     if (permissionlessIxs.length > 0) {
@@ -70,7 +74,8 @@ async function buildSmokeTestTransactions() {
         tokenOutMint: TOKEN_OUT_MINT,
         feeBasisPoints: OFFER_FEE_BASIS_POINTS,
         needsApproval: false,
-        allowPermissionless: true
+        allowPermissionless: true,
+        boss: boss
     });
     console.log("     ✓ Make Offer instruction built");
 
@@ -81,7 +86,8 @@ async function buildSmokeTestTransactions() {
         baseTime: BASE_TIME,
         basePrice: BASE_PRICE,
         apr: APR,
-        priceFixDuration: PRICE_FIX_DURATION
+        priceFixDuration: PRICE_FIX_DURATION,
+        boss
     });
     console.log("     ✓ Add Offer Vector instruction built");
 
@@ -89,7 +95,8 @@ async function buildSmokeTestTransactions() {
     const tokenOutDepositAmount = TOKEN_OUT_AMOUNT * 2;
     const depositIx = await helper.buildOfferVaultDepositIx({
         amount: tokenOutDepositAmount,
-        tokenMint: TOKEN_OUT_MINT
+        tokenMint: TOKEN_OUT_MINT,
+        boss
     });
     console.log("     ✓ Offer Vault Deposit instruction built");
 
@@ -107,15 +114,15 @@ async function buildSmokeTestTransactions() {
     console.log(`  Base58: ${serializedTx1}`);
     console.log();
 
-    // Transaction 2: Take Offer (both flows) + Close Offer
-    console.log("Transaction 2: Execute & Close (3 instructions)");
+    // Transaction 2: Take Offer (both flows)
+    console.log("Transaction 2: Execute Offers (2 instructions)");
 
     console.log("  1. Building Take Offer (Standard) instruction...");
     const takeOfferIx = await helper.buildTakeOfferIx({
         tokenInAmount: TOKEN_IN_AMOUNT,
         tokenInMint: TOKEN_IN_MINT,
         tokenOutMint: TOKEN_OUT_MINT,
-        user: BOSS
+        user: config.boss
     });
     console.log("     ✓ Take Offer (Standard) instruction built");
 
@@ -124,21 +131,13 @@ async function buildSmokeTestTransactions() {
         tokenInAmount: TOKEN_IN_AMOUNT,
         tokenInMint: TOKEN_IN_MINT,
         tokenOutMint: TOKEN_OUT_MINT,
-        user: BOSS
+        user: config.boss
     });
     console.log("     ✓ Take Offer (Permissionless) instruction built");
-
-    console.log("  3. Building Close Offer instruction...");
-    const closeOfferIx = await helper.buildCloseOfferIx({
-        tokenInMint: TOKEN_IN_MINT,
-        tokenOutMint: TOKEN_OUT_MINT
-    });
-    console.log("     ✓ Close Offer instruction built");
 
     const tx2 = new Transaction();
     tx2.add(takeOfferIx);
     tx2.add(takeOfferPermissionlessIx);
-    tx2.add(closeOfferIx);
     tx2.feePayer = boss;
     tx2.recentBlockhash = (await helper.connection.getLatestBlockhash()).blockhash;
 

@@ -16,14 +16,30 @@
     "set-program:dev": "cp ~/.config/solana/devHfQHgiFNifkLW49RCXpyTUZMyKuBNnFSbrQ8XsbX.json target/deploy/onreapp-keypair.json && anchor keys sync && anchor build",
     "set-program:test": "cp ~/.config/solana/J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2.json target/deploy/onreapp-keypair.json && anchor keys sync && anchor build",
     "set-program:prod": "cp ~/.config/solana/onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe.json target/deploy/onreapp-keypair.json && anchor keys sync && anchor build",
-    "transfer-usdc-v2": "tsx scripts/cross_chain_transfer/cctp_v2/transfer-v2.ts"
+    "transfer-usdc-v2": "tsx scripts/cross_chain_transfer/cctp_v2/transfer-v2.ts",
+    "script:mainnet-prod": "NETWORK=mainnet-prod tsx",
+    "script:mainnet-test": "NETWORK=mainnet-test tsx",
+    "script:mainnet-dev": "NETWORK=mainnet-dev tsx",
+    "script:devnet-test": "NETWORK=devnet-test tsx",
+    "script:devnet-dev": "NETWORK=devnet-dev tsx",
+    "cli": "tsx scripts/cli/index.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
+    "@inquirer/prompts": "^7.10.1",
+    "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
+    "@noble/ed25519": "^3.0.0",
     "@solana/spl-token": "0.4.12",
     "@solana/web3.js": "^1.98.2",
     "bs58": "^6.0.0",
+    "chalk": "^5.6.2",
+    "cli-table3": "^0.6.5",
+    "clipboardy": "^5.0.2",
+    "commander": "^12.1.0",
+    "date-fns": "^4.1.0",
     "ethers": "^6.14.1",
+    "jotai": "^2.9.3",
+    "ora": "^8.2.0",
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {

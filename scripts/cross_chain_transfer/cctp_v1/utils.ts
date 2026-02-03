@@ -16,18 +16,18 @@
  * limitations under the License.
  */
 
-import 'dotenv/config';
-import { PublicKey, Keypair, Connection } from '@solana/web3.js';
-import { hexlify } from 'ethers';
-import fetch from 'node-fetch';
-import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes/index.js';
+import "dotenv/config";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { hexlify } from "ethers";
+import fetch from "node-fetch";
+import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes/index.js";
 
-import type { MessageTransmitter } from './types/message_transmitter.ts';
-import type { TokenMessengerMinter } from './types/token_messenger_minter.ts';
-import messageTransmitterIdl from './idl/message_transmitter.json' with { type: "json" };
-import tokenMessengerMinterIdl from './idl/token_messenger_minter.json' with { type: "json" };
-import anchor, { Program } from "@coral-xyz/anchor";
-import { encode } from '@coral-xyz/anchor/dist/cjs/utils/bytes/utf8.js';
+import type { MessageTransmitter } from "./types/message_transmitter.ts";
+import type { TokenMessengerMinter } from "./types/token_messenger_minter.ts";
+import messageTransmitterIdl from "./idl/message_transmitter.json" with { type: "json" };
+import tokenMessengerMinterIdl from "./idl/token_messenger_minter.json" with { type: "json" };
+import anchor from "@coral-xyz/anchor";
+import { encode } from "@coral-xyz/anchor/dist/cjs/utils/bytes/utf8.js";
 
 // IRIS API
 export const IRIS_API_URL = "https://iris-api.circle.com";
@@ -46,7 +46,7 @@ export interface FindProgramAddressResponse {
 // Configure client to use the provider and return it.
 export const getAnchorConnection = () => {
     // Create the provider
-    const connection = new Connection(process.env.SOL_RPC_URL!, "confirmed");
+    const connection = new Connection(process.env.SOL_DEVNET_RPC_URL!, "confirmed");
     const provider = new anchor.AnchorProvider(
         connection,
         new anchor.Wallet(Keypair.fromSecretKey(bs58.decode(process.env.SOL_SENDER_PRIVATE_KEY!))),
@@ -62,19 +62,19 @@ export const getPrograms = (provider: anchor.AnchorProvider) => {
     const messageTransmitterProgram = new anchor.Program(messageTransmitterIdl as MessageTransmitter, provider);
     const tokenMessengerMinterProgram = new anchor.Program(tokenMessengerMinterIdl as TokenMessengerMinter, provider);
     return { messageTransmitterProgram, tokenMessengerMinterProgram };
-  }
+};
 
 export const getDepositForBurnPdas = (
-    {messageTransmitterProgram, tokenMessengerMinterProgram}: ReturnType<typeof getPrograms>,
+    { messageTransmitterProgram, tokenMessengerMinterProgram }: ReturnType<typeof getPrograms>,
     usdcAddress: PublicKey,
-    destinationDomain: Number,
+    destinationDomain: Number
 ) => {
     const messageTransmitterAccount = findProgramAddress("message_transmitter", messageTransmitterProgram.programId);
     const tokenMessengerAccount = findProgramAddress("token_messenger", tokenMessengerMinterProgram.programId);
     const tokenMinterAccount = findProgramAddress("token_minter", tokenMessengerMinterProgram.programId);
     const localToken = findProgramAddress("local_token", tokenMessengerMinterProgram.programId, [usdcAddress]);
     const remoteTokenMessengerKey = findProgramAddress("remote_token_messenger", tokenMessengerMinterProgram.programId, [
-        destinationDomain.toString(),
+        destinationDomain.toString()
     ]);
     const authorityPda = findProgramAddress("sender_authority", tokenMessengerMinterProgram.programId);
 
@@ -85,11 +85,11 @@ export const getDepositForBurnPdas = (
         localToken,
         remoteTokenMessengerKey,
         authorityPda
-    }
-}
+    };
+};
 
 export const getReceiveMessagePdas = async (
-    {messageTransmitterProgram, tokenMessengerMinterProgram}: ReturnType<typeof getPrograms>,
+    { messageTransmitterProgram, tokenMessengerMinterProgram }: ReturnType<typeof getPrograms>,
     solUsdcAddress: PublicKey,
     remoteUsdcAddressHex: string,
     remoteDomain: string,
@@ -103,10 +103,10 @@ export const getReceiveMessagePdas = async (
     const remoteTokenKey = new PublicKey(hexToBytes(remoteUsdcAddressHex));
     const tokenPair = findProgramAddress("token_pair", tokenMessengerMinterProgram.programId, [
         remoteDomain,
-        remoteTokenKey,
+        remoteTokenKey
     ]);
     const custodyTokenAccount = findProgramAddress("custody", tokenMessengerMinterProgram.programId, [
-        solUsdcAddress,
+        solUsdcAddress
     ]);
     const authorityPda = findProgramAddress(
         "message_transmitter_authority",
@@ -137,8 +137,8 @@ export const getReceiveMessagePdas = async (
         authorityPda,
         tokenMessengerEventAuthority,
         usedNonces
-    }
-}
+    };
+};
 
 export const solanaAddressToHex = (solanaAddress: string): string =>
     hexlify(bs58.decode(solanaAddress));
@@ -181,17 +181,17 @@ export const getAttestation = async (txHash: string, domainId: number, maxRetrie
     let attempts = 0;
     while (
         (attestationResponse.error ||
-        !attestationResponse.messages ||
-        attestationResponse.messages?.[0]?.attestation === 'PENDING') &&
+            !attestationResponse.messages ||
+            attestationResponse.messages?.[0]?.attestation === "PENDING") &&
         attempts < maxRetries
-    ) {
+        ) {
         console.log(`[Attempt: ${attempts}] Fetching attestation for ${txHash} ...`);
 
         const response = await fetch(`${IRIS_API_URL}/messages/${domainId}/${txHash}`);
         attestationResponse = await response.json();
 
         // Wait retryDelay seconds to avoid getting rate limited
-        if (attestationResponse.error || !attestationResponse.messages || attestationResponse.messages?.[0]?.attestation === 'PENDING') {
+        if (attestationResponse.error || !attestationResponse.messages || attestationResponse.messages?.[0]?.attestation === "PENDING") {
             await new Promise(r => setTimeout(r, retryDelay));
         } else {
             break;
@@ -205,7 +205,7 @@ export const getAttestation = async (txHash: string, domainId: number, maxRetrie
     const { message, attestation } = attestationResponse.messages[0];
 
     return { message, attestation };
-}
+};
 
 export const decodeEventNonceFromMessage = (messageHex: string): string => {
     const nonceIndex = 12;
