@@ -104,20 +104,8 @@ export const takeOfferParams: ParamDefinition[] = [
         name: "permissionless",
         type: "boolean",
         description: "Use permissionless flow",
-        required: false,
+        required: true,
         flag: "--permissionless",
         default: false,
-    },
-];
-
-export const takeOfferPermissionlessParams: ParamDefinition[] = [
-    ...tokenPairParams,
-    {
-        name: "amount",
-        type: "amount",
-        description: "Amount of token in to provide (raw, with decimals)",
-        required: true,
-        flag: "--amount",
-        shortFlag: "-a",
     },
 ];

@@ -378,59 +378,14 @@ export class ScriptHelper {
         const permissionlessAuthority = this.pdas.permissionlessVaultAuthorityPda;
         const mintAuthority = this.pdas.mintAuthorityPda;
 
-        // Get boss from state
-        const boss = await this.getBoss();
-
-        // Get associated token accounts
-        const vaultTokenInAccount = getAssociatedTokenAddressSync(
-            params.tokenInMint,
-            vaultAuthority,
-            true,
-            params.tokenInProgram ?? TOKEN_PROGRAM_ID
-        );
-
-        const vaultTokenOutAccount = getAssociatedTokenAddressSync(
-            params.tokenOutMint,
-            vaultAuthority,
-            true,
-            params.tokenOutProgram ?? TOKEN_PROGRAM_ID
-        );
-
-        const permissionlessTokenInAccount = getAssociatedTokenAddressSync(
-            params.tokenInMint,
-            permissionlessAuthority,
-            true,
-            params.tokenInProgram ?? TOKEN_PROGRAM_ID
-        );
-
-        const permissionlessTokenOutAccount = getAssociatedTokenAddressSync(
-            params.tokenOutMint,
-            permissionlessAuthority,
-            true,
-            params.tokenOutProgram ?? TOKEN_PROGRAM_ID
-        );
-
-        const bossTokenInAccount = getAssociatedTokenAddressSync(
-            params.tokenInMint,
-            boss,
-            true,  // Allow off-curve for boss (Squad multisig is a PDA)
-            params.tokenInProgram ?? TOKEN_PROGRAM_ID
-        );
-
         return await this.program.methods
             .takeOfferPermissionless(new BN(params.tokenInAmount), null)
-            .accountsPartial({
+            .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
                 user: params.user,
-                boss,
                 vaultAuthority,
-                vaultTokenInAccount,
-                vaultTokenOutAccount,
                 permissionlessAuthority,
-                permissionlessTokenInAccount,
-                permissionlessTokenOutAccount,
-                bossTokenInAccount,
                 mintAuthority,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
                 tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID

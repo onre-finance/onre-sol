@@ -31,7 +31,6 @@ export { executeMarketSupply } from "./market/market-supply";
 export { executeOfferMake } from "./offer/offer-make";
 export { executeOfferFetch } from "./offer/offer-fetch";
 export { executeOfferTake } from "./offer/offer-take";
-export { executeOfferTakePermissionless } from "./offer/offer-take-permissionless";
 export { executeOfferAddVector } from "./offer/offer-add-vector";
 export { executeOfferDeleteVector } from "./offer/offer-delete-vector";
 export { executeOfferUpdateFee } from "./offer/offer-update-fee";
