@@ -6,9 +6,7 @@ import { getTokenProgramId } from "../../utils/token-utils";
 /**
  * Execute mint-authority to-boss command
  */
-export async function executeMintAuthorityToBoss(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeMintAuthorityToBoss(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, mintParams, async (context) => {
         const { params } = context;
 
@@ -22,7 +20,7 @@ export async function executeMintAuthorityToBoss(
                 return helper.buildTransferMintAuthorityToBossIx({
                     mint: params.mint,
                     tokenProgram,
-                    boss
+                    boss,
                 });
             },
             title: "Transfer Mint Authority to Boss",
@@ -31,9 +29,9 @@ export async function executeMintAuthorityToBoss(
                 title: "Transferring mint authority to boss:",
                 params: {
                     mint: params.mint,
-                    targetAuthority: "boss"
-                }
-            }
+                    targetAuthority: "boss",
+                },
+            },
         });
     });
 }

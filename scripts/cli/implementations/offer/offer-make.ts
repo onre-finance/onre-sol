@@ -6,9 +6,7 @@ import { getTokenProgramId } from "../../utils/token-utils";
 /**
  * Execute offer make command
  */
-export async function executeOfferMake(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeOfferMake(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, makeOfferParams, async (context) => {
         const { params } = context;
 
@@ -34,7 +32,7 @@ export async function executeOfferMake(
                         tokenOutMint: params.tokenOut,
                         tokenInProgram,
                         tokenOutProgram,
-                        payer: boss
+                        payer: boss,
                     });
                     instructions.push(...permissionlessIxs);
                 }
@@ -47,7 +45,7 @@ export async function executeOfferMake(
                     feeBasisPoints: params.fee,
                     needsApproval: params.needsApproval,
                     allowPermissionless: params.permissionless,
-                    boss
+                    boss,
                 });
                 instructions.push(makeOfferIx);
 
@@ -62,9 +60,9 @@ export async function executeOfferMake(
                     tokenOut: params.tokenOut,
                     fee: `${params.fee / 100}% (${params.fee} bps)`,
                     needsApproval: params.needsApproval,
-                    permissionless: params.permissionless
-                }
-            }
+                    permissionless: params.permissionless,
+                },
+            },
         });
     });
 }

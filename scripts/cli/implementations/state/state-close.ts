@@ -5,9 +5,7 @@ import { buildAndHandleTransaction, confirmDangerousOperation, executeCommand } 
 /**
  * Execute state close command
  */
-export async function executeStateClose(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeStateClose(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, [], async (context) => {
         // Confirm dangerous action
         if (!opts.json && !opts.dryRun) {
@@ -15,11 +13,7 @@ export async function executeStateClose(
             console.log(chalk.yellow("This action is irreversible and will disable the entire program."));
             console.log();
 
-            const confirmed = await confirmDangerousOperation(
-                "Type 'CLOSE STATE' to confirm:",
-                undefined,
-                { requireExactMatch: "CLOSE STATE" }
-            );
+            const confirmed = await confirmDangerousOperation("Type 'CLOSE STATE' to confirm:", undefined, { requireExactMatch: "CLOSE STATE" });
 
             if (!confirmed) {
                 console.log(chalk.yellow("\nOperation cancelled."));
@@ -31,11 +25,11 @@ export async function executeStateClose(
             buildIx: async (helper) => {
                 const boss = await helper.getBoss();
                 return helper.buildCloseStateIx({
-                    boss
+                    boss,
                 });
             },
             title: "Close State Transaction",
-            description: "⚠️  DANGER: Closes the program state account"
+            description: "⚠️  DANGER: Closes the program state account",
         });
     });
 }

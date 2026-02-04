@@ -8,7 +8,7 @@ import {
     executeRedemptionFulfill,
     executeRedemptionListRequests,
     executeRedemptionMakeOffer,
-    executeRedemptionUpdateFee
+    executeRedemptionUpdateFee,
 } from "../implementations";
 
 /**

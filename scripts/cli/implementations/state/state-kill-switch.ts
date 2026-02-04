@@ -5,9 +5,7 @@ import { buildAndHandleTransaction, confirmDangerousOperation, executeCommand } 
 /**
  * Execute state kill-switch command
  */
-export async function executeStateKillSwitch(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeStateKillSwitch(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, [], async (context) => {
         // Confirm dangerous action
         if (!opts.json && !opts.dryRun) {
@@ -15,11 +13,7 @@ export async function executeStateKillSwitch(
             console.log(chalk.yellow("This is an emergency action that pauses all program operations."));
             console.log();
 
-            const confirmed = await confirmDangerousOperation(
-                "Are you sure you want to enable the kill switch?",
-                undefined,
-                { requireExactMatch: "ENABLE KILL SWITCH" }
-            );
+            const confirmed = await confirmDangerousOperation("Are you sure you want to enable the kill switch?", undefined, { requireExactMatch: "ENABLE KILL SWITCH" });
 
             if (!confirmed) {
                 console.log(chalk.yellow("\nOperation cancelled."));
@@ -32,11 +26,11 @@ export async function executeStateKillSwitch(
                 const admin = await helper.getBoss();
                 return helper.buildSetKillSwitchIx({
                     enable: true,
-                    boss: admin
+                    boss: admin,
                 });
             },
             title: "Enable Kill Switch Transaction",
-            description: "⚠️  EMERGENCY: Enables kill switch to pause all operations"
+            description: "⚠️  EMERGENCY: Enables kill switch to pause all operations",
         });
     });
 }

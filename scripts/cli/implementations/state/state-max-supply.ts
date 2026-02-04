@@ -5,9 +5,7 @@ import { maxSupplyParams } from "../../params";
 /**
  * Execute state max-supply command
  */
-export async function executeStateMaxSupply(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeStateMaxSupply(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, maxSupplyParams, async (context) => {
         const { params } = context;
 
@@ -16,7 +14,7 @@ export async function executeStateMaxSupply(
                 const boss = await helper.getBoss();
                 return helper.buildConfigureMaxSupplyIx({
                     maxSupply: params.amount,
-                    boss
+                    boss,
                 });
             },
             title: "Set Max Supply Transaction",
@@ -25,9 +23,9 @@ export async function executeStateMaxSupply(
                 title: "Setting max supply:",
                 params: {
                     amount: params.amount,
-                    displayAmount: `${(params.amount / 1_000_000_000).toLocaleString()} ONyc`
-                }
-            }
+                    displayAmount: `${(params.amount / 1_000_000_000).toLocaleString()} ONyc`,
+                },
+            },
         });
     });
 }

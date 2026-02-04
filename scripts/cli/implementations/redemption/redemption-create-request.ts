@@ -5,9 +5,7 @@ import { createRequestParams } from "../../params";
 /**
  * Execute redemption create-request command
  */
-export async function executeRedemptionCreateRequest(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeRedemptionCreateRequest(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, createRequestParams, async (context) => {
         const { params } = context;
 
@@ -20,7 +18,7 @@ export async function executeRedemptionCreateRequest(
                     redemptionOfferPda,
                     tokenInMint: params.tokenIn,
                     amount: params.amount,
-                    redeemer
+                    redeemer,
                 });
             },
             title: "Create Redemption Request Transaction",
@@ -32,9 +30,9 @@ export async function executeRedemptionCreateRequest(
                     redeemer: context.helper.wallet.publicKey,
                     tokenIn: params.tokenIn,
                     tokenOut: params.tokenOut,
-                    amount: params.amount
-                }
-            }
+                    amount: params.amount,
+                },
+            },
         });
     });
 }

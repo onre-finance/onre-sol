@@ -6,9 +6,7 @@ import { PublicKey } from "@solana/web3.js";
 /**
  * Execute redemption fulfill command
  */
-export async function executeRedemptionFulfill(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeRedemptionFulfill(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, requestParams, async (context) => {
         const { params } = context;
 
@@ -20,16 +18,13 @@ export async function executeRedemptionFulfill(
 
                 // Validate that redemption_admin is set
                 if (!state.redemptionAdmin || state.redemptionAdmin.equals(PublicKey.default)) {
-                    throw new Error(
-                        "Redemption admin is not set in program state. " +
-                        "Please set a redemption admin first using: npm run cli -- state set-redemption-admin"
-                    );
+                    throw new Error("Redemption admin is not set in program state. " + "Please set a redemption admin first using: npm run cli -- state set-redemption-admin");
                 }
 
                 return helper.buildFulfillRedemptionRequestIx({
                     redemptionOfferPda,
                     redemptionRequestPda,
-                    redemptionAdmin: state.redemptionAdmin
+                    redemptionAdmin: state.redemptionAdmin,
                 });
             },
             title: "Fulfill Redemption Request Transaction",
@@ -39,9 +34,9 @@ export async function executeRedemptionFulfill(
                 params: {
                     tokenIn: params.tokenIn,
                     tokenOut: params.tokenOut,
-                    requestId: params.requestId
-                }
-            }
+                    requestId: params.requestId,
+                },
+            },
         });
     });
 }

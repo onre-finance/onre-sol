@@ -3,15 +3,7 @@ import { PublicKey } from "@solana/web3.js";
 import chalk from "chalk";
 import type { NetworkConfig } from "../../utils/script-helper";
 import type { ParamDefinition, PromptResult } from "./types";
-import {
-    parseTimestamp,
-    validateAmount,
-    validateApr,
-    validateBasisPoints,
-    validateDuration,
-    validatePublicKey,
-    validateTimestamp
-} from "./validators";
+import { parseTimestamp, validateAmount, validateApr, validateBasisPoints, validateDuration, validatePublicKey, validateTimestamp } from "./validators";
 
 /**
  * Prompt for all missing parameters in a command
@@ -20,7 +12,7 @@ export async function promptForParams(
     params: ParamDefinition[],
     providedValues: Record<string, any>,
     config: NetworkConfig,
-    noInteractive: boolean = false
+    noInteractive: boolean = false,
 ): Promise<PromptResult> {
     const result: PromptResult = {};
 
@@ -33,9 +25,7 @@ export async function promptForParams(
 
         // Check for default value
         if (param.default !== undefined) {
-            const defaultValue = typeof param.default === "function"
-                ? param.default(config)
-                : param.default;
+            const defaultValue = typeof param.default === "function" ? param.default(config) : param.default;
 
             if (!param.required || noInteractive) {
                 result[param.name] = defaultValue;
@@ -58,14 +48,9 @@ export async function promptForParams(
 /**
  * Prompt for a single parameter based on its type
  */
-async function promptForSingleParam(
-    param: ParamDefinition,
-    config: NetworkConfig
-): Promise<any> {
+async function promptForSingleParam(param: ParamDefinition, config: NetworkConfig): Promise<any> {
     const message = param.description;
-    const defaultValue = typeof param.default === "function"
-        ? param.default(config)
-        : param.default;
+    const defaultValue = typeof param.default === "function" ? param.default(config) : param.default;
 
     switch (param.type) {
         case "publicKey":
@@ -96,14 +81,14 @@ async function promptForSingleParam(
             return select({
                 message,
                 choices: param.choices || [],
-                default: defaultValue
+                default: defaultValue,
             });
 
         case "string":
         default:
             return input({
                 message,
-                default: defaultValue?.toString()
+                default: defaultValue?.toString(),
             });
     }
 }
@@ -115,7 +100,7 @@ async function promptPublicKey(message: string, defaultValue?: PublicKey): Promi
     const value = await input({
         message,
         default: defaultValue?.toBase58(),
-        validate: validatePublicKey
+        validate: validatePublicKey,
     });
     return new PublicKey(value.trim());
 }
@@ -123,11 +108,7 @@ async function promptPublicKey(message: string, defaultValue?: PublicKey): Promi
 /**
  * Prompt for a mint selection
  */
-async function promptMint(
-    message: string,
-    config: NetworkConfig,
-    defaultValue?: PublicKey
-): Promise<PublicKey> {
+async function promptMint(message: string, config: NetworkConfig, defaultValue?: PublicKey): Promise<PublicKey> {
     // Determine default selection
     let defaultChoice = "custom";
     if (defaultValue) {
@@ -139,33 +120,33 @@ async function promptMint(
     const choices = [
         {
             name: `USDC  ${chalk.gray(config.mints.usdc.toBase58().slice(0, 8) + "...")}`,
-            value: "usdc"
+            value: "usdc",
         },
         {
             name: `ONyc  ${chalk.gray(config.mints.onyc.toBase58().slice(0, 8) + "...")}`,
-            value: "onyc"
+            value: "onyc",
         },
         {
             name: `USDG  ${chalk.gray(config.mints.usdg.toBase58().slice(0, 8) + "...")}`,
-            value: "usdg"
+            value: "usdg",
         },
         {
             name: "Custom address",
-            value: "custom"
-        }
+            value: "custom",
+        },
     ];
 
     const selection = await select({
         message,
         choices,
-        default: defaultChoice
+        default: defaultChoice,
     });
 
     if (selection === "custom") {
         const address = await input({
             message: "Enter mint address:",
             default: defaultValue?.toBase58(),
-            validate: validatePublicKey
+            validate: validatePublicKey,
         });
         return new PublicKey(address.trim());
     }
@@ -183,7 +164,7 @@ async function promptAmount(message: string, defaultValue?: number): Promise<num
         validate: (val) => {
             if (val === undefined) return "Amount is required";
             return validateAmount(val);
-        }
+        },
     });
     return value!;
 }
@@ -198,7 +179,7 @@ async function promptBasisPoints(message: string, defaultValue?: number): Promis
         validate: (val) => {
             if (val === undefined) return true; // Allow empty for default
             return validateBasisPoints(val);
-        }
+        },
     });
     return value ?? defaultValue ?? 0;
 }
@@ -213,7 +194,7 @@ async function promptApr(message: string, defaultValue?: number): Promise<number
         validate: (val) => {
             if (val === undefined) return "APR is required";
             return validateApr(val);
-        }
+        },
     });
     return value!;
 }
@@ -222,16 +203,12 @@ async function promptApr(message: string, defaultValue?: number): Promise<number
  * Prompt for a timestamp
  */
 async function promptTimestamp(message: string, defaultValue?: number | string): Promise<number> {
-    const defaultStr = defaultValue !== undefined
-        ? (typeof defaultValue === "number"
-            ? new Date(defaultValue * 1000).toISOString()
-            : defaultValue)
-        : "now";
+    const defaultStr = defaultValue !== undefined ? (typeof defaultValue === "number" ? new Date(defaultValue * 1000).toISOString() : defaultValue) : "now";
 
     const value = await input({
         message: `${message} (ISO date or "now")`,
         default: defaultStr,
-        validate: validateTimestamp
+        validate: validateTimestamp,
     });
 
     return parseTimestamp(value);
@@ -247,7 +224,7 @@ async function promptDuration(message: string, defaultValue?: number): Promise<n
         validate: (val) => {
             if (val === undefined) return "Duration is required";
             return validateDuration(val);
-        }
+        },
     });
     return value!;
 }
@@ -255,11 +232,7 @@ async function promptDuration(message: string, defaultValue?: number): Promise<n
 /**
  * Transform a CLI-provided value to the appropriate type
  */
-function transformValue(
-    value: any,
-    param: ParamDefinition,
-    config: NetworkConfig
-): any {
+function transformValue(value: any, param: ParamDefinition, config: NetworkConfig): any {
     // Apply custom transform if provided
     if (param.transform) {
         return param.transform(value, config);

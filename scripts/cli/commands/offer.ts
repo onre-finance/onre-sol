@@ -8,7 +8,7 @@ import {
     executeOfferMake,
     executeOfferTake,
     executeOfferTakePermissionless,
-    executeOfferUpdateFee
+    executeOfferUpdateFee,
 } from "../implementations";
 
 /**
@@ -114,6 +114,4 @@ export function registerOfferCommands(program: Command): void {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeOfferDeleteAllVectors(opts);
         });
-
 }
-

@@ -5,9 +5,7 @@ import { adminParams } from "../../params";
 /**
  * Execute state remove-admin command
  */
-export async function executeStateRemoveAdmin(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeStateRemoveAdmin(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, adminParams, async (context) => {
         const { params } = context;
 
@@ -16,7 +14,7 @@ export async function executeStateRemoveAdmin(
                 const boss = await helper.getBoss();
                 return helper.buildRemoveAdminIx({
                     admin: params.admin,
-                    boss
+                    boss,
                 });
             },
             title: "Remove Admin Transaction",
@@ -24,9 +22,9 @@ export async function executeStateRemoveAdmin(
             showParamSummary: {
                 title: "Removing admin:",
                 params: {
-                    admin: params.admin
-                }
-            }
+                    admin: params.admin,
+                },
+            },
         });
     });
 }

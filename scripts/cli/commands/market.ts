@@ -1,12 +1,6 @@
 import { Command } from "commander";
 import type { GlobalOptions } from "../prompts";
-import {
-    executeMarketApy,
-    executeMarketNav,
-    executeMarketNavAdjustment,
-    executeMarketSupply,
-    executeMarketTvl
-} from "../implementations";
+import { executeMarketApy, executeMarketNav, executeMarketNavAdjustment, executeMarketSupply, executeMarketTvl } from "../implementations";
 
 /**
  * Register market subcommands

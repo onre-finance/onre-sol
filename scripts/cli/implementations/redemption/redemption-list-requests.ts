@@ -6,9 +6,7 @@ import { printRedemptionRequestsList } from "../../utils/display";
 /**
  * Execute redemption list-requests command
  */
-export async function executeRedemptionListRequests(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeRedemptionListRequests(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, listRequestsParams, async (context) => {
         const { helper, params } = context;
 
@@ -20,9 +18,9 @@ export async function executeRedemptionListRequests(
             {
                 memcmp: {
                     offset: 8, // After discriminator - filter by offer PDA
-                    bytes: redemptionOfferPda.toBase58()
-                }
-            }
+                    bytes: redemptionOfferPda.toBase58(),
+                },
+            },
         ];
 
         // Conditionally add redeemer filter if provided
@@ -30,8 +28,8 @@ export async function executeRedemptionListRequests(
             filters.push({
                 memcmp: {
                     offset: 8 + 32 + 8, // After discriminator + offer + request_id - filter by redeemer
-                    bytes: params.redeemer.toBase58()
-                }
+                    bytes: params.redeemer.toBase58(),
+                },
             });
         }
 
@@ -39,9 +37,9 @@ export async function executeRedemptionListRequests(
 
         // Transform and sort the data by ID
         const formattedRequests = requests
-            .map(r => ({
+            .map((r) => ({
                 id: r.account.requestId.toNumber(),
-                request: r.account
+                request: r.account,
             }))
             .sort((a, b) => a.id - b.id);
 

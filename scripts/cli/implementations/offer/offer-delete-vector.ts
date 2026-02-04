@@ -5,9 +5,7 @@ import { deleteVectorParams } from "../../params";
 /**
  * Execute offer delete-vector command
  */
-export async function executeOfferDeleteVector(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeOfferDeleteVector(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, deleteVectorParams, async (context) => {
         const { params } = context;
 
@@ -18,7 +16,7 @@ export async function executeOfferDeleteVector(
                     tokenInMint: params.tokenIn,
                     tokenOutMint: params.tokenOut,
                     vectorStartTimestamp: params.startTime,
-                    boss
+                    boss,
                 });
             },
             title: "Delete Offer Vector Transaction",
@@ -28,9 +26,9 @@ export async function executeOfferDeleteVector(
                 params: {
                     tokenIn: params.tokenIn,
                     tokenOut: params.tokenOut,
-                    startTime: new Date(params.startTime * 1000).toISOString()
-                }
-            }
+                    startTime: new Date(params.startTime * 1000).toISOString(),
+                },
+            },
         });
     });
 }

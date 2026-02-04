@@ -5,9 +5,7 @@ import { buildAndHandleTransaction, confirmDangerousOperation, executeCommand } 
 /**
  * Execute state clear-admins command
  */
-export async function executeStateClearAdmins(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeStateClearAdmins(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, [], async (context) => {
         const { helper } = context;
 
@@ -24,9 +22,7 @@ export async function executeStateClearAdmins(
         if (!opts.json && !opts.dryRun) {
             console.log(chalk.yellow(`\nThis will remove all ${adminCount} admin(s).`));
 
-            const confirmed = await confirmDangerousOperation(
-                `Remove all ${adminCount} admin(s)?`
-            );
+            const confirmed = await confirmDangerousOperation(`Remove all ${adminCount} admin(s)?`);
 
             if (!confirmed) {
                 console.log(chalk.yellow("\nOperation cancelled."));
@@ -38,11 +34,11 @@ export async function executeStateClearAdmins(
             buildIx: async (helper) => {
                 const boss = await helper.getBoss();
                 return helper.buildClearAdminsIx({
-                    boss
+                    boss,
                 });
             },
             title: "Clear Admins Transaction",
-            description: `Removes all ${adminCount} admin(s)`
+            description: `Removes all ${adminCount} admin(s)`,
         });
     });
 }

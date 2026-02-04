@@ -6,9 +6,7 @@ import { printOffer } from "../../utils/display";
 /**
  * Execute offer fetch command
  */
-export async function executeOfferFetch(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeOfferFetch(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, tokenPairParams, async (context) => {
         const { helper, params } = context;
 

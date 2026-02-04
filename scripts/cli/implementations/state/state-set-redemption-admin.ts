@@ -5,9 +5,7 @@ import { redemptionAdminParams } from "../../params";
 /**
  * Execute state set-redemption-admin command
  */
-export async function executeStateSetRedemptionAdmin(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeStateSetRedemptionAdmin(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, redemptionAdminParams, async (context) => {
         const { params } = context;
 
@@ -16,7 +14,7 @@ export async function executeStateSetRedemptionAdmin(
                 const boss = await helper.getBoss();
                 return helper.buildSetRedemptionAdminIx({
                     redemptionAdmin: params.redemptionAdmin,
-                    boss
+                    boss,
                 });
             },
             title: "Set Redemption Admin Transaction",
@@ -24,9 +22,9 @@ export async function executeStateSetRedemptionAdmin(
             showParamSummary: {
                 title: "Setting redemption admin:",
                 params: {
-                    redemptionAdmin: params.redemptionAdmin
-                }
-            }
+                    redemptionAdmin: params.redemptionAdmin,
+                },
+            },
         });
     });
 }

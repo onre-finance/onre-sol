@@ -6,9 +6,7 @@ import { getTokenProgramId } from "../../utils/token-utils";
 /**
  * Execute redemption make-offer command
  */
-export async function executeRedemptionMakeOffer(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeRedemptionMakeOffer(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, redemptionOfferParams, async (context) => {
         const { params } = context;
 
@@ -26,7 +24,7 @@ export async function executeRedemptionMakeOffer(
                     tokenInProgram,
                     tokenOutProgram,
                     feeBasisPoints: params.fee,
-                    boss
+                    boss,
                 });
             },
             title: "Make Redemption Offer Transaction",
@@ -36,9 +34,9 @@ export async function executeRedemptionMakeOffer(
                 params: {
                     tokenIn: params.tokenIn,
                     tokenOut: params.tokenOut,
-                    fee: `${params.fee / 100}% (${params.fee} bps)`
-                }
-            }
+                    fee: `${params.fee / 100}% (${params.fee} bps)`,
+                },
+            },
         });
     });
 }

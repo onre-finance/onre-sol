@@ -5,9 +5,7 @@ import { updateRedemptionFeeParams } from "../../params";
 /**
  * Execute redemption update-fee command
  */
-export async function executeRedemptionUpdateFee(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeRedemptionUpdateFee(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, updateRedemptionFeeParams, async (context) => {
         const { params } = context;
 
@@ -19,7 +17,7 @@ export async function executeRedemptionUpdateFee(
                 return helper.buildUpdateRedemptionOfferFeeIx({
                     redemptionOfferPda,
                     newFeeBasisPoints: params.fee,
-                    boss
+                    boss,
                 });
             },
             title: "Update Redemption Fee Transaction",
@@ -29,9 +27,9 @@ export async function executeRedemptionUpdateFee(
                 params: {
                     tokenIn: params.tokenIn,
                     tokenOut: params.tokenOut,
-                    newFee: `${params.fee / 100}% (${params.fee} bps)`
-                }
-            }
+                    newFee: `${params.fee / 100}% (${params.fee} bps)`,
+                },
+            },
         });
     });
 }

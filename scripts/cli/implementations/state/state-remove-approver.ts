@@ -5,9 +5,7 @@ import { approverParams } from "../../params";
 /**
  * Execute state remove-approver command
  */
-export async function executeStateRemoveApprover(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeStateRemoveApprover(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, approverParams, async (context) => {
         const { params } = context;
 
@@ -16,7 +14,7 @@ export async function executeStateRemoveApprover(
                 const boss = await helper.getBoss();
                 return helper.buildRemoveApproverIx({
                     approver: params.approver,
-                    boss
+                    boss,
                 });
             },
             title: "Remove Approver Transaction",
@@ -24,9 +22,9 @@ export async function executeStateRemoveApprover(
             showParamSummary: {
                 title: "Removing approver:",
                 params: {
-                    approver: params.approver
-                }
-            }
+                    approver: params.approver,
+                },
+            },
         });
     });
 }

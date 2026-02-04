@@ -19,7 +19,7 @@ export const tokenPairParams: ParamDefinition[] = [
         required: true,
         flag: "--token-in",
         shortFlag: "-i",
-        default: (cfg: NetworkConfig) => cfg.mints.usdc
+        default: (cfg: NetworkConfig) => cfg.mints.usdc,
     },
     {
         name: "tokenOut",
@@ -28,8 +28,8 @@ export const tokenPairParams: ParamDefinition[] = [
         required: true,
         flag: "--token-out",
         shortFlag: "-o",
-        default: (cfg: NetworkConfig) => cfg.mints.onyc
-    }
+        default: (cfg: NetworkConfig) => cfg.mints.onyc,
+    },
 ];
 
 /**
@@ -43,7 +43,7 @@ export const vaultParams: ParamDefinition[] = [
         description: "Token mint to deposit/withdraw",
         required: true,
         flag: "--token",
-        shortFlag: "-t"
+        shortFlag: "-t",
     },
     {
         name: "amount",
@@ -51,8 +51,8 @@ export const vaultParams: ParamDefinition[] = [
         description: "Amount (raw, with decimals)",
         required: true,
         flag: "--amount",
-        shortFlag: "-a"
-    }
+        shortFlag: "-a",
+    },
 ];
 
 /**
@@ -65,5 +65,5 @@ export const feeParam: ParamDefinition = {
     description: "Fee in basis points (100 = 1%)",
     required: true,
     flag: "--fee",
-    shortFlag: "-f"
+    shortFlag: "-f",
 };

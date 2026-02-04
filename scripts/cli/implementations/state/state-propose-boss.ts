@@ -5,9 +5,7 @@ import { proposeBossParams } from "../../params";
 /**
  * Execute state propose-boss command
  */
-export async function executeStateProposeBoss(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeStateProposeBoss(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, proposeBossParams, async (context) => {
         const { params } = context;
 
@@ -16,7 +14,7 @@ export async function executeStateProposeBoss(
                 const boss = await helper.getBoss();
                 return helper.buildProposeBossIx({
                     newBoss: params.newBoss,
-                    boss
+                    boss,
                 });
             },
             title: "Propose Boss Transfer Transaction",
@@ -24,9 +22,9 @@ export async function executeStateProposeBoss(
             showParamSummary: {
                 title: "Proposing new boss:",
                 params: {
-                    newBoss: params.newBoss
-                }
-            }
+                    newBoss: params.newBoss,
+                },
+            },
         });
     });
 }

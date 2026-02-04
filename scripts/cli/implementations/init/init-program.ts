@@ -8,17 +8,12 @@ import { initProgramParams } from "../../params";
 /**
  * Execute init program command
  */
-export async function executeInitProgram(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeInitProgram(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, initProgramParams, async (context) => {
         const { params } = context;
 
         // Get program data PDA
-        const [programDataPda] = PublicKey.findProgramAddressSync(
-            [config.programId.toBuffer()],
-            new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111")
-        );
+        const [programDataPda] = PublicKey.findProgramAddressSync([config.programId.toBuffer()], new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111"));
 
         // Show what will be initialized
         if (!opts.json) {
@@ -32,9 +27,7 @@ export async function executeInitProgram(
 
         // Confirm action (skip in dry-run mode)
         if (!opts.dryRun) {
-            const confirmed = await confirmDangerousOperation(
-                chalk.yellow("This will initialize the program state. Continue?")
-            );
+            const confirmed = await confirmDangerousOperation(chalk.yellow("This will initialize the program state. Continue?"));
 
             if (!confirmed) {
                 console.log(chalk.yellow("\nOperation cancelled."));
@@ -47,12 +40,12 @@ export async function executeInitProgram(
                 return helper.buildInitializeIx({
                     boss: config.boss,
                     programData: programDataPda,
-                    onycMint: params.onycMint
+                    onycMint: params.onycMint,
                 });
             },
             title: "Initialize Program Transaction",
             description: "Initializes the program state account",
-            payer: config.boss
+            payer: config.boss,
         });
     });
 }

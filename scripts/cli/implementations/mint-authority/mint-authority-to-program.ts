@@ -7,9 +7,7 @@ import { getTokenProgramId } from "../../utils/token-utils";
 /**
  * Execute mint-authority to-program command
  */
-export async function executeMintAuthorityToProgram(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeMintAuthorityToProgram(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, transferMintAuthorityParams, async (context) => {
         const { helper, params } = context;
 
@@ -23,9 +21,7 @@ export async function executeMintAuthorityToProgram(
 
         // Confirm dangerous action (skip in dry-run mode)
         if (!opts.dryRun) {
-            const confirmed = await confirmDangerousOperation(
-                chalk.yellow("This will generate a transaction to transfer mint authority to the program. Continue?")
-            );
+            const confirmed = await confirmDangerousOperation(chalk.yellow("This will generate a transaction to transfer mint authority to the program. Continue?"));
 
             if (!confirmed) {
                 console.log(chalk.yellow("\nOperation cancelled."));
@@ -43,11 +39,11 @@ export async function executeMintAuthorityToProgram(
                 return helper.buildTransferMintAuthorityToProgramIx({
                     mint: params.mint,
                     tokenProgram,
-                    boss
+                    boss,
                 });
             },
             title: "Transfer Mint Authority to Program",
-            description: `Transfers mint authority of ${params.mint.toBase58().slice(0, 12)}... to program PDA`
+            description: `Transfers mint authority of ${params.mint.toBase58().slice(0, 12)}... to program PDA`,
         });
     });
 }

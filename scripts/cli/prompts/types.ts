@@ -4,16 +4,16 @@ import type { NetworkConfig } from "../../utils/script-helper";
  * Parameter types supported by the CLI prompting system
  */
 export type ParamType =
-    | "publicKey"      // Solana PublicKey
-    | "mint"           // Mint selection (usdc, onyc, usdg, or custom)
-    | "amount"         // Token amount (raw integer)
-    | "basisPoints"    // Fee in basis points (0-10000)
-    | "apr"            // APR value (scaled by 1_000_000)
-    | "timestamp"      // Unix timestamp or date string
-    | "duration"       // Duration in seconds
-    | "boolean"        // True/false
-    | "string"         // Generic string
-    | "select";        // Select from options
+    | "publicKey" // Solana PublicKey
+    | "mint" // Mint selection (usdc, onyc, usdg, or custom)
+    | "amount" // Token amount (raw integer)
+    | "basisPoints" // Fee in basis points (0-10000)
+    | "apr" // APR value (scaled by 1_000_000)
+    | "timestamp" // Unix timestamp or date string
+    | "duration" // Duration in seconds
+    | "boolean" // True/false
+    | "string" // Generic string
+    | "select"; // Select from options
 
 /**
  * Definition for a command parameter

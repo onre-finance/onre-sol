@@ -7,9 +7,7 @@ import { printApy } from "../../utils/display";
 /**
  * Execute market apy command
  */
-export async function executeMarketApy(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeMarketApy(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, tokenPairParams, async (context) => {
         const { helper, params } = context;
 
@@ -18,7 +16,7 @@ export async function executeMarketApy(
             .getApy()
             .accounts({
                 tokenInMint: new PublicKey(params.tokenIn),
-                tokenOutMint: new PublicKey(params.tokenOut)
+                tokenOutMint: new PublicKey(params.tokenOut),
             })
             .view();
 

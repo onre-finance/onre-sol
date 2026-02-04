@@ -3,7 +3,7 @@
 // Parse network argument early before any imports that use config
 // This must happen before the dynamic import below
 const args = process.argv.slice(2);
-const networkArgIndex = args.findIndex(arg => arg === "-n" || arg === "--network");
+const networkArgIndex = args.findIndex((arg) => arg === "-n" || arg === "--network");
 if (networkArgIndex !== -1 && args[networkArgIndex + 1]) {
     process.env.NETWORK = args[networkArgIndex + 1];
 }
@@ -21,7 +21,7 @@ async function main() {
         registerVaultCommands,
         registerMintAuthorityCommands,
         registerRedemptionCommands,
-        registerInitCommands
+        registerInitCommands,
     } = await import("./commands/index.js");
 
     // Create the main program
@@ -37,43 +37,31 @@ async function main() {
         .option("--no-interactive", "Disable interactive prompts (require all params as flags)");
 
     // Register command groups
-    const stateCmd = program
-        .command("state")
-        .description("Manage program state (boss, admins, approvers, kill switch)");
+    const stateCmd = program.command("state").description("Manage program state (boss, admins, approvers, kill switch)");
     registerStateCommands(stateCmd);
 
-    const marketCmd = program
-        .command("market")
-        .description("Query market information (NAV, APY, TVL, supply)");
+    const marketCmd = program.command("market").description("Query market information (NAV, APY, TVL, supply)");
     registerMarketCommands(marketCmd);
 
-    const offerCmd = program
-        .command("offer")
-        .description("Manage token offers (create, fetch, update, close)");
+    const offerCmd = program.command("offer").description("Manage token offers (create, fetch, update, close)");
     registerOfferCommands(offerCmd);
 
-    const vaultCmd = program
-        .command("vault")
-        .description("Vault operations (deposit, withdraw)");
+    const vaultCmd = program.command("vault").description("Vault operations (deposit, withdraw)");
     registerVaultCommands(vaultCmd);
 
-    const mintAuthorityCmd = program
-        .command("mint-authority")
-        .description("Mint authority operations (transfer to/from program)");
+    const mintAuthorityCmd = program.command("mint-authority").description("Mint authority operations (transfer to/from program)");
     registerMintAuthorityCommands(mintAuthorityCmd);
 
-    const redemptionCmd = program
-        .command("redemption")
-        .description("Redemption operations (create redemption offers)");
+    const redemptionCmd = program.command("redemption").description("Redemption operations (create redemption offers)");
     registerRedemptionCommands(redemptionCmd);
 
-    const initCmd = program
-        .command("init")
-        .description("Initialize program and authorities");
+    const initCmd = program.command("init").description("Initialize program and authorities");
     registerInitCommands(initCmd);
 
     // Add help examples
-    program.addHelpText("after", `
+    program.addHelpText(
+        "after",
+        `
 ${chalk.bold("Examples:")}
   ${chalk.gray("# Get program state")}
   $ npm run cli -- state get
@@ -96,7 +84,8 @@ ${chalk.bold("Networks:")}
   mainnet-dev    Mainnet development
   devnet-test    Devnet with test tokens
   devnet-dev     Devnet development
-`);
+`,
+    );
 
     // Parse and execute
     program.parse(process.argv);

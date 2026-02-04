@@ -6,9 +6,7 @@ import { getTokenProgramId } from "../../utils/token-utils";
 /**
  * Execute offer take permissionless command
  */
-export async function executeOfferTakePermissionless(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeOfferTakePermissionless(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, takeOfferPermissionlessParams, async (context) => {
         const { params } = context;
 
@@ -27,7 +25,7 @@ export async function executeOfferTakePermissionless(
                     tokenOutMint: params.tokenOut,
                     user,
                     tokenInProgram,
-                    tokenOutProgram
+                    tokenOutProgram,
                 });
             },
             title: "Take Offer Permissionless Transaction",
@@ -38,9 +36,9 @@ export async function executeOfferTakePermissionless(
                 params: {
                     tokenIn: params.tokenIn,
                     tokenOut: params.tokenOut,
-                    amount: params.amount
-                }
-            }
+                    amount: params.amount,
+                },
+            },
         });
     });
 }

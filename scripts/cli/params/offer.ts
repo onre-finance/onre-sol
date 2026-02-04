@@ -14,7 +14,7 @@ export const makeOfferParams: ParamDefinition[] = [
         required: false,
         flag: "--fee",
         shortFlag: "-f",
-        default: 0
+        default: 0,
     },
     {
         name: "needsApproval",
@@ -22,7 +22,7 @@ export const makeOfferParams: ParamDefinition[] = [
         description: "Require approval for transactions",
         required: false,
         flag: "--needs-approval",
-        default: false
+        default: false,
     },
     {
         name: "permissionless",
@@ -30,8 +30,8 @@ export const makeOfferParams: ParamDefinition[] = [
         description: "Allow permissionless transactions",
         required: false,
         flag: "--permissionless",
-        default: true
-    }
+        default: true,
+    },
 ];
 
 export const addVectorParams: ParamDefinition[] = [
@@ -41,7 +41,7 @@ export const addVectorParams: ParamDefinition[] = [
         type: "timestamp",
         description: "Base time for the vector",
         required: true,
-        flag: "--base-time"
+        flag: "--base-time",
     },
     {
         name: "basePrice",
@@ -49,22 +49,22 @@ export const addVectorParams: ParamDefinition[] = [
         description: "Base price (scaled by 1e9, so 1.0 = 1000000000)",
         required: true,
         flag: "--base-price",
-        default: 1_000_000_000
+        default: 1_000_000_000,
     },
     {
         name: "apr",
         type: "apr",
         description: "APR value (scale=6, so 1% = 10000)",
         required: true,
-        flag: "--apr"
+        flag: "--apr",
     },
     {
         name: "duration",
         type: "duration",
         description: "Price fix duration in seconds",
         required: true,
-        flag: "--duration"
-    }
+        flag: "--duration",
+    },
 ];
 
 export const deleteVectorParams: ParamDefinition[] = [
@@ -74,8 +74,8 @@ export const deleteVectorParams: ParamDefinition[] = [
         type: "timestamp",
         description: "Vector start timestamp to delete",
         required: true,
-        flag: "--start-time"
-    }
+        flag: "--start-time",
+    },
 ];
 
 export const updateFeeParams: ParamDefinition[] = [
@@ -86,8 +86,8 @@ export const updateFeeParams: ParamDefinition[] = [
         description: "New fee in basis points",
         required: true,
         flag: "--fee",
-        shortFlag: "-f"
-    }
+        shortFlag: "-f",
+    },
 ];
 
 export const takeOfferParams: ParamDefinition[] = [
@@ -98,7 +98,7 @@ export const takeOfferParams: ParamDefinition[] = [
         description: "Amount of token in to provide (raw, with decimals)",
         required: true,
         flag: "--amount",
-        shortFlag: "-a"
+        shortFlag: "-a",
     },
     {
         name: "permissionless",
@@ -106,8 +106,8 @@ export const takeOfferParams: ParamDefinition[] = [
         description: "Use permissionless flow",
         required: false,
         flag: "--permissionless",
-        default: false
-    }
+        default: false,
+    },
 ];
 
 export const takeOfferPermissionlessParams: ParamDefinition[] = [
@@ -118,6 +118,6 @@ export const takeOfferPermissionlessParams: ParamDefinition[] = [
         description: "Amount of token in to provide (raw, with decimals)",
         required: true,
         flag: "--amount",
-        shortFlag: "-a"
-    }
+        shortFlag: "-a",
+    },
 ];

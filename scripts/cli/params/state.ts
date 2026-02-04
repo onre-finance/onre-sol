@@ -11,8 +11,8 @@ export const proposeBossParams: ParamDefinition[] = [
         type: "publicKey",
         description: "New boss public key",
         required: true,
-        flag: "--new-boss"
-    }
+        flag: "--new-boss",
+    },
 ];
 
 export const acceptBossParams: ParamDefinition[] = [
@@ -21,8 +21,8 @@ export const acceptBossParams: ParamDefinition[] = [
         type: "publicKey",
         description: "New boss public key (must match proposed boss)",
         required: true,
-        flag: "--new-boss"
-    }
+        flag: "--new-boss",
+    },
 ];
 
 export const adminParams: ParamDefinition[] = [
@@ -31,8 +31,8 @@ export const adminParams: ParamDefinition[] = [
         type: "publicKey",
         description: "Admin public key",
         required: true,
-        flag: "--admin"
-    }
+        flag: "--admin",
+    },
 ];
 
 export const approverParams: ParamDefinition[] = [
@@ -41,8 +41,8 @@ export const approverParams: ParamDefinition[] = [
         type: "publicKey",
         description: "Approver public key",
         required: true,
-        flag: "--approver"
-    }
+        flag: "--approver",
+    },
 ];
 
 export const setOnycMintParams: ParamDefinition[] = [
@@ -52,8 +52,8 @@ export const setOnycMintParams: ParamDefinition[] = [
         description: "ONyc mint address",
         required: true,
         flag: "--mint",
-        default: (cfg: NetworkConfig) => cfg.mints.onyc
-    }
+        default: (cfg: NetworkConfig) => cfg.mints.onyc,
+    },
 ];
 
 export const maxSupplyParams: ParamDefinition[] = [
@@ -62,8 +62,8 @@ export const maxSupplyParams: ParamDefinition[] = [
         type: "amount",
         description: "Maximum supply amount (raw, with 9 decimals)",
         required: true,
-        flag: "--amount"
-    }
+        flag: "--amount",
+    },
 ];
 
 export const redemptionAdminParams: ParamDefinition[] = [
@@ -72,6 +72,6 @@ export const redemptionAdminParams: ParamDefinition[] = [
         type: "publicKey",
         description: "Redemption admin public key",
         required: true,
-        flag: "--redemption-admin"
-    }
+        flag: "--redemption-admin",
+    },
 ];

@@ -9,9 +9,7 @@ import { getTokenProgramId } from "../../utils/token-utils";
 /**
  * Execute market tvl command
  */
-export async function executeMarketTvl(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeMarketTvl(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, tokenPairParams, async (context) => {
         const { helper, params } = context;
 
@@ -19,12 +17,7 @@ export async function executeMarketTvl(
         const tokenOutProgram = getTokenProgramId(params.tokenOut);
 
         // Get the offer vault token account
-        const offerVaultTokenOut = getAssociatedTokenAddressSync(
-            params.tokenOut,
-            helper.pdas.offerVaultAuthorityPda,
-            true,
-            tokenOutProgram
-        );
+        const offerVaultTokenOut = getAssociatedTokenAddressSync(params.tokenOut, helper.pdas.offerVaultAuthorityPda, true, tokenOutProgram);
 
         // Call the view method
         const tvl = await helper.program.methods
@@ -33,7 +26,7 @@ export async function executeMarketTvl(
                 tokenInMint: new PublicKey(params.tokenIn),
                 tokenOutMint: new PublicKey(params.tokenOut),
                 vaultTokenOutAccount: offerVaultTokenOut,
-                tokenOutProgram
+                tokenOutProgram,
             })
             .view();
 

@@ -1,11 +1,6 @@
 import { Command } from "commander";
 import type { GlobalOptions } from "../prompts";
-import {
-    executeVaultDeposit,
-    executeVaultRedemptionDeposit,
-    executeVaultRedemptionWithdraw,
-    executeVaultWithdraw
-} from "../implementations";
+import { executeVaultDeposit, executeVaultRedemptionDeposit, executeVaultRedemptionWithdraw, executeVaultWithdraw } from "../implementations";
 
 /**
  * Register vault subcommands

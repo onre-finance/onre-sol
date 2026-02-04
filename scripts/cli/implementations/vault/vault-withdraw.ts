@@ -6,9 +6,7 @@ import { getTokenDecimals, getTokenProgramId } from "../../utils/token-utils";
 /**
  * Execute vault withdraw command
  */
-export async function executeVaultWithdraw(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeVaultWithdraw(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, vaultParams, async (context) => {
         const { params } = context;
 
@@ -26,7 +24,7 @@ export async function executeVaultWithdraw(
                     amount: params.amount,
                     tokenMint: params.tokenMint,
                     tokenProgram,
-                    boss
+                    boss,
                 });
             },
             title: "Vault Withdraw Transaction",
@@ -35,9 +33,9 @@ export async function executeVaultWithdraw(
                 params: {
                     tokenMint: params.tokenMint,
                     amount: params.amount,
-                    displayAmount: `${(params.amount / Math.pow(10, decimals)).toLocaleString()} tokens`
-                }
-            }
+                    displayAmount: `${(params.amount / Math.pow(10, decimals)).toLocaleString()} tokens`,
+                },
+            },
         });
     });
 }

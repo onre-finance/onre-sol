@@ -8,9 +8,7 @@ import { getTokenProgramId } from "../../utils/token-utils";
 /**
  * Execute market supply command
  */
-export async function executeMarketSupply(
-    opts: GlobalOptions
-): Promise<void> {
+export async function executeMarketSupply(opts: GlobalOptions): Promise<void> {
     await executeCommand(opts, [], async (context) => {
         const { helper } = context;
 
@@ -18,19 +16,14 @@ export async function executeMarketSupply(
         const tokenProgram = getTokenProgramId(config.mints.onyc);
 
         // Get the offer vault token account
-        const onycVaultAccount = getAssociatedTokenAddressSync(
-            config.mints.onyc,
-            helper.pdas.offerVaultAuthorityPda,
-            true,
-            tokenProgram
-        );
+        const onycVaultAccount = getAssociatedTokenAddressSync(config.mints.onyc, helper.pdas.offerVaultAuthorityPda, true, tokenProgram);
 
         // Call the view method
         const supply = await helper.program.methods
             .getCirculatingSupply()
             .accounts({
                 onycVaultAccount,
-                tokenProgram
+                tokenProgram,
             })
             .view();
 

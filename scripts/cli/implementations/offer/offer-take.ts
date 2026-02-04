@@ -6,9 +6,7 @@ import { getTokenProgramId } from "../../utils/token-utils";
 /**
  * Execute offer take command
  */
-export async function executeOfferTake(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeOfferTake(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, takeOfferParams, async (context) => {
         const { params } = context;
 
@@ -29,7 +27,7 @@ export async function executeOfferTake(
                         tokenOutMint: params.tokenOut,
                         user,
                         tokenInProgram,
-                        tokenOutProgram
+                        tokenOutProgram,
                     });
                 } else {
                     return await helper.buildTakeOfferIx({
@@ -38,7 +36,7 @@ export async function executeOfferTake(
                         tokenOutMint: params.tokenOut,
                         user,
                         tokenInProgram,
-                        tokenOutProgram
+                        tokenOutProgram,
                     });
                 }
             },
@@ -51,9 +49,9 @@ export async function executeOfferTake(
                     tokenIn: params.tokenIn,
                     tokenOut: params.tokenOut,
                     amount: params.amount,
-                    permissionless: params.permissionless
-                }
-            }
+                    permissionless: params.permissionless,
+                },
+            },
         });
     });
 }

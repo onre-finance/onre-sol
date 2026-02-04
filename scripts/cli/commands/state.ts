@@ -13,7 +13,7 @@ import {
     executeStateRemoveAdmin,
     executeStateRemoveApprover,
     executeStateSetOnycMint,
-    executeStateSetRedemptionAdmin
+    executeStateSetRedemptionAdmin,
 } from "../implementations";
 
 /**

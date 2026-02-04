@@ -7,9 +7,7 @@ import { printNavAdjustment } from "../../utils/display";
 /**
  * Execute market nav-adjustment command
  */
-export async function executeMarketNavAdjustment(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeMarketNavAdjustment(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, tokenPairParams, async (context) => {
         const { helper, params } = context;
 
@@ -18,7 +16,7 @@ export async function executeMarketNavAdjustment(
             .getNavAdjustment()
             .accounts({
                 tokenInMint: new PublicKey(params.tokenIn),
-                tokenOutMint: new PublicKey(params.tokenOut)
+                tokenOutMint: new PublicKey(params.tokenOut),
             })
             .view();
 

@@ -7,9 +7,7 @@ import { printNav } from "../../utils/display";
 /**
  * Execute market nav command
  */
-export async function executeMarketNav(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeMarketNav(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, tokenPairParams, async (context) => {
         const { helper, params } = context;
 
@@ -18,7 +16,7 @@ export async function executeMarketNav(
             .getNav()
             .accounts({
                 tokenInMint: new PublicKey(params.tokenIn),
-                tokenOutMint: new PublicKey(params.tokenOut)
+                tokenOutMint: new PublicKey(params.tokenOut),
             })
             .view();
 

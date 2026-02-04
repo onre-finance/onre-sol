@@ -5,9 +5,7 @@ import { addVectorParams } from "../../params";
 /**
  * Execute offer add-vector command
  */
-export async function executeOfferAddVector(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeOfferAddVector(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, addVectorParams, async (context) => {
         const { params } = context;
 
@@ -21,7 +19,7 @@ export async function executeOfferAddVector(
                     basePrice: params.basePrice,
                     apr: params.apr,
                     priceFixDuration: params.duration,
-                    boss
+                    boss,
                 });
             },
             title: "Add Offer Vector Transaction",
@@ -34,9 +32,9 @@ export async function executeOfferAddVector(
                     baseTime: new Date(params.baseTime * 1000).toISOString(),
                     basePrice: params.basePrice,
                     apr: `${params.apr / 10000}% (${params.apr})`,
-                    duration: `${params.duration}s`
-                }
-            }
+                    duration: `${params.duration}s`,
+                },
+            },
         });
     });
 }

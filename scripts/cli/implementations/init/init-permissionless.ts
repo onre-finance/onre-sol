@@ -5,9 +5,7 @@ import { initPermissionlessParams } from "../../params";
 /**
  * Execute init permissionless command
  */
-export async function executeInitPermissionless(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeInitPermissionless(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, initPermissionlessParams, async (context) => {
         const { params } = context;
 
@@ -16,7 +14,7 @@ export async function executeInitPermissionless(
                 const boss = await helper.getBoss();
                 return helper.buildInitializePermissionlessAuthorityIx({
                     name: params.name,
-                    boss
+                    boss,
                 });
             },
             title: "Initialize Permissionless Authority Transaction",
@@ -24,9 +22,9 @@ export async function executeInitPermissionless(
             showParamSummary: {
                 title: "Initializing permissionless authority:",
                 params: {
-                    name: params.name
-                }
-            }
+                    name: params.name,
+                },
+            },
         });
     });
 }

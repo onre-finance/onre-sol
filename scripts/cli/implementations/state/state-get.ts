@@ -5,9 +5,7 @@ import { printState } from "../../utils/display";
 /**
  * Execute state get command
  */
-export async function executeStateGet(
-    opts: GlobalOptions
-): Promise<void> {
+export async function executeStateGet(opts: GlobalOptions): Promise<void> {
     await executeCommand(opts, [], async (context) => {
         const { helper } = context;
 

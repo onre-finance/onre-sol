@@ -5,9 +5,7 @@ import { updateFeeParams } from "../../params";
 /**
  * Execute offer update-fee command
  */
-export async function executeOfferUpdateFee(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeOfferUpdateFee(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, updateFeeParams, async (context) => {
         const { params } = context;
 
@@ -18,7 +16,7 @@ export async function executeOfferUpdateFee(
                     tokenInMint: params.tokenIn,
                     tokenOutMint: params.tokenOut,
                     newFeeBasisPoints: params.fee,
-                    boss
+                    boss,
                 });
             },
             title: "Update Offer Fee Transaction",
@@ -28,9 +26,9 @@ export async function executeOfferUpdateFee(
                 params: {
                     tokenIn: params.tokenIn,
                     tokenOut: params.tokenOut,
-                    newFee: `${params.fee / 100}% (${params.fee} bps)`
-                }
-            }
+                    newFee: `${params.fee / 100}% (${params.fee} bps)`,
+                },
+            },
         });
     });
 }

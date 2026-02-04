@@ -28,10 +28,7 @@ export function getTokenDecimals(tokenMint: PublicKey): number {
             return 9;
 
         default:
-            throw new Error(
-                `Unknown token mint: ${mintAddress}. ` +
-                `Please add explicit decimal configuration for this token.`
-            );
+            throw new Error(`Unknown token mint: ${mintAddress}. ` + `Please add explicit decimal configuration for this token.`);
     }
 }
 
@@ -61,9 +58,6 @@ export function getTokenProgramId(tokenMint: PublicKey): PublicKey {
             return TOKEN_PROGRAM_ID;
 
         default:
-            throw new Error(
-                `Unknown token mint: ${mintAddress}. ` +
-                `Please add explicit token program configuration for this token.`
-            );
+            throw new Error(`Unknown token mint: ${mintAddress}. ` + `Please add explicit token program configuration for this token.`);
     }
 }

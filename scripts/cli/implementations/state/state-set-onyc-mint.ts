@@ -5,9 +5,7 @@ import { setOnycMintParams } from "../../params";
 /**
  * Execute state set-onyc-mint command
  */
-export async function executeStateSetOnycMint(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeStateSetOnycMint(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, setOnycMintParams, async (context) => {
         const { params } = context;
 
@@ -16,7 +14,7 @@ export async function executeStateSetOnycMint(
                 const boss = await helper.getBoss();
                 return helper.buildSetOnycMintIx({
                     onycMint: params.mint,
-                    boss
+                    boss,
                 });
             },
             title: "Set ONyc Mint Transaction",
@@ -24,9 +22,9 @@ export async function executeStateSetOnycMint(
             showParamSummary: {
                 title: "Setting ONyc mint:",
                 params: {
-                    mint: params.mint
-                }
-            }
+                    mint: params.mint,
+                },
+            },
         });
     });
 }

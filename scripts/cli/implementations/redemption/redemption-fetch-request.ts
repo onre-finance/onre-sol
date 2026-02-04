@@ -6,9 +6,7 @@ import { printRedemptionRequest } from "../../utils/display";
 /**
  * Execute redemption fetch-request command
  */
-export async function executeRedemptionFetchRequest(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeRedemptionFetchRequest(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, requestParams, async (context) => {
         const { helper, params } = context;
 

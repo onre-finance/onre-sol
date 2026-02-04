@@ -5,16 +5,14 @@ import { mintParams } from "../../params";
 /**
  * Execute mint-to command
  */
-export async function executeMintTo(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeMintTo(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, mintParams, async (context) => {
         const { params } = context;
 
         await buildAndHandleTransaction(context, {
             buildIx: async (helper) => {
                 return helper.buildMintToIx({
-                    amount: params.amount
+                    amount: params.amount,
                 });
             },
             title: "Mint To Transaction",
@@ -23,9 +21,9 @@ export async function executeMintTo(
                 title: "Minting tokens to boss:",
                 params: {
                     mint: params.mint,
-                    amount: params.amount
-                }
-            }
+                    amount: params.amount,
+                },
+            },
         });
     });
 }

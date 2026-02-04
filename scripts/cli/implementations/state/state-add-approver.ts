@@ -5,9 +5,7 @@ import { approverParams } from "../../params";
 /**
  * Execute state add-approver command
  */
-export async function executeStateAddApprover(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeStateAddApprover(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, approverParams, async (context) => {
         const { params } = context;
 
@@ -16,7 +14,7 @@ export async function executeStateAddApprover(
                 const boss = await helper.getBoss();
                 return helper.buildAddApproverIx({
                     approver: params.approver,
-                    boss
+                    boss,
                 });
             },
             title: "Add Approver Transaction",
@@ -24,9 +22,9 @@ export async function executeStateAddApprover(
             showParamSummary: {
                 title: "Adding approver:",
                 params: {
-                    approver: params.approver
-                }
-            }
+                    approver: params.approver,
+                },
+            },
         });
     });
 }

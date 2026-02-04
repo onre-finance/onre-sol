@@ -5,9 +5,7 @@ import { requestParams } from "../../params";
 /**
  * Execute redemption cancel command
  */
-export async function executeRedemptionCancel(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeRedemptionCancel(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, requestParams, async (context) => {
         const { params } = context;
 
@@ -20,7 +18,7 @@ export async function executeRedemptionCancel(
                 return helper.buildCancelRedemptionRequestIx({
                     redemptionOfferPda,
                     redemptionRequestPda,
-                    signer: requester
+                    signer: requester,
                 });
             },
             title: "Cancel Redemption Request Transaction",
@@ -30,9 +28,9 @@ export async function executeRedemptionCancel(
                 params: {
                     tokenIn: params.tokenIn,
                     tokenOut: params.tokenOut,
-                    requestId: params.requestId
-                }
-            }
+                    requestId: params.requestId,
+                },
+            },
         });
     });
 }

@@ -5,9 +5,7 @@ import { tokenPairParams } from "../../params";
 /**
  * Execute offer delete-all-vectors command
  */
-export async function executeOfferDeleteAllVectors(
-    opts: GlobalOptions & Record<string, any>
-): Promise<void> {
+export async function executeOfferDeleteAllVectors(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, tokenPairParams, async (context) => {
         const { params } = context;
 
@@ -17,7 +15,7 @@ export async function executeOfferDeleteAllVectors(
                 return helper.buildDeleteAllOfferVectorsIx({
                     tokenInMint: params.tokenIn,
                     tokenOutMint: params.tokenOut,
-                    boss
+                    boss,
                 });
             },
             title: "Delete All Offer Vectors Transaction",
@@ -26,9 +24,9 @@ export async function executeOfferDeleteAllVectors(
                 title: "Deleting all price vectors:",
                 params: {
                     tokenIn: params.tokenIn,
-                    tokenOut: params.tokenOut
-                }
-            }
+                    tokenOut: params.tokenOut,
+                },
+            },
         });
     });
 }
