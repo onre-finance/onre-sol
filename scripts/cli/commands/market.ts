@@ -1,11 +1,11 @@
 import { Command } from "commander";
 import type { GlobalOptions } from "../prompts";
 import {
+    executeMarketApy,
     executeMarketNav,
     executeMarketNavAdjustment,
-    executeMarketApy,
-    executeMarketTvl,
-    executeMarketSupply
+    executeMarketSupply,
+    executeMarketTvl
 } from "../implementations";
 
 /**

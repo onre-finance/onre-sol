@@ -1,6 +1,5 @@
 import type { NetworkConfig } from "../../utils/script-helper";
 import { ParamDefinition } from "../prompts/types";
-import { tokenPairParams as commonTokenPairParams } from "./common";
 import { PublicKey } from "@solana/web3.js";
 
 /**

@@ -89,3 +89,35 @@ export const updateFeeParams: ParamDefinition[] = [
         shortFlag: "-f"
     }
 ];
+
+export const takeOfferParams: ParamDefinition[] = [
+    ...tokenPairParams,
+    {
+        name: "amount",
+        type: "amount",
+        description: "Amount of token in to provide (raw, with decimals)",
+        required: true,
+        flag: "--amount",
+        shortFlag: "-a"
+    },
+    {
+        name: "permissionless",
+        type: "boolean",
+        description: "Use permissionless flow",
+        required: false,
+        flag: "--permissionless",
+        default: false
+    }
+];
+
+export const takeOfferPermissionlessParams: ParamDefinition[] = [
+    ...tokenPairParams,
+    {
+        name: "amount",
+        type: "amount",
+        description: "Amount of token in to provide (raw, with decimals)",
+        required: true,
+        flag: "--amount",
+        shortFlag: "-a"
+    }
+];

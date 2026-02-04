@@ -1,9 +1,6 @@
 import { Command } from "commander";
 import type { GlobalOptions } from "../prompts";
-import {
-    executeInitProgram,
-    executeInitPermissionless
-} from "../implementations";
+import { executeInitPermissionless, executeInitProgram } from "../implementations";
 
 /**
  * Register init subcommands

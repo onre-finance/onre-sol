@@ -1,19 +1,19 @@
 import { Command } from "commander";
 import type { GlobalOptions } from "../prompts";
 import {
-    executeStateGet,
-    executeStateProposeBoss,
     executeStateAcceptBoss,
     executeStateAddAdmin,
-    executeStateRemoveAdmin,
     executeStateAddApprover,
-    executeStateRemoveApprover,
-    executeStateSetOnycMint,
+    executeStateClearAdmins,
+    executeStateClose,
+    executeStateGet,
     executeStateKillSwitch,
     executeStateMaxSupply,
-    executeStateSetRedemptionAdmin,
-    executeStateClearAdmins,
-    executeStateClose
+    executeStateProposeBoss,
+    executeStateRemoveAdmin,
+    executeStateRemoveApprover,
+    executeStateSetOnycMint,
+    executeStateSetRedemptionAdmin
 } from "../implementations";
 
 /**

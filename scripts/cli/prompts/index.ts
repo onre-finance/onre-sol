@@ -1,16 +1,16 @@
-import { input, select, confirm, number } from "@inquirer/prompts";
+import { confirm, input, number, select } from "@inquirer/prompts";
 import { PublicKey } from "@solana/web3.js";
 import chalk from "chalk";
 import type { NetworkConfig } from "../../utils/script-helper";
 import type { ParamDefinition, PromptResult } from "./types";
 import {
-    validatePublicKey,
-    validateBasisPoints,
+    parseTimestamp,
     validateAmount,
     validateApr,
-    validateTimestamp,
+    validateBasisPoints,
     validateDuration,
-    parseTimestamp
+    validatePublicKey,
+    validateTimestamp
 } from "./validators";
 
 /**

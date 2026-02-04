@@ -194,29 +194,33 @@ export function printApy(apy: number, json: boolean = false): void {
 /**
  * Print TVL result
  */
-export function printTvl(tvl: number, json: boolean = false): void {
+export function printTvl(tvl: number | string, json: boolean = false): void {
+    const tvlNum = typeof tvl === 'string' ? parseFloat(tvl) : tvl;
+
     if (json) {
-        console.log(JSON.stringify({ tvl }, null, 2));
+        console.log(JSON.stringify({ tvl: tvl.toString(), tvlUsdc: tvlNum / 1_000_000 }, null, 2));
         return;
     }
 
     console.log(chalk.bold.blue("\n=== TVL (Total Value Locked) ===\n"));
     console.log(`  Raw Value:     ${tvl}`);
-    console.log(`  USDC:          ${(tvl / 1_000_000).toLocaleString()} USDC`);
+    console.log(`  USDC:          ${(tvlNum / 1_000_000).toLocaleString()} USDC`);
 }
 
 /**
  * Print circulating supply
  */
-export function printCirculatingSupply(supply: number, json: boolean = false): void {
+export function printCirculatingSupply(supply: number | string, json: boolean = false): void {
+    const supplyNum = typeof supply === 'string' ? parseFloat(supply) : supply;
+
     if (json) {
-        console.log(JSON.stringify({ supply }, null, 2));
+        console.log(JSON.stringify({ supply: supply.toString(), supplyTokens: supplyNum / 1_000_000_000 }, null, 2));
         return;
     }
 
     console.log(chalk.bold.blue("\n=== Circulating Supply ===\n"));
     console.log(`  Raw Value:     ${supply}`);
-    console.log(`  Tokens:        ${(supply / 1_000_000_000).toLocaleString()}`);
+    console.log(`  Tokens:        ${(supplyNum / 1_000_000_000).toLocaleString()}`);
 }
 
 /**
