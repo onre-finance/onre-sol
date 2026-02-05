@@ -18,17 +18,23 @@ export function printNetworkBanner(config: NetworkConfig): void {
  */
 export function printState(state: any, json: boolean = false): void {
     if (json) {
-        console.log(JSON.stringify({
-            boss: state.boss.toBase58(),
-            proposedBoss: state.proposedBoss.toBase58(),
-            isKilled: state.isKilled,
-            onycMint: state.onycMint.toBase58(),
-            maxSupply: state.maxSupply?.toString() || "0",
-            approver1: state.approver1.toBase58(),
-            approver2: state.approver2.toBase58(),
-            redemptionAdmin: state.redemptionAdmin?.toBase58(),
-            admins: state.admins?.map((a: any) => a.toBase58()) || []
-        }, null, 2));
+        console.log(
+            JSON.stringify(
+                {
+                    boss: state.boss.toBase58(),
+                    proposedBoss: state.proposedBoss.toBase58(),
+                    isKilled: state.isKilled,
+                    onycMint: state.onycMint.toBase58(),
+                    maxSupply: state.maxSupply?.toString() || "0",
+                    approver1: state.approver1.toBase58(),
+                    approver2: state.approver2.toBase58(),
+                    redemptionAdmin: state.redemptionAdmin?.toBase58(),
+                    admins: state.admins?.map((a: any) => a.toBase58()) || [],
+                },
+                null,
+                2,
+            ),
+        );
         return;
     }
 
@@ -36,7 +42,7 @@ export function printState(state: any, json: boolean = false): void {
 
     const table = new Table({
         head: [chalk.white("Field"), chalk.white("Value")],
-        colWidths: [20, 50]
+        colWidths: [20, 50],
     });
 
     table.push(
@@ -46,7 +52,7 @@ export function printState(state: any, json: boolean = false): void {
         ["ONyc Mint", state.onycMint.toBase58()],
         ["Max Supply", state.maxSupply?.toString() || "Not set"],
         ["Approver 1", state.approver1.toBase58()],
-        ["Approver 2", state.approver2.toBase58()]
+        ["Approver 2", state.approver2.toBase58()],
     );
 
     if (state.redemptionAdmin) {
@@ -72,19 +78,26 @@ export function printState(state: any, json: boolean = false): void {
  */
 export function printOffer(offer: any, tokenInMint: string, tokenOutMint: string, json: boolean = false): void {
     if (json) {
-        console.log(JSON.stringify({
-            tokenInMint,
-            tokenOutMint,
-            feeBasisPoints: offer.feeBasisPoints,
-            needsApproval: offer.needsApproval,
-            allowPermissionless: offer.allowPermissionless,
-            vectors: offer.vectors?.map((v: any) => ({
-                baseTime: v.baseTime.toString(),
-                basePrice: v.basePrice.toString(),
-                apr: v.apr.toString(),
-                priceFixDuration: v.priceFixDuration.toString()
-            })) || []
-        }, null, 2));
+        console.log(
+            JSON.stringify(
+                {
+                    tokenInMint,
+                    tokenOutMint,
+                    feeBasisPoints: offer.feeBasisPoints,
+                    needsApproval: offer.needsApproval,
+                    allowPermissionless: offer.allowPermissionless,
+                    vectors:
+                        offer.vectors?.map((v: any) => ({
+                            baseTime: v.baseTime.toString(),
+                            basePrice: v.basePrice.toString(),
+                            apr: v.apr.toString(),
+                            priceFixDuration: v.priceFixDuration.toString(),
+                        })) || [],
+                },
+                null,
+                2,
+            ),
+        );
         return;
     }
 
@@ -92,7 +105,7 @@ export function printOffer(offer: any, tokenInMint: string, tokenOutMint: string
 
     const table = new Table({
         head: [chalk.white("Field"), chalk.white("Value")],
-        colWidths: [25, 50]
+        colWidths: [25, 50],
     });
 
     table.push(
@@ -100,7 +113,7 @@ export function printOffer(offer: any, tokenInMint: string, tokenOutMint: string
         ["Token Out Mint", tokenOutMint],
         ["Fee", `${offer.feeBasisPoints / 100}% (${offer.feeBasisPoints} bps)`],
         ["Needs Approval", offer.needsApproval ? "Yes" : "No"],
-        ["Allow Permissionless", offer.allowPermissionless ? "Yes" : "No"]
+        ["Allow Permissionless", offer.allowPermissionless ? "Yes" : "No"],
     );
 
     console.log(table.toString());
@@ -110,14 +123,8 @@ export function printOffer(offer: any, tokenInMint: string, tokenOutMint: string
         console.log(chalk.bold("\nPricing Vectors:"));
 
         const vectorTable = new Table({
-            head: [
-                chalk.white("#"),
-                chalk.white("Base Time"),
-                chalk.white("Base Price"),
-                chalk.white("APR"),
-                chalk.white("Duration")
-            ],
-            colWidths: [4, 24, 16, 12, 12]
+            head: [chalk.white("#"), chalk.white("Base Time"), chalk.white("Base Price"), chalk.white("APR"), chalk.white("Duration")],
+            colWidths: [4, 24, 16, 12, 12],
         });
 
         offer.vectors.forEach((v: any, i: number) => {
@@ -126,13 +133,7 @@ export function printOffer(offer: any, tokenInMint: string, tokenOutMint: string
             const apr = (v.apr.toNumber() / 10000).toFixed(2) + "%";
             const duration = formatDuration(v.priceFixDuration.toNumber());
 
-            vectorTable.push([
-                (i + 1).toString(),
-                baseTime.replace("T", " ").replace(".000Z", ""),
-                basePrice,
-                apr,
-                duration
-            ]);
+            vectorTable.push([(i + 1).toString(), baseTime.replace("T", " ").replace(".000Z", ""), basePrice, apr, duration]);
         });
 
         console.log(vectorTable.toString());
@@ -194,29 +195,33 @@ export function printApy(apy: number, json: boolean = false): void {
 /**
  * Print TVL result
  */
-export function printTvl(tvl: number, json: boolean = false): void {
+export function printTvl(tvl: number | string, json: boolean = false): void {
+    const tvlNum = typeof tvl === "string" ? parseFloat(tvl) : tvl;
+
     if (json) {
-        console.log(JSON.stringify({ tvl }, null, 2));
+        console.log(JSON.stringify({ tvl: tvl.toString(), tvlUsdc: tvlNum / 1_000_000 }, null, 2));
         return;
     }
 
     console.log(chalk.bold.blue("\n=== TVL (Total Value Locked) ===\n"));
     console.log(`  Raw Value:     ${tvl}`);
-    console.log(`  USDC:          ${(tvl / 1_000_000).toLocaleString()} USDC`);
+    console.log(`  USDC:          ${(tvlNum / 1_000_000).toLocaleString()} USDC`);
 }
 
 /**
  * Print circulating supply
  */
-export function printCirculatingSupply(supply: number, json: boolean = false): void {
+export function printCirculatingSupply(supply: number | string, json: boolean = false): void {
+    const supplyNum = typeof supply === "string" ? parseFloat(supply) : supply;
+
     if (json) {
-        console.log(JSON.stringify({ supply }, null, 2));
+        console.log(JSON.stringify({ supply: supply.toString(), supplyTokens: supplyNum / 1_000_000_000 }, null, 2));
         return;
     }
 
     console.log(chalk.bold.blue("\n=== Circulating Supply ===\n"));
     console.log(`  Raw Value:     ${supply}`);
-    console.log(`  Tokens:        ${(supply / 1_000_000_000).toLocaleString()}`);
+    console.log(`  Tokens:        ${(supplyNum / 1_000_000_000).toLocaleString()}`);
 }
 
 /**
@@ -276,15 +281,21 @@ function formatParamValue(value: any): string {
  */
 export function printRedemptionOffer(offer: any, tokenInMint: string, tokenOutMint: string, json: boolean = false): void {
     if (json) {
-        console.log(JSON.stringify({
-            tokenInMint,
-            tokenOutMint,
-            feeBasisPoints: offer.feeBasisPoints,
-            requestCounter: offer.requestCounter.toString(),
-            executedRedemptions: offer.executedRedemptions.toString(),
-            requestedRedemptions: offer.requestedRedemptions.toString(),
-            offer: offer.offer.toBase58()
-        }, null, 2));
+        console.log(
+            JSON.stringify(
+                {
+                    tokenInMint,
+                    tokenOutMint,
+                    feeBasisPoints: offer.feeBasisPoints,
+                    requestCounter: offer.requestCounter.toString(),
+                    executedRedemptions: offer.executedRedemptions.toString(),
+                    requestedRedemptions: offer.requestedRedemptions.toString(),
+                    offer: offer.offer.toBase58(),
+                },
+                null,
+                2,
+            ),
+        );
         return;
     }
 
@@ -292,7 +303,7 @@ export function printRedemptionOffer(offer: any, tokenInMint: string, tokenOutMi
 
     const table = new Table({
         head: [chalk.white("Field"), chalk.white("Value")],
-        colWidths: [25, 50]
+        colWidths: [25, 50],
     });
 
     table.push(
@@ -302,7 +313,7 @@ export function printRedemptionOffer(offer: any, tokenInMint: string, tokenOutMi
         ["Underlying Offer", offer.offer.toBase58()],
         ["Request Counter", offer.requestCounter.toString()],
         ["Executed Redemptions", offer.executedRedemptions.toString()],
-        ["Requested Redemptions", offer.requestedRedemptions.toString()]
+        ["Requested Redemptions", offer.requestedRedemptions.toString()],
     );
 
     console.log(table.toString());
@@ -313,12 +324,18 @@ export function printRedemptionOffer(offer: any, tokenInMint: string, tokenOutMi
  */
 export function printRedemptionRequest(request: any, requestId: number, json: boolean = false): void {
     if (json) {
-        console.log(JSON.stringify({
-            requestId,
-            offer: request.offer.toBase58(),
-            redeemer: request.redeemer.toBase58(),
-            amount: request.amount.toString()
-        }, null, 2));
+        console.log(
+            JSON.stringify(
+                {
+                    requestId,
+                    offer: request.offer.toBase58(),
+                    redeemer: request.redeemer.toBase58(),
+                    amount: request.amount.toString(),
+                },
+                null,
+                2,
+            ),
+        );
         return;
     }
 
@@ -326,14 +343,14 @@ export function printRedemptionRequest(request: any, requestId: number, json: bo
 
     const table = new Table({
         head: [chalk.white("Field"), chalk.white("Value")],
-        colWidths: [20, 50]
+        colWidths: [20, 50],
     });
 
     table.push(
         ["Request ID", requestId.toString()],
         ["Redemption Offer", request.offer.toBase58()],
         ["Redeemer", request.redeemer.toBase58()],
-        ["Amount", request.amount.toString()]
+        ["Amount", request.amount.toString()],
     );
 
     console.log(table.toString());
@@ -342,14 +359,20 @@ export function printRedemptionRequest(request: any, requestId: number, json: bo
 /**
  * Print redemption requests list
  */
-export function printRedemptionRequestsList(requests: Array<{id: number, request: any}>, json: boolean = false): void {
+export function printRedemptionRequestsList(requests: Array<{ id: number; request: any }>, json: boolean = false): void {
     if (json) {
-        console.log(JSON.stringify(requests.map(r => ({
-            requestId: r.id,
-            offer: r.request.offer.toBase58(),
-            redeemer: r.request.redeemer.toBase58(),
-            amount: r.request.amount.toString()
-        })), null, 2));
+        console.log(
+            JSON.stringify(
+                requests.map((r) => ({
+                    requestId: r.id,
+                    offer: r.request.offer.toBase58(),
+                    redeemer: r.request.redeemer.toBase58(),
+                    amount: r.request.amount.toString(),
+                })),
+                null,
+                2,
+            ),
+        );
         return;
     }
 
@@ -361,20 +384,12 @@ export function printRedemptionRequestsList(requests: Array<{id: number, request
     console.log(chalk.bold.blue(`\n=== Redemption Requests (${requests.length} found) ===\n`));
 
     const table = new Table({
-        head: [
-            chalk.white("ID"),
-            chalk.white("Redeemer"),
-            chalk.white("Amount")
-        ],
-        colWidths: [6, 46, 20]
+        head: [chalk.white("ID"), chalk.white("Redeemer"), chalk.white("Amount")],
+        colWidths: [6, 46, 20],
     });
 
     requests.forEach(({ id, request }) => {
-        table.push([
-            id.toString(),
-            request.redeemer.toBase58(),
-            request.amount.toString()
-        ]);
+        table.push([id.toString(), request.redeemer.toBase58(), request.amount.toString()]);
     });
 
     console.log(table.toString());

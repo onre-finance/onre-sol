@@ -51,10 +51,7 @@ export interface TransactionBuilderOptions {
  * @param context - Command context with helper, params, and opts
  * @param options - Transaction builder options
  */
-export async function buildAndHandleTransaction(
-    context: CommandContext<any>,
-    options: TransactionBuilderOptions
-): Promise<void> {
+export async function buildAndHandleTransaction(context: CommandContext<any>, options: TransactionBuilderOptions): Promise<void> {
     const { helper, params, opts } = context;
     const { buildIx, title, description, showParamSummary } = options;
 
@@ -64,22 +61,21 @@ export async function buildAndHandleTransaction(
     }
 
     // Determine payer (default to boss)
-    const payer = options.payer || await helper.getBoss();
+    const payer = options.payer || (await helper.getBoss());
 
     // Build instructions
     const ixOrIxs = await buildIx(helper, params);
     const instructions = Array.isArray(ixOrIxs) ? ixOrIxs : [ixOrIxs];
 
     // Prepare transaction
-    const tx = instructions.length === 1
-        ? await helper.prepareTransaction({ ix: instructions[0], payer })
-        : await helper.prepareTransactionMultipleIxs({ ixs: instructions, payer });
+    const tx =
+        instructions.length === 1 ? await helper.prepareTransaction({ ix: instructions[0], payer }) : await helper.prepareTransactionMultipleIxs({ ixs: instructions, payer });
 
     // Handle transaction (display, prompt, execute)
     await handleTransaction(tx, helper, {
         title,
         description,
         dryRun: opts.dryRun,
-        json: opts.json
+        json: opts.json,
     });
 }

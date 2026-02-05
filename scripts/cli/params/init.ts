@@ -12,8 +12,8 @@ export const initProgramParams: ParamDefinition[] = [
         description: "ONyc mint address",
         required: true,
         flag: "--onyc-mint",
-        default: (cfg: NetworkConfig) => cfg.mints.onyc
-    }
+        default: (cfg: NetworkConfig) => cfg.mints.onyc,
+    },
 ];
 
 export const initPermissionlessParams: ParamDefinition[] = [
@@ -23,6 +23,6 @@ export const initPermissionlessParams: ParamDefinition[] = [
         description: "Authority name (e.g., 'permissionless-1')",
         required: true,
         flag: "--name",
-        default: "permissionless-1"
-    }
+        default: "permissionless-1",
+    },
 ];

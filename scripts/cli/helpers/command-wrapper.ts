@@ -29,7 +29,7 @@ export interface CommandContext<T extends Record<string, any>> {
 export async function executeCommand<T extends Record<string, any>>(
     opts: GlobalOptions & Record<string, any>,
     paramDefs: ParamDefinition[],
-    handler: (context: CommandContext<T>) => Promise<void>
+    handler: (context: CommandContext<T>) => Promise<void>,
 ): Promise<void> {
     try {
         // Print network banner (unless in JSON mode)
@@ -41,11 +41,10 @@ export async function executeCommand<T extends Record<string, any>>(
         const helper = await ScriptHelper.create();
 
         // Prompt for missing parameters
-        const params = await promptForParams(paramDefs, opts, config, opts.noInteractive) as T;
+        const params = (await promptForParams(paramDefs, opts, config, opts.noInteractive)) as T;
 
         // Execute the command handler with context
         await handler({ helper, params, opts });
-
     } catch (error: any) {
         console.error(chalk.red("Error:"), error.message || error);
         process.exit(1);

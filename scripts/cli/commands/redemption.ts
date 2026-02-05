@@ -1,14 +1,14 @@
 import { Command } from "commander";
 import type { GlobalOptions } from "../prompts";
 import {
-    executeRedemptionMakeOffer,
-    executeRedemptionFetchOffer,
-    executeRedemptionUpdateFee,
+    executeRedemptionCancel,
     executeRedemptionCreateRequest,
+    executeRedemptionFetchOffer,
     executeRedemptionFetchRequest,
     executeRedemptionFulfill,
-    executeRedemptionCancel,
-    executeRedemptionListRequests
+    executeRedemptionListRequests,
+    executeRedemptionMakeOffer,
+    executeRedemptionUpdateFee,
 } from "../implementations";
 
 /**

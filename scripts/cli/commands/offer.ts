@@ -1,12 +1,13 @@
 import { Command } from "commander";
 import type { GlobalOptions } from "../prompts";
 import {
-    executeOfferMake,
-    executeOfferFetch,
     executeOfferAddVector,
+    executeOfferDeleteAllVectors,
     executeOfferDeleteVector,
+    executeOfferFetch,
+    executeOfferMake,
+    executeOfferTake,
     executeOfferUpdateFee,
-    executeOfferDeleteAllVectors
 } from "../implementations";
 
 /**
@@ -36,6 +37,19 @@ export function registerOfferCommands(program: Command): void {
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeOfferFetch(opts);
+        });
+
+    // offer take
+    program
+        .command("take")
+        .description("Take an existing offer")
+        .option("-i, --token-in <mint>", "Token in mint")
+        .option("-o, --token-out <mint>", "Token out mint")
+        .option("-a, --amount <amount>", "Amount of token in to provide")
+        .option("--permissionless", "Use permissionless flow")
+        .action(async (options, cmd) => {
+            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            await executeOfferTake(opts);
         });
 
     // offer add-vector
@@ -87,6 +101,4 @@ export function registerOfferCommands(program: Command): void {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeOfferDeleteAllVectors(opts);
         });
-
 }
-

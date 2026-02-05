@@ -1,8 +1,9 @@
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Program, Wallet } from "@coral-xyz/anchor";
+import BN from "bn.js";
 
-import * as fs from "fs";
-import * as os from "os";
+import * as fs from "node:fs";
+import * as os from "node:os";
 import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import {
     createAssociatedTokenAccountIdempotentInstruction,
@@ -187,7 +188,7 @@ export class ScriptHelper {
             [
                 Buffer.from("redemption_request"),
                 redemptionOffer.toBuffer(),
-                new anchor.BN(counter).toArrayLike(Buffer, "le", 8)
+                new BN(counter).toArrayLike(Buffer, "le", 8)
             ],
             this.program.programId
         )[0];
@@ -298,10 +299,10 @@ export class ScriptHelper {
         return await this.program.methods
             .addOfferVector(
                 null,
-                new anchor.BN(params.baseTime),
-                new anchor.BN(params.basePrice),
-                new anchor.BN(params.apr),
-                new anchor.BN(params.priceFixDuration)
+                new BN(params.baseTime),
+                new BN(params.basePrice),
+                new BN(params.apr),
+                new BN(params.priceFixDuration)
             )
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
@@ -334,7 +335,7 @@ export class ScriptHelper {
         boss: PublicKey;
     }) {
         return await this.program.methods
-            .deleteOfferVector(new anchor.BN(params.vectorStartTimestamp))
+            .deleteOfferVector(new BN(params.vectorStartTimestamp))
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
@@ -353,7 +354,7 @@ export class ScriptHelper {
         tokenOutProgram?: PublicKey;
     }) {
         return await this.program.methods
-            .takeOffer(new anchor.BN(params.tokenInAmount), null)
+            .takeOffer(new BN(params.tokenInAmount), null)
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
@@ -373,12 +374,19 @@ export class ScriptHelper {
         tokenInProgram?: PublicKey;
         tokenOutProgram?: PublicKey;
     }) {
+        const vaultAuthority = this.pdas.offerVaultAuthorityPda;
+        const permissionlessAuthority = this.pdas.permissionlessVaultAuthorityPda;
+        const mintAuthority = this.pdas.mintAuthorityPda;
+
         return await this.program.methods
-            .takeOfferPermissionless(new anchor.BN(params.tokenInAmount), null)
-            .accountsPartial({
+            .takeOfferPermissionless(new BN(params.tokenInAmount), null)
+            .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
                 user: params.user,
+                vaultAuthority,
+                permissionlessAuthority,
+                mintAuthority,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
                 tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID
             })
@@ -392,7 +400,7 @@ export class ScriptHelper {
         boss: PublicKey;
     }) {
         return await this.program.methods
-            .offerVaultDeposit(new anchor.BN(params.amount))
+            .offerVaultDeposit(new BN(params.amount))
             .accountsPartial({
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
@@ -408,7 +416,7 @@ export class ScriptHelper {
         boss: PublicKey;
     }) {
         return await this.program.methods
-            .offerVaultWithdraw(new anchor.BN(params.amount))
+            .offerVaultWithdraw(new BN(params.amount))
             .accountsPartial({
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
@@ -424,7 +432,7 @@ export class ScriptHelper {
         boss: PublicKey;
     }) {
         return await this.program.methods
-            .redemptionVaultDeposit(new anchor.BN(params.amount))
+            .redemptionVaultDeposit(new BN(params.amount))
             .accountsPartial({
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
@@ -440,7 +448,7 @@ export class ScriptHelper {
         boss: PublicKey;
     }) {
         return await this.program.methods
-            .redemptionVaultWithdraw(new anchor.BN(params.amount))
+            .redemptionVaultWithdraw(new BN(params.amount))
             .accountsPartial({
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
@@ -544,7 +552,7 @@ export class ScriptHelper {
 
     async buildConfigureMaxSupplyIx(params: { maxSupply: number; boss: PublicKey }) {
         return await this.program.methods
-            .configureMaxSupply(new anchor.BN(params.maxSupply))
+            .configureMaxSupply(new BN(params.maxSupply))
             .accountsPartial({
                 boss: params.boss
             })
@@ -636,7 +644,7 @@ export class ScriptHelper {
 
     async buildMintToIx(params: { amount: number }) {
         return await this.program.methods
-            .mintTo(new anchor.BN(params.amount))
+            .mintTo(new BN(params.amount))
             .accounts({
                 tokenProgram: TOKEN_PROGRAM_ID
             })
@@ -668,13 +676,49 @@ export class ScriptHelper {
         tokenInMint: PublicKey;
         amount: number;
         redeemer: PublicKey;
+        tokenProgram?: PublicKey;
     }) {
+        // Fetch the redemption offer to get the counter for PDA derivation
+        const redemptionOffer = await this.program.account.redemptionOffer.fetch(params.redemptionOfferPda);
+
+        // Derive the redemption request PDA using the counter
+        const [redemptionRequest] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("redemption_request"),
+                params.redemptionOfferPda.toBuffer(),
+                Buffer.from(redemptionOffer.requestCounter.toArrayLike(Buffer, "le", 8))
+            ],
+            this.program.programId
+        );
+
+        // Get the redemption vault authority PDA
+        const [redemptionVaultAuthority] = PublicKey.findProgramAddressSync(
+            [Buffer.from("redemption_offer_vault_authority")],
+            this.program.programId
+        );
+
+        // Get associated token accounts
+        const redeemerTokenAccount = getAssociatedTokenAddressSync(
+            params.tokenInMint,
+            params.redeemer,
+            false,
+            params.tokenProgram ?? TOKEN_PROGRAM_ID
+        );
+
+        const vaultTokenAccount = getAssociatedTokenAddressSync(
+            params.tokenInMint,
+            redemptionVaultAuthority,
+            true,  // Allow off-curve for PDA
+            params.tokenProgram ?? TOKEN_PROGRAM_ID
+        );
+
         return await this.program.methods
-            .createRedemptionRequest(new anchor.BN(params.amount))
+            .createRedemptionRequest(new BN(params.amount))
             .accountsPartial({
                 redemptionOffer: params.redemptionOfferPda,
                 tokenInMint: params.tokenInMint,
-                redeemer: params.redeemer
+                redeemer: params.redeemer,
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             })
             .instruction();
     }

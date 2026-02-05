@@ -1,11 +1,6 @@
 import { Command } from "commander";
 import type { GlobalOptions } from "../prompts";
-import {
-    executeVaultDeposit,
-    executeVaultWithdraw,
-    executeVaultRedemptionDeposit,
-    executeVaultRedemptionWithdraw
-} from "../implementations";
+import { executeVaultDeposit, executeVaultRedemptionDeposit, executeVaultRedemptionWithdraw, executeVaultWithdraw } from "../implementations";
 
 /**
  * Register vault subcommands
@@ -18,7 +13,7 @@ export function registerVaultCommands(program: Command): void {
         .option("-t, --token <mint>", "Token mint")
         .option("-a, --amount <value>", "Amount to deposit (raw)")
         .action(async (options, cmd) => {
-            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            const opts = { ...options, ...cmd.optsWithGlobals(), tokenMint: options.token } as GlobalOptions & Record<string, any>;
             await executeVaultDeposit(opts);
         });
 
@@ -29,7 +24,7 @@ export function registerVaultCommands(program: Command): void {
         .option("-t, --token <mint>", "Token mint")
         .option("-a, --amount <value>", "Amount to withdraw (raw)")
         .action(async (options, cmd) => {
-            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            const opts = { ...options, ...cmd.optsWithGlobals(), tokenMint: options.token } as GlobalOptions & Record<string, any>;
             await executeVaultWithdraw(opts);
         });
 
@@ -40,7 +35,7 @@ export function registerVaultCommands(program: Command): void {
         .option("-t, --token <mint>", "Token mint")
         .option("-a, --amount <value>", "Amount to deposit (raw)")
         .action(async (options, cmd) => {
-            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            const opts = { ...options, ...cmd.optsWithGlobals(), tokenMint: options.token } as GlobalOptions & Record<string, any>;
             await executeVaultRedemptionDeposit(opts);
         });
 
@@ -51,7 +46,7 @@ export function registerVaultCommands(program: Command): void {
         .option("-t, --token <mint>", "Token mint")
         .option("-a, --amount <value>", "Amount to withdraw (raw)")
         .action(async (options, cmd) => {
-            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            const opts = { ...options, ...cmd.optsWithGlobals(), tokenMint: options.token } as GlobalOptions & Record<string, any>;
             await executeVaultRedemptionWithdraw(opts);
         });
 }

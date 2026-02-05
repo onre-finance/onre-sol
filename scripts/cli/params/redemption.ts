@@ -1,6 +1,5 @@
 import type { NetworkConfig } from "../../utils/script-helper";
 import { ParamDefinition } from "../prompts/types";
-import { tokenPairParams as commonTokenPairParams } from "./common";
 import { PublicKey } from "@solana/web3.js";
 
 /**
@@ -16,7 +15,7 @@ const redemptionTokenPairParams: ParamDefinition[] = [
         required: true,
         flag: "--token-in",
         shortFlag: "-i",
-        default: (cfg: NetworkConfig) => cfg.mints.onyc
+        default: (cfg: NetworkConfig) => cfg.mints.onyc,
     },
     {
         name: "tokenOut",
@@ -25,8 +24,8 @@ const redemptionTokenPairParams: ParamDefinition[] = [
         required: true,
         flag: "--token-out",
         shortFlag: "-o",
-        default: (cfg: NetworkConfig) => cfg.mints.usdc
-    }
+        default: (cfg: NetworkConfig) => cfg.mints.usdc,
+    },
 ];
 
 export { redemptionTokenPairParams as tokenPairParams };
@@ -40,8 +39,8 @@ export const redemptionOfferParams: ParamDefinition[] = [
         required: false,
         flag: "--fee",
         shortFlag: "-f",
-        default: 0
-    }
+        default: 0,
+    },
 ];
 
 export const createRequestParams: ParamDefinition[] = [
@@ -52,8 +51,8 @@ export const createRequestParams: ParamDefinition[] = [
         description: "Amount of tokens to redeem",
         required: true,
         flag: "--amount",
-        shortFlag: "-a"
-    }
+        shortFlag: "-a",
+    },
 ];
 
 export const requestParams: ParamDefinition[] = [
@@ -64,8 +63,8 @@ export const requestParams: ParamDefinition[] = [
         description: "Redemption request ID",
         required: true,
         flag: "--request-id",
-        transform: (value: any) => parseInt(value, 10)
-    }
+        transform: (value: any) => parseInt(value, 10),
+    },
 ];
 
 export const updateRedemptionFeeParams: ParamDefinition[] = [
@@ -76,8 +75,8 @@ export const updateRedemptionFeeParams: ParamDefinition[] = [
         description: "New redemption fee in basis points",
         required: true,
         flag: "--fee",
-        shortFlag: "-f"
-    }
+        shortFlag: "-f",
+    },
 ];
 
 export const listRequestsParams: ParamDefinition[] = [
@@ -107,6 +106,6 @@ export const listRequestsParams: ParamDefinition[] = [
                 return undefined;
             }
             return typeof value === "string" ? new PublicKey(value.trim()) : value;
-        }
-    }
+        },
+    },
 ];

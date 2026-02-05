@@ -23,11 +23,7 @@ export interface TransactionOptions {
 /**
  * Handle transaction workflow: display, prompt for action, execute
  */
-export async function handleTransaction(
-    tx: Transaction,
-    helper: ScriptHelper,
-    options: TransactionOptions
-): Promise<TransactionResult> {
+export async function handleTransaction(tx: Transaction, helper: ScriptHelper, options: TransactionOptions): Promise<TransactionResult> {
     const { title, description, dryRun, json } = options;
 
     // Serialize transaction
@@ -35,13 +31,19 @@ export async function handleTransaction(
 
     // JSON output mode
     if (json) {
-        console.log(JSON.stringify({
-            title,
-            base58,
-            feePayer: tx.feePayer?.toBase58(),
-            recentBlockhash: tx.recentBlockhash,
-            instructionCount: tx.instructions.length
-        }, null, 2));
+        console.log(
+            JSON.stringify(
+                {
+                    title,
+                    base58,
+                    feePayer: tx.feePayer?.toBase58(),
+                    recentBlockhash: tx.recentBlockhash,
+                    instructionCount: tx.instructions.length,
+                },
+                null,
+                2,
+            ),
+        );
         return { action: "copied", base58 };
     }
 
@@ -68,17 +70,17 @@ export async function handleTransaction(
         choices: [
             {
                 name: "Copy Base58 for Squad multisig",
-                value: "copy"
+                value: "copy",
             },
             {
                 name: "Sign locally and send to chain",
-                value: "sign"
+                value: "sign",
             },
             {
                 name: "Cancel",
-                value: "cancel"
-            }
-        ]
+                value: "cancel",
+            },
+        ],
     });
 
     switch (action) {
@@ -139,10 +141,7 @@ async function copyTransaction(base58: string): Promise<TransactionResult> {
 /**
  * Sign transaction locally and send to chain
  */
-async function signAndSendTransaction(
-    tx: Transaction,
-    helper: ScriptHelper
-): Promise<TransactionResult> {
+async function signAndSendTransaction(tx: Transaction, helper: ScriptHelper): Promise<TransactionResult> {
     let keypair: Keypair;
 
     // Check if ScriptHelper already has a wallet loaded
@@ -155,8 +154,8 @@ async function signAndSendTransaction(
             message: "Select wallet to sign with:",
             choices: [
                 { name: "Default (~/.config/solana/id.json)", value: "id" },
-                { name: "Custom wallet file", value: "custom" }
-            ]
+                { name: "Custom wallet file", value: "custom" },
+            ],
         });
 
         let keypairPath: string;
@@ -164,7 +163,7 @@ async function signAndSendTransaction(
             const { input } = await import("@inquirer/prompts");
             const customPath = await input({
                 message: "Enter path to keypair file:",
-                default: "~/.config/solana/id.json"
+                default: "~/.config/solana/id.json",
             });
             keypairPath = customPath.replace("~", os.homedir());
         } else {
@@ -192,7 +191,7 @@ async function signAndSendTransaction(
     // Confirm before sending
     const confirmed = await confirm({
         message: "Send transaction to chain?",
-        default: false
+        default: false,
     });
 
     if (!confirmed) {
@@ -206,12 +205,7 @@ async function signAndSendTransaction(
         // Sign and send
         tx.partialSign(keypair);
 
-        const signature = await sendAndConfirmTransaction(
-            helper.connection,
-            tx,
-            [keypair],
-            { commitment: "confirmed" }
-        );
+        const signature = await sendAndConfirmTransaction(helper.connection, tx, [keypair], { commitment: "confirmed" });
 
         spinner.succeed(chalk.green("Transaction confirmed!"));
         console.log(chalk.gray(`\nSignature: ${signature}`));

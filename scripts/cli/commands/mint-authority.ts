@@ -1,10 +1,6 @@
 import { Command } from "commander";
 import type { GlobalOptions } from "../prompts";
-import {
-    executeMintTo,
-    executeMintAuthorityToProgram,
-    executeMintAuthorityToBoss
-} from "../implementations";
+import { executeMintAuthorityToBoss, executeMintAuthorityToProgram, executeMintTo } from "../implementations";
 
 /**
  * Register mint-authority subcommands

@@ -13,7 +13,7 @@ export const mintParams: ParamDefinition[] = [
         required: true,
         flag: "--mint",
         shortFlag: "-m",
-        default: (cfg: NetworkConfig) => cfg.mints.onyc
+        default: (cfg: NetworkConfig) => cfg.mints.onyc,
     },
     {
         name: "amount",
@@ -21,8 +21,8 @@ export const mintParams: ParamDefinition[] = [
         description: "Amount to mint",
         required: true,
         flag: "--amount",
-        shortFlag: "-a"
-    }
+        shortFlag: "-a",
+    },
 ];
 
 export const transferMintAuthorityParams: ParamDefinition[] = [
@@ -33,6 +33,6 @@ export const transferMintAuthorityParams: ParamDefinition[] = [
         required: true,
         flag: "--mint",
         shortFlag: "-m",
-        default: (cfg: NetworkConfig) => cfg.mints.onyc
-    }
+        default: (cfg: NetworkConfig) => cfg.mints.onyc,
+    },
 ];
