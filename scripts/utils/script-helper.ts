@@ -727,9 +727,11 @@ export class ScriptHelper {
         redemptionOfferPda: PublicKey;
         redemptionRequestPda: PublicKey;
         redemptionAdmin: PublicKey;
+        /** Amount of token_in to fulfill. Pass null/undefined to use the full remaining amount. */
+        amount: BN | null;
     }) {
         return await this.program.methods
-            .fulfillRedemptionRequest()
+            .fulfillRedemptionRequest(params.amount!)
             .accountsPartial({
                 redemptionOffer: params.redemptionOfferPda,
                 redemptionRequest: params.redemptionRequestPda,
