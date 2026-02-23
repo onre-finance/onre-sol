@@ -382,6 +382,7 @@ fn test_fulfill_redemption_request_transfer_mode() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &redemption_tin, &redemption_tout, 0,
+        1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -426,6 +427,7 @@ fn test_fulfill_redemption_request_rejects_non_admin() {
     let ix = build_fulfill_redemption_request_ix(
         &non_admin.pubkey(), &boss, &user.pubkey(),
         &redemption_tin, &redemption_tout, 0,
+        500_000_000,
     );
     let result = send_tx(&mut svm, &[ix], &[&non_admin]);
     assert!(result.is_err(), "non-admin should not fulfill");
@@ -905,6 +907,7 @@ fn test_fulfill_redemption_request_updates_statistics() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &ctx.user.pubkey(),
         &ctx.redemption_tin, &ctx.redemption_tout, 0,
+        1_000_000_000,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
@@ -960,6 +963,7 @@ fn test_fulfill_redemption_request_accumulates_executed() {
         let ix = build_fulfill_redemption_request_ix(
             &boss, &boss, &user.pubkey(),
             &onyc_mint, &usdc_mint, i,
+            500_000_000,
         );
         send_tx(&mut svm, &[ix], &[&payer]).unwrap();
         advance_slot(&mut svm);
@@ -978,6 +982,7 @@ fn test_fulfill_redemption_request_zero_fee() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &ctx.user.pubkey(),
         &ctx.redemption_tin, &ctx.redemption_tout, 0,
+        1_000_000_000,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
@@ -1001,6 +1006,7 @@ fn test_fulfill_redemption_request_kill_switch() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &ctx.user.pubkey(),
         &ctx.redemption_tin, &ctx.redemption_tout, 0,
+        1_000_000_000,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]);
     assert!(result.is_err(), "should fail when kill switch is active");
@@ -1056,6 +1062,7 @@ fn test_fulfill_redemption_request_with_apr_growth() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1123,6 +1130,7 @@ fn test_fulfill_redemption_request_burn_and_mint() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1147,6 +1155,7 @@ fn test_fulfill_redemption_request_transfer_mode_fee_to_boss() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &ctx.user.pubkey(),
         &ctx.redemption_tin, &ctx.redemption_tout, 0,
+        1_000_000_000,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
@@ -1201,6 +1210,7 @@ fn test_fulfill_redemption_request_different_price() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1260,6 +1270,7 @@ fn test_fulfill_redemption_request_fee_with_apr() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1379,6 +1390,7 @@ fn test_fulfill_redemption_token2022_transfer_mode() {
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
+        1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1429,6 +1441,7 @@ fn test_fulfill_redemption_token2022_burn_mint_mode() {
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
+        1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1496,6 +1509,7 @@ fn test_fulfill_redemption_token2022_with_fee() {
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
+        1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1598,6 +1612,7 @@ fn test_fulfill_redemption_request_rejects_already_fulfilled() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &ctx.user.pubkey(),
         &ctx.redemption_tin, &ctx.redemption_tout, 0,
+        1_000_000_000,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
@@ -1606,6 +1621,7 @@ fn test_fulfill_redemption_request_rejects_already_fulfilled() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &ctx.user.pubkey(),
         &ctx.redemption_tin, &ctx.redemption_tout, 0,
+        1_000_000_000,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]);
     assert!(result.is_err(), "should reject already fulfilled request");
@@ -1663,6 +1679,7 @@ fn test_fulfill_redemption_request_fails_no_active_vector() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        1_000_000_000,
     );
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(result.is_err(), "should fail when no active vector exists");
@@ -1714,6 +1731,7 @@ fn test_fulfill_redemption_request_price_1_003() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1768,6 +1786,7 @@ fn test_fulfill_redemption_request_price_0_5() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1822,6 +1841,7 @@ fn test_fulfill_redemption_request_price_pi() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1838,6 +1858,7 @@ fn test_fulfill_redemption_request_very_small_amount() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &ctx.user.pubkey(),
         &ctx.redemption_tin, &ctx.redemption_tout, 0,
+        1_000,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
@@ -1895,6 +1916,7 @@ fn test_fulfill_redemption_request_price_0_123456789() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1966,6 +1988,7 @@ fn fulfill_token2022_with_params(apr: u64, fee_bps: u16, advance_days: u64) {
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
+        1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -2392,6 +2415,7 @@ fn test_fulfill_redemption_request_decrements_requested_redemptions() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &ctx.user.pubkey(),
         &ctx.redemption_tin, &ctx.redemption_tout, 0,
+        1_000_000_000,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
@@ -2467,6 +2491,7 @@ fn test_fulfill_redemption_request_different_decimals() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 

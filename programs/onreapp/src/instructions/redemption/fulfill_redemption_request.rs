@@ -11,7 +11,7 @@ use anchor_spl::{
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
-/// Event emitted when a redemption request is successfully fulfilled
+/// Event emitted when a redemption request is fulfilled (fully or partially)
 ///
 /// Provides transparency for tracking redemption fulfillment and token exchange details.
 #[event]
@@ -22,14 +22,20 @@ pub struct RedemptionRequestFulfilledEvent {
     pub redemption_offer_pda: Pubkey,
     /// User who created the redemption request
     pub redeemer: Pubkey,
-    /// Net amount of token_in tokens burned/transferred (after fees)
+    /// Net amount of token_in tokens burned/transferred in this fulfillment call (after fees)
     pub token_in_net_amount: u64,
-    /// Fee amount deducted from token_in
+    /// Fee amount deducted from token_in in this fulfillment call
     pub token_in_fee_amount: u64,
-    /// Amount of token_out tokens received by the user
+    /// Amount of token_out tokens received by the user in this fulfillment call
     pub token_out_amount: u64,
     /// Current price used for the redemption
     pub current_price: u64,
+    /// Amount of token_in fulfilled in this call (before fee deduction)
+    pub fulfilled_amount: u64,
+    /// Cumulative token_in amount fulfilled across all calls for this request
+    pub total_fulfilled_amount: u64,
+    /// Whether the request is now fully settled (account closed)
+    pub is_fully_fulfilled: bool,
 }
 
 /// Account structure for fulfilling a redemption request
@@ -70,8 +76,11 @@ pub struct FulfillRedemptionRequest<'info> {
     )]
     pub redemption_offer: Box<Account<'info, RedemptionOffer>>,
 
-    /// The redemption request account to fulfill
-    /// Account is closed after fulfillment and rent is returned to redemption_admin
+    /// The redemption request account to fulfill (partially or fully)
+    ///
+    /// The account is only closed when the request is fully fulfilled
+    /// (fulfilled_amount == amount). For partial fulfillments the account
+    /// remains open so further fulfillment calls can be made.
     #[account(
         mut,
         seeds = [
@@ -80,7 +89,6 @@ pub struct FulfillRedemptionRequest<'info> {
             redemption_request.request_id.to_le_bytes().as_ref()
         ],
         bump = redemption_request.bump,
-        close = redemption_admin,
         constraint = redemption_request.offer == redemption_offer.key()
             @ FulfillRedemptionRequestErrorCode::OfferMismatch
     )]
@@ -201,48 +209,63 @@ pub struct FulfillRedemptionRequest<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Fulfills a redemption request
+/// Fulfills a redemption request, either fully or partially
 ///
-/// This instruction fulfills a pending redemption request by:
-/// 1. Getting the current price from the underlying offer (inverse calculation)
-/// 2. Calculating token_out amount based on token_in and current price
-/// 3. If program has mint authority of token_in : burn it from vault
-/// 4. If program lacks mint authority of token_int: send to boss from vault
-/// 5. If token_out program has mint authority: mint token_out to user
-/// 6. If token_out program lacks mint authority: transfer from vault to user
-/// 7. Update redemption request status and offer statistics
-///
-/// Note: token_in is already locked in the vault from create_redemption_request
+/// This instruction processes `amount` tokens from a pending redemption request.
+/// Calling with `amount` less than the remaining unfulfilled balance is a partial
+/// fulfillment — the account stays open and further calls can be made until the
+/// request is fully settled.  Calling with the exact remaining balance (or passing
+/// `request.amount - request.fulfilled_amount`) closes the account and returns rent.
 ///
 /// # Arguments
-/// * `ctx` - The instruction context containing validated accounts
+/// * `ctx`    - The instruction context containing validated accounts
+/// * `amount` - Amount of token_in to process in this call. Must be > 0 and ≤ remaining
+///              unfulfilled balance (`request.amount - request.fulfilled_amount`).
 ///
 /// # Returns
-/// * `Ok(())` - If the redemption is successfully fulfilled
+/// * `Ok(())` - If the (partial) redemption is successfully processed
 /// * `Err(_)` - If validation fails or token operations fail
 ///
 /// # Access Control
 /// - Only redemption_admin can fulfill redemptions
 /// - Kill switch prevents fulfillment when activated
-/// - Request must be pending (status == 0) and not expired
 ///
 /// # Effects
-/// - Marks redemption request as fulfilled (status = 1)
-/// - Updates executed_redemptions and requested_redemptions in RedemptionOffer
+/// - Processes `amount` tokens at the current NAV price
+/// - Updates `request.fulfilled_amount`; closes account when fully settled
+/// - Decrements `redemption_offer.requested_redemptions` by `amount`
+/// - Increments `redemption_offer.executed_redemptions` by `amount`
 /// - Burns or transfers token_in based on mint authority
 /// - Mints or transfers token_out to user
 ///
 /// # Events
 /// * `RedemptionRequestFulfilledEvent` - Emitted with fulfillment details
-pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Result<()> {
-    let redemption_request = &mut ctx.accounts.redemption_request;
-    let token_in_amount = redemption_request.amount;
+pub fn fulfill_redemption_request(
+    ctx: Context<FulfillRedemptionRequest>,
+    amount: u64,
+) -> Result<()> {
+    // Validate amount
+    require!(
+        amount > 0,
+        FulfillRedemptionRequestErrorCode::InvalidAmount
+    );
+
+    let redemption_request = &ctx.accounts.redemption_request;
+    let remaining = redemption_request
+        .amount
+        .checked_sub(redemption_request.fulfilled_amount)
+        .ok_or(FulfillRedemptionRequestErrorCode::ArithmeticUnderflow)?;
+
+    require!(
+        amount <= remaining,
+        FulfillRedemptionRequestErrorCode::AmountExceedsRemaining
+    );
 
     // Use shared core processing logic for redemption
     let offer = ctx.accounts.offer.load()?;
     let result = process_redemption_core(
         &offer,
-        token_in_amount,
+        amount,
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
         ctx.accounts.redemption_offer.fee_basis_points,
@@ -274,26 +297,42 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
         token_out_max_supply: 0, // No max supply cap for redemptions
     })?;
 
+    // Update fulfilled amount on the request
+    let new_fulfilled_amount = ctx
+        .accounts
+        .redemption_request
+        .fulfilled_amount
+        .checked_add(amount)
+        .ok_or(FulfillRedemptionRequestErrorCode::ArithmeticOverflow)?;
+    ctx.accounts.redemption_request.fulfilled_amount = new_fulfilled_amount;
+
+    let is_fully_fulfilled =
+        new_fulfilled_amount == ctx.accounts.redemption_request.amount;
+
+    // Update offer-level counters
     let redemption_offer = &mut ctx.accounts.redemption_offer;
     redemption_offer.executed_redemptions = redemption_offer
         .executed_redemptions
-        .checked_add(token_in_amount as u128)
+        .checked_add(amount as u128)
         .ok_or(FulfillRedemptionRequestErrorCode::ArithmeticOverflow)?;
 
     redemption_offer.requested_redemptions = redemption_offer
         .requested_redemptions
-        .checked_sub(token_in_amount as u128)
+        .checked_sub(amount as u128)
         .ok_or(FulfillRedemptionRequestErrorCode::ArithmeticUnderflow)?;
 
     msg!(
-        "Redemption request fulfilled: request={}, token_in={} (net={}, fee={}), token_out={}, price={}, redeemer={}",
+        "Redemption request {}: fulfilled {} (net={}, fee={}), token_out={}, price={}, redeemer={}, total_fulfilled={}/{}, fully_fulfilled={}",
         ctx.accounts.redemption_request.key(),
-        token_in_amount,
+        amount,
         token_in_net_amount,
         token_in_fee_amount,
         token_out_amount,
         price,
-        ctx.accounts.redeemer.key()
+        ctx.accounts.redeemer.key(),
+        new_fulfilled_amount,
+        ctx.accounts.redemption_request.amount,
+        is_fully_fulfilled,
     );
 
     emit!(RedemptionRequestFulfilledEvent {
@@ -304,7 +343,17 @@ pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Res
         token_in_fee_amount,
         token_out_amount,
         current_price: price,
+        fulfilled_amount: amount,
+        total_fulfilled_amount: new_fulfilled_amount,
+        is_fully_fulfilled,
     });
+
+    // Close the request account only when fully settled; rent goes to redemption_admin
+    if is_fully_fulfilled {
+        ctx.accounts
+            .redemption_request
+            .close(ctx.accounts.redemption_admin.to_account_info())?;
+    }
 
     Ok(())
 }
@@ -343,6 +392,14 @@ pub enum FulfillRedemptionRequestErrorCode {
     /// Invalid redeemer
     #[msg("Redeemer does not match redemption request")]
     InvalidRedeemer,
+
+    /// amount parameter is zero
+    #[msg("Invalid amount: must be greater than zero")]
+    InvalidAmount,
+
+    /// amount exceeds the remaining unfulfilled balance of the request
+    #[msg("Amount exceeds remaining unfulfilled balance")]
+    AmountExceedsRemaining,
 
     /// Arithmetic overflow occurred
     #[msg("Arithmetic overflow")]

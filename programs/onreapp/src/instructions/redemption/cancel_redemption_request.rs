@@ -17,8 +17,11 @@ pub struct RedemptionRequestCancelledEvent {
     pub redemption_offer: Pubkey,
     /// User who requested the redemption
     pub redeemer: Pubkey,
-    /// Amount of token_in tokens that was requested for redemption
-    pub amount: u64,
+    /// Original total amount of token_in tokens in the request
+    pub original_amount: u64,
+    /// Amount of token_in tokens returned to the redeemer
+    /// (original_amount - fulfilled_amount; may be less than original_amount for partially fulfilled requests)
+    pub returned_amount: u64,
     /// The signer who cancelled the request
     pub cancelled_by: Pubkey,
 }
@@ -160,8 +163,8 @@ pub struct CancelRedemptionRequest<'info> {
 ///
 /// # Effects
 /// - Closes redemption request account and returns rent to redemption_admin
-/// - Returns locked token_in tokens from vault to redeemer
-/// - Subtracts amount from RedemptionOffer::requested_redemptions
+/// - Returns the unfulfilled token_in tokens (original_amount - fulfilled_amount) from vault to redeemer
+/// - Subtracts the returned amount from RedemptionOffer::requested_redemptions
 ///
 /// # Events
 /// * `RedemptionRequestCancelledEvent` - Emitted with cancellation details
@@ -169,8 +172,13 @@ pub fn cancel_redemption_request(ctx: Context<CancelRedemptionRequest>) -> Resul
     let redemption_request = &ctx.accounts.redemption_request;
     let signer = ctx.accounts.signer.key();
 
-    let amount = redemption_request.amount;
+    let original_amount = redemption_request.amount;
     let redeemer = redemption_request.redeemer;
+
+    // Only the unfulfilled remainder is still locked in the vault; return that to redeemer
+    let returned_amount = original_amount
+        .checked_sub(redemption_request.fulfilled_amount)
+        .ok_or(CancelRedemptionRequestErrorCode::ArithmeticUnderflow)?;
 
     // Return locked tokens from vault to redeemer
     let vault_authority_bump = ctx.bumps.redemption_vault_authority;
@@ -187,21 +195,22 @@ pub fn cancel_redemption_request(ctx: Context<CancelRedemptionRequest>) -> Resul
         &ctx.accounts.redeemer_token_account,
         &ctx.accounts.redemption_vault_authority,
         Some(vault_authority_signer_seeds),
-        amount,
+        returned_amount,
     )?;
 
-    // Subtract the amount from requested_redemptions in the offer
+    // Subtract only the returned (unfulfilled) amount from requested_redemptions
     ctx.accounts.redemption_offer.requested_redemptions = ctx
         .accounts
         .redemption_offer
         .requested_redemptions
-        .checked_sub(amount as u128)
+        .checked_sub(returned_amount as u128)
         .ok_or(CancelRedemptionRequestErrorCode::ArithmeticUnderflow)?;
 
     msg!(
-        "Redemption request cancelled at: {} for amount: {} by signer: {}",
+        "Redemption request cancelled at: {} original_amount: {} returned_amount: {} by signer: {}",
         ctx.accounts.redemption_request.key(),
-        amount,
+        original_amount,
+        returned_amount,
         signer
     );
 
@@ -209,7 +218,8 @@ pub fn cancel_redemption_request(ctx: Context<CancelRedemptionRequest>) -> Resul
         redemption_request_pda: ctx.accounts.redemption_request.key(),
         redemption_offer: ctx.accounts.redemption_offer.key(),
         redeemer,
-        amount,
+        original_amount,
+        returned_amount,
         cancelled_by: signer,
     });
 

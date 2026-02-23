@@ -323,6 +323,9 @@ export function printRedemptionOffer(offer: any, tokenInMint: string, tokenOutMi
  * Print redemption request details
  */
 export function printRedemptionRequest(request: any, requestId: number, json: boolean = false): void {
+    const fulfilledAmount = request.fulfilledAmount ?? 0;
+    const remaining = BigInt(request.amount.toString()) - BigInt(fulfilledAmount.toString());
+
     if (json) {
         console.log(
             JSON.stringify(
@@ -331,6 +334,8 @@ export function printRedemptionRequest(request: any, requestId: number, json: bo
                     offer: request.offer.toBase58(),
                     redeemer: request.redeemer.toBase58(),
                     amount: request.amount.toString(),
+                    fulfilledAmount: fulfilledAmount.toString(),
+                    remainingAmount: remaining.toString(),
                 },
                 null,
                 2,
@@ -350,7 +355,9 @@ export function printRedemptionRequest(request: any, requestId: number, json: bo
         ["Request ID", requestId.toString()],
         ["Redemption Offer", request.offer.toBase58()],
         ["Redeemer", request.redeemer.toBase58()],
-        ["Amount", request.amount.toString()],
+        ["Total Amount", request.amount.toString()],
+        ["Fulfilled Amount", fulfilledAmount.toString()],
+        ["Remaining Amount", remaining.toString()],
     );
 
     console.log(table.toString());
@@ -363,12 +370,18 @@ export function printRedemptionRequestsList(requests: Array<{ id: number; reques
     if (json) {
         console.log(
             JSON.stringify(
-                requests.map((r) => ({
-                    requestId: r.id,
-                    offer: r.request.offer.toBase58(),
-                    redeemer: r.request.redeemer.toBase58(),
-                    amount: r.request.amount.toString(),
-                })),
+                requests.map((r) => {
+                    const fulfilledAmount = r.request.fulfilledAmount ?? 0;
+                    const remaining = BigInt(r.request.amount.toString()) - BigInt(fulfilledAmount.toString());
+                    return {
+                        requestId: r.id,
+                        offer: r.request.offer.toBase58(),
+                        redeemer: r.request.redeemer.toBase58(),
+                        amount: r.request.amount.toString(),
+                        fulfilledAmount: fulfilledAmount.toString(),
+                        remainingAmount: remaining.toString(),
+                    };
+                }),
                 null,
                 2,
             ),
@@ -384,12 +397,20 @@ export function printRedemptionRequestsList(requests: Array<{ id: number; reques
     console.log(chalk.bold.blue(`\n=== Redemption Requests (${requests.length} found) ===\n`));
 
     const table = new Table({
-        head: [chalk.white("ID"), chalk.white("Redeemer"), chalk.white("Amount")],
-        colWidths: [6, 46, 20],
+        head: [chalk.white("ID"), chalk.white("Redeemer"), chalk.white("Total"), chalk.white("Fulfilled"), chalk.white("Remaining")],
+        colWidths: [6, 46, 18, 18, 18],
     });
 
     requests.forEach(({ id, request }) => {
-        table.push([id.toString(), request.redeemer.toBase58(), request.amount.toString()]);
+        const fulfilledAmount = request.fulfilledAmount ?? 0;
+        const remaining = BigInt(request.amount.toString()) - BigInt(fulfilledAmount.toString());
+        table.push([
+            id.toString(),
+            request.redeemer.toBase58(),
+            request.amount.toString(),
+            fulfilledAmount.toString(),
+            remaining.toString(),
+        ]);
     });
 
     console.log(table.toString());
