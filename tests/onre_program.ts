@@ -817,11 +817,19 @@ export class OnreProgram {
         redemptionAdmin: Keypair;
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
+        /** Amount of token_in to fulfill. Omit to fulfill the full remaining unfulfilled balance. */
+        amount?: BN;
         tokenInProgram?: PublicKey;
         tokenOutProgram?: PublicKey;
     }) {
+        let amount = params.amount;
+        if (amount === undefined) {
+            const request = await this.program.account.redemptionRequest.fetch(params.redemptionRequest);
+            amount = (request.amount as BN).sub(request.fulfilledAmount as BN);
+        }
+
         const tx = this.program.methods
-            .fulfillRedemptionRequest()
+            .fulfillRedemptionRequest(amount)
             .accounts({
                 offer: params.offer,
                 redemptionOffer: params.redemptionOffer,

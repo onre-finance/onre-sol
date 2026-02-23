@@ -577,22 +577,28 @@ pub mod onreapp {
         redemption::create_redemption_request(ctx, amount)
     }
 
-    /// Fulfills a redemption request.
+    /// Fulfills a redemption request, either fully or partially.
     ///
     /// Delegates to `redemption::fulfill_redemption_request`.
-    /// This instruction fulfills a pending redemption request by handling token operations:
+    /// Processes `amount` tokens from a pending redemption request at the current NAV price.
+    /// If `amount` is less than the remaining unfulfilled balance the request stays open
+    /// and further fulfillment calls can be made. When `amount` equals the remaining balance
+    /// the request is fully settled and the account is closed.
     /// - Burns token_in (ONyc) if program has mint authority, else sends to boss
     /// - Mints token_out if program has mint authority, else transfers from vault
-    /// - Uses current price from the underlying offer to calculate token_out amount
     /// Emits a `RedemptionRequestFulfilledEvent` upon success.
     ///
     /// # Arguments
-    /// - `ctx`: Context for `FulfillRedemptionRequest`.
+    /// - `ctx`:    Context for `FulfillRedemptionRequest`.
+    /// - `amount`: token_in amount to process; must be > 0 and ≤ remaining unfulfilled balance.
     ///
     /// # Access Control
     /// - Only redemption_admin can fulfill redemptions
-    pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Result<()> {
-        redemption::fulfill_redemption_request(ctx)
+    pub fn fulfill_redemption_request(
+        ctx: Context<FulfillRedemptionRequest>,
+        amount: u64,
+    ) -> Result<()> {
+        redemption::fulfill_redemption_request(ctx, amount)
     }
 
     /// Cancels a redemption request.

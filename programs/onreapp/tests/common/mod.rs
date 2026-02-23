@@ -1689,6 +1689,7 @@ pub fn build_fulfill_redemption_request_ix(
     token_in_mint: &Pubkey,
     token_out_mint: &Pubkey,
     request_id: u64,
+    amount: u64,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
     // Original offer has reversed mints
@@ -1702,7 +1703,8 @@ pub fn build_fulfill_redemption_request_ix(
     let user_token_out_ata = get_associated_token_address(redeemer, token_out_mint);
     let boss_token_in_ata = get_associated_token_address(boss, token_in_mint);
 
-    let data = ix_discriminator("fulfill_redemption_request").to_vec();
+    let mut data = ix_discriminator("fulfill_redemption_request").to_vec();
+    data.extend_from_slice(&amount.to_le_bytes());
 
     Instruction {
         program_id: PROGRAM_ID,
@@ -1834,6 +1836,43 @@ pub fn read_redemption_offer(
         request_counter,
         bump,
     }
+}
+
+/// Decoded fields from a `RedemptionRequest` on-chain account
+pub struct RedemptionRequestData {
+    pub offer: Pubkey,
+    pub request_id: u64,
+    pub redeemer: Pubkey,
+    pub amount: u64,
+    pub fulfilled_amount: u64,
+    pub bump: u8,
+}
+
+/// Read and decode a `RedemptionRequest` account from the SVM
+pub fn read_redemption_request(
+    svm: &LiteSVM,
+    redemption_offer: &Pubkey,
+    request_id: u64,
+) -> RedemptionRequestData {
+    let (pda, _) = find_redemption_request_pda(redemption_offer, request_id);
+    let account = svm.get_account(&pda).expect("redemption request account not found");
+    let data = &account.data;
+
+    let mut offset = 8; // skip anchor discriminator
+
+    let offer = Pubkey::try_from(&data[offset..offset + 32]).unwrap();
+    offset += 32;
+    let rid = u64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
+    offset += 8;
+    let redeemer = Pubkey::try_from(&data[offset..offset + 32]).unwrap();
+    offset += 32;
+    let amount = u64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
+    offset += 8;
+    let fulfilled_amount = u64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
+    offset += 8;
+    let bump = data[offset];
+
+    RedemptionRequestData { offer, request_id: rid, redeemer, amount, fulfilled_amount, bump }
 }
 
 // ---------------------------------------------------------------------------
@@ -2291,6 +2330,7 @@ pub fn build_fulfill_redemption_request_ix_with_programs(
     request_id: u64,
     token_in_program: &Pubkey,
     token_out_program: &Pubkey,
+    amount: u64,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (offer_pda, _) = find_offer_pda(token_out_mint, token_in_mint);
@@ -2306,7 +2346,8 @@ pub fn build_fulfill_redemption_request_ix_with_programs(
     let user_token_out_ata = derive_ata(redeemer, token_out_mint, token_out_program);
     let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
 
-    let data = ix_discriminator("fulfill_redemption_request").to_vec();
+    let mut data = ix_discriminator("fulfill_redemption_request").to_vec();
+    data.extend_from_slice(&amount.to_le_bytes());
 
     Instruction {
         program_id: PROGRAM_ID,
