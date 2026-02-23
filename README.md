@@ -1,144 +1,171 @@
-# OnreApp Solana Program Documentation
+# OnreApp Solana Program
 
-## Overview
+A Solana smart contract built with [Anchor](https://www.anchor-lang.com/) that manages tokenized (re)insurance pools. The program enables the creation, management, and redemption of **ONyc tokens**, which represent fractional ownership in a regulated investment pool specializing in (re)insurance underwriting.
 
-The **OnreApp Solana Program** is a custom smart contract built using the [Anchor framework](https://project-serum.github.io/anchor/), designed to manage tokenized (re)insurance pools and related operations on the Solana blockchain. This program facilitates the creation, management, and redemption of **ONe tokens**, which represent fractional ownership in a regulated investment pool specializing in (re)insurance underwriting.
+## Quick Start
 
-The program integrates blockchain technology to provide **transparency, liquidity, and efficiency** to the traditionally exclusive (re)insurance market. It supports key operations such as minting, burning, and managing offers, while ensuring compliance with Bermuda’s regulatory framework.
+```bash
+# Build the program
+anchor build
 
-## Directory Structure
-The program's source code is organized as follows:
-```plaintext
-programs/onreapp/src/ 
-├── contexts/ 
-│ ├── mod.rs 
-│ └── offer_context.rs 
-├── instructions/
-│ ├── initialize.rs 
-│ ├── make_offer.rs 
-│ ├── mod.rs 
-│ ├── set_boss.rs 
-│ └── take_offer.rs 
-├── lib.rs 
-└── state.rs
+# Run tests (builds program and copies .so to fixtures)
+anchor test
+
+# Run a single test file
+npx vitest run tests/path/to/test.spec.ts
+
+# Update program ID after changing keypair
+anchor keys sync && anchor build
 ```
 
-### Key Components
+## Program Structure
 
-#### 1. `lib.rs`
-This is the main entry point for the program. It defines the modules, instructions, and accounts used in the program. It acts as the glue that ties together the contexts, instructions, and state.
+```
+programs/onreapp/src/
+├── lib.rs                    # Entry point — all 32 instructions declared here
+├── state.rs                  # Global State account (boss, admins, approvers, kill switch)
+├── constants.rs              # PDA seeds, limits, decimals
+├── utils/                    # Token helpers, ed25519 signature parsing, approver verification
+└── instructions/
+    ├── initialization/       # initialize, initialize_permissionless_authority
+    ├── offer/                # make/take/close offers, manage price vectors, fees
+    ├── redemption/           # redemption offers, requests, fulfillment, cancellation
+    ├── state_operations/     # Boss transfer, admin/approver management, kill switch, max supply
+    ├── vault_operations/     # Deposit/withdraw tokens to offer and redemption vaults
+    ├── mint_authority/       # Transfer mint authority to/from program PDA, mint_to
+    └── market_info/          # Read-only queries: NAV, APY, TVL, circulating supply, NAV adjustment
+```
 
-#### 2. `state.rs`
-This file defines the program's state, including account structures and data models. These structures represent the persistent data stored on-chain, such as:
+## Key Concepts
 
-- **Offer Account**: Tracks details about offers, including terms, participants, and status.
-- **Admin Account**: Stores information about the program's administrator and fund manager controls.
+### Dynamic Pricing
 
-#### 3. `contexts/`
-This directory contains context definitions for the program's instructions. Contexts define the accounts and constraints required for each instruction.
+Offers use up to 10 `OfferVector` entries with APR-based compound interest. Price grows over time using `base_price`, `apr` (scale = 6, where 1,000,000 = 1%), and `price_fix_duration`.
 
-- **`mod.rs`**: Re-exports the context modules for easier access.
-- **`offer_context.rs`**: Defines the context for operations related to offers, such as creating or taking an offer.
+### Authority Structure
 
-#### 4. `instructions/`
-This directory contains the core logic for the program's instructions. Each file corresponds to a specific instruction.
+| Role | Description |
+|------|-------------|
+| `boss` | Primary authority with full control (two-step transfer via propose/accept) |
+| `admins[20]` | Can enable the kill switch |
+| `redemption_admin` | Manages redemption operations |
+| `approvers` | Trusted keys for cryptographic approval verification (ed25519) |
 
-- **`initialize.rs`**: Handles the initialization of program accounts.
-- **`make_offer.rs`**: Implements the logic for creating an offer.
-- **`take_offer.rs`**: Implements the logic for accepting or taking an offer.
-- **`set_boss.rs`**: Implements the logic for assigning an administrative role.
-- **`mod.rs`**: Re-exports the instruction modules for easier access.
+### Token Support
 
----
+The program supports both **SPL Token** and **Token-2022** with transfer fee extensions.
+
+### Constants
+
+| Constant | Value |
+|----------|-------|
+| `MAX_VECTORS` | 10 |
+| `MAX_ADMINS` | 20 |
+| `PRICE_DECIMALS` | 9 |
+| `MAX_ALLOWED_FEE_BPS` | 1000 (10%) |
 
 ## Instructions
 
-### 1. Initialize
-**File**: `initialize.rs`
+**Initialization**: `initialize`, `initialize_permissionless_authority`
 
-Initializes the program or specific accounts required for its operation. This includes setting up the admin account and preparing the program for subsequent operations.
+**Offers**: `make_offer`, `add_offer_vector`, `delete_offer_vector`, `delete_all_offer_vectors`, `update_offer_fee`, `take_offer`, `take_offer_permissionless`
 
-### 2. Make Offer
-**File**: `make_offer.rs`
+**Redemption**: `make_redemption_offer`, `create_redemption_request`, `fulfill_redemption_request`, `cancel_redemption_request`, `update_redemption_offer_fee`
 
-Allows a user to create an offer. This includes specifying the terms of the offer and storing it on-chain. Offers represent opportunities for investors to participate in the tokenized (re)insurance pool.
+**State Operations**: `propose_boss`, `accept_boss`, `add_admin`, `remove_admin`, `clear_admins`, `set_kill_switch`, `set_onyc_mint`, `set_redemption_admin`, `add_approver`, `remove_approver`, `configure_max_supply`, `close_state`
 
-### 3. Take Offer
-**File**: `take_offer.rs`
+**Vault Operations**: `offer_vault_deposit`, `offer_vault_withdraw`, `redemption_vault_deposit`, `redemption_vault_withdraw`
 
-Allows a user to accept an existing offer. This involves transferring assets or fulfilling the terms of the offer, enabling participation in the investment pool.
+**Mint Authority**: `transfer_mint_authority_to_program`, `transfer_mint_authority_to_boss`, `mint_to`
 
-### 4. Set Boss
-**File**: `set_boss.rs`
+**Market Info** (read-only): `get_nav`, `get_apy`, `get_nav_adjustment`, `get_tvl`, `get_circulating_supply`
 
-Assigns or updates the administrative role for the program. This role is responsible for managing fund operations, including minting and burning tokens.
+## CLI Tool
 
----
+An interactive CLI for managing deployed programs on mainnet/devnet.
 
-## Token Mechanics
+```bash
+# Run the CLI
+pnpm cli
 
-The **ONe token** is the primary asset managed by the program. It represents fractional ownership in the (re)insurance pool and provides investors with a dynamic share of the pool’s value.
+# Or with a specific network
+pnpm script:mainnet-prod tsx scripts/cli/index.ts
+```
 
-### Key Features:
-- **Minting and Burning**: Tokens are minted and burned based on fund manager controls.
-- **Real-Time NAV Tracking**: Token value reflects the pool’s performance, including premiums earned and claims paid.
-- **Liquidity**: Tokens can be traded on secondary markets or redeemed during scheduled windows.
+### Network Environments
 
-### Redemption Process:
-- **Redemption Tokens (ONr)**: Issued for specific dates to facilitate liquidity.
-- **Timeline**: Redemption tokens are minted 80 days before the redemption date, with orders closed 70 days before redemption.
-- **Direct Liquidity**: Investors can exchange rONe tokens for ONe tokens at the prevailing price on the redemption date.
+| Profile | Cluster | Description |
+|---------|---------|-------------|
+| `mainnet-prod` | Mainnet | Production program |
+| `mainnet-test` | Mainnet | Test program on mainnet |
+| `mainnet-dev` | Mainnet | Dev program on mainnet |
+| `devnet-test` | Devnet | Test program on devnet |
+| `devnet-dev` | Devnet | Dev program on devnet |
 
----
+Select via `NETWORK` env variable or the `-n` / `--network` flag. Convenience scripts:
 
-## Regulatory Compliance
+```bash
+pnpm script:mainnet-prod tsx scripts/some-script.ts
+pnpm script:devnet-dev tsx scripts/some-script.ts
+```
 
-The program operates under Bermuda’s regulatory framework, ensuring compliance with local laws and investor protection.
+### Standalone Scripts
 
-- **KYC/AML Enforcement**: Users must complete KYC verification to participate. Verified addresses are whitelisted for token purchases and redemptions.
-- **Segregated Accounts Structure**: Investor funds are legally ring-fenced within a segregated account, managed by Nayms SAC Ltd.
+Scripts can also be run directly with `tsx`:
 
----
+```bash
+tsx scripts/utils/get-state.ts
+tsx scripts/offer/fetch-offer.ts
+tsx scripts/market_info/get-nav.ts
+```
 
-## Governance & Security
+Scripts that modify state output base58-encoded transactions for signing via Squad multisig. Read-only scripts print results directly.
 
-### Fund Manager Controls:
-- Minting and burning of tokens.
-- Issuance and redemption of tokens.
-- Management of NAV price feeds.
-- Multisig approval for all critical operations.
+## Tests
 
-### Smart Contract Security:
-- On-chain logs for all minting, burning, and transfers.
-- Balances are rounded down to prevent over-allocation.
-- Multisig approval ensures secure fund management.
+Tests use **Vitest** with **LiteSVM** for fast local testing without a validator.
 
----
+```bash
+# Run all tests
+pnpm test
 
-## How to Use
+# Run with watch mode
+pnpm test:watch
 
-1. **Build the Program**  
-   Use the Anchor CLI to build the program:
-   ```bash
-   anchor build
-2. **Deploy the Program**
-Deploy the program to the Solana blockchain:
-anchor deploy
-3. **Interact with the Program**
-Use a client application or the Anchor CLI to call the program's instructions.
+# Run a single test file
+npx vitest run tests/offer/take_offer.spec.ts
+```
 
-## Conclusion
-The OnreApp Solana Program is a pioneering implementation of tokenized (re)insurance pools on the blockchain. By combining the transparency and efficiency of Solana with the institutional-grade compliance of Bermuda’s regulatory framework, it provides investors with a novel way to access stable, yield-generating assets.
+Test structure mirrors the instruction layout:
 
-This program represents the convergence of blockchain technology and traditional financial instruments, setting a new standard for digital investment products.
+```
+tests/
+├── test_helper.ts              # TestHelper class (LiteSVM utilities)
+├── onre_program.ts             # Shared program setup
+├── offer/                      # Offer instruction tests
+├── redemption/                 # Redemption instruction tests
+├── state_operations/           # State management tests
+├── vault_operations/           # Vault operation tests
+├── mint_authority/             # Mint authority tests
+└── market_info/                # Market info query tests
+```
 
-## Update Solana Program ID
+## Cross-Chain Transfers
 
-Drop in the program key into `target/deploy/onreapp-keypair.json` and then:
+The `scripts/cross_chain_transfer/` directory contains CCTP v1 and v2 implementations for cross-chain USDC transfers between Ethereum and Solana.
 
-```zsh
+## Updating the Program ID
+
+```bash
+cp ~/.config/solana/<keypair>.json target/deploy/onreapp-keypair.json
 anchor keys sync
 anchor build
 ```
 
-That is going to update the program ID in `anchor.toml` and in the program `lib.rs`.
+Program ID convenience scripts:
+
+```bash
+pnpm set-program:dev
+pnpm set-program:test
+pnpm set-program:prod
+```
