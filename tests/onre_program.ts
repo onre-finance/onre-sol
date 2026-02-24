@@ -28,12 +28,17 @@ export class OnreProgram {
         redemptionVaultAuthorityPda: PublicKey;
         permissionlessAuthorityPda: PublicKey;
         mintAuthorityPda: PublicKey;
+        cacheStatePda: PublicKey;
+        cacheVaultAuthorityPda: PublicKey;
         marketStatsPda: PublicKey;
     } = {
         statePda: PublicKey.findProgramAddressSync([Buffer.from("state")], ONREAPP_PROGRAM_ID)[0],
         offerVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("offer_vault_authority")], ONREAPP_PROGRAM_ID)[0],
         redemptionVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("redemption_offer_vault_authority")], ONREAPP_PROGRAM_ID)[0],
         permissionlessAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], ONREAPP_PROGRAM_ID)[0],
+        mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], ONREAPP_PROGRAM_ID)[0],
+        cacheStatePda: PublicKey.findProgramAddressSync([Buffer.from("cache_state")], ONREAPP_PROGRAM_ID)[0],
+        cacheVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("cache_vault_authority")], ONREAPP_PROGRAM_ID)[0]
         mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], ONREAPP_PROGRAM_ID)[0],
         marketStatsPda: PublicKey.findProgramAddressSync([Buffer.from("market_stats")], ONREAPP_PROGRAM_ID)[0]
     };
@@ -52,6 +57,13 @@ export class OnreProgram {
             idl as Onreapp,
             provider
         );
+    }
+
+    private async rpcWithOptionalSigner(tx: any, signer?: Keypair) {
+        if (signer) {
+            tx.signers([signer]);
+        }
+        await tx.rpc();
     }
 
     // Instructions
@@ -87,11 +99,7 @@ export class OnreProgram {
                 tokenOutMint: params.tokenOutMint
             });
 
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async addOfferVector(params: {
@@ -117,11 +125,7 @@ export class OnreProgram {
                 tokenOutMint: params.tokenOutMint
             });
 
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async updateOfferFee(params: {
@@ -137,11 +141,7 @@ export class OnreProgram {
                 tokenOutMint: params.tokenOutMint
             });
 
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async deleteOfferVector(
@@ -157,11 +157,7 @@ export class OnreProgram {
                 tokenOutMint: tokenOutMint
             });
 
-        if (signer) {
-            tx.signers([signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, signer);
     }
 
     async deleteAllOfferVectors(
@@ -176,11 +172,7 @@ export class OnreProgram {
                 tokenOutMint: tokenOutMint
             });
 
-        if (signer) {
-            tx.signers([signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, signer);
     }
 
     async takeOffer(params: {
@@ -202,11 +194,7 @@ export class OnreProgram {
                 tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID
             });
 
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async takeOfferPermissionless(params: {
@@ -233,11 +221,7 @@ export class OnreProgram {
                 marketStats: this.pdas.marketStatsPda
             });
 
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async offerVaultDeposit(params: {
@@ -255,11 +239,7 @@ export class OnreProgram {
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
 
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async offerVaultWithdraw(params: {
@@ -275,11 +255,7 @@ export class OnreProgram {
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
 
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async redemptionVaultDeposit(params: {
@@ -297,11 +273,7 @@ export class OnreProgram {
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
 
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async redemptionVaultWithdraw(params: {
@@ -317,11 +289,7 @@ export class OnreProgram {
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
 
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async initializePermissionlessAuthority(params: { accountName: string }) {
@@ -338,11 +306,7 @@ export class OnreProgram {
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
 
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async transferMintAuthorityToBoss(params: { mint: PublicKey, signer?: Keypair, tokenProgram?: PublicKey }) {
@@ -353,33 +317,21 @@ export class OnreProgram {
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
 
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async addAdmin(params: { admin: PublicKey, signer?: Keypair }) {
         const tx = this.program.methods
             .addAdmin(params.admin);
 
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async removeAdmin(params: { admin: PublicKey, signer?: Keypair }) {
         const tx = this.program.methods
             .removeAdmin(params.admin);
 
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async proposeBoss(params: { newBoss: PublicKey, signer?: Keypair }) {
@@ -389,11 +341,7 @@ export class OnreProgram {
                 boss: params.signer ? params.signer.publicKey : this.testHelper.payer.publicKey
             });
 
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async acceptBoss(params: { newBoss: Keypair }) {
@@ -414,11 +362,7 @@ export class OnreProgram {
                 signer: params.signer ? params.signer.publicKey : this.testHelper.payer.publicKey
             });
 
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async setOnycMint(params: { onycMint: PublicKey, signer?: Keypair }) {
@@ -428,11 +372,7 @@ export class OnreProgram {
                 onycMint: params.onycMint
             });
 
-        if (params?.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params?.signer);
     }
 
     async setRedemptionAdmin(params: { redemptionAdmin: PublicKey, signer?: Keypair }) {
@@ -440,9 +380,98 @@ export class OnreProgram {
             .setRedemptionAdmin(params.redemptionAdmin)
             .accounts({});
 
-        if (params?.signer) {
-            tx.signers([params.signer]);
-        }
+        await this.rpcWithOptionalSigner(tx, params?.signer);
+    }
+
+    async initializeCache(params: { onycMint: PublicKey, cacheAdmin: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods
+            .initializeCache(params.cacheAdmin)
+            .accounts({
+                onycMint: params.onycMint,
+                cacheState: this.pdas.cacheStatePda,
+                cacheVaultAuthority: this.pdas.cacheVaultAuthorityPda,
+                cacheVaultOnycAccount: this.getCacheVaultAta(params.onycMint),
+                tokenProgram: TOKEN_PROGRAM_ID,
+            });
+
+        await this.rpcWithOptionalSigner(tx, params.signer);
+    }
+
+    async setCacheAdmin(params: { cacheAdmin: PublicKey, signer?: Keypair }) {
+        const tx = this.program.methods
+            .setCacheAdmin(params.cacheAdmin);
+
+        await this.rpcWithOptionalSigner(tx, params.signer);
+    }
+
+    async setCacheYields(params: { grossYield: number, currentYield: number, signer?: Keypair }) {
+        const tx = this.program.methods
+            .setCacheYields(new BN(params.grossYield), new BN(params.currentYield));
+
+        await this.rpcWithOptionalSigner(tx, params.signer);
+    }
+
+    async updateLowestSupply(params: { onycMint: PublicKey }) {
+        await this.program.methods
+            .updateLowestSupply()
+            .accounts({
+                onycMint: params.onycMint
+            })
+            .rpc();
+    }
+
+    async accrueCache(params: { onycMint: PublicKey, signer?: Keypair }) {
+        const signer = params.signer ?? this.testHelper.payer;
+
+        const tx = this.program.methods
+            .accrueCache()
+            .accounts({
+                cacheAdmin: signer.publicKey,
+                onycMint: params.onycMint,
+                cacheState: this.pdas.cacheStatePda,
+                cacheVaultAuthority: this.pdas.cacheVaultAuthorityPda,
+                cacheVaultOnycAccount: this.getCacheVaultAta(params.onycMint),
+                mintAuthority: this.pdas.mintAuthorityPda,
+                tokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .signers([signer]);
+
+        await tx.rpc();
+    }
+
+    async burnForNavIncrease(params: {
+        tokenInMint: PublicKey;
+        onycMint: PublicKey;
+        assetAdjustmentAmount: number;
+        targetNav: number;
+        signer?: Keypair;
+    }) {
+        const signer = params.signer ?? this.testHelper.payer;
+        const offerPda = PublicKey.findProgramAddressSync(
+            [Buffer.from("offer"), params.tokenInMint.toBuffer(), params.onycMint.toBuffer()],
+            ONREAPP_PROGRAM_ID
+        )[0];
+
+        const tx = this.program.methods
+            .burnForNavIncrease(
+                new BN(params.assetAdjustmentAmount),
+                new BN(params.targetNav)
+            )
+            .accounts({
+                state: this.pdas.statePda,
+                boss: signer.publicKey,
+                offer: offerPda,
+                tokenInMint: params.tokenInMint,
+                onycMint: params.onycMint,
+                cacheState: this.pdas.cacheStatePda,
+                offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
+                vaultTokenOutAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
+                cacheVaultAuthority: this.pdas.cacheVaultAuthorityPda,
+                cacheVaultOnycAccount: this.getCacheVaultAta(params.onycMint),
+                tokenProgram: TOKEN_PROGRAM_ID,
+            });
+
+        tx.signers([signer]);
 
         await tx.rpc();
     }
@@ -467,11 +496,7 @@ export class OnreProgram {
                 signer: params.signer ? params.signer.publicKey : this.testHelper.payer.publicKey
             });
 
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async updateRedemptionOfferFee(params: {
@@ -486,11 +511,7 @@ export class OnreProgram {
                 boss: params.signer ? params.signer.publicKey : this.testHelper.payer.publicKey
             });
 
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async mintTo(params: { amount: number, signer?: Keypair }) {
@@ -500,22 +521,14 @@ export class OnreProgram {
                 tokenProgram: TOKEN_PROGRAM_ID
             });
 
-        if (params?.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params?.signer);
     }
 
     async configureMaxSupply(params: { maxSupply: number, signer?: Keypair }) {
         const tx = this.program.methods
             .configureMaxSupply(new BN(params.maxSupply));
 
-        if (params?.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params?.signer);
     }
 
     async closeState(params?: { signer?: Keypair }) {
@@ -524,11 +537,7 @@ export class OnreProgram {
                 state: this.pdas.statePda
             });
 
-        if (params?.signer) {
-            tx.signers([params.signer]);
-        }
-
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params?.signer);
     }
 
     async getNAV(params: { tokenInMint: PublicKey, tokenOutMint: PublicKey }): Promise<number> {
@@ -729,6 +738,19 @@ export class OnreProgram {
         return await this.program.account.state.fetch(this.pdas.statePda);
     }
 
+    async getCacheState() {
+        return await this.program.account.cacheState.fetch(this.pdas.cacheStatePda);
+    }
+
+    getCacheVaultAta(onycMint: PublicKey) {
+        return getAssociatedTokenAddressSync(
+            onycMint,
+            this.pdas.cacheVaultAuthorityPda,
+            true,
+            TOKEN_PROGRAM_ID
+        );
+    }
+
     async getPermissionlessAuthority() {
         return await this.program.account.permissionlessAuthority.fetch(this.pdas.permissionlessAuthorityPda);
     }
@@ -743,20 +765,12 @@ export class OnreProgram {
 
     async addApprover(params: { trusted: PublicKey, signer?: Keypair }) {
         const tx = this.program.methods.addApprover(params.trusted);
-
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async removeApprover(params: { approver: PublicKey, signer?: Keypair }) {
         const tx = this.program.methods.removeApprover(params.approver);
-
-        if (params.signer) {
-            tx.signers([params.signer]);
-        }
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async createRedemptionRequest(params: {
