@@ -8635,6 +8635,13 @@ export type Onreapp = {
             "type": "u64"
           },
           {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed for account derivation"
+            ],
+            "type": "u8"
+          },
+          {
             "name": "fulfilledAmount",
             "docs": [
               "Amount of token_in tokens that have already been fulfilled (partial fulfillment tracking)",
@@ -8644,13 +8651,6 @@ export type Onreapp = {
               "remaining = amount - fulfilled_amount is still locked in the redemption vault."
             ],
             "type": "u64"
-          },
-          {
-            "name": "bump",
-            "docs": [
-              "PDA bump seed for account derivation"
-            ],
-            "type": "u8"
           },
           {
             "name": "reserved",

@@ -8629,6 +8629,13 @@
             "type": "u64"
           },
           {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed for account derivation"
+            ],
+            "type": "u8"
+          },
+          {
             "name": "fulfilled_amount",
             "docs": [
               "Amount of token_in tokens that have already been fulfilled (partial fulfillment tracking)",
@@ -8638,13 +8645,6 @@
               "remaining = amount - fulfilled_amount is still locked in the redemption vault."
             ],
             "type": "u64"
-          },
-          {
-            "name": "bump",
-            "docs": [
-              "PDA bump seed for account derivation"
-            ],
-            "type": "u8"
           },
           {
             "name": "reserved",

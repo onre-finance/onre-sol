@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 
+use anchor_lang::AccountDeserialize;
 use litesvm::LiteSVM;
+use onreapp::instructions::RedemptionRequest;
 use solana_sdk::{
     account::Account,
     clock::Clock,
@@ -16,16 +18,14 @@ use std::convert::TryInto;
 // ---------------------------------------------------------------------------
 // Program IDs
 // ---------------------------------------------------------------------------
-pub const PROGRAM_ID: Pubkey =
-    solana_sdk::pubkey!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
+pub const PROGRAM_ID: Pubkey = solana_sdk::pubkey!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
 pub const TOKEN_PROGRAM_ID: Pubkey =
     solana_sdk::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 pub const TOKEN_2022_PROGRAM_ID: Pubkey =
     solana_sdk::pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 pub const ATA_PROGRAM_ID: Pubkey =
     solana_sdk::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
-pub const SYSTEM_PROGRAM_ID: Pubkey =
-    solana_sdk::pubkey!("11111111111111111111111111111111");
+pub const SYSTEM_PROGRAM_ID: Pubkey = solana_sdk::pubkey!("11111111111111111111111111111111");
 pub const BPF_UPGRADEABLE_LOADER_ID: Pubkey =
     solana_sdk::pubkey!("BPFLoaderUpgradeab1e11111111111111111111111");
 pub const ED25519_PROGRAM_ID: Pubkey =
@@ -266,7 +266,7 @@ pub fn create_mint(
     let mut mint_data = vec![0u8; 82];
     // [0..4]:   mint_authority COption tag
     mint_data[0..4].copy_from_slice(&1u32.to_le_bytes()); // Some
-    // [4..36]:  mint_authority Pubkey
+                                                          // [4..36]:  mint_authority Pubkey
     mint_data[4..36].copy_from_slice(mint_authority.as_ref());
     // [36..44]: supply = 0 (already zero)
     // [44]:     decimals
@@ -275,7 +275,7 @@ pub fn create_mint(
     mint_data[45] = 1;
     // [46..50]: freeze_authority COption tag
     mint_data[46..50].copy_from_slice(&1u32.to_le_bytes()); // Some
-    // [50..82]: freeze_authority Pubkey
+                                                            // [50..82]: freeze_authority Pubkey
     mint_data[50..82].copy_from_slice(mint_authority.as_ref());
 
     svm.set_account(
@@ -415,19 +415,19 @@ pub fn create_mint_2022_with_transfer_fee(
     // [82..165] = zero padding (already zero)
     // AccountType at BASE_ACCOUNT_LENGTH (165)
     mint_data[165] = 1; // AccountType::Mint
-    // Extension header [166..170]
+                        // Extension header [166..170]
     mint_data[166..168].copy_from_slice(&1u16.to_le_bytes()); // ExtensionType = TransferFeeConfig
     mint_data[168..170].copy_from_slice(&108u16.to_le_bytes()); // Length = 108
-    // TransferFeeConfig body [170..278]
+                                                                // TransferFeeConfig body [170..278]
     mint_data[170..202].copy_from_slice(mint_authority.as_ref()); // transfer_fee_config_authority
     mint_data[202..234].copy_from_slice(mint_authority.as_ref()); // withdraw_withheld_authority
-    // withheld_amount [234..242] = 0
-    // older_transfer_fee
-    // epoch [242..250] = 0
+                                                                  // withheld_amount [234..242] = 0
+                                                                  // older_transfer_fee
+                                                                  // epoch [242..250] = 0
     mint_data[250..258].copy_from_slice(&max_fee.to_le_bytes()); // maximum_fee
     mint_data[258..260].copy_from_slice(&fee_basis_points.to_le_bytes()); // transfer_fee_basis_points
-    // newer_transfer_fee
-    // epoch [260..268] = 0
+                                                                          // newer_transfer_fee
+                                                                          // epoch [260..268] = 0
     mint_data[268..276].copy_from_slice(&max_fee.to_le_bytes()); // maximum_fee
     mint_data[276..278].copy_from_slice(&fee_basis_points.to_le_bytes()); // transfer_fee_basis_points
 
@@ -784,27 +784,27 @@ pub fn build_take_offer_permissionless_ix(
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
-            AccountMeta::new(offer_pda, false),                          // offer
-            AccountMeta::new_readonly(state_pda, false),                 // state
-            AccountMeta::new_readonly(*boss, false),                     // boss
-            AccountMeta::new_readonly(vault_authority_pda, false),       // vault_authority
-            AccountMeta::new(vault_token_in_ata, false),                 // vault_token_in_account
-            AccountMeta::new(vault_token_out_ata, false),                // vault_token_out_account
+            AccountMeta::new(offer_pda, false),                    // offer
+            AccountMeta::new_readonly(state_pda, false),           // state
+            AccountMeta::new_readonly(*boss, false),               // boss
+            AccountMeta::new_readonly(vault_authority_pda, false), // vault_authority
+            AccountMeta::new(vault_token_in_ata, false),           // vault_token_in_account
+            AccountMeta::new(vault_token_out_ata, false),          // vault_token_out_account
             AccountMeta::new_readonly(permissionless_authority_pda, false), // permissionless_authority
-            AccountMeta::new(permissionless_token_in_ata, false),        // permissionless_token_in_account
-            AccountMeta::new(permissionless_token_out_ata, false),       // permissionless_token_out_account
-            AccountMeta::new(*token_in_mint, false),                     // token_in_mint
-            AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),          // token_in_program
-            AccountMeta::new(*token_out_mint, false),                    // token_out_mint
-            AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),          // token_out_program
-            AccountMeta::new(user_token_in_ata, false),                  // user_token_in_account
-            AccountMeta::new(user_token_out_ata, false),                 // user_token_out_account
-            AccountMeta::new(boss_token_in_ata, false),                  // boss_token_in_account
-            AccountMeta::new_readonly(mint_authority_pda, false),        // mint_authority
-            AccountMeta::new_readonly(SYSVAR_INSTRUCTIONS_ID, false),    // instructions_sysvar
-            AccountMeta::new(*user, true),                               // user (signer)
-            AccountMeta::new_readonly(ATA_PROGRAM_ID, false),            // associated_token_program
-            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),         // system_program
+            AccountMeta::new(permissionless_token_in_ata, false), // permissionless_token_in_account
+            AccountMeta::new(permissionless_token_out_ata, false), // permissionless_token_out_account
+            AccountMeta::new(*token_in_mint, false),               // token_in_mint
+            AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),    // token_in_program
+            AccountMeta::new(*token_out_mint, false),              // token_out_mint
+            AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),    // token_out_program
+            AccountMeta::new(user_token_in_ata, false),            // user_token_in_account
+            AccountMeta::new(user_token_out_ata, false),           // user_token_out_account
+            AccountMeta::new(boss_token_in_ata, false),            // boss_token_in_account
+            AccountMeta::new_readonly(mint_authority_pda, false),  // mint_authority
+            AccountMeta::new_readonly(SYSVAR_INSTRUCTIONS_ID, false), // instructions_sysvar
+            AccountMeta::new(*user, true),                         // user (signer)
+            AccountMeta::new_readonly(ATA_PROGRAM_ID, false),      // associated_token_program
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),   // system_program
         ],
         data,
     }
@@ -858,7 +858,7 @@ pub fn build_ed25519_verify_ix(approver: &Keypair, message: &[u8]) -> Instructio
     data.extend_from_slice(&message_data_offset.to_le_bytes());
     data.extend_from_slice(&message_data_size.to_le_bytes());
     data.extend_from_slice(&u16::MAX.to_le_bytes()); // message_instruction_index
-    // Pubkey
+                                                     // Pubkey
     data.extend_from_slice(&pubkey_bytes);
     // Signature
     data.extend_from_slice(&sig_bytes);
@@ -1233,14 +1233,22 @@ pub const REDEMPTION_REQUEST_SEED: &[u8] = b"redemption_request";
 
 pub fn find_redemption_offer_pda(token_in_mint: &Pubkey, token_out_mint: &Pubkey) -> (Pubkey, u8) {
     Pubkey::find_program_address(
-        &[REDEMPTION_OFFER_SEED, token_in_mint.as_ref(), token_out_mint.as_ref()],
+        &[
+            REDEMPTION_OFFER_SEED,
+            token_in_mint.as_ref(),
+            token_out_mint.as_ref(),
+        ],
         &PROGRAM_ID,
     )
 }
 
 pub fn find_redemption_request_pda(redemption_offer: &Pubkey, counter: u64) -> (Pubkey, u8) {
     Pubkey::find_program_address(
-        &[REDEMPTION_REQUEST_SEED, redemption_offer.as_ref(), &counter.to_le_bytes()],
+        &[
+            REDEMPTION_REQUEST_SEED,
+            redemption_offer.as_ref(),
+            &counter.to_le_bytes(),
+        ],
         &PROGRAM_ID,
     )
 }
@@ -1341,10 +1349,7 @@ pub fn build_redemption_vault_withdraw_ix(
 // ---------------------------------------------------------------------------
 // Mint authority instruction builders
 // ---------------------------------------------------------------------------
-pub fn build_transfer_mint_authority_to_program_ix(
-    boss: &Pubkey,
-    mint: &Pubkey,
-) -> Instruction {
+pub fn build_transfer_mint_authority_to_program_ix(boss: &Pubkey, mint: &Pubkey) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
 
@@ -1363,10 +1368,7 @@ pub fn build_transfer_mint_authority_to_program_ix(
     }
 }
 
-pub fn build_transfer_mint_authority_to_boss_ix(
-    boss: &Pubkey,
-    mint: &Pubkey,
-) -> Instruction {
+pub fn build_transfer_mint_authority_to_boss_ix(boss: &Pubkey, mint: &Pubkey) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
 
@@ -1385,11 +1387,7 @@ pub fn build_transfer_mint_authority_to_boss_ix(
     }
 }
 
-pub fn build_mint_to_ix(
-    boss: &Pubkey,
-    onyc_mint: &Pubkey,
-    amount: u64,
-) -> Instruction {
+pub fn build_mint_to_ix(boss: &Pubkey, onyc_mint: &Pubkey, amount: u64) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let boss_onyc_ata = get_associated_token_address(boss, onyc_mint);
@@ -1416,10 +1414,7 @@ pub fn build_mint_to_ix(
 // ---------------------------------------------------------------------------
 // Market info instruction builders
 // ---------------------------------------------------------------------------
-pub fn build_get_nav_ix(
-    token_in_mint: &Pubkey,
-    token_out_mint: &Pubkey,
-) -> Instruction {
+pub fn build_get_nav_ix(token_in_mint: &Pubkey, token_out_mint: &Pubkey) -> Instruction {
     let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
 
     let data = ix_discriminator("get_nav").to_vec();
@@ -1435,10 +1430,7 @@ pub fn build_get_nav_ix(
     }
 }
 
-pub fn build_get_apy_ix(
-    token_in_mint: &Pubkey,
-    token_out_mint: &Pubkey,
-) -> Instruction {
+pub fn build_get_apy_ix(token_in_mint: &Pubkey, token_out_mint: &Pubkey) -> Instruction {
     let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
 
     let data = ix_discriminator("get_apy").to_vec();
@@ -1454,10 +1446,7 @@ pub fn build_get_apy_ix(
     }
 }
 
-pub fn build_get_nav_adjustment_ix(
-    token_in_mint: &Pubkey,
-    token_out_mint: &Pubkey,
-) -> Instruction {
+pub fn build_get_nav_adjustment_ix(token_in_mint: &Pubkey, token_out_mint: &Pubkey) -> Instruction {
     let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
 
     let data = ix_discriminator("get_nav_adjustment").to_vec();
@@ -1473,10 +1462,7 @@ pub fn build_get_nav_adjustment_ix(
     }
 }
 
-pub fn build_get_tvl_ix(
-    token_in_mint: &Pubkey,
-    token_out_mint: &Pubkey,
-) -> Instruction {
+pub fn build_get_tvl_ix(token_in_mint: &Pubkey, token_out_mint: &Pubkey) -> Instruction {
     let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
     let (vault_authority_pda, _) = find_offer_vault_authority_pda();
     let vault_token_out_ata = get_associated_token_address(&vault_authority_pda, token_out_mint);
@@ -1497,9 +1483,7 @@ pub fn build_get_tvl_ix(
     }
 }
 
-pub fn build_get_circulating_supply_ix(
-    onyc_mint: &Pubkey,
-) -> Instruction {
+pub fn build_get_circulating_supply_ix(onyc_mint: &Pubkey) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (vault_authority_pda, _) = find_offer_vault_authority_pda();
     let onyc_vault_ata = get_associated_token_address(&vault_authority_pda, onyc_mint);
@@ -1581,8 +1565,10 @@ pub fn build_make_redemption_offer_ix(
     let (offer_pda, _) = find_offer_pda(token_out_mint, token_in_mint);
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
     let (redemption_offer_pda, _) = find_redemption_offer_pda(token_in_mint, token_out_mint);
-    let vault_token_in_ata = get_associated_token_address(&redemption_vault_authority_pda, token_in_mint);
-    let vault_token_out_ata = get_associated_token_address(&redemption_vault_authority_pda, token_out_mint);
+    let vault_token_in_ata =
+        get_associated_token_address(&redemption_vault_authority_pda, token_in_mint);
+    let vault_token_out_ata =
+        get_associated_token_address(&redemption_vault_authority_pda, token_out_mint);
 
     let mut data = ix_discriminator("make_redemption_offer").to_vec();
     data.extend_from_slice(&fee_basis_points.to_le_bytes());
@@ -1620,7 +1606,8 @@ pub fn build_create_redemption_request_ix(
     let (redemption_request_pda, _) = find_redemption_request_pda(&redemption_offer_pda, counter);
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
     let redeemer_token_ata = get_associated_token_address(redeemer, token_in_mint);
-    let vault_token_ata = get_associated_token_address(&redemption_vault_authority_pda, token_in_mint);
+    let vault_token_ata =
+        get_associated_token_address(&redemption_vault_authority_pda, token_in_mint);
 
     let mut data = ix_discriminator("create_redemption_request").to_vec();
     data.extend_from_slice(&amount.to_le_bytes());
@@ -1654,10 +1641,12 @@ pub fn build_cancel_redemption_request_ix(
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (redemption_offer_pda, _) = find_redemption_offer_pda(token_in_mint, token_out_mint);
-    let (redemption_request_pda, _) = find_redemption_request_pda(&redemption_offer_pda, request_id);
+    let (redemption_request_pda, _) =
+        find_redemption_request_pda(&redemption_offer_pda, request_id);
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
     let redeemer_token_ata = get_associated_token_address(redeemer, token_in_mint);
-    let vault_token_ata = get_associated_token_address(&redemption_vault_authority_pda, token_in_mint);
+    let vault_token_ata =
+        get_associated_token_address(&redemption_vault_authority_pda, token_in_mint);
 
     let data = ix_discriminator("cancel_redemption_request").to_vec();
 
@@ -1695,11 +1684,14 @@ pub fn build_fulfill_redemption_request_ix(
     // Original offer has reversed mints
     let (offer_pda, _) = find_offer_pda(token_out_mint, token_in_mint);
     let (redemption_offer_pda, _) = find_redemption_offer_pda(token_in_mint, token_out_mint);
-    let (redemption_request_pda, _) = find_redemption_request_pda(&redemption_offer_pda, request_id);
+    let (redemption_request_pda, _) =
+        find_redemption_request_pda(&redemption_offer_pda, request_id);
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
-    let vault_token_in_ata = get_associated_token_address(&redemption_vault_authority_pda, token_in_mint);
-    let vault_token_out_ata = get_associated_token_address(&redemption_vault_authority_pda, token_out_mint);
+    let vault_token_in_ata =
+        get_associated_token_address(&redemption_vault_authority_pda, token_in_mint);
+    let vault_token_out_ata =
+        get_associated_token_address(&redemption_vault_authority_pda, token_out_mint);
     let user_token_out_ata = get_associated_token_address(redeemer, token_out_mint);
     let boss_token_in_ata = get_associated_token_address(boss, token_in_mint);
 
@@ -1855,7 +1847,9 @@ pub fn read_redemption_request(
     request_id: u64,
 ) -> RedemptionRequestData {
     let (pda, _) = find_redemption_request_pda(redemption_offer, request_id);
-    let account = svm.get_account(&pda).expect("redemption request account not found");
+    let account = svm
+        .get_account(&pda)
+        .expect("redemption request account not found");
     let mut data: &[u8] = &account.data;
     let request = RedemptionRequest::try_deserialize(&mut data)
         .expect("Failed to deserialize RedemptionRequest");
@@ -1868,6 +1862,7 @@ pub fn read_redemption_request(
         fulfilled_amount: request.fulfilled_amount,
         bump: request.bump,
     }
+}
 
 // ---------------------------------------------------------------------------
 // Token-2022 instruction builder variants
@@ -1987,10 +1982,16 @@ pub fn build_take_offer_permissionless_ix_with_programs(
 
     let vault_token_in_ata = derive_ata(&vault_authority_pda, token_in_mint, token_in_program);
     let vault_token_out_ata = derive_ata(&vault_authority_pda, token_out_mint, token_out_program);
-    let permissionless_token_in_ata =
-        derive_ata(&permissionless_authority_pda, token_in_mint, token_in_program);
-    let permissionless_token_out_ata =
-        derive_ata(&permissionless_authority_pda, token_out_mint, token_out_program);
+    let permissionless_token_in_ata = derive_ata(
+        &permissionless_authority_pda,
+        token_in_mint,
+        token_in_program,
+    );
+    let permissionless_token_out_ata = derive_ata(
+        &permissionless_authority_pda,
+        token_out_mint,
+        token_out_program,
+    );
     let user_token_in_ata = derive_ata(user, token_in_mint, token_in_program);
     let user_token_out_ata = derive_ata(user, token_out_mint, token_out_program);
     let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
@@ -2247,10 +2248,16 @@ pub fn build_make_redemption_offer_ix_with_programs(
     let (offer_pda, _) = find_offer_pda(token_out_mint, token_in_mint);
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
     let (redemption_offer_pda, _) = find_redemption_offer_pda(token_in_mint, token_out_mint);
-    let vault_token_in_ata =
-        derive_ata(&redemption_vault_authority_pda, token_in_mint, token_in_program);
-    let vault_token_out_ata =
-        derive_ata(&redemption_vault_authority_pda, token_out_mint, token_out_program);
+    let vault_token_in_ata = derive_ata(
+        &redemption_vault_authority_pda,
+        token_in_mint,
+        token_in_program,
+    );
+    let vault_token_out_ata = derive_ata(
+        &redemption_vault_authority_pda,
+        token_out_mint,
+        token_out_program,
+    );
 
     let mut data = ix_discriminator("make_redemption_offer").to_vec();
     data.extend_from_slice(&fee_basis_points.to_le_bytes());
@@ -2286,12 +2293,14 @@ pub fn build_create_redemption_request_ix_with_token_program(
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (redemption_offer_pda, _) = find_redemption_offer_pda(token_in_mint, token_out_mint);
-    let (redemption_request_pda, _) =
-        find_redemption_request_pda(&redemption_offer_pda, counter);
+    let (redemption_request_pda, _) = find_redemption_request_pda(&redemption_offer_pda, counter);
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
     let redeemer_token_ata = derive_ata(redeemer, token_in_mint, token_program);
-    let vault_token_ata =
-        derive_ata(&redemption_vault_authority_pda, token_in_mint, token_program);
+    let vault_token_ata = derive_ata(
+        &redemption_vault_authority_pda,
+        token_in_mint,
+        token_program,
+    );
 
     let mut data = ix_discriminator("create_redemption_request").to_vec();
     data.extend_from_slice(&amount.to_le_bytes());
@@ -2333,10 +2342,16 @@ pub fn build_fulfill_redemption_request_ix_with_programs(
         find_redemption_request_pda(&redemption_offer_pda, request_id);
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
-    let vault_token_in_ata =
-        derive_ata(&redemption_vault_authority_pda, token_in_mint, token_in_program);
-    let vault_token_out_ata =
-        derive_ata(&redemption_vault_authority_pda, token_out_mint, token_out_program);
+    let vault_token_in_ata = derive_ata(
+        &redemption_vault_authority_pda,
+        token_in_mint,
+        token_in_program,
+    );
+    let vault_token_out_ata = derive_ata(
+        &redemption_vault_authority_pda,
+        token_out_mint,
+        token_out_program,
+    );
     let user_token_out_ata = derive_ata(redeemer, token_out_mint, token_out_program);
     let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
 
