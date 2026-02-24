@@ -46,14 +46,14 @@ pub struct RedemptionRequest {
     pub redeemer: Pubkey,
     /// Amount of token_in tokens requested for redemption
     pub amount: u64,
+    /// PDA bump seed for account derivation
+    pub bump: u8,
     /// Amount of token_in tokens that have already been fulfilled (partial fulfillment tracking)
     ///
     /// Starts at 0. Incremented by each partial or full fulfillment call.
     /// When fulfilled_amount == amount the request is fully settled and the account is closed.
     /// remaining = amount - fulfilled_amount is still locked in the redemption vault.
     pub fulfilled_amount: u64,
-    /// PDA bump seed for account derivation
-    pub bump: u8,
     /// Reserved space for future fields
     pub reserved: [u8; 119],
 }
