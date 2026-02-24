@@ -1856,24 +1856,18 @@ pub fn read_redemption_request(
 ) -> RedemptionRequestData {
     let (pda, _) = find_redemption_request_pda(redemption_offer, request_id);
     let account = svm.get_account(&pda).expect("redemption request account not found");
-    let data = &account.data;
+    let mut data: &[u8] = &account.data;
+    let request = RedemptionRequest::try_deserialize(&mut data)
+        .expect("Failed to deserialize RedemptionRequest");
 
-    let mut offset = 8; // skip anchor discriminator
-
-    let offer = Pubkey::try_from(&data[offset..offset + 32]).unwrap();
-    offset += 32;
-    let rid = u64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
-    offset += 8;
-    let redeemer = Pubkey::try_from(&data[offset..offset + 32]).unwrap();
-    offset += 32;
-    let amount = u64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
-    offset += 8;
-    let fulfilled_amount = u64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
-    offset += 8;
-    let bump = data[offset];
-
-    RedemptionRequestData { offer, request_id: rid, redeemer, amount, fulfilled_amount, bump }
-}
+    RedemptionRequestData {
+        offer: request.offer,
+        request_id: request.request_id,
+        redeemer: request.redeemer,
+        amount: request.amount,
+        fulfilled_amount: request.fulfilled_amount,
+        bump: request.bump,
+    }
 
 // ---------------------------------------------------------------------------
 // Token-2022 instruction builder variants
