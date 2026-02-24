@@ -26,6 +26,12 @@ pub mod seeds {
 
     /// Seed for the user nonce account
     pub const NONCE_ACCOUNT: &[u8] = b"nonce_account";
+
+    /// Seed for the CACHE pool state account
+    pub const CACHE_STATE: &[u8] = b"cache_state";
+
+    /// Seed for the CACHE vault authority account
+    pub const CACHE_VAULT_AUTHORITY: &[u8] = b"cache_vault_authority";
 }
 
 /// Maximum number of pricing vectors allowed per offer
