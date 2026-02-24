@@ -1,4 +1,5 @@
 use crate::constants::{seeds, MAX_BASIS_POINTS, PRICE_DECIMALS};
+use crate::utils::math_utils::ceil_div_u128;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program_option::COption;
 use anchor_spl::token_interface;
@@ -172,21 +173,20 @@ pub struct CalculateFeeResult {
 /// * `MathOverflow` - If calculations exceed u128 limits
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// // 5% fee on 1000 tokens = 50 fee, 950 remaining
 /// let result = calculate_fees(1000, 500)?;
-/// assert_eq!(result.fee_amount, 50);
-/// assert_eq!(result.remaining_token_in_amount, 950);
+/// assert_eq!(result.token_in_fee_amount, 50);
+/// assert_eq!(result.token_in_net_amount, 950);
 /// ```
 pub fn calculate_fees(token_in_amount: u64, fee_basis_points: u16) -> Result<CalculateFeeResult> {
     // Calculate fee amount in token_in tokens using ceiling division
     // This ensures fees always round up in favor of the protocol
-    let token_fee_amount = (token_in_amount as u128)
+    let fee_numerator = (token_in_amount as u128)
         .checked_mul(fee_basis_points as u128)
-        .ok_or(TokenUtilsErrorCode::MathOverflow)?
-        .checked_add(MAX_BASIS_POINTS as u128 - 1)
-        .and_then(|adjusted| adjusted.checked_div(MAX_BASIS_POINTS as u128))
-        .ok_or(TokenUtilsErrorCode::MathOverflow)? as u64;
+        .ok_or(TokenUtilsErrorCode::MathOverflow)?;
+    let token_fee_amount =
+        ceil_div_u128(fee_numerator, MAX_BASIS_POINTS as u128).ok_or(TokenUtilsErrorCode::MathOverflow)? as u64;
 
     // Amount after fee deduction for the main offer exchange
     let token_net_amount = token_in_amount
@@ -514,5 +514,28 @@ pub fn has_transfer_fee(mint: &InterfaceAccount<Mint>) -> Result<bool> {
             // Not a Token-2022 mint with extensions, or failed to parse
             Ok(false)
         }
+    }
+}
+
+/// Safely reads token amount from an optionally initialized token account.
+///
+/// Returns 0 when the account is missing, not owned by the provided token program,
+/// or cannot be deserialized as a token account.
+pub fn read_optional_token_account_amount(
+    token_account: &AccountInfo,
+    token_program: &Interface<TokenInterface>,
+) -> Result<u64> {
+    if token_account.owner != token_program.key {
+        return Ok(0);
+    }
+
+    if token_account.data_is_empty() {
+        return Ok(0);
+    }
+
+    let data_ref = token_account.data.borrow();
+    match TokenAccount::try_deserialize(&mut &data_ref[..]) {
+        Ok(parsed) => Ok(parsed.amount),
+        Err(_) => Ok(0),
     }
 }

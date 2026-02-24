@@ -3,6 +3,7 @@ pub mod get_circulating_supply;
 pub mod get_nav;
 pub mod get_nav_adjustment;
 pub mod get_tvl;
+pub mod offer_valuation_utils;
 
 pub use get_apy::*;
 pub use get_circulating_supply::*;
