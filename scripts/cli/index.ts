@@ -22,6 +22,7 @@ async function main() {
         registerMintAuthorityCommands,
         registerRedemptionCommands,
         registerInitCommands,
+        registerCacheCommands,
     } = await import("./commands/index.js");
 
     // Create the main program
@@ -57,6 +58,9 @@ async function main() {
 
     const initCmd = program.command("init").description("Initialize program and authorities");
     registerInitCommands(initCmd);
+
+    const cacheCmd = program.command("cache").description("CACHE pool operations");
+    registerCacheCommands(cacheCmd);
 
     // Add help examples
     program.addHelpText(

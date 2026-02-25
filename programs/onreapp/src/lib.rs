@@ -102,7 +102,10 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `RedemptionVaultDeposit`.
     /// - `amount`: Amount of tokens to deposit.
-    pub fn redemption_vault_deposit(ctx: Context<RedemptionVaultDeposit>, amount: u64) -> Result<()> {
+    pub fn redemption_vault_deposit(
+        ctx: Context<RedemptionVaultDeposit>,
+        amount: u64,
+    ) -> Result<()> {
         vault_operations::redemption_vault_deposit(ctx, amount)
     }
 
@@ -116,7 +119,10 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `RedemptionVaultWithdraw`.
     /// - `amount`: Amount of tokens to withdraw.
-    pub fn redemption_vault_withdraw(ctx: Context<RedemptionVaultWithdraw>, amount: u64) -> Result<()> {
+    pub fn redemption_vault_withdraw(
+        ctx: Context<RedemptionVaultWithdraw>,
+        amount: u64,
+    ) -> Result<()> {
         vault_operations::redemption_vault_withdraw(ctx, amount)
     }
 
@@ -378,6 +384,57 @@ pub mod onreapp {
         new_redemption_admin: Pubkey,
     ) -> Result<()> {
         state_operations::set_redemption_admin(ctx, new_redemption_admin)
+    }
+
+    /// Initializes the standalone CACHE pool state and vault accounts.
+    ///
+    /// Creates CACHE state as a separate PDA so existing offer/redemption state
+    /// remains unchanged. Only the boss can initialize CACHE.
+    pub fn initialize_cache(ctx: Context<InitializeCache>, cache_admin: Pubkey) -> Result<()> {
+        cache::initialize_cache(ctx, cache_admin)
+    }
+
+    /// Sets the CACHE admin authorized to call accrual.
+    ///
+    /// Only the boss can update the CACHE admin.
+    pub fn set_cache_admin(ctx: Context<SetCacheAdmin>, new_cache_admin: Pubkey) -> Result<()> {
+        cache::set_cache_admin(ctx, new_cache_admin)
+    }
+
+    /// Sets CACHE gross and current yield parameters.
+    ///
+    /// Only the boss can update these values.
+    pub fn set_cache_yields(
+        ctx: Context<SetCacheYields>,
+        gross_yield: u64,
+        current_yield: u64,
+    ) -> Result<()> {
+        cache::set_cache_yields(ctx, gross_yield, current_yield)
+    }
+
+    /// Updates the lowest observed ONyc supply in CACHE state.
+    ///
+    /// This instruction is permissionless.
+    pub fn update_lowest_supply(ctx: Context<UpdateLowestSupply>) -> Result<()> {
+        cache::update_lowest_supply(ctx)
+    }
+
+    /// Accrues CACHE spread and mints ONyc to the CACHE vault account.
+    ///
+    /// Callable by cache_admin only.
+    pub fn accrue_cache(ctx: Context<AccrueCache>) -> Result<()> {
+        cache::accrue_cache(ctx)
+    }
+
+    /// Burns ONyc from CACHE vault to increase NAV according to provided target inputs.
+    ///
+    /// Callable by boss only.
+    pub fn burn_for_nav_increase(
+        ctx: Context<BurnForNavIncrease>,
+        asset_adjustment_amount: u64,
+        target_nav: u64,
+    ) -> Result<()> {
+        cache::burn_for_nav_increase(ctx, asset_adjustment_amount, target_nav)
     }
 
     /// Mints ONyc tokens to the boss's account.

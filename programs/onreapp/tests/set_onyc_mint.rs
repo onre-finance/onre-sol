@@ -29,7 +29,10 @@ fn test_non_boss_cannot_update_onyc_mint() {
     let new_mint = create_mint(&mut svm, &payer, 9, &boss);
     let ix = build_set_onyc_mint_ix(&non_boss.pubkey(), &new_mint);
     let result = send_tx(&mut svm, &[ix], &[&non_boss]);
-    assert!(result.is_err(), "non-boss should not be able to update onyc mint");
+    assert!(
+        result.is_err(),
+        "non-boss should not be able to update onyc mint"
+    );
 }
 
 #[test]
@@ -119,7 +122,10 @@ fn test_set_onyc_mint_state_size_consistent() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let state_size_after = svm.get_account(&state_pda).unwrap().data.len();
-    assert_eq!(state_size_before, state_size_after, "state account size should not change");
+    assert_eq!(
+        state_size_before, state_size_after,
+        "state account size should not change"
+    );
 }
 
 // ===========================================================================

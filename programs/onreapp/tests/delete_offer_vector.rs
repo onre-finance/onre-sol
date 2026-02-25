@@ -4,19 +4,6 @@ use common::*;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
 
-fn setup_offer_with_mints() -> (litesvm::LiteSVM, Keypair, solana_sdk::pubkey::Pubkey, solana_sdk::pubkey::Pubkey) {
-    let (mut svm, payer, _) = setup_initialized();
-    let boss = payer.pubkey();
-
-    let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
-
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-
-    (svm, payer, token_in, token_out)
-}
-
 #[test]
 fn test_delete_existing_vector() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_mints();
@@ -24,8 +11,14 @@ fn test_delete_existing_vector() {
     let current_time = get_clock_time(&svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 1000, 1_000_000, 5000, 3600,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 1000,
+        1_000_000,
+        5000,
+        3600,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -88,8 +81,14 @@ fn test_delete_specific_keeps_others() {
 
     for i in 1..=3 {
         let ix = build_add_offer_vector_ix(
-            &boss, &token_in, &token_out,
-            None, current_time + (i * 1000), i as u64 * 1_000_000, 5000, 3600,
+            &boss,
+            &token_in,
+            &token_out,
+            None,
+            current_time + (i * 1000),
+            i as u64 * 1_000_000,
+            5000,
+            3600,
         );
         send_tx(&mut svm, &[ix], &[&payer]).unwrap();
         advance_slot(&mut svm);
@@ -123,17 +122,31 @@ fn test_delete_rejects_non_boss() {
     let current_time = get_clock_time(&svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 1000, 1_000_000, 5000, 3600,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 1000,
+        1_000_000,
+        5000,
+        3600,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let non_boss = Keypair::new();
     svm.airdrop(&non_boss.pubkey(), INITIAL_LAMPORTS).unwrap();
 
-    let ix = build_delete_offer_vector_ix(&non_boss.pubkey(), &token_in, &token_out, current_time + 1000);
+    let ix = build_delete_offer_vector_ix(
+        &non_boss.pubkey(),
+        &token_in,
+        &token_out,
+        current_time + 1000,
+    );
     let result = send_tx(&mut svm, &[ix], &[&non_boss]);
-    assert!(result.is_err(), "non-boss should not be able to delete vector");
+    assert!(
+        result.is_err(),
+        "non-boss should not be able to delete vector"
+    );
 }
 
 #[test]
@@ -143,16 +156,28 @@ fn test_delete_rejects_past_vector() {
     let current_time = get_clock_time(&svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 100, 1_000_000, 5000, 3600,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 100,
+        1_000_000,
+        5000,
+        3600,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     advance_slot(&mut svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 200, 2_000_000, 7500, 3600,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 200,
+        2_000_000,
+        7500,
+        3600,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -172,16 +197,28 @@ fn test_delete_rejects_current_active_vector() {
     let current_time = get_clock_time(&svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 10, 1_000_000, 5000, 3600,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 10,
+        1_000_000,
+        5000,
+        3600,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     advance_slot(&mut svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 20, 2_000_000, 7500, 3600,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 20,
+        2_000_000,
+        7500,
+        3600,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -191,7 +228,10 @@ fn test_delete_rejects_current_active_vector() {
     // Try to delete current active vector - should fail
     let ix = build_delete_offer_vector_ix(&boss, &token_in, &token_out, current_time + 20);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "current active vector deletion should fail");
+    assert!(
+        result.is_err(),
+        "current active vector deletion should fail"
+    );
 }
 
 #[test]
@@ -202,8 +242,14 @@ fn test_delete_allows_future_vector() {
 
     for i in 1..=3 {
         let ix = build_add_offer_vector_ix(
-            &boss, &token_in, &token_out,
-            None, current_time + (i * 10), i as u64 * 1_000_000, 5000, 3600,
+            &boss,
+            &token_in,
+            &token_out,
+            None,
+            current_time + (i * 10),
+            i as u64 * 1_000_000,
+            5000,
+            3600,
         );
         send_tx(&mut svm, &[ix], &[&payer]).unwrap();
         advance_slot(&mut svm);
@@ -231,16 +277,28 @@ fn test_delete_allows_when_all_future() {
     let current_time = get_clock_time(&svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 100, 1_000_000, 5000, 3600,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 100,
+        1_000_000,
+        5000,
+        3600,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     advance_slot(&mut svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 200, 2_000_000, 7500, 3600,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 200,
+        2_000_000,
+        7500,
+        3600,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 

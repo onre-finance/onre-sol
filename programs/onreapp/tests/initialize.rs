@@ -13,17 +13,37 @@ fn test_initialize_succeeds_with_upgrade_authority() {
 
     let ix = build_initialize_ix(&boss, &onyc_mint);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_ok(), "initialize should succeed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "initialize should succeed: {:?}",
+        result.err()
+    );
 
     let state = read_state(&svm);
     assert_eq!(state.boss, boss, "boss should be set to payer");
     assert_eq!(state.onyc_mint, onyc_mint, "onyc_mint should be set");
     assert!(!state.is_killed, "kill switch should be off");
-    assert_eq!(state.proposed_boss, Pubkey::default(), "proposed_boss should be default");
-    assert_eq!(state.approver1, Pubkey::default(), "approver1 should be default");
-    assert_eq!(state.approver2, Pubkey::default(), "approver2 should be default");
+    assert_eq!(
+        state.proposed_boss,
+        Pubkey::default(),
+        "proposed_boss should be default"
+    );
+    assert_eq!(
+        state.approver1,
+        Pubkey::default(),
+        "approver1 should be default"
+    );
+    assert_eq!(
+        state.approver2,
+        Pubkey::default(),
+        "approver2 should be default"
+    );
     assert_eq!(state.max_supply, 0, "max_supply should be 0");
-    assert_eq!(state.redemption_admin, Pubkey::default(), "redemption_admin should be default");
+    assert_eq!(
+        state.redemption_admin,
+        Pubkey::default(),
+        "redemption_admin should be default"
+    );
     assert_eq!(state.active_admins().len(), 0, "no admins initially");
 }
 
@@ -54,8 +74,5 @@ fn test_cannot_initialize_twice() {
     // Try to initialize again
     let ix = build_initialize_ix(&boss, &onyc_mint);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(
-        result.is_err(),
-        "should not be able to initialize twice"
-    );
+    assert!(result.is_err(), "should not be able to initialize twice");
 }

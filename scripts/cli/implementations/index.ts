@@ -60,3 +60,12 @@ export { executeStateMaxSupply } from "./state/state-max-supply";
 export { executeStateSetRedemptionAdmin } from "./state/state-set-redemption-admin";
 export { executeStateClearAdmins } from "./state/state-clear-admins";
 export { executeStateClose } from "./state/state-close";
+
+// Cache implementations
+export { executeCacheGet } from "./cache/cache-get";
+export { executeCacheInitialize } from "./cache/cache-initialize";
+export { executeCacheSetAdmin } from "./cache/cache-set-admin";
+export { executeCacheSetYields } from "./cache/cache-set-yields";
+export { executeCacheUpdateLowestSupply } from "./cache/cache-update-lowest-supply";
+export { executeCacheAccrue } from "./cache/cache-accrue";
+export { executeCacheBurn } from "./cache/cache-burn";

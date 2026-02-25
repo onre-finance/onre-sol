@@ -22,7 +22,10 @@ fn test_transfer_mint_authority_to_program_success() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     // Now the program PDA should be the mint authority
-    assert_eq!(get_mint_authority_pubkey(&svm, &onyc_mint), Some(mint_authority_pda));
+    assert_eq!(
+        get_mint_authority_pubkey(&svm, &onyc_mint),
+        Some(mint_authority_pda)
+    );
 }
 
 #[test]
@@ -34,7 +37,10 @@ fn test_transfer_mint_authority_to_program_rejects_non_boss() {
 
     let ix = build_transfer_mint_authority_to_program_ix(&non_boss.pubkey(), &onyc_mint);
     let result = send_tx(&mut svm, &[ix], &[&non_boss]);
-    assert!(result.is_err(), "non-boss should not transfer mint authority");
+    assert!(
+        result.is_err(),
+        "non-boss should not transfer mint authority"
+    );
 }
 
 #[test]
@@ -66,7 +72,10 @@ fn test_transfer_mint_authority_to_boss_success() {
     advance_slot(&mut svm);
 
     let (mint_authority_pda, _) = find_mint_authority_pda();
-    assert_eq!(get_mint_authority_pubkey(&svm, &onyc_mint), Some(mint_authority_pda));
+    assert_eq!(
+        get_mint_authority_pubkey(&svm, &onyc_mint),
+        Some(mint_authority_pda)
+    );
 
     // Transfer back to boss
     let ix = build_transfer_mint_authority_to_boss_ix(&boss, &onyc_mint);
@@ -89,7 +98,10 @@ fn test_transfer_mint_authority_to_boss_rejects_non_boss() {
 
     let ix = build_transfer_mint_authority_to_boss_ix(&non_boss.pubkey(), &onyc_mint);
     let result = send_tx(&mut svm, &[ix], &[&non_boss]);
-    assert!(result.is_err(), "non-boss should not transfer mint authority back");
+    assert!(
+        result.is_err(),
+        "non-boss should not transfer mint authority back"
+    );
 }
 
 #[test]
@@ -102,7 +114,10 @@ fn test_transfer_mint_authority_to_boss_fails_pda_not_authority() {
 
     let ix = build_transfer_mint_authority_to_boss_ix(&boss, &new_mint);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail when PDA is not the mint authority");
+    assert!(
+        result.is_err(),
+        "should fail when PDA is not the mint authority"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -126,8 +141,14 @@ fn test_multiple_tokens_independent_authority_transfer() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     // Both should be under program PDA
-    assert_eq!(get_mint_authority_pubkey(&svm, &onyc_mint), Some(mint_authority_pda));
-    assert_eq!(get_mint_authority_pubkey(&svm, &token2_mint), Some(mint_authority_pda));
+    assert_eq!(
+        get_mint_authority_pubkey(&svm, &onyc_mint),
+        Some(mint_authority_pda)
+    );
+    assert_eq!(
+        get_mint_authority_pubkey(&svm, &token2_mint),
+        Some(mint_authority_pda)
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -178,7 +199,10 @@ fn test_mint_to_fails_without_program_mint_authority() {
     // Try to mint without transferring mint authority first
     let ix = build_mint_to_ix(&boss, &onyc_mint, 1_000_000_000);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail without program mint authority");
+    assert!(
+        result.is_err(),
+        "should fail without program mint authority"
+    );
 }
 
 #[test]
@@ -265,7 +289,10 @@ fn test_mint_to_fails_wrong_mint() {
     // Try to mint from wrong mint (not the onyc_mint in state)
     let ix = build_mint_to_ix(&boss, &wrong_mint, 1_000_000_000);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail when mint doesn't match onyc_mint in state");
+    assert!(
+        result.is_err(),
+        "should fail when mint doesn't match onyc_mint in state"
+    );
 }
 
 // ===========================================================================
@@ -288,11 +315,16 @@ fn test_transfer_mint_authority_to_program_token2022() {
     assert_eq!(get_mint_authority_pubkey(&svm, &token2022_mint), Some(boss));
 
     let ix = build_transfer_mint_authority_to_program_ix_with_token_program(
-        &boss, &token2022_mint, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &token2022_mint,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    assert_eq!(get_mint_authority_pubkey(&svm, &token2022_mint), Some(mint_authority_pda));
+    assert_eq!(
+        get_mint_authority_pubkey(&svm, &token2022_mint),
+        Some(mint_authority_pda)
+    );
 }
 
 #[test]
@@ -308,17 +340,24 @@ fn test_transfer_mint_authority_round_trip_token2022() {
 
     // Transfer to program
     let ix = build_transfer_mint_authority_to_program_ix_with_token_program(
-        &boss, &token2022_mint, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &token2022_mint,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     let (mint_authority_pda, _) = find_mint_authority_pda();
-    assert_eq!(get_mint_authority_pubkey(&svm, &token2022_mint), Some(mint_authority_pda));
+    assert_eq!(
+        get_mint_authority_pubkey(&svm, &token2022_mint),
+        Some(mint_authority_pda)
+    );
 
     // Transfer back to boss
     let ix = build_transfer_mint_authority_to_boss_ix_with_token_program(
-        &boss, &token2022_mint, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &token2022_mint,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -338,14 +377,19 @@ fn test_mint_to_token2022() {
 
     // Transfer mint authority to program
     let ix = build_transfer_mint_authority_to_program_ix_with_token_program(
-        &boss, &token2022_mint, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &token2022_mint,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     // Mint tokens
     let ix = build_mint_to_ix_with_token_program(
-        &boss, &token2022_mint, 1_000_000_000, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &token2022_mint,
+        1_000_000_000,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
