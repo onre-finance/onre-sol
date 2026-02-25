@@ -140,7 +140,8 @@ fn test_redemption_vault_deposit_any_user_can_deposit() {
     let ix = build_redemption_vault_deposit_ix(&non_boss.pubkey(), &token_mint, 10_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&non_boss]).unwrap();
 
-    assert_eq!(get_token_balance(&svm, &vault_ata), 10_000_000_000);
+    assert_eq!(get_token_balance(&svm, &vault_ata), 10_000_000_000
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -188,7 +189,10 @@ fn test_redemption_vault_withdraw_rejects_non_boss() {
 
     let ix = build_redemption_vault_withdraw_ix(&non_boss.pubkey(), &token_mint, 10_000_000_000, &TOKEN_PROGRAM_ID);
     let result = send_tx(&mut svm, &[ix], &[&non_boss]);
-    assert!(result.is_err(), "non-boss should not be able to withdraw from redemption vault");
+    assert!(
+        result.is_err(),
+        "non-boss should not be able to withdraw from redemption vault"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -233,7 +237,10 @@ fn test_offer_vault_deposit_withdraw_token2022() {
 
     // Deposit
     let ix = build_offer_vault_deposit_ix(
-        &boss, &token_mint, 100_000_000_000, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &token_mint,
+        100_000_000_000,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -244,7 +251,10 @@ fn test_offer_vault_deposit_withdraw_token2022() {
 
     // Withdraw
     let ix = build_offer_vault_withdraw_ix(
-        &boss, &token_mint, 50_000_000_000, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &token_mint,
+        50_000_000_000,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -265,7 +275,10 @@ fn test_redemption_vault_deposit_withdraw_token2022() {
 
     // Deposit
     let ix = build_redemption_vault_deposit_ix(
-        &boss, &token_mint, 100_000_000_000, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &token_mint,
+        100_000_000_000,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -276,7 +289,10 @@ fn test_redemption_vault_deposit_withdraw_token2022() {
 
     // Withdraw
     let ix = build_redemption_vault_withdraw_ix(
-        &boss, &token_mint, 50_000_000_000, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &token_mint,
+        50_000_000_000,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
