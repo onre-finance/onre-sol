@@ -185,8 +185,8 @@ pub fn calculate_fees(token_in_amount: u64, fee_basis_points: u16) -> Result<Cal
     let fee_numerator = (token_in_amount as u128)
         .checked_mul(fee_basis_points as u128)
         .ok_or(TokenUtilsErrorCode::MathOverflow)?;
-    let token_fee_amount =
-        ceil_div_u128(fee_numerator, MAX_BASIS_POINTS as u128).ok_or(TokenUtilsErrorCode::MathOverflow)? as u64;
+    let token_fee_amount = ceil_div_u128(fee_numerator, MAX_BASIS_POINTS as u128)
+        .ok_or(TokenUtilsErrorCode::MathOverflow)? as u64;
 
     // Amount after fee deduction for the main offer exchange
     let token_net_amount = token_in_amount

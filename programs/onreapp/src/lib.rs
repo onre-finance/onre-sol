@@ -102,7 +102,10 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `RedemptionVaultDeposit`.
     /// - `amount`: Amount of tokens to deposit.
-    pub fn redemption_vault_deposit(ctx: Context<RedemptionVaultDeposit>, amount: u64) -> Result<()> {
+    pub fn redemption_vault_deposit(
+        ctx: Context<RedemptionVaultDeposit>,
+        amount: u64,
+    ) -> Result<()> {
         vault_operations::redemption_vault_deposit(ctx, amount)
     }
 
@@ -116,7 +119,10 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `RedemptionVaultWithdraw`.
     /// - `amount`: Amount of tokens to withdraw.
-    pub fn redemption_vault_withdraw(ctx: Context<RedemptionVaultWithdraw>, amount: u64) -> Result<()> {
+    pub fn redemption_vault_withdraw(
+        ctx: Context<RedemptionVaultWithdraw>,
+        amount: u64,
+    ) -> Result<()> {
         vault_operations::redemption_vault_withdraw(ctx, amount)
     }
 
