@@ -102,6 +102,149 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "accrueCache",
+      "docs": [
+        "Accrues CACHE spread and mints ONyc to the CACHE vault account.",
+        "",
+        "Callable by cache_admin only."
+      ],
+      "discriminator": [
+        141,
+        203,
+        21,
+        210,
+        229,
+        49,
+        14,
+        59
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cacheState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cacheAdmin",
+          "signer": true,
+          "relations": [
+            "cacheState"
+          ]
+        },
+        {
+          "name": "onycMint",
+          "writable": true,
+          "relations": [
+            "state",
+            "cacheState"
+          ]
+        },
+        {
+          "name": "cacheVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cacheVaultOnycAccount",
+          "writable": true
+        },
+        {
+          "name": "mintAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "addAdmin",
       "docs": [
         "Adds a new admin to the state.",
@@ -345,6 +488,196 @@ export type Onreapp = {
         },
         {
           "name": "priceFixDuration",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "burnForNavIncrease",
+      "docs": [
+        "Burns ONyc from CACHE vault to increase NAV according to provided target inputs.",
+        "",
+        "Callable by boss only."
+      ],
+      "discriminator": [
+        8,
+        13,
+        69,
+        178,
+        183,
+        45,
+        102,
+        205
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cacheState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offer",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint"
+        },
+        {
+          "name": "onycMint",
+          "writable": true,
+          "relations": [
+            "state",
+            "cacheState"
+          ]
+        },
+        {
+          "name": "offerVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cacheVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vaultTokenOutAccount"
+        },
+        {
+          "name": "cacheVaultOnycAccount",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram"
+        }
+      ],
+      "args": [
+        {
+          "name": "assetAdjustmentAmount",
+          "type": "u64"
+        },
+        {
+          "name": "targetNav",
           "type": "u64"
         }
       ]
@@ -2640,6 +2973,192 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "initializeCache",
+      "docs": [
+        "Initializes the standalone CACHE pool state and vault accounts.",
+        "",
+        "Creates CACHE state as a separate PDA so existing offer/redemption state",
+        "remains unchanged. Only the boss can initialize CACHE."
+      ],
+      "discriminator": [
+        179,
+        17,
+        107,
+        253,
+        128,
+        183,
+        69,
+        199
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cacheState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cacheVaultAuthority",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "onycMint",
+          "writable": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "cacheVaultOnycAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "cacheVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "cacheAdmin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "initializePermissionlessAuthority",
       "docs": [
         "Initializes a permissionless account.",
@@ -4764,6 +5283,158 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "setCacheAdmin",
+      "docs": [
+        "Sets the CACHE admin authorized to call accrual.",
+        "",
+        "Only the boss can update the CACHE admin."
+      ],
+      "discriminator": [
+        191,
+        107,
+        155,
+        155,
+        190,
+        55,
+        190,
+        203
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cacheState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newCacheAdmin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "setCacheYields",
+      "docs": [
+        "Sets CACHE gross and current yield parameters.",
+        "",
+        "Only the boss can update these values."
+      ],
+      "discriminator": [
+        75,
+        154,
+        229,
+        84,
+        254,
+        180,
+        47,
+        101
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cacheState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "grossYield",
+          "type": "u64"
+        },
+        {
+          "name": "currentYield",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "setKillSwitch",
       "docs": [
         "Enables or disables the kill switch.",
@@ -6372,6 +7043,57 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "updateLowestSupply",
+      "docs": [
+        "Updates the lowest observed ONyc supply in CACHE state.",
+        "",
+        "This instruction is permissionless."
+      ],
+      "discriminator": [
+        178,
+        80,
+        129,
+        36,
+        26,
+        37,
+        146,
+        168
+      ],
+      "accounts": [
+        {
+          "name": "cacheState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "onycMint",
+          "relations": [
+            "cacheState"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "updateOfferFee",
       "docs": [
         "Updates the fee basis points for an offer.",
@@ -6586,6 +7308,19 @@ export type Onreapp = {
   ],
   "accounts": [
     {
+      "name": "cacheState",
+      "discriminator": [
+        50,
+        155,
+        248,
+        164,
+        94,
+        213,
+        5,
+        207
+      ]
+    },
+    {
       "name": "offer",
       "discriminator": [
         215,
@@ -6754,6 +7489,84 @@ export type Onreapp = {
         57,
         141,
         17
+      ]
+    },
+    {
+      "name": "cacheAccruedEvent",
+      "discriminator": [
+        247,
+        178,
+        17,
+        253,
+        252,
+        107,
+        200,
+        120
+      ]
+    },
+    {
+      "name": "cacheAdminUpdatedEvent",
+      "discriminator": [
+        72,
+        176,
+        40,
+        194,
+        74,
+        145,
+        41,
+        177
+      ]
+    },
+    {
+      "name": "cacheBurnedForNavEvent",
+      "discriminator": [
+        236,
+        76,
+        25,
+        75,
+        207,
+        86,
+        159,
+        173
+      ]
+    },
+    {
+      "name": "cacheInitializedEvent",
+      "discriminator": [
+        51,
+        61,
+        186,
+        40,
+        43,
+        164,
+        115,
+        240
+      ]
+    },
+    {
+      "name": "cacheLowestSupplyUpdatedEvent",
+      "discriminator": [
+        94,
+        206,
+        7,
+        58,
+        125,
+        97,
+        5,
+        95
+      ]
+    },
+    {
+      "name": "cacheYieldUpdatedEvent",
+      "discriminator": [
+        233,
+        131,
+        245,
+        77,
+        128,
+        206,
+        75,
+        65
       ]
     },
     {
@@ -7438,6 +8251,191 @@ export type Onreapp = {
               "The proposed new boss's public key"
             ],
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cacheAccruedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "secondsElapsed",
+            "type": "u64"
+          },
+          {
+            "name": "spread",
+            "type": "u64"
+          },
+          {
+            "name": "mintAmount",
+            "type": "u64"
+          },
+          {
+            "name": "previousLowestSupply",
+            "type": "u64"
+          },
+          {
+            "name": "newLowestSupply",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cacheAdminUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldCacheAdmin",
+            "type": "pubkey"
+          },
+          {
+            "name": "newCacheAdmin",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cacheBurnedForNavEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "burnAmount",
+            "type": "u64"
+          },
+          {
+            "name": "assetAdjustmentAmount",
+            "type": "u64"
+          },
+          {
+            "name": "totalAssets",
+            "type": "u64"
+          },
+          {
+            "name": "targetNav",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cacheInitializedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cacheState",
+            "type": "pubkey"
+          },
+          {
+            "name": "onycMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "cacheAdmin",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cacheLowestSupplyUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previousLowestSupply",
+            "type": "u64"
+          },
+          {
+            "name": "newLowestSupply",
+            "type": "u64"
+          },
+          {
+            "name": "currentSupply",
+            "type": "u64"
+          },
+          {
+            "name": "updated",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cacheState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "onycMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "cacheAdmin",
+            "type": "pubkey"
+          },
+          {
+            "name": "grossYield",
+            "type": "u64"
+          },
+          {
+            "name": "currentYield",
+            "type": "u64"
+          },
+          {
+            "name": "lowestSupply",
+            "type": "u64"
+          },
+          {
+            "name": "lastAccrualTimestamp",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                95
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cacheYieldUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "grossYield",
+            "type": "u64"
+          },
+          {
+            "name": "currentYield",
+            "type": "u64"
           }
         ]
       }
@@ -8209,7 +9207,7 @@ export type Onreapp = {
           {
             "name": "apr",
             "docs": [
-              "Annual Percentage Rate scaled by 1_000_000 (1_000_000 = 1% APR)",
+              "Annual Percentage Rate scaled by 1_000_000 (1_000_000 = 100% APR; 10_000 = 1%)",
               "",
               "Determines compound interest rate for price growth over time.",
               "Scale=6 where 1_000_000 = 1% annual rate."
