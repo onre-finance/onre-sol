@@ -156,7 +156,8 @@ fn test_redemption_vault_deposit_any_user_can_deposit() {
     );
     send_tx(&mut svm, &[ix], &[&non_boss]).unwrap();
 
-    assert_eq!(get_token_balance(&svm, &vault_ata), 10_000_000_000);
+    assert_eq!(get_token_balance(&svm, &vault_ata), 10_000_000_000
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -260,7 +261,10 @@ fn test_offer_vault_deposit_withdraw_token2022() {
 
     // Deposit
     let ix =
-        build_offer_vault_deposit_ix(&boss, &token_mint, 100_000_000_000, &TOKEN_2022_PROGRAM_ID);
+        build_offer_vault_deposit_ix(&boss,
+        &token_mint,
+        100_000_000_000,
+        &TOKEN_2022_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     assert_eq!(get_token_balance(&svm, &vault_ata), 100_000_000_000);
@@ -270,7 +274,10 @@ fn test_offer_vault_deposit_withdraw_token2022() {
 
     // Withdraw
     let ix =
-        build_offer_vault_withdraw_ix(&boss, &token_mint, 50_000_000_000, &TOKEN_2022_PROGRAM_ID);
+        build_offer_vault_withdraw_ix(&boss,
+        &token_mint,
+        50_000_000_000,
+        &TOKEN_2022_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     assert_eq!(get_token_balance(&svm, &vault_ata), 50_000_000_000);

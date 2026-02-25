@@ -325,7 +325,9 @@ fn test_transfer_mint_authority_to_program_token2022() {
     assert_eq!(get_mint_authority_pubkey(&svm, &token2022_mint), Some(boss));
 
     let ix =
-        build_transfer_mint_authority_to_program_ix(&boss, &token2022_mint, &TOKEN_2022_PROGRAM_ID);
+        build_transfer_mint_authority_to_program_ix(&boss,
+        &token2022_mint,
+        &TOKEN_2022_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     assert_eq!(
@@ -347,7 +349,9 @@ fn test_transfer_mint_authority_round_trip_token2022() {
 
     // Transfer to program
     let ix =
-        build_transfer_mint_authority_to_program_ix(&boss, &token2022_mint, &TOKEN_2022_PROGRAM_ID);
+        build_transfer_mint_authority_to_program_ix(&boss,
+        &token2022_mint,
+        &TOKEN_2022_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -359,7 +363,9 @@ fn test_transfer_mint_authority_round_trip_token2022() {
 
     // Transfer back to boss
     let ix =
-        build_transfer_mint_authority_to_boss_ix(&boss, &token2022_mint, &TOKEN_2022_PROGRAM_ID);
+        build_transfer_mint_authority_to_boss_ix(&boss,
+        &token2022_mint,
+        &TOKEN_2022_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     assert_eq!(get_mint_authority_pubkey(&svm, &token2022_mint), Some(boss));
@@ -378,7 +384,9 @@ fn test_mint_to_token2022() {
 
     // Transfer mint authority to program
     let ix =
-        build_transfer_mint_authority_to_program_ix(&boss, &token2022_mint, &TOKEN_2022_PROGRAM_ID);
+        build_transfer_mint_authority_to_program_ix(&boss,
+        &token2022_mint,
+        &TOKEN_2022_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
