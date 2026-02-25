@@ -1,7 +1,5 @@
 use crate::constants::seeds;
-use crate::instructions::offer::offer_utils::{
-    calculate_current_step_price, find_active_vector_at,
-};
+use crate::instructions::market_info::offer_valuation_utils::get_active_vector_and_current_price;
 use crate::instructions::{Offer, OfferVector};
 use crate::OfferCoreError;
 use anchor_lang::prelude::*;
@@ -83,16 +81,7 @@ pub fn get_nav(ctx: Context<GetNAV>) -> Result<u64> {
     let offer = ctx.accounts.offer.load()?;
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    // Find the currently active pricing vector
-    let active_vector = find_active_vector_at(&offer, current_time)?;
-
-    // Calculate current price with 9 decimals
-    let current_price = calculate_current_step_price(
-        active_vector.apr,
-        active_vector.base_price,
-        active_vector.base_time,
-        active_vector.price_fix_duration,
-    )?;
+    let (active_vector, current_price) = get_active_vector_and_current_price(&offer, current_time)?;
 
     // Calculate when the next NAV change will occur
     let elapsed_since_base = current_time.saturating_sub(active_vector.base_time);
