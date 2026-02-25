@@ -9,7 +9,7 @@ use solana_sdk::signer::Signer;
 /// Helper: creates initialized state, an offer (usdc->onyc), and a redemption offer (onyc->usdc).
 /// The redemption offer is the inverse: token_in=onyc, token_out=usdc.
 fn setup_redemption() -> (
-    litesvm::LiteSVM,
+    LiteSVM,
     Keypair, // payer (boss)
     Pubkey,  // usdc_mint (token_out of original offer = token_in of redemption)
     Pubkey,  // onyc_mint
@@ -192,7 +192,8 @@ fn test_make_redemption_offer_redemption_admin_can_create() {
     advance_slot(&mut svm);
 
     // Redemption admin should be able to create
-    let ix = build_make_redemption_offer_ix(
+    let ix =
+        build_make_redemption_offer_ix(
         &redemption_admin.pubkey(),
         &_onyc_mint,
         &usdc_mint,
