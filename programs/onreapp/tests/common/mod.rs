@@ -290,8 +290,9 @@ pub fn create_mint(
     // COption<Pubkey> uses a 4-byte LE tag (0=None, 1=Some) + 32-byte Pubkey
     let mut mint_data = vec![0u8; 82];
     // [0..4]:   mint_authority COption tag
-    mint_data[0..4].copy_from_slice(&1u32.to_le_bytes()); // Some
-                                                          // [4..36]:  mint_authority Pubkey
+    // Some
+    mint_data[0..4].copy_from_slice(&1u32.to_le_bytes());
+    // [4..36]:  mint_authority Pubkey
     mint_data[4..36].copy_from_slice(mint_authority.as_ref());
     // [36..44]: supply = 0 (already zero)
     // [44]:     decimals
@@ -299,8 +300,9 @@ pub fn create_mint(
     // [45]:     is_initialized
     mint_data[45] = 1;
     // [46..50]: freeze_authority COption tag
-    mint_data[46..50].copy_from_slice(&1u32.to_le_bytes()); // Some
-                                                            // [50..82]: freeze_authority Pubkey
+    // Some
+    mint_data[46..50].copy_from_slice(&1u32.to_le_bytes());
+    // [50..82]: freeze_authority Pubkey
     mint_data[50..82].copy_from_slice(mint_authority.as_ref());
 
     svm.set_account(
@@ -431,30 +433,41 @@ pub fn create_mint_2022_with_transfer_fee(
     //         [166..170] ExtHeader | [170..278] TransferFeeConfig
     let mut mint_data = vec![0u8; 278];
     // Base Mint State [0..82]
-    mint_data[0..4].copy_from_slice(&1u32.to_le_bytes()); // mint_authority COption = Some
+    // mint_authority COption = Some
+    mint_data[0..4].copy_from_slice(&1u32.to_le_bytes());
     mint_data[4..36].copy_from_slice(mint_authority.as_ref());
+    // decimals
     mint_data[44] = decimals;
-    mint_data[45] = 1; // is_initialized
-    mint_data[46..50].copy_from_slice(&1u32.to_le_bytes()); // freeze_authority = Some
+    // is_initialized
+    mint_data[45] = 1;
+    // freeze_authority = Some
+    mint_data[46..50].copy_from_slice(&1u32.to_le_bytes());
     mint_data[50..82].copy_from_slice(mint_authority.as_ref());
     // [82..165] = zero padding (already zero)
     // AccountType at BASE_ACCOUNT_LENGTH (165)
-    mint_data[165] = 1; // AccountType::Mint
-                        // Extension header [166..170]
-    mint_data[166..168].copy_from_slice(&1u16.to_le_bytes()); // ExtensionType = TransferFeeConfig
-    mint_data[168..170].copy_from_slice(&108u16.to_le_bytes()); // Length = 108
-                                                                // TransferFeeConfig body [170..278]
-    mint_data[170..202].copy_from_slice(mint_authority.as_ref()); // transfer_fee_config_authority
-    mint_data[202..234].copy_from_slice(mint_authority.as_ref()); // withdraw_withheld_authority
-                                                                  // withheld_amount [234..242] = 0
-                                                                  // older_transfer_fee
-                                                                  // epoch [242..250] = 0
-    mint_data[250..258].copy_from_slice(&max_fee.to_le_bytes()); // maximum_fee
-    mint_data[258..260].copy_from_slice(&fee_basis_points.to_le_bytes()); // transfer_fee_basis_points
-                                                                          // newer_transfer_fee
-                                                                          // epoch [260..268] = 0
-    mint_data[268..276].copy_from_slice(&max_fee.to_le_bytes()); // maximum_fee
-    mint_data[276..278].copy_from_slice(&fee_basis_points.to_le_bytes()); // transfer_fee_basis_points
+    // AccountType::Mint
+    mint_data[165] = 1;
+    // Extension header [166..170]
+    // ExtensionType = TransferFeeConfig
+    mint_data[166..168].copy_from_slice(&1u16.to_le_bytes());
+    // Length = 108
+    mint_data[168..170].copy_from_slice(&108u16.to_le_bytes());
+    // TransferFeeConfig body [170..278]
+    // transfer_fee_config_authority
+    mint_data[170..202].copy_from_slice(mint_authority.as_ref());
+    // withdraw_withheld_authority
+    mint_data[202..234].copy_from_slice(mint_authority.as_ref());
+    // withheld_amount [234..242] = 0
+    // older_transfer_fee epoch [242..250] = 0
+    // maximum_fee
+    mint_data[250..258].copy_from_slice(&max_fee.to_le_bytes());
+    // transfer_fee_basis_points
+    mint_data[258..260].copy_from_slice(&fee_basis_points.to_le_bytes());
+    // newer_transfer_fee epoch [260..268] = 0
+    // maximum_fee
+    mint_data[268..276].copy_from_slice(&max_fee.to_le_bytes());
+    // transfer_fee_basis_points
+    mint_data[276..278].copy_from_slice(&fee_basis_points.to_le_bytes());
 
     svm.set_account(
         mint.pubkey(),
@@ -1029,13 +1042,16 @@ pub fn build_ed25519_verify_ix(approver: &Keypair, message: &[u8]) -> Instructio
     data.push(0u8);
     // Ed25519SignatureOffsets
     data.extend_from_slice(&signature_offset.to_le_bytes());
-    data.extend_from_slice(&u16::MAX.to_le_bytes()); // signature_instruction_index
+    // signature_instruction_index
+    data.extend_from_slice(&u16::MAX.to_le_bytes());
     data.extend_from_slice(&public_key_offset.to_le_bytes());
-    data.extend_from_slice(&u16::MAX.to_le_bytes()); // public_key_instruction_index
+    // public_key_instruction_index
+    data.extend_from_slice(&u16::MAX.to_le_bytes());
     data.extend_from_slice(&message_data_offset.to_le_bytes());
     data.extend_from_slice(&message_data_size.to_le_bytes());
-    data.extend_from_slice(&u16::MAX.to_le_bytes()); // message_instruction_index
-                                                     // Pubkey
+    // message_instruction_index
+    data.extend_from_slice(&u16::MAX.to_le_bytes());
+    // Pubkey
     data.extend_from_slice(&pubkey_bytes);
     // Signature
     data.extend_from_slice(&sig_bytes);
@@ -1417,38 +1433,18 @@ pub fn read_cache_state(svm: &LiteSVM) -> CacheStateData {
     let account = svm
         .get_account(&cache_state_pda)
         .expect("cache state account not found");
-    let data = &account.data;
-
-    let mut offset = 8; // Anchor discriminator
-
-    let onyc_mint = Pubkey::try_from(&data[offset..offset + 32]).unwrap();
-    offset += 32;
-
-    let cache_admin = Pubkey::try_from(&data[offset..offset + 32]).unwrap();
-    offset += 32;
-
-    let gross_yield = u64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
-    offset += 8;
-
-    let current_yield = u64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
-    offset += 8;
-
-    let lowest_supply = u64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
-    offset += 8;
-
-    let last_accrual_timestamp = i64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
-    offset += 8;
-
-    let bump = data[offset];
+    let mut data_slice = account.data.as_slice();
+    let cache_state = onreapp::instructions::CacheState::try_deserialize(&mut data_slice)
+        .expect("failed to deserialize CacheState account");
 
     CacheStateData {
-        onyc_mint,
-        cache_admin,
-        gross_yield,
-        current_yield,
-        lowest_supply,
-        last_accrual_timestamp,
-        bump,
+        onyc_mint: cache_state.onyc_mint,
+        cache_admin: cache_state.cache_admin,
+        gross_yield: cache_state.gross_yield,
+        current_yield: cache_state.current_yield,
+        lowest_supply: cache_state.lowest_supply,
+        last_accrual_timestamp: cache_state.last_accrual_timestamp,
+        bump: cache_state.bump,
     }
 }
 
