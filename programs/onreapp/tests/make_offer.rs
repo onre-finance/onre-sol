@@ -170,7 +170,13 @@ fn test_make_offer_token2022_as_token_in() {
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
     let ix = build_make_offer_ix_with_programs(
-        &boss, &token_in, &token_out, 500, false, false, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &token_in,
+        &token_out,
+        500,
+        false,
+        false,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 

@@ -4,7 +4,12 @@ use common::*;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
 
-fn setup_offer() -> (litesvm::LiteSVM, Keypair, solana_sdk::pubkey::Pubkey, solana_sdk::pubkey::Pubkey) {
+fn setup_offer() -> (
+    litesvm::LiteSVM,
+    Keypair,
+    solana_sdk::pubkey::Pubkey,
+    solana_sdk::pubkey::Pubkey,
+) {
     let (mut svm, payer, _) = setup_initialized();
     let boss = payer.pubkey();
 
@@ -100,13 +105,19 @@ fn test_multiple_fee_updates() {
 
     let ix = build_update_offer_fee_ix(&boss, &token_in, &token_out, 750);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    assert_eq!(read_offer(&svm, &token_in, &token_out).fee_basis_points, 750);
+    assert_eq!(
+        read_offer(&svm, &token_in, &token_out).fee_basis_points,
+        750
+    );
 
     advance_slot(&mut svm);
 
     let ix = build_update_offer_fee_ix(&boss, &token_in, &token_out, 250);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    assert_eq!(read_offer(&svm, &token_in, &token_out).fee_basis_points, 250);
+    assert_eq!(
+        read_offer(&svm, &token_in, &token_out).fee_basis_points,
+        250
+    );
 }
 
 #[test]
@@ -116,8 +127,14 @@ fn test_update_fee_preserves_vectors() {
     let current_time = get_clock_time(&svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 1000, 1_000_000, 5000, 3600,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 1000,
+        1_000_000,
+        5000,
+        3600,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
