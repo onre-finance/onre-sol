@@ -17,7 +17,8 @@ fn setup_cache_context(
     let boss = payer.pubkey();
     let token_in_mint = create_mint(&mut svm, &payer, 6, &boss);
     let cache_admin = Keypair::new();
-    svm.airdrop(&cache_admin.pubkey(), INITIAL_LAMPORTS).unwrap();
+    svm.airdrop(&cache_admin.pubkey(), INITIAL_LAMPORTS)
+        .unwrap();
 
     let ix = build_make_offer_ix(&boss, &token_in_mint, &onyc_mint, 0, false, true);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -57,7 +58,8 @@ fn setup_cache_context(
 }
 
 fn setup_cache_with_balance() -> (litesvm::LiteSVM, Keypair, Pubkey, Pubkey, Keypair) {
-    let (mut svm, payer, token_in_mint, onyc_mint, cache_admin) = setup_cache_context(150_000, 50_000);
+    let (mut svm, payer, token_in_mint, onyc_mint, cache_admin) =
+        setup_cache_context(150_000, 50_000);
 
     // First accrual initializes lowest_supply to current supply.
     let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
@@ -143,7 +145,8 @@ fn test_set_cache_yields_rejects_no_change() {
 
 #[test]
 fn test_accrue_cache_first_call_sets_lowest_supply_no_mint() {
-    let (mut svm, _payer, _token_in_mint, onyc_mint, cache_admin) = setup_cache_context(150_000, 50_000);
+    let (mut svm, _payer, _token_in_mint, onyc_mint, cache_admin) =
+        setup_cache_context(150_000, 50_000);
     let initial_supply = get_mint_supply(&svm, &onyc_mint);
 
     let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
@@ -160,7 +163,8 @@ fn test_accrue_cache_first_call_sets_lowest_supply_no_mint() {
 
 #[test]
 fn test_accrue_cache_zero_spread_mints_nothing() {
-    let (mut svm, _payer, _token_in_mint, onyc_mint, cache_admin) = setup_cache_context(50_000, 50_000);
+    let (mut svm, _payer, _token_in_mint, onyc_mint, cache_admin) =
+        setup_cache_context(50_000, 50_000);
 
     // Baseline call sets lowest_supply.
     let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
@@ -179,7 +183,8 @@ fn test_accrue_cache_zero_spread_mints_nothing() {
 
 #[test]
 fn test_accrue_cache_zero_seconds_mints_nothing() {
-    let (mut svm, _payer, _token_in_mint, onyc_mint, cache_admin) = setup_cache_context(150_000, 50_000);
+    let (mut svm, _payer, _token_in_mint, onyc_mint, cache_admin) =
+        setup_cache_context(150_000, 50_000);
 
     let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
     send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
@@ -196,7 +201,8 @@ fn test_accrue_cache_zero_seconds_mints_nothing() {
 
 #[test]
 fn test_accrue_cache_partial_period_math() {
-    let (mut svm, _payer, _token_in_mint, onyc_mint, cache_admin) = setup_cache_context(150_000, 50_000);
+    let (mut svm, _payer, _token_in_mint, onyc_mint, cache_admin) =
+        setup_cache_context(150_000, 50_000);
 
     // Baseline call sets lowest_supply.
     let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
@@ -212,7 +218,10 @@ fn test_accrue_cache_partial_period_math() {
     let (cache_vault_authority_pda, _) = find_cache_vault_authority_pda();
     let cache_vault_ata = derive_ata(&cache_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
     assert_eq!(get_token_balance(&svm, &cache_vault_ata), expected_mint);
-    assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_000_000_000 + expected_mint);
+    assert_eq!(
+        get_mint_supply(&svm, &onyc_mint),
+        1_000_000_000 + expected_mint
+    );
 }
 
 #[test]
@@ -301,9 +310,13 @@ fn test_burn_for_nav_increase_rejects_asset_adjustment_above_total_assets() {
     let (mut svm, payer, token_in_mint, onyc_mint, _cache_admin) = setup_cache_with_balance();
     let boss = payer.pubkey();
 
-    let ix = build_burn_for_nav_increase_ix(&boss, &token_in_mint, &onyc_mint, 2_000_000_000, NAV_1_0);
+    let ix =
+        build_burn_for_nav_increase_ix(&boss, &token_in_mint, &onyc_mint, 2_000_000_000, NAV_1_0);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "asset adjustment above total assets should fail");
+    assert!(
+        result.is_err(),
+        "asset adjustment above total assets should fail"
+    );
 }
 
 #[test]
@@ -311,9 +324,13 @@ fn test_burn_for_nav_increase_rejects_insufficient_cache_balance() {
     let (mut svm, payer, token_in_mint, onyc_mint, _cache_admin) = setup_cache_with_balance();
     let boss = payer.pubkey();
 
-    let ix = build_burn_for_nav_increase_ix(&boss, &token_in_mint, &onyc_mint, 200_000_000, NAV_1_0);
+    let ix =
+        build_burn_for_nav_increase_ix(&boss, &token_in_mint, &onyc_mint, 200_000_000, NAV_1_0);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "burn amount above cache balance should fail");
+    assert!(
+        result.is_err(),
+        "burn amount above cache balance should fail"
+    );
 }
 
 #[test]
@@ -323,7 +340,10 @@ fn test_burn_for_nav_increase_rejects_no_burn_needed() {
 
     let ix = build_burn_for_nav_increase_ix(&boss, &token_in_mint, &onyc_mint, 0, NAV_1_0);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "zero asset adjustment at current NAV should require no burn");
+    assert!(
+        result.is_err(),
+        "zero asset adjustment at current NAV should require no burn"
+    );
 }
 
 #[test]
@@ -333,5 +353,8 @@ fn test_burn_for_nav_increase_rejects_invalid_burn_target() {
 
     let ix = build_burn_for_nav_increase_ix(&boss, &token_in_mint, &onyc_mint, 0, 900_000_000);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "target NAV below current implied NAV should fail");
+    assert!(
+        result.is_err(),
+        "target NAV below current implied NAV should fail"
+    );
 }
