@@ -4,11 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-patchedDependencies:
-  bigint-buffer@1.1.5:
-    hash: izfomrbmcsvh22iqkhtqbqesmi
-    path: patches/bigint-buffer@1.1.5.patch
-
 importers:
 
   .:
@@ -2493,7 +2488,7 @@ snapshots:
     dependencies:
       '@solana/buffer-layout': 4.0.1
       '@solana/web3.js': 1.98.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)
-      bigint-buffer: 1.1.5(patch_hash=izfomrbmcsvh22iqkhtqbqesmi)
+      bigint-buffer: 1.1.5
       bignumber.js: 9.3.1
     transitivePeerDependencies:
       - bufferutil
@@ -2756,7 +2751,7 @@ snapshots:
   baseline-browser-mapping@2.9.11:
     optional: true
 
-  bigint-buffer@1.1.5(patch_hash=izfomrbmcsvh22iqkhtqbqesmi):
+  bigint-buffer@1.1.5:
     dependencies:
       bindings: 1.5.0
 
