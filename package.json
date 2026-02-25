@@ -53,10 +53,5 @@
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.0.0",
     "zx": "^8.6.0"
-  },
-  "pnpm": {
-    "patchedDependencies": {
-      "bigint-buffer@1.1.5": "patches/bigint-buffer@1.1.5.patch"
-    }
   }
 }
