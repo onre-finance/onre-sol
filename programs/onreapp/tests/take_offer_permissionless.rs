@@ -95,15 +95,19 @@ fn test_take_offer_permissionless_with_valid_approval() {
 
     // Fund user with USDC (1000 USDC = 1_000_000_000 in 6 decimals)
     let token_in_amount: u64 = 1_000_000_000; // 1000 USDC
-    create_token_account(&mut ctx.svm, &ctx.usdc_mint, &user.pubkey(), token_in_amount);
+    create_token_account(
+        &mut ctx.svm,
+        &ctx.usdc_mint,
+        &user.pubkey(),
+        token_in_amount,
+    );
 
     // Create user_token_out account (needed for init_if_needed but let's pre-create)
     create_token_account(&mut ctx.svm, &ctx.onyc_mint, &user.pubkey(), 0);
 
     // Build approval message
     let expiry_unix = 1704067200u64 + 3600; // 1 hour from now
-    let approval_msg_bytes =
-        serialize_approval_message(&PROGRAM_ID, &user.pubkey(), expiry_unix);
+    let approval_msg_bytes = serialize_approval_message(&PROGRAM_ID, &user.pubkey(), expiry_unix);
 
     // Build Ed25519 verify instruction (must be right before the program instruction)
     let ed25519_ix = build_ed25519_verify_ix(&ctx.approver, &approval_msg_bytes);
@@ -157,7 +161,12 @@ fn test_take_offer_permissionless_fails_without_approval() {
         .unwrap();
 
     let token_in_amount: u64 = 1_000_000_000;
-    create_token_account(&mut ctx.svm, &ctx.usdc_mint, &user.pubkey(), token_in_amount);
+    create_token_account(
+        &mut ctx.svm,
+        &ctx.usdc_mint,
+        &user.pubkey(),
+        token_in_amount,
+    );
     create_token_account(&mut ctx.svm, &ctx.onyc_mint, &user.pubkey(), 0);
 
     // No Ed25519 instruction, no approval_message
@@ -188,13 +197,17 @@ fn test_take_offer_permissionless_fails_with_expired_approval() {
         .unwrap();
 
     let token_in_amount: u64 = 1_000_000_000;
-    create_token_account(&mut ctx.svm, &ctx.usdc_mint, &user.pubkey(), token_in_amount);
+    create_token_account(
+        &mut ctx.svm,
+        &ctx.usdc_mint,
+        &user.pubkey(),
+        token_in_amount,
+    );
     create_token_account(&mut ctx.svm, &ctx.onyc_mint, &user.pubkey(), 0);
 
     // Expired approval (time in the past)
     let expiry_unix = 1704067200u64 - 1; // 1 second before current clock
-    let approval_msg_bytes =
-        serialize_approval_message(&PROGRAM_ID, &user.pubkey(), expiry_unix);
+    let approval_msg_bytes = serialize_approval_message(&PROGRAM_ID, &user.pubkey(), expiry_unix);
 
     let ed25519_ix = build_ed25519_verify_ix(&ctx.approver, &approval_msg_bytes);
 
@@ -208,10 +221,7 @@ fn test_take_offer_permissionless_fails_with_expired_approval() {
     );
 
     let result = send_tx(&mut ctx.svm, &[ed25519_ix, take_ix], &[&user]);
-    assert!(
-        result.is_err(),
-        "should fail with expired approval message"
-    );
+    assert!(result.is_err(), "should fail with expired approval message");
 }
 
 #[test]
@@ -225,12 +235,16 @@ fn test_take_offer_permissionless_fails_with_wrong_approver() {
         .unwrap();
 
     let token_in_amount: u64 = 1_000_000_000;
-    create_token_account(&mut ctx.svm, &ctx.usdc_mint, &user.pubkey(), token_in_amount);
+    create_token_account(
+        &mut ctx.svm,
+        &ctx.usdc_mint,
+        &user.pubkey(),
+        token_in_amount,
+    );
     create_token_account(&mut ctx.svm, &ctx.onyc_mint, &user.pubkey(), 0);
 
     let expiry_unix = 1704067200u64 + 3600;
-    let approval_msg_bytes =
-        serialize_approval_message(&PROGRAM_ID, &user.pubkey(), expiry_unix);
+    let approval_msg_bytes = serialize_approval_message(&PROGRAM_ID, &user.pubkey(), expiry_unix);
 
     // Sign with a WRONG keypair (not the registered approver)
     let wrong_approver = Keypair::new();
@@ -263,7 +277,12 @@ fn test_take_offer_permissionless_fails_with_wrong_user_in_approval() {
         .unwrap();
 
     let token_in_amount: u64 = 1_000_000_000;
-    create_token_account(&mut ctx.svm, &ctx.usdc_mint, &user.pubkey(), token_in_amount);
+    create_token_account(
+        &mut ctx.svm,
+        &ctx.usdc_mint,
+        &user.pubkey(),
+        token_in_amount,
+    );
     create_token_account(&mut ctx.svm, &ctx.onyc_mint, &user.pubkey(), 0);
 
     // Approval message for a DIFFERENT user
@@ -301,7 +320,12 @@ fn test_take_offer_permissionless_fails_with_wrong_program_in_approval() {
         .unwrap();
 
     let token_in_amount: u64 = 1_000_000_000;
-    create_token_account(&mut ctx.svm, &ctx.usdc_mint, &user.pubkey(), token_in_amount);
+    create_token_account(
+        &mut ctx.svm,
+        &ctx.usdc_mint,
+        &user.pubkey(),
+        token_in_amount,
+    );
     create_token_account(&mut ctx.svm, &ctx.onyc_mint, &user.pubkey(), 0);
 
     // Approval message with wrong program_id
@@ -390,15 +414,25 @@ fn test_permissionless_basic_success() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     // 1.0001 USDC at price 1.0001 = 1 ONyc
     let ix = build_take_offer_permissionless_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_100,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -426,14 +460,24 @@ fn test_permissionless_price_first_interval() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let ix = build_take_offer_permissionless_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_100,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -451,14 +495,24 @@ fn test_permissionless_price_with_fee() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let ix = build_take_offer_permissionless_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_100,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -478,8 +532,14 @@ fn test_permissionless_price_second_interval() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
@@ -487,8 +547,12 @@ fn test_permissionless_price_second_interval() {
     advance_clock_by(&mut ctx.svm, 86_400);
 
     let ix = build_take_offer_permissionless_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_200, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_200,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -506,15 +570,27 @@ fn test_permissionless_most_recent_active_vector() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        None, current_time + 1000, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        None,
+        current_time + 1000,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        None, current_time + 2000, 2_000_000_000, 73_000, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        None,
+        current_time + 2000,
+        2_000_000_000,
+        73_000,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
@@ -522,8 +598,12 @@ fn test_permissionless_most_recent_active_vector() {
 
     // Price from second vector: 2.0 * (1 + 0.073 * 86400/31536000) ≈ 2.0004
     let ix = build_take_offer_permissionless_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        2_000_400, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        2_000_400,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -546,14 +626,24 @@ fn test_permissionless_fail_no_active_vector() {
 
     // Add vector in the future
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        None, current_time + 10000, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        None,
+        current_time + 10000,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let ix = build_take_offer_permissionless_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_000, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_000,
+        None,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
     assert!(result.is_err(), "should fail with no active vector");
@@ -566,15 +656,25 @@ fn test_permissionless_fail_insufficient_user_balance() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     // User has 10,000 USDC, try 20,000
     let ix = build_take_offer_permissionless_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        20_000_000_000, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        20_000_000_000,
+        None,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
     assert!(result.is_err(), "should fail with insufficient balance");
@@ -588,18 +688,31 @@ fn test_permissionless_fail_insufficient_vault_balance() {
 
     // Very low price = lots of token_out needed
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000, 0, 86400, // price = 0.001
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000,
+        0,
+        86400, // price = 0.001
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     // 20 USDC at 0.001 price = 20,000 token_out, but vault has only 1,000
     let ix = build_take_offer_permissionless_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        20_000_000, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        20_000_000,
+        None,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
-    assert!(result.is_err(), "should fail with insufficient vault balance");
+    assert!(
+        result.is_err(),
+        "should fail with insufficient vault balance"
+    );
 }
 
 // ===========================================================================
@@ -613,16 +726,26 @@ fn test_permissionless_zero_apr_fixed_price() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     advance_clock_by(&mut ctx.svm, 86_401 * 10);
 
     let ix = build_take_offer_permissionless_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_000, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_000,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -640,8 +763,14 @@ fn test_permissionless_high_apr_long_period() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 365_000, 86400, // 36.5% APR
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        365_000,
+        86400, // 36.5% APR
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
@@ -650,8 +779,12 @@ fn test_permissionless_high_apr_long_period() {
 
     // After 1 year: price ≈ 1.366
     let ix = build_take_offer_permissionless_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_366_000, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_366_000,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -673,32 +806,48 @@ fn test_permissionless_vault_transfer_token_out() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let (vault_auth, _) = find_offer_vault_authority_pda();
     let supply_before = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
     let vault_onyc_before = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
     );
 
     let ix = build_take_offer_permissionless_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_100,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
     let supply_after = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
     let user_onyc = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
     );
     let vault_onyc_after = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
     );
 
-    assert_eq!(supply_before, supply_after, "no supply change (not minting)");
+    assert_eq!(
+        supply_before, supply_after,
+        "no supply change (not minting)"
+    );
     assert_eq!(user_onyc, 1_000_000_000);
     assert_eq!(vault_onyc_before - vault_onyc_after, 1_000_000_000);
 }
@@ -710,48 +859,70 @@ fn test_permissionless_user_to_boss_transfer() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let token_in_amount = 1_000_100u64;
     let user_usdc_before = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
     );
     let boss_usdc_before = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&boss, &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
     let supply_before = get_mint_supply(&ctx.svm, &ctx.usdc_mint);
 
     let ix = build_take_offer_permissionless_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        token_in_amount, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        token_in_amount,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
     let user_usdc_after = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
     );
     let boss_usdc_after = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&boss, &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
     let supply_after = get_mint_supply(&ctx.svm, &ctx.usdc_mint);
 
-    assert_eq!(supply_before, supply_after, "no supply change (not burning)");
+    assert_eq!(
+        supply_before, supply_after,
+        "no supply change (not burning)"
+    );
     assert_eq!(user_usdc_before - user_usdc_after, token_in_amount);
     assert_eq!(boss_usdc_after - boss_usdc_before, token_in_amount);
 
     // Verify intermediary accounts are empty
     let (permissionless_auth, _) = find_permissionless_authority_pda();
     let intermediary_usdc = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&permissionless_auth, &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&permissionless_auth, &ctx.usdc_mint),
     );
     let intermediary_onyc = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&permissionless_auth, &ctx.onyc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&permissionless_auth, &ctx.onyc_mint),
     );
     assert_eq!(intermediary_usdc, 0, "no residual token_in in intermediary");
-    assert_eq!(intermediary_onyc, 0, "no residual token_out in intermediary");
+    assert_eq!(
+        intermediary_onyc, 0,
+        "no residual token_out in intermediary"
+    );
 }
 
 // ===========================================================================
@@ -770,31 +941,47 @@ fn test_permissionless_mint_token_out_with_mint_authority() {
 
     let current_time = get_clock_time(&ctx.svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let (vault_auth, _) = find_offer_vault_authority_pda();
     let vault_onyc_before = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
     );
 
     let ix = build_take_offer_permissionless_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_100,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
     );
     let vault_onyc_after = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
     );
 
     assert_eq!(user_onyc, 1_000_000_000);
-    assert_eq!(vault_onyc_before, vault_onyc_after, "vault unchanged (tokens were minted)");
+    assert_eq!(
+        vault_onyc_before, vault_onyc_after,
+        "vault unchanged (tokens were minted)"
+    );
 }
 
 #[test]
@@ -814,30 +1001,49 @@ fn test_permissionless_burn_token_in_with_mint_authority() {
 
     let current_time = get_clock_time(&ctx.svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let token_in_amount = 1_000_000u64;
     let supply_before = get_mint_supply(&ctx.svm, &ctx.usdc_mint);
     let boss_usdc_before = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&boss, &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
 
     let ix = build_take_offer_permissionless_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        token_in_amount, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        token_in_amount,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
     let supply_after = get_mint_supply(&ctx.svm, &ctx.usdc_mint);
     let boss_usdc_after = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&boss, &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
 
-    assert_eq!(supply_before - supply_after, token_in_amount, "supply should decrease (burned)");
-    assert_eq!(boss_usdc_after, boss_usdc_before, "boss receives nothing (tokens burned)");
+    assert_eq!(
+        supply_before - supply_after,
+        token_in_amount,
+        "supply should decrease (burned)"
+    );
+    assert_eq!(
+        boss_usdc_after, boss_usdc_before,
+        "boss receives nothing (tokens burned)"
+    );
 }
 
 #[test]
@@ -852,22 +1058,33 @@ fn test_permissionless_fee_calculations_when_minting() {
 
     let current_time = get_clock_time(&ctx.svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let token_in_amount = 1_050_000u64; // 1.05 USDC
 
     let ix = build_take_offer_permissionless_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        token_in_amount, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        token_in_amount,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
     // Boss receives full amount (fee included in transfer)
     let boss_usdc = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&boss, &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
     assert_eq!(boss_usdc, token_in_amount);
 
@@ -876,7 +1093,8 @@ fn test_permissionless_fee_calculations_when_minting() {
     // net = 1_050_000 - 52_500 = 997_500
     // token_out = 997_500 * 1e9 / 1e6 = 997_500_000
     let user_onyc = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
     );
     assert_eq!(user_onyc, 997_500_000);
 }
@@ -898,8 +1116,14 @@ fn test_permissionless_kill_switch_rejects() {
 
     let current_time = get_clock_time(&ctx.svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
@@ -908,11 +1132,18 @@ fn test_permissionless_kill_switch_rejects() {
     send_tx(&mut ctx.svm, &[ix], &[&admin]).unwrap();
 
     let ix = build_take_offer_permissionless_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_100,
+        None,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
-    assert!(result.is_err(), "kill switch should block permissionless take");
+    assert!(
+        result.is_err(),
+        "kill switch should block permissionless take"
+    );
 }
 
 #[test]
@@ -939,8 +1170,14 @@ fn test_permissionless_not_allowed_rejects() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &usdc_mint, &onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -950,11 +1187,18 @@ fn test_permissionless_not_allowed_rejects() {
     create_token_account(&mut svm, &onyc_mint, &user.pubkey(), 0);
 
     let ix = build_take_offer_permissionless_ix(
-        &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_000, None,
+        &user.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        1_000_000,
+        None,
     );
     let result = send_tx(&mut svm, &[ix], &[&user]);
-    assert!(result.is_err(), "should fail when permissionless not allowed");
+    assert!(
+        result.is_err(),
+        "should fail when permissionless not allowed"
+    );
 }
 
 #[test]
@@ -970,8 +1214,14 @@ fn test_permissionless_kill_switch_disabled_allows() {
 
     let current_time = get_clock_time(&ctx.svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
@@ -985,8 +1235,12 @@ fn test_permissionless_kill_switch_disabled_allows() {
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let ix = build_take_offer_permissionless_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_100,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -1011,7 +1265,13 @@ fn test_permissionless_token2022_basic_success() {
 
     // needs_approval=false, allow_permissionless=true
     let ix = build_make_offer_ix_with_programs(
-        &boss, &usdc_mint, &onyc_mint, 0, false, true, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        true,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1027,8 +1287,14 @@ fn test_permissionless_token2022_basic_success() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &usdc_mint, &onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1038,20 +1304,24 @@ fn test_permissionless_token2022_basic_success() {
     create_token_account_2022(&mut svm, &onyc_mint, &user.pubkey(), 0);
 
     let ix = build_take_offer_permissionless_ix_with_programs(
-        &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_000, None,
-        &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
+        &user.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        1_000_000,
+        None,
+        &TOKEN_2022_PROGRAM_ID,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
 
     let user_onyc = get_token_balance(
-        &svm, &get_associated_token_address_2022(&user.pubkey(), &onyc_mint),
+        &svm,
+        &get_associated_token_address_2022(&user.pubkey(), &onyc_mint),
     );
     assert_eq!(user_onyc, 1_000_000_000);
 
-    let boss_usdc = get_token_balance(
-        &svm, &get_associated_token_address_2022(&boss, &usdc_mint),
-    );
+    let boss_usdc = get_token_balance(&svm, &get_associated_token_address_2022(&boss, &usdc_mint));
     assert_eq!(boss_usdc, 1_000_000);
 }
 
@@ -1064,7 +1334,13 @@ fn test_permissionless_token2022_rejects_token_in_transfer_fee() {
     let onyc_mint = create_mint_2022(&mut svm, &payer, 9, &boss);
 
     let ix = build_make_offer_ix_with_programs(
-        &boss, &usdc_mint, &onyc_mint, 0, false, true, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        true,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1080,8 +1356,14 @@ fn test_permissionless_token2022_rejects_token_in_transfer_fee() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &usdc_mint, &onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1091,12 +1373,20 @@ fn test_permissionless_token2022_rejects_token_in_transfer_fee() {
     create_token_account_2022(&mut svm, &onyc_mint, &user.pubkey(), 0);
 
     let ix = build_take_offer_permissionless_ix_with_programs(
-        &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_000, None,
-        &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
+        &user.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        1_000_000,
+        None,
+        &TOKEN_2022_PROGRAM_ID,
+        &TOKEN_2022_PROGRAM_ID,
     );
     let result = send_tx(&mut svm, &[ix], &[&user]);
-    assert!(result.is_err(), "token_in with transfer fee should be rejected");
+    assert!(
+        result.is_err(),
+        "token_in with transfer fee should be rejected"
+    );
 }
 
 #[test]
@@ -1108,7 +1398,13 @@ fn test_permissionless_token2022_rejects_token_out_transfer_fee() {
     let onyc_mint = create_mint_2022_with_transfer_fee(&mut svm, &payer, 9, &boss, 500, 1_000_000);
 
     let ix = build_make_offer_ix_with_programs(
-        &boss, &usdc_mint, &onyc_mint, 0, false, true, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        true,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1124,8 +1420,14 @@ fn test_permissionless_token2022_rejects_token_out_transfer_fee() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &usdc_mint, &onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1135,10 +1437,18 @@ fn test_permissionless_token2022_rejects_token_out_transfer_fee() {
     create_token_account_2022(&mut svm, &onyc_mint, &user.pubkey(), 0);
 
     let ix = build_take_offer_permissionless_ix_with_programs(
-        &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_000, None,
-        &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
+        &user.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        1_000_000,
+        None,
+        &TOKEN_2022_PROGRAM_ID,
+        &TOKEN_2022_PROGRAM_ID,
     );
     let result = send_tx(&mut svm, &[ix], &[&user]);
-    assert!(result.is_err(), "token_out with transfer fee should be rejected");
+    assert!(
+        result.is_err(),
+        "token_out with transfer fee should be rejected"
+    );
 }

@@ -8,7 +8,12 @@ fn setup_offer_with_vector(
     apr: u64,
     base_price: u64,
     price_fix_duration: u64,
-) -> (litesvm::LiteSVM, Keypair, solana_sdk::pubkey::Pubkey, solana_sdk::pubkey::Pubkey) {
+) -> (
+    litesvm::LiteSVM,
+    Keypair,
+    solana_sdk::pubkey::Pubkey,
+    solana_sdk::pubkey::Pubkey,
+) {
     let (mut svm, payer, _onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
@@ -21,8 +26,14 @@ fn setup_offer_with_vector(
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time, base_price, apr, price_fix_duration,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time,
+        base_price,
+        apr,
+        price_fix_duration,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -39,9 +50,9 @@ fn setup_offer_with_vector(
 #[test]
 fn test_get_nav_success() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
-        36_500,      // 3.65% APR
+        36_500,        // 3.65% APR
         1_000_000_000, // base_price = 1.0
-        86400,       // 1 day
+        86400,         // 1 day
     );
 
     let ix = build_get_nav_ix(&token_in, &token_out);
@@ -56,9 +67,9 @@ fn test_get_nav_success() {
 #[test]
 fn test_get_nav_price_growth() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
-        36_500,      // 3.65% APR
+        36_500, // 3.65% APR
         1_000_000_000,
-        86400,       // 1 day
+        86400, // 1 day
     );
 
     // Advance 1 day so price should have grown
@@ -80,7 +91,7 @@ fn test_get_nav_price_growth() {
 #[test]
 fn test_get_nav_zero_apr() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
-        0,           // 0% APR
+        0, // 0% APR
         1_000_000_000,
         86400,
     );
@@ -127,15 +138,24 @@ fn test_get_nav_fails_all_vectors_future() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 100_000, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 100_000,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     let ix = build_get_nav_ix(&token_in, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail when all vectors are in the future");
+    assert!(
+        result.is_err(),
+        "should fail when all vectors are in the future"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -145,7 +165,7 @@ fn test_get_nav_fails_all_vectors_future() {
 #[test]
 fn test_get_apy_success() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
-        100_000,     // 10% APR
+        100_000, // 10% APR
         1_000_000_000,
         86400,
     );
@@ -156,15 +176,16 @@ fn test_get_apy_success() {
 
     // 10% APR -> ~10.52% APY with daily compounding
     // APY = (1 + 0.10/365)^365 - 1 ≈ 0.10516 = 105_160 in scale=6
-    assert!(apy > 100_000, "APY should be greater than APR (compounding)");
+    assert!(
+        apy > 100_000,
+        "APY should be greater than APR (compounding)"
+    );
     assert!(apy < 110_000, "APY should be reasonable for 10% APR");
 }
 
 #[test]
 fn test_get_apy_zero_apr() {
-    let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
-        0, 1_000_000_000, 86400,
-    );
+    let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(0, 1_000_000_000, 86400);
 
     let ix = build_get_apy_ix(&token_in, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -196,9 +217,8 @@ fn test_get_apy_fails_no_active_vector() {
 
 #[test]
 fn test_get_nav_adjustment_first_vector() {
-    let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
-        36_500, 1_000_000_000, 86400,
-    );
+    let (mut svm, payer, token_in, token_out) =
+        setup_offer_with_vector(36_500, 1_000_000_000, 86400);
 
     let ix = build_get_nav_adjustment_ix(&token_in, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -225,16 +245,28 @@ fn test_get_nav_adjustment_positive() {
 
     // Vector 1: base_price = 1.0
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     // Vector 2: base_price = 1.1, starts later
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 100, 1_100_000_000, 0, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 100,
+        1_100_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -272,9 +304,7 @@ fn test_get_nav_adjustment_fails_no_active_vector() {
 
 #[test]
 fn test_get_tvl_success() {
-    let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
-        0, 1_000_000_000, 86400,
-    );
+    let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(0, 1_000_000_000, 86400);
 
     // Mint some token_out supply
     let mut mint_data = svm.get_account(&token_out).unwrap();
@@ -371,16 +401,28 @@ fn test_get_nav_multiple_vectors_uses_most_recent() {
 
     // Vector 1: base_price = 1.0, starts now
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     // Vector 2: base_price = 2.0, starts later
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 100, 2_000_000_000, 73_000, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 100,
+        2_000_000_000,
+        73_000,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -415,8 +457,14 @@ fn test_get_apy_10_percent() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time, 1_000_000_000, 100_000, 86400, // 10% APR
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time,
+        1_000_000_000,
+        100_000,
+        86400, // 10% APR
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
@@ -444,8 +492,14 @@ fn test_get_apy_25_percent() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time, 1_000_000_000, 250_000, 86400, // 25% APR
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time,
+        1_000_000_000,
+        250_000,
+        86400, // 25% APR
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
@@ -475,16 +529,28 @@ fn test_get_apy_multiple_vectors_uses_most_recent() {
 
     // Vector 1: 3.65% APR
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     // Vector 2: 10% APR, starts later
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 100, 1_000_000_000, 100_000, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 100,
+        1_000_000_000,
+        100_000,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -516,8 +582,14 @@ fn test_get_tvl_different_price() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time, 2_000_000_000, 0, 86400, // price = 2.0
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time,
+        2_000_000_000,
+        0,
+        86400, // price = 2.0
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
@@ -549,8 +621,14 @@ fn test_get_tvl_after_time_advancement() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
@@ -594,16 +672,28 @@ fn test_get_nav_adjustment_negative() {
 
     // Vector 1: base_price = 2.0
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time, 2_000_000_000, 0, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time,
+        2_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     // Vector 2: base_price = 1.0 (decrease)
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 100, 1_000_000_000, 0, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 100,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -614,7 +704,10 @@ fn test_get_nav_adjustment_negative() {
     let adjustment = get_return_i64(&result);
 
     // Adjustment = current_price - previous_price = 1.0 - 2.0 = -1.0
-    assert!(adjustment < 0, "adjustment should be negative when price decreases");
+    assert!(
+        adjustment < 0,
+        "adjustment should be negative when price decreases"
+    );
 }
 
 #[test]
@@ -631,8 +724,14 @@ fn test_get_nav_adjustment_time_progression() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
@@ -666,15 +765,27 @@ fn test_get_nav_token2022_offer() {
     let token_out = create_mint_2022(&mut svm, &payer, 9, &boss);
 
     let ix = build_make_offer_ix_with_programs(
-        &boss, &token_in, &token_out, 0, false, false, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &token_in,
+        &token_out,
+        0,
+        false,
+        false,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
@@ -704,9 +815,8 @@ fn test_get_circulating_supply_token2022() {
     mint_data.data[36..44].copy_from_slice(&500_000_000_000u64.to_le_bytes());
     svm.set_account(token2022_mint, mint_data).unwrap();
 
-    let ix = build_get_circulating_supply_ix_with_token_program(
-        &token2022_mint, &TOKEN_2022_PROGRAM_ID,
-    );
+    let ix =
+        build_get_circulating_supply_ix_with_token_program(&token2022_mint, &TOKEN_2022_PROGRAM_ID);
     let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let supply = get_return_u64(&result);
 
@@ -721,7 +831,7 @@ fn test_get_circulating_supply_token2022() {
 #[test]
 fn test_get_apy_3_65_percent() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
-        36_500,      // 3.65% APR
+        36_500, // 3.65% APR
         1_000_000_000,
         86400,
     );
@@ -737,7 +847,7 @@ fn test_get_apy_3_65_percent() {
 #[test]
 fn test_get_apy_small_apr() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
-        100,         // 0.01% APR
+        100, // 0.01% APR
         1_000_000_000,
         86400,
     );
@@ -764,15 +874,24 @@ fn test_get_apy_fails_all_vectors_future() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 100_000, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 100_000,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     let ix = build_get_apy_ix(&token_in, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail when all vectors are in the future");
+    assert!(
+        result.is_err(),
+        "should fail when all vectors are in the future"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -796,12 +915,18 @@ fn test_get_nav_fails_nonexistent_offer() {
     // Try with wrong token_in
     let ix = build_get_nav_ix(&wrong_mint, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail with non-existent offer (wrong token_in)");
+    assert!(
+        result.is_err(),
+        "should fail with non-existent offer (wrong token_in)"
+    );
 
     // Try with wrong token_out
     let ix = build_get_nav_ix(&token_in, &wrong_mint);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail with non-existent offer (wrong token_out)");
+    assert!(
+        result.is_err(),
+        "should fail with non-existent offer (wrong token_out)"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -824,8 +949,14 @@ fn test_get_nav_adjustment_multiple_transitions() {
 
     // Vector 1: base_price = 1.0
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time, 1_000_000_000, 0, 1800,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time,
+        1_000_000_000,
+        0,
+        1800,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
@@ -834,8 +965,14 @@ fn test_get_nav_adjustment_multiple_transitions() {
     advance_clock_by(&mut svm, 1800);
     let new_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, new_time, 1_200_000_000, 0, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        new_time,
+        1_200_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
@@ -844,8 +981,14 @@ fn test_get_nav_adjustment_multiple_transitions() {
     advance_clock_by(&mut svm, 1800);
     let new_time2 = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, new_time2, 1_100_000_000, 0, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        new_time2,
+        1_100_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -855,7 +998,11 @@ fn test_get_nav_adjustment_multiple_transitions() {
     let adjustment = get_return_i64(&result);
 
     // Should be negative: 1.1 - 1.2 = -0.1
-    assert!(adjustment < 0, "adjustment should be negative: {}", adjustment);
+    assert!(
+        adjustment < 0,
+        "adjustment should be negative: {}",
+        adjustment
+    );
 }
 
 #[test]
@@ -874,8 +1021,14 @@ fn test_get_nav_adjustment_zero_apr_different_base_price() {
 
     // Vector 1: base_price = 1.0, 0% APR
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time, 1_000_000_000, 0, 3600,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time,
+        1_000_000_000,
+        0,
+        3600,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
@@ -885,8 +1038,14 @@ fn test_get_nav_adjustment_zero_apr_different_base_price() {
     // Vector 2: base_price = 2.5, 0% APR
     let new_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, new_time, 2_500_000_000, 0, 3600,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        new_time,
+        2_500_000_000,
+        0,
+        3600,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -930,15 +1089,24 @@ fn test_get_nav_adjustment_fails_all_vectors_future() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 100_000, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 100_000,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     let ix = build_get_nav_adjustment_ix(&token_in, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail when all vectors are in the future");
+    assert!(
+        result.is_err(),
+        "should fail when all vectors are in the future"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -948,7 +1116,9 @@ fn test_get_nav_adjustment_fails_all_vectors_future() {
 #[test]
 fn test_get_tvl_zero_apr() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
-        0, 3_000_000_000, 86400, // 0% APR, price = 3.0
+        0,
+        3_000_000_000,
+        86400, // 0% APR, price = 3.0
     );
 
     // Set token_out supply
@@ -979,11 +1149,17 @@ fn test_get_tvl_fails_nonexistent_offer() {
 
     let ix = build_get_tvl_ix(&wrong_mint, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail with non-existent offer (wrong token_in)");
+    assert!(
+        result.is_err(),
+        "should fail with non-existent offer (wrong token_in)"
+    );
 
     let ix = build_get_tvl_ix(&token_in, &wrong_mint);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail with non-existent offer (wrong token_out)");
+    assert!(
+        result.is_err(),
+        "should fail with non-existent offer (wrong token_out)"
+    );
 }
 
 #[test]
@@ -1000,22 +1176,29 @@ fn test_get_tvl_fails_all_vectors_future() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 100_000, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 100_000,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     let ix = build_get_tvl_ix(&token_in, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail when all vectors are in the future");
+    assert!(
+        result.is_err(),
+        "should fail when all vectors are in the future"
+    );
 }
 
 #[test]
 fn test_get_tvl_wrong_token_out_mint() {
-    let (mut svm, payer, token_in, _token_out) = setup_offer_with_vector(
-        0, 1_000_000_000, 86400,
-    );
+    let (mut svm, payer, token_in, _token_out) = setup_offer_with_vector(0, 1_000_000_000, 86400);
     let boss = payer.pubkey();
 
     let wrong_mint = create_mint(&mut svm, &payer, 9, &boss);
@@ -1041,8 +1224,14 @@ fn test_get_tvl_multiple_vectors_uses_most_recent() {
 
     // Vector 1: price = 1.0
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time, 1_000_000_000, 0, 3600,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time,
+        1_000_000_000,
+        0,
+        3600,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
@@ -1052,8 +1241,14 @@ fn test_get_tvl_multiple_vectors_uses_most_recent() {
     // Vector 2: price = 5.0
     let new_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, new_time, 5_000_000_000, 0, 1800,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        new_time,
+        5_000_000_000,
+        0,
+        1800,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1079,15 +1274,27 @@ fn test_get_tvl_token2022() {
     let token_out = create_mint_2022(&mut svm, &payer, 9, &boss);
 
     let ix = build_make_offer_ix_with_programs(
-        &boss, &token_in, &token_out, 0, false, false, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &token_in,
+        &token_out,
+        0,
+        false,
+        false,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time, 2_000_000_000, 36_500, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time,
+        2_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
@@ -1126,17 +1333,23 @@ fn test_get_apy_fails_nonexistent_offer() {
     // Try with wrong mints (no offer exists for wrong_mint/token_out)
     let ix = build_get_apy_ix(&wrong_mint, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail with non-existent offer (wrong token_in)");
+    assert!(
+        result.is_err(),
+        "should fail with non-existent offer (wrong token_in)"
+    );
 
     let ix = build_get_apy_ix(&token_in, &wrong_mint);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail with non-existent offer (wrong token_out)");
+    assert!(
+        result.is_err(),
+        "should fail with non-existent offer (wrong token_out)"
+    );
 }
 
 #[test]
 fn test_get_apy_consistent_results() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
-        100_000,     // 10% APR
+        100_000, // 10% APR
         1_000_000_000,
         86400,
     );
@@ -1157,7 +1370,7 @@ fn test_get_apy_consistent_results() {
 #[test]
 fn test_get_nav_consistent_results() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
-        36_500,      // 3.65% APR
+        36_500, // 3.65% APR
         1_000_000_000,
         86400,
     );
@@ -1172,7 +1385,10 @@ fn test_get_nav_consistent_results() {
     let result2 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let nav2 = get_return_u64(&result2);
 
-    assert_eq!(nav1, nav2, "NAV should be identical on consecutive calls at the same time");
+    assert_eq!(
+        nav1, nav2,
+        "NAV should be identical on consecutive calls at the same time"
+    );
 }
 
 #[test]
@@ -1191,16 +1407,28 @@ fn test_get_nav_adjustment_zero_price_change() {
 
     // Vector 1: base_price = 1.0, 0% APR
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     // Vector 2: same base_price = 1.0, 0% APR, starts later
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 100, 1_000_000_000, 0, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 100,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1212,7 +1440,10 @@ fn test_get_nav_adjustment_zero_price_change() {
     let adjustment = get_return_i64(&result);
 
     // Both vectors have the same price (1.0) and 0 APR, so adjustment = 0
-    assert_eq!(adjustment, 0, "adjustment should be 0 when prices are identical");
+    assert_eq!(
+        adjustment, 0,
+        "adjustment should be 0 when prices are identical"
+    );
 }
 
 #[test]
@@ -1231,16 +1462,28 @@ fn test_get_nav_adjustment_consistent_results() {
 
     // Vector 1: base_price = 1.0
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     // Vector 2: base_price = 1.5, starts later
     let ix = build_add_offer_vector_ix(
-        &boss, &token_in, &token_out,
-        None, current_time + 100, 1_500_000_000, 0, 86400,
+        &boss,
+        &token_in,
+        &token_out,
+        None,
+        current_time + 100,
+        1_500_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1256,13 +1499,18 @@ fn test_get_nav_adjustment_consistent_results() {
     let result2 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let adj2 = get_return_i64(&result2);
 
-    assert_eq!(adj1, adj2, "NAV adjustment should be identical on consecutive calls");
+    assert_eq!(
+        adj1, adj2,
+        "NAV adjustment should be identical on consecutive calls"
+    );
 }
 
 #[test]
 fn test_get_tvl_large_supply() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
-        0, 1_000_000_000, 86400, // 0% APR, price = 1.0
+        0,
+        1_000_000_000,
+        86400, // 0% APR, price = 1.0
     );
 
     // Set token_out supply to a very large value: 1_000_000_000_000_000 (1 billion tokens with 6 decimals)
@@ -1277,14 +1525,15 @@ fn test_get_tvl_large_supply() {
 
     // TVL = supply * price / 10^9 = 1_000_000_000_000_000 * 1_000_000_000 / 1_000_000_000
     //     = 1_000_000_000_000_000
-    assert_eq!(tvl, large_supply, "TVL should handle large supply correctly");
+    assert_eq!(
+        tvl, large_supply,
+        "TVL should handle large supply correctly"
+    );
 }
 
 #[test]
 fn test_get_tvl_consistent_results() {
-    let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
-        0, 1_000_000_000, 86400,
-    );
+    let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(0, 1_000_000_000, 86400);
 
     // Set token_out supply
     let mut mint_data = svm.get_account(&token_out).unwrap();
@@ -1301,7 +1550,10 @@ fn test_get_tvl_consistent_results() {
     let result2 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let tvl2 = get_return_u64(&result2);
 
-    assert_eq!(tvl1, tvl2, "TVL should be identical on consecutive calls (read-only)");
+    assert_eq!(
+        tvl1, tvl2,
+        "TVL should be identical on consecutive calls (read-only)"
+    );
 }
 
 #[test]
@@ -1323,7 +1575,10 @@ fn test_get_circulating_supply_zero_vault_balance() {
     let supply = get_return_u64(&result);
 
     // Vault has 0 balance, so circulating = total supply
-    assert_eq!(supply, total_supply, "circulating supply should equal total supply when vault balance is 0");
+    assert_eq!(
+        supply, total_supply,
+        "circulating supply should equal total supply when vault balance is 0"
+    );
 }
 
 #[test]
@@ -1345,5 +1600,8 @@ fn test_get_circulating_supply_consistent_results() {
     let result2 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let supply2 = get_return_u64(&result2);
 
-    assert_eq!(supply1, supply2, "circulating supply should be identical on consecutive calls");
+    assert_eq!(
+        supply1, supply2,
+        "circulating supply should be identical on consecutive calls"
+    );
 }

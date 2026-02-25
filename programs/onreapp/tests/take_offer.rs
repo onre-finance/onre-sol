@@ -68,14 +68,23 @@ fn test_price_first_interval() {
 
     // base_price = 1.0 (1e9), APR = 3.65% (36500), duration = 1 day
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     // Price in first interval: 1.0 * (1 + 0.0365 * 86400/31536000) = 1.0001
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
         1_000_100, // 1.0001 USDC
         None,
     );
@@ -95,13 +104,22 @@ fn test_price_with_fee() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
         1_000_100,
         None,
     );
@@ -123,8 +141,14 @@ fn test_ceiling_fee_small_amount() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
@@ -135,7 +159,10 @@ fn test_ceiling_fee_small_amount() {
     );
 
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
         199,
         None,
     );
@@ -162,15 +189,25 @@ fn test_price_same_interval() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     // First trade
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_100,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -179,12 +216,23 @@ fn test_price_same_interval() {
 
     // Second user
     let user2 = Keypair::new();
-    ctx.svm.airdrop(&user2.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
-    create_token_account(&mut ctx.svm, &ctx.usdc_mint, &user2.pubkey(), 10_000_000_000);
+    ctx.svm
+        .airdrop(&user2.pubkey(), 10 * INITIAL_LAMPORTS)
+        .unwrap();
+    create_token_account(
+        &mut ctx.svm,
+        &ctx.usdc_mint,
+        &user2.pubkey(),
+        10_000_000_000,
+    );
 
     let ix = build_take_offer_ix(
-        &user2.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        &user2.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_100,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&user2]).unwrap();
 
@@ -207,8 +255,14 @@ fn test_price_second_interval() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
@@ -217,8 +271,12 @@ fn test_price_second_interval() {
 
     // Price: 1.0 * (1 + 0.0365 * 2*86400/31536000) = 1.0002
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_200, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_200,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -240,16 +298,28 @@ fn test_use_most_recent_active_vector() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        None, current_time + 1000, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        None,
+        current_time + 1000,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     advance_slot(&mut ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        None, current_time + 2000, 2_000_000_000, 73_000, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        None,
+        current_time + 2000,
+        2_000_000_000,
+        73_000,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
@@ -257,8 +327,12 @@ fn test_use_most_recent_active_vector() {
 
     // Price from second vector: 2.0 * (1 + 0.073 * 86400/31536000) ≈ 2.0004
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        2_000_400, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        2_000_400,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -281,14 +355,24 @@ fn test_fail_no_active_vector() {
 
     // Add vector in future
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        None, current_time + 10000, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        None,
+        current_time + 10000,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_000, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_000,
+        None,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
     assert!(result.is_err(), "should fail with no active vector");
@@ -301,15 +385,25 @@ fn test_fail_insufficient_user_balance() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     // User only has 10,000 USDC, try to spend 20,000
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        20_000_000_000, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        20_000_000_000,
+        None,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
     assert!(result.is_err(), "should fail with insufficient balance");
@@ -323,18 +417,31 @@ fn test_fail_insufficient_vault_balance() {
 
     // Very low price = lots of token_out needed
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000, 0, 86400, // price = 0.001
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000,
+        0,
+        86400, // price = 0.001
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     // 20 USDC at 0.001 price = 20,000 token_out, but vault has only 10,000
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        20_000_000, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        20_000_000,
+        None,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
-    assert!(result.is_err(), "should fail with insufficient vault balance");
+    assert!(
+        result.is_err(),
+        "should fail with insufficient vault balance"
+    );
 }
 
 // ===========================================================================
@@ -348,41 +455,58 @@ fn test_transfer_tokens_correctly() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let token_in_amount = 1_000_100u64;
 
     let user_usdc_before = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
     );
     let boss_usdc_before = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&boss, &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
     let (vault_auth, _) = find_offer_vault_authority_pda();
     let vault_onyc_before = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
     );
 
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        token_in_amount, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        token_in_amount,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
     let user_usdc_after = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
     );
     let user_onyc_after = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
     );
     let boss_usdc_after = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&boss, &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
     let vault_onyc_after = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
     );
 
     assert_eq!(user_usdc_before - user_usdc_after, token_in_amount);
@@ -402,18 +526,33 @@ fn test_wrong_token_in_mint() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let wrong_mint = create_mint(&mut ctx.svm, &ctx.payer, 6, &boss);
     create_token_account(&mut ctx.svm, &wrong_mint, &boss, 0);
-    create_token_account(&mut ctx.svm, &wrong_mint, &ctx.user.pubkey(), 10_000_000_000);
+    create_token_account(
+        &mut ctx.svm,
+        &wrong_mint,
+        &ctx.user.pubkey(),
+        10_000_000_000,
+    );
 
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &wrong_mint, &ctx.onyc_mint,
-        1_000_000, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &wrong_mint,
+        &ctx.onyc_mint,
+        1_000_000,
+        None,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
     assert!(result.is_err(), "wrong token_in should fail");
@@ -426,18 +565,33 @@ fn test_wrong_token_out_mint() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let wrong_mint = create_mint(&mut ctx.svm, &ctx.payer, 9, &boss);
     create_token_account(&mut ctx.svm, &wrong_mint, &boss, 0);
-    create_token_account(&mut ctx.svm, &wrong_mint, &ctx.user.pubkey(), 10_000_000_000);
+    create_token_account(
+        &mut ctx.svm,
+        &wrong_mint,
+        &ctx.user.pubkey(),
+        10_000_000_000,
+    );
 
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &wrong_mint,
-        1_000_000, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &wrong_mint,
+        1_000_000,
+        None,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
     assert!(result.is_err(), "wrong token_out should fail");
@@ -450,8 +604,14 @@ fn test_zero_apr_fixed_price() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
@@ -459,7 +619,10 @@ fn test_zero_apr_fixed_price() {
     advance_clock_by(&mut ctx.svm, 86_401 * 10);
 
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
         1_000_000, // exactly 1.0 USDC
         None,
     );
@@ -479,8 +642,14 @@ fn test_high_apr_long_period() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 365_000, 86400, // 36.5% APR
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        365_000,
+        86400, // 36.5% APR
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
@@ -489,7 +658,10 @@ fn test_high_apr_long_period() {
 
     // After 1 year: price = 1.0 * (1 + 0.365 * 366/365) ≈ 1.366
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
         1_366_000,
         None,
     );
@@ -513,29 +685,42 @@ fn test_vault_transfer_token_out_no_mint_authority() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let supply_before = get_mint_supply(&ctx.svm, &ctx.usdc_mint);
     let (vault_auth, _) = find_offer_vault_authority_pda();
     let vault_onyc_before = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
     );
 
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_100,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
     let supply_after = get_mint_supply(&ctx.svm, &ctx.usdc_mint);
     let user_onyc = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
     );
     let vault_onyc_after = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
     );
 
     assert_eq!(supply_before, supply_after); // No supply burned
@@ -550,32 +735,46 @@ fn test_user_to_boss_transfer_no_mint_authority() {
     let current_time = get_clock_time(&ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let token_in_amount = 1_000_100u64;
 
     let user_usdc_before = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
     );
     let boss_usdc_before = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&boss, &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
     let supply_before = get_mint_supply(&ctx.svm, &ctx.usdc_mint);
 
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        token_in_amount, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        token_in_amount,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
     let user_usdc_after = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
     );
     let boss_usdc_after = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&boss, &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
     let supply_after = get_mint_supply(&ctx.svm, &ctx.usdc_mint);
 
@@ -602,8 +801,14 @@ fn test_kill_switch_rejects_take_offer() {
     advance_slot(&mut ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
@@ -617,8 +822,12 @@ fn test_kill_switch_rejects_take_offer() {
     assert!(state.is_killed);
 
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_100,
+        None,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
     assert!(result.is_err(), "kill switch should block take_offer");
@@ -638,8 +847,14 @@ fn test_kill_switch_disabled_allows_take_offer() {
     advance_slot(&mut ctx.svm);
 
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
@@ -658,8 +873,12 @@ fn test_kill_switch_disabled_allows_take_offer() {
     assert!(!state.is_killed);
 
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_100,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -703,18 +922,31 @@ fn test_take_offer_with_approval_required_fails_without_approval() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &usdc_mint, &onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     // Try without approval
     let ix = build_take_offer_ix(
-        &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_100, None,
+        &user.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        1_000_100,
+        None,
     );
     let result = send_tx(&mut svm, &[ix], &[&user]);
-    assert!(result.is_err(), "should fail without approval when required");
+    assert!(
+        result.is_err(),
+        "should fail without approval when required"
+    );
 }
 
 #[test]
@@ -745,8 +977,14 @@ fn test_take_offer_with_valid_approval() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &usdc_mint, &onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -756,8 +994,12 @@ fn test_take_offer_with_valid_approval() {
     let ed25519_ix = build_ed25519_verify_ix(&approver, &approval_msg);
 
     let take_ix = build_take_offer_ix(
-        &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_100, Some(&approval_msg),
+        &user.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        1_000_100,
+        Some(&approval_msg),
     );
     send_tx(&mut svm, &[ed25519_ix, take_ix], &[&user]).unwrap();
 
@@ -784,34 +1026,54 @@ fn test_mint_token_out_with_program_mint_authority() {
 
     let current_time = get_clock_time(&ctx.svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let (vault_auth, _) = find_offer_vault_authority_pda();
     let vault_onyc_before = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
     );
     let supply_before = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
 
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_100,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
     );
     let vault_onyc_after = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
     );
     let supply_after = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
 
     assert_eq!(user_onyc, 1_000_000_000);
-    assert_eq!(vault_onyc_before, vault_onyc_after, "vault unchanged (tokens minted)");
-    assert_eq!(supply_after - supply_before, 1_000_000_000, "supply increased by mint");
+    assert_eq!(
+        vault_onyc_before, vault_onyc_after,
+        "vault unchanged (tokens minted)"
+    );
+    assert_eq!(
+        supply_after - supply_before,
+        1_000_000_000,
+        "supply increased by mint"
+    );
 }
 
 #[test]
@@ -831,30 +1093,49 @@ fn test_burn_token_in_with_program_mint_authority() {
 
     let current_time = get_clock_time(&ctx.svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let token_in_amount = 1_000_000u64;
     let supply_before = get_mint_supply(&ctx.svm, &ctx.usdc_mint);
     let boss_usdc_before = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&boss, &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
 
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        token_in_amount, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        token_in_amount,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
     let supply_after = get_mint_supply(&ctx.svm, &ctx.usdc_mint);
     let boss_usdc_after = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&boss, &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
 
-    assert_eq!(supply_before - supply_after, token_in_amount, "supply decreased (burned)");
-    assert_eq!(boss_usdc_after, boss_usdc_before, "boss receives nothing (tokens burned)");
+    assert_eq!(
+        supply_before - supply_after,
+        token_in_amount,
+        "supply decreased (burned)"
+    );
+    assert_eq!(
+        boss_usdc_after, boss_usdc_before,
+        "boss receives nothing (tokens burned)"
+    );
 }
 
 #[test]
@@ -869,22 +1150,33 @@ fn test_fee_collection_with_mint_authority_burn() {
 
     let current_time = get_clock_time(&ctx.svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let token_in_amount = 1_000_000u64;
 
     let ix = build_take_offer_ix(
-        &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        token_in_amount, None,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        token_in_amount,
+        None,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
     // Boss receives full amount
     let boss_usdc = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&boss, &ctx.usdc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
     assert_eq!(boss_usdc, token_in_amount);
 
@@ -892,7 +1184,8 @@ fn test_fee_collection_with_mint_authority_burn() {
     // net = 1_000_000 - 50_000 = 950_000
     // token_out = 950_000 * 1e9 / 1e6 = 950_000_000
     let user_onyc = get_token_balance(
-        &ctx.svm, &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
+        &ctx.svm,
+        &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
     );
     assert_eq!(user_onyc, 950_000_000);
 }
@@ -910,7 +1203,13 @@ fn test_take_offer_token2022_transfers() {
     let onyc_mint = create_mint_2022(&mut svm, &payer, 9, &boss);
 
     let ix = build_make_offer_ix_with_programs(
-        &boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        false,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -925,8 +1224,14 @@ fn test_take_offer_token2022_transfers() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &usdc_mint, &onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -936,25 +1241,31 @@ fn test_take_offer_token2022_transfers() {
     let token_in_amount = 1_000_100u64;
 
     let user_usdc_before = get_token_balance(
-        &svm, &get_associated_token_address_2022(&user.pubkey(), &usdc_mint),
+        &svm,
+        &get_associated_token_address_2022(&user.pubkey(), &usdc_mint),
     );
 
     let ix = build_take_offer_ix_with_programs(
-        &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        token_in_amount, None,
-        &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
+        &user.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        token_in_amount,
+        None,
+        &TOKEN_2022_PROGRAM_ID,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
 
     let user_usdc_after = get_token_balance(
-        &svm, &get_associated_token_address_2022(&user.pubkey(), &usdc_mint),
+        &svm,
+        &get_associated_token_address_2022(&user.pubkey(), &usdc_mint),
     );
     let user_onyc = get_token_balance(
-        &svm, &get_associated_token_address_2022(&user.pubkey(), &onyc_mint),
+        &svm,
+        &get_associated_token_address_2022(&user.pubkey(), &onyc_mint),
     );
-    let boss_usdc = get_token_balance(
-        &svm, &get_associated_token_address_2022(&boss, &usdc_mint),
-    );
+    let boss_usdc = get_token_balance(&svm, &get_associated_token_address_2022(&boss, &usdc_mint));
 
     assert_eq!(user_usdc_before - user_usdc_after, token_in_amount);
     assert_eq!(user_onyc, 1_000_000_000);
@@ -971,7 +1282,13 @@ fn test_take_offer_token2022_zero_transfer_fee_accepted() {
     let onyc_mint = create_mint_2022_with_transfer_fee(&mut svm, &payer, 9, &boss, 0, 0);
 
     let ix = build_make_offer_ix_with_programs(
-        &boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        false,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -987,20 +1304,32 @@ fn test_take_offer_token2022_zero_transfer_fee_accepted() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &usdc_mint, &onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let ix = build_take_offer_ix_with_programs(
-        &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_000, None,
-        &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
+        &user.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        1_000_000,
+        None,
+        &TOKEN_2022_PROGRAM_ID,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
 
     let user_onyc = get_token_balance(
-        &svm, &get_associated_token_address_2022(&user.pubkey(), &onyc_mint),
+        &svm,
+        &get_associated_token_address_2022(&user.pubkey(), &onyc_mint),
     );
     assert_eq!(user_onyc, 1_000_000_000);
 }
@@ -1015,7 +1344,13 @@ fn test_take_offer_token2022_rejects_token_in_transfer_fee() {
     let onyc_mint = create_mint_2022(&mut svm, &payer, 9, &boss);
 
     let ix = build_make_offer_ix_with_programs(
-        &boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        false,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1031,18 +1366,32 @@ fn test_take_offer_token2022_rejects_token_in_transfer_fee() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &usdc_mint, &onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let ix = build_take_offer_ix_with_programs(
-        &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_000, None,
-        &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
+        &user.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        1_000_000,
+        None,
+        &TOKEN_2022_PROGRAM_ID,
+        &TOKEN_2022_PROGRAM_ID,
     );
     let result = send_tx(&mut svm, &[ix], &[&user]);
-    assert!(result.is_err(), "token_in with transfer fee should be rejected");
+    assert!(
+        result.is_err(),
+        "token_in with transfer fee should be rejected"
+    );
 }
 
 #[test]
@@ -1055,7 +1404,13 @@ fn test_take_offer_token2022_rejects_token_out_transfer_fee() {
     let onyc_mint = create_mint_2022_with_transfer_fee(&mut svm, &payer, 9, &boss, 500, 1_000_000);
 
     let ix = build_make_offer_ix_with_programs(
-        &boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        false,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -1071,16 +1426,30 @@ fn test_take_offer_token2022_rejects_token_out_transfer_fee() {
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &usdc_mint, &onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let ix = build_take_offer_ix_with_programs(
-        &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_000, None,
-        &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
+        &user.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        1_000_000,
+        None,
+        &TOKEN_2022_PROGRAM_ID,
+        &TOKEN_2022_PROGRAM_ID,
     );
     let result = send_tx(&mut svm, &[ix], &[&user]);
-    assert!(result.is_err(), "token_out with transfer fee should be rejected");
+    assert!(
+        result.is_err(),
+        "token_out with transfer fee should be rejected"
+    );
 }
