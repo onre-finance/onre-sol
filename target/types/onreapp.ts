@@ -1457,17 +1457,20 @@ export type Onreapp = {
     {
       "name": "fulfillRedemptionRequest",
       "docs": [
-        "Fulfills a redemption request.",
+        "Fulfills a redemption request, either fully or partially.",
         "",
         "Delegates to `redemption::fulfill_redemption_request`.",
-        "This instruction fulfills a pending redemption request by handling token operations:",
+        "Processes `amount` tokens from a pending redemption request at the current NAV price.",
+        "If `amount` is less than the remaining unfulfilled balance the request stays open",
+        "and further fulfillment calls can be made. When `amount` equals the remaining balance",
+        "the request is fully settled and the account is closed.",
         "- Burns token_in (ONyc) if program has mint authority, else sends to boss",
         "- Mints token_out if program has mint authority, else transfers from vault",
-        "- Uses current price from the underlying offer to calculate token_out amount",
         "Emits a `RedemptionRequestFulfilledEvent` upon success.",
         "",
         "# Arguments",
-        "- `ctx`: Context for `FulfillRedemptionRequest`.",
+        "- `ctx`:    Context for `FulfillRedemptionRequest`.",
+        "- `amount`: token_in amount to process; must be > 0 and ≤ remaining unfulfilled balance.",
         "",
         "# Access Control",
         "- Only redemption_admin can fulfill redemptions"
@@ -1563,8 +1566,11 @@ export type Onreapp = {
         {
           "name": "redemptionRequest",
           "docs": [
-            "The redemption request account to fulfill",
-            "Account is closed after fulfillment and rent is returned to redemption_admin"
+            "The redemption request account to fulfill (partially or fully)",
+            "",
+            "The account is only closed when the request is fully fulfilled",
+            "(fulfilled_amount == amount). For partial fulfillments the account",
+            "remains open so further fulfillment calls can be made."
           ],
           "writable": true,
           "pda": {
@@ -1994,7 +2000,12 @@ export type Onreapp = {
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "getApy",
@@ -8631,6 +8642,17 @@ export type Onreapp = {
             "type": "u8"
           },
           {
+            "name": "fulfilledAmount",
+            "docs": [
+              "Amount of token_in tokens that have already been fulfilled (partial fulfillment tracking)",
+              "",
+              "Starts at 0. Incremented by each partial or full fulfillment call.",
+              "When fulfilled_amount == amount the request is fully settled and the account is closed.",
+              "remaining = amount - fulfilled_amount is still locked in the redemption vault."
+            ],
+            "type": "u64"
+          },
+          {
             "name": "reserved",
             "docs": [
               "Reserved space for future fields"
@@ -8638,7 +8660,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                127
+                119
               ]
             }
           }
@@ -8677,9 +8699,17 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
-            "name": "amount",
+            "name": "originalAmount",
             "docs": [
-              "Amount of token_in tokens that was requested for redemption"
+              "Original total amount of token_in tokens in the request"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "returnedAmount",
+            "docs": [
+              "Amount of token_in tokens returned to the redeemer",
+              "(original_amount - fulfilled_amount; may be less than original_amount for partially fulfilled requests)"
             ],
             "type": "u64"
           },
@@ -8744,7 +8774,7 @@ export type Onreapp = {
     {
       "name": "redemptionRequestFulfilledEvent",
       "docs": [
-        "Event emitted when a redemption request is successfully fulfilled",
+        "Event emitted when a redemption request is fulfilled (fully or partially)",
         "",
         "Provides transparency for tracking redemption fulfillment and token exchange details."
       ],
@@ -8775,21 +8805,21 @@ export type Onreapp = {
           {
             "name": "tokenInNetAmount",
             "docs": [
-              "Net amount of token_in tokens burned/transferred (after fees)"
+              "Net amount of token_in tokens burned/transferred in this fulfillment call (after fees)"
             ],
             "type": "u64"
           },
           {
             "name": "tokenInFeeAmount",
             "docs": [
-              "Fee amount deducted from token_in"
+              "Fee amount deducted from token_in in this fulfillment call"
             ],
             "type": "u64"
           },
           {
             "name": "tokenOutAmount",
             "docs": [
-              "Amount of token_out tokens received by the user"
+              "Amount of token_out tokens received by the user in this fulfillment call"
             ],
             "type": "u64"
           },
@@ -8799,6 +8829,27 @@ export type Onreapp = {
               "Current price used for the redemption"
             ],
             "type": "u64"
+          },
+          {
+            "name": "fulfilledAmount",
+            "docs": [
+              "Amount of token_in fulfilled in this call (before fee deduction)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "totalFulfilledAmount",
+            "docs": [
+              "Cumulative token_in amount fulfilled across all calls for this request"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "isFullyFulfilled",
+            "docs": [
+              "Whether the request is now fully settled (account closed)"
+            ],
+            "type": "bool"
           }
         ]
       }
