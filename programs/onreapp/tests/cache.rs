@@ -298,8 +298,7 @@ fn test_burn_for_nav_increase_success() {
     // With NAV = 1.0 (1e9 scale), each burned ONyc base unit removes one unit of
     // ONyc supply needed to keep NAV target after a same-sized asset adjustment.
     // So a 50 USDC adjustment burns 50_000_000 ONyc base units in this setup.
-    let ix =
-        build_burn_for_nav_increase_ix(&boss, &token_in_mint, &onyc_mint, 50_000_000, NAV_1_0);
+    let ix = build_burn_for_nav_increase_ix(&boss, &token_in_mint, &onyc_mint, 50_000_000, NAV_1_0);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let (cache_vault_authority_pda, _) = find_cache_vault_authority_pda();
