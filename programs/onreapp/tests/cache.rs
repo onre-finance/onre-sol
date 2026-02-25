@@ -7,7 +7,26 @@ use solana_sdk::signer::Signer;
 
 const ONE_YEAR_SECONDS: u64 = 31_536_000;
 const ONE_DAY_SECONDS: u64 = 86_400;
+// NAV/price scale is 1e9: 1.0 NAV = 1_000_000_000.
 const NAV_1_0: u64 = 1_000_000_000;
+
+// CACHE math reference used by tests:
+//
+// Accrue:
+//   spread = max(0, gross_yield - current_yield)        // APR scale 1e6
+//   mint   = lowest_supply * spread * dt / YEAR / 1e6
+//
+// Burn for NAV support:
+//   total_assets      = circulating_supply * current_nav / 1e9
+//   assets_after      = total_assets - asset_adjustment_amount
+//   required_supply   = ceil(assets_after * 1e9 / target_nav)
+//   burn_amount       = current_supply - required_supply
+//
+// Units:
+// - target_nav/current_nav: 1e9 scale
+// - asset_adjustment_amount/total_assets: token-in mint base units
+//   (e.g. USDC offer => micro-USDC)
+// - supply and burn amount: ONyc base units
 
 fn setup_cache_context(
     gross_yield: u64,
@@ -213,7 +232,13 @@ fn test_accrue_cache_partial_period_math() {
     let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
     send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
 
-    // 1_000_000_000 * 100_000 * 86_400 / 31_536_000 / 1_000_000 = 273_972
+    // Accrual formula:
+    // mint = lowest_supply * spread * elapsed / SECONDS_PER_YEAR / YIELD_SCALE
+    // Here:
+    // lowest_supply = 1_000_000_000
+    // spread = gross - current = 150_000 - 50_000 = 100_000 (10% APR in 1e6 scale)
+    // elapsed = 86_400 (1 day)
+    // mint = 1_000_000_000 * 100_000 * 86_400 / 31_536_000 / 1_000_000 = 273_972
     let expected_mint = 273_972u64;
     let (cache_vault_authority_pda, _) = find_cache_vault_authority_pda();
     let cache_vault_ata = derive_ata(&cache_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
@@ -267,7 +292,14 @@ fn test_burn_for_nav_increase_success() {
     let (mut svm, payer, token_in_mint, onyc_mint, _cache_admin) = setup_cache_with_balance();
     let boss = payer.pubkey();
 
-    let ix = build_burn_for_nav_increase_ix(&boss, &token_in_mint, &onyc_mint, 50_000_000, NAV_1_0);
+    // `asset_adjustment_amount` is in token-in units.
+    // For this test token_in has 6 decimals (USDC-like), so 50_000_000 = 50 USDC.
+    //
+    // With NAV = 1.0 (1e9 scale), each burned ONyc base unit removes one unit of
+    // ONyc supply needed to keep NAV target after a same-sized asset adjustment.
+    // So a 50 USDC adjustment burns 50_000_000 ONyc base units in this setup.
+    let ix =
+        build_burn_for_nav_increase_ix(&boss, &token_in_mint, &onyc_mint, 50_000_000, NAV_1_0);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let (cache_vault_authority_pda, _) = find_cache_vault_authority_pda();
@@ -310,6 +342,7 @@ fn test_burn_for_nav_increase_rejects_asset_adjustment_above_total_assets() {
     let (mut svm, payer, token_in_mint, onyc_mint, _cache_admin) = setup_cache_with_balance();
     let boss = payer.pubkey();
 
+    // Asset adjustment is token-in units (USDC-like 6 decimals here).
     let ix =
         build_burn_for_nav_increase_ix(&boss, &token_in_mint, &onyc_mint, 2_000_000_000, NAV_1_0);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
