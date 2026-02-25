@@ -6,6 +6,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import {
+    ASSOCIATED_TOKEN_PROGRAM_ID,
     createAssociatedTokenAccountIdempotentInstruction,
     getAssociatedTokenAddressSync,
     TOKEN_PROGRAM_ID
@@ -53,6 +54,8 @@ export class ScriptHelper {
         offerVaultAuthorityPda: PublicKey;
         permissionlessVaultAuthorityPda: PublicKey;
         mintAuthorityPda: PublicKey;
+        cacheStatePda: PublicKey;
+        cacheVaultAuthorityPda: PublicKey;
     };
 
     private constructor(
@@ -72,7 +75,9 @@ export class ScriptHelper {
         this.pdas = {
             offerVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("offer_vault_authority")], program.programId)[0],
             permissionlessVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], program.programId)[0],
-            mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], program.programId)[0]
+            mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], program.programId)[0],
+            cacheStatePda: PublicKey.findProgramAddressSync([Buffer.from("cache_state")], program.programId)[0],
+            cacheVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("cache_vault_authority")], program.programId)[0]
         };
     }
 
@@ -174,6 +179,19 @@ export class ScriptHelper {
 
     async getState() {
         return await this.program.account.state.fetch(this.statePda);
+    }
+
+    async getCacheState() {
+        return await this.program.account.cacheState.fetch(this.pdas.cacheStatePda);
+    }
+
+    getCacheVaultAta(onycMint: PublicKey): PublicKey {
+        return getAssociatedTokenAddressSync(
+            onycMint,
+            this.pdas.cacheVaultAuthorityPda,
+            true,
+            TOKEN_PROGRAM_ID
+        );
     }
 
     getRedemptionOfferPda(tokenInMint: PublicKey, tokenOutMint: PublicKey): PublicKey {
@@ -465,6 +483,113 @@ export class ScriptHelper {
             .setRedemptionAdmin(params.redemptionAdmin)
             .accountsPartial({
                 boss: params.boss
+            })
+            .instruction();
+    }
+
+    async buildInitializeCacheIx(params: {
+        onycMint: PublicKey;
+        cacheAdmin: PublicKey;
+        boss: PublicKey;
+    }) {
+        return await this.program.methods
+            .initializeCache(params.cacheAdmin)
+            .accountsPartial({
+                boss: params.boss,
+                onycMint: params.onycMint,
+                cacheState: this.pdas.cacheStatePda,
+                cacheVaultAuthority: this.pdas.cacheVaultAuthorityPda,
+                cacheVaultOnycAccount: this.getCacheVaultAta(params.onycMint),
+                tokenProgram: TOKEN_PROGRAM_ID,
+                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            })
+            .instruction();
+    }
+
+    async buildSetCacheAdminIx(params: {
+        cacheAdmin: PublicKey;
+        boss: PublicKey;
+    }) {
+        return await this.program.methods
+            .setCacheAdmin(params.cacheAdmin)
+            .accountsPartial({
+                cacheState: this.pdas.cacheStatePda,
+                boss: params.boss,
+            })
+            .instruction();
+    }
+
+    async buildSetCacheYieldsIx(params: {
+        grossYield: number;
+        currentYield: number;
+        boss: PublicKey;
+    }) {
+        return await this.program.methods
+            .setCacheYields(new BN(params.grossYield), new BN(params.currentYield))
+            .accountsPartial({
+                cacheState: this.pdas.cacheStatePda,
+                boss: params.boss,
+            })
+            .instruction();
+    }
+
+    async buildUpdateLowestSupplyIx(params: {
+        onycMint: PublicKey;
+    }) {
+        return await this.program.methods
+            .updateLowestSupply()
+            .accountsPartial({
+                cacheState: this.pdas.cacheStatePda,
+                onycMint: params.onycMint,
+            })
+            .instruction();
+    }
+
+    async buildAccrueCacheIx(params: {
+        onycMint: PublicKey;
+        cacheAdmin: PublicKey;
+    }) {
+        return await this.program.methods
+            .accrueCache()
+            .accountsPartial({
+                cacheState: this.pdas.cacheStatePda,
+                onycMint: params.onycMint,
+                cacheAdmin: params.cacheAdmin,
+                cacheVaultAuthority: this.pdas.cacheVaultAuthorityPda,
+                cacheVaultOnycAccount: this.getCacheVaultAta(params.onycMint),
+                mintAuthority: this.pdas.mintAuthorityPda,
+                tokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .instruction();
+    }
+
+    async buildBurnForNavIncreaseIx(params: {
+        tokenInMint: PublicKey;
+        onycMint: PublicKey;
+        assetAdjustmentAmount: number;
+        targetNav: number;
+        boss: PublicKey;
+    }) {
+        return await this.program.methods
+            .burnForNavIncrease(
+                new BN(params.assetAdjustmentAmount),
+                new BN(params.targetNav)
+            )
+            .accountsPartial({
+                tokenInMint: params.tokenInMint,
+                cacheState: this.pdas.cacheStatePda,
+                onycMint: params.onycMint,
+                boss: params.boss,
+                offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
+                vaultTokenOutAccount: getAssociatedTokenAddressSync(
+                    params.onycMint,
+                    this.pdas.offerVaultAuthorityPda,
+                    true,
+                    TOKEN_PROGRAM_ID
+                ),
+                cacheVaultAuthority: this.pdas.cacheVaultAuthorityPda,
+                cacheVaultOnycAccount: this.getCacheVaultAta(params.onycMint),
+                tokenProgram: TOKEN_PROGRAM_ID,
             })
             .instruction();
     }

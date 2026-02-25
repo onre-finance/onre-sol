@@ -15,3 +15,4 @@ export * from "./market";
 export * from "./offer";
 export * from "./redemption";
 export * from "./state";
+export * from "./cache";
