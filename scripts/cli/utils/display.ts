@@ -74,6 +74,47 @@ export function printState(state: any, json: boolean = false): void {
 }
 
 /**
+ * Print CACHE state
+ */
+export function printCacheState(cacheState: any, json: boolean = false): void {
+    if (json) {
+        console.log(
+            JSON.stringify(
+                {
+                    onycMint: cacheState.onycMint.toBase58(),
+                    cacheAdmin: cacheState.cacheAdmin.toBase58(),
+                    grossYield: cacheState.grossYield.toString(),
+                    currentYield: cacheState.currentYield.toString(),
+                    lowestSupply: cacheState.lowestSupply.toString(),
+                    lastAccrualTimestamp: cacheState.lastAccrualTimestamp.toString(),
+                },
+                null,
+                2,
+            ),
+        );
+        return;
+    }
+
+    console.log(chalk.bold.blue("\n=== CACHE State ===\n"));
+
+    const table = new Table({
+        head: [chalk.white("Field"), chalk.white("Value")],
+        colWidths: [24, 52],
+    });
+
+    table.push(
+        ["ONyc Mint", cacheState.onycMint.toBase58()],
+        ["CACHE Admin", cacheState.cacheAdmin.toBase58()],
+        ["Gross Yield (1e6)", cacheState.grossYield.toString()],
+        ["Current Yield (1e6)", cacheState.currentYield.toString()],
+        ["Lowest Supply", cacheState.lowestSupply.toString()],
+        ["Last Accrual Timestamp", cacheState.lastAccrualTimestamp.toString()],
+    );
+
+    console.log(table.toString());
+}
+
+/**
  * Print offer details
  */
 export function printOffer(offer: any, tokenInMint: string, tokenOutMint: string, json: boolean = false): void {
