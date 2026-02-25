@@ -1,6 +1,6 @@
-use anchor_lang::{AnchorDeserialize, AnchorSerialize};
-use anchor_lang::prelude::Pubkey;
 use crate::borsh;
+use anchor_lang::prelude::Pubkey;
+use anchor_lang::{AnchorDeserialize, AnchorSerialize};
 
 /// Message structure for approval verification
 ///
