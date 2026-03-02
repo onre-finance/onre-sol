@@ -12,6 +12,7 @@ export async function executeRedemptionFetchOffer(opts: GlobalOptions & Record<s
 
         // Fetch the redemption offer account
         const offerAddress = helper.getRedemptionOfferPda(params.tokenIn, params.tokenOut);
+        console.log(`Redemption Offer PDA: ${offerAddress}`);
         const offer = await helper.program.account.redemptionOffer.fetch(offerAddress);
 
         printRedemptionOffer(offer, params.tokenIn.toBase58(), params.tokenOut.toBase58(), opts.json);
