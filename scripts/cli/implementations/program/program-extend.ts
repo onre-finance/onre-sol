@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import { Keypair, PublicKey, sendAndConfirmTransaction, SystemProgram, TransactionInstruction } from "@solana/web3.js";
-import { select, confirm } from "@inquirer/prompts";
+import { confirm, select } from "@inquirer/prompts";
 import ora from "ora";
 import * as fs from "fs";
 import * as os from "os";
@@ -23,9 +23,9 @@ function buildExtendIx(programDataPda: PublicKey, additionalBytes: number, payer
             { pubkey: programDataPda, isSigner: false, isWritable: true },
             { pubkey: config.programId, isSigner: false, isWritable: true },
             { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-            { pubkey: payer, isSigner: true, isWritable: true },
+            { pubkey: payer, isSigner: true, isWritable: true }
         ],
-        data,
+        data
     });
 }
 
@@ -41,12 +41,18 @@ export async function executeProgramExtend(opts: GlobalOptions & Record<string, 
         // Derive ProgramData address
         const [programDataPda] = PublicKey.findProgramAddressSync(
             [config.programId.toBuffer()],
-            BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
+            BPF_LOADER_UPGRADEABLE_PROGRAM_ID
         );
 
         // Fetch current ProgramData account info
         const programDataAccount = await helper.connection.getAccountInfo(programDataPda);
         const currentSize = programDataAccount?.data.length ?? 0;
+
+        // Calculate additional rent cost
+        const rentForCurrent = await helper.connection.getMinimumBalanceForRentExemption(currentSize);
+        const rentForNew = await helper.connection.getMinimumBalanceForRentExemption(currentSize + additionalBytes);
+        const additionalRentLamports = rentForNew - rentForCurrent;
+        const additionalRentSol = additionalRentLamports / 1e9;
 
         if (!opts.json) {
             console.log(chalk.gray("\nProgram extend details:"));
@@ -55,6 +61,7 @@ export async function executeProgramExtend(opts: GlobalOptions & Record<string, 
             console.log(`  Current size:     ${currentSize.toLocaleString()} bytes`);
             console.log(`  Additional bytes: ${additionalBytes.toLocaleString()}`);
             console.log(`  New size:         ${(currentSize + additionalBytes).toLocaleString()} bytes`);
+            console.log(`  Rent cost:        ${additionalRentSol} SOL`);
             console.log();
         }
 
@@ -64,7 +71,7 @@ export async function executeProgramExtend(opts: GlobalOptions & Record<string, 
                 buildIx: async () => buildExtendIx(programDataPda, additionalBytes, config.boss),
                 title: "Extend Program Data Account",
                 description: `Extends program data account by ${additionalBytes.toLocaleString()} bytes`,
-                payer: config.boss,
+                payer: config.boss
             });
             return;
         }
@@ -74,8 +81,8 @@ export async function executeProgramExtend(opts: GlobalOptions & Record<string, 
             message: "How would you like to sign? (ExtendProgram is permissionless — anyone can pay)",
             choices: [
                 { name: "Sign locally with personal wallet", value: "local" },
-                { name: "Generate Base58 for Squad multisig", value: "squad" },
-            ],
+                { name: "Generate Base58 for Squad multisig", value: "squad" }
+            ]
         });
 
         if (signingMethod === "squad") {
@@ -83,7 +90,7 @@ export async function executeProgramExtend(opts: GlobalOptions & Record<string, 
                 buildIx: async () => buildExtendIx(programDataPda, additionalBytes, config.boss),
                 title: "Extend Program Data Account",
                 description: `Extends program data account by ${additionalBytes.toLocaleString()} bytes`,
-                payer: config.boss,
+                payer: config.boss
             });
             return;
         }
@@ -108,7 +115,7 @@ export async function executeProgramExtend(opts: GlobalOptions & Record<string, 
 
         const confirmed = await confirm({
             message: "Send transaction to chain?",
-            default: false,
+            default: false
         });
 
         if (!confirmed) {
