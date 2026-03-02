@@ -1,12 +1,10 @@
 import chalk from "chalk";
-import { Keypair, PublicKey, sendAndConfirmTransaction, SystemProgram, TransactionInstruction } from "@solana/web3.js";
-import { confirm, select } from "@inquirer/prompts";
+import { PublicKey, sendAndConfirmTransaction, SystemProgram, TransactionInstruction } from "@solana/web3.js";
+import { confirm } from "@inquirer/prompts";
 import ora from "ora";
-import * as fs from "fs";
-import * as os from "os";
 import { config } from "../../../utils/script-helper";
 import type { GlobalOptions } from "../../prompts";
-import { buildAndHandleTransaction, executeCommand } from "../../helpers";
+import { executeCommand } from "../../helpers";
 import { extendProgramParams } from "../../params";
 
 const BPF_LOADER_UPGRADEABLE_PROGRAM_ID = new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111");
@@ -65,53 +63,33 @@ export async function executeProgramExtend(opts: GlobalOptions & Record<string, 
             console.log();
         }
 
-        // For dry-run/json, default to boss as payer and use standard flow
-        if (opts.dryRun || opts.json) {
-            await buildAndHandleTransaction(context, {
-                buildIx: async () => buildExtendIx(programDataPda, additionalBytes, config.boss),
+        // ExtendProgram is permissionless and cannot be executed via Squads CPI,
+        // so we always sign locally with the wallet from Solana CLI config
+        const keypair = helper.wallet.payer;
+        const ix = buildExtendIx(programDataPda, additionalBytes, keypair.publicKey);
+        const tx = await helper.prepareTransaction({ ix, payer: keypair.publicKey });
+
+        if (opts.json) {
+            const base58 = helper.serializeTransaction(tx);
+            console.log(JSON.stringify({
                 title: "Extend Program Data Account",
-                description: `Extends program data account by ${additionalBytes.toLocaleString()} bytes`,
-                payer: config.boss
-            });
+                base58,
+                feePayer: keypair.publicKey.toBase58(),
+                additionalBytes,
+                rentCostSol: additionalRentSol
+            }, null, 2));
             return;
         }
 
-        // Prompt for signing method — this is permissionless so anyone can pay
-        const signingMethod = await select({
-            message: "How would you like to sign? (ExtendProgram is permissionless — anyone can pay)",
-            choices: [
-                { name: "Sign locally with personal wallet", value: "local" },
-                { name: "Generate Base58 for Squad multisig", value: "squad" }
-            ]
-        });
-
-        if (signingMethod === "squad") {
-            await buildAndHandleTransaction(context, {
-                buildIx: async () => buildExtendIx(programDataPda, additionalBytes, config.boss),
-                title: "Extend Program Data Account",
-                description: `Extends program data account by ${additionalBytes.toLocaleString()} bytes`,
-                payer: config.boss
-            });
+        if (opts.dryRun) {
+            const base58 = helper.serializeTransaction(tx);
+            console.log(chalk.yellow("[Dry Run] Transaction generated but not executed."));
+            console.log(chalk.gray("\nBase58:"));
+            console.log(base58);
             return;
         }
 
-        // Local signing: load keypair first, then build tx with its pubkey as payer
-        const keypairPath = `${os.homedir()}/.config/solana/id.json`;
-        if (!fs.existsSync(keypairPath)) {
-            console.log(chalk.red(`\nKeypair file not found: ${keypairPath}`));
-            return;
-        }
-
-        let keypair: Keypair;
-        try {
-            const keypairData = JSON.parse(fs.readFileSync(keypairPath, "utf-8"));
-            keypair = Keypair.fromSecretKey(new Uint8Array(keypairData));
-        } catch (error) {
-            console.log(chalk.red("\nFailed to load keypair:"), error);
-            return;
-        }
-
-        console.log(chalk.gray(`\nPayer: ${keypair.publicKey.toBase58()}`));
+        console.log(chalk.gray(`Payer: ${keypair.publicKey.toBase58()} (${helper.walletSource})`));
 
         const confirmed = await confirm({
             message: "Send transaction to chain?",
@@ -122,10 +100,6 @@ export async function executeProgramExtend(opts: GlobalOptions & Record<string, 
             console.log(chalk.yellow("\nTransaction cancelled."));
             return;
         }
-
-        // Build instruction and transaction with local wallet as payer
-        const ix = buildExtendIx(programDataPda, additionalBytes, keypair.publicKey);
-        const tx = await helper.prepareTransaction({ ix, payer: keypair.publicKey });
 
         const spinner = ora("Sending transaction...").start();
         try {
