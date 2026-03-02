@@ -22,6 +22,7 @@ async function main() {
         registerMintAuthorityCommands,
         registerRedemptionCommands,
         registerInitCommands,
+        registerProgramCommands,
     } = await import("./commands/index.js");
 
     // Create the main program
@@ -57,6 +58,9 @@ async function main() {
 
     const initCmd = program.command("init").description("Initialize program and authorities");
     registerInitCommands(initCmd);
+
+    const programCmd = program.command("program").description("Program management (extend data account)");
+    registerProgramCommands(programCmd);
 
     // Add help examples
     program.addHelpText(

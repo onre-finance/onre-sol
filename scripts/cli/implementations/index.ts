@@ -46,6 +46,9 @@ export { executeRedemptionFulfill } from "./redemption/redemption-fulfill";
 export { executeRedemptionCancel } from "./redemption/redemption-cancel";
 export { executeRedemptionListRequests } from "./redemption/redemption-list-requests";
 
+// Program implementations
+export { executeProgramExtend } from "./program/program-extend";
+
 // State implementations
 export { executeStateGet } from "./state/state-get";
 export { executeStateProposeBoss } from "./state/state-propose-boss";
