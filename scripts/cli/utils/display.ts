@@ -364,6 +364,39 @@ export function printRedemptionRequest(request: any, requestId: number, json: bo
 }
 
 /**
+ * Print redemption vault balances
+ */
+export function printRedemptionVaults(
+    vaults: Array<{ token: string; mint: string; ata: string; balance: string | null; decimals: number | null; initialized: boolean }>,
+    authorityPda: string,
+    json: boolean = false,
+): void {
+    if (json) {
+        console.log(JSON.stringify({ authorityPda, vaults }, null, 2));
+        return;
+    }
+
+    console.log(chalk.bold.blue("\n=== Redemption Vault Balances ===\n"));
+    console.log(`  ${chalk.gray("Vault Authority PDA:")} ${authorityPda}\n`);
+
+    const table = new Table({
+        head: [chalk.white("Token"), chalk.white("Vault ATA"), chalk.white("Balance"), chalk.white("Decimals")],
+        colWidths: [8, 46, 20, 10],
+    });
+
+    for (const v of vaults) {
+        table.push([
+            v.token,
+            v.ata,
+            v.initialized ? v.balance ?? "0" : chalk.gray("—"),
+            v.initialized && v.decimals !== null ? v.decimals.toString() : chalk.gray("—"),
+        ]);
+    }
+
+    console.log(table.toString());
+}
+
+/**
  * Print redemption requests list
  */
 export function printRedemptionRequestsList(requests: Array<{ id: number; request: any }>, json: boolean = false): void {
