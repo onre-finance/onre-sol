@@ -30,18 +30,18 @@ export async function executeRedemptionFetchVaults(opts: GlobalOptions & Record<
                 const tokenProgram = getTokenProgramId(mint);
                 const ata = getAssociatedTokenAddressSync(mint, authority, true, tokenProgram);
 
-                const accountInfo = await helper.connection.getAccountInfo(ata);
-                if (!accountInfo) {
+                const parsed = await helper.connection.getParsedAccountInfo(ata);
+                if (!parsed.value || !("parsed" in parsed.value.data)) {
                     return { token: name, mint: mint.toBase58(), ata: ata.toBase58(), balance: null, decimals: null, initialized: false };
                 }
 
-                const tokenBalance = await helper.connection.getTokenAccountBalance(ata);
+                const tokenInfo = parsed.value.data.parsed.info;
                 return {
                     token: name,
                     mint: mint.toBase58(),
                     ata: ata.toBase58(),
-                    balance: tokenBalance.value.uiAmountString ?? "0",
-                    decimals: tokenBalance.value.decimals,
+                    balance: tokenInfo.tokenAmount.uiAmountString ?? "0",
+                    decimals: tokenInfo.tokenAmount.decimals,
                     initialized: true,
                 };
             }),
