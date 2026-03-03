@@ -550,7 +550,7 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildConfigureMaxSupplyIx(params: { maxSupply: number; boss: PublicKey }) {
+    async buildConfigureMaxSupplyIx(params: { maxSupply: string; boss: PublicKey }) {
         return await this.program.methods
             .configureMaxSupply(new BN(params.maxSupply))
             .accountsPartial({
