@@ -5,6 +5,7 @@ import {
     executeRedemptionCreateRequest,
     executeRedemptionFetchOffer,
     executeRedemptionFetchRequest,
+    executeRedemptionFetchVaults,
     executeRedemptionFulfill,
     executeRedemptionListRequests,
     executeRedemptionMakeOffer,
@@ -96,6 +97,15 @@ export function registerRedemptionCommands(program: Command): void {
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeRedemptionCancel(opts);
+        });
+
+    // redemption fetch-vaults
+    program
+        .command("fetch-vaults")
+        .description("Fetch and display all redemption vault balances")
+        .action(async (options, cmd) => {
+            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            await executeRedemptionFetchVaults(opts);
         });
 
     // redemption list-requests
