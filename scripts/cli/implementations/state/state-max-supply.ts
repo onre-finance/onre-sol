@@ -23,7 +23,7 @@ export async function executeStateMaxSupply(opts: GlobalOptions & Record<string,
                 title: "Setting max supply:",
                 params: {
                     amount: params.amount,
-                    displayAmount: `${(params.amount / 1_000_000_000).toLocaleString()} ONyc`,
+                    displayAmount: `${(Number(BigInt(params.amount) / 1_000_000_000n)).toLocaleString()} ONyc`,
                 },
             },
         });
