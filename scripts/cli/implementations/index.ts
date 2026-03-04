@@ -10,6 +10,7 @@ export { executeVaultDeposit } from "./vault/vault-deposit";
 export { executeVaultWithdraw } from "./vault/vault-withdraw";
 export { executeVaultRedemptionDeposit } from "./vault/vault-redemption-deposit";
 export { executeVaultRedemptionWithdraw } from "./vault/vault-redemption-withdraw";
+export { executeVaultList } from "./vault/vault-list";
 
 // Init implementations
 export { executeInitProgram } from "./init/init-program";
