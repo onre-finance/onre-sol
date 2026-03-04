@@ -143,6 +143,81 @@ export function printOffer(offer: any, tokenInMint: string, tokenOutMint: string
 }
 
 /**
+ * Print list of all offers
+ */
+export function printOfferList(
+    offers: Array<{ tokenIn: string; tokenOut: string; offer: any }>,
+    legacy: Array<{ address: string; dataSize: number }>,
+    json: boolean = false,
+): void {
+    if (json) {
+        console.log(
+            JSON.stringify(
+                {
+                    offers: offers.map(({ tokenIn, tokenOut, offer }) => ({
+                        tokenInMint: tokenIn,
+                        tokenOutMint: tokenOut,
+                        feeBasisPoints: offer.feeBasisPoints,
+                        needsApproval: offer.needsApproval,
+                        allowPermissionless: offer.allowPermissionless,
+                        vectorCount: offer.vectors.filter((v: any) => v.baseTime.toNumber() !== 0).length,
+                    })),
+                    legacyAccounts: legacy.map(({ address, dataSize }) => ({ address, dataSize })),
+                },
+                null,
+                2,
+            ),
+        );
+        return;
+    }
+
+    if (offers.length === 0 && legacy.length === 0) {
+        console.log(chalk.yellow("\nNo offers found."));
+        return;
+    }
+
+    if (offers.length > 0) {
+        console.log(chalk.bold.blue(`\n=== Offers (${offers.length} found) ===\n`));
+
+        const table = new Table({
+            head: [chalk.white("Token In"), chalk.white("Token Out"), chalk.white("Fee"), chalk.white("Approval"), chalk.white("Permissionless"), chalk.white("Vectors")],
+            colWidths: [46, 46, 10, 12, 16, 10],
+        });
+
+        offers.forEach(({ tokenIn, tokenOut, offer }) => {
+            const activeVectors = offer.vectors.filter((v: any) => v.baseTime.toNumber() !== 0).length;
+            table.push([
+                tokenIn,
+                tokenOut,
+                `${offer.feeBasisPoints / 100}%`,
+                offer.needsApproval ? "Yes" : "No",
+                offer.allowPermissionless ? "Yes" : "No",
+                activeVectors.toString(),
+            ]);
+        });
+
+        console.log(table.toString());
+    }
+
+    if (legacy.length > 0) {
+        console.log(chalk.bold.yellow(`\n⚠  Legacy / undecodable offer accounts (${legacy.length} found):`));
+        console.log(chalk.yellow("   These accounts share the offer discriminator but cannot be decoded with the current IDL."));
+        console.log(chalk.yellow("   They are likely stale accounts from a previous program version and can be closed manually.\n"));
+
+        const legacyTable = new Table({
+            head: [chalk.white("Address"), chalk.white("Data Size (bytes)")],
+            colWidths: [46, 20],
+        });
+
+        legacy.forEach(({ address, dataSize }) => {
+            legacyTable.push([address, dataSize.toString()]);
+        });
+
+        console.log(legacyTable.toString());
+    }
+}
+
+/**
  * Print NAV result
  */
 export function printNav(nav: number, json: boolean = false): void {

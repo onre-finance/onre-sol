@@ -30,6 +30,7 @@ export { executeMarketSupply } from "./market/market-supply";
 // Offer implementations
 export { executeOfferMake } from "./offer/offer-make";
 export { executeOfferFetch } from "./offer/offer-fetch";
+export { executeOfferList } from "./offer/offer-list";
 export { executeOfferTake } from "./offer/offer-take";
 export { executeOfferAddVector } from "./offer/offer-add-vector";
 export { executeOfferDeleteVector } from "./offer/offer-delete-vector";

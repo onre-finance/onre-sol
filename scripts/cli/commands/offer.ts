@@ -5,6 +5,7 @@ import {
     executeOfferDeleteAllVectors,
     executeOfferDeleteVector,
     executeOfferFetch,
+    executeOfferList,
     executeOfferMake,
     executeOfferTake,
     executeOfferUpdateFee,
@@ -26,6 +27,15 @@ export function registerOfferCommands(program: Command): void {
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeOfferMake(opts);
+        });
+
+    // offer list
+    program
+        .command("list")
+        .description("List all token offers on-chain")
+        .action(async (options, cmd) => {
+            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            await executeOfferList(opts);
         });
 
     // offer fetch
