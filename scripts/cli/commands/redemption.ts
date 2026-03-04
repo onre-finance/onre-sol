@@ -7,6 +7,7 @@ import {
     executeRedemptionFetchRequest,
     executeRedemptionFetchVaults,
     executeRedemptionFulfill,
+    executeRedemptionListOffers,
     executeRedemptionListRequests,
     executeRedemptionMakeOffer,
     executeRedemptionUpdateFee,
@@ -16,6 +17,15 @@ import {
  * Register redemption subcommands
  */
 export function registerRedemptionCommands(program: Command): void {
+    // redemption list-offers
+    program
+        .command("list-offers")
+        .description("List all redemption offers on-chain")
+        .action(async (options, cmd) => {
+            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            await executeRedemptionListOffers(opts);
+        });
+
     // redemption make-offer
     program
         .command("make-offer")
