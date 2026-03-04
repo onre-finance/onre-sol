@@ -511,6 +511,46 @@ export function printRedemptionRequest(request: any, requestId: number, json: bo
     console.log(table.toString());
 }
 
+type VaultEntry = { token: string; mint: string; ata: string; balance: string | null; decimals: number | null; initialized: boolean };
+type VaultGroup = { name: string; authority: string; vaults: VaultEntry[] };
+
+/**
+ * Print all vault balances grouped by authority
+ */
+export function printVaultList(groups: VaultGroup[], json: boolean = false): void {
+    if (json) {
+        console.log(JSON.stringify(
+            groups.map(({ name, authority, vaults }) => ({ name, authority, vaults })),
+            null, 2,
+        ));
+        return;
+    }
+
+    console.log(chalk.bold.blue("\n=== All Vault Balances ===\n"));
+
+    for (const { name, authority, vaults } of groups) {
+        console.log(chalk.bold(`${name}`));
+        console.log(`  ${chalk.gray("Authority PDA:")} ${authority}\n`);
+
+        const table = new Table({
+            head: [chalk.white("Token"), chalk.white("Vault ATA"), chalk.white("Balance"), chalk.white("Decimals")],
+            colWidths: [8, 46, 20, 10],
+        });
+
+        for (const v of vaults) {
+            table.push([
+                v.token,
+                v.ata,
+                v.initialized ? v.balance ?? "0" : chalk.gray("—"),
+                v.initialized && v.decimals !== null ? v.decimals.toString() : chalk.gray("—"),
+            ]);
+        }
+
+        console.log(table.toString());
+        console.log();
+    }
+}
+
 /**
  * Print redemption vault balances
  */
