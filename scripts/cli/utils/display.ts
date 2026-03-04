@@ -395,6 +395,79 @@ export function printRedemptionOffer(offer: any, tokenInMint: string, tokenOutMi
 }
 
 /**
+ * Print list of all redemption offers
+ */
+export function printRedemptionOfferList(
+    offers: Array<{ tokenIn: string; tokenOut: string; offer: any }>,
+    legacy: Array<{ address: string; dataSize: number }>,
+    json: boolean = false,
+): void {
+    if (json) {
+        console.log(
+            JSON.stringify(
+                {
+                    offers: offers.map(({ tokenIn, tokenOut, offer }) => ({
+                        tokenInMint: tokenIn,
+                        tokenOutMint: tokenOut,
+                        feeBasisPoints: offer.feeBasisPoints,
+                        requestCounter: offer.requestCounter.toString(),
+                        executedRedemptions: offer.executedRedemptions.toString(),
+                        requestedRedemptions: offer.requestedRedemptions.toString(),
+                    })),
+                    legacyAccounts: legacy.map(({ address, dataSize }) => ({ address, dataSize })),
+                },
+                null,
+                2,
+            ),
+        );
+        return;
+    }
+
+    if (offers.length === 0 && legacy.length === 0) {
+        console.log(chalk.yellow("\nNo redemption offers found."));
+        return;
+    }
+
+    if (offers.length > 0) {
+        console.log(chalk.bold.blue(`\n=== Redemption Offers (${offers.length} found) ===\n`));
+
+        const table = new Table({
+            head: [chalk.white("Token In"), chalk.white("Token Out"), chalk.white("Fee"), chalk.white("Total Requests"), chalk.white("Executed"), chalk.white("Pending")],
+            colWidths: [46, 46, 10, 16, 22, 22],
+        });
+
+        offers.forEach(({ tokenIn, tokenOut, offer }) => {
+            table.push([
+                tokenIn,
+                tokenOut,
+                `${offer.feeBasisPoints / 100}%`,
+                offer.requestCounter.toString(),
+                offer.executedRedemptions.toString(),
+                offer.requestedRedemptions.toString(),
+            ]);
+        });
+
+        console.log(table.toString());
+    }
+
+    if (legacy.length > 0) {
+        console.log(chalk.bold.yellow(`\n⚠  Legacy / undecodable redemption offer accounts (${legacy.length} found):`));
+        console.log(chalk.yellow("   These accounts share the redemption offer discriminator but cannot be decoded with the current IDL.\n"));
+
+        const legacyTable = new Table({
+            head: [chalk.white("Address"), chalk.white("Data Size (bytes)")],
+            colWidths: [46, 20],
+        });
+
+        legacy.forEach(({ address, dataSize }) => {
+            legacyTable.push([address, dataSize.toString()]);
+        });
+
+        console.log(legacyTable.toString());
+    }
+}
+
+/**
  * Print redemption request details
  */
 export function printRedemptionRequest(request: any, requestId: number, json: boolean = false): void {

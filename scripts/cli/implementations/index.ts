@@ -39,6 +39,7 @@ export { executeOfferDeleteAllVectors } from "./offer/offer-delete-all-vectors";
 
 // Redemption implementations
 export { executeRedemptionMakeOffer } from "./redemption/redemption-make-offer";
+export { executeRedemptionListOffers } from "./redemption/redemption-list-offers";
 export { executeRedemptionFetchOffer } from "./redemption/redemption-fetch-offer";
 export { executeRedemptionUpdateFee } from "./redemption/redemption-update-fee";
 export { executeRedemptionCreateRequest } from "./redemption/redemption-create-request";
