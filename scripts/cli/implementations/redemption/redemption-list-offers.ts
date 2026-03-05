@@ -2,6 +2,12 @@ import type { GlobalOptions } from "../../prompts";
 import { executeCommand } from "../../helpers";
 import { printRedemptionOfferList } from "../../utils/display";
 
+type DecodedRedemptionOffer = {
+    tokenIn: string;
+    tokenOut: string;
+    offer: any; // Ideally a specific type from the IDL
+};
+
 /**
  * Execute redemption list-offers command
  */
@@ -16,7 +22,7 @@ export async function executeRedemptionListOffers(opts: GlobalOptions & Record<s
             filters: [{ memcmp: helper.program.coder.accounts.memcmp("redemptionOffer") }],
         });
 
-        const valid: Array<{ tokenIn: string; tokenOut: string; offer: any }> = [];
+        const valid: DecodedRedemptionOffer[] = [];
         const legacy: Array<{ address: string; dataSize: number }> = [];
 
         for (const { pubkey, account } of rawAccounts) {
