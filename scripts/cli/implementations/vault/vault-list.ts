@@ -1,4 +1,3 @@
-import { PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import type { GlobalOptions } from "../../prompts";
 import { executeCommand } from "../../helpers";
@@ -16,15 +15,10 @@ export async function executeVaultList(opts: GlobalOptions & Record<string, any>
     await executeCommand(opts, [], async (context) => {
         const { helper } = context;
 
-        const [redemptionAuthority] = PublicKey.findProgramAddressSync(
-            [Buffer.from("redemption_offer_vault_authority")],
-            helper.program.programId,
-        );
-
         const authorities = [
             { name: "Offer Vault", pda: helper.pdas.offerVaultAuthorityPda },
             { name: "Permissionless Vault", pda: helper.pdas.permissionlessVaultAuthorityPda },
-            { name: "Redemption Vault", pda: redemptionAuthority },
+            { name: "Redemption Vault", pda: helper.pdas.redemptionVaultAuthorityPda },
         ];
 
         const mints = [

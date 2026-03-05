@@ -2,6 +2,12 @@ import type { GlobalOptions } from "../../prompts";
 import { executeCommand } from "../../helpers";
 import { printOfferList } from "../../utils/display";
 
+type DecodedOffer = {
+    tokenIn: string;
+    tokenOut: string;
+    offer: any; // Ideally a specific type from the IDL
+};
+
 /**
  * Execute offer list command
  */
@@ -17,7 +23,7 @@ export async function executeOfferList(opts: GlobalOptions & Record<string, any>
             filters: [{ memcmp: helper.program.coder.accounts.memcmp("offer") }],
         });
 
-        const valid: Array<{ tokenIn: string; tokenOut: string; offer: any }> = [];
+        const valid: DecodedOffer[] = [];
         const legacy: Array<{ address: string; dataSize: number }> = [];
 
         for (const { pubkey, account } of rawAccounts) {
