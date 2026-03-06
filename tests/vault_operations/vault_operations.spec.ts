@@ -45,23 +45,23 @@ describe("Vault Operations", () => {
             await testHelper.expectTokenAccountAmountToBe(testBossTokenAccount, expectedBossBalance);
         });
 
-        test("Non-boss cannot deposit to offer vault", async () => {
+        test("Any user can deposit to offer vault", async () => {
             // given
             const testTokenMint = testHelper.createMint(9);
-            testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
-
             const notBoss = testHelper.createUserAccount();
             testHelper.createTokenAccount(testTokenMint, notBoss.publicKey, BigInt(1_000_000e9));
+            const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.offerVaultAuthorityPda, true);
             const depositAmount = 10_000e9;
 
-            // when & then
-            await expect(
-                program.offerVaultDeposit({
-                    amount: depositAmount,
-                    tokenMint: testTokenMint,
-                    signer: notBoss
-                })
-            ).rejects.toThrow("unknown signer");
+            // when
+            await program.offerVaultDeposit({
+                amount: depositAmount,
+                tokenMint: testTokenMint,
+                signer: notBoss
+            });
+
+            // then
+            await testHelper.expectTokenAccountAmountToBe(testVaultTokenAccount, BigInt(depositAmount));
         });
     });
 
@@ -176,23 +176,23 @@ describe("Vault Operations", () => {
             await testHelper.expectTokenAccountAmountToBe(testBossTokenAccount, expectedBossBalance);
         });
 
-        test("Non-boss cannot deposit to redemption vault", async () => {
+        test("Any user can deposit to redemption vault", async () => {
             // given
             const testTokenMint = testHelper.createMint(9);
-            testHelper.createTokenAccount(testTokenMint, boss, BigInt(1_000_000e9));
-
             const notBoss = testHelper.createUserAccount();
             testHelper.createTokenAccount(testTokenMint, notBoss.publicKey, BigInt(1_000_000e9));
+            const testVaultTokenAccount = getAssociatedTokenAddressSync(testTokenMint, program.pdas.redemptionVaultAuthorityPda, true);
             const depositAmount = 10_000e9;
 
-            // when & then
-            await expect(
-                program.redemptionVaultDeposit({
-                    amount: depositAmount,
-                    tokenMint: testTokenMint,
-                    signer: notBoss
-                })
-            ).rejects.toThrow("unknown signer");
+            // when
+            await program.redemptionVaultDeposit({
+                amount: depositAmount,
+                tokenMint: testTokenMint,
+                signer: notBoss
+            });
+
+            // then
+            await testHelper.expectTokenAccountAmountToBe(testVaultTokenAccount, BigInt(depositAmount));
         });
     });
 

@@ -3605,9 +3605,9 @@ export type Onreapp = {
           ]
         },
         {
-          "name": "bossTokenAccount",
+          "name": "depositorTokenAccount",
           "docs": [
-            "Boss's token account serving as the source of deposited tokens",
+            "Depositor's token account serving as the source of deposited tokens",
             "",
             "Must have sufficient balance to cover the requested deposit amount."
           ],
@@ -3616,7 +3616,7 @@ export type Onreapp = {
             "seeds": [
               {
                 "kind": "account",
-                "path": "boss"
+                "path": "depositor"
               },
               {
                 "kind": "account",
@@ -3730,35 +3730,12 @@ export type Onreapp = {
           }
         },
         {
-          "name": "boss",
+          "name": "depositor",
           "docs": [
-            "The boss account authorized to deposit tokens and pay for account creation"
+            "The depositor account paying for account creation and providing tokens"
           ],
           "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "state",
-          "docs": [
-            "Program state account containing boss authorization"
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
+          "signer": true
         },
         {
           "name": "tokenProgram",
@@ -4192,9 +4169,9 @@ export type Onreapp = {
           ]
         },
         {
-          "name": "bossTokenAccount",
+          "name": "depositorTokenAccount",
           "docs": [
-            "Boss's token account serving as the source of deposited tokens",
+            "Depositor's token account serving as the source of deposited tokens",
             "",
             "Must have sufficient balance to cover the requested deposit amount."
           ],
@@ -4203,7 +4180,7 @@ export type Onreapp = {
             "seeds": [
               {
                 "kind": "account",
-                "path": "boss"
+                "path": "depositor"
               },
               {
                 "kind": "account",
@@ -4317,35 +4294,12 @@ export type Onreapp = {
           }
         },
         {
-          "name": "boss",
+          "name": "depositor",
           "docs": [
-            "The boss account authorized to deposit tokens and pay for account creation"
+            "The depositor account paying for account creation and providing tokens"
           ],
           "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "state",
-          "docs": [
-            "Program state account containing boss authorization"
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
+          "signer": true
         },
         {
           "name": "tokenProgram",
@@ -8126,9 +8080,9 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "boss",
+            "name": "depositor",
             "docs": [
-              "The boss account that made the deposit"
+              "The depositor account that made the deposit"
             ],
             "type": "pubkey"
           }
@@ -8879,9 +8833,9 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "boss",
+            "name": "depositor",
             "docs": [
-              "The boss account that made the deposit"
+              "The depositor account that made the deposit"
             ],
             "type": "pubkey"
           }
