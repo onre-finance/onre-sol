@@ -397,14 +397,14 @@ export class ScriptHelper {
         amount: number,
         tokenMint: PublicKey,
         tokenProgram?: PublicKey,
-        boss: PublicKey;
+        depositor: PublicKey;
     }) {
         return await this.program.methods
             .offerVaultDeposit(new BN(params.amount))
             .accountsPartial({
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
-                boss: params.boss
+                depositor: params.depositor
             })
             .instruction();
     }
@@ -429,14 +429,14 @@ export class ScriptHelper {
         amount: number;
         tokenMint: PublicKey;
         tokenProgram?: PublicKey;
-        boss: PublicKey;
+        depositor: PublicKey;
     }) {
         return await this.program.methods
             .redemptionVaultDeposit(new BN(params.amount))
             .accountsPartial({
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
-                boss: params.boss
+                depositor: params.depositor
             })
             .instruction();
     }
@@ -550,7 +550,7 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildConfigureMaxSupplyIx(params: { maxSupply: number; boss: PublicKey }) {
+    async buildConfigureMaxSupplyIx(params: { maxSupply: string; boss: PublicKey }) {
         return await this.program.methods
             .configureMaxSupply(new BN(params.maxSupply))
             .accountsPartial({
@@ -727,9 +727,10 @@ export class ScriptHelper {
         redemptionOfferPda: PublicKey;
         redemptionRequestPda: PublicKey;
         redemptionAdmin: PublicKey;
+        amount: BN;
     }) {
         return await this.program.methods
-            .fulfillRedemptionRequest()
+            .fulfillRedemptionRequest(params.amount)
             .accountsPartial({
                 redemptionOffer: params.redemptionOfferPda,
                 redemptionRequest: params.redemptionRequestPda,

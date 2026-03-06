@@ -67,6 +67,18 @@ export const requestParams: ParamDefinition[] = [
     },
 ];
 
+export const fulfillRequestParams: ParamDefinition[] = [
+    ...requestParams,
+    {
+        name: "amount",
+        type: "amount",
+        description: "Amount of token_in to fulfill in this call (leave empty to fulfill all remaining)",
+        required: false,
+        flag: "--amount",
+        shortFlag: "-a",
+    },
+];
+
 export const updateRedemptionFeeParams: ParamDefinition[] = [
     ...redemptionTokenPairParams,
     {

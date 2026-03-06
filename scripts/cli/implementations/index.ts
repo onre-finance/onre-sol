@@ -45,6 +45,10 @@ export { executeRedemptionFetchRequest } from "./redemption/redemption-fetch-req
 export { executeRedemptionFulfill } from "./redemption/redemption-fulfill";
 export { executeRedemptionCancel } from "./redemption/redemption-cancel";
 export { executeRedemptionListRequests } from "./redemption/redemption-list-requests";
+export { executeRedemptionFetchVaults } from "./redemption/redemption-fetch-vaults";
+
+// Program implementations
+export { executeProgramExtend } from "./program/program-extend";
 
 // State implementations
 export { executeStateGet } from "./state/state-get";
