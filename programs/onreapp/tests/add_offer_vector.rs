@@ -11,7 +11,7 @@ fn setup_offer_with_mints() -> (litesvm::LiteSVM, Keypair, solana_sdk::pubkey::P
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     (svm, payer, token_in, token_out)
@@ -435,7 +435,7 @@ fn test_vectors_on_multiple_offers() {
     // Create second offer
     let t2_in = create_mint(&mut svm, &payer, 9, &boss);
     let t2_out = create_mint(&mut svm, &payer, 9, &boss);
-    let ix = build_make_offer_ix(&boss, &t2_in, &t2_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &t2_in, &t2_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     advance_slot(&mut svm);

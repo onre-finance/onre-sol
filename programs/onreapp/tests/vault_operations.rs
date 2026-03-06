@@ -24,7 +24,7 @@ fn test_offer_vault_deposit_success() {
     let (vault_authority, _) = find_offer_vault_authority_pda();
     let vault_ata = get_associated_token_address(&vault_authority, &token_mint);
 
-    let ix = build_offer_vault_deposit_ix(&boss, &token_mint, 100_000_000_000);
+    let ix = build_offer_vault_deposit_ix(&boss, &token_mint, 100_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     assert_eq!(get_token_balance(&svm, &vault_ata), 100_000_000_000);
@@ -46,7 +46,7 @@ fn test_offer_vault_deposit_any_user_can_deposit() {
     let (vault_authority, _) = find_offer_vault_authority_pda();
     let vault_ata = get_associated_token_address(&vault_authority, &token_mint);
 
-    let ix = build_offer_vault_deposit_ix(&non_boss.pubkey(), &token_mint, 10_000_000_000);
+    let ix = build_offer_vault_deposit_ix(&non_boss.pubkey(), &token_mint, 10_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&non_boss]).unwrap();
 
     assert_eq!(get_token_balance(&svm, &vault_ata), 10_000_000_000);
@@ -64,12 +64,12 @@ fn test_offer_vault_withdraw_success() {
     let token_mint = create_mint(&mut svm, &payer, 9, &boss);
     let boss_ata = create_token_account(&mut svm, &token_mint, &boss, 1_000_000_000_000);
 
-    let ix = build_offer_vault_deposit_ix(&boss, &token_mint, 100_000_000_000);
+    let ix = build_offer_vault_deposit_ix(&boss, &token_mint, 100_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     advance_slot(&mut svm);
 
-    let ix = build_offer_vault_withdraw_ix(&boss, &token_mint, 50_000_000_000);
+    let ix = build_offer_vault_withdraw_ix(&boss, &token_mint, 50_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let (vault_authority, _) = find_offer_vault_authority_pda();
@@ -87,7 +87,7 @@ fn test_offer_vault_withdraw_rejects_non_boss() {
     let token_mint = create_mint(&mut svm, &payer, 9, &boss);
     create_token_account(&mut svm, &token_mint, &boss, 1_000_000_000_000);
 
-    let ix = build_offer_vault_deposit_ix(&boss, &token_mint, 100_000_000_000);
+    let ix = build_offer_vault_deposit_ix(&boss, &token_mint, 100_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     advance_slot(&mut svm);
@@ -95,7 +95,7 @@ fn test_offer_vault_withdraw_rejects_non_boss() {
     let non_boss = Keypair::new();
     svm.airdrop(&non_boss.pubkey(), INITIAL_LAMPORTS).unwrap();
 
-    let ix = build_offer_vault_withdraw_ix(&non_boss.pubkey(), &token_mint, 10_000_000_000);
+    let ix = build_offer_vault_withdraw_ix(&non_boss.pubkey(), &token_mint, 10_000_000_000, &TOKEN_PROGRAM_ID);
     let result = send_tx(&mut svm, &[ix], &[&non_boss]);
     assert!(result.is_err(), "non-boss should not be able to withdraw");
 }
@@ -115,7 +115,7 @@ fn test_redemption_vault_deposit_success() {
     let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
     let vault_ata = get_associated_token_address(&redemption_vault_authority, &token_mint);
 
-    let ix = build_redemption_vault_deposit_ix(&boss, &token_mint, 100_000_000_000);
+    let ix = build_redemption_vault_deposit_ix(&boss, &token_mint, 100_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     assert_eq!(get_token_balance(&svm, &vault_ata), 100_000_000_000);
@@ -137,7 +137,7 @@ fn test_redemption_vault_deposit_any_user_can_deposit() {
     let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
     let vault_ata = get_associated_token_address(&redemption_vault_authority, &token_mint);
 
-    let ix = build_redemption_vault_deposit_ix(&non_boss.pubkey(), &token_mint, 10_000_000_000);
+    let ix = build_redemption_vault_deposit_ix(&non_boss.pubkey(), &token_mint, 10_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&non_boss]).unwrap();
 
     assert_eq!(get_token_balance(&svm, &vault_ata), 10_000_000_000);
@@ -155,12 +155,12 @@ fn test_redemption_vault_withdraw_success() {
     let token_mint = create_mint(&mut svm, &payer, 9, &boss);
     let boss_ata = create_token_account(&mut svm, &token_mint, &boss, 1_000_000_000_000);
 
-    let ix = build_redemption_vault_deposit_ix(&boss, &token_mint, 100_000_000_000);
+    let ix = build_redemption_vault_deposit_ix(&boss, &token_mint, 100_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     advance_slot(&mut svm);
 
-    let ix = build_redemption_vault_withdraw_ix(&boss, &token_mint, 50_000_000_000);
+    let ix = build_redemption_vault_withdraw_ix(&boss, &token_mint, 50_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
@@ -178,7 +178,7 @@ fn test_redemption_vault_withdraw_rejects_non_boss() {
     let token_mint = create_mint(&mut svm, &payer, 9, &boss);
     create_token_account(&mut svm, &token_mint, &boss, 1_000_000_000_000);
 
-    let ix = build_redemption_vault_deposit_ix(&boss, &token_mint, 100_000_000_000);
+    let ix = build_redemption_vault_deposit_ix(&boss, &token_mint, 100_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     advance_slot(&mut svm);
@@ -186,7 +186,7 @@ fn test_redemption_vault_withdraw_rejects_non_boss() {
     let non_boss = Keypair::new();
     svm.airdrop(&non_boss.pubkey(), INITIAL_LAMPORTS).unwrap();
 
-    let ix = build_redemption_vault_withdraw_ix(&non_boss.pubkey(), &token_mint, 10_000_000_000);
+    let ix = build_redemption_vault_withdraw_ix(&non_boss.pubkey(), &token_mint, 10_000_000_000, &TOKEN_PROGRAM_ID);
     let result = send_tx(&mut svm, &[ix], &[&non_boss]);
     assert!(result.is_err(), "non-boss should not be able to withdraw from redemption vault");
 }
@@ -204,12 +204,12 @@ fn test_deposit_withdraw_full_cycle() {
     let boss_ata = create_token_account(&mut svm, &token_mint, &boss, 1_000_000_000_000);
 
     // Deposit to offer vault
-    let ix = build_offer_vault_deposit_ix(&boss, &token_mint, 200_000_000_000);
+    let ix = build_offer_vault_deposit_ix(&boss, &token_mint, 200_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     // Withdraw entire amount
-    let ix = build_offer_vault_withdraw_ix(&boss, &token_mint, 200_000_000_000);
+    let ix = build_offer_vault_withdraw_ix(&boss, &token_mint, 200_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     // Balance should be back to original
@@ -232,7 +232,7 @@ fn test_offer_vault_deposit_withdraw_token2022() {
     let vault_ata = get_associated_token_address_2022(&vault_authority, &token_mint);
 
     // Deposit
-    let ix = build_offer_vault_deposit_ix_with_token_program(
+    let ix = build_offer_vault_deposit_ix(
         &boss, &token_mint, 100_000_000_000, &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -243,7 +243,7 @@ fn test_offer_vault_deposit_withdraw_token2022() {
     advance_slot(&mut svm);
 
     // Withdraw
-    let ix = build_offer_vault_withdraw_ix_with_token_program(
+    let ix = build_offer_vault_withdraw_ix(
         &boss, &token_mint, 50_000_000_000, &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -264,7 +264,7 @@ fn test_redemption_vault_deposit_withdraw_token2022() {
     let vault_ata = get_associated_token_address_2022(&redemption_vault_authority, &token_mint);
 
     // Deposit
-    let ix = build_redemption_vault_deposit_ix_with_token_program(
+    let ix = build_redemption_vault_deposit_ix(
         &boss, &token_mint, 100_000_000_000, &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -275,7 +275,7 @@ fn test_redemption_vault_deposit_withdraw_token2022() {
     advance_slot(&mut svm);
 
     // Withdraw
-    let ix = build_redemption_vault_withdraw_ix_with_token_program(
+    let ix = build_redemption_vault_withdraw_ix(
         &boss, &token_mint, 50_000_000_000, &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -294,7 +294,7 @@ fn test_vault_wrong_token_program_fails() {
     create_token_account_2022(&mut svm, &token_mint, &boss, 1_000_000_000_000);
 
     // Using the standard builder (which passes TOKEN_PROGRAM_ID) with a Token-2022 mint
-    let ix = build_offer_vault_deposit_ix(&boss, &token_mint, 100_000_000_000);
+    let ix = build_offer_vault_deposit_ix(&boss, &token_mint, 100_000_000_000, &TOKEN_PROGRAM_ID);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(result.is_err(), "wrong token program should fail");
 }
@@ -312,7 +312,7 @@ fn test_vault_initialized_correctly() {
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
     // Making an offer should create the vault ATA for token_in under the vault authority
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     // Verify the offer vault account exists and has zero balance
