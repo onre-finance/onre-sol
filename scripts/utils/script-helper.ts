@@ -397,14 +397,14 @@ export class ScriptHelper {
         amount: number,
         tokenMint: PublicKey,
         tokenProgram?: PublicKey,
-        boss: PublicKey;
+        depositor: PublicKey;
     }) {
         return await this.program.methods
             .offerVaultDeposit(new BN(params.amount))
             .accountsPartial({
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
-                boss: params.boss
+                depositor: params.depositor
             })
             .instruction();
     }
@@ -429,14 +429,14 @@ export class ScriptHelper {
         amount: number;
         tokenMint: PublicKey;
         tokenProgram?: PublicKey;
-        boss: PublicKey;
+        depositor: PublicKey;
     }) {
         return await this.program.methods
             .redemptionVaultDeposit(new BN(params.amount))
             .accountsPartial({
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
-                boss: params.boss
+                depositor: params.depositor
             })
             .instruction();
     }
