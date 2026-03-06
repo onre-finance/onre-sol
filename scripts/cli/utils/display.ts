@@ -146,7 +146,7 @@ export function printOffer(offer: any, tokenInMint: string, tokenOutMint: string
  * Print list of all offers
  */
 export function printOfferList(
-    offers: Array<{ tokenIn: string; tokenOut: string; offer: any }>,
+    offers: Array<{ address: string; tokenIn: string; tokenOut: string; offer: any }>,
     legacy: Array<{ address: string; dataSize: number }>,
     json: boolean = false,
 ): void {
@@ -154,7 +154,8 @@ export function printOfferList(
         console.log(
             JSON.stringify(
                 {
-                    offers: offers.map(({ tokenIn, tokenOut, offer }) => ({
+                    offers: offers.map(({ address, tokenIn, tokenOut, offer }) => ({
+                        address,
                         tokenInMint: tokenIn,
                         tokenOutMint: tokenOut,
                         feeBasisPoints: offer.feeBasisPoints,
@@ -180,13 +181,14 @@ export function printOfferList(
         console.log(chalk.bold.blue(`\n=== Offers (${offers.length} found) ===\n`));
 
         const table = new Table({
-            head: [chalk.white("Token In"), chalk.white("Token Out"), chalk.white("Fee"), chalk.white("Approval"), chalk.white("Permissionless"), chalk.white("Vectors")],
-            colWidths: [46, 46, 10, 12, 16, 10],
+            head: [chalk.white("Address"), chalk.white("Token In"), chalk.white("Token Out"), chalk.white("Fee"), chalk.white("Approval"), chalk.white("Permissionless"), chalk.white("Vectors")],
+            colWidths: [46, 46, 46, 10, 12, 16, 10],
         });
 
-        offers.forEach(({ tokenIn, tokenOut, offer }) => {
+        offers.forEach(({ address, tokenIn, tokenOut, offer }) => {
             const activeVectors = offer.vectors.filter((v: any) => v.baseTime.toNumber() !== 0).length;
             table.push([
+                address,
                 tokenIn,
                 tokenOut,
                 `${offer.feeBasisPoints / 100}%`,
@@ -398,7 +400,7 @@ export function printRedemptionOffer(offer: any, tokenInMint: string, tokenOutMi
  * Print list of all redemption offers
  */
 export function printRedemptionOfferList(
-    offers: Array<{ tokenIn: string; tokenOut: string; offer: any }>,
+    offers: Array<{ address: string; tokenIn: string; tokenOut: string; offer: any }>,
     legacy: Array<{ address: string; dataSize: number }>,
     json: boolean = false,
 ): void {
@@ -406,7 +408,8 @@ export function printRedemptionOfferList(
         console.log(
             JSON.stringify(
                 {
-                    offers: offers.map(({ tokenIn, tokenOut, offer }) => ({
+                    offers: offers.map(({ address, tokenIn, tokenOut, offer }) => ({
+                        address,
                         tokenInMint: tokenIn,
                         tokenOutMint: tokenOut,
                         feeBasisPoints: offer.feeBasisPoints,
@@ -432,12 +435,13 @@ export function printRedemptionOfferList(
         console.log(chalk.bold.blue(`\n=== Redemption Offers (${offers.length} found) ===\n`));
 
         const table = new Table({
-            head: [chalk.white("Token In"), chalk.white("Token Out"), chalk.white("Fee"), chalk.white("Total Requests"), chalk.white("Executed"), chalk.white("Pending")],
-            colWidths: [46, 46, 10, 16, 22, 22],
+            head: [chalk.white("Address"), chalk.white("Token In"), chalk.white("Token Out"), chalk.white("Fee"), chalk.white("Total Requests"), chalk.white("Executed"), chalk.white("Pending")],
+            colWidths: [46, 46, 46, 10, 16, 22, 22],
         });
 
-        offers.forEach(({ tokenIn, tokenOut, offer }) => {
+        offers.forEach(({ address, tokenIn, tokenOut, offer }) => {
             table.push([
+                address,
                 tokenIn,
                 tokenOut,
                 `${offer.feeBasisPoints / 100}%`,

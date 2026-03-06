@@ -3,6 +3,7 @@ import { executeCommand } from "../../helpers";
 import { printRedemptionOfferList } from "../../utils/display";
 
 type DecodedRedemptionOffer = {
+    address: string;
     tokenIn: string;
     tokenOut: string;
     offer: any; // Ideally a specific type from the IDL
@@ -29,6 +30,7 @@ export async function executeRedemptionListOffers(opts: GlobalOptions & Record<s
             try {
                 const decoded = helper.program.coder.accounts.decode("redemptionOffer", account.data);
                 valid.push({
+                    address: pubkey.toBase58(),
                     tokenIn: decoded.tokenInMint.toBase58(),
                     tokenOut: decoded.tokenOutMint.toBase58(),
                     offer: decoded,
