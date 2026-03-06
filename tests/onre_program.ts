@@ -243,9 +243,11 @@ export class OnreProgram {
         signer?: Keypair,
         tokenProgram?: PublicKey
     }) {
+        const depositor = params.signer?.publicKey ?? this.testHelper.payer.publicKey;
         const tx = this.program.methods
             .offerVaultDeposit(new BN(params.amount))
             .accounts({
+                depositor,
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
@@ -283,9 +285,11 @@ export class OnreProgram {
         signer?: Keypair,
         tokenProgram?: PublicKey
     }) {
+        const depositor = params.signer?.publicKey ?? this.testHelper.payer.publicKey;
         const tx = this.program.methods
             .redemptionVaultDeposit(new BN(params.amount))
             .accounts({
+                depositor,
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
