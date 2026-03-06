@@ -96,7 +96,7 @@ async function buildSmokeTestTransactions() {
     const depositIx = await helper.buildOfferVaultDepositIx({
         amount: tokenOutDepositAmount,
         tokenMint: TOKEN_OUT_MINT,
-        boss
+        depositor: boss
     });
     console.log("     ✓ Offer Vault Deposit instruction built");
 
