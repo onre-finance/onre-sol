@@ -81,12 +81,12 @@ fn test_mint_to_cannot_exceed_max_supply() {
     advance_slot(&mut svm);
 
     // Transfer mint authority to program
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint);
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     // Try to mint 200 tokens - should fail
-    let ix = build_mint_to_ix(&boss, &onyc_mint, 200_000_000_000);
+    let ix = build_mint_to_ix(&boss, &onyc_mint, 200_000_000_000, &TOKEN_PROGRAM_ID);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(result.is_err(), "should not mint beyond max supply");
 }
@@ -100,12 +100,12 @@ fn test_mint_to_can_mint_up_to_cap() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint);
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     // Mint exactly up to cap
-    let ix = build_mint_to_ix(&boss, &onyc_mint, 100_000_000_000);
+    let ix = build_mint_to_ix(&boss, &onyc_mint, 100_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let boss_ata = get_associated_token_address(&boss, &onyc_mint);
@@ -121,22 +121,22 @@ fn test_mint_to_multiple_mints_within_cap() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint);
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     // First mint: 50 tokens
-    let ix = build_mint_to_ix(&boss, &onyc_mint, 50_000_000_000);
+    let ix = build_mint_to_ix(&boss, &onyc_mint, 50_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     // Second mint: 50 tokens (total = 100 = cap)
-    let ix = build_mint_to_ix(&boss, &onyc_mint, 50_000_000_000);
+    let ix = build_mint_to_ix(&boss, &onyc_mint, 50_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     // Third mint: 1 token (total = 101 > cap) - should fail
-    let ix = build_mint_to_ix(&boss, &onyc_mint, 1_000_000_000);
+    let ix = build_mint_to_ix(&boss, &onyc_mint, 1_000_000_000, &TOKEN_PROGRAM_ID);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(result.is_err(), "should not mint beyond cumulative cap");
 }
@@ -150,12 +150,12 @@ fn test_mint_to_no_limit_when_zero() {
     let state = read_state(&svm);
     assert_eq!(state.max_supply, 0);
 
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint);
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     // Mint a large amount - should succeed with no limit
-    let ix = build_mint_to_ix(&boss, &onyc_mint, 1_000_000_000_000);
+    let ix = build_mint_to_ix(&boss, &onyc_mint, 1_000_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let boss_ata = get_associated_token_address(&boss, &onyc_mint);
@@ -180,11 +180,11 @@ fn test_take_offer_cannot_exceed_max_supply() {
     advance_slot(&mut svm);
 
     // Transfer mint authority to program so take_offer uses minting mode
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint);
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -208,7 +208,7 @@ fn test_take_offer_cannot_exceed_max_supply() {
     // Try to take 2 USDC at price 1.0 = 2 ONyc - exceeds 1 token cap
     let ix = build_take_offer_ix(
         &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        2_000_000, None,
+        2_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut svm, &[ix], &[&user]);
     assert!(result.is_err(), "should not mint beyond max supply via take_offer");
@@ -226,11 +226,11 @@ fn test_take_offer_can_take_within_cap() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint);
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -253,7 +253,7 @@ fn test_take_offer_can_take_within_cap() {
     // 1 USDC at price 1.0 = 1 ONyc - within 10 token cap
     let ix = build_take_offer_ix(
         &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_000, None,
+        1_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
 
@@ -277,11 +277,11 @@ fn test_take_offer_multiple_users_until_cap() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint);
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -304,7 +304,7 @@ fn test_take_offer_multiple_users_until_cap() {
 
     let ix = build_take_offer_ix(
         &user1.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_000, None,
+        1_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user1]).unwrap();
     advance_slot(&mut svm);
@@ -316,7 +316,7 @@ fn test_take_offer_multiple_users_until_cap() {
 
     let ix = build_take_offer_ix(
         &user2.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_000, None,
+        1_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user2]).unwrap();
     advance_slot(&mut svm);
@@ -328,7 +328,7 @@ fn test_take_offer_multiple_users_until_cap() {
 
     let ix = build_take_offer_ix(
         &user3.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_000, None,
+        1_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut svm, &[ix], &[&user3]);
     assert!(result.is_err(), "third user should hit max supply cap");
@@ -350,12 +350,12 @@ fn test_take_offer_permissionless_cannot_exceed_max_supply() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint);
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     // Permissionless offer, no approval
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, true);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, true, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -384,7 +384,7 @@ fn test_take_offer_permissionless_cannot_exceed_max_supply() {
     // 2 USDC at price 1.0 = 2 ONyc > 1 token cap
     let ix = build_take_offer_permissionless_ix(
         &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        2_000_000, None,
+        2_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut svm, &[ix], &[&user]);
     assert!(result.is_err(), "should not mint beyond max supply via permissionless");
@@ -403,11 +403,11 @@ fn test_take_offer_permissionless_respects_cumulative_supply() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint);
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, true);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, true, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -436,7 +436,7 @@ fn test_take_offer_permissionless_respects_cumulative_supply() {
 
     let ix = build_take_offer_permissionless_ix(
         &user1.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_000, None,
+        1_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user1]).unwrap();
     advance_slot(&mut svm);
@@ -449,7 +449,7 @@ fn test_take_offer_permissionless_respects_cumulative_supply() {
 
     let ix = build_take_offer_permissionless_ix(
         &user2.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_500_000, None,
+        1_500_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut svm, &[ix], &[&user2]);
     assert!(result.is_err(), "cumulative supply should not exceed max");

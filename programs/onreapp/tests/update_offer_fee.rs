@@ -11,7 +11,7 @@ fn setup_offer() -> (litesvm::LiteSVM, Keypair, solana_sdk::pubkey::Pubkey, sola
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 500, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 500, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     (svm, payer, token_in, token_out)

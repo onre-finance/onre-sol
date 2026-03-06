@@ -27,7 +27,7 @@ fn setup_redemption() -> (
     advance_slot(&mut svm);
 
     // Create the standard offer: usdc -> onyc (original direction)
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -42,7 +42,7 @@ fn setup_redemption() -> (
 
     // Create redemption offer: onyc -> usdc (inverse direction)
     // token_in_mint = onyc, token_out_mint = usdc
-    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 500);
+    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 500, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -78,14 +78,14 @@ fn test_make_redemption_offer_rejects_non_authorized() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &_onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &_onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     let unauthorized = Keypair::new();
     svm.airdrop(&unauthorized.pubkey(), INITIAL_LAMPORTS).unwrap();
 
-    let ix = build_make_redemption_offer_ix(&unauthorized.pubkey(), &_onyc_mint, &usdc_mint, 500);
+    let ix = build_make_redemption_offer_ix(&unauthorized.pubkey(), &_onyc_mint, &usdc_mint, 500, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     let result = send_tx(&mut svm, &[ix], &[&unauthorized]);
     assert!(result.is_err(), "unauthorized user should not create redemption offer");
 }
@@ -101,11 +101,11 @@ fn test_make_redemption_offer_rejects_fee_over_max() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &_onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &_onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_redemption_offer_ix(&boss, &_onyc_mint, &usdc_mint, 1001);
+    let ix = build_make_redemption_offer_ix(&boss, &_onyc_mint, &usdc_mint, 1001, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(result.is_err(), "fee over 1000 bps should fail");
 }
@@ -123,12 +123,12 @@ fn test_make_redemption_offer_redemption_admin_can_create() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &_onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &_onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     // Redemption admin should be able to create
-    let ix = build_make_redemption_offer_ix(&redemption_admin.pubkey(), &_onyc_mint, &usdc_mint, 500);
+    let ix = build_make_redemption_offer_ix(&redemption_admin.pubkey(), &_onyc_mint, &usdc_mint, 500, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&redemption_admin]).unwrap();
 }
 
@@ -150,7 +150,7 @@ fn test_create_redemption_request_success() {
     let _vault_ata = create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
 
@@ -179,14 +179,14 @@ fn test_create_multiple_redemption_requests() {
 
     // First request
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
 
     // Second request
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 300_000_000, 1,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 300_000_000, 1, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
 
@@ -213,7 +213,7 @@ fn test_create_redemption_request_fails_kill_switch() {
     advance_slot(&mut svm);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut svm, &[ix], &[&user]);
     assert!(result.is_err(), "should fail when kill switch is active");
@@ -237,7 +237,7 @@ fn test_cancel_redemption_request_by_redeemer() {
 
     // Create request
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -271,7 +271,7 @@ fn test_cancel_redemption_request_by_boss() {
     create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -300,7 +300,7 @@ fn test_cancel_redemption_request_rejects_unauthorized() {
     create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -329,7 +329,7 @@ fn test_cancel_redemption_request_fails_kill_switch() {
     create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -373,7 +373,7 @@ fn test_fulfill_redemption_request_transfer_mode() {
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 1_000_000_000, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 1_000_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -382,6 +382,7 @@ fn test_fulfill_redemption_request_transfer_mode() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &redemption_tin, &redemption_tout, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -416,7 +417,7 @@ fn test_fulfill_redemption_request_rejects_non_admin() {
     create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -427,6 +428,7 @@ fn test_fulfill_redemption_request_rejects_non_admin() {
     let ix = build_fulfill_redemption_request_ix(
         &non_admin.pubkey(), &boss, &user.pubkey(),
         &redemption_tin, &redemption_tout, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         500_000_000,
     );
     let result = send_tx(&mut svm, &[ix], &[&non_admin]);
@@ -507,7 +509,7 @@ fn test_make_redemption_offer_rejects_duplicate() {
     let boss = payer.pubkey();
 
     // Try to create the same redemption offer again
-    let ix = build_make_redemption_offer_ix(&boss, &redemption_tin, &redemption_tout, 300);
+    let ix = build_make_redemption_offer_ix(&boss, &redemption_tin, &redemption_tout, 300, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(result.is_err(), "duplicate redemption offer should fail");
 }
@@ -530,7 +532,7 @@ fn test_create_redemption_request_counter_increments() {
     // Create 3 requests and verify counter increments
     for i in 0u64..3 {
         let ix = build_create_redemption_request_ix(
-            &user.pubkey(), &redemption_tin, &redemption_tout, 100_000_000, i,
+            &user.pubkey(), &redemption_tin, &redemption_tout, 100_000_000, i, &TOKEN_PROGRAM_ID,
         );
         send_tx(&mut svm, &[ix], &[&user]).unwrap();
         advance_slot(&mut svm);
@@ -555,13 +557,13 @@ fn test_create_redemption_request_unique_pdas() {
 
     // Create two requests, verify different PDAs
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 100_000_000, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 100_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 100_000_000, 1,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 100_000_000, 1, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
 
@@ -587,7 +589,7 @@ fn test_create_redemption_request_anyone_can_create() {
     create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
 
     let ix = build_create_redemption_request_ix(
-        &random_user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0,
+        &random_user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&random_user]).unwrap();
 
@@ -615,7 +617,7 @@ fn test_create_redemption_request_kill_switch_deactivated_allows() {
 
     // Should fail
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     assert!(send_tx(&mut svm, &[ix], &[&user]).is_err());
     advance_slot(&mut svm);
@@ -627,7 +629,7 @@ fn test_create_redemption_request_kill_switch_deactivated_allows() {
 
     // Should succeed now
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
 
@@ -649,7 +651,7 @@ fn test_create_redemption_request_same_redeemer_multiple() {
     // Same user creates 3 requests
     for i in 0u64..3 {
         let ix = build_create_redemption_request_ix(
-            &user.pubkey(), &redemption_tin, &redemption_tout, 1_000_000_000, i,
+            &user.pubkey(), &redemption_tin, &redemption_tout, 1_000_000_000, i, &TOKEN_PROGRAM_ID,
         );
         send_tx(&mut svm, &[ix], &[&user]).unwrap();
         advance_slot(&mut svm);
@@ -689,7 +691,7 @@ fn test_cancel_redemption_request_by_redemption_admin() {
     create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -720,7 +722,7 @@ fn test_cancel_redemption_request_one_while_others_active() {
     // Create 3 requests
     for i in 0u64..3 {
         let ix = build_create_redemption_request_ix(
-            &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, i,
+            &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, i, &TOKEN_PROGRAM_ID,
         );
         send_tx(&mut svm, &[ix], &[&user]).unwrap();
         advance_slot(&mut svm);
@@ -756,7 +758,7 @@ fn test_cancel_redemption_request_multiple_cancellations() {
     // Create 3 requests of 500M each
     for i in 0u64..3 {
         let ix = build_create_redemption_request_ix(
-            &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, i,
+            &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, i, &TOKEN_PROGRAM_ID,
         );
         send_tx(&mut svm, &[ix], &[&user]).unwrap();
         advance_slot(&mut svm);
@@ -792,7 +794,7 @@ fn test_cancel_redemption_request_kill_switch_deactivated_allows() {
     create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -852,7 +854,7 @@ fn setup_fulfillable_request(fee_bps: u16, amount: u64) -> FulfillCtx {
     advance_slot(&mut svm);
 
     // Create offer: usdc -> onyc
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -866,7 +868,7 @@ fn setup_fulfillable_request(fee_bps: u16, amount: u64) -> FulfillCtx {
     advance_clock_by(&mut svm, 1);
 
     // Create redemption offer: onyc -> usdc
-    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, fee_bps);
+    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, fee_bps, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -886,7 +888,7 @@ fn setup_fulfillable_request(fee_bps: u16, amount: u64) -> FulfillCtx {
 
     // Create request
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &onyc_mint, &usdc_mint, amount, 0,
+        &user.pubkey(), &onyc_mint, &usdc_mint, amount, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -907,6 +909,7 @@ fn test_fulfill_redemption_request_updates_statistics() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &ctx.user.pubkey(),
         &ctx.redemption_tin, &ctx.redemption_tout, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000_000_000,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
@@ -926,7 +929,7 @@ fn test_fulfill_redemption_request_accumulates_executed() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -938,7 +941,7 @@ fn test_fulfill_redemption_request_accumulates_executed() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
 
-    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 0);
+    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 0, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -955,7 +958,7 @@ fn test_fulfill_redemption_request_accumulates_executed() {
         create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
         let ix = build_create_redemption_request_ix(
-            &user.pubkey(), &onyc_mint, &usdc_mint, 500_000_000, i,
+            &user.pubkey(), &onyc_mint, &usdc_mint, 500_000_000, i, &TOKEN_PROGRAM_ID,
         );
         send_tx(&mut svm, &[ix], &[&user]).unwrap();
         advance_slot(&mut svm);
@@ -963,6 +966,7 @@ fn test_fulfill_redemption_request_accumulates_executed() {
         let ix = build_fulfill_redemption_request_ix(
             &boss, &boss, &user.pubkey(),
             &onyc_mint, &usdc_mint, i,
+            &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
             500_000_000,
         );
         send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -982,6 +986,7 @@ fn test_fulfill_redemption_request_zero_fee() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &ctx.user.pubkey(),
         &ctx.redemption_tin, &ctx.redemption_tout, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000_000_000,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
@@ -1006,6 +1011,7 @@ fn test_fulfill_redemption_request_kill_switch() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &ctx.user.pubkey(),
         &ctx.redemption_tin, &ctx.redemption_tout, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000_000_000,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]);
@@ -1022,7 +1028,7 @@ fn test_fulfill_redemption_request_with_apr_growth() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1035,7 +1041,7 @@ fn test_fulfill_redemption_request_with_apr_growth() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
 
-    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 0);
+    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 0, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1050,7 +1056,7 @@ fn test_fulfill_redemption_request_with_apr_growth() {
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0,
+        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -1062,6 +1068,7 @@ fn test_fulfill_redemption_request_with_apr_growth() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1082,7 +1089,7 @@ fn test_fulfill_redemption_request_burn_and_mint() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1094,7 +1101,7 @@ fn test_fulfill_redemption_request_burn_and_mint() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
 
-    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 500);
+    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 500, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1122,7 +1129,7 @@ fn test_fulfill_redemption_request_burn_and_mint() {
     svm.set_account(onyc_mint, mint_data).unwrap();
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0,
+        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -1130,6 +1137,7 @@ fn test_fulfill_redemption_request_burn_and_mint() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1155,6 +1163,7 @@ fn test_fulfill_redemption_request_transfer_mode_fee_to_boss() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &ctx.user.pubkey(),
         &ctx.redemption_tin, &ctx.redemption_tout, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000_000_000,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
@@ -1174,7 +1183,7 @@ fn test_fulfill_redemption_request_different_price() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1187,7 +1196,7 @@ fn test_fulfill_redemption_request_different_price() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
 
-    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 0);
+    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 0, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1202,7 +1211,7 @@ fn test_fulfill_redemption_request_different_price() {
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0,
+        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -1210,6 +1219,7 @@ fn test_fulfill_redemption_request_different_price() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1230,7 +1240,7 @@ fn test_fulfill_redemption_request_fee_with_apr() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1244,7 +1254,7 @@ fn test_fulfill_redemption_request_fee_with_apr() {
     advance_clock_by(&mut svm, 1);
 
     // Fee = 5%
-    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 500);
+    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 500, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1259,7 +1269,7 @@ fn test_fulfill_redemption_request_fee_with_apr() {
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0,
+        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -1270,6 +1280,7 @@ fn test_fulfill_redemption_request_fee_with_apr() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1337,7 +1348,7 @@ fn setup_redemption_token2022() -> (
     advance_slot(&mut svm);
 
     // Create the standard offer: usdc -> onyc (with Token-2022 for usdc)
-    let ix = build_make_offer_ix_with_programs(
+    let ix = build_make_offer_ix(
         &boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1353,7 +1364,7 @@ fn setup_redemption_token2022() -> (
     advance_clock_by(&mut svm, 1);
 
     // Create redemption offer: onyc -> usdc (inverse direction)
-    let ix = build_make_redemption_offer_ix_with_programs(
+    let ix = build_make_redemption_offer_ix(
         &boss, &onyc_mint, &usdc_mint, 500,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
     );
@@ -1379,14 +1390,14 @@ fn test_fulfill_redemption_token2022_transfer_mode() {
     create_token_account_2022(&mut svm, &onyc_mint, &boss, 0);
     create_token_account_2022(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
-    let ix = build_create_redemption_request_ix_with_token_program(
+    let ix = build_create_redemption_request_ix(
         &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0,
         &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_fulfill_redemption_request_ix_with_programs(
+    let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
@@ -1430,14 +1441,14 @@ fn test_fulfill_redemption_token2022_burn_mint_mode() {
     mint_data.data[36..44].copy_from_slice(&1_000_000_000u64.to_le_bytes());
     svm.set_account(onyc_mint, mint_data).unwrap();
 
-    let ix = build_create_redemption_request_ix_with_token_program(
+    let ix = build_create_redemption_request_ix(
         &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0,
         &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_fulfill_redemption_request_ix_with_programs(
+    let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
@@ -1466,7 +1477,7 @@ fn test_fulfill_redemption_token2022_with_fee() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix_with_programs(
+    let ix = build_make_offer_ix(
         &boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1481,7 +1492,7 @@ fn test_fulfill_redemption_token2022_with_fee() {
     advance_clock_by(&mut svm, 1);
 
     // Redemption with 5% fee
-    let ix = build_make_redemption_offer_ix_with_programs(
+    let ix = build_make_redemption_offer_ix(
         &boss, &onyc_mint, &usdc_mint, 500,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
     );
@@ -1498,14 +1509,14 @@ fn test_fulfill_redemption_token2022_with_fee() {
     create_token_account_2022(&mut svm, &onyc_mint, &boss, 0);
     create_token_account_2022(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
-    let ix = build_create_redemption_request_ix_with_token_program(
+    let ix = build_create_redemption_request_ix(
         &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0,
         &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_fulfill_redemption_request_ix_with_programs(
+    let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
@@ -1538,20 +1549,20 @@ fn test_make_redemption_offer_multiple_pairs() {
     advance_slot(&mut svm);
 
     // Create offers
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &other_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &other_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     // Create two different redemption offers
-    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 500);
+    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 500, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_redemption_offer_ix(&boss, &other_mint, &usdc_mint, 300);
+    let ix = build_make_redemption_offer_ix(&boss, &other_mint, &usdc_mint, 300, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let offer1 = read_redemption_offer(&svm, &onyc_mint, &usdc_mint);
@@ -1573,7 +1584,7 @@ fn test_make_redemption_offer_token2022() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix_with_programs(
+    let ix = build_make_offer_ix(
         &boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1588,7 +1599,7 @@ fn test_make_redemption_offer_token2022() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
 
-    let ix = build_make_redemption_offer_ix_with_programs(
+    let ix = build_make_redemption_offer_ix(
         &boss, &onyc_mint, &usdc_mint, 500,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
     );
@@ -1612,6 +1623,7 @@ fn test_fulfill_redemption_request_rejects_already_fulfilled() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &ctx.user.pubkey(),
         &ctx.redemption_tin, &ctx.redemption_tout, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000_000_000,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
@@ -1621,6 +1633,7 @@ fn test_fulfill_redemption_request_rejects_already_fulfilled() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &ctx.user.pubkey(),
         &ctx.redemption_tin, &ctx.redemption_tout, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000_000_000,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]);
@@ -1637,7 +1650,7 @@ fn test_fulfill_redemption_request_fails_no_active_vector() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1650,7 +1663,7 @@ fn test_fulfill_redemption_request_fails_no_active_vector() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
 
-    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 0);
+    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 0, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1665,7 +1678,7 @@ fn test_fulfill_redemption_request_fails_no_active_vector() {
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0,
+        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -1679,6 +1692,7 @@ fn test_fulfill_redemption_request_fails_no_active_vector() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000_000_000,
     );
     let result = send_tx(&mut svm, &[ix], &[&payer]);
@@ -1695,7 +1709,7 @@ fn test_fulfill_redemption_request_price_1_003() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1708,7 +1722,7 @@ fn test_fulfill_redemption_request_price_1_003() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
 
-    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 0);
+    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 0, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1723,7 +1737,7 @@ fn test_fulfill_redemption_request_price_1_003() {
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0,
+        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -1731,6 +1745,7 @@ fn test_fulfill_redemption_request_price_1_003() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1750,7 +1765,7 @@ fn test_fulfill_redemption_request_price_0_5() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1763,7 +1778,7 @@ fn test_fulfill_redemption_request_price_0_5() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
 
-    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 0);
+    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 0, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1778,7 +1793,7 @@ fn test_fulfill_redemption_request_price_0_5() {
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0,
+        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -1786,6 +1801,7 @@ fn test_fulfill_redemption_request_price_0_5() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1805,7 +1821,7 @@ fn test_fulfill_redemption_request_price_pi() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1818,7 +1834,7 @@ fn test_fulfill_redemption_request_price_pi() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
 
-    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 0);
+    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 0, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1833,7 +1849,7 @@ fn test_fulfill_redemption_request_price_pi() {
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0,
+        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -1841,6 +1857,7 @@ fn test_fulfill_redemption_request_price_pi() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1858,6 +1875,7 @@ fn test_fulfill_redemption_request_very_small_amount() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &ctx.user.pubkey(),
         &ctx.redemption_tin, &ctx.redemption_tout, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
@@ -1880,7 +1898,7 @@ fn test_fulfill_redemption_request_price_0_123456789() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1893,7 +1911,7 @@ fn test_fulfill_redemption_request_price_0_123456789() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
 
-    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 0);
+    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 0, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1908,7 +1926,7 @@ fn test_fulfill_redemption_request_price_0_123456789() {
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0,
+        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -1916,6 +1934,7 @@ fn test_fulfill_redemption_request_price_0_123456789() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1941,7 +1960,7 @@ fn fulfill_token2022_with_params(apr: u64, fee_bps: u16, advance_days: u64) {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix_with_programs(
+    let ix = build_make_offer_ix(
         &boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1955,7 +1974,7 @@ fn fulfill_token2022_with_params(apr: u64, fee_bps: u16, advance_days: u64) {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
 
-    let ix = build_make_redemption_offer_ix_with_programs(
+    let ix = build_make_redemption_offer_ix(
         &boss, &onyc_mint, &usdc_mint, fee_bps,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
     );
@@ -1972,7 +1991,7 @@ fn fulfill_token2022_with_params(apr: u64, fee_bps: u16, advance_days: u64) {
     create_token_account_2022(&mut svm, &onyc_mint, &boss, 0);
     create_token_account_2022(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
-    let ix = build_create_redemption_request_ix_with_token_program(
+    let ix = build_create_redemption_request_ix(
         &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0,
         &TOKEN_2022_PROGRAM_ID,
     );
@@ -1984,7 +2003,7 @@ fn fulfill_token2022_with_params(apr: u64, fee_bps: u16, advance_days: u64) {
         advance_clock_by(&mut svm, advance_days * 86400);
     }
 
-    let ix = build_fulfill_redemption_request_ix_with_programs(
+    let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
@@ -2202,7 +2221,7 @@ fn test_create_redemption_request_updates_requested_redemptions() {
 
     let request_amount: u64 = 750_000_000;
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, request_amount, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, request_amount, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
 
@@ -2227,7 +2246,7 @@ fn test_create_redemption_request_locks_tokens_in_vault() {
 
     let request_amount: u64 = 600_000_000;
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, request_amount, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, request_amount, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
 
@@ -2264,7 +2283,7 @@ fn test_create_redemption_request_redeemer_pays_rent() {
     let sol_before = svm.get_account(&user.pubkey()).unwrap().lamports;
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
 
@@ -2295,13 +2314,13 @@ fn test_cancel_redemption_request_decrements_requested_redemptions() {
 
     // Create two requests
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 300_000_000, 1,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 300_000_000, 1, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -2340,7 +2359,7 @@ fn test_cancel_redemption_request_returns_tokens_to_redeemer() {
 
     let request_amount: u64 = 500_000_000;
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, request_amount, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, request_amount, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -2376,7 +2395,7 @@ fn test_cancel_redemption_request_closes_account() {
     create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
 
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0,
+        &user.pubkey(), &redemption_tin, &redemption_tout, 500_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -2415,6 +2434,7 @@ fn test_fulfill_redemption_request_decrements_requested_redemptions() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &ctx.user.pubkey(),
         &ctx.redemption_tin, &ctx.redemption_tout, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000_000_000,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
@@ -2447,7 +2467,7 @@ fn test_fulfill_redemption_request_different_decimals() {
     advance_slot(&mut svm);
 
     // Create offer: usdc -> onyc (original direction)
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -2461,7 +2481,7 @@ fn test_fulfill_redemption_request_different_decimals() {
     advance_clock_by(&mut svm, 1);
 
     // Create redemption offer: onyc -> usdc, 0% fee
-    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 0);
+    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, 0, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -2482,7 +2502,7 @@ fn test_fulfill_redemption_request_different_decimals() {
 
     // Create redemption request for 1 ONyc (1_000_000_000 in 9 decimals)
     let ix = build_create_redemption_request_ix(
-        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0,
+        &user.pubkey(), &onyc_mint, &usdc_mint, 1_000_000_000, 0, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -2491,6 +2511,7 @@ fn test_fulfill_redemption_request_different_decimals() {
     let ix = build_fulfill_redemption_request_ix(
         &boss, &boss, &user.pubkey(),
         &onyc_mint, &usdc_mint, 0,
+        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         1_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();

@@ -23,7 +23,7 @@ fn setup_permissionless_offer() -> PermissionlessOfferCtx {
     let onyc_mint = create_mint(&mut svm, &payer, 9, &boss);
 
     // Make offer: 0% fee, needs_approval=true, allow_permissionless=true
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, true, true);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, true, true, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).expect("make_offer failed");
 
     // Add offer vector: start_time = current clock time, base_price = 1.0 (1_000_000_000),
@@ -115,7 +115,7 @@ fn test_take_offer_permissionless_with_valid_approval() {
         &ctx.usdc_mint,
         &ctx.onyc_mint,
         token_in_amount,
-        Some(&approval_msg_bytes),
+        Some(&approval_msg_bytes), &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
 
     // Send both instructions in one transaction (Ed25519 verify must be before take_offer)
@@ -167,7 +167,7 @@ fn test_take_offer_permissionless_fails_without_approval() {
         &ctx.usdc_mint,
         &ctx.onyc_mint,
         token_in_amount,
-        None,
+        None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
 
     let result = send_tx(&mut ctx.svm, &[take_ix], &[&user]);
@@ -204,7 +204,7 @@ fn test_take_offer_permissionless_fails_with_expired_approval() {
         &ctx.usdc_mint,
         &ctx.onyc_mint,
         token_in_amount,
-        Some(&approval_msg_bytes),
+        Some(&approval_msg_bytes), &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
 
     let result = send_tx(&mut ctx.svm, &[ed25519_ix, take_ix], &[&user]);
@@ -242,7 +242,7 @@ fn test_take_offer_permissionless_fails_with_wrong_approver() {
         &ctx.usdc_mint,
         &ctx.onyc_mint,
         token_in_amount,
-        Some(&approval_msg_bytes),
+        Some(&approval_msg_bytes), &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
 
     let result = send_tx(&mut ctx.svm, &[ed25519_ix, take_ix], &[&user]);
@@ -280,7 +280,7 @@ fn test_take_offer_permissionless_fails_with_wrong_user_in_approval() {
         &ctx.usdc_mint,
         &ctx.onyc_mint,
         token_in_amount,
-        Some(&approval_msg_bytes),
+        Some(&approval_msg_bytes), &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
 
     let result = send_tx(&mut ctx.svm, &[ed25519_ix, take_ix], &[&user]);
@@ -318,7 +318,7 @@ fn test_take_offer_permissionless_fails_with_wrong_program_in_approval() {
         &ctx.usdc_mint,
         &ctx.onyc_mint,
         token_in_amount,
-        Some(&approval_msg_bytes),
+        Some(&approval_msg_bytes), &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
 
     let result = send_tx(&mut ctx.svm, &[ed25519_ix, take_ix], &[&user]);
@@ -352,7 +352,7 @@ fn setup_permissionless_no_approval_with_fee(fee_bps: u16) -> PermissionlessNoAp
     let onyc_mint = create_mint(&mut svm, &payer, 9, &boss);
 
     // needs_approval=false, allow_permissionless=true
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, fee_bps, false, true);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, fee_bps, false, true, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let (vault_authority, _) = find_offer_vault_authority_pda();
@@ -398,7 +398,7 @@ fn test_permissionless_basic_success() {
     // 1.0001 USDC at price 1.0001 = 1 ONyc
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        1_000_100, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -433,7 +433,7 @@ fn test_permissionless_price_first_interval() {
 
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        1_000_100, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -458,7 +458,7 @@ fn test_permissionless_price_with_fee() {
 
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        1_000_100, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -488,7 +488,7 @@ fn test_permissionless_price_second_interval() {
 
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_200, None,
+        1_000_200, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -523,7 +523,7 @@ fn test_permissionless_most_recent_active_vector() {
     // Price from second vector: 2.0 * (1 + 0.073 * 86400/31536000) ≈ 2.0004
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        2_000_400, None,
+        2_000_400, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -553,7 +553,7 @@ fn test_permissionless_fail_no_active_vector() {
 
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_000, None,
+        1_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
     assert!(result.is_err(), "should fail with no active vector");
@@ -574,7 +574,7 @@ fn test_permissionless_fail_insufficient_user_balance() {
     // User has 10,000 USDC, try 20,000
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        20_000_000_000, None,
+        20_000_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
     assert!(result.is_err(), "should fail with insufficient balance");
@@ -596,7 +596,7 @@ fn test_permissionless_fail_insufficient_vault_balance() {
     // 20 USDC at 0.001 price = 20,000 token_out, but vault has only 1,000
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        20_000_000, None,
+        20_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
     assert!(result.is_err(), "should fail with insufficient vault balance");
@@ -622,7 +622,7 @@ fn test_permissionless_zero_apr_fixed_price() {
 
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_000, None,
+        1_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -651,7 +651,7 @@ fn test_permissionless_high_apr_long_period() {
     // After 1 year: price ≈ 1.366
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_366_000, None,
+        1_366_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -686,7 +686,7 @@ fn test_permissionless_vault_transfer_token_out() {
 
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        1_000_100, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -726,7 +726,7 @@ fn test_permissionless_user_to_boss_transfer() {
 
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        token_in_amount, None,
+        token_in_amount, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -764,7 +764,7 @@ fn test_permissionless_mint_token_out_with_mint_authority() {
     let boss = ctx.payer.pubkey();
 
     // Transfer mint authority for onyc to program
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.onyc_mint);
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.onyc_mint, &TOKEN_PROGRAM_ID);
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
 
@@ -782,7 +782,7 @@ fn test_permissionless_mint_token_out_with_mint_authority() {
 
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        1_000_100, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -803,7 +803,7 @@ fn test_permissionless_burn_token_in_with_mint_authority() {
     let boss = ctx.payer.pubkey();
 
     // Transfer mint authority for USDC to program (so it burns token_in)
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.usdc_mint);
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.usdc_mint, &TOKEN_PROGRAM_ID);
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
 
@@ -827,7 +827,7 @@ fn test_permissionless_burn_token_in_with_mint_authority() {
 
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        token_in_amount, None,
+        token_in_amount, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -846,7 +846,7 @@ fn test_permissionless_fee_calculations_when_minting() {
     let boss = ctx.payer.pubkey();
 
     // Transfer mint authority for onyc to program
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.onyc_mint);
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.onyc_mint, &TOKEN_PROGRAM_ID);
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
 
@@ -861,7 +861,7 @@ fn test_permissionless_fee_calculations_when_minting() {
 
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        token_in_amount, None,
+        token_in_amount, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -909,7 +909,7 @@ fn test_permissionless_kill_switch_rejects() {
 
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        1_000_100, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
     assert!(result.is_err(), "kill switch should block permissionless take");
@@ -924,7 +924,7 @@ fn test_permissionless_not_allowed_rejects() {
     let onyc_mint = create_mint(&mut svm, &payer, 9, &boss);
 
     // allow_permissionless=false
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let (vault_authority, _) = find_offer_vault_authority_pda();
@@ -951,7 +951,7 @@ fn test_permissionless_not_allowed_rejects() {
 
     let ix = build_take_offer_permissionless_ix(
         &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_000, None,
+        1_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut svm, &[ix], &[&user]);
     assert!(result.is_err(), "should fail when permissionless not allowed");
@@ -986,7 +986,7 @@ fn test_permissionless_kill_switch_disabled_allows() {
 
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        1_000_100, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -1010,7 +1010,7 @@ fn test_permissionless_token2022_basic_success() {
     let onyc_mint = create_mint_2022(&mut svm, &payer, 9, &boss);
 
     // needs_approval=false, allow_permissionless=true
-    let ix = build_make_offer_ix_with_programs(
+    let ix = build_make_offer_ix(
         &boss, &usdc_mint, &onyc_mint, 0, false, true, &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1037,7 +1037,7 @@ fn test_permissionless_token2022_basic_success() {
     create_token_account_2022(&mut svm, &usdc_mint, &user.pubkey(), 10_000_000_000);
     create_token_account_2022(&mut svm, &onyc_mint, &user.pubkey(), 0);
 
-    let ix = build_take_offer_permissionless_ix_with_programs(
+    let ix = build_take_offer_permissionless_ix(
         &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
         1_000_000, None,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
@@ -1063,7 +1063,7 @@ fn test_permissionless_token2022_rejects_token_in_transfer_fee() {
     let usdc_mint = create_mint_2022_with_transfer_fee(&mut svm, &payer, 6, &boss, 500, 1_000_000);
     let onyc_mint = create_mint_2022(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix_with_programs(
+    let ix = build_make_offer_ix(
         &boss, &usdc_mint, &onyc_mint, 0, false, true, &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1090,7 +1090,7 @@ fn test_permissionless_token2022_rejects_token_in_transfer_fee() {
     create_token_account_2022(&mut svm, &usdc_mint, &user.pubkey(), 10_000_000_000);
     create_token_account_2022(&mut svm, &onyc_mint, &user.pubkey(), 0);
 
-    let ix = build_take_offer_permissionless_ix_with_programs(
+    let ix = build_take_offer_permissionless_ix(
         &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
         1_000_000, None,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
@@ -1107,7 +1107,7 @@ fn test_permissionless_token2022_rejects_token_out_transfer_fee() {
     let usdc_mint = create_mint_2022(&mut svm, &payer, 6, &boss);
     let onyc_mint = create_mint_2022_with_transfer_fee(&mut svm, &payer, 9, &boss, 500, 1_000_000);
 
-    let ix = build_make_offer_ix_with_programs(
+    let ix = build_make_offer_ix(
         &boss, &usdc_mint, &onyc_mint, 0, false, true, &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1134,7 +1134,7 @@ fn test_permissionless_token2022_rejects_token_out_transfer_fee() {
     create_token_account_2022(&mut svm, &usdc_mint, &user.pubkey(), 10_000_000_000);
     create_token_account_2022(&mut svm, &onyc_mint, &user.pubkey(), 0);
 
-    let ix = build_take_offer_permissionless_ix_with_programs(
+    let ix = build_take_offer_permissionless_ix(
         &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
         1_000_000, None,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,

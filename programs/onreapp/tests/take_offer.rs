@@ -31,7 +31,7 @@ fn setup_take_offer_with_fee(fee_bps: u16) -> TakeOfferCtx {
     let usdc_mint = create_mint(&mut svm, &payer, 6, &boss);
     let onyc_mint = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, fee_bps, false, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, fee_bps, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     // Create vault accounts (pre-funded)
@@ -77,7 +77,7 @@ fn test_price_first_interval() {
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
         1_000_100, // 1.0001 USDC
-        None,
+        None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -103,7 +103,7 @@ fn test_price_with_fee() {
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
         1_000_100,
-        None,
+        None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -137,7 +137,7 @@ fn test_ceiling_fee_small_amount() {
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
         199,
-        None,
+        None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -170,7 +170,7 @@ fn test_price_same_interval() {
     // First trade
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        1_000_100, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -184,7 +184,7 @@ fn test_price_same_interval() {
 
     let ix = build_take_offer_ix(
         &user2.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        1_000_100, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&user2]).unwrap();
 
@@ -218,7 +218,7 @@ fn test_price_second_interval() {
     // Price: 1.0 * (1 + 0.0365 * 2*86400/31536000) = 1.0002
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_200, None,
+        1_000_200, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -258,7 +258,7 @@ fn test_use_most_recent_active_vector() {
     // Price from second vector: 2.0 * (1 + 0.073 * 86400/31536000) ≈ 2.0004
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        2_000_400, None,
+        2_000_400, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -288,7 +288,7 @@ fn test_fail_no_active_vector() {
 
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_000, None,
+        1_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
     assert!(result.is_err(), "should fail with no active vector");
@@ -309,7 +309,7 @@ fn test_fail_insufficient_user_balance() {
     // User only has 10,000 USDC, try to spend 20,000
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        20_000_000_000, None,
+        20_000_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
     assert!(result.is_err(), "should fail with insufficient balance");
@@ -331,7 +331,7 @@ fn test_fail_insufficient_vault_balance() {
     // 20 USDC at 0.001 price = 20,000 token_out, but vault has only 10,000
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        20_000_000, None,
+        20_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
     assert!(result.is_err(), "should fail with insufficient vault balance");
@@ -368,7 +368,7 @@ fn test_transfer_tokens_correctly() {
 
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        token_in_amount, None,
+        token_in_amount, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -413,7 +413,7 @@ fn test_wrong_token_in_mint() {
 
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &wrong_mint, &ctx.onyc_mint,
-        1_000_000, None,
+        1_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
     assert!(result.is_err(), "wrong token_in should fail");
@@ -437,7 +437,7 @@ fn test_wrong_token_out_mint() {
 
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &wrong_mint,
-        1_000_000, None,
+        1_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
     assert!(result.is_err(), "wrong token_out should fail");
@@ -461,7 +461,7 @@ fn test_zero_apr_fixed_price() {
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
         1_000_000, // exactly 1.0 USDC
-        None,
+        None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -491,7 +491,7 @@ fn test_high_apr_long_period() {
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
         1_366_000,
-        None,
+        None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -526,7 +526,7 @@ fn test_vault_transfer_token_out_no_mint_authority() {
 
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        1_000_100, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -567,7 +567,7 @@ fn test_user_to_boss_transfer_no_mint_authority() {
 
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        token_in_amount, None,
+        token_in_amount, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -618,7 +618,7 @@ fn test_kill_switch_rejects_take_offer() {
 
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        1_000_100, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
     assert!(result.is_err(), "kill switch should block take_offer");
@@ -659,7 +659,7 @@ fn test_kill_switch_disabled_allows_take_offer() {
 
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        1_000_100, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -683,7 +683,7 @@ fn test_take_offer_with_approval_required_fails_without_approval() {
     let onyc_mint = create_mint(&mut svm, &payer, 9, &boss);
 
     // Create offer with needs_approval = true
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, true, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, true, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let (vault_authority, _) = find_offer_vault_authority_pda();
@@ -711,7 +711,7 @@ fn test_take_offer_with_approval_required_fails_without_approval() {
     // Try without approval
     let ix = build_take_offer_ix(
         &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_100, None,
+        1_000_100, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut svm, &[ix], &[&user]);
     assert!(result.is_err(), "should fail without approval when required");
@@ -725,7 +725,7 @@ fn test_take_offer_with_valid_approval() {
     let usdc_mint = create_mint(&mut svm, &payer, 6, &boss);
     let onyc_mint = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, true, false);
+    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, true, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let (vault_authority, _) = find_offer_vault_authority_pda();
@@ -757,7 +757,7 @@ fn test_take_offer_with_valid_approval() {
 
     let take_ix = build_take_offer_ix(
         &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_100, Some(&approval_msg),
+        1_000_100, Some(&approval_msg), &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ed25519_ix, take_ix], &[&user]).unwrap();
 
@@ -778,7 +778,7 @@ fn test_mint_token_out_with_program_mint_authority() {
     let boss = ctx.payer.pubkey();
 
     // Transfer mint authority for onyc to program
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.onyc_mint);
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.onyc_mint, &TOKEN_PROGRAM_ID);
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
 
@@ -797,7 +797,7 @@ fn test_mint_token_out_with_program_mint_authority() {
 
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        1_000_100, None,
+        1_000_100, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -820,7 +820,7 @@ fn test_burn_token_in_with_program_mint_authority() {
     let boss = ctx.payer.pubkey();
 
     // Transfer mint authority for USDC to program (so it burns token_in)
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.usdc_mint);
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.usdc_mint, &TOKEN_PROGRAM_ID);
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
 
@@ -844,7 +844,7 @@ fn test_burn_token_in_with_program_mint_authority() {
 
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        token_in_amount, None,
+        token_in_amount, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -863,7 +863,7 @@ fn test_fee_collection_with_mint_authority_burn() {
     let boss = ctx.payer.pubkey();
 
     // Transfer mint authority for onyc to program
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.onyc_mint);
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.onyc_mint, &TOKEN_PROGRAM_ID);
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
 
@@ -878,7 +878,7 @@ fn test_fee_collection_with_mint_authority_burn() {
 
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(), &boss, &ctx.usdc_mint, &ctx.onyc_mint,
-        token_in_amount, None,
+        token_in_amount, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
@@ -909,7 +909,7 @@ fn test_take_offer_token2022_transfers() {
     let usdc_mint = create_mint_2022(&mut svm, &payer, 6, &boss);
     let onyc_mint = create_mint_2022(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix_with_programs(
+    let ix = build_make_offer_ix(
         &boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -939,7 +939,7 @@ fn test_take_offer_token2022_transfers() {
         &svm, &get_associated_token_address_2022(&user.pubkey(), &usdc_mint),
     );
 
-    let ix = build_take_offer_ix_with_programs(
+    let ix = build_take_offer_ix(
         &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
         token_in_amount, None,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
@@ -970,7 +970,7 @@ fn test_take_offer_token2022_zero_transfer_fee_accepted() {
     let usdc_mint = create_mint_2022_with_transfer_fee(&mut svm, &payer, 6, &boss, 0, 0);
     let onyc_mint = create_mint_2022_with_transfer_fee(&mut svm, &payer, 9, &boss, 0, 0);
 
-    let ix = build_make_offer_ix_with_programs(
+    let ix = build_make_offer_ix(
         &boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -992,7 +992,7 @@ fn test_take_offer_token2022_zero_transfer_fee_accepted() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    let ix = build_take_offer_ix_with_programs(
+    let ix = build_take_offer_ix(
         &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
         1_000_000, None,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
@@ -1014,7 +1014,7 @@ fn test_take_offer_token2022_rejects_token_in_transfer_fee() {
     let usdc_mint = create_mint_2022_with_transfer_fee(&mut svm, &payer, 6, &boss, 500, 1_000_000);
     let onyc_mint = create_mint_2022(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix_with_programs(
+    let ix = build_make_offer_ix(
         &boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1036,7 +1036,7 @@ fn test_take_offer_token2022_rejects_token_in_transfer_fee() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    let ix = build_take_offer_ix_with_programs(
+    let ix = build_take_offer_ix(
         &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
         1_000_000, None,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,
@@ -1054,7 +1054,7 @@ fn test_take_offer_token2022_rejects_token_out_transfer_fee() {
     // token_out with non-zero transfer fee
     let onyc_mint = create_mint_2022_with_transfer_fee(&mut svm, &payer, 9, &boss, 500, 1_000_000);
 
-    let ix = build_make_offer_ix_with_programs(
+    let ix = build_make_offer_ix(
         &boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1076,7 +1076,7 @@ fn test_take_offer_token2022_rejects_token_out_transfer_fee() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    let ix = build_take_offer_ix_with_programs(
+    let ix = build_take_offer_ix(
         &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
         1_000_000, None,
         &TOKEN_2022_PROGRAM_ID, &TOKEN_2022_PROGRAM_ID,

@@ -15,7 +15,7 @@ fn setup_offer_with_vector(
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -103,7 +103,7 @@ fn test_get_nav_fails_no_active_vector() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -121,7 +121,7 @@ fn test_get_nav_fails_all_vectors_future() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -181,7 +181,7 @@ fn test_get_apy_fails_no_active_vector() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -217,7 +217,7 @@ fn test_get_nav_adjustment_positive() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -257,7 +257,7 @@ fn test_get_nav_adjustment_fails_no_active_vector() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -297,7 +297,7 @@ fn test_get_tvl_fails_no_active_vector() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -339,7 +339,7 @@ fn test_get_circulating_supply_with_vault() {
 
     // Create boss token account with tokens and deposit to vault
     create_token_account(&mut svm, &onyc_mint, &boss, 500_000_000_000);
-    let ix = build_offer_vault_deposit_ix(&boss, &onyc_mint, 200_000_000_000);
+    let ix = build_offer_vault_deposit_ix(&boss, &onyc_mint, 200_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -363,7 +363,7 @@ fn test_get_nav_multiple_vectors_uses_most_recent() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -409,7 +409,7 @@ fn test_get_apy_10_percent() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -438,7 +438,7 @@ fn test_get_apy_25_percent() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -467,7 +467,7 @@ fn test_get_apy_multiple_vectors_uses_most_recent() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -510,7 +510,7 @@ fn test_get_tvl_different_price() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -543,7 +543,7 @@ fn test_get_tvl_after_time_advancement() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -586,7 +586,7 @@ fn test_get_nav_adjustment_negative() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -625,7 +625,7 @@ fn test_get_nav_adjustment_time_progression() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -665,7 +665,7 @@ fn test_get_nav_token2022_offer() {
     let token_in = create_mint_2022(&mut svm, &payer, 9, &boss);
     let token_out = create_mint_2022(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix_with_programs(
+    let ix = build_make_offer_ix(
         &boss, &token_in, &token_out, 0, false, false, &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -758,7 +758,7 @@ fn test_get_apy_fails_all_vectors_future() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -789,7 +789,7 @@ fn test_get_nav_fails_nonexistent_offer() {
     let wrong_mint = create_mint(&mut svm, &payer, 9, &boss);
 
     // Create an offer for token_in/token_out
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -816,7 +816,7 @@ fn test_get_nav_adjustment_multiple_transitions() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -866,7 +866,7 @@ fn test_get_nav_adjustment_zero_apr_different_base_price() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -907,7 +907,7 @@ fn test_get_nav_adjustment_fails_nonexistent_offer() {
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
     let wrong_mint = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -924,7 +924,7 @@ fn test_get_nav_adjustment_fails_all_vectors_future() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -973,7 +973,7 @@ fn test_get_tvl_fails_nonexistent_offer() {
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
     let wrong_mint = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -994,7 +994,7 @@ fn test_get_tvl_fails_all_vectors_future() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1033,7 +1033,7 @@ fn test_get_tvl_multiple_vectors_uses_most_recent() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1078,7 +1078,7 @@ fn test_get_tvl_token2022() {
     let token_in = create_mint_2022(&mut svm, &payer, 6, &boss);
     let token_out = create_mint_2022(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix_with_programs(
+    let ix = build_make_offer_ix(
         &boss, &token_in, &token_out, 0, false, false, &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1119,7 +1119,7 @@ fn test_get_apy_fails_nonexistent_offer() {
     let wrong_mint = create_mint(&mut svm, &payer, 9, &boss);
 
     // Create an offer for token_in/token_out
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1183,7 +1183,7 @@ fn test_get_nav_adjustment_zero_price_change() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1223,7 +1223,7 @@ fn test_get_nav_adjustment_consistent_results() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
+    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
