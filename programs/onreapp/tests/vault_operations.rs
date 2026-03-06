@@ -33,21 +33,23 @@ fn test_offer_vault_deposit_success() {
 }
 
 #[test]
-fn test_offer_vault_deposit_rejects_non_boss() {
+fn test_offer_vault_deposit_any_user_can_deposit() {
     let (mut svm, payer, _) = setup_vault();
     let boss = payer.pubkey();
 
     let token_mint = create_mint(&mut svm, &payer, 9, &boss);
-    create_token_account(&mut svm, &token_mint, &boss, 1_000_000_000_000);
 
     let non_boss = Keypair::new();
     svm.airdrop(&non_boss.pubkey(), INITIAL_LAMPORTS).unwrap();
     create_token_account(&mut svm, &token_mint, &non_boss.pubkey(), 1_000_000_000_000);
 
-    // Build deposit ix with non_boss as the boss parameter
+    let (vault_authority, _) = find_offer_vault_authority_pda();
+    let vault_ata = get_associated_token_address(&vault_authority, &token_mint);
+
     let ix = build_offer_vault_deposit_ix(&non_boss.pubkey(), &token_mint, 10_000_000_000);
-    let result = send_tx(&mut svm, &[ix], &[&non_boss]);
-    assert!(result.is_err(), "non-boss should not be able to deposit");
+    send_tx(&mut svm, &[ix], &[&non_boss]).unwrap();
+
+    assert_eq!(get_token_balance(&svm, &vault_ata), 10_000_000_000);
 }
 
 // ---------------------------------------------------------------------------
@@ -122,20 +124,23 @@ fn test_redemption_vault_deposit_success() {
 }
 
 #[test]
-fn test_redemption_vault_deposit_rejects_non_boss() {
+fn test_redemption_vault_deposit_any_user_can_deposit() {
     let (mut svm, payer, _) = setup_vault();
     let boss = payer.pubkey();
 
     let token_mint = create_mint(&mut svm, &payer, 9, &boss);
-    create_token_account(&mut svm, &token_mint, &boss, 1_000_000_000_000);
 
     let non_boss = Keypair::new();
     svm.airdrop(&non_boss.pubkey(), INITIAL_LAMPORTS).unwrap();
     create_token_account(&mut svm, &token_mint, &non_boss.pubkey(), 1_000_000_000_000);
 
+    let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
+    let vault_ata = get_associated_token_address(&redemption_vault_authority, &token_mint);
+
     let ix = build_redemption_vault_deposit_ix(&non_boss.pubkey(), &token_mint, 10_000_000_000);
-    let result = send_tx(&mut svm, &[ix], &[&non_boss]);
-    assert!(result.is_err(), "non-boss should not be able to deposit to redemption vault");
+    send_tx(&mut svm, &[ix], &[&non_boss]).unwrap();
+
+    assert_eq!(get_token_balance(&svm, &vault_ata), 10_000_000_000);
 }
 
 // ---------------------------------------------------------------------------

@@ -1006,13 +1006,12 @@ pub fn build_take_offer_ix(
 }
 
 pub fn build_offer_vault_deposit_ix(
-    boss: &Pubkey,
+    depositor: &Pubkey,
     token_mint: &Pubkey,
     amount: u64,
 ) -> Instruction {
-    let (state_pda, _) = find_state_pda();
     let (vault_authority_pda, _) = find_offer_vault_authority_pda();
-    let boss_token_ata = get_associated_token_address(boss, token_mint);
+    let depositor_token_ata = get_associated_token_address(depositor, token_mint);
     let vault_token_ata = get_associated_token_address(&vault_authority_pda, token_mint);
 
     let mut data = ix_discriminator("offer_vault_deposit").to_vec();
@@ -1023,10 +1022,9 @@ pub fn build_offer_vault_deposit_ix(
         accounts: vec![
             AccountMeta::new_readonly(vault_authority_pda, false),
             AccountMeta::new_readonly(*token_mint, false),
-            AccountMeta::new(boss_token_ata, false),
+            AccountMeta::new(depositor_token_ata, false),
             AccountMeta::new(vault_token_ata, false),
-            AccountMeta::new(*boss, true),
-            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new(*depositor, true),
             AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
             AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
@@ -1287,13 +1285,12 @@ pub fn build_offer_vault_withdraw_ix(
 }
 
 pub fn build_redemption_vault_deposit_ix(
-    boss: &Pubkey,
+    depositor: &Pubkey,
     token_mint: &Pubkey,
     amount: u64,
 ) -> Instruction {
-    let (state_pda, _) = find_state_pda();
     let (vault_authority_pda, _) = find_redemption_vault_authority_pda();
-    let boss_token_ata = get_associated_token_address(boss, token_mint);
+    let depositor_token_ata = get_associated_token_address(depositor, token_mint);
     let vault_token_ata = get_associated_token_address(&vault_authority_pda, token_mint);
 
     let mut data = ix_discriminator("redemption_vault_deposit").to_vec();
@@ -1304,10 +1301,9 @@ pub fn build_redemption_vault_deposit_ix(
         accounts: vec![
             AccountMeta::new_readonly(vault_authority_pda, false),
             AccountMeta::new_readonly(*token_mint, false),
-            AccountMeta::new(boss_token_ata, false),
+            AccountMeta::new(depositor_token_ata, false),
             AccountMeta::new(vault_token_ata, false),
-            AccountMeta::new(*boss, true),
-            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new(*depositor, true),
             AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
             AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
@@ -2038,14 +2034,13 @@ pub fn build_take_offer_permissionless_ix_with_programs(
 }
 
 pub fn build_offer_vault_deposit_ix_with_token_program(
-    boss: &Pubkey,
+    depositor: &Pubkey,
     token_mint: &Pubkey,
     amount: u64,
     token_program: &Pubkey,
 ) -> Instruction {
-    let (state_pda, _) = find_state_pda();
     let (vault_authority_pda, _) = find_offer_vault_authority_pda();
-    let boss_token_ata = derive_ata(boss, token_mint, token_program);
+    let depositor_token_ata = derive_ata(depositor, token_mint, token_program);
     let vault_token_ata = derive_ata(&vault_authority_pda, token_mint, token_program);
 
     let mut data = ix_discriminator("offer_vault_deposit").to_vec();
@@ -2056,10 +2051,9 @@ pub fn build_offer_vault_deposit_ix_with_token_program(
         accounts: vec![
             AccountMeta::new_readonly(vault_authority_pda, false),
             AccountMeta::new_readonly(*token_mint, false),
-            AccountMeta::new(boss_token_ata, false),
+            AccountMeta::new(depositor_token_ata, false),
             AccountMeta::new(vault_token_ata, false),
-            AccountMeta::new(*boss, true),
-            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new(*depositor, true),
             AccountMeta::new_readonly(*token_program, false),
             AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
@@ -2100,14 +2094,13 @@ pub fn build_offer_vault_withdraw_ix_with_token_program(
 }
 
 pub fn build_redemption_vault_deposit_ix_with_token_program(
-    boss: &Pubkey,
+    depositor: &Pubkey,
     token_mint: &Pubkey,
     amount: u64,
     token_program: &Pubkey,
 ) -> Instruction {
-    let (state_pda, _) = find_state_pda();
     let (vault_authority_pda, _) = find_redemption_vault_authority_pda();
-    let boss_token_ata = derive_ata(boss, token_mint, token_program);
+    let depositor_token_ata = derive_ata(depositor, token_mint, token_program);
     let vault_token_ata = derive_ata(&vault_authority_pda, token_mint, token_program);
 
     let mut data = ix_discriminator("redemption_vault_deposit").to_vec();
@@ -2118,10 +2111,9 @@ pub fn build_redemption_vault_deposit_ix_with_token_program(
         accounts: vec![
             AccountMeta::new_readonly(vault_authority_pda, false),
             AccountMeta::new_readonly(*token_mint, false),
-            AccountMeta::new(boss_token_ata, false),
+            AccountMeta::new(depositor_token_ata, false),
             AccountMeta::new(vault_token_ata, false),
-            AccountMeta::new(*boss, true),
-            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new(*depositor, true),
             AccountMeta::new_readonly(*token_program, false),
             AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
