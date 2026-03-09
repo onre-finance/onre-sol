@@ -53,6 +53,7 @@ export class ScriptHelper {
         offerVaultAuthorityPda: PublicKey;
         permissionlessVaultAuthorityPda: PublicKey;
         mintAuthorityPda: PublicKey;
+        redemptionVaultAuthorityPda: PublicKey;
     };
 
     private constructor(
@@ -72,7 +73,8 @@ export class ScriptHelper {
         this.pdas = {
             offerVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("offer_vault_authority")], program.programId)[0],
             permissionlessVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], program.programId)[0],
-            mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], program.programId)[0]
+            mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], program.programId)[0],
+            redemptionVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("redemption_offer_vault_authority")], program.programId)[0],
         };
     }
 
@@ -397,14 +399,14 @@ export class ScriptHelper {
         amount: number,
         tokenMint: PublicKey,
         tokenProgram?: PublicKey,
-        boss: PublicKey;
+        depositor: PublicKey;
     }) {
         return await this.program.methods
             .offerVaultDeposit(new BN(params.amount))
             .accountsPartial({
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
-                boss: params.boss
+                depositor: params.depositor
             })
             .instruction();
     }
@@ -429,14 +431,14 @@ export class ScriptHelper {
         amount: number;
         tokenMint: PublicKey;
         tokenProgram?: PublicKey;
-        boss: PublicKey;
+        depositor: PublicKey;
     }) {
         return await this.program.methods
             .redemptionVaultDeposit(new BN(params.amount))
             .accountsPartial({
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
-                boss: params.boss
+                depositor: params.depositor
             })
             .instruction();
     }
@@ -550,7 +552,7 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildConfigureMaxSupplyIx(params: { maxSupply: number; boss: PublicKey }) {
+    async buildConfigureMaxSupplyIx(params: { maxSupply: string; boss: PublicKey }) {
         return await this.program.methods
             .configureMaxSupply(new BN(params.maxSupply))
             .accountsPartial({
@@ -727,9 +729,10 @@ export class ScriptHelper {
         redemptionOfferPda: PublicKey;
         redemptionRequestPda: PublicKey;
         redemptionAdmin: PublicKey;
+        amount: BN;
     }) {
         return await this.program.methods
-            .fulfillRedemptionRequest()
+            .fulfillRedemptionRequest(params.amount)
             .accountsPartial({
                 redemptionOffer: params.redemptionOfferPda,
                 redemptionRequest: params.redemptionRequestPda,

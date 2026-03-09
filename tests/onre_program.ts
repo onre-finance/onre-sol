@@ -243,9 +243,11 @@ export class OnreProgram {
         signer?: Keypair,
         tokenProgram?: PublicKey
     }) {
+        const depositor = params.signer?.publicKey ?? this.testHelper.payer.publicKey;
         const tx = this.program.methods
             .offerVaultDeposit(new BN(params.amount))
             .accounts({
+                depositor,
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
@@ -283,9 +285,11 @@ export class OnreProgram {
         signer?: Keypair,
         tokenProgram?: PublicKey
     }) {
+        const depositor = params.signer?.publicKey ?? this.testHelper.payer.publicKey;
         const tx = this.program.methods
             .redemptionVaultDeposit(new BN(params.amount))
             .accounts({
+                depositor,
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
             });
@@ -817,11 +821,19 @@ export class OnreProgram {
         redemptionAdmin: Keypair;
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
+        /** Amount of token_in to fulfill. Omit to fulfill the full remaining unfulfilled balance. */
+        amount?: BN;
         tokenInProgram?: PublicKey;
         tokenOutProgram?: PublicKey;
     }) {
+        let amount = params.amount;
+        if (amount === undefined) {
+            const request = await this.program.account.redemptionRequest.fetch(params.redemptionRequest);
+            amount = (request.amount as BN).sub(request.fulfilledAmount as BN);
+        }
+
         const tx = this.program.methods
-            .fulfillRedemptionRequest()
+            .fulfillRedemptionRequest(amount)
             .accounts({
                 offer: params.offer,
                 redemptionOffer: params.redemptionOffer,

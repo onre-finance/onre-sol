@@ -16,7 +16,7 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "NODE_OPTIONS='--max-old-space-size=2048' pnpm exec vitest run"
+test = "cargo test --manifest-path programs/onreapp/Cargo.toml --tests"
 
 [test]
 startup_wait = 5000

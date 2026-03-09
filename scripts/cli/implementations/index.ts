@@ -10,6 +10,7 @@ export { executeVaultDeposit } from "./vault/vault-deposit";
 export { executeVaultWithdraw } from "./vault/vault-withdraw";
 export { executeVaultRedemptionDeposit } from "./vault/vault-redemption-deposit";
 export { executeVaultRedemptionWithdraw } from "./vault/vault-redemption-withdraw";
+export { executeVaultList } from "./vault/vault-list";
 
 // Init implementations
 export { executeInitProgram } from "./init/init-program";
@@ -30,6 +31,7 @@ export { executeMarketSupply } from "./market/market-supply";
 // Offer implementations
 export { executeOfferMake } from "./offer/offer-make";
 export { executeOfferFetch } from "./offer/offer-fetch";
+export { executeOfferList } from "./offer/offer-list";
 export { executeOfferTake } from "./offer/offer-take";
 export { executeOfferAddVector } from "./offer/offer-add-vector";
 export { executeOfferDeleteVector } from "./offer/offer-delete-vector";
@@ -38,6 +40,7 @@ export { executeOfferDeleteAllVectors } from "./offer/offer-delete-all-vectors";
 
 // Redemption implementations
 export { executeRedemptionMakeOffer } from "./redemption/redemption-make-offer";
+export { executeRedemptionListOffers } from "./redemption/redemption-list-offers";
 export { executeRedemptionFetchOffer } from "./redemption/redemption-fetch-offer";
 export { executeRedemptionUpdateFee } from "./redemption/redemption-update-fee";
 export { executeRedemptionCreateRequest } from "./redemption/redemption-create-request";
@@ -45,6 +48,10 @@ export { executeRedemptionFetchRequest } from "./redemption/redemption-fetch-req
 export { executeRedemptionFulfill } from "./redemption/redemption-fulfill";
 export { executeRedemptionCancel } from "./redemption/redemption-cancel";
 export { executeRedemptionListRequests } from "./redemption/redemption-list-requests";
+export { executeRedemptionFetchVaults } from "./redemption/redemption-fetch-vaults";
+
+// Program implementations
+export { executeProgramExtend } from "./program/program-extend";
 
 // State implementations
 export { executeStateGet } from "./state/state-get";
