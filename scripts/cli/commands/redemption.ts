@@ -7,6 +7,7 @@ import {
     executeRedemptionFetchRequest,
     executeRedemptionFetchVaults,
     executeRedemptionFulfill,
+    executeRedemptionListOffers,
     executeRedemptionListRequests,
     executeRedemptionMakeOffer,
     executeRedemptionUpdateFee,
@@ -16,6 +17,15 @@ import {
  * Register redemption subcommands
  */
 export function registerRedemptionCommands(program: Command): void {
+    // redemption list-offers
+    program
+        .command("list-offers")
+        .description("List all redemption offers on-chain")
+        .action(async (options, cmd) => {
+            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            await executeRedemptionListOffers(opts);
+        });
+
     // redemption make-offer
     program
         .command("make-offer")
@@ -82,6 +92,7 @@ export function registerRedemptionCommands(program: Command): void {
         .option("-i, --token-in <mint>", "Token in mint (ONyc)")
         .option("-o, --token-out <mint>", "Token out mint (USDC)")
         .option("--request-id <number>", "Request ID")
+        .option("-a, --amount <amount>", "Amount to fulfill (omit for full remaining)")
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeRedemptionFulfill(opts);
@@ -114,6 +125,7 @@ export function registerRedemptionCommands(program: Command): void {
         .description("List all redemption requests for an offer")
         .option("-i, --token-in <mint>", "Token in mint (ONyc)")
         .option("-o, --token-out <mint>", "Token out mint (USDC)")
+        .option("-r, --redeemer <address>", "Filter by redeemer address (optional)")
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeRedemptionListRequests(opts);
