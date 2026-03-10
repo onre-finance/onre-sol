@@ -32,6 +32,12 @@ pub mod seeds {
 
     /// Seed for the CACHE vault authority account
     pub const CACHE_VAULT_AUTHORITY: &[u8] = b"cache_vault_authority";
+
+    /// Seed for the management fee vault authority account
+    pub const MANAGEMENT_FEE_VAULT_AUTHORITY: &[u8] = b"management_fee_vault_authority";
+
+    /// Seed for the performance fee vault authority account
+    pub const PERFORMANCE_FEE_VAULT_AUTHORITY: &[u8] = b"performance_fee_vault_authority";
 }
 
 /// Maximum number of pricing vectors allowed per offer

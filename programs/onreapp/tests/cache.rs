@@ -16,6 +16,30 @@ const NAV_1_0: u64 = 1_000_000_000;
 //   spread = max(0, gross_yield - current_yield)        // APR scale 1e6
 //   mint   = lowest_supply * spread * dt / YEAR / 1e6
 //
+// Fee split on accrual:
+//   gross_mint       = spread accrual result above
+//   management_fee   = floor(gross_mint * management_fee_bps / 10000)
+//   remaining        = gross_mint - management_fee
+//   cache_after_mgmt = cache_balance_before + remaining
+//   perf_profit      = max(0, cache_after_mgmt - performance_hwm)
+//   performance_fee  = floor(perf_profit * performance_fee_bps / 10000)
+//   cache_mint       = remaining - performance_fee
+//
+// High-water mark:
+// - HWM is the CACHE vault balance only.
+// - Performance fees are charged only on value above the stored HWM.
+// - Fee vault balances are tracked separately and do not count toward the HWM.
+//
+// Example if gross_mint = 100 and both fee rates = 1%:
+// - management_fee = floor(100 * 1%) = 1
+// - remaining = 99
+// - if cache is exactly at HWM before accrual:
+//   - perf_profit = 99
+//   - performance_fee = floor(99 * 1%) = 0
+//   - final split = 99 to cache, 1 to management fee vault, 0 to performance fee vault
+// - if cache was already above HWM before this accrual, performance_fee can be > 0,
+//   because it is applied to profit above HWM, not directly to the original 100
+//
 // Burn for NAV support:
 //   total_assets      = circulating_supply * current_nav / 1e9
 //   assets_after      = total_assets - asset_adjustment_amount
@@ -31,6 +55,8 @@ const NAV_1_0: u64 = 1_000_000_000;
 fn setup_cache_context(
     gross_yield: u64,
     current_yield: u64,
+    management_fee_basis_points: u16,
+    performance_fee_basis_points: u16,
 ) -> (litesvm::LiteSVM, Keypair, Pubkey, Pubkey, Keypair) {
     let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
@@ -73,12 +99,22 @@ fn setup_cache_context(
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
+    if management_fee_basis_points != 0 || performance_fee_basis_points != 0 {
+        let ix = build_set_cache_fee_config_ix(
+            &boss,
+            management_fee_basis_points,
+            performance_fee_basis_points,
+        );
+        send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+        advance_slot(&mut svm);
+    }
+
     (svm, payer, token_in_mint, onyc_mint, cache_admin)
 }
 
 fn setup_cache_with_balance() -> (litesvm::LiteSVM, Keypair, Pubkey, Pubkey, Keypair) {
     let (mut svm, payer, token_in_mint, onyc_mint, cache_admin) =
-        setup_cache_context(150_000, 50_000);
+        setup_cache_context(150_000, 50_000, 0, 0);
 
     // First accrual initializes lowest_supply to current supply.
     let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
@@ -89,6 +125,31 @@ fn setup_cache_with_balance() -> (litesvm::LiteSVM, Keypair, Pubkey, Pubkey, Key
     advance_clock_by(&mut svm, ONE_YEAR_SECONDS);
     let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
     send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
+
+    (svm, payer, token_in_mint, onyc_mint, cache_admin)
+}
+
+fn setup_cache_with_fee_split(
+    management_fee_basis_points: u16,
+    performance_fee_basis_points: u16,
+    accrual_periods: usize,
+) -> (litesvm::LiteSVM, Keypair, Pubkey, Pubkey, Keypair) {
+    let (mut svm, payer, token_in_mint, onyc_mint, cache_admin) = setup_cache_context(
+        150_000,
+        50_000,
+        management_fee_basis_points,
+        performance_fee_basis_points,
+    );
+
+    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
+
+    for _ in 0..accrual_periods {
+        advance_slot(&mut svm);
+        advance_clock_by(&mut svm, ONE_YEAR_SECONDS);
+        let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
+        send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
+    }
 
     (svm, payer, token_in_mint, onyc_mint, cache_admin)
 }
@@ -108,10 +169,31 @@ fn test_initialize_cache_success() {
     assert_eq!(cache_state.gross_yield, 0);
     assert_eq!(cache_state.current_yield, 0);
     assert_eq!(cache_state.lowest_supply, 0);
+    assert_eq!(cache_state.management_fee_basis_points, 0);
+    assert_eq!(cache_state.performance_fee_basis_points, 0);
+    assert_eq!(cache_state.performance_fee_high_watermark, 0);
+    assert_eq!(cache_state.total_management_fees_accrued, 0);
+    assert_eq!(cache_state.total_management_fees_claimed, 0);
+    assert_eq!(cache_state.total_performance_fees_accrued, 0);
+    assert_eq!(cache_state.total_performance_fees_claimed, 0);
 
     let (cache_vault_authority_pda, _) = find_cache_vault_authority_pda();
     let cache_vault_ata = derive_ata(&cache_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
+    let management_fee_vault_ata = derive_ata(
+        &management_fee_vault_authority_pda,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
+    let performance_fee_vault_ata = derive_ata(
+        &performance_fee_vault_authority_pda,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
     assert!(svm.get_account(&cache_vault_ata).is_some());
+    assert!(svm.get_account(&management_fee_vault_ata).is_some());
+    assert!(svm.get_account(&performance_fee_vault_ata).is_some());
 }
 
 #[test]
@@ -154,7 +236,7 @@ fn test_set_cache_admin_rejects_no_change() {
 #[test]
 fn test_set_cache_yields_rejects_no_change() {
     let (mut svm, payer, _token_in_mint, _onyc_mint, _cache_admin) =
-        setup_cache_context(150_000, 50_000);
+        setup_cache_context(150_000, 50_000, 0, 0);
     let boss = payer.pubkey();
 
     let ix = build_set_cache_yields_ix(&boss, 150_000, 50_000);
@@ -165,7 +247,7 @@ fn test_set_cache_yields_rejects_no_change() {
 #[test]
 fn test_accrue_cache_first_call_sets_lowest_supply_no_mint() {
     let (mut svm, _payer, _token_in_mint, onyc_mint, cache_admin) =
-        setup_cache_context(150_000, 50_000);
+        setup_cache_context(150_000, 50_000, 0, 0);
     let initial_supply = get_mint_supply(&svm, &onyc_mint);
 
     let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
@@ -183,7 +265,7 @@ fn test_accrue_cache_first_call_sets_lowest_supply_no_mint() {
 #[test]
 fn test_accrue_cache_zero_spread_mints_nothing() {
     let (mut svm, _payer, _token_in_mint, onyc_mint, cache_admin) =
-        setup_cache_context(50_000, 50_000);
+        setup_cache_context(50_000, 50_000, 0, 0);
 
     // Baseline call sets lowest_supply.
     let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
@@ -201,9 +283,137 @@ fn test_accrue_cache_zero_spread_mints_nothing() {
 }
 
 #[test]
+fn test_set_cache_fee_config_rejects_no_change() {
+    let (mut svm, payer, _token_in_mint, _onyc_mint, _cache_admin) =
+        setup_cache_context(150_000, 50_000, 100, 1_000);
+    let boss = payer.pubkey();
+
+    let ix = build_set_cache_fee_config_ix(&boss, 100, 1_000);
+    let result = send_tx(&mut svm, &[ix], &[&payer]);
+    assert!(result.is_err(), "setting same fee config should fail");
+}
+
+#[test]
+fn test_accrue_cache_splits_fees_into_separate_vaults() {
+    let (svm, _payer, _token_in_mint, onyc_mint, _cache_admin) =
+        setup_cache_with_fee_split(100, 1_000, 1);
+
+    let (cache_vault_authority_pda, _) = find_cache_vault_authority_pda();
+    let cache_vault_ata = derive_ata(&cache_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
+    let management_fee_vault_ata = derive_ata(
+        &management_fee_vault_authority_pda,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
+    let performance_fee_vault_ata = derive_ata(
+        &performance_fee_vault_authority_pda,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let cache_state = read_cache_state(&svm);
+
+    assert_eq!(get_token_balance(&svm, &cache_vault_ata), 89_100_000);
+    assert_eq!(
+        get_token_balance(&svm, &management_fee_vault_ata),
+        1_000_000
+    );
+    assert_eq!(
+        get_token_balance(&svm, &performance_fee_vault_ata),
+        9_900_000
+    );
+    assert_eq!(cache_state.performance_fee_high_watermark, 89_100_000);
+    assert_eq!(cache_state.total_management_fees_accrued, 1_000_000);
+    assert_eq!(cache_state.total_performance_fees_accrued, 9_900_000);
+    assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_100_000_000);
+}
+
+#[test]
+fn test_claim_fees_updates_vault_balances_and_counters() {
+    let (mut svm, payer, _token_in_mint, onyc_mint, _cache_admin) =
+        setup_cache_with_fee_split(100, 1_000, 1);
+    let boss = payer.pubkey();
+
+    let ix = build_claim_management_fees_ix(&boss, &onyc_mint, 400_000);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_claim_performance_fees_ix(&boss, &onyc_mint, 900_000);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
+    let management_fee_vault_ata = derive_ata(
+        &management_fee_vault_authority_pda,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
+    let performance_fee_vault_ata = derive_ata(
+        &performance_fee_vault_authority_pda,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let boss_onyc_ata = derive_ata(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let cache_state = read_cache_state(&svm);
+
+    assert_eq!(get_token_balance(&svm, &management_fee_vault_ata), 600_000);
+    assert_eq!(
+        get_token_balance(&svm, &performance_fee_vault_ata),
+        9_000_000
+    );
+    assert_eq!(get_token_balance(&svm, &boss_onyc_ata), 1_001_300_000);
+    assert_eq!(cache_state.total_management_fees_claimed, 400_000);
+    assert_eq!(cache_state.total_performance_fees_claimed, 900_000);
+}
+
+#[test]
+fn test_performance_fee_waits_for_high_watermark_recovery() {
+    let (mut svm, payer, token_in_mint, onyc_mint, cache_admin) =
+        setup_cache_with_fee_split(100, 1_000, 2);
+    let boss = payer.pubkey();
+
+    let ix =
+        build_burn_for_nav_increase_ix(&boss, &token_in_mint, &onyc_mint, 110_000_000, NAV_1_0);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    assert_eq!(
+        read_cache_state(&svm).performance_fee_high_watermark,
+        178_200_000
+    );
+    let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
+    let performance_fee_vault_ata = derive_ata(
+        &performance_fee_vault_authority_pda,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let performance_fee_balance_before = get_token_balance(&svm, &performance_fee_vault_ata);
+
+    advance_clock_by(&mut svm, ONE_YEAR_SECONDS);
+    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
+
+    let (cache_vault_authority_pda, _) = find_cache_vault_authority_pda();
+    let cache_vault_ata = derive_ata(&cache_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let cache_state = read_cache_state(&svm);
+
+    assert!(get_token_balance(&svm, &cache_vault_ata) < 178_200_000);
+    assert_eq!(
+        get_token_balance(&svm, &performance_fee_vault_ata),
+        performance_fee_balance_before
+    );
+    assert_eq!(
+        cache_state.total_performance_fees_accrued,
+        performance_fee_balance_before
+    );
+    assert_eq!(cache_state.performance_fee_high_watermark, 178_200_000);
+}
+
+#[test]
 fn test_accrue_cache_zero_seconds_mints_nothing() {
     let (mut svm, _payer, _token_in_mint, onyc_mint, cache_admin) =
-        setup_cache_context(150_000, 50_000);
+        setup_cache_context(150_000, 50_000, 0, 0);
 
     let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
     send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
@@ -221,7 +431,7 @@ fn test_accrue_cache_zero_seconds_mints_nothing() {
 #[test]
 fn test_accrue_cache_partial_period_math() {
     let (mut svm, _payer, _token_in_mint, onyc_mint, cache_admin) =
-        setup_cache_context(150_000, 50_000);
+        setup_cache_context(150_000, 50_000, 0, 0);
 
     // Baseline call sets lowest_supply.
     let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);

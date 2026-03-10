@@ -14,7 +14,7 @@ pub struct InitializeCache<'info> {
         has_one = boss,
         has_one = onyc_mint,
     )]
-    pub state: Account<'info, State>,
+    pub state: Box<Account<'info, State>>,
 
     #[account(
         init,
@@ -23,7 +23,7 @@ pub struct InitializeCache<'info> {
         seeds = [seeds::CACHE_STATE],
         bump
     )]
-    pub cache_state: Account<'info, CacheState>,
+    pub cache_state: Box<Account<'info, CacheState>>,
 
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
@@ -35,11 +35,31 @@ pub struct InitializeCache<'info> {
     )]
     pub cache_vault_authority: UncheckedAccount<'info>,
 
+    /// CHECK: PDA derivation is validated by seeds constraint
+    #[account(
+        init_if_needed,
+        payer = boss,
+        space = 8,
+        seeds = [seeds::MANAGEMENT_FEE_VAULT_AUTHORITY],
+        bump
+    )]
+    pub management_fee_vault_authority: UncheckedAccount<'info>,
+
+    /// CHECK: PDA derivation is validated by seeds constraint
+    #[account(
+        init_if_needed,
+        payer = boss,
+        space = 8,
+        seeds = [seeds::PERFORMANCE_FEE_VAULT_AUTHORITY],
+        bump
+    )]
+    pub performance_fee_vault_authority: UncheckedAccount<'info>,
+
     #[account(mut)]
     pub boss: Signer<'info>,
 
     #[account(mut)]
-    pub onyc_mint: InterfaceAccount<'info, Mint>,
+    pub onyc_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         init_if_needed,
@@ -48,7 +68,25 @@ pub struct InitializeCache<'info> {
         associated_token::authority = cache_vault_authority,
         associated_token::token_program = token_program
     )]
-    pub cache_vault_onyc_account: InterfaceAccount<'info, TokenAccount>,
+    pub cache_vault_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        init_if_needed,
+        payer = boss,
+        associated_token::mint = onyc_mint,
+        associated_token::authority = management_fee_vault_authority,
+        associated_token::token_program = token_program
+    )]
+    pub management_fee_vault_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        init_if_needed,
+        payer = boss,
+        associated_token::mint = onyc_mint,
+        associated_token::authority = performance_fee_vault_authority,
+        associated_token::token_program = token_program
+    )]
+    pub performance_fee_vault_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,

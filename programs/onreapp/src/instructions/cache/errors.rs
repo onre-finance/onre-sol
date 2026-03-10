@@ -14,6 +14,8 @@ pub enum CacheErrorCode {
     MathOverflow,
     #[msg("Result does not fit in u64")]
     ResultOverflow,
+    #[msg("Invalid fee: basis points must be <= 10000")]
+    InvalidFee,
     #[msg("Target NAV must be greater than zero")]
     InvalidTargetNav,
     #[msg("Asset adjustment amount exceeds total assets")]
@@ -22,6 +24,8 @@ pub enum CacheErrorCode {
     NoBurnNeeded,
     #[msg("Burn amount exceeds CACHE balance")]
     InsufficientCacheBalance,
+    #[msg("Fee amount exceeds fee vault balance")]
+    InsufficientFeeBalance,
     #[msg("Provided NAV inputs imply minting, not burning")]
     InvalidBurnTarget,
 }
