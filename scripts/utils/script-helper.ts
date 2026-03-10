@@ -5,12 +5,7 @@ import BN from "bn.js";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
-import {
-    ASSOCIATED_TOKEN_PROGRAM_ID,
-    createAssociatedTokenAccountIdempotentInstruction,
-    getAssociatedTokenAddressSync,
-    TOKEN_PROGRAM_ID
-} from "@solana/spl-token";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { Onreapp } from "../../target/types/onreapp";
 import idl from "../../target/idl/onreapp.json";
 import bs58 from "bs58";
@@ -56,17 +51,13 @@ export class ScriptHelper {
         mintAuthorityPda: PublicKey;
         cacheStatePda: PublicKey;
         cacheVaultAuthorityPda: PublicKey;
+        managementFeeVaultAuthorityPda: PublicKey;
+        performanceFeeVaultAuthorityPda: PublicKey;
         redemptionVaultAuthorityPda: PublicKey;
         marketStatsPda: PublicKey;
     };
 
-    private constructor(
-        program: Program<Onreapp>,
-        connection: Connection,
-        networkConfig: NetworkConfig,
-        wallet: Wallet,
-        walletSource?: string
-    ) {
+    private constructor(program: Program<Onreapp>, connection: Connection, networkConfig: NetworkConfig, wallet: Wallet, walletSource?: string) {
         this.program = program;
         this.connection = connection;
         this.networkConfig = networkConfig;
@@ -79,7 +70,9 @@ export class ScriptHelper {
             permissionlessVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], program.programId)[0],
             mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], program.programId)[0],
             cacheStatePda: PublicKey.findProgramAddressSync([Buffer.from("cache_state")], program.programId)[0],
-            cacheVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("cache_vault_authority")], program.programId)[0]
+            cacheVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("cache_vault_authority")], program.programId)[0],
+            managementFeeVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("management_fee_vault_authority")], program.programId)[0],
+            performanceFeeVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("performance_fee_vault_authority")], program.programId)[0],
             redemptionVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("redemption_offer_vault_authority")], program.programId)[0],
             marketStatsPda: PublicKey.findProgramAddressSync([Buffer.from("market_stats")], program.programId)[0],
         };
@@ -169,10 +162,7 @@ export class ScriptHelper {
     }
 
     getOfferPda(tokenInMint: PublicKey, tokenOutMint: PublicKey): PublicKey {
-        return PublicKey.findProgramAddressSync(
-            [Buffer.from("offer"), tokenInMint.toBuffer(), tokenOutMint.toBuffer()],
-            this.program.programId
-        )[0];
+        return PublicKey.findProgramAddressSync([Buffer.from("offer"), tokenInMint.toBuffer(), tokenOutMint.toBuffer()], this.program.programId)[0];
     }
 
     async getOffer(tokenInMint: PublicKey, tokenOutMint: PublicKey) {
@@ -190,12 +180,15 @@ export class ScriptHelper {
     }
 
     getCacheVaultAta(onycMint: PublicKey): PublicKey {
-        return getAssociatedTokenAddressSync(
-            onycMint,
-            this.pdas.cacheVaultAuthorityPda,
-            true,
-            TOKEN_PROGRAM_ID
-        );
+        return getAssociatedTokenAddressSync(onycMint, this.pdas.cacheVaultAuthorityPda, true, TOKEN_PROGRAM_ID);
+    }
+
+    getManagementFeeVaultAta(onycMint: PublicKey): PublicKey {
+        return getAssociatedTokenAddressSync(onycMint, this.pdas.managementFeeVaultAuthorityPda, true, TOKEN_PROGRAM_ID);
+    }
+
+    getPerformanceFeeVaultAta(onycMint: PublicKey): PublicKey {
+        return getAssociatedTokenAddressSync(onycMint, this.pdas.performanceFeeVaultAuthorityPda, true, TOKEN_PROGRAM_ID);
     }
 
     getMarketStatsPda(): PublicKey {
@@ -207,20 +200,13 @@ export class ScriptHelper {
     }
 
     getRedemptionOfferPda(tokenInMint: PublicKey, tokenOutMint: PublicKey): PublicKey {
-        return PublicKey.findProgramAddressSync(
-            [Buffer.from("redemption_offer"), tokenInMint.toBuffer(), tokenOutMint.toBuffer()],
-            this.program.programId
-        )[0];
+        return PublicKey.findProgramAddressSync([Buffer.from("redemption_offer"), tokenInMint.toBuffer(), tokenOutMint.toBuffer()], this.program.programId)[0];
     }
 
     getRedemptionRequestPda(redemptionOffer: PublicKey, counter: number): PublicKey {
         return PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("redemption_request"),
-                redemptionOffer.toBuffer(),
-                new BN(counter).toArrayLike(Buffer, "le", 8)
-            ],
-            this.program.programId
+            [Buffer.from("redemption_request"), redemptionOffer.toBuffer(), new BN(counter).toArrayLike(Buffer, "le", 8)],
+            this.program.programId,
         )[0];
     }
 
@@ -250,12 +236,7 @@ export class ScriptHelper {
         const payer = params.payer;
 
         // Create permissionless token_in account if it doesn't exist
-        const permissionlessTokenInAccount = getAssociatedTokenAddressSync(
-            params.tokenInMint,
-            permissionlessAuthority,
-            true,
-            params.tokenInProgram
-        );
+        const permissionlessTokenInAccount = getAssociatedTokenAddressSync(params.tokenInMint, permissionlessAuthority, true, params.tokenInProgram);
 
         const tokenInAccountInfo = await this.connection.getAccountInfo(permissionlessTokenInAccount);
         if (!tokenInAccountInfo) {
@@ -264,18 +245,13 @@ export class ScriptHelper {
                 permissionlessTokenInAccount,
                 permissionlessAuthority,
                 params.tokenInMint,
-                params.tokenInProgram
+                params.tokenInProgram,
             );
             instructions.push(createTokenInIx);
         }
 
         // Create permissionless token_out account if it doesn't exist
-        const permissionlessTokenOutAccount = getAssociatedTokenAddressSync(
-            params.tokenOutMint,
-            permissionlessAuthority,
-            true,
-            params.tokenOutProgram
-        );
+        const permissionlessTokenOutAccount = getAssociatedTokenAddressSync(params.tokenOutMint, permissionlessAuthority, true, params.tokenOutProgram);
 
         const tokenOutAccountInfo = await this.connection.getAccountInfo(permissionlessTokenOutAccount);
         if (!tokenOutAccountInfo) {
@@ -284,7 +260,7 @@ export class ScriptHelper {
                 permissionlessTokenOutAccount,
                 permissionlessAuthority,
                 params.tokenOutMint,
-                params.tokenOutProgram
+                params.tokenOutProgram,
             );
             instructions.push(createTokenOutIx);
         }
@@ -312,7 +288,7 @@ export class ScriptHelper {
                 tokenInMint: params.tokenInMint,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
                 tokenOutMint: params.tokenOutMint,
-                boss: params.boss
+                boss: params.boss,
             })
             .instruction();
     }
@@ -327,49 +303,33 @@ export class ScriptHelper {
         boss: PublicKey;
     }) {
         return await this.program.methods
-            .addOfferVector(
-                null,
-                new BN(params.baseTime),
-                new BN(params.basePrice),
-                new BN(params.apr),
-                new BN(params.priceFixDuration)
-            )
+            .addOfferVector(null, new BN(params.baseTime), new BN(params.basePrice), new BN(params.apr), new BN(params.priceFixDuration))
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
-                boss: params.boss
+                boss: params.boss,
             })
             .instruction();
     }
 
-    async buildUpdateOfferFeeIx(params: {
-        tokenInMint: PublicKey;
-        tokenOutMint: PublicKey;
-        newFeeBasisPoints: number;
-        boss: PublicKey;
-    }) {
+    async buildUpdateOfferFeeIx(params: { tokenInMint: PublicKey; tokenOutMint: PublicKey; newFeeBasisPoints: number; boss: PublicKey }) {
         return await this.program.methods
             .updateOfferFee(params.newFeeBasisPoints)
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
-                boss: params.boss
+                boss: params.boss,
             })
             .instruction();
     }
 
-    async buildDeleteOfferVectorIx(params: {
-        tokenInMint: PublicKey;
-        tokenOutMint: PublicKey;
-        vectorStartTimestamp: number;
-        boss: PublicKey;
-    }) {
+    async buildDeleteOfferVectorIx(params: { tokenInMint: PublicKey; tokenOutMint: PublicKey; vectorStartTimestamp: number; boss: PublicKey }) {
         return await this.program.methods
             .deleteOfferVector(new BN(params.vectorStartTimestamp))
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
-                boss: params.boss
+                boss: params.boss,
             })
             .instruction();
     }
@@ -390,7 +350,7 @@ export class ScriptHelper {
                 tokenOutMint: params.tokenOutMint,
                 user: params.user,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
-                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID
+                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
             })
             .instruction();
     }
@@ -419,7 +379,7 @@ export class ScriptHelper {
                 mintAuthority,
                 marketStats: this.pdas.marketStatsPda,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
-                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID
+                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
             })
             .instruction();
     }
@@ -440,28 +400,18 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildOfferVaultWithdrawIx(params: {
-        amount: number,
-        tokenMint: PublicKey,
-        tokenProgram?: PublicKey,
-        boss: PublicKey;
-    }) {
+    async buildOfferVaultWithdrawIx(params: { amount: number; tokenMint: PublicKey; tokenProgram?: PublicKey; boss: PublicKey }) {
         return await this.program.methods
             .offerVaultWithdraw(new BN(params.amount))
             .accountsPartial({
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
-                boss: params.boss
+                boss: params.boss,
             })
             .instruction();
     }
 
-    async buildRedemptionVaultDepositIx(params: {
-        amount: number;
-        tokenMint: PublicKey;
-        tokenProgram?: PublicKey;
-        depositor: PublicKey;
-    }) {
+    async buildRedemptionVaultDepositIx(params: { amount: number; tokenMint: PublicKey; tokenProgram?: PublicKey; depositor: PublicKey }) {
         return await this.program.methods
             .redemptionVaultDeposit(new BN(params.amount))
             .accountsPartial({
@@ -472,39 +422,27 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildRedemptionVaultWithdrawIx(params: {
-        amount: number;
-        tokenMint: PublicKey;
-        tokenProgram?: PublicKey;
-        boss: PublicKey;
-    }) {
+    async buildRedemptionVaultWithdrawIx(params: { amount: number; tokenMint: PublicKey; tokenProgram?: PublicKey; boss: PublicKey }) {
         return await this.program.methods
             .redemptionVaultWithdraw(new BN(params.amount))
             .accountsPartial({
                 tokenMint: params.tokenMint,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
-                boss: params.boss
+                boss: params.boss,
             })
             .instruction();
     }
 
-    async buildSetRedemptionAdminIx(params: {
-        redemptionAdmin: PublicKey;
-        boss: PublicKey;
-    }) {
+    async buildSetRedemptionAdminIx(params: { redemptionAdmin: PublicKey; boss: PublicKey }) {
         return await this.program.methods
             .setRedemptionAdmin(params.redemptionAdmin)
             .accountsPartial({
-                boss: params.boss
+                boss: params.boss,
             })
             .instruction();
     }
 
-    async buildInitializeCacheIx(params: {
-        onycMint: PublicKey;
-        cacheAdmin: PublicKey;
-        boss: PublicKey;
-    }) {
+    async buildInitializeCacheIx(params: { onycMint: PublicKey; cacheAdmin: PublicKey; boss: PublicKey }) {
         return await this.program.methods
             .initializeCache(params.cacheAdmin)
             .accountsPartial({
@@ -513,16 +451,17 @@ export class ScriptHelper {
                 cacheState: this.pdas.cacheStatePda,
                 cacheVaultAuthority: this.pdas.cacheVaultAuthorityPda,
                 cacheVaultOnycAccount: this.getCacheVaultAta(params.onycMint),
+                managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
+                managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
+                performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
+                performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.onycMint),
                 tokenProgram: TOKEN_PROGRAM_ID,
                 associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
             })
             .instruction();
     }
 
-    async buildSetCacheAdminIx(params: {
-        cacheAdmin: PublicKey;
-        boss: PublicKey;
-    }) {
+    async buildSetCacheAdminIx(params: { cacheAdmin: PublicKey; boss: PublicKey }) {
         return await this.program.methods
             .setCacheAdmin(params.cacheAdmin)
             .accountsPartial({
@@ -532,11 +471,7 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildSetCacheYieldsIx(params: {
-        grossYield: number;
-        currentYield: number;
-        boss: PublicKey;
-    }) {
+    async buildSetCacheYieldsIx(params: { grossYield: number; currentYield: number; boss: PublicKey }) {
         return await this.program.methods
             .setCacheYields(new BN(params.grossYield), new BN(params.currentYield))
             .accountsPartial({
@@ -546,9 +481,7 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildUpdateLowestSupplyIx(params: {
-        onycMint: PublicKey;
-    }) {
+    async buildUpdateLowestSupplyIx(params: { onycMint: PublicKey }) {
         return await this.program.methods
             .updateLowestSupply()
             .accountsPartial({
@@ -558,10 +491,17 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildAccrueCacheIx(params: {
-        onycMint: PublicKey;
-        cacheAdmin: PublicKey;
-    }) {
+    async buildSetCacheFeeConfigIx(params: { managementFeeBasisPoints: number; performanceFeeBasisPoints: number; boss: PublicKey }) {
+        return await this.program.methods
+            .setCacheFeeConfig(params.managementFeeBasisPoints, params.performanceFeeBasisPoints)
+            .accountsPartial({
+                cacheState: this.pdas.cacheStatePda,
+                boss: params.boss,
+            })
+            .instruction();
+    }
+
+    async buildAccrueCacheIx(params: { onycMint: PublicKey; cacheAdmin: PublicKey }) {
         return await this.program.methods
             .accrueCache()
             .accountsPartial({
@@ -570,36 +510,26 @@ export class ScriptHelper {
                 cacheAdmin: params.cacheAdmin,
                 cacheVaultAuthority: this.pdas.cacheVaultAuthorityPda,
                 cacheVaultOnycAccount: this.getCacheVaultAta(params.onycMint),
+                managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
+                managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
+                performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
+                performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.onycMint),
                 mintAuthority: this.pdas.mintAuthorityPda,
                 tokenProgram: TOKEN_PROGRAM_ID,
             })
             .instruction();
     }
 
-    async buildBurnForNavIncreaseIx(params: {
-        tokenInMint: PublicKey;
-        onycMint: PublicKey;
-        assetAdjustmentAmount: number;
-        targetNav: number;
-        boss: PublicKey;
-    }) {
+    async buildBurnForNavIncreaseIx(params: { tokenInMint: PublicKey; onycMint: PublicKey; assetAdjustmentAmount: number; targetNav: number; boss: PublicKey }) {
         return await this.program.methods
-            .burnForNavIncrease(
-                new BN(params.assetAdjustmentAmount),
-                new BN(params.targetNav)
-            )
+            .burnForNavIncrease(new BN(params.assetAdjustmentAmount), new BN(params.targetNav))
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 cacheState: this.pdas.cacheStatePda,
                 onycMint: params.onycMint,
                 boss: params.boss,
                 offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
-                vaultTokenOutAccount: getAssociatedTokenAddressSync(
-                    params.onycMint,
-                    this.pdas.offerVaultAuthorityPda,
-                    true,
-                    TOKEN_PROGRAM_ID
-                ),
+                vaultTokenOutAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
                 cacheVaultAuthority: this.pdas.cacheVaultAuthorityPda,
                 cacheVaultOnycAccount: this.getCacheVaultAta(params.onycMint),
                 tokenProgram: TOKEN_PROGRAM_ID,
@@ -607,28 +537,54 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildDeleteAllOfferVectorsIx(params: {
-        tokenInMint: PublicKey;
-        tokenOutMint: PublicKey;
-        boss: PublicKey;
-    }) {
+    async buildClaimManagementFeesIx(params: { boss: PublicKey; onycMint: PublicKey; amount: number }) {
+        return await this.program.methods
+            .claimManagementFees(new BN(params.amount))
+            .accountsPartial({
+                cacheState: this.pdas.cacheStatePda,
+                managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
+                onycMint: params.onycMint,
+                bossOnycAccount: getAssociatedTokenAddressSync(params.onycMint, params.boss, false, TOKEN_PROGRAM_ID),
+                managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
+                boss: params.boss,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            })
+            .instruction();
+    }
+
+    async buildClaimPerformanceFeesIx(params: { boss: PublicKey; onycMint: PublicKey; amount: number }) {
+        return await this.program.methods
+            .claimPerformanceFees(new BN(params.amount))
+            .accountsPartial({
+                cacheState: this.pdas.cacheStatePda,
+                performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
+                onycMint: params.onycMint,
+                bossOnycAccount: getAssociatedTokenAddressSync(params.onycMint, params.boss, false, TOKEN_PROGRAM_ID),
+                performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.onycMint),
+                boss: params.boss,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            })
+            .instruction();
+    }
+
+    async buildDeleteAllOfferVectorsIx(params: { tokenInMint: PublicKey; tokenOutMint: PublicKey; boss: PublicKey }) {
         return await this.program.methods
             .deleteAllOfferVectors()
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
-                boss: params.boss
+                boss: params.boss,
             })
             .instruction();
     }
 
-    async buildClearAdminsIx(params: {
-        boss: PublicKey;
-    }) {
+    async buildClearAdminsIx(params: { boss: PublicKey }) {
         return await this.program.methods
             .clearAdmins()
             .accountsPartial({
-                boss: params.boss
+                boss: params.boss,
             })
             .instruction();
     }
@@ -637,7 +593,7 @@ export class ScriptHelper {
         return await this.program.methods
             .addAdmin(params.admin)
             .accountsPartial({
-                boss: params.boss
+                boss: params.boss,
             })
             .instruction();
     }
@@ -646,7 +602,7 @@ export class ScriptHelper {
         return await this.program.methods
             .removeAdmin(params.admin)
             .accountsPartial({
-                boss: params.boss
+                boss: params.boss,
             })
             .instruction();
     }
@@ -655,7 +611,7 @@ export class ScriptHelper {
         return await this.program.methods
             .proposeBoss(params.newBoss)
             .accountsPartial({
-                boss: params.boss
+                boss: params.boss,
             })
             .instruction();
     }
@@ -664,7 +620,7 @@ export class ScriptHelper {
         return await this.program.methods
             .acceptBoss()
             .accountsPartial({
-                newBoss: params.newBoss
+                newBoss: params.newBoss,
             })
             .instruction();
     }
@@ -673,7 +629,7 @@ export class ScriptHelper {
         return await this.program.methods
             .setKillSwitch(params.enable)
             .accountsPartial({
-                signer: params.boss
+                signer: params.boss,
             })
             .instruction();
     }
@@ -683,7 +639,7 @@ export class ScriptHelper {
             .closeState()
             .accountsPartial({
                 boss: params?.boss,
-                state: this.statePda
+                state: this.statePda,
             })
             .instruction();
     }
@@ -692,7 +648,7 @@ export class ScriptHelper {
         return await this.program.methods
             .configureMaxSupply(new BN(params.maxSupply))
             .accountsPartial({
-                boss: params.boss
+                boss: params.boss,
             })
             .instruction();
     }
@@ -701,7 +657,7 @@ export class ScriptHelper {
         return await this.program.methods
             .addApprover(params.approver)
             .accountsPartial({
-                boss: params.boss
+                boss: params.boss,
             })
             .instruction();
     }
@@ -710,7 +666,7 @@ export class ScriptHelper {
         return await this.program.methods
             .removeApprover(params.approver)
             .accountsPartial({
-                boss: params.boss
+                boss: params.boss,
             })
             .instruction();
     }
@@ -720,7 +676,7 @@ export class ScriptHelper {
             .setOnycMint()
             .accountsPartial({
                 boss: params.boss,
-                onycMint: params.onycMint
+                onycMint: params.onycMint,
             })
             .instruction();
     }
@@ -731,11 +687,10 @@ export class ScriptHelper {
             .accountsPartial({
                 boss: params.boss,
                 program: this.networkConfig.programId,
-                programData: params?.programData ?? PublicKey.findProgramAddressSync(
-                    [this.networkConfig.programId.toBuffer()],
-                    new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111")
-                )[0],
-                onycMint: params?.onycMint ?? this.networkConfig.mints.onyc
+                programData:
+                    params?.programData ??
+                    PublicKey.findProgramAddressSync([this.networkConfig.programId.toBuffer()], new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111"))[0],
+                onycMint: params?.onycMint ?? this.networkConfig.mints.onyc,
             })
             .instruction();
     }
@@ -744,37 +699,29 @@ export class ScriptHelper {
         return await this.program.methods
             .initializePermissionlessAuthority(params.name)
             .accountsPartial({
-                boss: params.boss
+                boss: params.boss,
             })
             .instruction();
     }
 
-    async buildTransferMintAuthorityToProgramIx(params: {
-        mint: PublicKey;
-        tokenProgram?: PublicKey;
-        boss: PublicKey;
-    }) {
+    async buildTransferMintAuthorityToProgramIx(params: { mint: PublicKey; tokenProgram?: PublicKey; boss: PublicKey }) {
         return await this.program.methods
             .transferMintAuthorityToProgram()
             .accountsPartial({
                 boss: params.boss,
                 mint: params.mint,
-                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
             })
             .instruction();
     }
 
-    async buildTransferMintAuthorityToBossIx(params: {
-        mint: PublicKey;
-        tokenProgram?: PublicKey;
-        boss: PublicKey;
-    }) {
+    async buildTransferMintAuthorityToBossIx(params: { mint: PublicKey; tokenProgram?: PublicKey; boss: PublicKey }) {
         return await this.program.methods
             .transferMintAuthorityToBoss()
             .accountsPartial({
                 boss: params.boss,
                 mint: params.mint,
-                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
             })
             .signers([])
             .instruction();
@@ -784,7 +731,7 @@ export class ScriptHelper {
         return await this.program.methods
             .mintTo(new BN(params.amount))
             .accounts({
-                tokenProgram: TOKEN_PROGRAM_ID
+                tokenProgram: TOKEN_PROGRAM_ID,
             })
             .instruction();
     }
@@ -804,50 +751,32 @@ export class ScriptHelper {
                 tokenInProgram: params.tokenInProgram,
                 tokenOutMint: params.tokenOutMint,
                 tokenOutProgram: params.tokenOutProgram,
-                signer: params.boss
+                signer: params.boss,
             })
             .instruction();
     }
 
-    async buildCreateRedemptionRequestIx(params: {
-        redemptionOfferPda: PublicKey;
-        tokenInMint: PublicKey;
-        amount: number;
-        redeemer: PublicKey;
-        tokenProgram?: PublicKey;
-    }) {
+    async buildCreateRedemptionRequestIx(params: { redemptionOfferPda: PublicKey; tokenInMint: PublicKey; amount: number; redeemer: PublicKey; tokenProgram?: PublicKey }) {
         // Fetch the redemption offer to get the counter for PDA derivation
         const redemptionOffer = await this.program.account.redemptionOffer.fetch(params.redemptionOfferPda);
 
         // Derive the redemption request PDA using the counter
         const [redemptionRequest] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("redemption_request"),
-                params.redemptionOfferPda.toBuffer(),
-                Buffer.from(redemptionOffer.requestCounter.toArrayLike(Buffer, "le", 8))
-            ],
-            this.program.programId
+            [Buffer.from("redemption_request"), params.redemptionOfferPda.toBuffer(), Buffer.from(redemptionOffer.requestCounter.toArrayLike(Buffer, "le", 8))],
+            this.program.programId,
         );
 
         // Get the redemption vault authority PDA
-        const [redemptionVaultAuthority] = PublicKey.findProgramAddressSync(
-            [Buffer.from("redemption_offer_vault_authority")],
-            this.program.programId
-        );
+        const [redemptionVaultAuthority] = PublicKey.findProgramAddressSync([Buffer.from("redemption_offer_vault_authority")], this.program.programId);
 
         // Get associated token accounts
-        const redeemerTokenAccount = getAssociatedTokenAddressSync(
-            params.tokenInMint,
-            params.redeemer,
-            false,
-            params.tokenProgram ?? TOKEN_PROGRAM_ID
-        );
+        const redeemerTokenAccount = getAssociatedTokenAddressSync(params.tokenInMint, params.redeemer, false, params.tokenProgram ?? TOKEN_PROGRAM_ID);
 
         const vaultTokenAccount = getAssociatedTokenAddressSync(
             params.tokenInMint,
             redemptionVaultAuthority,
-            true,  // Allow off-curve for PDA
-            params.tokenProgram ?? TOKEN_PROGRAM_ID
+            true, // Allow off-curve for PDA
+            params.tokenProgram ?? TOKEN_PROGRAM_ID,
         );
 
         return await this.program.methods
@@ -856,57 +785,44 @@ export class ScriptHelper {
                 redemptionOffer: params.redemptionOfferPda,
                 tokenInMint: params.tokenInMint,
                 redeemer: params.redeemer,
-                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID
+                tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
             })
             .instruction();
     }
 
-    async buildFulfillRedemptionRequestIx(params: {
-        redemptionOfferPda: PublicKey;
-        redemptionRequestPda: PublicKey;
-        redemptionAdmin: PublicKey;
-        amount: BN;
-    }) {
+    async buildFulfillRedemptionRequestIx(params: { redemptionOfferPda: PublicKey; redemptionRequestPda: PublicKey; redemptionAdmin: PublicKey; amount: BN }) {
         return await this.program.methods
             .fulfillRedemptionRequest(params.amount)
             .accountsPartial({
                 redemptionOffer: params.redemptionOfferPda,
                 redemptionRequest: params.redemptionRequestPda,
-                redemptionAdmin: params.redemptionAdmin
+                redemptionAdmin: params.redemptionAdmin,
             })
             .instruction();
     }
 
-    async buildCancelRedemptionRequestIx(params: {
-        redemptionOfferPda: PublicKey;
-        redemptionRequestPda: PublicKey;
-        signer: PublicKey;
-    }) {
+    async buildCancelRedemptionRequestIx(params: { redemptionOfferPda: PublicKey; redemptionRequestPda: PublicKey; signer: PublicKey }) {
         return await this.program.methods
             .cancelRedemptionRequest()
             .accountsPartial({
                 redemptionOffer: params.redemptionOfferPda,
                 redemptionRequest: params.redemptionRequestPda,
-                signer: params.signer
+                signer: params.signer,
             })
             .instruction();
     }
 
-    async buildUpdateRedemptionOfferFeeIx(params: {
-        redemptionOfferPda: PublicKey;
-        newFeeBasisPoints: number;
-        boss: PublicKey;
-    }) {
+    async buildUpdateRedemptionOfferFeeIx(params: { redemptionOfferPda: PublicKey; newFeeBasisPoints: number; boss: PublicKey }) {
         return await this.program.methods
             .updateRedemptionOfferFee(params.newFeeBasisPoints)
             .accountsPartial({
                 redemptionOffer: params.redemptionOfferPda,
-                boss: params.boss
+                boss: params.boss,
             })
             .instruction();
     }
 
-    async prepareTransactionMultipleIxs(params: { ixs: TransactionInstruction[], payer: PublicKey }) {
+    async prepareTransactionMultipleIxs(params: { ixs: TransactionInstruction[]; payer: PublicKey }) {
         const tx = new Transaction();
         for (const ix of params.ixs) {
             tx.add(ix);
@@ -917,7 +833,7 @@ export class ScriptHelper {
     }
 
     // Helper to prepare transaction with boss as fee payer and recent blockhash
-    async prepareTransaction(params: { ix: TransactionInstruction, payer: PublicKey }) {
+    async prepareTransaction(params: { ix: TransactionInstruction; payer: PublicKey }) {
         return await this.prepareTransactionMultipleIxs({ ixs: [params.ix], payer: params.payer });
     }
 
@@ -927,7 +843,7 @@ export class ScriptHelper {
     serializeTransaction(tx: Transaction): string {
         const serializedTx = tx.serialize({
             requireAllSignatures: false,
-            verifySignatures: false
+            verifySignatures: false,
         });
         return bs58.encode(serializedTx);
     }

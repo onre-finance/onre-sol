@@ -412,6 +412,21 @@ pub mod onreapp {
         cache::set_cache_yields(ctx, gross_yield, current_yield)
     }
 
+    /// Sets CACHE fee split parameters.
+    ///
+    /// Both fee values are expressed in basis points and applied during accrual.
+    pub fn set_cache_fee_config(
+        ctx: Context<SetCacheFeeConfig>,
+        management_fee_basis_points: u16,
+        performance_fee_basis_points: u16,
+    ) -> Result<()> {
+        cache::set_cache_fee_config(
+            ctx,
+            management_fee_basis_points,
+            performance_fee_basis_points,
+        )
+    }
+
     /// Updates the lowest observed ONyc supply in CACHE state.
     ///
     /// This instruction is permissionless.
@@ -435,6 +450,16 @@ pub mod onreapp {
         target_nav: u64,
     ) -> Result<()> {
         cache::burn_for_nav_increase(ctx, asset_adjustment_amount, target_nav)
+    }
+
+    /// Transfers management fees from the management fee vault to the boss.
+    pub fn claim_management_fees(ctx: Context<ClaimManagementFees>, amount: u64) -> Result<()> {
+        cache::claim_management_fees(ctx, amount)
+    }
+
+    /// Transfers performance fees from the performance fee vault to the boss.
+    pub fn claim_performance_fees(ctx: Context<ClaimPerformanceFees>, amount: u64) -> Result<()> {
+        cache::claim_performance_fees(ctx, amount)
     }
 
     /// Mints ONyc tokens to the boss's account.
