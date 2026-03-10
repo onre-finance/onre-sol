@@ -73,6 +73,7 @@ export function registerCacheCommands(program: Command): void {
         .option("--asset-adjustment-amount <value>", "Asset adjustment amount (raw)")
         .option("--target-nav <value>", "Target NAV (raw)")
         .option("--onyc-mint <address>", "ONyc mint")
+        .option("--simulate", "Simulate burn instruction and print computed burn outcome")
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeCacheBurn(opts);
