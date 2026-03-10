@@ -262,20 +262,6 @@ pub fn setup_initialized() -> (LiteSVM, Keypair, Pubkey) {
     (svm, payer, onyc_mint)
 }
 
-/// Initialize program state and create a fresh offer pair (token_in, token_out).
-/// Returns initialized test context and mints ready for offer-vector tests.
-pub fn setup_offer_with_mints() -> (LiteSVM, Keypair, Pubkey, Pubkey) {
-    let (mut svm, payer, _) = setup_initialized();
-    let boss = payer.pubkey();
-
-    let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
-
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false);
-    send_tx(&mut svm, &[ix], &[&payer]).expect("make_offer failed");
-
-    (svm, payer, token_in, token_out)
-}
 
 pub fn advance_slot(svm: &mut LiteSVM) {
     let clock: Clock = svm.get_sysvar();

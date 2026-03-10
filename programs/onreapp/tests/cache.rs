@@ -65,7 +65,7 @@ fn setup_cache_context(
     svm.airdrop(&cache_admin.pubkey(), INITIAL_LAMPORTS)
         .unwrap();
 
-    let ix = build_make_offer_ix(&boss, &token_in_mint, &onyc_mint, 0, false, true);
+    let ix = build_make_offer_ix(&boss, &token_in_mint, &onyc_mint, 0, false, true, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -83,11 +83,11 @@ fn setup_cache_context(
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint);
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_mint_to_ix(&boss, &onyc_mint, 1_000_000_000);
+    let ix = build_mint_to_ix(&boss, &onyc_mint, 1_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
