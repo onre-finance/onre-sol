@@ -3,6 +3,8 @@ use crate::instructions::cache::{
     calculate_cache_fee_split, calculate_gross_cache_accrual, CacheAccruedEvent, CacheErrorCode,
     CacheState,
 };
+use crate::instructions::offer::offer_utils::find_active_vector_at;
+use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::token_utils::{mint_tokens, TokenUtilsErrorCode};
 use anchor_lang::prelude::*;
@@ -27,6 +29,8 @@ pub struct AccrueCache<'info> {
     pub cache_state: Box<Account<'info, CacheState>>,
 
     pub cache_admin: Signer<'info>,
+
+    pub offer: AccountLoader<'info, Offer>,
 
     #[account(mut)]
     pub onyc_mint: Box<InterfaceAccount<'info, Mint>>,
@@ -91,11 +95,19 @@ pub fn accrue_cache(ctx: Context<AccrueCache>) -> Result<()> {
         now >= cache_state.last_accrual_timestamp,
         CacheErrorCode::InvalidTimestamp
     );
+    require_keys_eq!(
+        ctx.accounts.offer.key(),
+        cache_state.main_offer,
+        CacheErrorCode::InvalidMainOffer
+    );
+    let offer = ctx.accounts.offer.load()?;
+    let current_yield = find_active_vector_at(&*offer, now as u64)?.apr;
+    cache_state.current_yield = current_yield;
 
     let seconds_elapsed = (now - cache_state.last_accrual_timestamp) as u64;
     let spread = cache_state
         .gross_yield
-        .saturating_sub(cache_state.current_yield);
+        .saturating_sub(current_yield);
     let previous_lowest_supply = cache_state.lowest_supply;
     let previous_performance_fee_high_watermark = cache_state.performance_fee_high_watermark;
     let current_supply_before_mint = ctx.accounts.onyc_mint.supply;
@@ -103,7 +115,7 @@ pub fn accrue_cache(ctx: Context<AccrueCache>) -> Result<()> {
     let gross_mint_amount = calculate_gross_cache_accrual(
         previous_lowest_supply,
         cache_state.gross_yield,
-        cache_state.current_yield,
+        current_yield,
         seconds_elapsed,
     )?;
     let fee_split = calculate_cache_fee_split(

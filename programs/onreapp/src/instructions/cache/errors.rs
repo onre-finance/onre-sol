@@ -4,6 +4,8 @@ use anchor_lang::prelude::*;
 pub enum CacheErrorCode {
     #[msg("Invalid ONyc mint for CACHE state")]
     InvalidOnycMint,
+    #[msg("Invalid main offer for CACHE state")]
+    InvalidMainOffer,
     #[msg("No change")]
     NoChange,
     #[msg("Invalid timestamp")]

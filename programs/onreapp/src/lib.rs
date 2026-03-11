@@ -401,15 +401,21 @@ pub mod onreapp {
         cache::set_cache_admin(ctx, new_cache_admin)
     }
 
-    /// Sets CACHE gross and current yield parameters.
+    /// Sets the CACHE main offer used for yield sourcing.
     ///
-    /// Only the boss can update these values.
-    pub fn set_cache_yields(
-        ctx: Context<SetCacheYields>,
+    /// Only the boss can update this value.
+    pub fn set_main_offer(ctx: Context<SetMainOffer>) -> Result<()> {
+        cache::set_main_offer(ctx)
+    }
+
+    /// Sets CACHE gross yield.
+    ///
+    /// Current yield is read from the main offer during accrue_cache.
+    pub fn set_cache_gross_yield(
+        ctx: Context<SetCacheGrossYield>,
         gross_yield: u64,
-        current_yield: u64,
     ) -> Result<()> {
-        cache::set_cache_yields(ctx, gross_yield, current_yield)
+        cache::set_cache_gross_yield(ctx, gross_yield)
     }
 
     /// Sets CACHE fee split parameters.

@@ -737,6 +737,7 @@ pub fn build_set_onyc_mint_ix(boss: &Pubkey, onyc_mint: &Pubkey) -> Instruction 
 // ---------------------------------------------------------------------------
 pub fn build_initialize_cache_ix(
     boss: &Pubkey,
+    offer: &Pubkey,
     onyc_mint: &Pubkey,
     cache_admin: &Pubkey,
 ) -> Instruction {
@@ -776,6 +777,25 @@ pub fn build_initialize_cache_ix(
             AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
             AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+            AccountMeta::new_readonly(*offer, false),
+        ],
+        data,
+    }
+}
+
+pub fn build_set_main_offer_ix(boss: &Pubkey, offer: &Pubkey) -> Instruction {
+    let (state_pda, _) = find_state_pda();
+    let (cache_state_pda, _) = find_cache_state_pda();
+
+    let data = ix_discriminator("set_main_offer").to_vec();
+
+    Instruction {
+        program_id: PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new(cache_state_pda, false),
+            AccountMeta::new_readonly(*boss, true),
+            AccountMeta::new_readonly(*offer, false),
         ],
         data,
     }
@@ -799,17 +819,15 @@ pub fn build_set_cache_admin_ix(boss: &Pubkey, new_cache_admin: &Pubkey) -> Inst
     }
 }
 
-pub fn build_set_cache_yields_ix(
+pub fn build_set_cache_gross_yield_ix(
     boss: &Pubkey,
     gross_yield: u64,
-    current_yield: u64,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (cache_state_pda, _) = find_cache_state_pda();
 
-    let mut data = ix_discriminator("set_cache_yields").to_vec();
+    let mut data = ix_discriminator("set_cache_gross_yield").to_vec();
     data.extend_from_slice(&gross_yield.to_le_bytes());
-    data.extend_from_slice(&current_yield.to_le_bytes());
 
     Instruction {
         program_id: PROGRAM_ID,
@@ -860,7 +878,7 @@ pub fn build_set_cache_fee_config_ix(
     }
 }
 
-pub fn build_accrue_cache_ix(cache_admin: &Pubkey, onyc_mint: &Pubkey) -> Instruction {
+pub fn build_accrue_cache_ix(cache_admin: &Pubkey, offer: &Pubkey, onyc_mint: &Pubkey) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (cache_state_pda, _) = find_cache_state_pda();
     let (cache_vault_authority_pda, _) = find_cache_vault_authority_pda();
@@ -887,6 +905,7 @@ pub fn build_accrue_cache_ix(cache_admin: &Pubkey, onyc_mint: &Pubkey) -> Instru
             AccountMeta::new_readonly(state_pda, false),
             AccountMeta::new(cache_state_pda, false),
             AccountMeta::new_readonly(*cache_admin, true),
+            AccountMeta::new_readonly(*offer, false),
             AccountMeta::new(*onyc_mint, false),
             AccountMeta::new_readonly(cache_vault_authority_pda, false),
             AccountMeta::new(cache_vault_onyc_ata, false),
@@ -1593,6 +1612,7 @@ pub fn read_state(svm: &LiteSVM) -> StateData {
 pub struct CacheStateData {
     pub onyc_mint: Pubkey,
     pub cache_admin: Pubkey,
+    pub main_offer: Pubkey,
     pub gross_yield: u64,
     pub current_yield: u64,
     pub lowest_supply: u64,
@@ -1619,6 +1639,7 @@ pub fn read_cache_state(svm: &LiteSVM) -> CacheStateData {
     CacheStateData {
         onyc_mint: cache_state.onyc_mint,
         cache_admin: cache_state.cache_admin,
+        main_offer: cache_state.main_offer,
         gross_yield: cache_state.gross_yield,
         current_yield: cache_state.current_yield,
         lowest_supply: cache_state.lowest_supply,

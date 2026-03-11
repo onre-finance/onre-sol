@@ -9,6 +9,7 @@ describe("CACHE", () => {
     let tokenInMint: PublicKey;
     let onycMint: PublicKey;
     let cacheAdmin: Keypair;
+    let offerPda: PublicKey;
 
     const NAV_1_0 = 1_000_000_000;
     const ONE_YEAR_SECONDS = 31_536_000;
@@ -52,6 +53,7 @@ describe("CACHE", () => {
         });
 
         const now = await testHelper.getCurrentClockTime();
+        offerPda = program.getOfferPda(tokenInMint, onycMint);
         await program.addOfferVector({
             tokenInMint,
             tokenOutMint: onycMint,
@@ -65,17 +67,29 @@ describe("CACHE", () => {
 
     async function setupCacheWithBalance(params?: {
         grossYield?: number;
-        currentYield?: number;
+        currentYieldApr?: number;
         managementFeeBasisPoints?: number;
         performanceFeeBasisPoints?: number;
         accrualPeriods?: number;
     }) {
-        const { grossYield = 150_000, currentYield = 50_000, managementFeeBasisPoints = 0, performanceFeeBasisPoints = 0, accrualPeriods = 1 } = params ?? {};
+        const { grossYield = 150_000, currentYieldApr = 50_000, managementFeeBasisPoints = 0, performanceFeeBasisPoints = 0, accrualPeriods = 1 } = params ?? {};
+
+        const now = await testHelper.getCurrentClockTime();
+        await program.deleteAllOfferVectors(tokenInMint, onycMint);
+        await program.addOfferVector({
+            tokenInMint,
+            tokenOutMint: onycMint,
+            startTime: now,
+            baseTime: now,
+            basePrice: NAV_1_0,
+            apr: currentYieldApr,
+            priceFixDuration: 86_400,
+        });
 
         await program.transferMintAuthorityToProgram({ mint: onycMint });
         await program.mintTo({ amount: 1_000_000_000 });
-        await program.initializeCache({ onycMint, cacheAdmin: cacheAdmin.publicKey });
-        await program.setCacheYields({ grossYield, currentYield });
+        await program.initializeCache({ offer: offerPda, onycMint, cacheAdmin: cacheAdmin.publicKey });
+        await program.setCacheGrossYield({ grossYield });
         if (managementFeeBasisPoints !== 0 || performanceFeeBasisPoints !== 0) {
             await program.setCacheFeeConfig({
                 managementFeeBasisPoints,
@@ -84,21 +98,22 @@ describe("CACHE", () => {
         }
 
         // First call sets lowestSupply from 0 -> current supply.
-        await program.accrueCache({ onycMint, signer: cacheAdmin });
+        await program.accrueCache({ offer: offerPda, onycMint, signer: cacheAdmin });
         for (let i = 0; i < accrualPeriods; i++) {
             await testHelper.advanceSlot();
             await testHelper.advanceClockBy(ONE_YEAR_SECONDS);
             await testHelper.advanceSlot();
-            await program.accrueCache({ onycMint, signer: cacheAdmin });
+            await program.accrueCache({ offer: offerPda, onycMint, signer: cacheAdmin });
         }
     }
 
     test("initializes CACHE state", async () => {
-        await program.initializeCache({ onycMint, cacheAdmin: cacheAdmin.publicKey });
+        await program.initializeCache({ offer: offerPda, onycMint, cacheAdmin: cacheAdmin.publicKey });
         const state = await program.getCacheState();
 
         expect(state.onycMint).toEqual(onycMint);
         expect(state.cacheAdmin).toEqual(cacheAdmin.publicKey);
+        expect(state.mainOffer).toEqual(offerPda);
         expect(state.grossYield.toNumber()).toBe(0);
         expect(state.currentYield.toNumber()).toBe(0);
         expect(state.managementFeeBasisPoints).toBe(0);
@@ -111,7 +126,7 @@ describe("CACHE", () => {
     });
 
     test("boss sets cache admin, non-boss fails", async () => {
-        await program.initializeCache({ onycMint, cacheAdmin: cacheAdmin.publicKey });
+        await program.initializeCache({ offer: offerPda, onycMint, cacheAdmin: cacheAdmin.publicKey });
 
         const newAdmin = testHelper.createUserAccount();
         await program.setCacheAdmin({ cacheAdmin: newAdmin.publicKey });
@@ -132,16 +147,16 @@ describe("CACHE", () => {
     test("non-cache-admin cannot accrue", async () => {
         await setupCacheWithBalance();
         const unauthorized = testHelper.createUserAccount();
-        await expect(program.accrueCache({ onycMint, signer: unauthorized })).rejects.toThrow();
+        await expect(program.accrueCache({ offer: offerPda, onycMint, signer: unauthorized })).rejects.toThrow();
     });
 
     test("set cache yields rejects no-change", async () => {
         await setupCacheWithBalance();
-        await expect(program.setCacheYields({ grossYield: 150_000, currentYield: 50_000 })).rejects.toThrow();
+        await expect(program.setCacheGrossYield({ grossYield: 150_000 })).rejects.toThrow();
     });
 
     test("accrue cache mints nothing when spread is zero", async () => {
-        await setupCacheWithBalance({ grossYield: 50_000, currentYield: 50_000 });
+        await setupCacheWithBalance({ grossYield: 50_000, currentYieldApr: 50_000 });
 
         const cacheVaultAta = program.getCacheVaultAta(onycMint);
         const vaultBalance = await testHelper.getTokenAccountBalance(cacheVaultAta);
@@ -209,7 +224,7 @@ describe("CACHE", () => {
         await testHelper.advanceSlot();
         await testHelper.advanceClockBy(ONE_YEAR_SECONDS);
         await testHelper.advanceSlot();
-        await program.accrueCache({ onycMint, signer: cacheAdmin });
+        await program.accrueCache({ offer: offerPda, onycMint, signer: cacheAdmin });
 
         const cacheVaultBalance = await testHelper.getTokenAccountBalance(program.getCacheVaultAta(onycMint));
         const performanceFeeBalance = await testHelper.getTokenAccountBalance(program.getPerformanceFeeVaultAta(onycMint));

@@ -61,6 +61,7 @@ fn setup_cache_context(
     let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
     let token_in_mint = create_mint(&mut svm, &payer, 6, &boss);
+    let yield_token_in_mint = create_mint(&mut svm, &payer, 6, &boss);
     let cache_admin = Keypair::new();
     svm.airdrop(&cache_admin.pubkey(), INITIAL_LAMPORTS)
         .unwrap();
@@ -83,6 +84,32 @@ fn setup_cache_context(
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
+    let ix = build_make_offer_ix(
+        &boss,
+        &yield_token_in_mint,
+        &onyc_mint,
+        0,
+        false,
+        true,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+    let (offer_pda, _) = find_offer_pda(&yield_token_in_mint, &onyc_mint);
+
+    let ix = build_add_offer_vector_ix(
+        &boss,
+        &yield_token_in_mint,
+        &onyc_mint,
+        Some(now),
+        now,
+        NAV_1_0,
+        current_yield,
+        86_400,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
     let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
@@ -91,11 +118,11 @@ fn setup_cache_context(
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_initialize_cache_ix(&boss, &onyc_mint, &cache_admin.pubkey());
+    let ix = build_initialize_cache_ix(&boss, &offer_pda, &onyc_mint, &cache_admin.pubkey());
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_set_cache_yields_ix(&boss, gross_yield, current_yield);
+    let ix = build_set_cache_gross_yield_ix(&boss, gross_yield);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -115,15 +142,16 @@ fn setup_cache_context(
 fn setup_cache_with_balance() -> (litesvm::LiteSVM, Keypair, Pubkey, Pubkey, Keypair) {
     let (mut svm, payer, token_in_mint, onyc_mint, cache_admin) =
         setup_cache_context(150_000, 50_000, 0, 0);
+    let offer_pda = read_cache_state(&svm).main_offer;
 
     // First accrual initializes lowest_supply to current supply.
-    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
+    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &offer_pda, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
     advance_slot(&mut svm);
 
     // Second accrual after one year should mint 10% of 1_000_000_000 = 100_000_000.
     advance_clock_by(&mut svm, ONE_YEAR_SECONDS);
-    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
+    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &offer_pda, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
 
     (svm, payer, token_in_mint, onyc_mint, cache_admin)
@@ -140,14 +168,15 @@ fn setup_cache_with_fee_split(
         management_fee_basis_points,
         performance_fee_basis_points,
     );
+    let offer_pda = read_cache_state(&svm).main_offer;
 
-    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
+    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &offer_pda, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
 
     for _ in 0..accrual_periods {
         advance_slot(&mut svm);
         advance_clock_by(&mut svm, ONE_YEAR_SECONDS);
-        let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
+        let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &offer_pda, &onyc_mint);
         send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
     }
 
@@ -159,13 +188,18 @@ fn test_initialize_cache_success() {
     let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
     let cache_admin = Keypair::new();
+    let token_in_mint = create_mint(&mut svm, &payer, 6, &boss);
+    let ix = build_make_offer_ix(&boss, &token_in_mint, &onyc_mint, 0, false, true, &TOKEN_PROGRAM_ID);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let (offer_pda, _) = find_offer_pda(&token_in_mint, &onyc_mint);
 
-    let ix = build_initialize_cache_ix(&boss, &onyc_mint, &cache_admin.pubkey());
+    let ix = build_initialize_cache_ix(&boss, &offer_pda, &onyc_mint, &cache_admin.pubkey());
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let cache_state = read_cache_state(&svm);
     assert_eq!(cache_state.onyc_mint, onyc_mint);
     assert_eq!(cache_state.cache_admin, cache_admin.pubkey());
+    assert_eq!(cache_state.main_offer, offer_pda);
     assert_eq!(cache_state.gross_yield, 0);
     assert_eq!(cache_state.current_yield, 0);
     assert_eq!(cache_state.lowest_supply, 0);
@@ -202,8 +236,12 @@ fn test_set_cache_admin_boss_only() {
     let boss = payer.pubkey();
     let admin1 = Keypair::new();
     let admin2 = Keypair::new();
+    let token_in_mint = create_mint(&mut svm, &payer, 6, &boss);
+    let ix = build_make_offer_ix(&boss, &token_in_mint, &onyc_mint, 0, false, true, &TOKEN_PROGRAM_ID);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let (offer_pda, _) = find_offer_pda(&token_in_mint, &onyc_mint);
 
-    let ix = build_initialize_cache_ix(&boss, &onyc_mint, &admin1.pubkey());
+    let ix = build_initialize_cache_ix(&boss, &offer_pda, &onyc_mint, &admin1.pubkey());
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -223,8 +261,12 @@ fn test_set_cache_admin_rejects_no_change() {
     let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
     let admin = Keypair::new();
+    let token_in_mint = create_mint(&mut svm, &payer, 6, &boss);
+    let ix = build_make_offer_ix(&boss, &token_in_mint, &onyc_mint, 0, false, true, &TOKEN_PROGRAM_ID);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let (offer_pda, _) = find_offer_pda(&token_in_mint, &onyc_mint);
 
-    let ix = build_initialize_cache_ix(&boss, &onyc_mint, &admin.pubkey());
+    let ix = build_initialize_cache_ix(&boss, &offer_pda, &onyc_mint, &admin.pubkey());
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -234,23 +276,52 @@ fn test_set_cache_admin_rejects_no_change() {
 }
 
 #[test]
-fn test_set_cache_yields_rejects_no_change() {
+fn test_set_main_offer_updates_cache_state() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
+    let boss = payer.pubkey();
+    let token_in_mint_a = create_mint(&mut svm, &payer, 6, &boss);
+    let token_in_mint_b = create_mint(&mut svm, &payer, 6, &boss);
+    let cache_admin = Keypair::new();
+
+    let ix =
+        build_make_offer_ix(&boss, &token_in_mint_a, &onyc_mint, 0, false, true, &TOKEN_PROGRAM_ID);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let ix =
+        build_make_offer_ix(&boss, &token_in_mint_b, &onyc_mint, 0, false, true, &TOKEN_PROGRAM_ID);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let (offer_a_pda, _) = find_offer_pda(&token_in_mint_a, &onyc_mint);
+    let (offer_b_pda, _) = find_offer_pda(&token_in_mint_b, &onyc_mint);
+
+    let ix = build_initialize_cache_ix(&boss, &offer_a_pda, &onyc_mint, &cache_admin.pubkey());
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_set_main_offer_ix(&boss, &offer_b_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    assert_eq!(read_cache_state(&svm).main_offer, offer_b_pda);
+}
+
+#[test]
+fn test_set_cache_gross_yield_rejects_no_change() {
     let (mut svm, payer, _token_in_mint, _onyc_mint, _cache_admin) =
         setup_cache_context(150_000, 50_000, 0, 0);
     let boss = payer.pubkey();
 
-    let ix = build_set_cache_yields_ix(&boss, 150_000, 50_000);
+    let ix = build_set_cache_gross_yield_ix(&boss, 150_000);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "setting same yields should fail");
+    assert!(result.is_err(), "setting same gross yield should fail");
 }
 
 #[test]
 fn test_accrue_cache_first_call_sets_lowest_supply_no_mint() {
     let (mut svm, _payer, _token_in_mint, onyc_mint, cache_admin) =
         setup_cache_context(150_000, 50_000, 0, 0);
+    let cache_state = read_cache_state(&svm);
     let initial_supply = get_mint_supply(&svm, &onyc_mint);
 
-    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
+    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &cache_state.main_offer, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
 
     let (cache_vault_authority_pda, _) = find_cache_vault_authority_pda();
@@ -266,14 +337,15 @@ fn test_accrue_cache_first_call_sets_lowest_supply_no_mint() {
 fn test_accrue_cache_zero_spread_mints_nothing() {
     let (mut svm, _payer, _token_in_mint, onyc_mint, cache_admin) =
         setup_cache_context(50_000, 50_000, 0, 0);
+    let cache_state = read_cache_state(&svm);
 
     // Baseline call sets lowest_supply.
-    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
+    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &cache_state.main_offer, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
     advance_slot(&mut svm);
 
     advance_clock_by(&mut svm, ONE_YEAR_SECONDS);
-    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
+    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &cache_state.main_offer, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
 
     let (cache_vault_authority_pda, _) = find_cache_vault_authority_pda();
@@ -372,6 +444,7 @@ fn test_performance_fee_waits_for_high_watermark_recovery() {
     let (mut svm, payer, token_in_mint, onyc_mint, cache_admin) =
         setup_cache_with_fee_split(100, 1_000, 2);
     let boss = payer.pubkey();
+    let offer_pda = read_cache_state(&svm).main_offer;
 
     let ix =
         build_burn_for_nav_increase_ix(&boss, &token_in_mint, &onyc_mint, 110_000_000, NAV_1_0);
@@ -391,7 +464,7 @@ fn test_performance_fee_waits_for_high_watermark_recovery() {
     let performance_fee_balance_before = get_token_balance(&svm, &performance_fee_vault_ata);
 
     advance_clock_by(&mut svm, ONE_YEAR_SECONDS);
-    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
+    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &offer_pda, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
 
     let (cache_vault_authority_pda, _) = find_cache_vault_authority_pda();
@@ -414,13 +487,14 @@ fn test_performance_fee_waits_for_high_watermark_recovery() {
 fn test_accrue_cache_zero_seconds_mints_nothing() {
     let (mut svm, _payer, _token_in_mint, onyc_mint, cache_admin) =
         setup_cache_context(150_000, 50_000, 0, 0);
+    let offer_pda = read_cache_state(&svm).main_offer;
 
-    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
+    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &offer_pda, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
     advance_slot(&mut svm);
 
     // Same timestamp call should mint zero.
-    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
+    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &offer_pda, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
 
     let (cache_vault_authority_pda, _) = find_cache_vault_authority_pda();
@@ -432,14 +506,15 @@ fn test_accrue_cache_zero_seconds_mints_nothing() {
 fn test_accrue_cache_partial_period_math() {
     let (mut svm, _payer, _token_in_mint, onyc_mint, cache_admin) =
         setup_cache_context(150_000, 50_000, 0, 0);
+    let offer_pda = read_cache_state(&svm).main_offer;
 
     // Baseline call sets lowest_supply.
-    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
+    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &offer_pda, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
     advance_slot(&mut svm);
 
     advance_clock_by(&mut svm, ONE_DAY_SECONDS);
-    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
+    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &offer_pda, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&cache_admin]).unwrap();
 
     // Accrual formula:
@@ -483,8 +558,9 @@ fn test_accrue_cache_mints_expected_amount() {
 
 #[test]
 fn test_accrue_cache_rejects_non_cache_admin() {
-    let (mut svm, payer, _token_in_mint, onyc_mint, cache_admin) = setup_cache_with_balance();
+    let (mut svm, payer, token_in_mint, onyc_mint, cache_admin) = setup_cache_with_balance();
     let boss = payer.pubkey();
+    let (offer_pda, _) = find_offer_pda(&token_in_mint, &onyc_mint);
 
     // Change admin to a new key, then try with old admin.
     let new_admin = Keypair::new();
@@ -492,7 +568,7 @@ fn test_accrue_cache_rejects_non_cache_admin() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &onyc_mint);
+    let ix = build_accrue_cache_ix(&cache_admin.pubkey(), &offer_pda, &onyc_mint);
     let result = send_tx(&mut svm, &[ix], &[&cache_admin]);
     assert!(result.is_err(), "old cache admin should be rejected");
 }

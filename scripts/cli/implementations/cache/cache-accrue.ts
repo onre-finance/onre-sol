@@ -1,14 +1,15 @@
 import type { GlobalOptions } from "../../prompts";
 import { buildAndHandleTransaction, executeCommand } from "../../helpers";
-import { cacheOnycMintParam } from "../../params";
+import { cacheOfferParam, cacheOnycMintParam } from "../../params";
 
 export async function executeCacheAccrue(opts: GlobalOptions & Record<string, any>): Promise<void> {
-    await executeCommand(opts, cacheOnycMintParam, async (context) => {
+    await executeCommand(opts, [...cacheOfferParam, ...cacheOnycMintParam], async (context) => {
         const { params } = context;
 
         await buildAndHandleTransaction(context, {
             buildIx: async (helper) => {
                 return helper.buildAccrueCacheIx({
+                    offer: params.offer,
                     onycMint: params.onycMint,
                     cacheAdmin: helper.wallet.publicKey,
                 });
@@ -18,6 +19,7 @@ export async function executeCacheAccrue(opts: GlobalOptions & Record<string, an
             showParamSummary: {
                 title: "Accruing CACHE:",
                 params: {
+                    offer: params.offer,
                     onycMint: params.onycMint,
                     signer: "Current CLI wallet must be cache_admin",
                 },

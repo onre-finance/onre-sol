@@ -8,6 +8,7 @@ pub const YIELD_SCALE: u128 = 1_000_000;
 pub struct CacheState {
     pub onyc_mint: Pubkey,
     pub cache_admin: Pubkey,
+    pub main_offer: Pubkey,
     pub gross_yield: u64,
     pub current_yield: u64,
     pub lowest_supply: u64,
@@ -20,5 +21,5 @@ pub struct CacheState {
     pub total_performance_fees_claimed: u64,
     pub last_accrual_timestamp: i64,
     pub bump: u8,
-    pub reserved: [u8; 51],
+    pub reserved: [u8; 19],
 }

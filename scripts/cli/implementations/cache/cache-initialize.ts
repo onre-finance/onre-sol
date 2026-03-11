@@ -12,6 +12,7 @@ export async function executeCacheInitialize(opts: GlobalOptions & Record<string
                 return helper.buildInitializeCacheIx({
                     boss,
                     cacheAdmin: params.cacheAdmin,
+                    offer: params.offer,
                     onycMint: params.onycMint,
                 });
             },
@@ -21,6 +22,7 @@ export async function executeCacheInitialize(opts: GlobalOptions & Record<string
                 title: "Initializing CACHE:",
                 params: {
                     cacheAdmin: params.cacheAdmin,
+                    offer: params.offer,
                     onycMint: params.onycMint,
                 },
             },
