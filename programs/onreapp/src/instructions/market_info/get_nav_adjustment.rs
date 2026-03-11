@@ -1,6 +1,9 @@
 use crate::constants::seeds;
+use crate::instructions::market_info::offer_valuation_utils::{
+    compute_signed_price_delta, compute_vector_price_at_time,
+};
 use crate::instructions::offer::offer_utils::find_active_vector_at;
-use crate::instructions::{calculate_step_price_at, Offer};
+use crate::instructions::Offer;
 use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
@@ -114,37 +117,22 @@ pub fn get_nav_adjustment(ctx: Context<GetNavAdjustment>) -> Result<i64> {
     let active_vector = find_active_vector_at(&offer, current_time)?;
 
     // Calculate price at the start of the active vector
-    let current_price = calculate_step_price_at(
-        active_vector.apr,
-        active_vector.base_price,
-        active_vector.base_time,
-        active_vector.price_fix_duration,
-        active_vector.start_time,
-    )?;
+    let current_price = compute_vector_price_at_time(&active_vector, active_vector.start_time)?;
 
     // Find the previous vector and calculate its price
     let (previous_price_opt, adjustment) =
         if let Some(previous_vector) = find_previous_vector(&offer, active_vector.start_time) {
             // Calculate the price of the previous vector at its end time (when current vector starts)
-            let previous_price = calculate_step_price_at(
-                previous_vector.apr,
-                previous_vector.base_price,
-                previous_vector.base_time,
-                previous_vector.price_fix_duration,
-                active_vector.start_time, // End time of previous vector
-            )?;
-
-            // Calculate adjustment: current - previous
-            let adjustment = if current_price >= previous_price {
-                (current_price - previous_price) as i64
-            } else {
-                -((previous_price - current_price) as i64)
-            };
+            let previous_price =
+                compute_vector_price_at_time(&previous_vector, active_vector.start_time)?;
+            let adjustment = compute_signed_price_delta(current_price, previous_price)?;
 
             (Some(previous_price), adjustment)
         } else {
             // No previous vector, so adjustment is the current price (compared to 0)
-            (None, current_price as i64)
+            let adjustment =
+                i64::try_from(current_price).map_err(|_| error!(OfferCoreError::OverflowError))?;
+            (None, adjustment)
         };
 
     msg!(

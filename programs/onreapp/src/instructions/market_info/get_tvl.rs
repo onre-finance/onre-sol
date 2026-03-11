@@ -1,14 +1,15 @@
-use crate::constants::{seeds, PRICE_DECIMALS};
-use crate::instructions::offer::offer_utils::{
-    calculate_current_step_price, find_active_vector_at,
+use crate::constants::seeds;
+use crate::instructions::market_info::offer_valuation_utils::{
+    compute_offer_current_price, compute_tvl_from_supply_and_price,
 };
 use crate::instructions::Offer;
+use crate::utils::token_utils::read_optional_token_account_amount;
 use crate::OfferCoreError;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
-use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
+use anchor_spl::token_interface::{Mint, TokenInterface};
 
 /// Error codes for TVL calculation operations
 #[error_code]
@@ -126,40 +127,23 @@ pub fn get_tvl(ctx: Context<GetTVL>) -> Result<u64> {
     let offer = ctx.accounts.offer.load()?;
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    // Find the currently active pricing vector
-    let active_vector = find_active_vector_at(&offer, current_time)?;
-
     // Calculate current price (NAV) with 9 decimals
-    let current_price = calculate_current_step_price(
-        active_vector.apr,
-        active_vector.base_price,
-        active_vector.base_time,
-        active_vector.price_fix_duration,
-    )?;
+    let current_price = compute_offer_current_price(&offer, current_time)?;
 
-    let vault_token_out_amount = read_optional_ata_amount(
+    let vault_token_out_amount = read_optional_token_account_amount(
         &ctx.accounts.vault_token_out_account,
         &ctx.accounts.token_out_program,
     )?;
 
     // Get token supply
-    let token_supply = ctx.accounts.token_out_mint.supply - vault_token_out_amount;
+    let token_supply = ctx
+        .accounts
+        .token_out_mint
+        .supply
+        .saturating_sub(vault_token_out_amount);
 
-    // Calculate TVL = supply * price
-    // Both supply and price should be compatible for multiplication
-    let tvl = (token_supply as u128)
-        .checked_mul(current_price as u128)
-        .and_then(|result| {
-            // Since price has 9 decimals, we divide by 1e9 to get the actual TVL
-            result.checked_div(10_u128.pow(PRICE_DECIMALS as u32))
-        })
-        .and_then(|result| {
-            if result <= u64::MAX as u128 {
-                Some(result as u64)
-            } else {
-                None
-            }
-        })
+    // Calculate TVL = circulating_supply * current_price / 1e9
+    let tvl = compute_tvl_from_supply_and_price(token_supply, current_price)
         .ok_or(GetTVLErrorCode::Overflow)?;
 
     msg!(
@@ -180,39 +164,4 @@ pub fn get_tvl(ctx: Context<GetTVL>) -> Result<u64> {
     });
 
     Ok(tvl)
-}
-
-/// Safely reads token amount from an Associated Token Account
-///
-/// This function handles both initialized and uninitialized token accounts,
-/// returning zero for accounts that don't exist or aren't properly initialized.
-/// Supports both Token and Token-2022 programs with extension handling.
-///
-/// # Arguments
-/// * `vault_account` - The token account to read from
-/// * `token_program` - The SPL Token program for ownership validation
-///
-/// # Returns
-/// * `Ok(amount)` - Token amount if account is initialized, 0 otherwise
-fn read_optional_ata_amount(
-    vault_account: &AccountInfo,
-    token_program: &Interface<TokenInterface>,
-) -> Result<u64> {
-    // If it’s not owned by the token program, it’s not initialized (likely System Program)
-    if vault_account.owner != token_program.key {
-        return Ok(0);
-    }
-
-    // If there’s no data, treat as uninitialized.
-    if vault_account.data_is_empty() {
-        return Ok(0);
-    }
-
-    // Try to deserialize as a TokenInterface account; if this fails, treat as 0.
-    // (Token-2022 accounts can be larger due to extensions; try_deserialize handles it.)
-    let data_ref = vault_account.data.borrow();
-    match TokenAccount::try_deserialize(&mut &data_ref[..]) {
-        Ok(parsed) => Ok(parsed.amount),
-        Err(_) => Ok(0),
-    }
 }

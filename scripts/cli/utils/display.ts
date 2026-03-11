@@ -74,6 +74,61 @@ export function printState(state: any, json: boolean = false): void {
 }
 
 /**
+ * Print CACHE state
+ */
+export function printCacheState(cacheState: any, json: boolean = false): void {
+    if (json) {
+        console.log(
+            JSON.stringify(
+                {
+                    onycMint: cacheState.onycMint.toBase58(),
+                    cacheAdmin: cacheState.cacheAdmin.toBase58(),
+                    grossYield: cacheState.grossYield.toString(),
+                    currentYield: cacheState.currentYield.toString(),
+                    lowestSupply: cacheState.lowestSupply.toString(),
+                    managementFeeBasisPoints: cacheState.managementFeeBasisPoints,
+                    performanceFeeBasisPoints: cacheState.performanceFeeBasisPoints,
+                    performanceFeeHighWatermark: cacheState.performanceFeeHighWatermark.toString(),
+                    totalManagementFeesAccrued: cacheState.totalManagementFeesAccrued.toString(),
+                    totalManagementFeesClaimed: cacheState.totalManagementFeesClaimed.toString(),
+                    totalPerformanceFeesAccrued: cacheState.totalPerformanceFeesAccrued.toString(),
+                    totalPerformanceFeesClaimed: cacheState.totalPerformanceFeesClaimed.toString(),
+                    lastAccrualTimestamp: cacheState.lastAccrualTimestamp.toString(),
+                },
+                null,
+                2,
+            ),
+        );
+        return;
+    }
+
+    console.log(chalk.bold.blue("\n=== CACHE State ===\n"));
+
+    const table = new Table({
+        head: [chalk.white("Field"), chalk.white("Value")],
+        colWidths: [24, 52],
+    });
+
+    table.push(
+        ["ONyc Mint", cacheState.onycMint.toBase58()],
+        ["CACHE Admin", cacheState.cacheAdmin.toBase58()],
+        ["Gross Yield (1e6)", cacheState.grossYield.toString()],
+        ["Current Yield (1e6)", cacheState.currentYield.toString()],
+        ["Lowest Supply", cacheState.lowestSupply.toString()],
+        ["Management Fee (bps)", cacheState.managementFeeBasisPoints.toString()],
+        ["Performance Fee (bps)", cacheState.performanceFeeBasisPoints.toString()],
+        ["Performance HWM", cacheState.performanceFeeHighWatermark.toString()],
+        ["Mgmt Fees Accrued", cacheState.totalManagementFeesAccrued.toString()],
+        ["Mgmt Fees Claimed", cacheState.totalManagementFeesClaimed.toString()],
+        ["Perf Fees Accrued", cacheState.totalPerformanceFeesAccrued.toString()],
+        ["Perf Fees Claimed", cacheState.totalPerformanceFeesClaimed.toString()],
+        ["Last Accrual Timestamp", cacheState.lastAccrualTimestamp.toString()],
+    );
+
+    console.log(table.toString());
+}
+
+/**
  * Print offer details
  */
 export function printOffer(offer: any, tokenInMint: string, tokenOutMint: string, json: boolean = false): void {
@@ -629,13 +684,7 @@ export function printRedemptionRequestsList(requests: Array<{ id: number; reques
     requests.forEach(({ id, request }) => {
         const fulfilledAmount = request.fulfilledAmount ?? 0;
         const remaining = BigInt(request.amount.toString()) - BigInt(fulfilledAmount.toString());
-        table.push([
-            id.toString(),
-            request.redeemer.toBase58(),
-            request.amount.toString(),
-            fulfilledAmount.toString(),
-            remaining.toString(),
-        ]);
+        table.push([id.toString(), request.redeemer.toBase58(), request.amount.toString(), fulfilledAmount.toString(), remaining.toString()]);
     });
 
     console.log(table.toString());

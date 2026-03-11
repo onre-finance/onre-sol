@@ -96,6 +96,245 @@
       "args": []
     },
     {
+      "name": "accrue_cache",
+      "docs": [
+        "Accrues CACHE spread and mints ONyc to the CACHE vault account.",
+        "",
+        "Callable by cache_admin only."
+      ],
+      "discriminator": [
+        141,
+        203,
+        21,
+        210,
+        229,
+        49,
+        14,
+        59
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cache_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cache_admin",
+          "signer": true,
+          "relations": [
+            "cache_state"
+          ]
+        },
+        {
+          "name": "offer"
+        },
+        {
+          "name": "onyc_mint",
+          "writable": true,
+          "relations": [
+            "state",
+            "cache_state"
+          ]
+        },
+        {
+          "name": "cache_vault_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cache_vault_onyc_account",
+          "writable": true
+        },
+        {
+          "name": "management_fee_vault_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "management_fee_vault_onyc_account",
+          "writable": true
+        },
+        {
+          "name": "performance_fee_vault_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  102,
+                  111,
+                  114,
+                  109,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "performance_fee_vault_onyc_account",
+          "writable": true
+        },
+        {
+          "name": "mint_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "add_admin",
       "docs": [
         "Adds a new admin to the state.",
@@ -339,6 +578,196 @@
         },
         {
           "name": "price_fix_duration",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "burn_for_nav_increase",
+      "docs": [
+        "Burns ONyc from CACHE vault to increase NAV according to provided target inputs.",
+        "",
+        "Callable by boss only."
+      ],
+      "discriminator": [
+        8,
+        13,
+        69,
+        178,
+        183,
+        45,
+        102,
+        205
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cache_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offer",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              },
+              {
+                "kind": "account",
+                "path": "onyc_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_in_mint"
+        },
+        {
+          "name": "onyc_mint",
+          "writable": true,
+          "relations": [
+            "state",
+            "cache_state"
+          ]
+        },
+        {
+          "name": "offer_vault_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cache_vault_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_token_out_account"
+        },
+        {
+          "name": "cache_vault_onyc_account",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "asset_adjustment_amount",
+          "type": "u64"
+        },
+        {
+          "name": "target_nav",
           "type": "u64"
         }
       ]
@@ -705,6 +1134,503 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "claim_management_fees",
+      "docs": [
+        "Transfers management fees from the management fee vault to the boss."
+      ],
+      "discriminator": [
+        155,
+        250,
+        133,
+        198,
+        69,
+        159,
+        86,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cache_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "management_fee_vault_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "onyc_mint",
+          "writable": true,
+          "relations": [
+            "state",
+            "cache_state"
+          ]
+        },
+        {
+          "name": "boss_onyc_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "onyc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "management_fee_vault_onyc_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "management_fee_vault_authority"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "onyc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "claim_performance_fees",
+      "docs": [
+        "Transfers performance fees from the performance fee vault to the boss."
+      ],
+      "discriminator": [
+        63,
+        120,
+        167,
+        167,
+        78,
+        150,
+        195,
+        166
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cache_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "performance_fee_vault_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  102,
+                  111,
+                  114,
+                  109,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "onyc_mint",
+          "writable": true,
+          "relations": [
+            "state",
+            "cache_state"
+          ]
+        },
+        {
+          "name": "boss_onyc_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "onyc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "performance_fee_vault_onyc_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "performance_fee_vault_authority"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "onyc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "clear_admins",
@@ -2632,6 +3558,392 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "initialize_cache",
+      "docs": [
+        "Initializes the standalone CACHE pool state and vault accounts.",
+        "",
+        "Creates CACHE state as a separate PDA so existing offer/redemption state",
+        "remains unchanged. Only the boss can initialize CACHE."
+      ],
+      "discriminator": [
+        179,
+        17,
+        107,
+        253,
+        128,
+        183,
+        69,
+        199
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cache_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cache_vault_authority",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "management_fee_vault_authority",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "performance_fee_vault_authority",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  102,
+                  111,
+                  114,
+                  109,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "onyc_mint",
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "cache_vault_onyc_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "cache_vault_authority"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "onyc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "management_fee_vault_onyc_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "management_fee_vault_authority"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "onyc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "performance_fee_vault_onyc_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "performance_fee_vault_authority"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "onyc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "cache_admin",
+          "type": "pubkey"
+        }
+      ]
     },
     {
       "name": "initialize_permissionless_authority",
@@ -4712,6 +6024,232 @@
       ]
     },
     {
+      "name": "set_cache_admin",
+      "docs": [
+        "Sets the CACHE admin authorized to call accrual.",
+        "",
+        "Only the boss can update the CACHE admin."
+      ],
+      "discriminator": [
+        191,
+        107,
+        155,
+        155,
+        190,
+        55,
+        190,
+        203
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cache_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_cache_admin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "set_cache_fee_config",
+      "docs": [
+        "Sets CACHE fee split parameters.",
+        "",
+        "Both fee values are expressed in basis points and applied during accrual."
+      ],
+      "discriminator": [
+        122,
+        83,
+        212,
+        168,
+        146,
+        239,
+        129,
+        61
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cache_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "management_fee_basis_points",
+          "type": "u16"
+        },
+        {
+          "name": "performance_fee_basis_points",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "set_cache_gross_yield",
+      "docs": [
+        "Sets CACHE gross yield.",
+        "",
+        "Current yield is read from the main offer during accrue_cache."
+      ],
+      "discriminator": [
+        193,
+        138,
+        113,
+        131,
+        187,
+        119,
+        227,
+        184
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cache_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "gross_yield",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "set_kill_switch",
       "docs": [
         "Enables or disables the kill switch.",
@@ -4777,6 +6315,78 @@
           "type": "bool"
         }
       ]
+    },
+    {
+      "name": "set_main_offer",
+      "docs": [
+        "Sets the CACHE main offer used for yield sourcing.",
+        "",
+        "Only the boss can update this value."
+      ],
+      "discriminator": [
+        129,
+        95,
+        103,
+        81,
+        225,
+        142,
+        102,
+        227
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cache_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offer"
+        }
+      ],
+      "args": []
     },
     {
       "name": "set_onyc_mint",
@@ -6320,6 +7930,57 @@
       "args": []
     },
     {
+      "name": "update_lowest_supply",
+      "docs": [
+        "Updates the lowest observed ONyc supply in CACHE state.",
+        "",
+        "This instruction is permissionless."
+      ],
+      "discriminator": [
+        178,
+        80,
+        129,
+        36,
+        26,
+        37,
+        146,
+        168
+      ],
+      "accounts": [
+        {
+          "name": "cache_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "onyc_mint",
+          "relations": [
+            "cache_state"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "update_offer_fee",
       "docs": [
         "Updates the fee basis points for an offer.",
@@ -6534,6 +8195,19 @@
   ],
   "accounts": [
     {
+      "name": "CacheState",
+      "discriminator": [
+        50,
+        155,
+        248,
+        164,
+        94,
+        213,
+        5,
+        207
+      ]
+    },
+    {
       "name": "Offer",
       "discriminator": [
         215,
@@ -6705,6 +8379,110 @@
       ]
     },
     {
+      "name": "CacheAccruedEvent",
+      "discriminator": [
+        247,
+        178,
+        17,
+        253,
+        252,
+        107,
+        200,
+        120
+      ]
+    },
+    {
+      "name": "CacheAdminUpdatedEvent",
+      "discriminator": [
+        72,
+        176,
+        40,
+        194,
+        74,
+        145,
+        41,
+        177
+      ]
+    },
+    {
+      "name": "CacheBurnedForNavEvent",
+      "discriminator": [
+        236,
+        76,
+        25,
+        75,
+        207,
+        86,
+        159,
+        173
+      ]
+    },
+    {
+      "name": "CacheFeeConfigUpdatedEvent",
+      "discriminator": [
+        221,
+        236,
+        158,
+        210,
+        220,
+        150,
+        222,
+        254
+      ]
+    },
+    {
+      "name": "CacheGrossYieldUpdatedEvent",
+      "discriminator": [
+        12,
+        21,
+        16,
+        0,
+        73,
+        160,
+        184,
+        181
+      ]
+    },
+    {
+      "name": "CacheInitializedEvent",
+      "discriminator": [
+        51,
+        61,
+        186,
+        40,
+        43,
+        164,
+        115,
+        240
+      ]
+    },
+    {
+      "name": "CacheLowestSupplyUpdatedEvent",
+      "discriminator": [
+        94,
+        206,
+        7,
+        58,
+        125,
+        97,
+        5,
+        95
+      ]
+    },
+    {
+      "name": "CacheMainOfferUpdatedEvent",
+      "discriminator": [
+        179,
+        168,
+        72,
+        252,
+        59,
+        238,
+        220,
+        216
+      ]
+    },
+    {
       "name": "GetAPYEvent",
       "discriminator": [
         235,
@@ -6780,6 +8558,19 @@
         132,
         228,
         122
+      ]
+    },
+    {
+      "name": "ManagementFeesClaimedEvent",
+      "discriminator": [
+        14,
+        52,
+        106,
+        50,
+        35,
+        167,
+        184,
+        187
       ]
     },
     {
@@ -6965,6 +8756,19 @@
       ]
     },
     {
+      "name": "PerformanceFeesClaimedEvent",
+      "discriminator": [
+        18,
+        47,
+        251,
+        185,
+        198,
+        71,
+        31,
+        128
+      ]
+    },
+    {
       "name": "RedemptionAdminUpdatedEvent",
       "discriminator": [
         110,
@@ -7085,58 +8889,33 @@
   "errors": [
     {
       "code": 6000,
-      "name": "Expired",
-      "msg": "The approval message has expired."
+      "name": "MathOverflow",
+      "msg": "Math overflow"
     },
     {
       "code": 6001,
-      "name": "WrongProgram",
-      "msg": "The approval message is for the wrong program."
+      "name": "MaxSupplyExceeded",
+      "msg": "Minting would exceed maximum supply cap"
     },
     {
       "code": 6002,
-      "name": "WrongUser",
-      "msg": "The approval message is for the wrong user."
+      "name": "TransferFeeNotSupported",
+      "msg": "Token-2022 with transfer fees not supported"
     },
     {
       "code": 6003,
-      "name": "MissingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
+      "name": "ZeroPriceNotAllowed",
+      "msg": "Price cannot be zero"
     },
     {
       "code": 6004,
-      "name": "WrongIxProgram",
-      "msg": "The instruction is for the wrong program."
+      "name": "DecimalsExceedMax",
+      "msg": "Token decimals exceed maximum allowed (18)"
     },
     {
       "code": 6005,
-      "name": "BadEd25519Accounts",
-      "msg": "Ed25519 instruction has accounts."
-    },
-    {
-      "code": 6006,
-      "name": "MalformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
-    },
-    {
-      "code": 6007,
-      "name": "MultipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
-    },
-    {
-      "code": 6008,
-      "name": "WrongAuthority",
-      "msg": "The authority public key does not match."
-    },
-    {
-      "code": 6009,
-      "name": "MsgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
-    },
-    {
-      "code": 6010,
-      "name": "MsgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "name": "ResultOverflow",
+      "msg": "Result exceeds u64 maximum value"
     }
   ],
   "types": [
@@ -7391,6 +9170,283 @@
       }
     },
     {
+      "name": "CacheAccruedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "seconds_elapsed",
+            "type": "u64"
+          },
+          {
+            "name": "spread",
+            "type": "u64"
+          },
+          {
+            "name": "gross_mint_amount",
+            "type": "u64"
+          },
+          {
+            "name": "cache_mint_amount",
+            "type": "u64"
+          },
+          {
+            "name": "management_fee_mint_amount",
+            "type": "u64"
+          },
+          {
+            "name": "performance_fee_mint_amount",
+            "type": "u64"
+          },
+          {
+            "name": "previous_lowest_supply",
+            "type": "u64"
+          },
+          {
+            "name": "new_lowest_supply",
+            "type": "u64"
+          },
+          {
+            "name": "previous_performance_fee_high_watermark",
+            "type": "u64"
+          },
+          {
+            "name": "new_performance_fee_high_watermark",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CacheAdminUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_cache_admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_cache_admin",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CacheBurnedForNavEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "burn_amount",
+            "type": "u64"
+          },
+          {
+            "name": "asset_adjustment_amount",
+            "type": "u64"
+          },
+          {
+            "name": "total_assets",
+            "type": "u64"
+          },
+          {
+            "name": "target_nav",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CacheFeeConfigUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_management_fee_basis_points",
+            "type": "u16"
+          },
+          {
+            "name": "new_management_fee_basis_points",
+            "type": "u16"
+          },
+          {
+            "name": "old_performance_fee_basis_points",
+            "type": "u16"
+          },
+          {
+            "name": "new_performance_fee_basis_points",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CacheGrossYieldUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "gross_yield",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CacheInitializedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cache_state",
+            "type": "pubkey"
+          },
+          {
+            "name": "onyc_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "cache_admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "main_offer",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CacheLowestSupplyUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous_lowest_supply",
+            "type": "u64"
+          },
+          {
+            "name": "new_lowest_supply",
+            "type": "u64"
+          },
+          {
+            "name": "current_supply",
+            "type": "u64"
+          },
+          {
+            "name": "updated",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CacheMainOfferUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_main_offer",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_main_offer",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CacheState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "onyc_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "cache_admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "main_offer",
+            "type": "pubkey"
+          },
+          {
+            "name": "gross_yield",
+            "type": "u64"
+          },
+          {
+            "name": "current_yield",
+            "type": "u64"
+          },
+          {
+            "name": "lowest_supply",
+            "type": "u64"
+          },
+          {
+            "name": "management_fee_basis_points",
+            "type": "u16"
+          },
+          {
+            "name": "performance_fee_basis_points",
+            "type": "u16"
+          },
+          {
+            "name": "performance_fee_high_watermark",
+            "type": "u64"
+          },
+          {
+            "name": "total_management_fees_accrued",
+            "type": "u64"
+          },
+          {
+            "name": "total_management_fees_claimed",
+            "type": "u64"
+          },
+          {
+            "name": "total_performance_fees_accrued",
+            "type": "u64"
+          },
+          {
+            "name": "total_performance_fees_claimed",
+            "type": "u64"
+          },
+          {
+            "name": "last_accrual_timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                19
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "GetAPYEvent",
       "docs": [
         "Event emitted when APY calculation is successfully completed",
@@ -7634,6 +9690,26 @@
             "docs": [
               "The account that toggled the kill switch"
             ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ManagementFeesClaimedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "total_claimed",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
             "type": "pubkey"
           }
         ]
@@ -8157,7 +10233,7 @@
           {
             "name": "apr",
             "docs": [
-              "Annual Percentage Rate scaled by 1_000_000 (1_000_000 = 1% APR)",
+              "Annual Percentage Rate scaled by 1_000_000 (1_000_000 = 100% APR; 10_000 = 1%)",
               "",
               "Determines compound interest rate for price growth over time.",
               "Scale=6 where 1_000_000 = 1% annual rate."
@@ -8318,6 +10394,26 @@
               "The amount of tokens minted in base units"
             ],
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PerformanceFeesClaimedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "total_claimed",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
           }
         ]
       }

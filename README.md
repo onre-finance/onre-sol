@@ -22,12 +22,13 @@ anchor keys sync && anchor build
 
 ```
 programs/onreapp/src/
-├── lib.rs                    # Entry point — all 32 instructions declared here
+├── lib.rs                    # Entry point — all program instructions declared here
 ├── state.rs                  # Global State account (boss, admins, approvers, kill switch)
 ├── constants.rs              # PDA seeds, limits, decimals
 ├── utils/                    # Token helpers, ed25519 signature parsing, approver verification
 └── instructions/
     ├── initialization/       # initialize, initialize_permissionless_authority
+    ├── cache/                # CACHE state, accrual, fee accounting, burn support
     ├── offer/                # make/take/close offers, manage price vectors, fees
     ├── redemption/           # redemption offers, requests, fulfillment, cancellation
     ├── state_operations/     # Boss transfer, admin/approver management, kill switch, max supply
@@ -55,6 +56,17 @@ Offers use up to 10 `OfferVector` entries with APR-based compound interest. Pric
 
 The program supports both **SPL Token** and **Token-2022** with transfer fee extensions.
 
+### CACHE Yield Model
+
+The CACHE module stores two separate inputs for accrual:
+
+| Field | Source |
+|------|--------|
+| `gross_yield` | Set explicitly by `set_cache_gross_yield` |
+| `current_yield` | Read from the active APR on `cache_state.main_offer` during `accrue_cache` |
+
+`main_offer` is configured on `initialize_cache` and can be updated later with `set_main_offer`. The stored offer must be a valid offer whose `token_out_mint` is ONyc.
+
 ### Constants
 
 | Constant | Value |
@@ -67,6 +79,8 @@ The program supports both **SPL Token** and **Token-2022** with transfer fee ext
 ## Instructions
 
 **Initialization**: `initialize`, `initialize_permissionless_authority`
+
+**CACHE**: `initialize_cache`, `set_cache_admin`, `set_main_offer`, `set_cache_gross_yield`, `set_cache_fee_config`, `update_lowest_supply`, `accrue_cache`, `burn_for_nav_increase`, `claim_management_fees`, `claim_performance_fees`
 
 **Offers**: `make_offer`, `add_offer_vector`, `delete_offer_vector`, `delete_all_offer_vectors`, `update_offer_fee`, `take_offer`, `take_offer_permissionless`
 
@@ -118,6 +132,15 @@ tsx scripts/utils/get-state.ts
 tsx scripts/offer/fetch-offer.ts
 tsx scripts/market_info/get-nav.ts
 ```
+
+### CACHE CLI Notes
+
+The CACHE CLI flow now mirrors on-chain behavior:
+
+- `cache initialize` requires `--offer` and `--onyc-mint`
+- `cache set-gross-yield` only updates gross yield
+- `cache accrue` requires `--offer`; the passed offer must match `cache_state.main_offer`
+- `cache current_yield` is not set manually; it is derived from the active APR on the main offer during accrual
 
 Scripts that modify state output base58-encoded transactions for signing via Squad multisig. Read-only scripts print results directly.
 

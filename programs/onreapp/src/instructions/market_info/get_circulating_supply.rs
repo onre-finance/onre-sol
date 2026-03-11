@@ -2,9 +2,10 @@ use crate::constants::seeds;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 
 use crate::state::State;
+use crate::utils::token_utils::read_optional_token_account_amount;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
-use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
+use anchor_spl::token_interface::{Mint, TokenInterface};
 
 /// Error codes for circulating supply calculation operations
 #[error_code]
@@ -91,7 +92,7 @@ pub struct GetCirculatingSupply<'info> {
 pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64> {
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    let vault_token_out_amount = read_optional_ata_amount(
+    let vault_token_out_amount = read_optional_token_account_amount(
         &ctx.accounts.onyc_vault_account,
         &ctx.accounts.token_program,
     )?;
@@ -118,39 +119,4 @@ pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64>
     });
 
     Ok(circulating_supply)
-}
-
-/// Safely reads token amount from an Associated Token Account
-///
-/// This function handles both initialized and uninitialized token accounts,
-/// returning zero for accounts that don't exist or aren't properly initialized.
-/// Supports both Token and Token-2022 programs with extension handling.
-///
-/// # Arguments
-/// * `vault_account` - The token account to read from
-/// * `token_program` - The SPL Token program for ownership validation
-///
-/// # Returns
-/// * `Ok(amount)` - Token amount if account is initialized, 0 otherwise
-fn read_optional_ata_amount<'info>(
-    vault_account: &AccountInfo,
-    token_program: &Interface<TokenInterface>,
-) -> Result<u64> {
-    // If it's not owned by the token program, it's not initialized (likely System Program)
-    if vault_account.owner != token_program.key {
-        return Ok(0);
-    }
-
-    // If there's no data, treat as uninitialized.
-    if vault_account.data_is_empty() {
-        return Ok(0);
-    }
-
-    // Try to deserialize as a TokenInterface account; if this fails, treat as 0.
-    // (Token-2022 accounts can be larger due to extensions; try_deserialize handles it.)
-    let data_ref = vault_account.data.borrow();
-    match TokenAccount::try_deserialize(&mut &data_ref[..]) {
-        Ok(parsed) => Ok(parsed.amount),
-        Err(_) => Ok(0),
-    }
 }
