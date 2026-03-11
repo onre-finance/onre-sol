@@ -303,8 +303,8 @@ export class OnreProgram {
         await this.rpcWithOptionalSigner(tx, params?.signer);
     }
 
-    async initializeCache(params: { onycMint: PublicKey; cacheAdmin: PublicKey; signer?: Keypair }) {
-        const tx = this.program.methods.initializeCache(params.cacheAdmin).accounts({
+    async initializeCache(params: { offer: PublicKey; onycMint: PublicKey; cacheAdmin: PublicKey; signer?: Keypair }) {
+        const tx = this.program.methods.initializeCache(params.cacheAdmin).accountsPartial({
             onycMint: params.onycMint,
             cacheState: this.pdas.cacheStatePda,
             cacheVaultAuthority: this.pdas.cacheVaultAuthorityPda,
@@ -315,6 +315,7 @@ export class OnreProgram {
             performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.onycMint),
             tokenProgram: TOKEN_PROGRAM_ID,
         });
+        tx.remainingAccounts([{ pubkey: params.offer, isSigner: false, isWritable: false }]);
 
         await this.rpcWithOptionalSigner(tx, params.signer);
     }
@@ -325,8 +326,16 @@ export class OnreProgram {
         await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
-    async setCacheYields(params: { grossYield: number; currentYield: number; signer?: Keypair }) {
-        const tx = this.program.methods.setCacheYields(new BN(params.grossYield), new BN(params.currentYield));
+    async setMainOffer(params: { offer: PublicKey; signer?: Keypair }) {
+        const tx = this.program.methods.setMainOffer().accountsPartial({
+            offer: params.offer,
+        });
+
+        await this.rpcWithOptionalSigner(tx, params.signer);
+    }
+
+    async setCacheGrossYield(params: { grossYield: number; signer?: Keypair }) {
+        const tx = this.program.methods.setCacheGrossYield(new BN(params.grossYield)).accountsPartial({});
 
         await this.rpcWithOptionalSigner(tx, params.signer);
     }
@@ -346,13 +355,14 @@ export class OnreProgram {
             .rpc();
     }
 
-    async accrueCache(params: { onycMint: PublicKey; signer?: Keypair }) {
+    async accrueCache(params: { offer: PublicKey; onycMint: PublicKey; signer?: Keypair }) {
         const signer = params.signer ?? this.testHelper.payer;
 
         const tx = this.program.methods
             .accrueCache()
-            .accounts({
+            .accountsPartial({
                 cacheAdmin: signer.publicKey,
+                offer: params.offer,
                 onycMint: params.onycMint,
                 cacheState: this.pdas.cacheStatePda,
                 cacheVaultAuthority: this.pdas.cacheVaultAuthorityPda,

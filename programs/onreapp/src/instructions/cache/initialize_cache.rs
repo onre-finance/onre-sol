@@ -1,7 +1,10 @@
 use crate::constants::seeds;
-use crate::instructions::cache::{CacheInitializedEvent, CacheState};
+use crate::instructions::cache::{CacheErrorCode, CacheInitializedEvent, CacheState};
+use crate::instructions::Offer;
+use crate::OfferCoreError;
 use crate::state::State;
 use anchor_lang::prelude::*;
+use anchor_lang::Discriminator;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
@@ -58,7 +61,6 @@ pub struct InitializeCache<'info> {
     #[account(mut)]
     pub boss: Signer<'info>,
 
-    #[account(mut)]
     pub onyc_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
@@ -96,9 +98,31 @@ pub struct InitializeCache<'info> {
 pub fn initialize_cache(ctx: Context<InitializeCache>, cache_admin: Pubkey) -> Result<()> {
     let cache_state = &mut ctx.accounts.cache_state;
     let now = Clock::get()?.unix_timestamp;
+    let offer = ctx
+        .remaining_accounts
+        .first()
+        .ok_or(error!(CacheErrorCode::InvalidMainOffer))?;
+    let main_offer = offer.key();
+    let offer_data = offer.try_borrow_data()?;
+    require!(
+        offer_data.len() >= 8 + 64,
+        CacheErrorCode::InvalidMainOffer
+    );
+    require!(
+        &offer_data[..8] == Offer::DISCRIMINATOR,
+        CacheErrorCode::InvalidMainOffer
+    );
+    let token_out_mint = Pubkey::try_from(&offer_data[40..72])
+        .map_err(|_| error!(CacheErrorCode::InvalidMainOffer))?;
+    require_keys_eq!(
+        ctx.accounts.onyc_mint.key(),
+        token_out_mint,
+        OfferCoreError::InvalidTokenOutMint
+    );
 
     cache_state.onyc_mint = ctx.accounts.onyc_mint.key();
     cache_state.cache_admin = cache_admin;
+    cache_state.main_offer = main_offer;
     cache_state.last_accrual_timestamp = now;
     cache_state.bump = ctx.bumps.cache_state;
 
@@ -106,6 +130,7 @@ pub fn initialize_cache(ctx: Context<InitializeCache>, cache_admin: Pubkey) -> R
         cache_state: cache_state.key(),
         onyc_mint: cache_state.onyc_mint,
         cache_admin,
+        main_offer,
         timestamp: now,
     });
 

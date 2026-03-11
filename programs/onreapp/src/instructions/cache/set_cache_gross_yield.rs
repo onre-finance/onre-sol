@@ -1,10 +1,12 @@
 use crate::constants::seeds;
-use crate::instructions::cache::{CacheErrorCode, CacheState, CacheYieldUpdatedEvent};
+use crate::instructions::cache::{
+    CacheErrorCode, CacheGrossYieldUpdatedEvent, CacheState,
+};
 use crate::state::State;
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
-pub struct SetCacheYields<'info> {
+pub struct SetCacheGrossYield<'info> {
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
@@ -22,24 +24,17 @@ pub struct SetCacheYields<'info> {
     pub boss: Signer<'info>,
 }
 
-pub fn set_cache_yields(
-    ctx: Context<SetCacheYields>,
-    gross_yield: u64,
-    current_yield: u64,
-) -> Result<()> {
+pub fn set_cache_gross_yield(ctx: Context<SetCacheGrossYield>, gross_yield: u64) -> Result<()> {
     let cache_state = &mut ctx.accounts.cache_state;
+
     require!(
-        cache_state.gross_yield != gross_yield || cache_state.current_yield != current_yield,
+        cache_state.gross_yield != gross_yield,
         CacheErrorCode::NoChange
     );
 
     cache_state.gross_yield = gross_yield;
-    cache_state.current_yield = current_yield;
 
-    emit!(CacheYieldUpdatedEvent {
-        gross_yield,
-        current_yield,
-    });
+    emit!(CacheGrossYieldUpdatedEvent { gross_yield });
 
     Ok(())
 }

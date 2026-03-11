@@ -431,8 +431,8 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildInitializeCacheIx(params: { onycMint: PublicKey; cacheAdmin: PublicKey; boss: PublicKey }) {
-        return await this.program.methods
+    async buildInitializeCacheIx(params: { offer: PublicKey; onycMint: PublicKey; cacheAdmin: PublicKey; boss: PublicKey }) {
+        const builder = this.program.methods
             .initializeCache(params.cacheAdmin)
             .accountsPartial({
                 boss: params.boss,
@@ -446,6 +446,18 @@ export class ScriptHelper {
                 performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.onycMint),
                 tokenProgram: TOKEN_PROGRAM_ID,
                 associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            });
+        builder.remainingAccounts([{ pubkey: params.offer, isSigner: false, isWritable: false }]);
+        return await builder.instruction();
+    }
+
+    async buildSetMainOfferIx(params: { offer: PublicKey; boss: PublicKey }) {
+        return await this.program.methods
+            .setMainOffer()
+            .accountsPartial({
+                cacheState: this.pdas.cacheStatePda,
+                boss: params.boss,
+                offer: params.offer,
             })
             .instruction();
     }
@@ -460,9 +472,9 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildSetCacheYieldsIx(params: { grossYield: number; currentYield: number; boss: PublicKey }) {
+    async buildSetCacheGrossYieldIx(params: { grossYield: number; boss: PublicKey }) {
         return await this.program.methods
-            .setCacheYields(new BN(params.grossYield), new BN(params.currentYield))
+            .setCacheGrossYield(new BN(params.grossYield))
             .accountsPartial({
                 cacheState: this.pdas.cacheStatePda,
                 boss: params.boss,
@@ -490,13 +502,14 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildAccrueCacheIx(params: { onycMint: PublicKey; cacheAdmin: PublicKey }) {
+    async buildAccrueCacheIx(params: { offer: PublicKey; onycMint: PublicKey; cacheAdmin: PublicKey }) {
         return await this.program.methods
             .accrueCache()
             .accountsPartial({
                 cacheState: this.pdas.cacheStatePda,
                 onycMint: params.onycMint,
                 cacheAdmin: params.cacheAdmin,
+                offer: params.offer,
                 cacheVaultAuthority: this.pdas.cacheVaultAuthorityPda,
                 cacheVaultOnycAccount: this.getCacheVaultAta(params.onycMint),
                 managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,

@@ -5,6 +5,7 @@ pub struct CacheInitializedEvent {
     pub cache_state: Pubkey,
     pub onyc_mint: Pubkey,
     pub cache_admin: Pubkey,
+    pub main_offer: Pubkey,
     pub timestamp: i64,
 }
 
@@ -15,9 +16,14 @@ pub struct CacheAdminUpdatedEvent {
 }
 
 #[event]
-pub struct CacheYieldUpdatedEvent {
+pub struct CacheMainOfferUpdatedEvent {
+    pub old_main_offer: Pubkey,
+    pub new_main_offer: Pubkey,
+}
+
+#[event]
+pub struct CacheGrossYieldUpdatedEvent {
     pub gross_yield: u64,
-    pub current_yield: u64,
 }
 
 #[event]

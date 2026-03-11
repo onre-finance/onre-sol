@@ -162,6 +162,9 @@
           ]
         },
         {
+          "name": "offer"
+        },
+        {
           "name": "onyc_mint",
           "writable": true,
           "relations": [
@@ -3748,7 +3751,6 @@
         },
         {
           "name": "onyc_mint",
-          "writable": true,
           "relations": [
             "state"
           ]
@@ -6174,21 +6176,21 @@
       ]
     },
     {
-      "name": "set_cache_yields",
+      "name": "set_cache_gross_yield",
       "docs": [
-        "Sets CACHE gross and current yield parameters.",
+        "Sets CACHE gross yield.",
         "",
-        "Only the boss can update these values."
+        "Current yield is read from the main offer during accrue_cache."
       ],
       "discriminator": [
-        75,
-        154,
-        229,
-        84,
-        254,
-        180,
-        47,
-        101
+        193,
+        138,
+        113,
+        131,
+        187,
+        119,
+        227,
+        184
       ],
       "accounts": [
         {
@@ -6243,10 +6245,6 @@
       "args": [
         {
           "name": "gross_yield",
-          "type": "u64"
-        },
-        {
-          "name": "current_yield",
           "type": "u64"
         }
       ]
@@ -6317,6 +6315,78 @@
           "type": "bool"
         }
       ]
+    },
+    {
+      "name": "set_main_offer",
+      "docs": [
+        "Sets the CACHE main offer used for yield sourcing.",
+        "",
+        "Only the boss can update this value."
+      ],
+      "discriminator": [
+        129,
+        95,
+        103,
+        81,
+        225,
+        142,
+        102,
+        227
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cache_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offer"
+        }
+      ],
+      "args": []
     },
     {
       "name": "set_onyc_mint",
@@ -8361,6 +8431,19 @@
       ]
     },
     {
+      "name": "CacheGrossYieldUpdatedEvent",
+      "discriminator": [
+        12,
+        21,
+        16,
+        0,
+        73,
+        160,
+        184,
+        181
+      ]
+    },
+    {
       "name": "CacheInitializedEvent",
       "discriminator": [
         51,
@@ -8387,16 +8470,16 @@
       ]
     },
     {
-      "name": "CacheYieldUpdatedEvent",
+      "name": "CacheMainOfferUpdatedEvent",
       "discriminator": [
-        233,
-        131,
-        245,
-        77,
-        128,
-        206,
-        75,
-        65
+        179,
+        168,
+        72,
+        252,
+        59,
+        238,
+        220,
+        216
       ]
     },
     {
@@ -8806,58 +8889,33 @@
   "errors": [
     {
       "code": 6000,
-      "name": "Expired",
-      "msg": "The approval message has expired."
+      "name": "MathOverflow",
+      "msg": "Math overflow"
     },
     {
       "code": 6001,
-      "name": "WrongProgram",
-      "msg": "The approval message is for the wrong program."
+      "name": "MaxSupplyExceeded",
+      "msg": "Minting would exceed maximum supply cap"
     },
     {
       "code": 6002,
-      "name": "WrongUser",
-      "msg": "The approval message is for the wrong user."
+      "name": "TransferFeeNotSupported",
+      "msg": "Token-2022 with transfer fees not supported"
     },
     {
       "code": 6003,
-      "name": "MissingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
+      "name": "ZeroPriceNotAllowed",
+      "msg": "Price cannot be zero"
     },
     {
       "code": 6004,
-      "name": "WrongIxProgram",
-      "msg": "The instruction is for the wrong program."
+      "name": "DecimalsExceedMax",
+      "msg": "Token decimals exceed maximum allowed (18)"
     },
     {
       "code": 6005,
-      "name": "BadEd25519Accounts",
-      "msg": "Ed25519 instruction has accounts."
-    },
-    {
-      "code": 6006,
-      "name": "MalformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
-    },
-    {
-      "code": 6007,
-      "name": "MultipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
-    },
-    {
-      "code": 6008,
-      "name": "WrongAuthority",
-      "msg": "The authority public key does not match."
-    },
-    {
-      "code": 6009,
-      "name": "MsgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
-    },
-    {
-      "code": 6010,
-      "name": "MsgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "name": "ResultOverflow",
+      "msg": "Result exceeds u64 maximum value"
     }
   ],
   "types": [
@@ -9228,6 +9286,18 @@
       }
     },
     {
+      "name": "CacheGrossYieldUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "gross_yield",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "CacheInitializedEvent",
       "type": {
         "kind": "struct",
@@ -9242,6 +9312,10 @@
           },
           {
             "name": "cache_admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "main_offer",
             "type": "pubkey"
           },
           {
@@ -9280,6 +9354,22 @@
       }
     },
     {
+      "name": "CacheMainOfferUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_main_offer",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_main_offer",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "CacheState",
       "type": {
         "kind": "struct",
@@ -9290,6 +9380,10 @@
           },
           {
             "name": "cache_admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "main_offer",
             "type": "pubkey"
           },
           {
@@ -9345,25 +9439,9 @@
             "type": {
               "array": [
                 "u8",
-                51
+                19
               ]
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "CacheYieldUpdatedEvent",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "gross_yield",
-            "type": "u64"
-          },
-          {
-            "name": "current_yield",
-            "type": "u64"
           }
         ]
       }

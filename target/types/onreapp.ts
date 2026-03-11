@@ -168,6 +168,9 @@ export type Onreapp = {
           ]
         },
         {
+          "name": "offer"
+        },
+        {
           "name": "onycMint",
           "writable": true,
           "relations": [
@@ -3754,7 +3757,6 @@ export type Onreapp = {
         },
         {
           "name": "onycMint",
-          "writable": true,
           "relations": [
             "state"
           ]
@@ -6180,21 +6182,21 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "setCacheYields",
+      "name": "setCacheGrossYield",
       "docs": [
-        "Sets CACHE gross and current yield parameters.",
+        "Sets CACHE gross yield.",
         "",
-        "Only the boss can update these values."
+        "Current yield is read from the main offer during accrue_cache."
       ],
       "discriminator": [
-        75,
-        154,
-        229,
-        84,
-        254,
-        180,
-        47,
-        101
+        193,
+        138,
+        113,
+        131,
+        187,
+        119,
+        227,
+        184
       ],
       "accounts": [
         {
@@ -6249,10 +6251,6 @@ export type Onreapp = {
       "args": [
         {
           "name": "grossYield",
-          "type": "u64"
-        },
-        {
-          "name": "currentYield",
           "type": "u64"
         }
       ]
@@ -6323,6 +6321,78 @@ export type Onreapp = {
           "type": "bool"
         }
       ]
+    },
+    {
+      "name": "setMainOffer",
+      "docs": [
+        "Sets the CACHE main offer used for yield sourcing.",
+        "",
+        "Only the boss can update this value."
+      ],
+      "discriminator": [
+        129,
+        95,
+        103,
+        81,
+        225,
+        142,
+        102,
+        227
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "cacheState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  99,
+                  104,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offer"
+        }
+      ],
+      "args": []
     },
     {
       "name": "setOnycMint",
@@ -8367,6 +8437,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "cacheGrossYieldUpdatedEvent",
+      "discriminator": [
+        12,
+        21,
+        16,
+        0,
+        73,
+        160,
+        184,
+        181
+      ]
+    },
+    {
       "name": "cacheInitializedEvent",
       "discriminator": [
         51,
@@ -8393,16 +8476,16 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "cacheYieldUpdatedEvent",
+      "name": "cacheMainOfferUpdatedEvent",
       "discriminator": [
-        233,
-        131,
-        245,
-        77,
-        128,
-        206,
-        75,
-        65
+        179,
+        168,
+        72,
+        252,
+        59,
+        238,
+        220,
+        216
       ]
     },
     {
@@ -8812,58 +8895,33 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "expired",
-      "msg": "The approval message has expired."
+      "name": "mathOverflow",
+      "msg": "Math overflow"
     },
     {
       "code": 6001,
-      "name": "wrongProgram",
-      "msg": "The approval message is for the wrong program."
+      "name": "maxSupplyExceeded",
+      "msg": "Minting would exceed maximum supply cap"
     },
     {
       "code": 6002,
-      "name": "wrongUser",
-      "msg": "The approval message is for the wrong user."
+      "name": "transferFeeNotSupported",
+      "msg": "Token-2022 with transfer fees not supported"
     },
     {
       "code": 6003,
-      "name": "missingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
+      "name": "zeroPriceNotAllowed",
+      "msg": "Price cannot be zero"
     },
     {
       "code": 6004,
-      "name": "wrongIxProgram",
-      "msg": "The instruction is for the wrong program."
+      "name": "decimalsExceedMax",
+      "msg": "Token decimals exceed maximum allowed (18)"
     },
     {
       "code": 6005,
-      "name": "badEd25519Accounts",
-      "msg": "Ed25519 instruction has accounts."
-    },
-    {
-      "code": 6006,
-      "name": "malformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
-    },
-    {
-      "code": 6007,
-      "name": "multipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
-    },
-    {
-      "code": 6008,
-      "name": "wrongAuthority",
-      "msg": "The authority public key does not match."
-    },
-    {
-      "code": 6009,
-      "name": "msgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
-    },
-    {
-      "code": 6010,
-      "name": "msgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "name": "resultOverflow",
+      "msg": "Result exceeds u64 maximum value"
     }
   ],
   "types": [
@@ -9234,6 +9292,18 @@ export type Onreapp = {
       }
     },
     {
+      "name": "cacheGrossYieldUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "grossYield",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "cacheInitializedEvent",
       "type": {
         "kind": "struct",
@@ -9248,6 +9318,10 @@ export type Onreapp = {
           },
           {
             "name": "cacheAdmin",
+            "type": "pubkey"
+          },
+          {
+            "name": "mainOffer",
             "type": "pubkey"
           },
           {
@@ -9286,6 +9360,22 @@ export type Onreapp = {
       }
     },
     {
+      "name": "cacheMainOfferUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldMainOffer",
+            "type": "pubkey"
+          },
+          {
+            "name": "newMainOffer",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "cacheState",
       "type": {
         "kind": "struct",
@@ -9296,6 +9386,10 @@ export type Onreapp = {
           },
           {
             "name": "cacheAdmin",
+            "type": "pubkey"
+          },
+          {
+            "name": "mainOffer",
             "type": "pubkey"
           },
           {
@@ -9351,25 +9445,9 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                51
+                19
               ]
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "cacheYieldUpdatedEvent",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "grossYield",
-            "type": "u64"
-          },
-          {
-            "name": "currentYield",
-            "type": "u64"
           }
         ]
       }

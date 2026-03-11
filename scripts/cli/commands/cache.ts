@@ -23,6 +23,7 @@ export function registerCacheCommands(program: Command): void {
         .command("initialize")
         .description("Initialize CACHE state and vault")
         .option("--cache-admin <address>", "CACHE admin public key")
+        .option("--offer <address>", "Main offer PDA")
         .option("--onyc-mint <address>", "ONyc mint")
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
@@ -39,10 +40,9 @@ export function registerCacheCommands(program: Command): void {
         });
 
     program
-        .command("set-yields")
-        .description("Set CACHE gross and current yields (scale=1e6)")
+        .command("set-gross-yield")
+        .description("Set CACHE gross yield")
         .option("--gross-yield <value>", "Gross yield")
-        .option("--current-yield <value>", "Current yield")
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeCacheSetYields(opts);
@@ -60,6 +60,7 @@ export function registerCacheCommands(program: Command): void {
     program
         .command("accrue")
         .description("Accrue CACHE spread (signer must be cache_admin)")
+        .option("--offer <address>", "Main offer PDA")
         .option("--onyc-mint <address>", "ONyc mint")
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;

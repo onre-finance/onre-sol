@@ -10,6 +10,13 @@ export const cacheInitParams: ParamDefinition[] = [
         flag: "--cache-admin",
     },
     {
+        name: "offer",
+        type: "publicKey",
+        description: "Main offer PDA used by CACHE",
+        required: true,
+        flag: "--offer",
+    },
+    {
         name: "onycMint",
         type: "mint",
         description: "ONyc mint address",
@@ -40,7 +47,7 @@ export const cacheAdminParam: ParamDefinition[] = [
     },
 ];
 
-export const cacheYieldsParams: ParamDefinition[] = [
+export const cacheGrossYieldParams: ParamDefinition[] = [
     {
         name: "grossYield",
         type: "apr",
@@ -48,12 +55,15 @@ export const cacheYieldsParams: ParamDefinition[] = [
         required: true,
         flag: "--gross-yield",
     },
+];
+
+export const cacheOfferParam: ParamDefinition[] = [
     {
-        name: "currentYield",
-        type: "apr",
-        description: "Current distributed yield (scale=1e6; 100000 = 10%)",
+        name: "offer",
+        type: "publicKey",
+        description: "Main offer PDA used by CACHE",
         required: true,
-        flag: "--current-yield",
+        flag: "--offer",
     },
 ];
 
