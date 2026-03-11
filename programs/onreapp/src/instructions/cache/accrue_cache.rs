@@ -30,6 +30,7 @@ pub struct AccrueCache<'info> {
 
     pub cache_admin: Signer<'info>,
 
+    #[account(address = cache_state.main_offer @ CacheErrorCode::InvalidMainOffer)]
     pub offer: AccountLoader<'info, Offer>,
 
     #[account(mut)]
@@ -94,11 +95,6 @@ pub fn accrue_cache(ctx: Context<AccrueCache>) -> Result<()> {
     require!(
         now >= cache_state.last_accrual_timestamp,
         CacheErrorCode::InvalidTimestamp
-    );
-    require_keys_eq!(
-        ctx.accounts.offer.key(),
-        cache_state.main_offer,
-        CacheErrorCode::InvalidMainOffer
     );
     let offer = ctx.accounts.offer.load()?;
     let current_yield = find_active_vector_at(&*offer, now as u64)?.apr;
