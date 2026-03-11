@@ -3,6 +3,7 @@
 use anchor_lang::prelude::*;
 use instructions::*;
 use utils::ApprovalMessage;
+use instructions::fee_config::FeeType;
 
 // Program ID declaration
 declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
@@ -636,5 +637,70 @@ pub mod onreapp {
         new_fee_basis_points: u16,
     ) -> Result<()> {
         redemption::update_redemption_offer_fee(ctx, new_fee_basis_points)
+    }
+
+    /// Initializes a fee configuration PDA for a given operation type.
+    ///
+    /// Delegates to `fee_config::initialize_fee_config`.
+    /// Creates a new FeeConfig account that controls where fees are routed for the
+    /// specified operation type. The PDA is derived from the "fee_config" seed and
+    /// the fee type discriminator. Initially, no destination is set — fees accumulate
+    /// in an ATA owned by the FeeConfig PDA itself.
+    ///
+    /// # Arguments
+    /// * `ctx` - Context for `InitializeFeeConfig`.
+    /// * `fee_type` - The operation type this config applies to (TakeOffer or FulfillRedemption).
+    ///
+    /// # Access Control
+    /// - Boss only
+    pub fn initialize_fee_config(
+        ctx: Context<InitializeFeeConfig>,
+        fee_type: FeeType,
+    ) -> Result<()> {
+        fee_config::initialize_fee_config(ctx, fee_type)
+    }
+
+    /// Updates the fee destination for a given fee configuration.
+    ///
+    /// Delegates to `fee_config::set_fee_config_destination`.
+    /// When set to `Some(address)`, fees are routed to that address's ATA (must pre-exist).
+    /// When set to `None`, fees accumulate in the FeeConfig PDA's own ATA.
+    ///
+    /// # Arguments
+    /// * `ctx` - Context for `SetFeeConfigDestination`.
+    /// * `fee_type` - The operation type to configure (TakeOffer or FulfillRedemption).
+    /// * `destination` - The new fee destination address, or None to use the PDA's ATA.
+    ///
+    /// # Access Control
+    /// - Boss only
+    pub fn set_fee_config_destination(
+        ctx: Context<SetFeeConfigDestination>,
+        fee_type: FeeType,
+        destination: Option<Pubkey>,
+    ) -> Result<()> {
+        fee_config::set_fee_config_destination(ctx, fee_type, destination)
+    }
+
+    /// Withdraws accumulated fees from a FeeConfig PDA's ATA to the boss.
+    ///
+    /// Delegates to `fee_config::withdraw_fees`.
+    /// Transfers the specified amount of tokens from the FeeConfig PDA's associated
+    /// token account to the boss's ATA. The FeeConfig PDA signs the transfer using
+    /// its derived seeds. Only useful when no destination is set (fees accumulate
+    /// in the PDA's ATA).
+    ///
+    /// # Arguments
+    /// * `ctx` - Context for `WithdrawFees`.
+    /// * `fee_type` - The operation type to withdraw fees from (TakeOffer or FulfillRedemption).
+    /// * `amount` - Amount of tokens to withdraw.
+    ///
+    /// # Access Control
+    /// - Boss only
+    pub fn withdraw_fees(
+        ctx: Context<WithdrawFees>,
+        fee_type: FeeType,
+        amount: u64,
+    ) -> Result<()> {
+        fee_config::withdraw_fees(ctx, fee_type, amount)
     }
 }

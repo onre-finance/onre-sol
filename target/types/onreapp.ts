@@ -1941,6 +1941,19 @@ export type Onreapp = {
           }
         },
         {
+          "name": "feeConfig",
+          "docs": [
+            "Fee config PDA for FulfillRedemption fee routing"
+          ]
+        },
+        {
+          "name": "feeDestinationTokenAccount",
+          "docs": [
+            "Fee destination token account - validated at runtime based on fee_config.destination"
+          ],
+          "writable": true
+        },
+        {
           "name": "mintAuthority",
           "docs": [
             "Program-derived mint authority for direct token minting",
@@ -2638,6 +2651,89 @@ export type Onreapp = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "initializeFeeConfig",
+      "docs": [
+        "Initializes a fee configuration PDA for a given operation type.",
+        "",
+        "Delegates to `fee_config::initialize_fee_config`.",
+        "Creates a new FeeConfig account that controls where fees are routed for the",
+        "specified operation type. The PDA is derived from the \"fee_config\" seed and",
+        "the fee type discriminator. Initially, no destination is set — fees accumulate",
+        "in an ATA owned by the FeeConfig PDA itself.",
+        "",
+        "# Arguments",
+        "* `ctx` - Context for `InitializeFeeConfig`.",
+        "* `fee_type` - The operation type this config applies to (TakeOffer or FulfillRedemption).",
+        "",
+        "# Access Control",
+        "- Boss only"
+      ],
+      "discriminator": [
+        62,
+        162,
+        20,
+        133,
+        121,
+        65,
+        145,
+        27
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state — used to verify boss authority."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "feeConfig",
+          "docs": [
+            "The FeeConfig PDA to create, derived from `[FEE_CONFIG, fee_type]`."
+          ],
+          "writable": true
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss authority who pays for account creation."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "feeType",
+          "type": {
+            "defined": {
+              "name": "feeType"
+            }
+          }
+        }
+      ]
     },
     {
       "name": "initializePermissionlessAuthority",
@@ -4718,6 +4814,89 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "setFeeConfigDestination",
+      "docs": [
+        "Updates the fee destination for a given fee configuration.",
+        "",
+        "Delegates to `fee_config::set_fee_config_destination`.",
+        "When set to `Some(address)`, fees are routed to that address's ATA (must pre-exist).",
+        "When set to `None`, fees accumulate in the FeeConfig PDA's own ATA.",
+        "",
+        "# Arguments",
+        "* `ctx` - Context for `SetFeeConfigDestination`.",
+        "* `fee_type` - The operation type to configure (TakeOffer or FulfillRedemption).",
+        "* `destination` - The new fee destination address, or None to use the PDA's ATA.",
+        "",
+        "# Access Control",
+        "- Boss only"
+      ],
+      "discriminator": [
+        230,
+        132,
+        254,
+        5,
+        234,
+        197,
+        254,
+        7
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state — used to verify boss authority."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "feeConfig",
+          "docs": [
+            "The FeeConfig PDA to update."
+          ],
+          "writable": true
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss authority."
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "feeType",
+          "type": {
+            "defined": {
+              "name": "feeType"
+            }
+          }
+        },
+        {
+          "name": "destination",
+          "type": {
+            "option": "pubkey"
+          }
+        }
+      ]
+    },
+    {
       "name": "setKillSwitch",
       "docs": [
         "Enables or disables the kill switch.",
@@ -5390,6 +5569,19 @@ export type Onreapp = {
           }
         },
         {
+          "name": "feeConfig",
+          "docs": [
+            "Fee config PDA for TakeOffer fee routing"
+          ]
+        },
+        {
+          "name": "feeDestinationTokenAccount",
+          "docs": [
+            "Fee destination token account - validated at runtime based on fee_config.destination"
+          ],
+          "writable": true
+        },
+        {
           "name": "mintAuthority",
           "docs": [
             "Program-derived mint authority for direct token minting",
@@ -6051,6 +6243,19 @@ export type Onreapp = {
           }
         },
         {
+          "name": "feeConfig",
+          "docs": [
+            "Fee config PDA for TakeOffer fee routing"
+          ]
+        },
+        {
+          "name": "feeDestinationTokenAccount",
+          "docs": [
+            "Fee destination token account - validated at runtime based on fee_config.destination"
+          ],
+          "writable": true
+        },
+        {
           "name": "mintAuthority",
           "docs": [
             "Program-derived mint authority for direct token minting",
@@ -6536,9 +6741,236 @@ export type Onreapp = {
           "type": "u16"
         }
       ]
+    },
+    {
+      "name": "withdrawFees",
+      "docs": [
+        "Withdraws accumulated fees from a FeeConfig PDA's ATA to the boss.",
+        "",
+        "Delegates to `fee_config::withdraw_fees`.",
+        "Transfers the specified amount of tokens from the FeeConfig PDA's associated",
+        "token account to the boss's ATA. The FeeConfig PDA signs the transfer using",
+        "its derived seeds. Only useful when no destination is set (fees accumulate",
+        "in the PDA's ATA).",
+        "",
+        "# Arguments",
+        "* `ctx` - Context for `WithdrawFees`.",
+        "* `fee_type` - The operation type to withdraw fees from (TakeOffer or FulfillRedemption).",
+        "* `amount` - Amount of tokens to withdraw.",
+        "",
+        "# Access Control",
+        "- Boss only"
+      ],
+      "discriminator": [
+        198,
+        212,
+        171,
+        109,
+        144,
+        215,
+        174,
+        89
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state — used to verify boss authority."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "feeConfig",
+          "docs": [
+            "The FeeConfig PDA that owns the source token account."
+          ]
+        },
+        {
+          "name": "feeConfigTokenAccount",
+          "docs": [
+            "The FeeConfig PDA's associated token account holding accumulated fees."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "feeConfig"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "bossTokenAccount",
+          "docs": [
+            "The boss's associated token account to receive the withdrawn fees."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The token mint for the fees being withdrawn."
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "SPL Token program for the transfer."
+          ]
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss authority."
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "feeType",
+          "type": {
+            "defined": {
+              "name": "feeType"
+            }
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [
+    {
+      "name": "feeConfig",
+      "discriminator": [
+        143,
+        52,
+        146,
+        187,
+        219,
+        123,
+        76,
+        155
+      ]
+    },
     {
       "name": "offer",
       "discriminator": [
@@ -6708,6 +7140,45 @@ export type Onreapp = {
         57,
         141,
         17
+      ]
+    },
+    {
+      "name": "feeConfigDestinationUpdatedEvent",
+      "discriminator": [
+        77,
+        52,
+        163,
+        66,
+        89,
+        204,
+        26,
+        13
+      ]
+    },
+    {
+      "name": "feeConfigInitializedEvent",
+      "discriminator": [
+        126,
+        55,
+        184,
+        96,
+        120,
+        46,
+        19,
+        178
+      ]
+    },
+    {
+      "name": "feesWithdrawnEvent",
+      "discriminator": [
+        93,
+        177,
+        0,
+        69,
+        15,
+        156,
+        73,
+        194
       ]
     },
     {
@@ -7091,58 +7562,33 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "expired",
-      "msg": "The approval message has expired."
+      "name": "mathOverflow",
+      "msg": "Math overflow"
     },
     {
       "code": 6001,
-      "name": "wrongProgram",
-      "msg": "The approval message is for the wrong program."
+      "name": "maxSupplyExceeded",
+      "msg": "Minting would exceed maximum supply cap"
     },
     {
       "code": 6002,
-      "name": "wrongUser",
-      "msg": "The approval message is for the wrong user."
+      "name": "transferFeeNotSupported",
+      "msg": "Token-2022 with transfer fees not supported"
     },
     {
       "code": 6003,
-      "name": "missingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
+      "name": "zeroPriceNotAllowed",
+      "msg": "Price cannot be zero"
     },
     {
       "code": 6004,
-      "name": "wrongIxProgram",
-      "msg": "The instruction is for the wrong program."
+      "name": "decimalsExceedMax",
+      "msg": "Token decimals exceed maximum allowed (18)"
     },
     {
       "code": 6005,
-      "name": "badEd25519Accounts",
-      "msg": "Ed25519 instruction has accounts."
-    },
-    {
-      "code": 6006,
-      "name": "malformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
-    },
-    {
-      "code": 6007,
-      "name": "multipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
-    },
-    {
-      "code": 6008,
-      "name": "wrongAuthority",
-      "msg": "The authority public key does not match."
-    },
-    {
-      "code": 6009,
-      "name": "msgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
-    },
-    {
-      "code": 6010,
-      "name": "msgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "name": "resultOverflow",
+      "msg": "Result exceeds u64 maximum value"
     }
   ],
   "types": [
@@ -7390,6 +7836,191 @@ export type Onreapp = {
             "name": "proposedBoss",
             "docs": [
               "The proposed new boss's public key"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "feeConfig",
+      "docs": [
+        "Per-operation-type fee routing configuration.",
+        "",
+        "Each FeeConfig PDA controls where fees are sent for a specific operation type.",
+        "When `destination` is `None`, fees accumulate in the PDA's own ATA and can be",
+        "withdrawn by the boss via `withdraw_fees`. When `destination` is `Some(addr)`,",
+        "fees are sent directly to `addr`'s ATA during the operation.",
+        "",
+        "PDA seeds: `[b\"fee_config\", &[fee_type as u8]]`"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "feeType",
+            "docs": [
+              "The FeeType discriminator this config applies to"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "destination",
+            "docs": [
+              "Optional override destination; None means fees go to this PDA's own ATA"
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "docs": [
+              "Reserved space for future extensions"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "feeConfigDestinationUpdatedEvent",
+      "docs": [
+        "Event emitted when the fee destination is updated."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "feeType",
+            "docs": [
+              "The FeeType discriminator (0 = TakeOffer, 1 = FulfillRedemption)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "destination",
+            "docs": [
+              "The new destination address, or None if fees go to PDA's own ATA"
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "feeConfigPda",
+            "docs": [
+              "The FeeConfig PDA address"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "feeConfigInitializedEvent",
+      "docs": [
+        "Event emitted when a fee configuration PDA is initialized."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "feeType",
+            "docs": [
+              "The FeeType"
+            ],
+            "type": {
+              "defined": {
+                "name": "feeType"
+              }
+            }
+          },
+          {
+            "name": "feeTypeDiscriminator",
+            "docs": [
+              "The FeeType discriminator (0 = TakeOffer, 1 = FulfillRedemption)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "feeConfigPda",
+            "docs": [
+              "The PDA address of the new FeeConfig account"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "feeType",
+      "docs": [
+        "Discriminator for fee configuration types.",
+        "",
+        "Each variant maps to a separate FeeConfig PDA, allowing independent",
+        "fee routing per operation type."
+      ],
+      "repr": {
+        "kind": "rust"
+      },
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "takeOffer"
+          },
+          {
+            "name": "fulfillRedemption"
+          }
+        ]
+      }
+    },
+    {
+      "name": "feesWithdrawnEvent",
+      "docs": [
+        "Event emitted when fees are withdrawn from a FeeConfig PDA."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "feeType",
+            "docs": [
+              "The FeeType discriminator"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Amount of tokens withdrawn"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "mint",
+            "docs": [
+              "Token mint of the withdrawn fees"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "boss",
+            "docs": [
+              "The boss who received the fees"
             ],
             "type": "pubkey"
           }

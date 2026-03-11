@@ -1,4 +1,5 @@
 use crate::constants::seeds;
+use crate::instructions::fee_config::{FeeConfig, FeeType};
 use crate::instructions::redemption::{
     execute_redemption_operations, process_redemption_core, ExecuteRedemptionOpsParams,
     RedemptionOffer, RedemptionRequest,
@@ -178,6 +179,17 @@ pub struct FulfillRedemptionRequest<'info> {
     )]
     pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
+    /// Fee config PDA for FulfillRedemption fee routing
+    #[account(
+        seeds = [seeds::FEE_CONFIG, &[FeeType::FulfillRedemption as u8]],
+        bump = fee_config.bump
+    )]
+    pub fee_config: Box<Account<'info, FeeConfig>>,
+
+    /// Fee destination token account - validated at runtime based on fee_config.destination
+    #[account(mut)]
+    pub fee_destination_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
     /// Program-derived mint authority for direct token minting
     ///
     /// Used when the program has mint authority and can mint token_out directly.
@@ -261,6 +273,14 @@ pub fn fulfill_redemption_request(
         FulfillRedemptionRequestErrorCode::AmountExceedsRemaining
     );
 
+    // Validate fee destination token account
+    ctx.accounts.fee_config.validate_fee_destination(
+        &ctx.accounts.fee_config.key(),
+        &ctx.accounts.fee_destination_token_account.key(),
+        &ctx.accounts.token_in_mint.key(),
+        &ctx.accounts.token_in_program.key(),
+    )?;
+
     // Use shared core processing logic for redemption
     let offer = ctx.accounts.offer.load()?;
     let result = process_redemption_core(
@@ -286,6 +306,7 @@ pub fn fulfill_redemption_request(
         token_in_fee_amount,
         vault_token_in_account: &ctx.accounts.vault_token_in_account,
         boss_token_in_account: &ctx.accounts.boss_token_in_account,
+        fee_destination_account: &ctx.accounts.fee_destination_token_account,
         redemption_vault_authority: &ctx.accounts.redemption_vault_authority,
         redemption_vault_authority_bump: ctx.bumps.redemption_vault_authority,
         token_out_mint: &ctx.accounts.token_out_mint,

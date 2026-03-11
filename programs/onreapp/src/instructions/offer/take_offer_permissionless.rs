@@ -1,4 +1,5 @@
 use crate::constants::seeds;
+use crate::instructions::fee_config::{FeeConfig, FeeType};
 use crate::instructions::offer::offer_utils::{process_offer_core, verify_offer_approval};
 use crate::instructions::Offer;
 use crate::state::State;
@@ -197,6 +198,17 @@ pub struct TakeOfferPermissionless<'info> {
     )]
     pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
+    /// Fee config PDA for TakeOffer fee routing
+    #[account(
+        seeds = [seeds::FEE_CONFIG, &[FeeType::TakeOffer as u8]],
+        bump = fee_config.bump
+    )]
+    pub fee_config: Box<Account<'info, FeeConfig>>,
+
+    /// Fee destination token account - validated at runtime based on fee_config.destination
+    #[account(mut)]
+    pub fee_destination_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
     /// Program-derived mint authority for direct token minting
     ///
     /// Used when the program has mint authority and can mint token_out
@@ -300,6 +312,14 @@ pub fn take_offer_permissionless(
         &ctx.accounts.instructions_sysvar,
     )?;
 
+    // Validate fee destination token account
+    ctx.accounts.fee_config.validate_fee_destination(
+        &ctx.accounts.fee_config.key(),
+        &ctx.accounts.fee_destination_token_account.key(),
+        &ctx.accounts.token_in_mint.key(),
+        &ctx.accounts.token_in_program.key(),
+    )?;
+
     // Use shared core processing logic
     let result = process_offer_core(
         &offer,
@@ -331,7 +351,8 @@ pub fn take_offer_permissionless(
         token_in_source_signer_seeds: Some(&[&[seeds::PERMISSIONLESS_AUTHORITY, &[pa_bump]]]),
         vault_authority_signer_seeds: Some(&[&[seeds::OFFER_VAULT_AUTHORITY, &[va_bump]]]),
         token_in_source_account: &ctx.accounts.permissionless_token_in_account,
-        token_in_destination_account: &ctx.accounts.boss_token_in_account,
+        token_in_fee_destination_account: &ctx.accounts.fee_destination_token_account,
+        token_in_boss_account: &ctx.accounts.boss_token_in_account,
         token_in_burn_account: &ctx.accounts.vault_token_in_account,
         token_in_burn_authority: &ctx.accounts.vault_authority.to_account_info(),
         // Token out params

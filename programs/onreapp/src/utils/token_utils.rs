@@ -312,8 +312,10 @@ pub struct ExecTokenOpsParams<'a, 'info> {
     pub vault_authority_signer_seeds: Option<&'a [&'a [&'a [u8]]]>,
     /// Source account for token_in (user's account)
     pub token_in_source_account: &'a InterfaceAccount<'info, TokenAccount>,
-    /// Destination account for token_in (boss's account)
-    pub token_in_destination_account: &'a InterfaceAccount<'info, TokenAccount>,
+    /// Destination account for fee portion of token_in (fee config PDA's ATA or custom destination)
+    pub token_in_fee_destination_account: &'a InterfaceAccount<'info, TokenAccount>,
+    /// Boss's account for receiving net token_in amount (used in non-mint-authority path)
+    pub token_in_boss_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Vault account for burning token_in when program has mint authority
     pub token_in_burn_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Authority for burning tokens from the vault
@@ -405,36 +407,43 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
             params.token_in_net_amount,
         )?;
 
-        // Transfer fee amount directly to boss account
+        // Transfer fee amount to fee destination account
         if params.token_in_fee_amount > 0 {
-            msg!("Transferring fee amount to boss account");
+            msg!("Transferring fee amount to fee destination account");
             transfer_tokens(
                 params.token_in_mint,
                 params.token_in_program,
                 params.token_in_source_account,
-                params.token_in_destination_account,
+                params.token_in_fee_destination_account,
                 params.token_in_authority,
                 params.token_in_source_signer_seeds,
                 params.token_in_fee_amount,
             )?;
         }
     } else {
-        // When program lacks mint authority: transfer full amount to boss
-        // Use checked_add to prevent overflow
-        let total_amount = params
-            .token_in_net_amount
-            .checked_add(params.token_in_fee_amount)
-            .ok_or(TokenUtilsErrorCode::MathOverflow)?;
-
+        // When program lacks mint authority: transfer net to boss, fee to fee destination
         transfer_tokens(
             params.token_in_mint,
             params.token_in_program,
             params.token_in_source_account,
-            params.token_in_destination_account,
+            params.token_in_boss_account,
             params.token_in_authority,
             params.token_in_source_signer_seeds,
-            total_amount,
+            params.token_in_net_amount,
         )?;
+
+        if params.token_in_fee_amount > 0 {
+            msg!("Transferring fee amount to fee destination account");
+            transfer_tokens(
+                params.token_in_mint,
+                params.token_in_program,
+                params.token_in_source_account,
+                params.token_in_fee_destination_account,
+                params.token_in_authority,
+                params.token_in_source_signer_seeds,
+                params.token_in_fee_amount,
+            )?;
+        }
     }
 
     // Step 2: Program distributes token_out
