@@ -177,7 +177,7 @@ mod tests {
     }
 
     #[test]
-    fn nav_adjustment_preserves_negative_moves() {
+    fn nav_adjustment_negative_transition_matches_programv4() {
         let previous = OfferVector {
             start_time: 100,
             base_time: 100,
@@ -200,6 +200,32 @@ mod tests {
         let adjustment = calculate_nav_adjustment(&offer, current).unwrap();
 
         assert_eq!(adjustment, -500_000_000);
+    }
+
+    #[test]
+    fn nav_adjustment_positive_transition_matches_programv4() {
+        let previous = OfferVector {
+            start_time: 100,
+            base_time: 100,
+            base_price: 1_000_000_000,
+            apr: 0,
+            price_fix_duration: 60,
+        };
+        let current = OfferVector {
+            start_time: 200,
+            base_time: 200,
+            base_price: 1_500_000_000,
+            apr: 0,
+            price_fix_duration: 60,
+        };
+        let mut vectors = [OfferVector::default(); crate::constants::MAX_VECTORS];
+        vectors[0] = previous;
+        vectors[1] = current;
+        let offer = offer_with_vectors(vectors);
+
+        let adjustment = calculate_nav_adjustment(&offer, current).unwrap();
+
+        assert_eq!(adjustment, 500_000_000);
     }
 
     #[test]
@@ -229,7 +255,7 @@ mod tests {
     }
 
     #[test]
-    fn market_stats_update_stamps_values_and_metadata() {
+    fn market_stats_update_preserves_positive_nav_adjustment_sign() {
         let mut market_stats = MarketStats {
             apy: 0,
             circulating_supply: 0,
@@ -264,6 +290,44 @@ mod tests {
         assert_eq!(market_stats.nav, 30);
         assert_eq!(market_stats.nav_adjustment, 40);
         assert_eq!(market_stats.tvl, 50);
+        assert_eq!(market_stats.last_updated_slot, 42);
+        assert_eq!(market_stats.last_updated_at, 1_700_000_000);
+        assert_eq!(market_stats.bump, 7);
+    }
+
+    #[test]
+    fn market_stats_update_preserves_negative_nav_adjustment_sign() {
+        let mut market_stats = MarketStats {
+            apy: 0,
+            circulating_supply: 0,
+            nav: 0,
+            nav_adjustment: 0,
+            tvl: 0,
+            last_updated_at: 0,
+            last_updated_slot: 0,
+            bump: 7,
+            reserved: [0; 95],
+        };
+
+        let snapshot = MarketStatsSnapshot {
+            apy: 10,
+            circulating_supply: 20,
+            nav: 30,
+            nav_adjustment: -40,
+            tvl: 50,
+        };
+
+        let clock = Clock {
+            slot: 42,
+            epoch_start_timestamp: 0,
+            epoch: 0,
+            leader_schedule_epoch: 0,
+            unix_timestamp: 1_700_000_000,
+        };
+        apply_market_stats_snapshot(&mut market_stats, snapshot, &clock);
+
+        assert_eq!(market_stats.nav_adjustment, -40);
+        assert!(market_stats.nav_adjustment.is_negative());
         assert_eq!(market_stats.last_updated_slot, 42);
         assert_eq!(market_stats.last_updated_at, 1_700_000_000);
         assert_eq!(market_stats.bump, 7);
