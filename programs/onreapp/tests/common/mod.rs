@@ -1594,6 +1594,37 @@ pub fn build_get_circulating_supply_ix_with_token_program(
     }
 }
 
+pub fn build_refresh_market_stats_ix(
+    signer: &Pubkey,
+    token_in_mint: &Pubkey,
+    onyc_mint: &Pubkey,
+) -> Instruction {
+    let (offer_pda, _) = find_offer_pda(token_in_mint, onyc_mint);
+    let (state_pda, _) = find_state_pda();
+    let (vault_authority_pda, _) = find_offer_vault_authority_pda();
+    let (market_stats_pda, _) = find_market_stats_pda();
+    let onyc_vault_ata = get_associated_token_address(&vault_authority_pda, onyc_mint);
+
+    let data = ix_discriminator("refresh_market_stats").to_vec();
+
+    Instruction {
+        program_id: PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new_readonly(offer_pda, false),
+            AccountMeta::new_readonly(*token_in_mint, false),
+            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new_readonly(*onyc_mint, false),
+            AccountMeta::new_readonly(vault_authority_pda, false),
+            AccountMeta::new_readonly(onyc_vault_ata, false),
+            AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+            AccountMeta::new(market_stats_pda, false),
+            AccountMeta::new(*signer, true),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+        ],
+        data,
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Redemption instruction builders
 // ---------------------------------------------------------------------------
