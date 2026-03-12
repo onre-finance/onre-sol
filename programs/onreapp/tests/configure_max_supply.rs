@@ -184,14 +184,28 @@ fn test_take_offer_cannot_exceed_max_supply() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
+    let ix = build_make_offer_ix(
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &usdc_mint, &onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -207,11 +221,20 @@ fn test_take_offer_cannot_exceed_max_supply() {
 
     // Try to take 2 USDC at price 1.0 = 2 ONyc - exceeds 1 token cap
     let ix = build_take_offer_ix(
-        &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        2_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &user.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        2_000_000,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut svm, &[ix], &[&user]);
-    assert!(result.is_err(), "should not mint beyond max supply via take_offer");
+    assert!(
+        result.is_err(),
+        "should not mint beyond max supply via take_offer"
+    );
 }
 
 #[test]
@@ -230,14 +253,28 @@ fn test_take_offer_can_take_within_cap() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
+    let ix = build_make_offer_ix(
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &usdc_mint, &onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -252,8 +289,14 @@ fn test_take_offer_can_take_within_cap() {
 
     // 1 USDC at price 1.0 = 1 ONyc - within 10 token cap
     let ix = build_take_offer_ix(
-        &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &user.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        1_000_000,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
 
@@ -281,14 +324,28 @@ fn test_take_offer_multiple_users_until_cap() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
+    let ix = build_make_offer_ix(
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &usdc_mint, &onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -303,8 +360,14 @@ fn test_take_offer_multiple_users_until_cap() {
     create_token_account(&mut svm, &usdc_mint, &user1.pubkey(), 10_000_000_000);
 
     let ix = build_take_offer_ix(
-        &user1.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &user1.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        1_000_000,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user1]).unwrap();
     advance_slot(&mut svm);
@@ -315,8 +378,14 @@ fn test_take_offer_multiple_users_until_cap() {
     create_token_account(&mut svm, &usdc_mint, &user2.pubkey(), 10_000_000_000);
 
     let ix = build_take_offer_ix(
-        &user2.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &user2.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        1_000_000,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user2]).unwrap();
     advance_slot(&mut svm);
@@ -327,8 +396,14 @@ fn test_take_offer_multiple_users_until_cap() {
     create_token_account(&mut svm, &usdc_mint, &user3.pubkey(), 10_000_000_000);
 
     let ix = build_take_offer_ix(
-        &user3.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &user3.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        1_000_000,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut svm, &[ix], &[&user3]);
     assert!(result.is_err(), "third user should hit max supply cap");
@@ -355,14 +430,28 @@ fn test_take_offer_permissionless_cannot_exceed_max_supply() {
     advance_slot(&mut svm);
 
     // Permissionless offer, no approval
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, true, &TOKEN_PROGRAM_ID);
+    let ix = build_make_offer_ix(
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        true,
+        &TOKEN_PROGRAM_ID,
+    );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &usdc_mint, &onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -383,11 +472,20 @@ fn test_take_offer_permissionless_cannot_exceed_max_supply() {
 
     // 2 USDC at price 1.0 = 2 ONyc > 1 token cap
     let ix = build_take_offer_permissionless_ix(
-        &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        2_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &user.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        2_000_000,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut svm, &[ix], &[&user]);
-    assert!(result.is_err(), "should not mint beyond max supply via permissionless");
+    assert!(
+        result.is_err(),
+        "should not mint beyond max supply via permissionless"
+    );
 }
 
 #[test]
@@ -407,14 +505,28 @@ fn test_take_offer_permissionless_respects_cumulative_supply() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, true, &TOKEN_PROGRAM_ID);
+    let ix = build_make_offer_ix(
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        true,
+        &TOKEN_PROGRAM_ID,
+    );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &usdc_mint, &onyc_mint,
-        Some(current_time), current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -435,8 +547,14 @@ fn test_take_offer_permissionless_respects_cumulative_supply() {
     create_token_account(&mut svm, &onyc_mint, &user1.pubkey(), 0);
 
     let ix = build_take_offer_permissionless_ix(
-        &user1.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_000_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &user1.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        1_000_000,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user1]).unwrap();
     advance_slot(&mut svm);
@@ -448,8 +566,14 @@ fn test_take_offer_permissionless_respects_cumulative_supply() {
     create_token_account(&mut svm, &onyc_mint, &user2.pubkey(), 0);
 
     let ix = build_take_offer_permissionless_ix(
-        &user2.pubkey(), &boss, &usdc_mint, &onyc_mint,
-        1_500_000, None, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &user2.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        1_500_000,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut svm, &[ix], &[&user2]);
     assert!(result.is_err(), "cumulative supply should not exceed max");

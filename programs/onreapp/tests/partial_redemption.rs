@@ -42,7 +42,15 @@ fn setup_partial(
     advance_slot(&mut svm);
 
     // Create underlying offer: usdc -> onyc
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
+    let ix = build_make_offer_ix(
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -62,7 +70,14 @@ fn setup_partial(
     advance_clock_by(&mut svm, 1);
 
     // Create redemption offer: onyc -> usdc
-    let ix = build_make_redemption_offer_ix(&boss, &onyc_mint, &usdc_mint, fee_bps, &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID);
+    let ix = build_make_redemption_offer_ix(
+        &boss,
+        &onyc_mint,
+        &usdc_mint,
+        fee_bps,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+    );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -93,7 +108,8 @@ fn setup_partial(
         &onyc_mint,
         &usdc_mint,
         redemption_amount,
-        0, &TOKEN_PROGRAM_ID,
+        0,
+        &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
@@ -130,7 +146,8 @@ fn test_partial_fulfill_updates_fulfilled_amount() {
         &onyc_mint,
         &usdc_mint,
         0,
-        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
         2_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -156,7 +173,8 @@ fn test_partial_fulfill_account_stays_open() {
         &onyc_mint,
         &usdc_mint,
         0,
-        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
         3_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -183,7 +201,8 @@ fn test_partial_fulfill_account_closed_after_final_call() {
             &onyc_mint,
             &usdc_mint,
             0,
-            &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+            &TOKEN_PROGRAM_ID,
+            &TOKEN_PROGRAM_ID,
             amount,
         );
         send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -215,7 +234,8 @@ fn test_partial_fulfill_decrements_requested_redemptions_per_call() {
         &onyc_mint,
         &usdc_mint,
         0,
-        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
         2_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -240,7 +260,8 @@ fn test_partial_fulfill_increments_executed_redemptions_per_call() {
         &onyc_mint,
         &usdc_mint,
         0,
-        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
         2_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -265,7 +286,8 @@ fn test_full_3_call_redemption_correct_offer_stats() {
             &onyc_mint,
             &usdc_mint,
             0,
-            &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+            &TOKEN_PROGRAM_ID,
+            &TOKEN_PROGRAM_ID,
             amount,
         );
         send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -300,7 +322,8 @@ fn test_partial_fulfill_cumulative_usdc_received() {
         &onyc_mint,
         &usdc_mint,
         0,
-        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
         2_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -318,7 +341,8 @@ fn test_partial_fulfill_cumulative_usdc_received() {
         &onyc_mint,
         &usdc_mint,
         0,
-        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
         3_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -336,7 +360,8 @@ fn test_partial_fulfill_cumulative_usdc_received() {
         &onyc_mint,
         &usdc_mint,
         0,
-        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
         4_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -369,7 +394,8 @@ fn test_cancel_after_partial_returns_remaining() {
         &onyc_mint,
         &usdc_mint,
         0,
-        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
         3_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -412,7 +438,8 @@ fn test_cancel_after_partial_requested_redemptions_zero() {
         &onyc_mint,
         &usdc_mint,
         0,
-        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
         3_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -451,7 +478,8 @@ fn test_partial_fulfill_rejects_zero_amount() {
         &onyc_mint,
         &usdc_mint,
         0,
-        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
         0,
     );
     let result = send_tx(&mut svm, &[ix], &[&payer]);
@@ -470,7 +498,8 @@ fn test_partial_fulfill_rejects_amount_exceeding_remaining() {
         &onyc_mint,
         &usdc_mint,
         0,
-        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
         9_000_000_001, // one more than total
     );
     let result = send_tx(&mut svm, &[ix], &[&payer]);
@@ -493,7 +522,8 @@ fn test_partial_fulfill_rejects_overfill_after_first_partial() {
         &onyc_mint,
         &usdc_mint,
         0,
-        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
         5_000_000_000,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -507,7 +537,8 @@ fn test_partial_fulfill_rejects_overfill_after_first_partial() {
         &onyc_mint,
         &usdc_mint,
         0,
-        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
         5_000_000_000,
     );
     let result = send_tx(&mut svm, &[ix], &[&payer]);

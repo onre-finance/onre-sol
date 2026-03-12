@@ -15,6 +15,9 @@ pub mod seeds {
     /// Seed for mint authority PDA accounts
     pub const MINT_AUTHORITY: &[u8] = b"mint_authority";
 
+    /// Seed for the global market stats PDA
+    pub const MARKET_STATS: &[u8] = b"market_stats";
+
     /// Seed for the redemption offer account
     pub const REDEMPTION_OFFER: &[u8] = b"redemption_offer";
 

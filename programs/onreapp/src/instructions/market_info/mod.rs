@@ -3,9 +3,13 @@ pub mod get_circulating_supply;
 pub mod get_nav;
 pub mod get_nav_adjustment;
 pub mod get_tvl;
+pub mod market_stats;
+pub mod refresh_market_stats;
 
 pub use get_apy::*;
 pub use get_circulating_supply::*;
 pub use get_nav::*;
 pub use get_nav_adjustment::*;
 pub use get_tvl::*;
+pub use market_stats::*;
+pub use refresh_market_stats::*;

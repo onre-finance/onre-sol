@@ -1,7 +1,8 @@
 use crate::constants::seeds;
+use crate::instructions::market_info::{recompute_market_stats, update_market_stats_account};
 use crate::instructions::offer::offer_utils::{process_offer_core, verify_offer_approval};
 use crate::instructions::Offer;
-use crate::state::State;
+use crate::state::{MarketStats, State};
 use crate::utils::{execute_token_operations, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams};
 use crate::OfferCoreError;
 use anchor_lang::{prelude::*, solana_program::sysvar, Accounts};
@@ -191,6 +192,16 @@ pub struct TakeOffer<'info> {
     )]
     pub mint_authority: UncheckedAccount<'info>,
 
+    /// Canonical global market-stats PDA refreshed after successful purchases.
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = 8 + MarketStats::INIT_SPACE,
+        seeds = [seeds::MARKET_STATS],
+        bump
+    )]
+    pub market_stats: Box<Account<'info, MarketStats>>,
+
     /// Instructions sysvar for approval signature verification
     ///
     /// Required for cryptographic verification of approval messages
@@ -295,6 +306,18 @@ pub fn take_offer(
         mint_authority_bump: &[ctx.bumps.mint_authority],
         token_out_max_supply: ctx.accounts.state.max_supply,
     })?;
+
+    if ctx.accounts.token_out_mint.key() == ctx.accounts.state.onyc_mint {
+        let snapshot = recompute_market_stats(
+            &offer,
+            &ctx.accounts.token_out_mint,
+            &ctx.accounts.vault_token_out_account.to_account_info(),
+            &ctx.accounts.token_out_program,
+        )?;
+        let market_stats = &mut ctx.accounts.market_stats;
+        market_stats.bump = ctx.bumps.market_stats;
+        update_market_stats_account(market_stats, snapshot)?;
+    }
 
     msg!(
         "Offer taken - PDA: {}, token_in(+fee): {}(+{}), token_out: {}, user: {}, price: {}",

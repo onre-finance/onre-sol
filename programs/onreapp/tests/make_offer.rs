@@ -12,7 +12,15 @@ fn test_make_offer_succeeds() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 500, false, false, &TOKEN_PROGRAM_ID);
+    let ix = build_make_offer_ix(
+        &boss,
+        &token_in,
+        &token_out,
+        500,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let offer = read_offer(&svm, &token_in, &token_out);
@@ -55,7 +63,15 @@ fn test_make_offer_initializes_vault_token_in() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
+    let ix = build_make_offer_ix(
+        &boss,
+        &token_in,
+        &token_out,
+        0,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let (vault_authority, _) = find_offer_vault_authority_pda();
@@ -72,12 +88,28 @@ fn test_make_offer_rejects_duplicate() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
+    let ix = build_make_offer_ix(
+        &boss,
+        &token_in,
+        &token_out,
+        0,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     advance_slot(&mut svm);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
+    let ix = build_make_offer_ix(
+        &boss,
+        &token_in,
+        &token_out,
+        0,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(result.is_err(), "duplicate offer should fail");
 }
@@ -93,7 +125,15 @@ fn test_make_offer_rejects_non_boss() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&non_boss.pubkey(), &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
+    let ix = build_make_offer_ix(
+        &non_boss.pubkey(),
+        &token_in,
+        &token_out,
+        0,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
     let result = send_tx(&mut svm, &[ix], &[&non_boss]);
     assert!(result.is_err(), "non-boss should not be able to make offer");
 }
@@ -106,7 +146,15 @@ fn test_make_offer_with_permissionless_enabled() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, true, &TOKEN_PROGRAM_ID);
+    let ix = build_make_offer_ix(
+        &boss,
+        &token_in,
+        &token_out,
+        0,
+        false,
+        true,
+        &TOKEN_PROGRAM_ID,
+    );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let offer = read_offer(&svm, &token_in, &token_out);
@@ -121,7 +169,15 @@ fn test_make_offer_with_permissionless_disabled() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, false, false, &TOKEN_PROGRAM_ID);
+    let ix = build_make_offer_ix(
+        &boss,
+        &token_in,
+        &token_out,
+        0,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let offer = read_offer(&svm, &token_in, &token_out);
@@ -136,7 +192,15 @@ fn test_make_offer_with_approval_required() {
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 0, true, false, &TOKEN_PROGRAM_ID);
+    let ix = build_make_offer_ix(
+        &boss,
+        &token_in,
+        &token_out,
+        0,
+        true,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let offer = read_offer(&svm, &token_in, &token_out);
@@ -152,7 +216,15 @@ fn test_make_offer_rejects_fee_over_max() {
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
     // MAX_ALLOWED_FEE_BPS is 1000 (10%)
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 1001, false, false, &TOKEN_PROGRAM_ID);
+    let ix = build_make_offer_ix(
+        &boss,
+        &token_in,
+        &token_out,
+        1001,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(result.is_err(), "fee over max should fail");
 }
@@ -170,7 +242,13 @@ fn test_make_offer_token2022_as_token_in() {
     let token_out = create_mint(&mut svm, &payer, 9, &boss);
 
     let ix = build_make_offer_ix(
-        &boss, &token_in, &token_out, 500, false, false, &TOKEN_2022_PROGRAM_ID,
+        &boss,
+        &token_in,
+        &token_out,
+        500,
+        false,
+        false,
+        &TOKEN_2022_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -189,7 +267,15 @@ fn test_make_offer_token2022_as_token_out() {
     let token_out = create_mint_2022(&mut svm, &payer, 9, &boss);
 
     // token_out doesn't need a special program for make_offer (no vault created for token_out)
-    let ix = build_make_offer_ix(&boss, &token_in, &token_out, 500, false, false, &TOKEN_PROGRAM_ID);
+    let ix = build_make_offer_ix(
+        &boss,
+        &token_in,
+        &token_out,
+        500,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let offer = read_offer(&svm, &token_in, &token_out);
