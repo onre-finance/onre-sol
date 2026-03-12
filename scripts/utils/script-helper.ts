@@ -399,6 +399,7 @@ export class ScriptHelper {
                 vaultAuthority,
                 permissionlessAuthority,
                 mintAuthority,
+                marketStats: this.pdas.marketStatsPda,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
                 tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID
             })

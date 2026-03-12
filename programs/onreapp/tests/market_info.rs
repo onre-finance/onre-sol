@@ -51,6 +51,60 @@ fn setup_offer_with_vector(
     (svm, payer, token_in, token_out)
 }
 
+fn setup_onyc_offer_with_supply(
+    apr: u64,
+    base_price: u64,
+    price_fix_duration: u64,
+    minted_supply: u64,
+    vault_balance: u64,
+) -> (
+    litesvm::LiteSVM,
+    Keypair,
+    solana_sdk::pubkey::Pubkey,
+    solana_sdk::pubkey::Pubkey,
+) {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
+    let boss = payer.pubkey();
+    let token_in = create_mint(&mut svm, &payer, 9, &boss);
+
+    let ix = build_make_offer_ix(
+        &boss,
+        &token_in,
+        &onyc_mint,
+        0,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let current_time = get_clock_time(&svm);
+    let ix = build_add_offer_vector_ix(
+        &boss,
+        &token_in,
+        &onyc_mint,
+        None,
+        current_time,
+        base_price,
+        apr,
+        price_fix_duration,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_clock_by(&mut svm, 1);
+
+    let mut mint_data = svm.get_account(&onyc_mint).unwrap();
+    mint_data.data[36..44].copy_from_slice(&minted_supply.to_le_bytes());
+    svm.set_account(onyc_mint, mint_data).unwrap();
+
+    if vault_balance > 0 {
+        let (vault_authority, _) = find_offer_vault_authority_pda();
+        create_token_account(&mut svm, &onyc_mint, &vault_authority, vault_balance);
+    }
+
+    (svm, payer, token_in, onyc_mint)
+}
+
 // ---------------------------------------------------------------------------
 // get_nav
 // ---------------------------------------------------------------------------
@@ -241,6 +295,53 @@ fn test_get_apy_fails_no_active_vector() {
     let ix = build_get_apy_ix(&token_in, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(result.is_err(), "should fail with no active vector");
+}
+
+// ---------------------------------------------------------------------------
+// refresh_market_stats
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_refresh_market_stats_permissionless_creates_and_updates_pda() {
+    let (mut svm, _payer, token_in, onyc_mint) =
+        setup_onyc_offer_with_supply(36_500, 1_000_000_000, 86_400, 5_000_000_000, 2_000_000_000);
+    let caller = Keypair::new();
+    svm.airdrop(&caller.pubkey(), INITIAL_LAMPORTS).unwrap();
+
+    let ix = build_refresh_market_stats_ix(&caller.pubkey(), &token_in, &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&caller]).unwrap();
+
+    let market_stats = read_market_stats(&svm);
+    assert_eq!(market_stats.bump, find_market_stats_pda().1);
+    assert_eq!(market_stats.apy, 37_172);
+    assert_eq!(market_stats.nav, 1_000_100_000);
+    assert_eq!(market_stats.nav_adjustment, 1_000_100_000);
+    assert_eq!(market_stats.circulating_supply, 3_000_000_000);
+    assert_eq!(market_stats.tvl, 3_000_300_000);
+    assert!(market_stats.last_updated_at > 0);
+    assert!(market_stats.last_updated_slot > 0);
+}
+
+#[test]
+fn test_refresh_market_stats_succeeds_without_recent_purchases() {
+    let (mut svm, payer, token_in, onyc_mint) =
+        setup_onyc_offer_with_supply(0, 1_000_000_000, 86_400, 7_000_000_000, 1_500_000_000);
+
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &onyc_mint);
+    send_tx(&mut svm, &[ix.clone()], &[&payer]).unwrap();
+    let initial = read_market_stats(&svm);
+
+    advance_clock_by(&mut svm, 86_400);
+
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let refreshed = read_market_stats(&svm);
+
+    assert_eq!(initial.circulating_supply, 5_500_000_000);
+    assert_eq!(initial.nav, 1_000_000_000);
+    assert_eq!(refreshed.circulating_supply, initial.circulating_supply);
+    assert_eq!(refreshed.nav, initial.nav);
+    assert!(refreshed.last_updated_at > initial.last_updated_at);
+    assert!(refreshed.last_updated_slot > initial.last_updated_slot);
 }
 
 // ---------------------------------------------------------------------------

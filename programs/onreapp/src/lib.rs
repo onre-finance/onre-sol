@@ -482,6 +482,18 @@ pub mod onreapp {
         market_info::get_circulating_supply(ctx)
     }
 
+    /// Refreshes the canonical market-stats PDA using current on-chain state.
+    ///
+    /// Delegates to `market_info::refresh_market_stats`.
+    /// Any signer can call this instruction and pay for PDA creation if needed, which
+    /// allows backend automation to refresh market stats even on days without purchases.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `RefreshMarketStats`.
+    pub fn refresh_market_stats(ctx: Context<RefreshMarketStats>) -> Result<()> {
+        market_info::refresh_market_stats(ctx)
+    }
+
     /// Adds a trusted authority for approval verification.
     ///
     /// This instruction allows the boss to add an approver to one of the two available

@@ -95,6 +95,21 @@ pub fn apply_market_stats_snapshot(
     market_stats.last_updated_slot = clock.slot;
 }
 
+pub fn read_market_stats_account(market_stats_account: &AccountInfo) -> Result<MarketStats> {
+    let data = market_stats_account.try_borrow_data()?;
+    let mut slice: &[u8] = &data;
+    MarketStats::try_deserialize(&mut slice)
+}
+
+pub fn write_market_stats_account(
+    market_stats_account: &AccountInfo,
+    market_stats: &MarketStats,
+) -> Result<()> {
+    let mut data = market_stats_account.try_borrow_mut_data()?;
+    let mut slice: &mut [u8] = &mut data;
+    market_stats.try_serialize(&mut slice)
+}
+
 pub fn calculate_nav_adjustment(
     offer: &Offer,
     active_vector: crate::instructions::OfferVector,

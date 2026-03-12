@@ -229,7 +229,8 @@ export class OnreProgram {
                 boss: this.testHelper.payer.publicKey,
                 vaultAuthority: this.pdas.offerVaultAuthorityPda,
                 permissionlessAuthority: this.pdas.permissionlessAuthorityPda,
-                mintAuthority: this.pdas.mintAuthorityPda
+                mintAuthority: this.pdas.mintAuthorityPda,
+                marketStats: this.pdas.marketStatsPda
             });
 
         if (params.signer) {

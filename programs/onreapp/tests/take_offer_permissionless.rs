@@ -1,6 +1,7 @@
 mod common;
 
 use common::*;
+use solana_sdk::clock::Clock;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
@@ -158,6 +159,22 @@ fn test_take_offer_permissionless_with_valid_approval() {
         &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
     assert_eq!(boss_usdc, token_in_amount, "boss should have received USDC");
+
+    let market_stats = read_market_stats(&ctx.svm);
+    let (_, expected_bump) = find_market_stats_pda();
+    assert_eq!(market_stats.bump, expected_bump);
+    assert_eq!(market_stats.nav, 1_000_000_000);
+    assert_eq!(market_stats.nav_adjustment, 1_000_000_000);
+    assert_eq!(market_stats.circulating_supply, 0);
+    assert_eq!(market_stats.tvl, 0);
+    assert_eq!(
+        market_stats.last_updated_at,
+        get_clock_time(&ctx.svm) as i64
+    );
+    assert_eq!(
+        market_stats.last_updated_slot,
+        ctx.svm.get_sysvar::<Clock>().slot
+    );
 }
 
 #[test]
@@ -661,6 +678,7 @@ fn test_permissionless_fail_no_active_vector() {
     let mut ctx = setup_permissionless_no_approval();
     let boss = ctx.payer.pubkey();
     let current_time = get_clock_time(&ctx.svm);
+    let (market_stats_pda, _) = find_market_stats_pda();
 
     // Add vector in the future
     let ix = build_add_offer_vector_ix(
@@ -687,6 +705,10 @@ fn test_permissionless_fail_no_active_vector() {
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
     assert!(result.is_err(), "should fail with no active vector");
+    assert!(
+        ctx.svm.get_account(&market_stats_pda).is_none(),
+        "market stats PDA creation should roll back when permissionless take fails"
+    );
 }
 
 #[test]

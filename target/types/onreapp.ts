@@ -4597,6 +4597,186 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "refreshMarketStats",
+      "docs": [
+        "Refreshes the canonical market-stats PDA using current on-chain state.",
+        "",
+        "Delegates to `market_info::refresh_market_stats`.",
+        "Any signer can call this instruction and pay for PDA creation if needed, which",
+        "allows backend automation to refresh market stats even on days without purchases.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `RefreshMarketStats`."
+      ],
+      "discriminator": [
+        51,
+        221,
+        140,
+        112,
+        205,
+        53,
+        22,
+        233
+      ],
+      "accounts": [
+        {
+          "name": "offer",
+          "docs": [
+            "The offer that defines the canonical NAV/APY vectors."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "The input mint paired with ONyc for the tracked offer."
+          ]
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state holding the canonical ONyc mint."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "onycMint",
+          "docs": [
+            "The canonical ONyc mint for global market stats."
+          ],
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "vaultAuthority",
+          "docs": [
+            "Offer vault authority PDA that owns the ONyc vault ATA."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "onycVaultAccount",
+          "docs": [
+            "ONyc vault ATA used to exclude vault-held supply from circulation."
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "docs": [
+            "Token program that owns the ONyc mint and vault ATA."
+          ]
+        },
+        {
+          "name": "marketStats",
+          "docs": [
+            "Canonical global market-stats PDA updated by refreshes and purchases."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "signer",
+          "docs": [
+            "Any signer can pay for PDA creation and trigger a refresh."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program for account creation."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "removeAdmin",
       "docs": [
         "Removes an admin from the state.",
@@ -5422,6 +5602,34 @@ export type Onreapp = {
           }
         },
         {
+          "name": "marketStats",
+          "docs": [
+            "Canonical global market-stats PDA refreshed after successful purchases."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "instructionsSysvar",
           "docs": [
             "Instructions sysvar for approval signature verification",
@@ -6060,6 +6268,17 @@ export type Onreapp = {
           ]
         },
         {
+          "name": "marketStats",
+          "docs": [
+            "Canonical global market-stats PDA refreshed after successful purchases.",
+            "",
+            "Kept unchecked here to avoid the larger typed account stack footprint in the",
+            "permissionless flow; the handler manually enforces PDA, owner, writability,",
+            "and Anchor account layout before reading or writing it."
+          ],
+          "writable": true
+        },
+        {
           "name": "instructionsSysvar",
           "docs": [
             "Instructions sysvar for approval signature verification",
@@ -6539,6 +6758,19 @@ export type Onreapp = {
     }
   ],
   "accounts": [
+    {
+      "name": "marketStats",
+      "discriminator": [
+        240,
+        45,
+        182,
+        233,
+        92,
+        118,
+        209,
+        83
+      ]
+    },
     {
       "name": "offer",
       "discriminator": [
@@ -7075,6 +7307,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "refreshMarketStatsEvent",
+      "discriminator": [
+        139,
+        152,
+        21,
+        102,
+        141,
+        102,
+        210,
+        250
+      ]
+    },
+    {
       "name": "stateClosedEvent",
       "discriminator": [
         205,
@@ -7091,58 +7336,33 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "expired",
-      "msg": "The approval message has expired."
+      "name": "mathOverflow",
+      "msg": "Math overflow"
     },
     {
       "code": 6001,
-      "name": "wrongProgram",
-      "msg": "The approval message is for the wrong program."
+      "name": "maxSupplyExceeded",
+      "msg": "Minting would exceed maximum supply cap"
     },
     {
       "code": 6002,
-      "name": "wrongUser",
-      "msg": "The approval message is for the wrong user."
+      "name": "transferFeeNotSupported",
+      "msg": "Token-2022 with transfer fees not supported"
     },
     {
       "code": 6003,
-      "name": "missingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
+      "name": "zeroPriceNotAllowed",
+      "msg": "Price cannot be zero"
     },
     {
       "code": 6004,
-      "name": "wrongIxProgram",
-      "msg": "The instruction is for the wrong program."
+      "name": "decimalsExceedMax",
+      "msg": "Token decimals exceed maximum allowed (18)"
     },
     {
       "code": 6005,
-      "name": "badEd25519Accounts",
-      "msg": "Ed25519 instruction has accounts."
-    },
-    {
-      "code": 6006,
-      "name": "malformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
-    },
-    {
-      "code": 6007,
-      "name": "multipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
-    },
-    {
-      "code": 6008,
-      "name": "wrongAuthority",
-      "msg": "The authority public key does not match."
-    },
-    {
-      "code": 6009,
-      "name": "msgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
-    },
-    {
-      "code": 6010,
-      "name": "msgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "name": "resultOverflow",
+      "msg": "Result exceeds u64 maximum value"
     }
   ],
   "types": [
@@ -7641,6 +7861,88 @@ export type Onreapp = {
               "The account that toggled the kill switch"
             ],
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "marketStats",
+      "docs": [
+        "Global market statistics PDA holding the canonical protocol-wide metrics.",
+        "",
+        "This account is intended to be updated by purchase and refresh instructions so",
+        "off-chain clients can fetch the latest derived market values from one PDA."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "apy",
+            "docs": [
+              "Latest APY scaled with the program's existing market-info precision."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "circulatingSupply",
+            "docs": [
+              "Total circulating ONyc supply at the most recent refresh."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "nav",
+            "docs": [
+              "Latest NAV value using the market-info precision."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "navAdjustment",
+            "docs": [
+              "Latest NAV adjustment value using the market-info precision."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tvl",
+            "docs": [
+              "Latest total value locked across tracked vaults."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "lastUpdatedAt",
+            "docs": [
+              "Unix timestamp of the most recent successful recomputation."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "lastUpdatedSlot",
+            "docs": [
+              "Slot of the most recent successful recomputation."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed for account derivation."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "docs": [
+              "Reserved bytes for forward-compatible layout expansion."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                95
+              ]
+            }
           }
         ]
       }
@@ -8872,6 +9174,45 @@ export type Onreapp = {
               "The boss account that performed the withdrawal"
             ],
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "refreshMarketStatsEvent",
+      "docs": [
+        "Event emitted when the canonical market-stats PDA is refreshed."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "marketStatsPda",
+            "docs": [
+              "Canonical market-stats PDA."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "offerPda",
+            "docs": [
+              "Offer PDA used for recomputation."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "docs": [
+              "Unix timestamp of the successful refresh."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Slot of the successful refresh."
+            ],
+            "type": "u64"
           }
         ]
       }
