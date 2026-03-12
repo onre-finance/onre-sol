@@ -1,6 +1,7 @@
 mod common;
 
 use common::*;
+use solana_sdk::clock::Clock;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
@@ -72,6 +73,7 @@ fn test_price_first_interval() {
         Some(current_time), current_time, 1_000_000_000, 36_500, 86400,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+    advance_clock_by(&mut ctx.svm, 1);
 
     // Price in first interval: 1.0 * (1 + 0.0365 * 86400/31536000) = 1.0001
     let ix = build_take_offer_ix(
@@ -86,6 +88,41 @@ fn test_price_first_interval() {
         &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
     );
     assert_eq!(user_onyc, 1_000_000_000); // 1 ONyc
+
+    let market_stats = read_market_stats(&ctx.svm);
+    let (_, expected_bump) = find_market_stats_pda();
+    assert_eq!(market_stats.bump, expected_bump);
+    assert_eq!(market_stats.nav, 1_000_100_000);
+    assert_eq!(market_stats.nav_adjustment, 1_000_100_000);
+    assert_eq!(market_stats.circulating_supply, 0);
+    assert_eq!(market_stats.tvl, 0);
+    assert_eq!(market_stats.last_updated_at, get_clock_time(&ctx.svm) as i64);
+    assert_eq!(market_stats.last_updated_slot, ctx.svm.get_sysvar::<Clock>().slot);
+}
+
+#[test]
+fn test_take_offer_failure_does_not_create_market_stats() {
+    let mut ctx = setup_take_offer();
+    let boss = ctx.payer.pubkey();
+    let (market_stats_pda, _) = find_market_stats_pda();
+
+    let ix = build_take_offer_ix(
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_000,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+    );
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
+
+    assert!(result.is_err(), "take_offer should fail without an active vector");
+    assert!(
+        ctx.svm.get_account(&market_stats_pda).is_none(),
+        "market stats PDA creation should roll back when take_offer fails"
+    );
 }
 
 #[test]

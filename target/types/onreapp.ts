@@ -5422,6 +5422,34 @@ export type Onreapp = {
           }
         },
         {
+          "name": "marketStats",
+          "docs": [
+            "Canonical global market-stats PDA refreshed after successful purchases."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "instructionsSysvar",
           "docs": [
             "Instructions sysvar for approval signature verification",
@@ -6540,6 +6568,19 @@ export type Onreapp = {
   ],
   "accounts": [
     {
+      "name": "marketStats",
+      "discriminator": [
+        240,
+        45,
+        182,
+        233,
+        92,
+        118,
+        209,
+        83
+      ]
+    },
+    {
       "name": "offer",
       "discriminator": [
         215,
@@ -6563,19 +6604,6 @@ export type Onreapp = {
         102,
         149,
         52
-      ]
-    },
-    {
-      "name": "marketStats",
-      "discriminator": [
-        240,
-        45,
-        182,
-        233,
-        92,
-        118,
-        209,
-        83
       ]
     },
     {
@@ -7659,6 +7687,88 @@ export type Onreapp = {
       }
     },
     {
+      "name": "marketStats",
+      "docs": [
+        "Global market statistics PDA holding the canonical protocol-wide metrics.",
+        "",
+        "This account is intended to be updated by purchase and refresh instructions so",
+        "off-chain clients can fetch the latest derived market values from one PDA."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "apy",
+            "docs": [
+              "Latest APY scaled with the program's existing market-info precision."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "circulatingSupply",
+            "docs": [
+              "Total circulating ONyc supply at the most recent refresh."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "nav",
+            "docs": [
+              "Latest NAV value using the market-info precision."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "navAdjustment",
+            "docs": [
+              "Latest NAV adjustment value using the market-info precision."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tvl",
+            "docs": [
+              "Latest total value locked across tracked vaults."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "lastUpdatedAt",
+            "docs": [
+              "Unix timestamp of the most recent successful recomputation."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "lastUpdatedSlot",
+            "docs": [
+              "Slot of the most recent successful recomputation."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed for account derivation."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "docs": [
+              "Reserved bytes for forward-compatible layout expansion."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                95
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "maxSupplyConfiguredEvent",
       "docs": [
         "Event emitted when the ONyc maximum supply is successfully configured",
@@ -8358,88 +8468,6 @@ export type Onreapp = {
               "Optional name identifier for the authority (max 50 characters)"
             ],
             "type": "string"
-          }
-        ]
-      }
-    },
-    {
-      "name": "marketStats",
-      "docs": [
-        "Global market statistics PDA holding the canonical protocol-wide metrics.",
-        "",
-        "This account is intended to be updated by purchase and refresh instructions so",
-        "off-chain clients can fetch the latest derived market values from one PDA."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "apy",
-            "docs": [
-              "Latest APY scaled with the program's existing market-info precision."
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "circulatingSupply",
-            "docs": [
-              "Total circulating ONyc supply at the most recent refresh."
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "nav",
-            "docs": [
-              "Latest NAV value using the market-info precision."
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "navAdjustment",
-            "docs": [
-              "Latest NAV adjustment value using the market-info precision."
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "tvl",
-            "docs": [
-              "Latest total value locked across tracked vaults."
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "lastUpdatedAt",
-            "docs": [
-              "Unix timestamp of the most recent successful recomputation."
-            ],
-            "type": "i64"
-          },
-          {
-            "name": "lastUpdatedSlot",
-            "docs": [
-              "Slot of the most recent successful recomputation."
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "bump",
-            "docs": [
-              "PDA bump seed for account derivation."
-            ],
-            "type": "u8"
-          },
-          {
-            "name": "reserved",
-            "docs": [
-              "Reserved bytes for forward-compatible layout expansion."
-            ],
-            "type": {
-              "array": [
-                "u8",
-                95
-              ]
-            }
           }
         ]
       }

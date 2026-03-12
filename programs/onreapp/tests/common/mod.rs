@@ -3,6 +3,7 @@
 use anchor_lang::AccountDeserialize;
 use litesvm::LiteSVM;
 use onreapp::instructions::RedemptionRequest;
+use onreapp::state::MarketStats;
 use solana_sdk::{
     account::Account,
     clock::Clock,
@@ -150,6 +151,15 @@ pub fn send_tx(
 pub fn get_token_balance(svm: &LiteSVM, token_account: &Pubkey) -> u64 {
     let account = svm.get_account(token_account).expect("account not found");
     u64::from_le_bytes(account.data[64..72].try_into().unwrap())
+}
+
+pub fn read_market_stats(svm: &LiteSVM) -> MarketStats {
+    let (market_stats_pda, _) = find_market_stats_pda();
+    let account = svm
+        .get_account(&market_stats_pda)
+        .expect("market stats account not found");
+    let mut data: &[u8] = &account.data;
+    MarketStats::try_deserialize(&mut data).expect("Failed to deserialize MarketStats")
 }
 
 // ---------------------------------------------------------------------------
@@ -976,6 +986,7 @@ pub fn build_take_offer_ix(
     let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
     let (vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
+    let (market_stats_pda, _) = find_market_stats_pda();
 
     let vault_token_in_ata = derive_ata(&vault_authority_pda, token_in_mint, token_in_program);
     let vault_token_out_ata = derive_ata(&vault_authority_pda, token_out_mint, token_out_program);
@@ -1012,6 +1023,7 @@ pub fn build_take_offer_ix(
             AccountMeta::new(user_token_out_ata, false),
             AccountMeta::new(boss_token_in_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),
+            AccountMeta::new(market_stats_pda, false),
             AccountMeta::new_readonly(SYSVAR_INSTRUCTIONS_ID, false),
             AccountMeta::new(*user, true),
             AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
@@ -1897,4 +1909,3 @@ pub fn read_redemption_request(
         bump: request.bump,
     }
 }
-
