@@ -43,3 +43,30 @@ pub struct PermissionlessAuthority {
     #[max_len(50)]
     pub name: String,
 }
+
+/// Global market statistics PDA holding the canonical protocol-wide metrics.
+///
+/// This account is intended to be updated by purchase and refresh instructions so
+/// off-chain clients can fetch the latest derived market values from one PDA.
+#[account]
+#[derive(InitSpace)]
+pub struct MarketStats {
+    /// Latest APY scaled with the program's existing market-info precision.
+    pub apy: u64,
+    /// Total circulating ONyc supply at the most recent refresh.
+    pub circulating_supply: u64,
+    /// Latest NAV value using the market-info precision.
+    pub nav: u64,
+    /// Latest NAV adjustment value using the market-info precision.
+    pub nav_adjustment: u64,
+    /// Latest total value locked across tracked vaults.
+    pub tvl: u64,
+    /// Unix timestamp of the most recent successful recomputation.
+    pub last_updated_at: i64,
+    /// Slot of the most recent successful recomputation.
+    pub last_updated_slot: u64,
+    /// PDA bump seed for account derivation.
+    pub bump: u8,
+    /// Reserved bytes for forward-compatible layout expansion.
+    pub reserved: [u8; 95],
+}
