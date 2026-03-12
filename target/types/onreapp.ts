@@ -6088,6 +6088,17 @@ export type Onreapp = {
           ]
         },
         {
+          "name": "marketStats",
+          "docs": [
+            "Canonical global market-stats PDA refreshed after successful purchases.",
+            "",
+            "Kept unchecked here to avoid the larger typed account stack footprint in the",
+            "permissionless flow; the handler manually enforces PDA, owner, writability,",
+            "and Anchor account layout before reading or writing it."
+          ],
+          "writable": true
+        },
+        {
           "name": "instructionsSysvar",
           "docs": [
             "Instructions sysvar for approval signature verification",

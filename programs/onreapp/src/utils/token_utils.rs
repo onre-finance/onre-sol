@@ -173,10 +173,12 @@ pub struct CalculateFeeResult {
 ///
 /// # Example
 /// ```
+/// use onreapp::utils::calculate_fees;
+///
 /// // 5% fee on 1000 tokens = 50 fee, 950 remaining
-/// let result = calculate_fees(1000, 500)?;
-/// assert_eq!(result.fee_amount, 50);
-/// assert_eq!(result.remaining_token_in_amount, 950);
+/// let result = calculate_fees(1000, 500).unwrap();
+/// assert_eq!(result.token_in_fee_amount, 50);
+/// assert_eq!(result.token_in_net_amount, 950);
 /// ```
 pub fn calculate_fees(token_in_amount: u64, fee_basis_points: u16) -> Result<CalculateFeeResult> {
     // Calculate fee amount in token_in tokens using ceiling division

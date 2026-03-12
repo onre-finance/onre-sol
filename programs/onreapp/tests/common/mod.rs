@@ -775,6 +775,7 @@ pub fn build_take_offer_permissionless_ix(
     let (vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (permissionless_authority_pda, _) = find_permissionless_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
+    let (market_stats_pda, _) = find_market_stats_pda();
 
     let vault_token_in_ata = derive_ata(&vault_authority_pda, token_in_mint, token_in_program);
     let vault_token_out_ata = derive_ata(&vault_authority_pda, token_out_mint, token_out_program);
@@ -825,6 +826,7 @@ pub fn build_take_offer_permissionless_ix(
             AccountMeta::new(user_token_out_ata, false),           // user_token_out_account
             AccountMeta::new(boss_token_in_ata, false),            // boss_token_in_account
             AccountMeta::new_readonly(mint_authority_pda, false),  // mint_authority
+            AccountMeta::new(market_stats_pda, false),             // market_stats
             AccountMeta::new_readonly(SYSVAR_INSTRUCTIONS_ID, false), // instructions_sysvar
             AccountMeta::new(*user, true),                         // user (signer)
             AccountMeta::new_readonly(ATA_PROGRAM_ID, false),      // associated_token_program
@@ -1377,7 +1379,11 @@ pub fn build_redemption_vault_withdraw_ix(
 // ---------------------------------------------------------------------------
 // Mint authority instruction builders
 // ---------------------------------------------------------------------------
-pub fn build_transfer_mint_authority_to_program_ix(boss: &Pubkey, mint: &Pubkey, token_program: &Pubkey) -> Instruction {
+pub fn build_transfer_mint_authority_to_program_ix(
+    boss: &Pubkey,
+    mint: &Pubkey,
+    token_program: &Pubkey,
+) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
 
@@ -1396,7 +1402,11 @@ pub fn build_transfer_mint_authority_to_program_ix(boss: &Pubkey, mint: &Pubkey,
     }
 }
 
-pub fn build_transfer_mint_authority_to_boss_ix(boss: &Pubkey, mint: &Pubkey, token_program: &Pubkey) -> Instruction {
+pub fn build_transfer_mint_authority_to_boss_ix(
+    boss: &Pubkey,
+    mint: &Pubkey,
+    token_program: &Pubkey,
+) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
 
@@ -1415,7 +1425,12 @@ pub fn build_transfer_mint_authority_to_boss_ix(boss: &Pubkey, mint: &Pubkey, to
     }
 }
 
-pub fn build_mint_to_ix(boss: &Pubkey, onyc_mint: &Pubkey, amount: u64, token_program: &Pubkey) -> Instruction {
+pub fn build_mint_to_ix(
+    boss: &Pubkey,
+    onyc_mint: &Pubkey,
+    amount: u64,
+    token_program: &Pubkey,
+) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let boss_onyc_ata = derive_ata(boss, onyc_mint, token_program);
