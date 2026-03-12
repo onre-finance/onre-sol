@@ -137,7 +137,7 @@ pub fn get_nav_adjustment(ctx: Context<GetNavAdjustment>) -> Result<i64> {
             (Some(previous_price), shared_adjustment)
         } else {
             let shared_adjustment = calculate_market_stats_nav_adjustment(&offer, active_vector)?;
-            (None, shared_adjustment as i64)
+            (None, shared_adjustment)
         };
 
     msg!(
