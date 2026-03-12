@@ -245,10 +245,7 @@ pub fn fulfill_redemption_request(
     amount: u64,
 ) -> Result<()> {
     // Validate amount
-    require!(
-        amount > 0,
-        FulfillRedemptionRequestErrorCode::InvalidAmount
-    );
+    require!(amount > 0, FulfillRedemptionRequestErrorCode::InvalidAmount);
 
     let redemption_request = &ctx.accounts.redemption_request;
     let remaining = redemption_request
@@ -306,8 +303,7 @@ pub fn fulfill_redemption_request(
         .ok_or(FulfillRedemptionRequestErrorCode::ArithmeticOverflow)?;
     ctx.accounts.redemption_request.fulfilled_amount = new_fulfilled_amount;
 
-    let is_fully_fulfilled =
-        new_fulfilled_amount == ctx.accounts.redemption_request.amount;
+    let is_fully_fulfilled = new_fulfilled_amount == ctx.accounts.redemption_request.amount;
 
     // Update offer-level counters
     let redemption_offer = &mut ctx.accounts.redemption_offer;

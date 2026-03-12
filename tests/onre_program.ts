@@ -28,12 +28,14 @@ export class OnreProgram {
         redemptionVaultAuthorityPda: PublicKey;
         permissionlessAuthorityPda: PublicKey;
         mintAuthorityPda: PublicKey;
+        marketStatsPda: PublicKey;
     } = {
         statePda: PublicKey.findProgramAddressSync([Buffer.from("state")], ONREAPP_PROGRAM_ID)[0],
         offerVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("offer_vault_authority")], ONREAPP_PROGRAM_ID)[0],
         redemptionVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("redemption_offer_vault_authority")], ONREAPP_PROGRAM_ID)[0],
         permissionlessAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], ONREAPP_PROGRAM_ID)[0],
-        mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], ONREAPP_PROGRAM_ID)[0]
+        mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], ONREAPP_PROGRAM_ID)[0],
+        marketStatsPda: PublicKey.findProgramAddressSync([Buffer.from("market_stats")], ONREAPP_PROGRAM_ID)[0]
     };
 
     constructor(testHelper: TestHelper) {
@@ -728,6 +730,14 @@ export class OnreProgram {
 
     async getPermissionlessAuthority() {
         return await this.program.account.permissionlessAuthority.fetch(this.pdas.permissionlessAuthorityPda);
+    }
+
+    getMarketStatsPda(): PublicKey {
+        return this.pdas.marketStatsPda;
+    }
+
+    async getMarketStats() {
+        return await this.program.account.marketStats.fetch(this.pdas.marketStatsPda);
     }
 
     async addApprover(params: { trusted: PublicKey, signer?: Keypair }) {
