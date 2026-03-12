@@ -1,5 +1,7 @@
 use crate::constants::seeds;
-use crate::instructions::market_info::market_stats::read_optional_token_account_amount;
+use crate::instructions::market_info::market_stats::{
+    calculate_circulating_supply, read_optional_token_account_amount,
+};
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 
 use crate::state::State;
@@ -101,7 +103,7 @@ pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64>
     let total_supply = ctx.accounts.onyc_mint.supply;
 
     // Calculate circulating supply = total supply - vault amount
-    let circulating_supply = total_supply - vault_token_out_amount;
+    let circulating_supply = calculate_circulating_supply(total_supply, vault_token_out_amount);
 
     msg!(
         "Circulating Supply Info - Circulating Supply: {}, Total Supply: {}, Vault Amount: {}, Timestamp: {}",

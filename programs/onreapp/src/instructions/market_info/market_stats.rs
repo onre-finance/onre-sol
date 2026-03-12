@@ -59,7 +59,7 @@ pub fn recompute_market_stats(
     let nav_adjustment = calculate_nav_adjustment(offer, active_vector)?;
 
     let vault_amount = read_optional_token_account_amount(onyc_vault_account, token_program)?;
-    let circulating_supply = onyc_mint.supply.saturating_sub(vault_amount);
+    let circulating_supply = calculate_circulating_supply(onyc_mint.supply, vault_amount);
     let tvl = calculate_tvl(circulating_supply, nav)?;
 
     Ok(MarketStatsSnapshot {
@@ -136,6 +136,10 @@ pub fn calculate_tvl(circulating_supply: u64, nav: u64) -> Result<u64> {
         .and_then(|result| result.checked_div(10_u128.pow(PRICE_DECIMALS as u32)))
         .and_then(|result| u64::try_from(result).ok())
         .ok_or_else(|| error!(MarketStatsErrorCode::Overflow))
+}
+
+pub fn calculate_circulating_supply(total_supply: u64, vault_amount: u64) -> u64 {
+    total_supply - vault_amount
 }
 
 pub fn read_optional_token_account_amount(
@@ -275,6 +279,18 @@ mod tests {
     fn tvl_overflow_is_rejected() {
         let err = calculate_tvl(u64::MAX, u64::MAX).unwrap_err();
         assert_eq!(err, error!(MarketStatsErrorCode::Overflow));
+    }
+
+    #[test]
+    fn circulating_supply_matches_programv4_subtraction() {
+        let circulating_supply = calculate_circulating_supply(1_000_000_000, 250_000_000);
+        assert_eq!(circulating_supply, 750_000_000);
+    }
+
+    #[test]
+    #[should_panic]
+    fn circulating_supply_does_not_saturate_underflow() {
+        let _ = calculate_circulating_supply(1, 2);
     }
 
     #[test]

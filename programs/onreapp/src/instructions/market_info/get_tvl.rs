@@ -1,6 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::market_info::market_stats::{
-    calculate_tvl as calculate_shared_tvl, read_optional_token_account_amount,
+    calculate_circulating_supply, calculate_tvl as calculate_shared_tvl,
+    read_optional_token_account_amount,
 };
 use crate::instructions::offer::offer_utils::{
     calculate_current_step_price, find_active_vector_at,
@@ -146,7 +147,8 @@ pub fn get_tvl(ctx: Context<GetTVL>) -> Result<u64> {
     )?;
 
     // Get token supply
-    let token_supply = ctx.accounts.token_out_mint.supply - vault_token_out_amount;
+    let token_supply =
+        calculate_circulating_supply(ctx.accounts.token_out_mint.supply, vault_token_out_amount);
 
     // Calculate TVL = supply * price
     // Both supply and price should be compatible for multiplication
