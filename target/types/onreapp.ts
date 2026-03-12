@@ -6185,62 +6185,11 @@ export type Onreapp = {
             "Boss's input token account for receiving payments",
             "",
             "Final destination account where the boss receives token_in payments",
-            "from users taking offers via intermediary routing."
+            "from users taking offers via intermediary routing.",
+            "Validated at runtime (owner + mint) to avoid an extra find_program_address",
+            "in try_accounts which would overflow the stack."
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "boss"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "feeConfig",

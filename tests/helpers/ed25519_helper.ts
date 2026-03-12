@@ -1,5 +1,6 @@
 import { ComputeBudgetProgram, Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
-import { OnreProgram } from "../onre_program";
+import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { FeeType, OnreProgram } from "../onre_program";
 import { BN } from "@coral-xyz/anchor";
 import { sign } from "tweetnacl";
 
@@ -134,6 +135,15 @@ export class Ed25519Helper {
             params.trustedAuthority
         );
 
+        // Derive fee config accounts
+        const feeConfigPda = params.program.getFeeConfigPda(FeeType.TakeOffer);
+        const feeDestinationTokenAccount = getAssociatedTokenAddressSync(
+            params.tokenInMint,
+            feeConfigPda,
+            true,
+            TOKEN_PROGRAM_ID
+        );
+
         // Create transaction with Ed25519 verification and take offer
         const tx = params.program.program.methods
             .takeOffer(new BN(params.tokenInAmount), approvalMessage)
@@ -142,7 +152,9 @@ export class Ed25519Helper {
                 tokenOutMint: params.tokenOutMint,
                 user: params.user,
                 tokenInProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-                tokenOutProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+                tokenOutProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+                feeConfig: feeConfigPda,
+                feeDestinationTokenAccount
             })
             .preInstructions([
                 ComputeBudgetProgram.setComputeUnitLimit({ units: 300_000 }),

@@ -1,7 +1,7 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { TestHelper } from "../test_helper.ts";
-import { OnreProgram } from "../onre_program.ts";
+import { FeeType, OnreProgram } from "../onre_program.ts";
 
 describe("Configure Max Supply and Enforcement", () => {
     describe("Configure Max Supply Instruction", () => {
@@ -173,6 +173,10 @@ describe("Configure Max Supply and Enforcement", () => {
             // Transfer mint authority to program
             await program.transferMintAuthorityToProgram({ mint: onycMint });
 
+            // Initialize fee config for TakeOffer and create its ATA
+            await program.initializeFeeConfig({ feeType: FeeType.TakeOffer });
+            testHelper.createTokenAccount(usdcMint, program.getFeeConfigPda(FeeType.TakeOffer), BigInt(0), true);
+
             // Create and configure offer
             await program.makeOffer({
                 tokenInMint: usdcMint,
@@ -307,6 +311,10 @@ describe("Configure Max Supply and Enforcement", () => {
 
             // Transfer mint authority
             await program.transferMintAuthorityToProgram({ mint: onycMint });
+
+            // Initialize fee config for TakeOffer and create its ATA
+            await program.initializeFeeConfig({ feeType: FeeType.TakeOffer });
+            testHelper.createTokenAccount(usdcMint, program.getFeeConfigPda(FeeType.TakeOffer), BigInt(0), true);
 
             // Create offer with permissionless enabled
             await program.makeOffer({

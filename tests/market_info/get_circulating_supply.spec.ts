@@ -1,6 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import { TestHelper } from "../test_helper";
-import { OnreProgram } from "../onre_program.ts";
+import { FeeType, OnreProgram } from "../onre_program.ts";
 import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 
 describe("Get Circulating Supply", () => {
@@ -89,6 +89,10 @@ describe("Get Circulating Supply", () => {
 
                 const mintInfo = await testHelper.getMintInfo(tokenOutMint);
                 expect(circulatingSupply.toString()).toBe((mintInfo.supply - vaultTokenOutAccountBalance).toString());
+
+                // Initialize fee config for TakeOffer and create its ATA
+                await program.initializeFeeConfig({ feeType: FeeType.TakeOffer });
+                testHelper.createTokenAccount(tokenInMint, program.getFeeConfigPda(FeeType.TakeOffer), BigInt(0), true);
 
                 // Initialize token accounts
                 testHelper.createTokenAccount(tokenInMint, testHelper.getBoss(), BigInt(0));
