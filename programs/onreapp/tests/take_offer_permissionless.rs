@@ -16,12 +16,11 @@ use solana_sdk::signer::Signer;
 ///   - Boss token_in account created
 ///   - Approver set
 fn setup_permissionless_offer() -> PermissionlessOfferCtx {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
+    let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
     // Create USDC (token_in) and ONyc (token_out)
     let usdc_mint = create_mint(&mut svm, &payer, 6, &boss);
-    let onyc_mint = create_mint(&mut svm, &payer, 9, &boss);
 
     // Make offer: 0% fee, needs_approval=true, allow_permissionless=true
     let ix = build_make_offer_ix(
@@ -165,8 +164,8 @@ fn test_take_offer_permissionless_with_valid_approval() {
     assert_eq!(market_stats.bump, expected_bump);
     assert_eq!(market_stats.nav, 1_000_000_000);
     assert_eq!(market_stats.nav_adjustment, 1_000_000_000);
-    assert_eq!(market_stats.circulating_supply, 0);
-    assert_eq!(market_stats.tvl, 0);
+    assert_eq!(market_stats.circulating_supply, 1_000_000_000_000);
+    assert_eq!(market_stats.tvl, 1_000_000_000_000);
     assert_eq!(
         market_stats.last_updated_at,
         get_clock_time(&ctx.svm) as i64
@@ -406,11 +405,10 @@ fn setup_permissionless_no_approval() -> PermissionlessNoApprovalCtx {
 }
 
 fn setup_permissionless_no_approval_with_fee(fee_bps: u16) -> PermissionlessNoApprovalCtx {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
+    let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
     let usdc_mint = create_mint(&mut svm, &payer, 6, &boss);
-    let onyc_mint = create_mint(&mut svm, &payer, 9, &boss);
 
     // needs_approval=false, allow_permissionless=true
     let ix = build_make_offer_ix(

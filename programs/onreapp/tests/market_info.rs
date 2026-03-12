@@ -93,14 +93,14 @@ fn setup_onyc_offer_with_supply(
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
 
-    let mut mint_data = svm.get_account(&onyc_mint).unwrap();
-    mint_data.data[36..44].copy_from_slice(&minted_supply.to_le_bytes());
-    svm.set_account(onyc_mint, mint_data).unwrap();
-
     if vault_balance > 0 {
         let (vault_authority, _) = find_offer_vault_authority_pda();
         create_token_account(&mut svm, &onyc_mint, &vault_authority, vault_balance);
     }
+
+    let mut mint_data = svm.get_account(&onyc_mint).unwrap();
+    mint_data.data[36..44].copy_from_slice(&minted_supply.to_le_bytes());
+    svm.set_account(onyc_mint, mint_data).unwrap();
 
     (svm, payer, token_in, onyc_mint)
 }
@@ -519,13 +519,11 @@ fn test_get_circulating_supply_with_vault() {
     let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
-    // Set supply
+    // Create boss token account with tokens and deposit to vault
+    create_token_account(&mut svm, &onyc_mint, &boss, 500_000_000_000);
     let mut mint_data = svm.get_account(&onyc_mint).unwrap();
     mint_data.data[36..44].copy_from_slice(&1_000_000_000_000u64.to_le_bytes()); // 1000 tokens
     svm.set_account(onyc_mint, mint_data).unwrap();
-
-    // Create boss token account with tokens and deposit to vault
-    create_token_account(&mut svm, &onyc_mint, &boss, 500_000_000_000);
     let ix = build_offer_vault_deposit_ix(&boss, &onyc_mint, 200_000_000_000, &TOKEN_PROGRAM_ID);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);

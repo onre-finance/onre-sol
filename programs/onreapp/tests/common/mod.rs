@@ -335,6 +335,16 @@ pub fn create_token_account(
     )
     .unwrap();
 
+    if amount > 0 {
+        let mut mint_account = svm.get_account(mint).expect("mint account not found");
+        let current_supply = u64::from_le_bytes(mint_account.data[36..44].try_into().unwrap());
+        let new_supply = current_supply
+            .checked_add(amount)
+            .expect("mint supply overflow while seeding token account");
+        mint_account.data[36..44].copy_from_slice(&new_supply.to_le_bytes());
+        svm.set_account(*mint, mint_account).unwrap();
+    }
+
     ata
 }
 
@@ -402,6 +412,16 @@ pub fn create_token_account_2022(
         },
     )
     .unwrap();
+
+    if amount > 0 {
+        let mut mint_account = svm.get_account(mint).expect("mint account not found");
+        let current_supply = u64::from_le_bytes(mint_account.data[36..44].try_into().unwrap());
+        let new_supply = current_supply
+            .checked_add(amount)
+            .expect("mint supply overflow while seeding token account");
+        mint_account.data[36..44].copy_from_slice(&new_supply.to_le_bytes());
+        svm.set_account(*mint, mint_account).unwrap();
+    }
 
     ata
 }

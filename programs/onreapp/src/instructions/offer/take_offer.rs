@@ -307,15 +307,17 @@ pub fn take_offer(
         token_out_max_supply: ctx.accounts.state.max_supply,
     })?;
 
-    let snapshot = recompute_market_stats(
-        &offer,
-        &ctx.accounts.token_out_mint,
-        &ctx.accounts.vault_token_out_account.to_account_info(),
-        &ctx.accounts.token_out_program,
-    )?;
-    let market_stats = &mut ctx.accounts.market_stats;
-    market_stats.bump = ctx.bumps.market_stats;
-    update_market_stats_account(market_stats, snapshot)?;
+    if ctx.accounts.token_out_mint.key() == ctx.accounts.state.onyc_mint {
+        let snapshot = recompute_market_stats(
+            &offer,
+            &ctx.accounts.token_out_mint,
+            &ctx.accounts.vault_token_out_account.to_account_info(),
+            &ctx.accounts.token_out_program,
+        )?;
+        let market_stats = &mut ctx.accounts.market_stats;
+        market_stats.bump = ctx.bumps.market_stats;
+        update_market_stats_account(market_stats, snapshot)?;
+    }
 
     msg!(
         "Offer taken - PDA: {}, token_in(+fee): {}(+{}), token_out: {}, user: {}, price: {}",

@@ -392,62 +392,64 @@ pub fn take_offer_permissionless(
         result.token_out_amount,
     )?;
 
-    let market_stats_account = ctx.accounts.market_stats.to_account_info();
-    let is_new_market_stats = if market_stats_account.owner == &system_program::ID {
-        require!(
-            market_stats_account.data_is_empty(),
-            TakeOfferPermissionlessErrorCode::InvalidMarketStatsOwner
-        );
-        let rent_lamports = Rent::get()?.minimum_balance(8 + MarketStats::INIT_SPACE);
-        system_program::create_account(
-            CpiContext::new_with_signer(
-                ctx.accounts.system_program.to_account_info(),
-                system_program::CreateAccount {
-                    from: ctx.accounts.user.to_account_info(),
-                    to: market_stats_account.clone(),
-                },
-                &[&[seeds::MARKET_STATS, &[market_stats_bump]]],
-            ),
-            rent_lamports,
-            (8 + MarketStats::INIT_SPACE) as u64,
-            ctx.program_id,
-        )?;
-        true
-    } else {
-        require_keys_eq!(
-            *market_stats_account.owner,
-            *ctx.program_id,
-            TakeOfferPermissionlessErrorCode::InvalidMarketStatsOwner
-        );
-        false
-    };
+    if ctx.accounts.token_out_mint.key() == ctx.accounts.state.onyc_mint {
+        let market_stats_account = ctx.accounts.market_stats.to_account_info();
+        let is_new_market_stats = if market_stats_account.owner == &system_program::ID {
+            require!(
+                market_stats_account.data_is_empty(),
+                TakeOfferPermissionlessErrorCode::InvalidMarketStatsOwner
+            );
+            let rent_lamports = Rent::get()?.minimum_balance(8 + MarketStats::INIT_SPACE);
+            system_program::create_account(
+                CpiContext::new_with_signer(
+                    ctx.accounts.system_program.to_account_info(),
+                    system_program::CreateAccount {
+                        from: ctx.accounts.user.to_account_info(),
+                        to: market_stats_account.clone(),
+                    },
+                    &[&[seeds::MARKET_STATS, &[market_stats_bump]]],
+                ),
+                rent_lamports,
+                (8 + MarketStats::INIT_SPACE) as u64,
+                ctx.program_id,
+            )?;
+            true
+        } else {
+            require_keys_eq!(
+                *market_stats_account.owner,
+                *ctx.program_id,
+                TakeOfferPermissionlessErrorCode::InvalidMarketStatsOwner
+            );
+            false
+        };
 
-    let snapshot = recompute_market_stats(
-        &offer,
-        &ctx.accounts.token_out_mint,
-        &ctx.accounts.vault_token_out_account.to_account_info(),
-        &ctx.accounts.token_out_program,
-    )?;
-    let mut market_stats = if is_new_market_stats {
-        MarketStats {
-            apy: 0,
-            circulating_supply: 0,
-            nav: 0,
-            nav_adjustment: 0,
-            tvl: 0,
-            last_updated_at: 0,
-            last_updated_slot: 0,
-            bump: market_stats_bump,
-            reserved: [0; 95],
-        }
-    } else {
-        read_market_stats_account(&market_stats_account)
-            .map_err(|_| error!(TakeOfferPermissionlessErrorCode::InvalidMarketStatsData))?
-    };
-    market_stats.bump = market_stats_bump;
-    update_market_stats_account(&mut market_stats, snapshot)?;
-    write_market_stats_account(&market_stats_account, &market_stats)
-        .map_err(|_| error!(TakeOfferPermissionlessErrorCode::InvalidMarketStatsData))?;
+        let snapshot = recompute_market_stats(
+            &offer,
+            &ctx.accounts.token_out_mint,
+            &ctx.accounts.vault_token_out_account.to_account_info(),
+            &ctx.accounts.token_out_program,
+        )?;
+        let mut market_stats = if is_new_market_stats {
+            MarketStats {
+                apy: 0,
+                circulating_supply: 0,
+                nav: 0,
+                nav_adjustment: 0,
+                tvl: 0,
+                last_updated_at: 0,
+                last_updated_slot: 0,
+                bump: market_stats_bump,
+                reserved: [0; 95],
+            }
+        } else {
+            read_market_stats_account(&market_stats_account)
+                .map_err(|_| error!(TakeOfferPermissionlessErrorCode::InvalidMarketStatsData))?
+        };
+        market_stats.bump = market_stats_bump;
+        update_market_stats_account(&mut market_stats, snapshot)?;
+        write_market_stats_account(&market_stats_account, &market_stats)
+            .map_err(|_| error!(TakeOfferPermissionlessErrorCode::InvalidMarketStatsData))?;
+    }
 
     msg!(
         "Offer taken (permissionless) - PDA: {}, token_in(excluding fee): {}, fee: {}, token_out: {}, user: {}, price: {}",

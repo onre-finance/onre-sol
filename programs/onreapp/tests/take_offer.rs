@@ -26,11 +26,10 @@ fn setup_take_offer() -> TakeOfferCtx {
 }
 
 fn setup_take_offer_with_fee(fee_bps: u16) -> TakeOfferCtx {
-    let (mut svm, payer, _original_onyc) = setup_initialized();
+    let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
     let usdc_mint = create_mint(&mut svm, &payer, 6, &boss);
-    let onyc_mint = create_mint(&mut svm, &payer, 9, &boss);
 
     let ix = build_make_offer_ix(
         &boss,
@@ -113,8 +112,8 @@ fn test_price_first_interval() {
     assert_eq!(market_stats.bump, expected_bump);
     assert_eq!(market_stats.nav, 1_000_100_000);
     assert_eq!(market_stats.nav_adjustment, 1_000_100_000);
-    assert_eq!(market_stats.circulating_supply, 0);
-    assert_eq!(market_stats.tvl, 0);
+    assert_eq!(market_stats.circulating_supply, 1_000_000_000);
+    assert_eq!(market_stats.tvl, 1_000_100_000);
     assert_eq!(
         market_stats.last_updated_at,
         get_clock_time(&ctx.svm) as i64
