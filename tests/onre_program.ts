@@ -240,6 +240,41 @@ export class OnreProgram {
         await tx.rpc();
     }
 
+    async refreshMarketStats(params: {
+        tokenInMint: PublicKey,
+        onycMint: PublicKey,
+        signer?: Keypair,
+        tokenProgram?: PublicKey
+    }) {
+        const tokenProgram = params.tokenProgram ?? TOKEN_PROGRAM_ID;
+        const signer = params.signer?.publicKey ?? this.testHelper.payer.publicKey;
+
+        const tx = this.program.methods
+            .refreshMarketStats()
+            .accounts({
+                offer: this.getOfferPda(params.tokenInMint, params.onycMint),
+                tokenInMint: params.tokenInMint,
+                state: this.pdas.statePda,
+                onycMint: params.onycMint,
+                vaultAuthority: this.pdas.offerVaultAuthorityPda,
+                onycVaultAccount: getAssociatedTokenAddressSync(
+                    params.onycMint,
+                    this.pdas.offerVaultAuthorityPda,
+                    true,
+                    tokenProgram
+                ),
+                tokenProgram,
+                marketStats: this.pdas.marketStatsPda,
+                signer
+            });
+
+        if (params.signer) {
+            tx.signers([params.signer]);
+        }
+
+        await tx.rpc();
+    }
+
     async offerVaultDeposit(params: {
         amount: number,
         tokenMint: PublicKey,
