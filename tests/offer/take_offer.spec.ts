@@ -1446,4 +1446,61 @@ describe("Take Offer", () => {
             expect(userTokenOutBalance).toBe(BigInt(1e9));
         });
     });
+
+    describe("Fee ATA auto-creation (init_if_needed)", () => {
+        it("Should succeed and auto-create fee ATA when it does not exist before takeOffer", async () => {
+            // Set up a fresh testHelper without pre-creating the fee ATA
+            const freshTestHelper = await TestHelper.create();
+            const freshProgram = new OnreProgram(freshTestHelper);
+
+            const freshTokenInMint = freshTestHelper.createMint(6);
+            const freshTokenOutMint = freshTestHelper.createMint(9);
+
+            await freshProgram.initialize({ onycMint: freshTokenOutMint });
+
+            // Initialize fee config but do NOT pre-create the fee ATA
+            await freshProgram.initializeFeeConfig({ feeType: FeeType.TakeOffer });
+
+            await freshProgram.makeOffer({ tokenInMint: freshTokenInMint, tokenOutMint: freshTokenOutMint });
+
+            const freshUser = freshTestHelper.createUserAccount();
+            freshTestHelper.createTokenAccount(freshTokenInMint, freshUser.publicKey, BigInt(10_000e6), true);
+            freshTestHelper.createTokenAccount(freshTokenInMint, freshTestHelper.getBoss(), BigInt(0));
+            freshTestHelper.createTokenAccount(freshTokenOutMint, freshTestHelper.getBoss(), BigInt(10_000e9));
+            freshTestHelper.createTokenAccount(freshTokenInMint, freshProgram.pdas.offerVaultAuthorityPda, BigInt(0), true);
+            freshTestHelper.createTokenAccount(freshTokenOutMint, freshProgram.pdas.offerVaultAuthorityPda, BigInt(0), true);
+
+            await freshProgram.offerVaultDeposit({ amount: 10_000e9, tokenMint: freshTokenOutMint });
+
+            const currentTime = await freshTestHelper.getCurrentClockTime();
+            await freshProgram.addOfferVector({
+                tokenInMint: freshTokenInMint,
+                tokenOutMint: freshTokenOutMint,
+                baseTime: currentTime,
+                basePrice: 1e9,
+                apr: 0,
+                priceFixDuration: 86400
+            });
+
+            // takeOffer without pre-creating the fee ATA — instruction must create it on-the-fly
+            await freshProgram.takeOffer({
+                tokenInAmount: 1_000_000,
+                tokenInMint: freshTokenInMint,
+                tokenOutMint: freshTokenOutMint,
+                user: freshUser.publicKey,
+                signer: freshUser
+            });
+
+            // Fee ATA should now exist and user should have received tokens
+            const feeConfigPda = freshProgram.getFeeConfigPda(FeeType.TakeOffer);
+            const feeAta = getAssociatedTokenAddressSync(freshTokenInMint, feeConfigPda, true);
+            const feeBalance = await freshTestHelper.getTokenAccountBalance(feeAta);
+            // fee is 0 bps by default, so fee ATA exists but has 0 balance
+            expect(feeBalance).toBe(BigInt(0));
+
+            const userTokenOut = getAssociatedTokenAddressSync(freshTokenOutMint, freshUser.publicKey);
+            const userBalance = await freshTestHelper.getTokenAccountBalance(userTokenOut);
+            expect(userBalance).toBe(BigInt(1_000_000_000));
+        });
+    });
 });

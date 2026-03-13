@@ -202,9 +202,15 @@ pub struct TakeOfferPermissionless<'info> {
     )]
     pub fee_config: Box<Account<'info, FeeConfig>>,
 
-    /// Fee destination token account - validated at runtime based on fee_config.destination
+    /// The owner of the fee destination ATA (fee_config.destination or fee_config PDA)
+    /// CHECK: validated at runtime in validate_permissionless_pdas
     #[account(mut)]
-    pub fee_destination_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub fee_destination_owner: UncheckedAccount<'info>,
+
+    /// Fee destination token account - created if needed (payer = user)
+    /// CHECK: address validated implicitly via create_idempotent CPI
+    #[account(mut)]
+    pub fee_destination_token_account: UncheckedAccount<'info>,
 
     /// Program-derived mint authority for direct token minting
     ///
@@ -246,8 +252,7 @@ fn validate_permissionless_pdas(
     mint_authority_key: &Pubkey,
     fee_config: &FeeConfig,
     fee_config_key: &Pubkey,
-    fee_dest_owner: &Pubkey,
-    fee_dest_mint: &Pubkey,
+    fee_destination_owner_key: &Pubkey,
     boss_token_in_owner: &Pubkey,
     boss_token_in_mint: &Pubkey,
     boss_key: &Pubkey,
@@ -276,16 +281,11 @@ fn validate_permissionless_pdas(
         OfferCoreError::InvalidTokenInMint
     );
 
-    // Validate fee destination
+    // Validate fee destination owner
     let expected_fee_owner = fee_config.fee_destination_owner(fee_config_key);
     require_keys_eq!(
-        *fee_dest_owner,
+        *fee_destination_owner_key,
         expected_fee_owner,
-        FeeConfigError::InvalidFeeDestination
-    );
-    require_keys_eq!(
-        *fee_dest_mint,
-        *token_in_mint_key,
         FeeConfigError::InvalidFeeDestination
     );
 
@@ -311,14 +311,26 @@ pub fn take_offer_permissionless(
         &ctx.accounts.mint_authority.key(),
         &ctx.accounts.fee_config,
         &ctx.accounts.fee_config.key(),
-        &ctx.accounts.fee_destination_token_account.owner,
-        &ctx.accounts.fee_destination_token_account.mint,
+        &ctx.accounts.fee_destination_owner.key(),
         &ctx.accounts.boss_token_in_account.owner,
         &ctx.accounts.boss_token_in_account.mint,
         &ctx.accounts.boss.key(),
         &ctx.accounts.token_in_mint.key(),
         ctx.program_id,
     )?;
+
+    // Idempotent ATA creation: user pays rent if not yet initialized
+    anchor_spl::associated_token::create_idempotent(CpiContext::new(
+        ctx.accounts.associated_token_program.to_account_info(),
+        anchor_spl::associated_token::Create {
+            payer: ctx.accounts.user.to_account_info(),
+            associated_token: ctx.accounts.fee_destination_token_account.to_account_info(),
+            authority: ctx.accounts.fee_destination_owner.to_account_info(),
+            mint: ctx.accounts.token_in_mint.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+            token_program: ctx.accounts.token_in_program.to_account_info(),
+        },
+    ))?;
 
     let offer = ctx.accounts.offer.load()?;
 
@@ -381,7 +393,7 @@ pub fn take_offer_permissionless(
         token_in_source_signer_seeds: Some(&[&[seeds::PERMISSIONLESS_AUTHORITY, &[pa_bump]]]),
         vault_authority_signer_seeds: Some(&[&[seeds::OFFER_VAULT_AUTHORITY, &[va_bump]]]),
         token_in_source_account: &ctx.accounts.permissionless_token_in_account,
-        token_in_fee_destination_account: &ctx.accounts.fee_destination_token_account,
+        token_in_fee_destination_account: &ctx.accounts.fee_destination_token_account.to_account_info(),
         token_in_boss_account: &ctx.accounts.boss_token_in_account,
         token_in_burn_account: &ctx.accounts.vault_token_in_account,
         token_in_burn_authority: &ctx.accounts.vault_authority.to_account_info(),

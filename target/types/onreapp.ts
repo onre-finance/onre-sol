@@ -1947,9 +1947,16 @@ export type Onreapp = {
           ]
         },
         {
+          "name": "feeDestinationOwner",
+          "docs": [
+            "The owner of the fee destination ATA (fee_config.destination or fee_config PDA)"
+          ],
+          "writable": true
+        },
+        {
           "name": "feeDestinationTokenAccount",
           "docs": [
-            "Fee destination token account - validated at runtime based on fee_config.destination"
+            "Fee destination token account - created if needed (payer = redemption_admin)"
           ],
           "writable": true
         },
@@ -5575,9 +5582,16 @@ export type Onreapp = {
           ]
         },
         {
+          "name": "feeDestinationOwner",
+          "docs": [
+            "The owner of the fee destination ATA (fee_config.destination or fee_config PDA)"
+          ],
+          "writable": true
+        },
+        {
           "name": "feeDestinationTokenAccount",
           "docs": [
-            "Fee destination token account - validated at runtime based on fee_config.destination"
+            "Fee destination token account - created if needed (payer = user)"
           ],
           "writable": true
         },
@@ -6198,9 +6212,16 @@ export type Onreapp = {
           ]
         },
         {
+          "name": "feeDestinationOwner",
+          "docs": [
+            "The owner of the fee destination ATA (fee_config.destination or fee_config PDA)"
+          ],
+          "writable": true
+        },
+        {
           "name": "feeDestinationTokenAccount",
           "docs": [
-            "Fee destination token account - validated at runtime based on fee_config.destination"
+            "Fee destination token account - created if needed (payer = user)"
           ],
           "writable": true
         },

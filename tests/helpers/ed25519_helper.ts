@@ -154,6 +154,7 @@ export class Ed25519Helper {
                 tokenInProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
                 tokenOutProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
                 feeConfig: feeConfigPda,
+                feeDestinationOwner: feeConfigPda,
                 feeDestinationTokenAccount
             })
             .preInstructions([

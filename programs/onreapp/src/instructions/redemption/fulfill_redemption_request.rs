@@ -1,5 +1,5 @@
 use crate::constants::seeds;
-use crate::instructions::fee_config::{FeeConfig, FeeType};
+use crate::instructions::fee_config::{FeeConfig, FeeConfigError, FeeType};
 use crate::instructions::redemption::{
     execute_redemption_operations, process_redemption_core, ExecuteRedemptionOpsParams,
     RedemptionOffer, RedemptionRequest,
@@ -186,9 +186,15 @@ pub struct FulfillRedemptionRequest<'info> {
     )]
     pub fee_config: Box<Account<'info, FeeConfig>>,
 
-    /// Fee destination token account - validated at runtime based on fee_config.destination
+    /// The owner of the fee destination ATA (fee_config.destination or fee_config PDA)
+    /// CHECK: validated at runtime against fee_config.fee_destination_owner()
     #[account(mut)]
-    pub fee_destination_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub fee_destination_owner: UncheckedAccount<'info>,
+
+    /// Fee destination token account - created if needed (payer = redemption_admin)
+    /// CHECK: key validated at runtime via validate_fee_destination
+    #[account(mut)]
+    pub fee_destination_token_account: UncheckedAccount<'info>,
 
     /// Program-derived mint authority for direct token minting
     ///
@@ -273,6 +279,25 @@ pub fn fulfill_redemption_request(
         FulfillRedemptionRequestErrorCode::AmountExceedsRemaining
     );
 
+    // Validate fee destination owner
+    require_keys_eq!(
+        ctx.accounts.fee_destination_owner.key(),
+        ctx.accounts.fee_config.fee_destination_owner(&ctx.accounts.fee_config.key()),
+        FeeConfigError::InvalidFeeDestination
+    );
+    // Idempotent ATA creation: redemption_admin pays rent if not yet initialized
+    anchor_spl::associated_token::create_idempotent(CpiContext::new(
+        ctx.accounts.associated_token_program.to_account_info(),
+        anchor_spl::associated_token::Create {
+            payer: ctx.accounts.redemption_admin.to_account_info(),
+            associated_token: ctx.accounts.fee_destination_token_account.to_account_info(),
+            authority: ctx.accounts.fee_destination_owner.to_account_info(),
+            mint: ctx.accounts.token_in_mint.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+            token_program: ctx.accounts.token_in_program.to_account_info(),
+        },
+    ))?;
+
     // Validate fee destination token account
     ctx.accounts.fee_config.validate_fee_destination(
         &ctx.accounts.fee_config.key(),
@@ -306,7 +331,7 @@ pub fn fulfill_redemption_request(
         token_in_fee_amount,
         vault_token_in_account: &ctx.accounts.vault_token_in_account,
         boss_token_in_account: &ctx.accounts.boss_token_in_account,
-        fee_destination_account: &ctx.accounts.fee_destination_token_account,
+        fee_destination_account: &ctx.accounts.fee_destination_token_account.to_account_info(),
         redemption_vault_authority: &ctx.accounts.redemption_vault_authority,
         redemption_vault_authority_bump: ctx.bumps.redemption_vault_authority,
         token_out_mint: &ctx.accounts.token_out_mint,

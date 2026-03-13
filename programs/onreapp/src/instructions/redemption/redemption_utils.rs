@@ -2,6 +2,7 @@ use crate::constants::{seeds, PRICE_DECIMALS};
 use crate::instructions::{calculate_current_step_price, find_active_vector_at, Offer};
 use crate::utils::{
     burn_tokens, calculate_fees, mint_tokens, program_controls_mint, transfer_tokens,
+    transfer_tokens_to_info,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
@@ -139,7 +140,7 @@ pub struct ExecuteRedemptionOpsParams<'a, 'info> {
     /// Boss's account for receiving token_in when program lacks mint authority
     pub boss_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Fee destination account (fee config PDA's ATA or custom destination)
-    pub fee_destination_account: &'a InterfaceAccount<'info, TokenAccount>,
+    pub fee_destination_account: &'a AccountInfo<'info>,
     /// Authority for vault operations
     pub redemption_vault_authority: &'a AccountInfo<'info>,
     /// Bump seed for vault authority
@@ -211,7 +212,7 @@ pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Resu
 
         // Transfer fee amount to fee destination if there is a fee
         if params.token_in_fee_amount > 0 {
-            transfer_tokens(
+            transfer_tokens_to_info(
                 params.token_in_mint,
                 params.token_in_program,
                 params.vault_token_in_account,
@@ -234,7 +235,7 @@ pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Resu
         )?;
 
         if params.token_in_fee_amount > 0 {
-            transfer_tokens(
+            transfer_tokens_to_info(
                 params.token_in_mint,
                 params.token_in_program,
                 params.vault_token_in_account,

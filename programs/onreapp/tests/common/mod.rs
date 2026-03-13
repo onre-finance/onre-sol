@@ -845,6 +845,7 @@ pub fn build_take_offer_permissionless_ix(
             AccountMeta::new(user_token_out_ata, false),           // user_token_out_account
             AccountMeta::new(boss_token_in_ata, false),            // boss_token_in_account
             AccountMeta::new_readonly(fee_config_pda, false),      // fee_config
+            AccountMeta::new(fee_config_pda, false),               // fee_destination_owner (= fee_config PDA when no custom destination)
             AccountMeta::new(fee_destination_ata, false),          // fee_destination_token_account
             AccountMeta::new_readonly(mint_authority_pda, false),  // mint_authority
             AccountMeta::new_readonly(SYSVAR_INSTRUCTIONS_ID, false), // instructions_sysvar
@@ -1047,6 +1048,7 @@ pub fn build_take_offer_ix(
             AccountMeta::new(user_token_out_ata, false),
             AccountMeta::new(boss_token_in_ata, false),
             AccountMeta::new_readonly(fee_config_pda, false),
+            AccountMeta::new(fee_config_pda, false),   // fee_destination_owner (= fee_config PDA when no custom destination)
             AccountMeta::new(fee_destination_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),
             AccountMeta::new_readonly(SYSVAR_INSTRUCTIONS_ID, false),
@@ -1791,6 +1793,7 @@ pub fn build_fulfill_redemption_request_ix(
             AccountMeta::new(user_token_out_ata, false),
             AccountMeta::new(boss_token_in_ata, false),
             AccountMeta::new_readonly(fee_config_pda, false),
+            AccountMeta::new(fee_config_pda, false),   // fee_destination_owner (= fee_config PDA when no custom destination)
             AccountMeta::new(fee_destination_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),
             AccountMeta::new_readonly(*redeemer, false),

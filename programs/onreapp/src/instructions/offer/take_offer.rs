@@ -1,5 +1,5 @@
 use crate::constants::seeds;
-use crate::instructions::fee_config::{FeeConfig, FeeType};
+use crate::instructions::fee_config::{FeeConfig, FeeConfigError, FeeType};
 use crate::instructions::offer::offer_utils::{process_offer_core, verify_offer_approval};
 use crate::instructions::Offer;
 use crate::state::State;
@@ -188,9 +188,15 @@ pub struct TakeOffer<'info> {
     )]
     pub fee_config: Box<Account<'info, FeeConfig>>,
 
-    /// Fee destination token account - validated at runtime based on fee_config.destination
+    /// The owner of the fee destination ATA (fee_config.destination or fee_config PDA)
+    /// CHECK: validated at runtime against fee_config.fee_destination_owner()
     #[account(mut)]
-    pub fee_destination_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub fee_destination_owner: UncheckedAccount<'info>,
+
+    /// Fee destination token account - created if needed (payer = user)
+    /// CHECK: key validated at runtime via validate_fee_destination
+    #[account(mut)]
+    pub fee_destination_token_account: UncheckedAccount<'info>,
 
     /// Program-derived mint authority for direct token minting
     ///
@@ -272,6 +278,25 @@ pub fn take_offer(
         &ctx.accounts.instructions_sysvar,
     )?;
 
+    // Validate fee destination owner
+    require_keys_eq!(
+        ctx.accounts.fee_destination_owner.key(),
+        ctx.accounts.fee_config.fee_destination_owner(&ctx.accounts.fee_config.key()),
+        FeeConfigError::InvalidFeeDestination
+    );
+    // Idempotent ATA creation: user pays rent if not yet initialized
+    anchor_spl::associated_token::create_idempotent(CpiContext::new(
+        ctx.accounts.associated_token_program.to_account_info(),
+        anchor_spl::associated_token::Create {
+            payer: ctx.accounts.user.to_account_info(),
+            associated_token: ctx.accounts.fee_destination_token_account.to_account_info(),
+            authority: ctx.accounts.fee_destination_owner.to_account_info(),
+            mint: ctx.accounts.token_in_mint.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+            token_program: ctx.accounts.token_in_program.to_account_info(),
+        },
+    ))?;
+
     // Validate fee destination token account
     ctx.accounts.fee_config.validate_fee_destination(
         &ctx.accounts.fee_config.key(),
@@ -301,7 +326,7 @@ pub fn take_offer(
             &[ctx.bumps.vault_authority],
         ]]),
         token_in_source_account: &ctx.accounts.user_token_in_account,
-        token_in_fee_destination_account: &ctx.accounts.fee_destination_token_account,
+        token_in_fee_destination_account: &ctx.accounts.fee_destination_token_account.to_account_info(),
         token_in_boss_account: &ctx.accounts.boss_token_in_account,
         token_in_burn_account: &ctx.accounts.vault_token_in_account,
         token_in_burn_authority: &ctx.accounts.vault_authority.to_account_info(),

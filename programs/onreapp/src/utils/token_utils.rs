@@ -59,6 +59,35 @@ pub fn transfer_tokens<'info>(
     token_interface::transfer_checked(cpi_context, amount, mint.decimals)
 }
 
+/// Token transfer that accepts a raw `AccountInfo` for the destination.
+/// Used when the destination account is held as `UncheckedAccount` / `AccountInfo`
+/// (e.g. a fee destination whose ATA is created on-the-fly with `create_idempotent`).
+pub fn transfer_tokens_to_info<'info>(
+    mint: &InterfaceAccount<'info, Mint>,
+    token_program: &Interface<'info, TokenInterface>,
+    from_account: &InterfaceAccount<'info, TokenAccount>,
+    to_account: &AccountInfo<'info>,
+    authority: &AccountInfo<'info>,
+    signer_seeds: Option<&[&[&[u8]]]>,
+    amount: u64,
+) -> Result<()> {
+    let transfer_accounts = TransferChecked {
+        mint: mint.to_account_info(),
+        from: from_account.to_account_info(),
+        to: to_account.clone(),
+        authority: authority.to_account_info(),
+    };
+
+    let cpi_context = match signer_seeds {
+        Some(seeds) => {
+            CpiContext::new_with_signer(token_program.to_account_info(), transfer_accounts, seeds)
+        }
+        None => CpiContext::new(token_program.to_account_info(), transfer_accounts),
+    };
+
+    token_interface::transfer_checked(cpi_context, amount, mint.decimals)
+}
+
 /// Calculates token_out_amount based on token_in_amount, price, and decimals.
 /// This formula is used in both single and dual redemption offers.
 ///
@@ -313,7 +342,7 @@ pub struct ExecTokenOpsParams<'a, 'info> {
     /// Source account for token_in (user's account)
     pub token_in_source_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Destination account for fee portion of token_in (fee config PDA's ATA or custom destination)
-    pub token_in_fee_destination_account: &'a InterfaceAccount<'info, TokenAccount>,
+    pub token_in_fee_destination_account: &'a AccountInfo<'info>,
     /// Boss's account for receiving net token_in amount (used in non-mint-authority path)
     pub token_in_boss_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Vault account for burning token_in when program has mint authority
@@ -410,7 +439,7 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
         // Transfer fee amount to fee destination account
         if params.token_in_fee_amount > 0 {
             msg!("Transferring fee amount to fee destination account");
-            transfer_tokens(
+            transfer_tokens_to_info(
                 params.token_in_mint,
                 params.token_in_program,
                 params.token_in_source_account,
@@ -434,7 +463,7 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
 
         if params.token_in_fee_amount > 0 {
             msg!("Transferring fee amount to fee destination account");
-            transfer_tokens(
+            transfer_tokens_to_info(
                 params.token_in_mint,
                 params.token_in_program,
                 params.token_in_source_account,

@@ -1941,9 +1941,16 @@
           ]
         },
         {
+          "name": "fee_destination_owner",
+          "docs": [
+            "The owner of the fee destination ATA (fee_config.destination or fee_config PDA)"
+          ],
+          "writable": true
+        },
+        {
           "name": "fee_destination_token_account",
           "docs": [
-            "Fee destination token account - validated at runtime based on fee_config.destination"
+            "Fee destination token account - created if needed (payer = redemption_admin)"
           ],
           "writable": true
         },
@@ -5569,9 +5576,16 @@
           ]
         },
         {
+          "name": "fee_destination_owner",
+          "docs": [
+            "The owner of the fee destination ATA (fee_config.destination or fee_config PDA)"
+          ],
+          "writable": true
+        },
+        {
           "name": "fee_destination_token_account",
           "docs": [
-            "Fee destination token account - validated at runtime based on fee_config.destination"
+            "Fee destination token account - created if needed (payer = user)"
           ],
           "writable": true
         },
@@ -6192,9 +6206,16 @@
           ]
         },
         {
+          "name": "fee_destination_owner",
+          "docs": [
+            "The owner of the fee destination ATA (fee_config.destination or fee_config PDA)"
+          ],
+          "writable": true
+        },
+        {
           "name": "fee_destination_token_account",
           "docs": [
-            "Fee destination token account - validated at runtime based on fee_config.destination"
+            "Fee destination token account - created if needed (payer = user)"
           ],
           "writable": true
         },

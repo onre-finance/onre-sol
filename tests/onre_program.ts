@@ -229,6 +229,7 @@ export class OnreProgram {
                 tokenInProgram,
                 tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
                 feeConfig: feeConfigPda,
+                feeDestinationOwner: feeConfigPda,
                 feeDestinationTokenAccount
             });
 
@@ -275,6 +276,7 @@ export class OnreProgram {
                 permissionlessAuthority: this.pdas.permissionlessAuthorityPda,
                 mintAuthority: this.pdas.mintAuthorityPda,
                 feeConfig: feeConfigPda,
+                feeDestinationOwner: feeConfigPda,
                 feeDestinationTokenAccount,
                 bossTokenInAccount
             });
@@ -903,6 +905,7 @@ export class OnreProgram {
                 redeemer: params.redeemer,
                 redemptionAdmin: params.redemptionAdmin.publicKey,
                 feeConfig: feeConfigPda,
+                feeDestinationOwner: feeConfigPda,
                 feeDestinationTokenAccount
             })
             .signers([params.redemptionAdmin]);
