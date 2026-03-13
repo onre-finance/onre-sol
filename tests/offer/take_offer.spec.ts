@@ -1,7 +1,7 @@
 import { Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID, createMintToInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { TestHelper } from "../test_helper";
-import { OnreProgram } from "../onre_program.ts";
+import { FeeType, OnreProgram } from "../onre_program.ts";
 
 describe("Take Offer", () => {
     let testHelper: TestHelper;
@@ -32,7 +32,10 @@ describe("Take Offer", () => {
 
         // Initialize program and offers
         await program.initialize({ onycMint: tokenOutMint });
-        // Kill switch state is now part of the main state - no separate initialization needed
+
+        // Initialize fee config for TakeOffer and create its ATA
+        await program.initializeFeeConfig({ feeType: FeeType.TakeOffer });
+        testHelper.createTokenAccount(tokenInMint, program.getFeeConfigPda(FeeType.TakeOffer), BigInt(0), true);
 
         // Create an offer
         await program.makeOffer({
@@ -96,6 +99,9 @@ describe("Take Offer", () => {
 
             const tokenInMint = testHelper.createMint(6);
             const tokenOutMint = testHelper.createMint(9);
+
+            // Create fee config ATA for new tokenInMint
+            testHelper.createTokenAccount(tokenInMint, program.getFeeConfigPda(FeeType.TakeOffer), BigInt(0), true);
 
             // Create token accounts
             const userTokenInAccount = testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(10_000e6), true);
@@ -161,6 +167,9 @@ describe("Take Offer", () => {
             const tokenInMint = testHelper.createMint(6);
             const tokenOutMint = testHelper.createMint(9);
 
+            // Create fee config ATA for new tokenInMint
+            testHelper.createTokenAccount(tokenInMint, program.getFeeConfigPda(FeeType.TakeOffer), BigInt(0), true);
+
             // Create token accounts
             testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(10_000e6), true);
             const bossTokenInAccount = testHelper.createTokenAccount(tokenInMint, testHelper.getBoss(), BigInt(0));
@@ -210,14 +219,17 @@ describe("Take Offer", () => {
 
             const bossBalanceAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
             const userTokenOutBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
-
-            // Verify boss received the full amount (including the ceiling-rounded fee)
-            // Since program lacks mint authority, boss receives full token_in amount
-            expect(bossBalanceAfter - bossBalanceBefore).toBe(BigInt(tokenInAmount));
+            const feeDestBalance = await testHelper.getTokenAccountBalance(
+                getAssociatedTokenAddressSync(tokenInMint, program.getFeeConfigPda(FeeType.TakeOffer), true)
+            );
 
             // With ceiling division:
             // - Fee = ceil(199 * 50 / 10000) = 1
             // - Net amount = 199 - 1 = 198
+            // Boss receives net amount, fee goes to fee config PDA's ATA
+            expect(bossBalanceAfter - bossBalanceBefore).toBe(BigInt(198));
+            expect(feeDestBalance).toBe(BigInt(1));
+
             // - Token out = 198 * 1e9 / 1e6 = 198_000 (0.000198 with 9 decimals)
             //
             // If floor division was used (WRONG):
@@ -244,6 +256,9 @@ describe("Take Offer", () => {
 
             const tokenInMint = testHelper.createMint(6);  // USDC-like
             const tokenOutMint = testHelper.createMint(9); // ONyc-like
+
+            // Create fee config ATA for new tokenInMint
+            testHelper.createTokenAccount(tokenInMint, program.getFeeConfigPda(FeeType.TakeOffer), BigInt(0), true);
 
             // Create token accounts with large balances
             testHelper.createTokenAccount(tokenInMint, user.publicKey, BigInt(200_000_000_000), true); // 200k USDC
@@ -291,19 +306,18 @@ describe("Take Offer", () => {
 
             const bossBalanceAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
             const userTokenOutBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
-
-            // Boss receives full amount
-            expect(bossBalanceAfter - bossBalanceBefore).toBe(tokenInAmount);
+            const feeDestBalance = await testHelper.getTokenAccountBalance(
+                getAssociatedTokenAddressSync(tokenInMint, program.getFeeConfigPda(FeeType.TakeOffer), true)
+            );
 
             // With ceiling division:
             // - Fee = ceil(100_000_000_001 * 50 / 10000) = 500_000_001 (rounds up the 0.5 extra)
             // - Net amount = 100_000_000_001 - 500_000_001 = 99_500_000_000
+            // Boss receives net amount, fee goes to fee config PDA's ATA
+            expect(bossBalanceAfter - bossBalanceBefore).toBe(BigInt(99_500_000_000));
+            expect(feeDestBalance).toBe(BigInt(500_000_001));
+
             // - Token out = 99_500_000_000 * 1e9 / 1e6 = 99_500_000_000_000
-            //
-            // If floor division was used:
-            // - Fee = 500_000_000
-            // - Net = 99_500_000_001
-            // - Token out = 99_500_000_001_000 (user gets 1000 more base units!)
             //
             // Ceiling ensures protocol collects the extra micro-USDC as fee
             expect(userTokenOutBalanceAfter).toBe(BigInt(99_500_000_000_000));
@@ -578,6 +592,9 @@ describe("Take Offer", () => {
             const tokenInMint = testHelper.createMint2022(6); // USDC-like (6 decimals)
             const tokenOutMint = testHelper.createMint2022(9); // ONyc-like (9 decimals)
 
+            // Create fee config ATA for Token2022 tokenInMint
+            testHelper.createTokenAccount(tokenInMint, program.getFeeConfigPda(FeeType.TakeOffer), BigInt(0), true, TOKEN_2022_PROGRAM_ID);
+
             // Create an offer
             await program.makeOffer({
                 tokenInMint,
@@ -657,6 +674,9 @@ describe("Take Offer", () => {
                 BigInt(0) // max fee also zero
             );
 
+            // Create fee config ATA for Token2022 tokenInMint
+            testHelper.createTokenAccount(tokenInMint, program.getFeeConfigPda(FeeType.TakeOffer), BigInt(0), true, TOKEN_2022_PROGRAM_ID);
+
             // Create an offer
             await program.makeOffer({
                 tokenInMint,
@@ -721,6 +741,9 @@ describe("Take Offer", () => {
                 BigInt(1000000) // max fee
             );
 
+            // Create fee config ATA for new tokenInMint
+            testHelper.createTokenAccount(tokenInMint, program.getFeeConfigPda(FeeType.TakeOffer), BigInt(0), true);
+
             // Create offer where program lacks mint authority for token_out
             await program.makeOffer({
                 tokenInMint,
@@ -776,6 +799,9 @@ describe("Take Offer", () => {
 
             // Create token_out (regular SPL token)
             const tokenOutMint = testHelper.createMint(6);
+
+            // Create fee config ATA for Token2022 tokenInMint
+            testHelper.createTokenAccount(tokenInMint, program.getFeeConfigPda(FeeType.TakeOffer), BigInt(0), true, TOKEN_2022_PROGRAM_ID);
 
             // Create token accounts FIRST
             const user = testHelper.createUserAccount();
@@ -1190,6 +1216,9 @@ describe("Take Offer", () => {
                 const tokenInMint = testHelper.createMint(6);
                 const tokenOutMint = testHelper.createMint(9);
 
+                // Create fee config ATA for new tokenInMint
+                testHelper.createTokenAccount(tokenInMint, program.getFeeConfigPda(FeeType.TakeOffer), BigInt(0), true);
+
                 // Create an offer with fees
                 await program.makeOffer({
                     tokenInMint,
@@ -1241,9 +1270,16 @@ describe("Take Offer", () => {
                     signer: user
                 });
 
-                // Verify boss received full payment including fee
+                // Fee = ceil(1_050_000 * 500 / 10000) = 52_500
+                // Net = 1_050_000 - 52_500 = 997_500
+                // Boss receives net amount, fee goes to fee config PDA's ATA
                 const bossAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
-                expect(bossAfter - bossBefore).toEqual(BigInt(1_050_000)); // Full amount with fee
+                expect(bossAfter - bossBefore).toEqual(BigInt(997_500));
+
+                const feeDestBalance = await testHelper.getTokenAccountBalance(
+                    getAssociatedTokenAddressSync(tokenInMint, program.getFeeConfigPda(FeeType.TakeOffer), true)
+                );
+                expect(feeDestBalance).toEqual(BigInt(52_500));
 
                 // Verify user received correct token_out amount (based on net amount after fee)
                 const feeUserTokenOutAccount = getAssociatedTokenAddressSync(
@@ -1260,6 +1296,9 @@ describe("Take Offer", () => {
                 // Create separate token pair for fee test
                 const tokenInMint = testHelper.createMint(9);
                 const tokenOutMint = testHelper.createMint(6);
+
+                // Create fee config ATA for new tokenInMint
+                testHelper.createTokenAccount(tokenInMint, program.getFeeConfigPda(FeeType.TakeOffer), BigInt(0), true);
 
                 // Create an offer with fees
                 await program.makeOffer({
@@ -1309,9 +1348,16 @@ describe("Take Offer", () => {
                     signer: user
                 });
 
-                // Verify boss received only fee (rest was burned)
+                // Fee = ceil(1e9 * 500 / 10000) = 50_000_000
+                // Net = 1e9 - 50_000_000 = 950_000_000 (burned)
+                // Boss receives nothing (net was burned), fee goes to fee config PDA's ATA
                 const bossAfter = await testHelper.getTokenAccountBalance(bossTokenInAccount);
-                expect(bossAfter).toEqual(BigInt(50_000_000)); // Fee amount
+                expect(bossAfter).toEqual(BigInt(0));
+
+                const feeDestBalance = await testHelper.getTokenAccountBalance(
+                    getAssociatedTokenAddressSync(tokenInMint, program.getFeeConfigPda(FeeType.TakeOffer), true)
+                );
+                expect(feeDestBalance).toEqual(BigInt(50_000_000));
 
                 // Verify user received correct token_out amount (based on net amount after fee)
                 const feeUserTokenOutAccount = getAssociatedTokenAddressSync(
@@ -1398,6 +1444,63 @@ describe("Take Offer", () => {
             // Verify user received tokens
             const userTokenOutBalance = await testHelper.getTokenAccountBalance(userTokenOutAccount);
             expect(userTokenOutBalance).toBe(BigInt(1e9));
+        });
+    });
+
+    describe("Fee ATA auto-creation (init_if_needed)", () => {
+        it("Should succeed and auto-create fee ATA when it does not exist before takeOffer", async () => {
+            // Set up a fresh testHelper without pre-creating the fee ATA
+            const freshTestHelper = await TestHelper.create();
+            const freshProgram = new OnreProgram(freshTestHelper);
+
+            const freshTokenInMint = freshTestHelper.createMint(6);
+            const freshTokenOutMint = freshTestHelper.createMint(9);
+
+            await freshProgram.initialize({ onycMint: freshTokenOutMint });
+
+            // Initialize fee config but do NOT pre-create the fee ATA
+            await freshProgram.initializeFeeConfig({ feeType: FeeType.TakeOffer });
+
+            await freshProgram.makeOffer({ tokenInMint: freshTokenInMint, tokenOutMint: freshTokenOutMint });
+
+            const freshUser = freshTestHelper.createUserAccount();
+            freshTestHelper.createTokenAccount(freshTokenInMint, freshUser.publicKey, BigInt(10_000e6), true);
+            freshTestHelper.createTokenAccount(freshTokenInMint, freshTestHelper.getBoss(), BigInt(0));
+            freshTestHelper.createTokenAccount(freshTokenOutMint, freshTestHelper.getBoss(), BigInt(10_000e9));
+            freshTestHelper.createTokenAccount(freshTokenInMint, freshProgram.pdas.offerVaultAuthorityPda, BigInt(0), true);
+            freshTestHelper.createTokenAccount(freshTokenOutMint, freshProgram.pdas.offerVaultAuthorityPda, BigInt(0), true);
+
+            await freshProgram.offerVaultDeposit({ amount: 10_000e9, tokenMint: freshTokenOutMint });
+
+            const currentTime = await freshTestHelper.getCurrentClockTime();
+            await freshProgram.addOfferVector({
+                tokenInMint: freshTokenInMint,
+                tokenOutMint: freshTokenOutMint,
+                baseTime: currentTime,
+                basePrice: 1e9,
+                apr: 0,
+                priceFixDuration: 86400
+            });
+
+            // takeOffer without pre-creating the fee ATA — instruction must create it on-the-fly
+            await freshProgram.takeOffer({
+                tokenInAmount: 1_000_000,
+                tokenInMint: freshTokenInMint,
+                tokenOutMint: freshTokenOutMint,
+                user: freshUser.publicKey,
+                signer: freshUser
+            });
+
+            // Fee ATA should now exist and user should have received tokens
+            const feeConfigPda = freshProgram.getFeeConfigPda(FeeType.TakeOffer);
+            const feeAta = getAssociatedTokenAddressSync(freshTokenInMint, feeConfigPda, true);
+            const feeBalance = await freshTestHelper.getTokenAccountBalance(feeAta);
+            // fee is 0 bps by default, so fee ATA exists but has 0 balance
+            expect(feeBalance).toBe(BigInt(0));
+
+            const userTokenOut = getAssociatedTokenAddressSync(freshTokenOutMint, freshUser.publicKey);
+            const userBalance = await freshTestHelper.getTokenAccountBalance(userTokenOut);
+            expect(userBalance).toBe(BigInt(1_000_000_000));
         });
     });
 });

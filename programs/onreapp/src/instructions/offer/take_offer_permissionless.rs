@@ -1,4 +1,5 @@
 use crate::constants::seeds;
+use crate::instructions::fee_config::{FeeConfig, FeeConfigError, FeeType};
 use crate::instructions::offer::offer_utils::{process_offer_core, verify_offer_approval};
 use crate::instructions::Offer;
 use crate::state::State;
@@ -82,7 +83,7 @@ pub struct TakeOfferPermissionless<'info> {
     ///
     /// This PDA manages token transfers and burning operations for the
     /// burn/mint architecture when program has mint authority.
-    /// CHECK: PDA derivation is validated by seeds constraint
+    /// CHECK: PDA derivation is validated at runtime in validate_permissionless_pdas
     pub vault_authority: UncheckedAccount<'info>,
 
     /// Vault account for temporary token_in storage during burn operations
@@ -113,7 +114,7 @@ pub struct TakeOfferPermissionless<'info> {
     ///
     /// This PDA manages the intermediary accounts used for permissionless token
     /// routing, enabling secure transfers without direct user-boss relationships.
-    /// CHECK: PDA derivation is validated by seeds constraint
+    /// CHECK: PDA derivation is validated at runtime in validate_permissionless_pdas
     pub permissionless_authority: UncheckedAccount<'info>,
 
     /// Intermediary account for routing token_in payments
@@ -189,19 +190,33 @@ pub struct TakeOfferPermissionless<'info> {
     ///
     /// Final destination account where the boss receives token_in payments
     /// from users taking offers via intermediary routing.
-    #[account(
-        mut,
-        associated_token::mint = token_in_mint,
-        associated_token::authority = boss,
-        associated_token::token_program = token_in_program
-    )]
+    /// Validated at runtime (owner + mint) to avoid an extra find_program_address
+    /// in try_accounts which would overflow the stack.
+    #[account(mut)]
     pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    /// Fee config PDA for TakeOffer fee routing
+    #[account(
+        seeds = [seeds::FEE_CONFIG, &[FeeType::TakeOffer as u8]],
+        bump = fee_config.bump
+    )]
+    pub fee_config: Box<Account<'info, FeeConfig>>,
+
+    /// The owner of the fee destination ATA (fee_config.destination or fee_config PDA)
+    /// CHECK: validated at runtime in validate_permissionless_pdas
+    #[account(mut)]
+    pub fee_destination_owner: UncheckedAccount<'info>,
+
+    /// Fee destination token account - created if needed (payer = user)
+    /// CHECK: address validated implicitly via create_idempotent CPI
+    #[account(mut)]
+    pub fee_destination_token_account: UncheckedAccount<'info>,
 
     /// Program-derived mint authority for direct token minting
     ///
     /// Used when the program has mint authority and can mint token_out
     /// directly instead of transferring from vault.
-    /// CHECK: PDA derivation is validated through seeds constraint
+    /// CHECK: PDA derivation is validated at runtime in validate_permissionless_pdas
     pub mint_authority: UncheckedAccount<'info>,
 
     /// Instructions sysvar for approval signature verification
@@ -223,52 +238,99 @@ pub struct TakeOfferPermissionless<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Validates PDA accounts and fee destination, returns bumps for signer seeds.
+///
+/// Extracted into a separate `#[inline(never)]` function to isolate the stack-heavy
+/// `find_program_address` calls (3 total) from the main handler. Each call uses
+/// SHA256 hashing which requires significant stack space. Combined with the large
+/// accounts struct, keeping these in the main handler would exceed the 4096-byte
+/// BPF stack frame limit.
+#[inline(never)]
+fn validate_permissionless_pdas(
+    vault_authority_key: &Pubkey,
+    permissionless_authority_key: &Pubkey,
+    mint_authority_key: &Pubkey,
+    fee_config: &FeeConfig,
+    fee_config_key: &Pubkey,
+    fee_destination_owner_key: &Pubkey,
+    boss_token_in_owner: &Pubkey,
+    boss_token_in_mint: &Pubkey,
+    boss_key: &Pubkey,
+    token_in_mint_key: &Pubkey,
+    program_id: &Pubkey,
+) -> Result<(u8, u8, u8)> {
+    let (va, va_bump) =
+        Pubkey::find_program_address(&[seeds::OFFER_VAULT_AUTHORITY], program_id);
+    require_keys_eq!(va, *vault_authority_key);
+    let (pa, pa_bump) =
+        Pubkey::find_program_address(&[seeds::PERMISSIONLESS_AUTHORITY], program_id);
+    require_keys_eq!(pa, *permissionless_authority_key);
+    let (ma, ma_bump) = Pubkey::find_program_address(&[seeds::MINT_AUTHORITY], program_id);
+    require_keys_eq!(ma, *mint_authority_key);
+
+    // Validate boss_token_in_account (moved from associated_token constraint to reduce
+    // try_accounts stack size)
+    require_keys_eq!(
+        *boss_token_in_owner,
+        *boss_key,
+        OfferCoreError::InvalidTokenInMint
+    );
+    require_keys_eq!(
+        *boss_token_in_mint,
+        *token_in_mint_key,
+        OfferCoreError::InvalidTokenInMint
+    );
+
+    // Validate fee destination owner
+    let expected_fee_owner = fee_config.fee_destination_owner(fee_config_key);
+    require_keys_eq!(
+        *fee_destination_owner_key,
+        expected_fee_owner,
+        FeeConfigError::InvalidFeeDestination
+    );
+
+    Ok((va_bump, pa_bump, ma_bump))
+}
+
 /// Executes offers via permissionless flow with secure intermediary routing
 ///
 /// This instruction enables users to execute offers without requiring direct token account
 /// relationships with the boss by routing transfers through program-owned intermediary accounts.
 /// This design supports permissionless access while maintaining security and atomicity.
 ///
-/// The routing mechanism: User → Intermediary → Boss (token_in) and Vault/Mint → Intermediary → User (token_out)
-///
-/// # Arguments
-/// * `ctx` - The instruction context containing validated accounts
-/// * `token_in_amount` - Amount of token_in the user is willing to pay (including fees)
-/// * `approval_message` - Optional cryptographic approval from trusted authority
-///
-/// # Process Flow
-/// 1. Validate offer allows permissionless operations
-/// 2. Verify approval requirements if offer needs approval
-/// 3. Calculate current price and token amounts
-/// 4. Execute atomic transfers through intermediary accounts
-/// 5. Emit event with transaction details
-///
-/// # Returns
-/// * `Ok(())` - If the offer is successfully executed
-/// * `Err(PermissionlessNotAllowed)` - If offer doesn't allow permissionless operations
-/// * `Err(_)` - If validation fails or token operations fail
-///
-/// # Access Control
-/// - Only available for offers with allow_permissionless enabled
-/// - Kill switch prevents execution when activated
-/// - Approval verification when required
-///
-/// # Events
-/// * `TakeOfferPermissionlessEvent` - Emitted with execution details and routing information
+/// The routing mechanism: User -> Intermediary -> Boss (token_in) and Vault/Mint -> Intermediary -> User (token_out)
 #[inline(never)]
 pub fn take_offer_permissionless(
     ctx: Context<TakeOfferPermissionless>,
     token_in_amount: u64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
-    let (va, va_bump) =
-        Pubkey::find_program_address(&[seeds::OFFER_VAULT_AUTHORITY], ctx.program_id);
-    require_keys_eq!(va, ctx.accounts.vault_authority.key());
-    let (pa, pa_bump) =
-        Pubkey::find_program_address(&[seeds::PERMISSIONLESS_AUTHORITY], ctx.program_id);
-    require_keys_eq!(pa, ctx.accounts.permissionless_authority.key());
-    let (ma, ma_bump) = Pubkey::find_program_address(&[seeds::MINT_AUTHORITY], ctx.program_id);
-    require_keys_eq!(ma, ctx.accounts.mint_authority.key());
+    let (va_bump, pa_bump, ma_bump) = validate_permissionless_pdas(
+        &ctx.accounts.vault_authority.key(),
+        &ctx.accounts.permissionless_authority.key(),
+        &ctx.accounts.mint_authority.key(),
+        &ctx.accounts.fee_config,
+        &ctx.accounts.fee_config.key(),
+        &ctx.accounts.fee_destination_owner.key(),
+        &ctx.accounts.boss_token_in_account.owner,
+        &ctx.accounts.boss_token_in_account.mint,
+        &ctx.accounts.boss.key(),
+        &ctx.accounts.token_in_mint.key(),
+        ctx.program_id,
+    )?;
+
+    // Idempotent ATA creation: user pays rent if not yet initialized
+    anchor_spl::associated_token::create_idempotent(CpiContext::new(
+        ctx.accounts.associated_token_program.to_account_info(),
+        anchor_spl::associated_token::Create {
+            payer: ctx.accounts.user.to_account_info(),
+            associated_token: ctx.accounts.fee_destination_token_account.to_account_info(),
+            authority: ctx.accounts.fee_destination_owner.to_account_info(),
+            mint: ctx.accounts.token_in_mint.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+            token_program: ctx.accounts.token_in_program.to_account_info(),
+        },
+    ))?;
 
     let offer = ctx.accounts.offer.load()?;
 
@@ -331,7 +393,8 @@ pub fn take_offer_permissionless(
         token_in_source_signer_seeds: Some(&[&[seeds::PERMISSIONLESS_AUTHORITY, &[pa_bump]]]),
         vault_authority_signer_seeds: Some(&[&[seeds::OFFER_VAULT_AUTHORITY, &[va_bump]]]),
         token_in_source_account: &ctx.accounts.permissionless_token_in_account,
-        token_in_destination_account: &ctx.accounts.boss_token_in_account,
+        token_in_fee_destination_account: &ctx.accounts.fee_destination_token_account.to_account_info(),
+        token_in_boss_account: &ctx.accounts.boss_token_in_account,
         token_in_burn_account: &ctx.accounts.vault_token_in_account,
         token_in_burn_authority: &ctx.accounts.vault_authority.to_account_info(),
         // Token out params

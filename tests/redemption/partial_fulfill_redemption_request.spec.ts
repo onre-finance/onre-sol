@@ -2,7 +2,7 @@ import { Keypair, PublicKey } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { TestHelper } from "../test_helper";
-import { OnreProgram } from "../onre_program.ts";
+import { FeeType, OnreProgram } from "../onre_program.ts";
 
 describe("Partial fulfill redemption request", () => {
     let testHelper: TestHelper;
@@ -54,6 +54,10 @@ describe("Partial fulfill redemption request", () => {
 
         await program.makeRedemptionOffer({ offer: offerPda });
         redemptionOfferPda = program.getRedemptionOfferPda(onycMint, usdcMint);
+
+        // Initialize fee config for FulfillRedemption and create its ATA
+        await program.initializeFeeConfig({ feeType: FeeType.FulfillRedemption });
+        testHelper.createTokenAccount(onycMint, program.getFeeConfigPda(FeeType.FulfillRedemption), BigInt(0), true);
 
         // Give both mint authorities to the program for burn + mint
         await program.transferMintAuthorityToProgram({ mint: onycMint });

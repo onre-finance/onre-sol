@@ -1,19 +1,22 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { AnchorProvider, BN, Program, Wallet } from "@coral-xyz/anchor";
 import { Onreapp } from "../target/types/onreapp";
-import { BPF_LOADER_PROGRAM_ID, BPF_UPGRADEABLE_LOADER_PROGRAM_ID, ONREAPP_PROGRAM_ID, TestHelper } from "./test_helper.ts";
+import { BPF_UPGRADEABLE_LOADER_PROGRAM_ID, ONREAPP_PROGRAM_ID, TestHelper } from "./test_helper.ts";
 import idl from "../target/idl/onreapp.json";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
-export { BPF_LOADER_PROGRAM_ID };
+export enum FeeType {
+    TakeOffer = 0,
+    FulfillRedemption = 1,
+}
 
 /**
  * Helper to check view transaction errors and throw with logs
  */
 function parseViewError(result: any): void {
-    if ("Err" in result || typeof result.err === 'function') {
+    if ("Err" in result || typeof result.err === "function") {
         const logs = result.meta().logs();
-        const errorMessage = logs.join('\n');
+        const errorMessage = logs.join("\n");
         throw new Error(errorMessage);
     }
 }
@@ -181,6 +184,24 @@ export class OnreProgram {
         await tx.rpc();
     }
 
+    getFeeConfigPda(feeType: FeeType): PublicKey {
+        return PublicKey.findProgramAddressSync(
+            [Buffer.from("fee_config"), Buffer.from([feeType])],
+            this.program.programId
+        )[0];
+    }
+
+    async initializeFeeConfig(params: { feeType: FeeType }): Promise<void> {
+        const feeTypeArg = params.feeType === FeeType.TakeOffer ? { takeOffer: {} } : { fulfillRedemption: {} };
+        const feeConfigPda = this.getFeeConfigPda(params.feeType);
+        await this.program.methods
+            .initializeFeeConfig(feeTypeArg as any)
+            .accounts({
+                feeConfig: feeConfigPda
+            })
+            .rpc();
+    }
+
     async takeOffer(params: {
         tokenInAmount: number,
         tokenInMint: PublicKey,
@@ -190,14 +211,26 @@ export class OnreProgram {
         tokenInProgram?: PublicKey,
         tokenOutProgram?: PublicKey
     }) {
+        const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
+        const feeConfigPda = this.getFeeConfigPda(FeeType.TakeOffer);
+        const feeDestinationTokenAccount = getAssociatedTokenAddressSync(
+            params.tokenInMint,
+            feeConfigPda,
+            true,
+            tokenInProgram
+        );
+
         const tx = this.program.methods
             .takeOffer(new BN(params.tokenInAmount), null)
             .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
                 user: params.user,
-                tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
-                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID
+                tokenInProgram,
+                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
+                feeConfig: feeConfigPda,
+                feeDestinationOwner: feeConfigPda,
+                feeDestinationTokenAccount
             });
 
         if (params.signer) {
@@ -216,18 +249,36 @@ export class OnreProgram {
         tokenInProgram?: PublicKey,
         tokenOutProgram?: PublicKey
     }) {
+        const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
+        const feeConfigPda = this.getFeeConfigPda(FeeType.TakeOffer);
+        const feeDestinationTokenAccount = getAssociatedTokenAddressSync(
+            params.tokenInMint,
+            feeConfigPda,
+            true,
+            tokenInProgram
+        );
+        const bossTokenInAccount = getAssociatedTokenAddressSync(
+            params.tokenInMint,
+            this.testHelper.payer.publicKey,
+            false,
+            tokenInProgram
+        );
+
         const tx = this.program.methods
             .takeOfferPermissionless(new BN(params.tokenInAmount), null)
             .accounts({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
                 user: params.user,
-                tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
+                tokenInProgram,
                 tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
-                boss: this.testHelper.payer.publicKey,
                 vaultAuthority: this.pdas.offerVaultAuthorityPda,
                 permissionlessAuthority: this.pdas.permissionlessAuthorityPda,
-                mintAuthority: this.pdas.mintAuthorityPda
+                mintAuthority: this.pdas.mintAuthorityPda,
+                feeConfig: feeConfigPda,
+                feeDestinationOwner: feeConfigPda,
+                feeDestinationTokenAccount,
+                bossTokenInAccount
             });
 
         if (params.signer) {
@@ -779,7 +830,7 @@ export class OnreProgram {
                 redemptionOffer: params.redemptionOffer,
                 redeemer: params.redeemer.publicKey,
                 tokenInMint: redemptionOffer.tokenInMint,
-                tokenProgram,
+                tokenProgram
             })
             .signers([params.redeemer]);
 
@@ -806,7 +857,7 @@ export class OnreProgram {
                 tokenInMint: redemptionOffer.tokenInMint,
                 redeemer: redemptionRequest.redeemer,
                 redemptionAdmin: params.redemptionAdmin,
-                tokenProgram,
+                tokenProgram
             })
             .signers([params.signer]);
 
@@ -832,6 +883,15 @@ export class OnreProgram {
             amount = (request.amount as BN).sub(request.fulfilledAmount as BN);
         }
 
+        const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
+        const feeConfigPda = this.getFeeConfigPda(FeeType.FulfillRedemption);
+        const feeDestinationTokenAccount = getAssociatedTokenAddressSync(
+            params.tokenInMint,
+            feeConfigPda,
+            true,
+            tokenInProgram
+        );
+
         const tx = this.program.methods
             .fulfillRedemptionRequest(amount)
             .accounts({
@@ -840,10 +900,13 @@ export class OnreProgram {
                 redemptionRequest: params.redemptionRequest,
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
-                tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
+                tokenInProgram,
                 tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
                 redeemer: params.redeemer,
-                redemptionAdmin: params.redemptionAdmin.publicKey
+                redemptionAdmin: params.redemptionAdmin.publicKey,
+                feeConfig: feeConfigPda,
+                feeDestinationOwner: feeConfigPda,
+                feeDestinationTokenAccount
             })
             .signers([params.redemptionAdmin]);
 

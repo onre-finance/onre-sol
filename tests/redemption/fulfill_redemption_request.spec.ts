@@ -1,7 +1,7 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { TestHelper } from "../test_helper";
-import { OnreProgram } from "../onre_program.ts";
+import { FeeType, OnreProgram } from "../onre_program.ts";
 
 describe("Fulfill redemption request", () => {
     let testHelper: TestHelper;
@@ -60,6 +60,10 @@ describe("Fulfill redemption request", () => {
         });
 
         redemptionOfferPda = program.getRedemptionOfferPda(onycMint, usdcMint);
+
+        // Initialize fee config for FulfillRedemption and create its ATA
+        await program.initializeFeeConfig({ feeType: FeeType.FulfillRedemption });
+        testHelper.createTokenAccount(onycMint, program.getFeeConfigPda(FeeType.FulfillRedemption), BigInt(0), true);
 
         // Fund redeemer with ONyc tokens
         testHelper.createTokenAccount(onycMint, redeemer.publicKey, BigInt(10_000e9), true);
@@ -226,7 +230,7 @@ describe("Fulfill redemption request", () => {
             // Get initial redemption_admin balance
             const initialAdminBalance = testHelper.svm.getBalance(
                 redemptionAdmin.publicKey
-            );
+            ) ?? 0;
 
             // when
             await program.fulfillRedemptionRequest({
@@ -931,9 +935,6 @@ describe("Fulfill redemption request", () => {
                 0
             );
 
-            const bossOnycAccount = getAssociatedTokenAddressSync(onycMint, boss);
-            const initialBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-
             // when
             await program.fulfillRedemptionRequest({
                 offer: offerPda2,
@@ -950,9 +951,11 @@ describe("Fulfill redemption request", () => {
             // Net: 10 ONyc - 0.5 ONyc = 9.5 ONyc (9_500_000_000) - this gets burned
             // User receives: 9.5 USDC (9_500_000 with 6 decimals) at 1:1 price
 
-            // Boss should receive the fee (0.5 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(initialBossBalance + BigInt(500_000_000)); // +0.5 ONyc
+            // Fee should go to fee config PDA's ATA (0.5 ONyc)
+            const feeConfigPda = program.getFeeConfigPda(FeeType.FulfillRedemption);
+            const feeDestAccount = getAssociatedTokenAddressSync(onycMint, feeConfigPda, true);
+            const feeBalance = await testHelper.getTokenAccountBalance(feeDestAccount);
+            expect(feeBalance).toBe(BigInt(500_000_000)); // 0.5 ONyc fee
 
             // User should receive net amount worth in USDC
             const userUsdcAccount = getAssociatedTokenAddressSync(usdcMint2, redeemer.publicKey);
@@ -1026,10 +1029,16 @@ describe("Fulfill redemption request", () => {
             // then
             // Fee: 5 ONyc * 2% = 0.1 ONyc (100_000_000)
             // Net: 5 ONyc - 0.1 ONyc = 4.9 ONyc (4_900_000_000)
-            // Total transferred to boss: 5 ONyc (net + fee)
+            // Boss receives net, fee goes to fee config PDA's ATA
 
             const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(initialBossBalance + BigInt(5_000_000_000)); // +5 ONyc (full amount)
+            expect(finalBossBalance).toBe(initialBossBalance + BigInt(4_900_000_000)); // +4.9 ONyc (net amount)
+
+            // Fee should go to fee config PDA's ATA (0.1 ONyc)
+            const feeConfigPda = program.getFeeConfigPda(FeeType.FulfillRedemption);
+            const feeDestAccount = getAssociatedTokenAddressSync(onycMint, feeConfigPda, true);
+            const feeBalance = await testHelper.getTokenAccountBalance(feeDestAccount);
+            expect(feeBalance).toBe(BigInt(100_000_000)); // 0.1 ONyc fee
 
             // User should receive net amount worth in USDC
             const userUsdcAccount = getAssociatedTokenAddressSync(usdcMint3, redeemer.publicKey);
@@ -1162,9 +1171,6 @@ describe("Fulfill redemption request", () => {
                 0
             );
 
-            const bossOnycAccount = getAssociatedTokenAddressSync(onycMint, boss);
-            const initialBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-
             // when
             await program.fulfillRedemptionRequest({
                 offer: offerPda5,
@@ -1183,9 +1189,11 @@ describe("Fulfill redemption request", () => {
             // Net: 100 ONyc - 3 ONyc = 97 ONyc (97_000_000_000) - this gets burned
             // User receives: 97 ONyc * 1.2005 ≈ 116.45 USDC
 
-            // Boss should receive the fee (3 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(initialBossBalance + BigInt(3_000_000_000)); // +3 ONyc
+            // Fee should go to fee config PDA's ATA (3 ONyc)
+            const feeConfigPda = program.getFeeConfigPda(FeeType.FulfillRedemption);
+            const feeDestAccount = getAssociatedTokenAddressSync(onycMint, feeConfigPda, true);
+            const feeBalance = await testHelper.getTokenAccountBalance(feeDestAccount);
+            expect(feeBalance).toBe(BigInt(3_000_000_000)); // 3 ONyc fee
 
             // User should receive net amount worth in USDC at current price
             // 97 ONyc * 1.2005 ≈ 116.45 USDC (116_453_150 with 6 decimals due to discrete step pricing)
@@ -1247,9 +1255,6 @@ describe("Fulfill redemption request", () => {
                 0
             );
 
-            const bossOnycAccount = getAssociatedTokenAddressSync(onycMint, boss);
-            const initialBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-
             // when
             await program.fulfillRedemptionRequest({
                 offer: offerPda6,
@@ -1268,9 +1273,11 @@ describe("Fulfill redemption request", () => {
             // Net: 50 ONyc - 5 ONyc = 45 ONyc (45_000_000_000) - this gets burned
             // User receives: 45 ONyc * 0.6256 ≈ 28.14 USDC
 
-            // Boss should receive the fee (5 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(initialBossBalance + BigInt(5_000_000_000)); // +5 ONyc
+            // Fee should go to fee config PDA's ATA (5 ONyc)
+            const feeConfigPda = program.getFeeConfigPda(FeeType.FulfillRedemption);
+            const feeDestAccount = getAssociatedTokenAddressSync(onycMint, feeConfigPda, true);
+            const feeBalance = await testHelper.getTokenAccountBalance(feeDestAccount);
+            expect(feeBalance).toBe(BigInt(5_000_000_000)); // 5 ONyc fee
 
             // User should receive net amount worth in USDC at current price
             // 45 ONyc * 0.6256 ≈ 28.14 USDC (28_140_410 with 6 decimals due to discrete step pricing)
@@ -1319,6 +1326,7 @@ describe("Fulfill redemption request", () => {
             const boss = testHelper.getBoss();
             testHelper.createTokenAccount(onyc2022, boss, BigInt(0), true);
             testHelper.createTokenAccount(usdc2022, boss, BigInt(0), true);
+            testHelper.createTokenAccount(onyc2022, program.getFeeConfigPda(FeeType.FulfillRedemption), BigInt(0), true, TOKEN_2022_PROGRAM_ID);
 
             // Advance time by 30 days
             await testHelper.advanceClockBy(30 * 86400);
@@ -1339,8 +1347,6 @@ describe("Fulfill redemption request", () => {
                 0
             );
 
-            const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
-
             // when
             await program.fulfillRedemptionRequest({
                 offer: offerPda,
@@ -1354,9 +1360,11 @@ describe("Fulfill redemption request", () => {
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID
             });
 
-            // then - Boss should receive 1% fee (0.5 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(500_000_000)); // 0.5 ONyc fee
+            // then - Fee should go to fee config PDA's ATA (0.5 ONyc)
+            const feeConfigPda = program.getFeeConfigPda(FeeType.FulfillRedemption);
+            const feeDestAccount = getAssociatedTokenAddressSync(onyc2022, feeConfigPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeBalance = await testHelper.getTokenAccountBalance(feeDestAccount);
+            expect(feeBalance).toBe(BigInt(500_000_000)); // 0.5 ONyc fee
 
             // User receives: 49.5 ONyc * ~1.506 = ~74.55 USDC (with discrete step adjustment)
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
@@ -1402,6 +1410,7 @@ describe("Fulfill redemption request", () => {
 
             const boss = testHelper.getBoss();
             testHelper.createTokenAccount(onyc2022, boss, BigInt(0), true);
+            testHelper.createTokenAccount(onyc2022, program.getFeeConfigPda(FeeType.FulfillRedemption), BigInt(0), true, TOKEN_2022_PROGRAM_ID);
 
             await testHelper.advanceClockBy(90 * 86400); // 90 days
 
@@ -1421,8 +1430,6 @@ describe("Fulfill redemption request", () => {
                 0
             );
 
-            const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
-
             // when
             await program.fulfillRedemptionRequest({
                 offer: offerPda,
@@ -1436,9 +1443,11 @@ describe("Fulfill redemption request", () => {
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID
             });
 
-            // then - Boss receives 5% fee (5 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(5_000_000_000)); // 5 ONyc fee
+            // then - Fee should go to fee config PDA's ATA (5 ONyc)
+            const feeConfigPda = program.getFeeConfigPda(FeeType.FulfillRedemption);
+            const feeDestAccount = getAssociatedTokenAddressSync(onyc2022, feeConfigPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeBalance = await testHelper.getTokenAccountBalance(feeDestAccount);
+            expect(feeBalance).toBe(BigInt(5_000_000_000)); // 5 ONyc fee
 
             // User receives: 95 ONyc * ~2.074 = ~197 USDC (15% APR over 90 days)
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
@@ -1484,6 +1493,7 @@ describe("Fulfill redemption request", () => {
 
             const boss = testHelper.getBoss();
             testHelper.createTokenAccount(onyc2022, boss, BigInt(0), true);
+            testHelper.createTokenAccount(onyc2022, program.getFeeConfigPda(FeeType.FulfillRedemption), BigInt(0), true, TOKEN_2022_PROGRAM_ID);
 
             await testHelper.advanceClockBy(180 * 86400); // 180 days
 
@@ -1503,8 +1513,6 @@ describe("Fulfill redemption request", () => {
                 0
             );
 
-            const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
-
             // when
             await program.fulfillRedemptionRequest({
                 offer: offerPda,
@@ -1518,9 +1526,11 @@ describe("Fulfill redemption request", () => {
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID
             });
 
-            // then - Boss receives 2.5% fee (5 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(5_000_000_000)); // 5 ONyc fee
+            // then - Fee should go to fee config PDA's ATA (5 ONyc)
+            const feeConfigPda = program.getFeeConfigPda(FeeType.FulfillRedemption);
+            const feeDestAccount = getAssociatedTokenAddressSync(onyc2022, feeConfigPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeBalance = await testHelper.getTokenAccountBalance(feeDestAccount);
+            expect(feeBalance).toBe(BigInt(5_000_000_000)); // 5 ONyc fee
 
             // User receives: 195 ONyc * ~0.9 = ~175.5 USDC (25% APR over 180 days)
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
@@ -1537,7 +1547,7 @@ describe("Fulfill redemption request", () => {
             await program.makeOffer({
                 tokenInMint: usdc2022,
                 tokenOutMint: onyc2022,
-                tokenInProgram: TOKEN_2022_PROGRAM_ID,
+                tokenInProgram: TOKEN_2022_PROGRAM_ID
             });
 
             const offerPda = program.getOfferPda(usdc2022, onyc2022);
@@ -1566,6 +1576,7 @@ describe("Fulfill redemption request", () => {
 
             const boss = testHelper.getBoss();
             testHelper.createTokenAccount(onyc2022, boss, BigInt(0), true, TOKEN_2022_PROGRAM_ID);
+            testHelper.createTokenAccount(onyc2022, program.getFeeConfigPda(FeeType.FulfillRedemption), BigInt(0), true, TOKEN_2022_PROGRAM_ID);
 
             await testHelper.advanceClockBy(45 * 86400); // 45 days
 
@@ -1585,8 +1596,6 @@ describe("Fulfill redemption request", () => {
                 0
             );
 
-            const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
-
             // when
             await program.fulfillRedemptionRequest({
                 offer: offerPda,
@@ -1600,9 +1609,11 @@ describe("Fulfill redemption request", () => {
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID
             });
 
-            // then - Boss receives 0.5% fee (0.375 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(375_000_000)); // 0.375 ONyc fee
+            // then - Fee should go to fee config PDA's ATA (0.375 ONyc)
+            const feeConfigPda = program.getFeeConfigPda(FeeType.FulfillRedemption);
+            const feeDestAccount = getAssociatedTokenAddressSync(onyc2022, feeConfigPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeBalance = await testHelper.getTokenAccountBalance(feeDestAccount);
+            expect(feeBalance).toBe(BigInt(375_000_000)); // 0.375 ONyc fee
 
             // User receives: 74.625 ONyc * ~3.037 = ~226.6 USDC
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
@@ -1648,6 +1659,7 @@ describe("Fulfill redemption request", () => {
 
             const boss = testHelper.getBoss();
             testHelper.createTokenAccount(onyc2022, boss, BigInt(0), true);
+            testHelper.createTokenAccount(onyc2022, program.getFeeConfigPda(FeeType.FulfillRedemption), BigInt(0), true, TOKEN_2022_PROGRAM_ID);
 
             await testHelper.advanceClockBy(60 * 86400); // 60 days
 
@@ -1667,8 +1679,6 @@ describe("Fulfill redemption request", () => {
                 0
             );
 
-            const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
-
             // when
             await program.fulfillRedemptionRequest({
                 offer: offerPda,
@@ -1682,9 +1692,11 @@ describe("Fulfill redemption request", () => {
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID
             });
 
-            // then - Boss receives 7% fee (8.4 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(8_400_000_000)); // 8.4 ONyc fee
+            // then - Fee should go to fee config PDA's ATA (8.4 ONyc)
+            const feeConfigPda = program.getFeeConfigPda(FeeType.FulfillRedemption);
+            const feeDestAccount = getAssociatedTokenAddressSync(onyc2022, feeConfigPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeBalance = await testHelper.getTokenAccountBalance(feeDestAccount);
+            expect(feeBalance).toBe(BigInt(8_400_000_000)); // 8.4 ONyc fee
 
             // User receives: 111.6 ONyc * ~1.26 = ~140.6 USDC
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
@@ -1730,6 +1742,7 @@ describe("Fulfill redemption request", () => {
 
             const boss = testHelper.getBoss();
             testHelper.createTokenAccount(onyc2022, boss, BigInt(0), true);
+            testHelper.createTokenAccount(onyc2022, program.getFeeConfigPda(FeeType.FulfillRedemption), BigInt(0), true, TOKEN_2022_PROGRAM_ID);
 
             await testHelper.advanceClockBy(15 * 86400); // 15 days
 
@@ -1749,8 +1762,6 @@ describe("Fulfill redemption request", () => {
                 0
             );
 
-            const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
-
             // when
             await program.fulfillRedemptionRequest({
                 offer: offerPda,
@@ -1764,9 +1775,11 @@ describe("Fulfill redemption request", () => {
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID
             });
 
-            // then - Boss receives 3% fee (0.9 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(900_000_000)); // 0.9 ONyc fee
+            // then - Fee should go to fee config PDA's ATA (0.9 ONyc)
+            const feeConfigPda = program.getFeeConfigPda(FeeType.FulfillRedemption);
+            const feeDestAccount = getAssociatedTokenAddressSync(onyc2022, feeConfigPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeBalance = await testHelper.getTokenAccountBalance(feeDestAccount);
+            expect(feeBalance).toBe(BigInt(900_000_000)); // 0.9 ONyc fee
 
             // User receives: 29.1 ONyc * ~2.508 = ~72.98 USDC
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
@@ -1812,6 +1825,7 @@ describe("Fulfill redemption request", () => {
 
             const boss = testHelper.getBoss();
             testHelper.createTokenAccount(onyc2022, boss, BigInt(0), true);
+            testHelper.createTokenAccount(onyc2022, program.getFeeConfigPda(FeeType.FulfillRedemption), BigInt(0), true, TOKEN_2022_PROGRAM_ID);
 
             await testHelper.advanceClockBy(120 * 86400); // 120 days
 
@@ -1831,8 +1845,6 @@ describe("Fulfill redemption request", () => {
                 0
             );
 
-            const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
-
             // when
             await program.fulfillRedemptionRequest({
                 offer: offerPda,
@@ -1846,9 +1858,11 @@ describe("Fulfill redemption request", () => {
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID
             });
 
-            // then - Boss receives 4.5% fee (3.6 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(3_600_000_000)); // 3.6 ONyc fee
+            // then - Fee should go to fee config PDA's ATA (3.6 ONyc)
+            const feeConfigPda = program.getFeeConfigPda(FeeType.FulfillRedemption);
+            const feeDestAccount = getAssociatedTokenAddressSync(onyc2022, feeConfigPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeBalance = await testHelper.getTokenAccountBalance(feeDestAccount);
+            expect(feeBalance).toBe(BigInt(3_600_000_000)); // 3.6 ONyc fee
 
             // User receives: 76.4 ONyc * ~1.04 = ~79.5 USDC
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
@@ -1894,6 +1908,7 @@ describe("Fulfill redemption request", () => {
 
             const boss = testHelper.getBoss();
             testHelper.createTokenAccount(onyc2022, boss, BigInt(0), true);
+            testHelper.createTokenAccount(onyc2022, program.getFeeConfigPda(FeeType.FulfillRedemption), BigInt(0), true, TOKEN_2022_PROGRAM_ID);
 
             await testHelper.advanceClockBy(270 * 86400); // 270 days
 
@@ -1913,8 +1928,6 @@ describe("Fulfill redemption request", () => {
                 0
             );
 
-            const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
-
             // when
             await program.fulfillRedemptionRequest({
                 offer: offerPda,
@@ -1928,9 +1941,11 @@ describe("Fulfill redemption request", () => {
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID
             });
 
-            // then - Boss receives 6% fee (9 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(9_000_000_000)); // 9 ONyc fee
+            // then - Fee should go to fee config PDA's ATA (9 ONyc)
+            const feeConfigPda = program.getFeeConfigPda(FeeType.FulfillRedemption);
+            const feeDestAccount = getAssociatedTokenAddressSync(onyc2022, feeConfigPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeBalance = await testHelper.getTokenAccountBalance(feeDestAccount);
+            expect(feeBalance).toBe(BigInt(9_000_000_000)); // 9 ONyc fee
 
             // User receives: 141 ONyc * ~0.567 = ~79.9 USDC
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
@@ -1976,6 +1991,7 @@ describe("Fulfill redemption request", () => {
 
             const boss = testHelper.getBoss();
             testHelper.createTokenAccount(onyc2022, boss, BigInt(0), true);
+            testHelper.createTokenAccount(onyc2022, program.getFeeConfigPda(FeeType.FulfillRedemption), BigInt(0), true, TOKEN_2022_PROGRAM_ID);
 
             await testHelper.advanceClockBy(365 * 86400); // 365 days (1 year)
 
@@ -1995,8 +2011,6 @@ describe("Fulfill redemption request", () => {
                 0
             );
 
-            const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
-
             // when
             await program.fulfillRedemptionRequest({
                 offer: offerPda,
@@ -2010,9 +2024,11 @@ describe("Fulfill redemption request", () => {
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID
             });
 
-            // then - Boss receives 1.5% fee (0.9 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(900_000_000)); // 0.9 ONyc fee
+            // then - Fee should go to fee config PDA's ATA (0.9 ONyc)
+            const feeConfigPda = program.getFeeConfigPda(FeeType.FulfillRedemption);
+            const feeDestAccount = getAssociatedTokenAddressSync(onyc2022, feeConfigPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeBalance = await testHelper.getTokenAccountBalance(feeDestAccount);
+            expect(feeBalance).toBe(BigInt(900_000_000)); // 0.9 ONyc fee
 
             // User receives: 59.1 ONyc * ~2.196 = ~129.8 USDC
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
@@ -2058,6 +2074,7 @@ describe("Fulfill redemption request", () => {
 
             const boss = testHelper.getBoss();
             testHelper.createTokenAccount(onyc2022, boss, BigInt(0), true);
+            testHelper.createTokenAccount(onyc2022, program.getFeeConfigPda(FeeType.FulfillRedemption), BigInt(0), true, TOKEN_2022_PROGRAM_ID);
 
             await testHelper.advanceClockBy(7 * 86400); // 7 days
 
@@ -2077,8 +2094,6 @@ describe("Fulfill redemption request", () => {
                 0
             );
 
-            const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
-
             // when
             await program.fulfillRedemptionRequest({
                 offer: offerPda,
@@ -2092,9 +2107,11 @@ describe("Fulfill redemption request", () => {
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID
             });
 
-            // then - Boss receives 8% fee (2 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(2_000_000_000)); // 2 ONyc fee
+            // then - Fee should go to fee config PDA's ATA (2 ONyc)
+            const feeConfigPda = program.getFeeConfigPda(FeeType.FulfillRedemption);
+            const feeDestAccount = getAssociatedTokenAddressSync(onyc2022, feeConfigPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeBalance = await testHelper.getTokenAccountBalance(feeDestAccount);
+            expect(feeBalance).toBe(BigInt(2_000_000_000)); // 2 ONyc fee
 
             // User receives: 23 ONyc * ~4.027 = ~92.6 USDC
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);

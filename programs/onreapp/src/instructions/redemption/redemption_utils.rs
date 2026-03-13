@@ -1,6 +1,9 @@
 use crate::constants::{seeds, PRICE_DECIMALS};
 use crate::instructions::{calculate_current_step_price, find_active_vector_at, Offer};
-use crate::utils::{burn_tokens, calculate_fees, mint_tokens, program_controls_mint, transfer_tokens};
+use crate::utils::{
+    burn_tokens, calculate_fees, mint_tokens, program_controls_mint, transfer_tokens,
+    transfer_tokens_to_info,
+};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
@@ -91,14 +94,18 @@ pub fn process_redemption_core(
         .checked_mul(10_u128.pow(token_out_mint.decimals as u32))
         .ok_or(RedemptionCoreError::OverflowError)?;
 
-    let denominator = 10_u128.pow(token_in_mint.decimals as u32)
+    let denominator = 10_u128
+        .pow(token_in_mint.decimals as u32)
         .checked_mul(10_u128.pow(PRICE_DECIMALS as u32))
         .ok_or(RedemptionCoreError::OverflowError)?;
 
     let result = numerator / denominator;
 
     // Validate result fits in u64 before casting
-    require!(result <= u64::MAX as u128, RedemptionCoreError::OverflowError);
+    require!(
+        result <= u64::MAX as u128,
+        RedemptionCoreError::OverflowError
+    );
 
     let token_out_amount = result as u64;
 
@@ -126,12 +133,14 @@ pub struct ExecuteRedemptionOpsParams<'a, 'info> {
     pub token_in_mint: &'a InterfaceAccount<'info, Mint>,
     /// Amount of token_in to process (net amount after fee)
     pub token_in_net_amount: u64,
-    /// Fee amount to transfer to boss
+    /// Fee amount to transfer to fee destination
     pub token_in_fee_amount: u64,
     /// Vault account containing locked token_in
     pub vault_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
-    /// Boss's account for receiving token_in when program lacks mint authority (or fees)
+    /// Boss's account for receiving token_in when program lacks mint authority
     pub boss_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
+    /// Fee destination account (fee config PDA's ATA or custom destination)
+    pub fee_destination_account: &'a AccountInfo<'info>,
     /// Authority for vault operations
     pub redemption_vault_authority: &'a AccountInfo<'info>,
     /// Bump seed for vault authority
@@ -187,10 +196,8 @@ pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Resu
     ]];
 
     // Step 1: Handle token_in (burn or transfer to boss)
-    let has_token_in_mint_authority = program_controls_mint(
-        params.token_in_mint,
-        params.mint_authority_pda,
-    );
+    let has_token_in_mint_authority =
+        program_controls_mint(params.token_in_mint, params.mint_authority_pda);
 
     if has_token_in_mint_authority {
         // Burn net amount from vault
@@ -203,27 +210,20 @@ pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Resu
             params.token_in_net_amount,
         )?;
 
-        // Transfer fee amount to boss if there is a fee
+        // Transfer fee amount to fee destination if there is a fee
         if params.token_in_fee_amount > 0 {
-            msg!("Transferring fee amount to boss account");
-            transfer_tokens(
+            transfer_tokens_to_info(
                 params.token_in_mint,
                 params.token_in_program,
                 params.vault_token_in_account,
-                params.boss_token_in_account,
+                params.fee_destination_account,
                 params.redemption_vault_authority,
                 Some(vault_authority_signer_seeds),
                 params.token_in_fee_amount,
             )?;
         }
     } else {
-        // When program lacks mint authority: transfer full amount (net + fee) to boss
-        // Use checked_add to prevent overflow
-        let total_amount = params
-            .token_in_net_amount
-            .checked_add(params.token_in_fee_amount)
-            .ok_or(RedemptionCoreError::OverflowError)?;
-
+        // When program lacks mint authority: transfer net to boss, fee to fee destination
         transfer_tokens(
             params.token_in_mint,
             params.token_in_program,
@@ -231,22 +231,30 @@ pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Resu
             params.boss_token_in_account,
             params.redemption_vault_authority,
             Some(vault_authority_signer_seeds),
-            total_amount,
+            params.token_in_net_amount,
         )?;
+
+        if params.token_in_fee_amount > 0 {
+            transfer_tokens_to_info(
+                params.token_in_mint,
+                params.token_in_program,
+                params.vault_token_in_account,
+                params.fee_destination_account,
+                params.redemption_vault_authority,
+                Some(vault_authority_signer_seeds),
+                params.token_in_fee_amount,
+            )?;
+        }
     }
 
     // Step 2: Distribute token_out to user
-    let has_token_out_mint_authority = program_controls_mint(
-        params.token_out_mint,
-        params.mint_authority_pda,
-    );
+    let has_token_out_mint_authority =
+        program_controls_mint(params.token_out_mint, params.mint_authority_pda);
 
     if has_token_out_mint_authority {
         // Mint token_out directly to user
-        let mint_authority_signer_seeds: &[&[&[u8]]] = &[&[
-            seeds::MINT_AUTHORITY,
-            &[params.mint_authority_bump],
-        ]];
+        let mint_authority_signer_seeds: &[&[&[u8]]] =
+            &[&[seeds::MINT_AUTHORITY, &[params.mint_authority_bump]]];
 
         mint_tokens(
             params.token_out_program,

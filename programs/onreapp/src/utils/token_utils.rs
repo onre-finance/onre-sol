@@ -59,6 +59,35 @@ pub fn transfer_tokens<'info>(
     token_interface::transfer_checked(cpi_context, amount, mint.decimals)
 }
 
+/// Token transfer that accepts a raw `AccountInfo` for the destination.
+/// Used when the destination account is held as `UncheckedAccount` / `AccountInfo`
+/// (e.g. a fee destination whose ATA is created on-the-fly with `create_idempotent`).
+pub fn transfer_tokens_to_info<'info>(
+    mint: &InterfaceAccount<'info, Mint>,
+    token_program: &Interface<'info, TokenInterface>,
+    from_account: &InterfaceAccount<'info, TokenAccount>,
+    to_account: &AccountInfo<'info>,
+    authority: &AccountInfo<'info>,
+    signer_seeds: Option<&[&[&[u8]]]>,
+    amount: u64,
+) -> Result<()> {
+    let transfer_accounts = TransferChecked {
+        mint: mint.to_account_info(),
+        from: from_account.to_account_info(),
+        to: to_account.clone(),
+        authority: authority.to_account_info(),
+    };
+
+    let cpi_context = match signer_seeds {
+        Some(seeds) => {
+            CpiContext::new_with_signer(token_program.to_account_info(), transfer_accounts, seeds)
+        }
+        None => CpiContext::new(token_program.to_account_info(), transfer_accounts),
+    };
+
+    token_interface::transfer_checked(cpi_context, amount, mint.decimals)
+}
+
 /// Calculates token_out_amount based on token_in_amount, price, and decimals.
 /// This formula is used in both single and dual redemption offers.
 ///
@@ -312,8 +341,10 @@ pub struct ExecTokenOpsParams<'a, 'info> {
     pub vault_authority_signer_seeds: Option<&'a [&'a [&'a [u8]]]>,
     /// Source account for token_in (user's account)
     pub token_in_source_account: &'a InterfaceAccount<'info, TokenAccount>,
-    /// Destination account for token_in (boss's account)
-    pub token_in_destination_account: &'a InterfaceAccount<'info, TokenAccount>,
+    /// Destination account for fee portion of token_in (fee config PDA's ATA or custom destination)
+    pub token_in_fee_destination_account: &'a AccountInfo<'info>,
+    /// Boss's account for receiving net token_in amount (used in non-mint-authority path)
+    pub token_in_boss_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Vault account for burning token_in when program has mint authority
     pub token_in_burn_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Authority for burning tokens from the vault
@@ -405,36 +436,43 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
             params.token_in_net_amount,
         )?;
 
-        // Transfer fee amount directly to boss account
+        // Transfer fee amount to fee destination account
         if params.token_in_fee_amount > 0 {
-            msg!("Transferring fee amount to boss account");
-            transfer_tokens(
+            msg!("Transferring fee amount to fee destination account");
+            transfer_tokens_to_info(
                 params.token_in_mint,
                 params.token_in_program,
                 params.token_in_source_account,
-                params.token_in_destination_account,
+                params.token_in_fee_destination_account,
                 params.token_in_authority,
                 params.token_in_source_signer_seeds,
                 params.token_in_fee_amount,
             )?;
         }
     } else {
-        // When program lacks mint authority: transfer full amount to boss
-        // Use checked_add to prevent overflow
-        let total_amount = params
-            .token_in_net_amount
-            .checked_add(params.token_in_fee_amount)
-            .ok_or(TokenUtilsErrorCode::MathOverflow)?;
-
+        // When program lacks mint authority: transfer net to boss, fee to fee destination
         transfer_tokens(
             params.token_in_mint,
             params.token_in_program,
             params.token_in_source_account,
-            params.token_in_destination_account,
+            params.token_in_boss_account,
             params.token_in_authority,
             params.token_in_source_signer_seeds,
-            total_amount,
+            params.token_in_net_amount,
         )?;
+
+        if params.token_in_fee_amount > 0 {
+            msg!("Transferring fee amount to fee destination account");
+            transfer_tokens_to_info(
+                params.token_in_mint,
+                params.token_in_program,
+                params.token_in_source_account,
+                params.token_in_fee_destination_account,
+                params.token_in_authority,
+                params.token_in_source_signer_seeds,
+                params.token_in_fee_amount,
+            )?;
+        }
     }
 
     // Step 2: Program distributes token_out

@@ -1,7 +1,7 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { TestHelper } from "../test_helper";
-import { OnreProgram } from "../onre_program";
+import { FeeType, OnreProgram } from "../onre_program";
 import { Ed25519Helper } from "../helpers/ed25519_helper";
 
 describe("Take Offer With Approval", () => {
@@ -55,6 +55,10 @@ describe("Take Offer With Approval", () => {
             amount: 10_000e9,
             tokenMint: tokenOutMint
         });
+
+        // Initialize fee config for TakeOffer and create its ATA
+        await program.initializeFeeConfig({ feeType: FeeType.TakeOffer });
+        testHelper.createTokenAccount(tokenInMint, program.getFeeConfigPda(FeeType.TakeOffer), BigInt(0), true);
 
         // Add vector to the offer
         const currentTime = await testHelper.getCurrentClockTime();

@@ -26,6 +26,9 @@ pub mod seeds {
 
     /// Seed for the user nonce account
     pub const NONCE_ACCOUNT: &[u8] = b"nonce_account";
+
+    /// Seed for fee config PDA accounts
+    pub const FEE_CONFIG: &[u8] = b"fee_config";
 }
 
 /// Maximum number of pricing vectors allowed per offer

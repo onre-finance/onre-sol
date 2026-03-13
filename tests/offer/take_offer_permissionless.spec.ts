@@ -1,6 +1,6 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { TestHelper } from "../test_helper";
-import { OnreProgram } from "../onre_program.ts";
+import { FeeType, OnreProgram } from "../onre_program.ts";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 describe("Take Offer Permissionless", () => {
@@ -62,6 +62,10 @@ describe("Take Offer Permissionless", () => {
 
         permissionlessTokenInAccount = testHelper.createTokenAccount(tokenInMint, program.pdas.permissionlessAuthorityPda, BigInt(0), true);
         permissionlessTokenOutAccount = testHelper.createTokenAccount(tokenOutMint, program.pdas.permissionlessAuthorityPda, BigInt(0), true);
+
+        // Initialize fee config for TakeOffer and create its ATA
+        await program.initializeFeeConfig({ feeType: FeeType.TakeOffer });
+        testHelper.createTokenAccount(tokenInMint, program.getFeeConfigPda(FeeType.TakeOffer), BigInt(0), true);
 
         // Fund vault
         testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(10_000e9));
@@ -824,9 +828,15 @@ describe("Take Offer Permissionless", () => {
                     signer: user
                 });
 
-                // Verify boss received full payment including fee
+                // Verify boss received net amount (after fee deduction)
                 const bossBalance = await testHelper.getTokenAccountBalance(bossTokenInAccount);
-                expect(bossBalance).toEqual(BigInt(1_050_000)); // Full amount with fee
+                expect(bossBalance).toEqual(BigInt(997_500)); // Net amount after 5% fee
+
+                // Verify fee went to fee config PDA's ATA
+                const feeConfigPda = program.getFeeConfigPda(FeeType.TakeOffer);
+                const feeDestAccount = getAssociatedTokenAddressSync(tokenInMint, feeConfigPda, true);
+                const feeBalance = await testHelper.getTokenAccountBalance(feeDestAccount);
+                expect(feeBalance).toEqual(BigInt(52_500)); // 5% of 1_050_000
 
                 // Verify user received correct token_out amount (based on net amount after fee)
                 const feeUserTokenOutAccount = getAssociatedTokenAddressSync(
@@ -902,6 +912,9 @@ describe("Take Offer Permissionless", () => {
             // Create user and boss token accounts for the restricted token
             testHelper.createTokenAccount(restrictedTokenIn, user.publicKey, BigInt(10_000e6), true);
             testHelper.createTokenAccount(restrictedTokenIn, testHelper.getBoss(), BigInt(0));
+
+            // Create fee destination ATA for the restricted token
+            testHelper.createTokenAccount(restrictedTokenIn, program.getFeeConfigPda(FeeType.TakeOffer), BigInt(0), true);
 
             const currentTime = await testHelper.getCurrentClockTime();
             await program.addOfferVector({
