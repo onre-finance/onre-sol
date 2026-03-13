@@ -56,6 +56,10 @@ fn setup_permissionless_offer() -> PermissionlessOfferCtx {
     // Create boss token_in account
     create_token_account(&mut svm, &usdc_mint, &boss, 0);
 
+    // Fee destination for TakeOffer (type=0), token_in = usdc
+    let (fee_config_pda, _) = find_fee_config_pda(0);
+    create_token_account(&mut svm, &usdc_mint, &fee_config_pda, 0);
+
     // Set approver
     let approver = Keypair::new();
     let ix = build_add_approver_ix(&boss, &approver.pubkey());
@@ -364,6 +368,10 @@ fn setup_permissionless_no_approval_with_fee(fee_bps: u16) -> PermissionlessNoAp
     create_token_account(&mut svm, &onyc_mint, &permissionless_authority, 0);
 
     create_token_account(&mut svm, &usdc_mint, &boss, 0);
+
+    // Fee destination for TakeOffer (type=0), token_in = usdc
+    let (fee_config_pda, _) = find_fee_config_pda(0);
+    create_token_account(&mut svm, &usdc_mint, &fee_config_pda, 0);
 
     let user = Keypair::new();
     svm.airdrop(&user.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
@@ -865,11 +873,12 @@ fn test_permissionless_fee_calculations_when_minting() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
-    // Boss receives full amount (fee included in transfer)
+    // Boss receives net amount (fee goes to fee_config PDA)
+    // fee = ceil(1_050_000 * 500 / 10000) = 52_500, net = 997_500
     let boss_usdc = get_token_balance(
         &ctx.svm, &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
-    assert_eq!(boss_usdc, token_in_amount);
+    assert_eq!(boss_usdc, 997_500);
 
     // User receives token_out based on net amount after fee
     // fee = ceil(1_050_000 * 500 / 10000) = ceil(52500) = 52_500
@@ -936,6 +945,10 @@ fn test_permissionless_not_allowed_rejects() {
     create_token_account(&mut svm, &onyc_mint, &permissionless_authority, 0);
 
     create_token_account(&mut svm, &usdc_mint, &boss, 0);
+
+    // Fee destination for TakeOffer (type=0), token_in = usdc
+    let (fee_config_pda, _) = find_fee_config_pda(0);
+    create_token_account(&mut svm, &usdc_mint, &fee_config_pda, 0);
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
@@ -1025,6 +1038,10 @@ fn test_permissionless_token2022_basic_success() {
 
     create_token_account_2022(&mut svm, &usdc_mint, &boss, 0);
 
+    // Fee destination for TakeOffer (type=0), token_in = usdc (token2022)
+    let (fee_config_pda, _) = find_fee_config_pda(0);
+    create_token_account_2022(&mut svm, &usdc_mint, &fee_config_pda, 0);
+
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
         &boss, &usdc_mint, &onyc_mint,
@@ -1078,6 +1095,10 @@ fn test_permissionless_token2022_rejects_token_in_transfer_fee() {
 
     create_token_account_2022(&mut svm, &usdc_mint, &boss, 0);
 
+    // Fee destination for TakeOffer (type=0), token_in = usdc (token2022)
+    let (fee_config_pda, _) = find_fee_config_pda(0);
+    create_token_account_2022(&mut svm, &usdc_mint, &fee_config_pda, 0);
+
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
         &boss, &usdc_mint, &onyc_mint,
@@ -1121,6 +1142,10 @@ fn test_permissionless_token2022_rejects_token_out_transfer_fee() {
     create_token_account_2022(&mut svm, &onyc_mint, &permissionless_authority, 0);
 
     create_token_account_2022(&mut svm, &usdc_mint, &boss, 0);
+
+    // Fee destination for TakeOffer (type=0), token_in = usdc (token2022)
+    let (fee_config_pda, _) = find_fee_config_pda(0);
+    create_token_account_2022(&mut svm, &usdc_mint, &fee_config_pda, 0);
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(

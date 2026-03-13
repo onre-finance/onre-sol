@@ -372,6 +372,10 @@ fn test_fulfill_redemption_request_transfer_mode() {
     // User token_out account for receiving usdc
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
+    // Fee destination for FulfillRedemption (type=1), token_in = onyc
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    create_token_account(&mut svm, &onyc_mint, &fee_config_pda, 0);
+
     let ix = build_create_redemption_request_ix(
         &user.pubkey(), &redemption_tin, &redemption_tout, 1_000_000_000, 0, &TOKEN_PROGRAM_ID,
     );
@@ -886,6 +890,10 @@ fn setup_fulfillable_request(fee_bps: u16, amount: u64) -> FulfillCtx {
     create_token_account(&mut svm, &onyc_mint, &boss, 0);
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
+    // Fee destination for FulfillRedemption (type=1), token_in = onyc
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    create_token_account(&mut svm, &onyc_mint, &fee_config_pda, 0);
+
     // Create request
     let ix = build_create_redemption_request_ix(
         &user.pubkey(), &onyc_mint, &usdc_mint, amount, 0, &TOKEN_PROGRAM_ID,
@@ -949,6 +957,10 @@ fn test_fulfill_redemption_request_accumulates_executed() {
     create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
     create_token_account(&mut svm, &usdc_mint, &redemption_vault_authority, 10_000_000_000);
     create_token_account(&mut svm, &onyc_mint, &boss, 0);
+
+    // Fee destination for FulfillRedemption (type=1), token_in = onyc
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    create_token_account(&mut svm, &onyc_mint, &fee_config_pda, 0);
 
     // Create and fulfill 3 requests
     for i in 0u64..3 {
@@ -1053,6 +1065,9 @@ fn test_fulfill_redemption_request_with_apr_growth() {
     create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
     create_token_account(&mut svm, &usdc_mint, &redemption_vault_authority, 10_000_000_000);
     create_token_account(&mut svm, &onyc_mint, &boss, 0);
+    // Fee destination for FulfillRedemption (type=1), token_in = onyc
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    create_token_account(&mut svm, &onyc_mint, &fee_config_pda, 0);
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
@@ -1121,6 +1136,9 @@ fn test_fulfill_redemption_request_burn_and_mint() {
     // No need for usdc in vault when minting
     create_token_account(&mut svm, &usdc_mint, &redemption_vault_authority, 0);
     create_token_account(&mut svm, &onyc_mint, &boss, 0);
+    // Fee destination for FulfillRedemption (type=1), token_in = onyc
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    create_token_account(&mut svm, &onyc_mint, &fee_config_pda, 0);
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     // Fix mint supply for onyc (so burn doesn't underflow)
@@ -1144,15 +1162,20 @@ fn test_fulfill_redemption_request_burn_and_mint() {
 
     // With burn+mint mode:
     // fee=5%, net = 950_000_000 onyc
-    // Net burned from vault, fee transferred to boss
+    // Net burned from vault, fee transferred to fee_config PDA's ATA
     // token_out = 950_000_000 * 1.0 * 10^6 / (10^9 * 10^9) = 950_000
     // usdc minted to user
     let user_usdc_ata = get_associated_token_address(&user.pubkey(), &usdc_mint);
     assert_eq!(get_token_balance(&svm, &user_usdc_ata), 950_000);
 
-    // Boss receives fee in onyc: 50_000_000
+    // Boss receives no fee (fee goes to fee_config PDA's ATA)
     let boss_onyc_ata = get_associated_token_address(&boss, &onyc_mint);
-    assert_eq!(get_token_balance(&svm, &boss_onyc_ata), 50_000_000);
+    assert_eq!(get_token_balance(&svm, &boss_onyc_ata), 0);
+
+    // fee_config PDA's ATA receives fee in onyc: 50_000_000
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    let fee_config_onyc_ata = get_associated_token_address(&fee_config_pda, &onyc_mint);
+    assert_eq!(get_token_balance(&svm, &fee_config_onyc_ata), 50_000_000);
 }
 
 #[test]
@@ -1168,9 +1191,9 @@ fn test_fulfill_redemption_request_transfer_mode_fee_to_boss() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
-    // In transfer mode (no mint authority), boss gets full amount (net + fee)
+    // In transfer mode (no mint authority), boss gets net amount; fee goes to fee_config PDA's ATA
     let boss_onyc_ata = get_associated_token_address(&boss, &ctx.onyc_mint);
-    assert_eq!(get_token_balance(&ctx.svm, &boss_onyc_ata), 1_000_000_000);
+    assert_eq!(get_token_balance(&ctx.svm, &boss_onyc_ata), 950_000_000);
 }
 
 #[test]
@@ -1208,6 +1231,9 @@ fn test_fulfill_redemption_request_different_price() {
     create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
     create_token_account(&mut svm, &usdc_mint, &redemption_vault_authority, 10_000_000_000);
     create_token_account(&mut svm, &onyc_mint, &boss, 0);
+    // Fee destination for FulfillRedemption (type=1), token_in = onyc
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    create_token_account(&mut svm, &onyc_mint, &fee_config_pda, 0);
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
@@ -1266,6 +1292,9 @@ fn test_fulfill_redemption_request_fee_with_apr() {
     create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
     create_token_account(&mut svm, &usdc_mint, &redemption_vault_authority, 10_000_000_000);
     create_token_account(&mut svm, &onyc_mint, &boss, 0);
+    // Fee destination for FulfillRedemption (type=1), token_in = onyc
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    create_token_account(&mut svm, &onyc_mint, &fee_config_pda, 0);
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
@@ -1388,6 +1417,9 @@ fn test_fulfill_redemption_token2022_transfer_mode() {
     create_token_account_2022(&mut svm, &usdc_mint, &redemption_vault_authority, 10_000_000_000);
 
     create_token_account_2022(&mut svm, &onyc_mint, &boss, 0);
+    // Fee destination for FulfillRedemption (type=1), token_in = onyc (Token-2022)
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    create_token_account_2022(&mut svm, &onyc_mint, &fee_config_pda, 0);
     create_token_account_2022(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
@@ -1434,6 +1466,9 @@ fn test_fulfill_redemption_token2022_burn_mint_mode() {
     create_token_account_2022(&mut svm, &usdc_mint, &redemption_vault_authority, 0);
 
     create_token_account_2022(&mut svm, &onyc_mint, &boss, 0);
+    // Fee destination for FulfillRedemption (type=1), token_in = onyc (Token-2022)
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    create_token_account_2022(&mut svm, &onyc_mint, &fee_config_pda, 0);
     create_token_account_2022(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     // Fix mint supply for onyc (so burn doesn't underflow)
@@ -1456,13 +1491,19 @@ fn test_fulfill_redemption_token2022_burn_mint_mode() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    // fee=5%, net=950_000_000, burned from vault; fee=50_000_000 to boss
+    // fee=5%, net=950_000_000, burned from vault; fee=50_000_000 to fee_config PDA's ATA
     // token_out = 950_000 usdc minted to user
     let user_usdc_ata = get_associated_token_address_2022(&user.pubkey(), &usdc_mint);
     assert_eq!(get_token_balance(&svm, &user_usdc_ata), 950_000);
 
+    // Boss receives no fee in burn mode (fee goes to fee_config PDA's ATA)
     let boss_onyc_ata = get_associated_token_address_2022(&boss, &onyc_mint);
-    assert_eq!(get_token_balance(&svm, &boss_onyc_ata), 50_000_000);
+    assert_eq!(get_token_balance(&svm, &boss_onyc_ata), 0);
+
+    // fee_config PDA's ATA receives fee in onyc: 50_000_000
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    let fee_dest_ata = get_associated_token_address_2022(&fee_config_pda, &onyc_mint);
+    assert_eq!(get_token_balance(&svm, &fee_dest_ata), 50_000_000);
 }
 
 #[test]
@@ -1507,6 +1548,9 @@ fn test_fulfill_redemption_token2022_with_fee() {
     create_token_account_2022(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
     create_token_account_2022(&mut svm, &usdc_mint, &redemption_vault_authority, 10_000_000_000);
     create_token_account_2022(&mut svm, &onyc_mint, &boss, 0);
+    // Fee destination for FulfillRedemption (type=1), token_in = onyc (Token-2022)
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    create_token_account_2022(&mut svm, &onyc_mint, &fee_config_pda, 0);
     create_token_account_2022(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
@@ -1675,6 +1719,9 @@ fn test_fulfill_redemption_request_fails_no_active_vector() {
     create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
     create_token_account(&mut svm, &usdc_mint, &redemption_vault_authority, 10_000_000_000);
     create_token_account(&mut svm, &onyc_mint, &boss, 0);
+    // Fee destination for FulfillRedemption (type=1), token_in = onyc
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    create_token_account(&mut svm, &onyc_mint, &fee_config_pda, 0);
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
@@ -1734,6 +1781,9 @@ fn test_fulfill_redemption_request_price_1_003() {
     create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
     create_token_account(&mut svm, &usdc_mint, &redemption_vault_authority, 10_000_000_000);
     create_token_account(&mut svm, &onyc_mint, &boss, 0);
+    // Fee destination for FulfillRedemption (type=1), token_in = onyc
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    create_token_account(&mut svm, &onyc_mint, &fee_config_pda, 0);
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
@@ -1790,6 +1840,9 @@ fn test_fulfill_redemption_request_price_0_5() {
     create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
     create_token_account(&mut svm, &usdc_mint, &redemption_vault_authority, 10_000_000_000);
     create_token_account(&mut svm, &onyc_mint, &boss, 0);
+    // Fee destination for FulfillRedemption (type=1), token_in = onyc
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    create_token_account(&mut svm, &onyc_mint, &fee_config_pda, 0);
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
@@ -1846,6 +1899,9 @@ fn test_fulfill_redemption_request_price_pi() {
     create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
     create_token_account(&mut svm, &usdc_mint, &redemption_vault_authority, 10_000_000_000);
     create_token_account(&mut svm, &onyc_mint, &boss, 0);
+    // Fee destination for FulfillRedemption (type=1), token_in = onyc
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    create_token_account(&mut svm, &onyc_mint, &fee_config_pda, 0);
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
@@ -1923,6 +1979,9 @@ fn test_fulfill_redemption_request_price_0_123456789() {
     create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
     create_token_account(&mut svm, &usdc_mint, &redemption_vault_authority, 10_000_000_000);
     create_token_account(&mut svm, &onyc_mint, &boss, 0);
+    // Fee destination for FulfillRedemption (type=1), token_in = onyc
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    create_token_account(&mut svm, &onyc_mint, &fee_config_pda, 0);
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
@@ -1989,6 +2048,9 @@ fn fulfill_token2022_with_params(apr: u64, fee_bps: u16, advance_days: u64) {
     create_token_account_2022(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
     create_token_account_2022(&mut svm, &usdc_mint, &redemption_vault_authority, 100_000_000_000);
     create_token_account_2022(&mut svm, &onyc_mint, &boss, 0);
+    // Fee destination for FulfillRedemption (type=1), token_in = onyc (Token-2022)
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    create_token_account_2022(&mut svm, &onyc_mint, &fee_config_pda, 0);
     create_token_account_2022(&mut svm, &usdc_mint, &user.pubkey(), 0);
 
     let ix = build_create_redemption_request_ix(
@@ -2025,11 +2087,16 @@ fn fulfill_token2022_with_params(apr: u64, fee_bps: u16, advance_days: u64) {
     if fee_bps > 0 {
         // Net amount after fee
         let fee = 1_000_000_000u64 * fee_bps as u64 / 10_000;
-        let _net = 1_000_000_000u64 - fee;
-        // Boss should have received fee in onyc (transferred)
+        let net = 1_000_000_000u64 - fee;
+        // Boss should have received net onyc (transfer mode); fee goes to fee_config PDA's ATA
         let boss_onyc_ata = get_associated_token_address_2022(&boss, &onyc_mint);
         let boss_onyc = get_token_balance(&svm, &boss_onyc_ata);
-        assert_eq!(boss_onyc, 1_000_000_000, "boss receives full onyc in transfer mode");
+        assert_eq!(boss_onyc, net, "boss receives net onyc in transfer mode");
+        // fee_config PDA's ATA should have received the fee
+        let (fee_config_pda, _) = find_fee_config_pda(1);
+        let fee_dest_ata = get_associated_token_address_2022(&fee_config_pda, &onyc_mint);
+        let fee_received = get_token_balance(&svm, &fee_dest_ata);
+        assert_eq!(fee_received, fee, "fee_config PDA receives fee in onyc");
     }
 }
 
@@ -2497,6 +2564,9 @@ fn test_fulfill_redemption_request_different_decimals() {
 
     // Boss token account for receiving onyc
     create_token_account(&mut svm, &onyc_mint, &boss, 0);
+    // Fee destination for FulfillRedemption (type=1), token_in = onyc
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    create_token_account(&mut svm, &onyc_mint, &fee_config_pda, 0);
     // User token_out account for receiving usdc
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
 

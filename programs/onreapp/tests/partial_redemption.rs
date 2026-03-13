@@ -81,6 +81,11 @@ fn setup_partial(
     // Boss token accounts required by the instruction
     create_token_account(&mut svm, &onyc_mint, &boss, 0);
 
+    // Fee destination token account for FulfillRedemption fee_config (type=1)
+    // fee_config.destination = None => fees go to fee_config PDA's own ATA for token_in (onyc)
+    let (fee_config_pda, _) = find_fee_config_pda(1);
+    create_token_account(&mut svm, &onyc_mint, &fee_config_pda, 0);
+
     // User (redeemer)
     let user = Keypair::new();
     svm.airdrop(&user.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();

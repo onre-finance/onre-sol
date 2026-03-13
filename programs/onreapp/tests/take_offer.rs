@@ -47,6 +47,10 @@ fn setup_take_offer_with_fee(fee_bps: u16) -> TakeOfferCtx {
     // Boss token_in account
     create_token_account(&mut svm, &usdc_mint, &boss, 0);
 
+    // Fee destination for TakeOffer (type=0), token_in = usdc
+    let (fee_config_pda, _) = find_fee_config_pda(0);
+    create_token_account(&mut svm, &usdc_mint, &fee_config_pda, 0);
+
     TakeOfferCtx {
         svm,
         payer,
@@ -145,13 +149,15 @@ fn test_ceiling_fee_small_amount() {
         &ctx.svm,
         &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
-    assert_eq!(boss_usdc_after - boss_usdc_before, 199);
+    // fee = ceil(199*50/10000) = 1 goes to fee_config PDA, boss gets net = 198
+    assert_eq!(boss_usdc_after - boss_usdc_before, 198);
 
     let user_onyc = get_token_balance(
         &ctx.svm,
         &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
     );
-    // fee = ceil(199*50/10000) = 1, net = 198, token_out = 198 * 1e9 / 1e6 = 198_000
+    // fee = ceil(199*50/10000) = 1 (goes to fee_config PDA), net = 198 (goes to boss)
+    // token_out = 198 * 1e9 / 1e6 = 198_000
     assert_eq!(user_onyc, 198_000);
 }
 
@@ -737,6 +743,10 @@ fn test_take_offer_with_valid_approval() {
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 10_000_000_000);
     create_token_account(&mut svm, &usdc_mint, &boss, 0);
 
+    // Fee destination for TakeOffer (type=0), token_in = usdc
+    let (fee_config_pda, _) = find_fee_config_pda(0);
+    create_token_account(&mut svm, &usdc_mint, &fee_config_pda, 0);
+
     let approver = Keypair::new();
     let ix = build_add_approver_ix(&boss, &approver.pubkey());
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -882,11 +892,12 @@ fn test_fee_collection_with_mint_authority_burn() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
-    // Boss receives full amount
+    // Boss receives net amount (fee goes to fee_config PDA)
+    // fee = ceil(1_000_000 * 500 / 10000) = 50_000, net = 950_000
     let boss_usdc = get_token_balance(
         &ctx.svm, &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
-    assert_eq!(boss_usdc, token_in_amount);
+    assert_eq!(boss_usdc, 950_000);
 
     // fee = ceil(1_000_000 * 500 / 10000) = ceil(50000) = 50_000
     // net = 1_000_000 - 50_000 = 950_000
@@ -922,6 +933,10 @@ fn test_take_offer_token2022_transfers() {
     svm.airdrop(&user.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
     create_token_account_2022(&mut svm, &usdc_mint, &user.pubkey(), 10_000_000_000);
     create_token_account_2022(&mut svm, &usdc_mint, &boss, 0);
+
+    // Fee destination for TakeOffer (type=0), token_in = usdc (token2022)
+    let (fee_config_pda, _) = find_fee_config_pda(0);
+    create_token_account_2022(&mut svm, &usdc_mint, &fee_config_pda, 0);
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
@@ -985,6 +1000,10 @@ fn test_take_offer_token2022_zero_transfer_fee_accepted() {
     create_token_account_2022(&mut svm, &usdc_mint, &boss, 0);
     create_token_account_2022(&mut svm, &onyc_mint, &user.pubkey(), 0);
 
+    // Fee destination for TakeOffer (type=0), token_in = usdc (token2022)
+    let (fee_config_pda, _) = find_fee_config_pda(0);
+    create_token_account_2022(&mut svm, &usdc_mint, &fee_config_pda, 0);
+
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
         &boss, &usdc_mint, &onyc_mint,
@@ -1029,6 +1048,10 @@ fn test_take_offer_token2022_rejects_token_in_transfer_fee() {
     create_token_account_2022(&mut svm, &usdc_mint, &boss, 0);
     create_token_account_2022(&mut svm, &onyc_mint, &user.pubkey(), 0);
 
+    // Fee destination for TakeOffer (type=0), token_in = usdc (token2022)
+    let (fee_config_pda, _) = find_fee_config_pda(0);
+    create_token_account_2022(&mut svm, &usdc_mint, &fee_config_pda, 0);
+
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
         &boss, &usdc_mint, &onyc_mint,
@@ -1068,6 +1091,10 @@ fn test_take_offer_token2022_rejects_token_out_transfer_fee() {
     create_token_account_2022(&mut svm, &usdc_mint, &user.pubkey(), 10_000_000_000);
     create_token_account_2022(&mut svm, &usdc_mint, &boss, 0);
     create_token_account_2022(&mut svm, &onyc_mint, &user.pubkey(), 0);
+
+    // Fee destination for TakeOffer (type=0), token_in = usdc (token2022)
+    let (fee_config_pda, _) = find_fee_config_pda(0);
+    create_token_account_2022(&mut svm, &usdc_mint, &fee_config_pda, 0);
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(

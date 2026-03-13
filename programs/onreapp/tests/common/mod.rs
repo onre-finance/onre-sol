@@ -46,6 +46,7 @@ pub const OFFER_VAULT_AUTHORITY_SEED: &[u8] = b"offer_vault_authority";
 pub const REDEMPTION_OFFER_VAULT_AUTHORITY_SEED: &[u8] = b"redemption_offer_vault_authority";
 pub const PERMISSIONLESS_AUTHORITY_SEED: &[u8] = b"permissionless-1";
 pub const MINT_AUTHORITY_SEED: &[u8] = b"mint_authority";
+pub const FEE_CONFIG_SEED: &[u8] = b"fee_config";
 
 // ---------------------------------------------------------------------------
 // ATA derivation
@@ -121,6 +122,10 @@ pub fn find_permissionless_authority_pda() -> (Pubkey, u8) {
 
 pub fn find_mint_authority_pda() -> (Pubkey, u8) {
     Pubkey::find_program_address(&[MINT_AUTHORITY_SEED], &PROGRAM_ID)
+}
+
+pub fn find_fee_config_pda(fee_type: u8) -> (Pubkey, u8) {
+    Pubkey::find_program_address(&[FEE_CONFIG_SEED, &[fee_type]], &PROGRAM_ID)
 }
 
 pub fn find_program_data_pda() -> Pubkey {
@@ -224,6 +229,13 @@ pub fn setup_initialized() -> (LiteSVM, Keypair, Pubkey) {
     let onyc_mint = create_mint(&mut svm, &payer, 9, &boss);
     let ix = build_initialize_ix(&boss, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&payer]).expect("initialize failed");
+    // Initialize fee configs for TakeOffer (0) and FulfillRedemption (1)
+    let ix = build_initialize_fee_config_ix(&boss, 0);
+    send_tx(&mut svm, &[ix], &[&payer]).expect("initialize_fee_config TakeOffer failed");
+    advance_slot(&mut svm);
+    let ix = build_initialize_fee_config_ix(&boss, 1);
+    send_tx(&mut svm, &[ix], &[&payer]).expect("initialize_fee_config FulfillRedemption failed");
+    advance_slot(&mut svm);
     (svm, payer, onyc_mint)
 }
 
@@ -467,6 +479,25 @@ pub fn build_initialize_ix(boss: &Pubkey, onyc_mint: &Pubkey) -> Instruction {
             AccountMeta::new_readonly(PROGRAM_ID, false),
             AccountMeta::new(program_data_pda, false),
             AccountMeta::new_readonly(*onyc_mint, false),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+        ],
+        data,
+    }
+}
+
+pub fn build_initialize_fee_config_ix(boss: &Pubkey, fee_type: u8) -> Instruction {
+    let (state_pda, _) = find_state_pda();
+    let (fee_config_pda, _) = find_fee_config_pda(fee_type);
+
+    let mut data = ix_discriminator("initialize_fee_config").to_vec();
+    data.push(fee_type); // FeeType enum serialized as u8
+
+    Instruction {
+        program_id: PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new(fee_config_pda, false),
+            AccountMeta::new(*boss, true),
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
         ],
         data,
@@ -790,6 +821,10 @@ pub fn build_take_offer_permissionless_ix(
         }
     }
 
+    let (fee_config_pda, _) = find_fee_config_pda(0); // TakeOffer = 0
+    // fee_config.destination = None => fees go to fee_config PDA's own ATA
+    let fee_destination_ata = derive_ata(&fee_config_pda, token_in_mint, token_in_program);
+
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
@@ -809,6 +844,8 @@ pub fn build_take_offer_permissionless_ix(
             AccountMeta::new(user_token_in_ata, false),            // user_token_in_account
             AccountMeta::new(user_token_out_ata, false),           // user_token_out_account
             AccountMeta::new(boss_token_in_ata, false),            // boss_token_in_account
+            AccountMeta::new_readonly(fee_config_pda, false),      // fee_config
+            AccountMeta::new(fee_destination_ata, false),          // fee_destination_token_account
             AccountMeta::new_readonly(mint_authority_pda, false),  // mint_authority
             AccountMeta::new_readonly(SYSVAR_INSTRUCTIONS_ID, false), // instructions_sysvar
             AccountMeta::new(*user, true),                         // user (signer)
@@ -971,12 +1008,15 @@ pub fn build_take_offer_ix(
     let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
     let (vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
+    let (fee_config_pda, _) = find_fee_config_pda(0); // TakeOffer = 0
 
     let vault_token_in_ata = derive_ata(&vault_authority_pda, token_in_mint, token_in_program);
     let vault_token_out_ata = derive_ata(&vault_authority_pda, token_out_mint, token_out_program);
     let user_token_in_ata = derive_ata(user, token_in_mint, token_in_program);
     let user_token_out_ata = derive_ata(user, token_out_mint, token_out_program);
     let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
+    // fee_config.destination = None => fees go to fee_config PDA's own ATA
+    let fee_destination_ata = derive_ata(&fee_config_pda, token_in_mint, token_in_program);
 
     let mut data = ix_discriminator("take_offer").to_vec();
     data.extend_from_slice(&token_in_amount.to_le_bytes());
@@ -1006,6 +1046,8 @@ pub fn build_take_offer_ix(
             AccountMeta::new(user_token_in_ata, false),
             AccountMeta::new(user_token_out_ata, false),
             AccountMeta::new(boss_token_in_ata, false),
+            AccountMeta::new_readonly(fee_config_pda, false),
+            AccountMeta::new(fee_destination_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),
             AccountMeta::new_readonly(SYSVAR_INSTRUCTIONS_ID, false),
             AccountMeta::new(*user, true),
@@ -1723,6 +1765,10 @@ pub fn build_fulfill_redemption_request_ix(
     );
     let user_token_out_ata = derive_ata(redeemer, token_out_mint, token_out_program);
     let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
+    let (fee_config_pda, _) = find_fee_config_pda(1); // FulfillRedemption = 1
+    // fee_config.destination = None => fees go to fee_config PDA's own ATA
+    // Fee is on token_in (the token being redeemed, e.g. ONyc)
+    let fee_destination_ata = derive_ata(&fee_config_pda, token_in_mint, token_in_program);
 
     let mut data = ix_discriminator("fulfill_redemption_request").to_vec();
     data.extend_from_slice(&amount.to_le_bytes());
@@ -1744,6 +1790,8 @@ pub fn build_fulfill_redemption_request_ix(
             AccountMeta::new_readonly(*token_out_program, false),
             AccountMeta::new(user_token_out_ata, false),
             AccountMeta::new(boss_token_in_ata, false),
+            AccountMeta::new_readonly(fee_config_pda, false),
+            AccountMeta::new(fee_destination_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),
             AccountMeta::new_readonly(*redeemer, false),
             AccountMeta::new(*redemption_admin, true),

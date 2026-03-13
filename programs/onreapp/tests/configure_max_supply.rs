@@ -250,6 +250,10 @@ fn test_take_offer_can_take_within_cap() {
     create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 10_000_000_000);
     create_token_account(&mut svm, &usdc_mint, &boss, 0);
 
+    // Create fee destination token account (fee_config PDA's ATA for usdc_mint)
+    let (fee_config_pda, _) = find_fee_config_pda(0);
+    create_token_account(&mut svm, &usdc_mint, &fee_config_pda, 0);
+
     // 1 USDC at price 1.0 = 1 ONyc - within 10 token cap
     let ix = build_take_offer_ix(
         &user.pubkey(), &boss, &usdc_mint, &onyc_mint,
@@ -296,6 +300,10 @@ fn test_take_offer_multiple_users_until_cap() {
     create_token_account(&mut svm, &usdc_mint, &vault_authority, 0);
     create_token_account(&mut svm, &onyc_mint, &vault_authority, 0);
     create_token_account(&mut svm, &usdc_mint, &boss, 0);
+
+    // Create fee destination token account (fee_config PDA's ATA for usdc_mint)
+    let (fee_config_pda, _) = find_fee_config_pda(0);
+    create_token_account(&mut svm, &usdc_mint, &fee_config_pda, 0);
 
     // User 1: take 1 ONyc
     let user1 = Keypair::new();
@@ -427,6 +435,10 @@ fn test_take_offer_permissionless_respects_cumulative_supply() {
     create_token_account(&mut svm, &onyc_mint, &permissionless_authority, 0);
 
     create_token_account(&mut svm, &usdc_mint, &boss, 0);
+
+    // Create fee destination token account (fee_config PDA's ATA for usdc_mint)
+    let (fee_config_pda, _) = find_fee_config_pda(0);
+    create_token_account(&mut svm, &usdc_mint, &fee_config_pda, 0);
 
     // User 1: take 1 ONyc
     let user1 = Keypair::new();
