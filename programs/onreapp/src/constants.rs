@@ -30,11 +30,11 @@ pub mod seeds {
     /// Seed for the user nonce account
     pub const NONCE_ACCOUNT: &[u8] = b"nonce_account";
 
-    /// Seed for the CACHE pool state account
-    pub const CACHE_STATE: &[u8] = b"cache_state";
+    /// Seed for the BUFFER pool state account
+    pub const BUFFER_STATE: &[u8] = b"buffer_state";
 
-    /// Seed for the CACHE vault authority account
-    pub const CACHE_VAULT_AUTHORITY: &[u8] = b"cache_vault_authority";
+    /// Seed for the BUFFER vault authority account
+    pub const BUFFER_VAULT_AUTHORITY: &[u8] = b"buffer_vault_authority";
 
     /// Seed for the management fee vault authority account
     pub const MANAGEMENT_FEE_VAULT_AUTHORITY: &[u8] = b"management_fee_vault_authority";

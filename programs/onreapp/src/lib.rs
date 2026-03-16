@@ -386,68 +386,62 @@ pub mod onreapp {
         state_operations::set_redemption_admin(ctx, new_redemption_admin)
     }
 
-    /// Initializes the standalone CACHE pool state and vault accounts.
+    /// Initializes the standalone BUFFER pool state and vault accounts.
     ///
-    /// Creates CACHE state as a separate PDA so existing offer/redemption state
-    /// remains unchanged. Only the boss can initialize CACHE.
-    pub fn initialize_cache(ctx: Context<InitializeCache>, cache_admin: Pubkey) -> Result<()> {
-        cache::initialize_cache(ctx, cache_admin)
+    /// Creates BUFFER state as a separate PDA so existing offer/redemption state
+    /// remains unchanged. Only the boss can initialize BUFFER.
+    pub fn initialize_buffer(ctx: Context<InitializeBuffer>, buffer_admin: Pubkey) -> Result<()> {
+        buffer::initialize_buffer(ctx, buffer_admin)
     }
 
-    /// Sets the CACHE admin authorized to call accrual.
+    /// Sets the BUFFER admin authorized to call accrual.
     ///
-    /// Only the boss can update the CACHE admin.
-    pub fn set_cache_admin(ctx: Context<SetCacheAdmin>, new_cache_admin: Pubkey) -> Result<()> {
-        cache::set_cache_admin(ctx, new_cache_admin)
+    /// Only the boss can update the BUFFER admin.
+    pub fn set_buffer_admin(ctx: Context<SetBufferAdmin>, new_buffer_admin: Pubkey) -> Result<()> {
+        buffer::set_buffer_admin(ctx, new_buffer_admin)
     }
 
-    /// Sets the CACHE main offer used for yield sourcing.
+    /// Sets the main offer stored in program state.
     ///
     /// Only the boss can update this value.
     pub fn set_main_offer(ctx: Context<SetMainOffer>) -> Result<()> {
-        cache::set_main_offer(ctx)
+        state_operations::set_main_offer(ctx)
     }
 
-    /// Sets CACHE gross yield.
+    /// Sets BUFFER gross yield.
     ///
-    /// Current yield is read from the main offer during accrue_cache.
-    pub fn set_cache_gross_yield(
-        ctx: Context<SetCacheGrossYield>,
-        gross_yield: u64,
-    ) -> Result<()> {
-        cache::set_cache_gross_yield(ctx, gross_yield)
+    /// Current yield is read from the main offer during manage_buffer.
+    pub fn set_buffer_gross_apr(ctx: Context<SetBufferGrossYield>, gross_yield: u64) -> Result<()> {
+        buffer::set_buffer_gross_apr(ctx, gross_yield)
     }
 
-    /// Sets CACHE fee split parameters.
+    /// Sets BUFFER fee split parameters.
     ///
     /// Both fee values are expressed in basis points and applied during accrual.
-    pub fn set_cache_fee_config(
-        ctx: Context<SetCacheFeeConfig>,
+    pub fn set_buffer_fee_config(
+        ctx: Context<SetBufferFeeConfig>,
         management_fee_basis_points: u16,
+        management_fee_wallet: Pubkey,
         performance_fee_basis_points: u16,
+        performance_fee_wallet: Pubkey,
     ) -> Result<()> {
-        cache::set_cache_fee_config(
+        buffer::set_buffer_fee_config(
             ctx,
             management_fee_basis_points,
+            management_fee_wallet,
             performance_fee_basis_points,
+            performance_fee_wallet,
         )
     }
 
-    /// Updates the lowest observed ONyc supply in CACHE state.
+    /// Accrues BUFFER spread and mints ONyc to the BUFFER vault account.
     ///
-    /// This instruction is permissionless.
-    pub fn update_lowest_supply(ctx: Context<UpdateLowestSupply>) -> Result<()> {
-        cache::update_lowest_supply(ctx)
+    /// Callable by buffer_admin only.
+    pub fn manage_buffer(ctx: Context<ManageBuffer>) -> Result<()> {
+        buffer::manage_buffer(ctx)
     }
 
-    /// Accrues CACHE spread and mints ONyc to the CACHE vault account.
-    ///
-    /// Callable by cache_admin only.
-    pub fn accrue_cache(ctx: Context<AccrueCache>) -> Result<()> {
-        cache::accrue_cache(ctx)
-    }
-
-    /// Burns ONyc from CACHE vault to increase NAV according to provided target inputs.
+    /// Burns ONyc from BUFFER vault to increase NAV according to provided target inputs.
     ///
     /// Callable by boss only.
     pub fn burn_for_nav_increase(
@@ -455,17 +449,23 @@ pub mod onreapp {
         asset_adjustment_amount: u64,
         target_nav: u64,
     ) -> Result<()> {
-        cache::burn_for_nav_increase(ctx, asset_adjustment_amount, target_nav)
+        buffer::burn_for_nav_increase(ctx, asset_adjustment_amount, target_nav)
     }
 
     /// Transfers management fees from the management fee vault to the boss.
-    pub fn claim_management_fees(ctx: Context<ClaimManagementFees>, amount: u64) -> Result<()> {
-        cache::claim_management_fees(ctx, amount)
+    pub fn withdraw_management_fees(
+        ctx: Context<WithdrawManagementFees>,
+        amount: u64,
+    ) -> Result<()> {
+        buffer::withdraw_management_fees(ctx, amount)
     }
 
     /// Transfers performance fees from the performance fee vault to the boss.
-    pub fn claim_performance_fees(ctx: Context<ClaimPerformanceFees>, amount: u64) -> Result<()> {
-        cache::claim_performance_fees(ctx, amount)
+    pub fn withdraw_performance_fees(
+        ctx: Context<WithdrawPerformanceFees>,
+        amount: u64,
+    ) -> Result<()> {
+        buffer::withdraw_performance_fees(ctx, amount)
     }
 
     /// Mints ONyc tokens to the boss's account.

@@ -1,5 +1,5 @@
 use crate::constants::{seeds, PRICE_DECIMALS};
-use crate::instructions::cache::{CacheBurnedForNavEvent, CacheErrorCode, CacheState};
+use crate::instructions::buffer::{BufferBurnedForNavEvent, BufferErrorCode, BufferState};
 use crate::instructions::market_info::offer_valuation_utils::{
     compute_offer_current_price, compute_tvl_from_supply_and_price,
 };
@@ -24,11 +24,10 @@ pub struct BurnForNavIncrease<'info> {
 
     #[account(
         mut,
-        seeds = [seeds::CACHE_STATE],
-        bump = cache_state.bump,
-        has_one = onyc_mint,
+        seeds = [seeds::BUFFER_STATE],
+        bump = buffer_state.bump,
     )]
-    pub cache_state: Account<'info, CacheState>,
+    pub buffer_state: Account<'info, BufferState>,
 
     pub boss: Signer<'info>,
 
@@ -53,16 +52,16 @@ pub struct BurnForNavIncrease<'info> {
 
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
-        seeds = [seeds::CACHE_VAULT_AUTHORITY],
+        seeds = [seeds::BUFFER_VAULT_AUTHORITY],
         bump,
     )]
-    pub cache_vault_authority: UncheckedAccount<'info>,
+    pub buffer_vault_authority: UncheckedAccount<'info>,
 
     /// CHECK: Account is validated in instruction logic to allow uninitialized vault account
     pub vault_token_out_account: UncheckedAccount<'info>,
 
     #[account(mut)]
-    pub cache_vault_onyc_account: InterfaceAccount<'info, TokenAccount>,
+    pub buffer_vault_onyc_account: InterfaceAccount<'info, TokenAccount>,
 
     pub token_program: Interface<'info, TokenInterface>,
 }
@@ -72,7 +71,7 @@ pub fn burn_for_nav_increase(
     asset_adjustment_amount: u64,
     target_nav: u64,
 ) -> Result<()> {
-    require!(target_nav > 0, CacheErrorCode::InvalidTargetNav);
+    require!(target_nav > 0, BufferErrorCode::InvalidTargetNav);
 
     let offer = ctx.accounts.offer.load()?;
     require_keys_eq!(
@@ -88,17 +87,17 @@ pub fn burn_for_nav_increase(
     require_keys_eq!(
         ctx.accounts.vault_token_out_account.key(),
         expected_vault_token_out_account,
-        CacheErrorCode::InvalidOnycMint
+        BufferErrorCode::InvalidOnycMint
+    );
+    let expected_buffer_vault_onyc_account = get_associated_token_address_with_program_id(
+        &ctx.accounts.buffer_vault_authority.key(),
+        &ctx.accounts.onyc_mint.key(),
+        &ctx.accounts.token_program.key(),
     );
     require_keys_eq!(
-        ctx.accounts.cache_vault_onyc_account.owner,
-        ctx.accounts.cache_vault_authority.key(),
-        CacheErrorCode::InvalidOnycMint
-    );
-    require_keys_eq!(
-        ctx.accounts.cache_vault_onyc_account.mint,
-        ctx.accounts.onyc_mint.key(),
-        CacheErrorCode::InvalidOnycMint
+        ctx.accounts.buffer_vault_onyc_account.key(),
+        expected_buffer_vault_onyc_account,
+        BufferErrorCode::InvalidOnycMint
     );
     let current_time = Clock::get()?.unix_timestamp as u64;
     let current_price = compute_offer_current_price(&offer, current_time)?;
@@ -113,70 +112,64 @@ pub fn burn_for_nav_increase(
         .supply
         .saturating_sub(vault_token_out_amount);
     let total_assets = compute_tvl_from_supply_and_price(token_supply, current_price)
-        .ok_or(CacheErrorCode::MathOverflow)?;
+        .ok_or(BufferErrorCode::MathOverflow)?;
 
     require!(
         total_assets >= asset_adjustment_amount,
-        CacheErrorCode::InvalidAssetAdjustmentAmount
+        BufferErrorCode::InvalidAssetAdjustmentAmount
     );
 
     let nav_scale = 10u128
         .checked_pow(PRICE_DECIMALS as u32)
-        .ok_or(CacheErrorCode::MathOverflow)?;
+        .ok_or(BufferErrorCode::MathOverflow)?;
     let assets_after = (total_assets - asset_adjustment_amount) as u128;
     let target_nav_u128 = target_nav as u128;
 
     let required_supply_after = ceil_div_u128(
         assets_after
             .checked_mul(nav_scale)
-            .ok_or(CacheErrorCode::MathOverflow)?,
+            .ok_or(BufferErrorCode::MathOverflow)?,
         target_nav_u128,
     )
-    .ok_or(CacheErrorCode::MathOverflow)?;
+    .ok_or(BufferErrorCode::MathOverflow)?;
 
     let current_supply = ctx.accounts.onyc_mint.supply as u128;
     require!(
         required_supply_after <= current_supply,
-        CacheErrorCode::InvalidBurnTarget
+        BufferErrorCode::InvalidBurnTarget
     );
 
     let burn_amount_u128 = current_supply
         .checked_sub(required_supply_after)
-        .ok_or(CacheErrorCode::MathOverflow)?;
-    require!(burn_amount_u128 > 0, CacheErrorCode::NoBurnNeeded);
+        .ok_or(BufferErrorCode::MathOverflow)?;
+    require!(burn_amount_u128 > 0, BufferErrorCode::NoBurnNeeded);
     require!(
         burn_amount_u128 <= u64::MAX as u128,
-        CacheErrorCode::ResultOverflow
+        BufferErrorCode::ResultOverflow,
     );
 
     let burn_amount = burn_amount_u128 as u64;
     require!(
-        burn_amount <= ctx.accounts.cache_vault_onyc_account.amount,
-        CacheErrorCode::InsufficientCacheBalance
+        burn_amount <= ctx.accounts.buffer_vault_onyc_account.amount,
+        BufferErrorCode::InsufficientCacheBalance
     );
 
-    let cache_vault_authority_seeds = &[
-        seeds::CACHE_VAULT_AUTHORITY,
-        &[ctx.bumps.cache_vault_authority],
+    let buffer_vault_authority_seeds = &[
+        seeds::BUFFER_VAULT_AUTHORITY,
+        &[ctx.bumps.buffer_vault_authority],
     ];
-    let cache_vault_authority_signer_seeds = &[cache_vault_authority_seeds.as_slice()];
+    let buffer_vault_authority_signer_seeds = &[buffer_vault_authority_seeds.as_slice()];
 
     burn_tokens(
         &ctx.accounts.token_program,
         &ctx.accounts.onyc_mint,
-        &ctx.accounts.cache_vault_onyc_account,
-        &ctx.accounts.cache_vault_authority.to_account_info(),
-        cache_vault_authority_signer_seeds,
+        &ctx.accounts.buffer_vault_onyc_account,
+        &ctx.accounts.buffer_vault_authority.to_account_info(),
+        buffer_vault_authority_signer_seeds,
         burn_amount,
     )?;
 
-    let cache_state = &mut ctx.accounts.cache_state;
-    let new_supply = ctx.accounts.onyc_mint.supply.saturating_sub(burn_amount);
-    if cache_state.lowest_supply == 0 || new_supply < cache_state.lowest_supply {
-        cache_state.lowest_supply = new_supply;
-    }
-
-    emit!(CacheBurnedForNavEvent {
+    emit!(BufferBurnedForNavEvent {
         burn_amount,
         asset_adjustment_amount,
         total_assets,

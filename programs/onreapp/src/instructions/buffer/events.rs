@@ -1,41 +1,45 @@
 use anchor_lang::prelude::*;
 
 #[event]
-pub struct CacheInitializedEvent {
-    pub cache_state: Pubkey,
+pub struct BufferInitializedEvent {
+    pub buffer_state: Pubkey,
     pub onyc_mint: Pubkey,
-    pub cache_admin: Pubkey,
+    pub buffer_admin: Pubkey,
     pub main_offer: Pubkey,
     pub timestamp: i64,
 }
 
 #[event]
-pub struct CacheAdminUpdatedEvent {
-    pub old_cache_admin: Pubkey,
-    pub new_cache_admin: Pubkey,
+pub struct BufferAdminUpdatedEvent {
+    pub old_buffer_admin: Pubkey,
+    pub new_buffer_admin: Pubkey,
 }
 
 #[event]
-pub struct CacheMainOfferUpdatedEvent {
+pub struct BufferMainOfferUpdatedEvent {
     pub old_main_offer: Pubkey,
     pub new_main_offer: Pubkey,
 }
 
 #[event]
-pub struct CacheGrossYieldUpdatedEvent {
+pub struct BufferGrossYieldUpdatedEvent {
     pub gross_yield: u64,
 }
 
 #[event]
-pub struct CacheFeeConfigUpdatedEvent {
+pub struct BufferFeeConfigUpdatedEvent {
     pub old_management_fee_basis_points: u16,
     pub new_management_fee_basis_points: u16,
+    pub old_management_fee_wallet: Pubkey,
+    pub new_management_fee_wallet: Pubkey,
     pub old_performance_fee_basis_points: u16,
     pub new_performance_fee_basis_points: u16,
+    pub old_performance_fee_wallet: Pubkey,
+    pub new_performance_fee_wallet: Pubkey,
 }
 
 #[event]
-pub struct CacheLowestSupplyUpdatedEvent {
+pub struct BufferLowestSupplyUpdatedEvent {
     pub previous_lowest_supply: u64,
     pub new_lowest_supply: u64,
     pub current_supply: u64,
@@ -44,11 +48,11 @@ pub struct CacheLowestSupplyUpdatedEvent {
 }
 
 #[event]
-pub struct CacheAccruedEvent {
+pub struct BufferManagedEvent {
     pub seconds_elapsed: u64,
     pub spread: u64,
     pub gross_mint_amount: u64,
-    pub cache_mint_amount: u64,
+    pub buffer_mint_amount: u64,
     pub management_fee_mint_amount: u64,
     pub performance_fee_mint_amount: u64,
     pub previous_lowest_supply: u64,
@@ -59,7 +63,7 @@ pub struct CacheAccruedEvent {
 }
 
 #[event]
-pub struct CacheBurnedForNavEvent {
+pub struct BufferBurnedForNavEvent {
     pub burn_amount: u64,
     pub asset_adjustment_amount: u64,
     pub total_assets: u64,
@@ -67,15 +71,13 @@ pub struct CacheBurnedForNavEvent {
 }
 
 #[event]
-pub struct ManagementFeesClaimedEvent {
+pub struct ManagementFeesWithdrawnEvent {
     pub amount: u64,
-    pub total_claimed: u64,
     pub boss: Pubkey,
 }
 
 #[event]
-pub struct PerformanceFeesClaimedEvent {
+pub struct PerformanceFeesWithdrawnEvent {
     pub amount: u64,
-    pub total_claimed: u64,
     pub boss: Pubkey,
 }

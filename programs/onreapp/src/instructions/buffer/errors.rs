@@ -1,10 +1,10 @@
 use anchor_lang::prelude::*;
 
 #[error_code]
-pub enum CacheErrorCode {
-    #[msg("Invalid ONyc mint for CACHE state")]
+pub enum BufferErrorCode {
+    #[msg("Invalid ONyc mint for BUFFER state")]
     InvalidOnycMint,
-    #[msg("Invalid main offer for CACHE state")]
+    #[msg("Invalid main offer for BUFFER state")]
     InvalidMainOffer,
     #[msg("No change")]
     NoChange,
@@ -18,16 +18,20 @@ pub enum CacheErrorCode {
     ResultOverflow,
     #[msg("Invalid fee: basis points must be <= 10000")]
     InvalidFee,
+    #[msg("Fee wallet must be set when the fee is enabled")]
+    InvalidFeeWallet,
     #[msg("Target NAV must be greater than zero")]
     InvalidTargetNav,
     #[msg("Asset adjustment amount exceeds total assets")]
     InvalidAssetAdjustmentAmount,
     #[msg("No burn required for provided NAV inputs")]
     NoBurnNeeded,
-    #[msg("Burn amount exceeds CACHE balance")]
+    #[msg("Burn amount exceeds BUFFER balance")]
     InsufficientCacheBalance,
     #[msg("Fee amount exceeds fee vault balance")]
     InsufficientFeeBalance,
+    #[msg("Fee recipient does not match configured fee wallet")]
+    InvalidFeeRecipient,
     #[msg("Provided NAV inputs imply minting, not burning")]
     InvalidBurnTarget,
 }

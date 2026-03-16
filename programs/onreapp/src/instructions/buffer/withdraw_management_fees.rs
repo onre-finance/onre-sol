@@ -1,13 +1,14 @@
 use crate::constants::seeds;
-use crate::instructions::cache::{CacheErrorCode, CacheState, ManagementFeesClaimedEvent};
+use crate::instructions::buffer::{
+    withdraw_fee_tokens, BufferErrorCode, BufferState, FeeKind, ManagementFeesWithdrawnEvent,
+};
 use crate::state::State;
-use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 #[derive(Accounts)]
-pub struct ClaimManagementFees<'info> {
+pub struct WithdrawManagementFees<'info> {
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
@@ -17,16 +18,19 @@ pub struct ClaimManagementFees<'info> {
     pub state: Box<Account<'info, State>>,
 
     #[account(
-        mut,
-        seeds = [seeds::CACHE_STATE],
-        bump = cache_state.bump,
         has_one = onyc_mint,
+        seeds = [seeds::BUFFER_STATE],
+        bump = buffer_state.bump,
     )]
-    pub cache_state: Box<Account<'info, CacheState>>,
+    pub buffer_state: Box<Account<'info, BufferState>>,
 
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(seeds = [seeds::MANAGEMENT_FEE_VAULT_AUTHORITY], bump)]
     pub management_fee_vault_authority: UncheckedAccount<'info>,
+
+    /// CHECK: must match configured management fee wallet
+    #[account(address = buffer_state.management_fee_wallet @ BufferErrorCode::InvalidFeeRecipient)]
+    pub management_fee_recipient: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub onyc_mint: Box<InterfaceAccount<'info, Mint>>,
@@ -35,10 +39,10 @@ pub struct ClaimManagementFees<'info> {
         init_if_needed,
         payer = boss,
         associated_token::mint = onyc_mint,
-        associated_token::authority = boss,
+        associated_token::authority = management_fee_recipient,
         associated_token::token_program = token_program
     )]
-    pub boss_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub management_fee_recipient_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -56,39 +60,28 @@ pub struct ClaimManagementFees<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn claim_management_fees(ctx: Context<ClaimManagementFees>, amount: u64) -> Result<()> {
-    require!(
-        amount <= ctx.accounts.management_fee_vault_onyc_account.amount,
-        CacheErrorCode::InsufficientFeeBalance
+pub fn withdraw_management_fees(ctx: Context<WithdrawManagementFees>, amount: u64) -> Result<()> {
+    require_keys_eq!(
+        ctx.accounts.management_fee_recipient_onyc_account.owner,
+        ctx.accounts.management_fee_recipient.key(),
+        BufferErrorCode::InvalidFeeRecipient
     );
 
-    let authority_seeds = &[
-        seeds::MANAGEMENT_FEE_VAULT_AUTHORITY,
-        &[ctx.bumps.management_fee_vault_authority],
-    ];
-    let signer_seeds = &[&authority_seeds[..]];
-
-    transfer_tokens(
+    withdraw_fee_tokens(
+        FeeKind::Management,
         &ctx.accounts.onyc_mint,
         &ctx.accounts.token_program,
         &ctx.accounts.management_fee_vault_onyc_account,
-        &ctx.accounts.boss_onyc_account,
+        &ctx.accounts.management_fee_recipient_onyc_account,
         &ctx.accounts
             .management_fee_vault_authority
             .to_account_info(),
-        Some(signer_seeds),
+        ctx.bumps.management_fee_vault_authority,
         amount,
     )?;
 
-    let cache_state = &mut ctx.accounts.cache_state;
-    cache_state.total_management_fees_claimed = cache_state
-        .total_management_fees_claimed
-        .checked_add(amount)
-        .ok_or(CacheErrorCode::MathOverflow)?;
-
-    emit!(ManagementFeesClaimedEvent {
+    emit!(ManagementFeesWithdrawnEvent {
         amount,
-        total_claimed: cache_state.total_management_fees_claimed,
         boss: ctx.accounts.boss.key(),
     });
 
