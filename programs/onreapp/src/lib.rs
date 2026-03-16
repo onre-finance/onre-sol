@@ -768,6 +768,28 @@ pub mod onreapp {
         redemption::cancel_redemption_request(ctx)
     }
 
+    /// Sets or updates the fee destination for redemption fees.
+    ///
+    /// Delegates to `redemption::set_redemption_fee_destination`.
+    /// When `fee_destination` is `Pubkey::default()`, fees accumulate in the program's
+    /// fee vault PDA ATA. When set to any other address, fees are transferred directly
+    /// there on every fulfillment. Changing the destination also sweeps any previously
+    /// accumulated balance from the vault to the new address.
+    /// Emits a `RedemptionFeeDestinationUpdatedEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `SetRedemptionFeeDestination`.
+    /// - `fee_destination`: Pubkey of the new fee recipient.
+    ///
+    /// # Access Control
+    /// - Boss only
+    pub fn set_redemption_fee_destination(
+        ctx: Context<SetRedemptionFeeDestination>,
+        fee_destination: Pubkey,
+    ) -> Result<()> {
+        redemption::set_redemption_fee_destination(ctx, fee_destination)
+    }
+
     /// Updates the fee configuration for a specific redemption offer.
     ///
     /// This instruction allows the boss to modify the fee charged when fulfilling

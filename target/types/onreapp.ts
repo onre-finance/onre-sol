@@ -2306,7 +2306,7 @@ export type Onreapp = {
         {
           "name": "bossTokenInAccount",
           "docs": [
-            "Boss's input token account for receiving tokens when program lacks mint authority",
+            "Boss's input token account for receiving net tokens when program lacks mint authority",
             "",
             "Only used when program doesn't have mint authority of token_in."
           ],
@@ -2316,6 +2316,120 @@ export type Onreapp = {
               {
                 "kind": "account",
                 "path": "boss"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "redemptionFeeVaultAuthority",
+          "docs": [
+            "Global fee vault authority PDA — created on first fulfillment if not yet initialized"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "feeDestination",
+          "docs": [
+            "The account that should receive fees.",
+            "Must equal `redemption_fee_vault_authority.fee_destination` when set,",
+            "or the vault authority PDA itself when `fee_destination` is default."
+          ]
+        },
+        {
+          "name": "feeDestinationTokenInAccount",
+          "docs": [
+            "ATA of `fee_destination` for token_in — receives the fee portion"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "feeDestination"
               },
               {
                 "kind": "account",
@@ -6747,6 +6861,273 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "setRedemptionFeeDestination",
+      "docs": [
+        "Sets or updates the fee destination for redemption fees.",
+        "",
+        "Delegates to `redemption::set_redemption_fee_destination`.",
+        "When `fee_destination` is `Pubkey::default()`, fees accumulate in the program's",
+        "fee vault PDA ATA. When set to any other address, fees are transferred directly",
+        "there on every fulfillment. Changing the destination also sweeps any previously",
+        "accumulated balance from the vault to the new address.",
+        "Emits a `RedemptionFeeDestinationUpdatedEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `SetRedemptionFeeDestination`.",
+        "- `fee_destination`: Pubkey of the new fee recipient.",
+        "",
+        "# Access Control",
+        "- Boss only"
+      ],
+      "discriminator": [
+        140,
+        37,
+        28,
+        52,
+        188,
+        13,
+        67,
+        7
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account — boss access control"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "Boss must sign; also pays for any new account creation"
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "redemptionFeeVaultAuthority",
+          "docs": [
+            "Global fee vault authority PDA — created on first call"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "feeVaultTokenInAccount",
+          "docs": [
+            "ATA of the fee vault authority for token_in — sweep source"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionFeeVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "newDestinationTokenInAccount",
+          "docs": [
+            "ATA of the new fee destination for token_in — sweep target"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "newFeeDestination"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "newFeeDestination",
+          "docs": [
+            "The new fee destination account; key must equal the `fee_destination` argument"
+          ]
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "The token mint whose fees are being rerouted"
+          ]
+        },
+        {
+          "name": "tokenInProgram",
+          "docs": [
+            "Token program for token_in"
+          ]
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for ATA creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program required for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "feeDestination",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "takeOffer",
       "docs": [
         "Takes a offer.",
@@ -9971,6 +10352,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "redemptionFeeVaultAuthority",
+      "discriminator": [
+        207,
+        98,
+        131,
+        212,
+        14,
+        78,
+        131,
+        138
+      ]
+    },
+    {
       "name": "redemptionOffer",
       "discriminator": [
         170,
@@ -10529,6 +10923,19 @@ export type Onreapp = {
         230,
         199,
         178
+      ]
+    },
+    {
+      "name": "redemptionFeeDestinationUpdatedEvent",
+      "discriminator": [
+        24,
+        143,
+        70,
+        112,
+        218,
+        194,
+        241,
+        164
       ]
     },
     {
@@ -12333,6 +12740,71 @@ export type Onreapp = {
               "The new redemption admin public key after the update"
             ],
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionFeeDestinationUpdatedEvent",
+      "docs": [
+        "Event emitted when the redemption fee destination is updated"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldDestination",
+            "docs": [
+              "Previous fee destination (Pubkey::default() means the vault PDA)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "newDestination",
+            "docs": [
+              "New fee destination (Pubkey::default() means the vault PDA)"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionFeeVaultAuthority",
+      "docs": [
+        "PDA that acts as a configurable fee collector for redemption fees",
+        "",
+        "When `fee_destination` is `Pubkey::default()`, fees accumulate in this PDA's ATA.",
+        "When set to a specific address, fees are routed there on every fulfillment."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "feeDestination",
+            "docs": [
+              "Destination address for fees; Pubkey::default() means fees accumulate in this PDA's ATA"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "docs": [
+              "Reserved space for future fields"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                31
+              ]
+            }
           }
         ]
       }

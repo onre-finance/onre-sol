@@ -10,7 +10,7 @@ use crate::instructions::buffer::{
 use crate::instructions::market_info::refresh_market_stats_pda;
 use crate::instructions::redemption::{
     execute_redemption_operations, process_redemption_core, ExecuteRedemptionOpsParams,
-    RedemptionOffer, RedemptionRequest,
+    RedemptionFeeVaultAuthority, RedemptionOffer, RedemptionRequest,
 };
 use crate::instructions::Offer;
 use crate::state::State;
@@ -176,7 +176,7 @@ pub struct FulfillRedemptionRequest<'info> {
     )]
     pub user_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// Boss's input token account for receiving tokens when program lacks mint authority
+    /// Boss's input token account for receiving net tokens when program lacks mint authority
     ///
     /// Only used when program doesn't have mint authority of token_in.
     #[account(
@@ -187,6 +187,32 @@ pub struct FulfillRedemptionRequest<'info> {
         associated_token::token_program = token_in_program
     )]
     pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    /// Global fee vault authority PDA — created on first fulfillment if not yet initialized
+    #[account(
+        init_if_needed,
+        payer = redemption_admin,
+        space = 8 + RedemptionFeeVaultAuthority::INIT_SPACE,
+        seeds = [seeds::REDEMPTION_FEE_VAULT_AUTHORITY],
+        bump,
+    )]
+    pub redemption_fee_vault_authority: Box<Account<'info, RedemptionFeeVaultAuthority>>,
+
+    /// The account that should receive fees.
+    /// Must equal `redemption_fee_vault_authority.fee_destination` when set,
+    /// or the vault authority PDA itself when `fee_destination` is default.
+    /// CHECK: validated in function body against stored fee_destination
+    pub fee_destination: UncheckedAccount<'info>,
+
+    /// ATA of `fee_destination` for token_in — receives the fee portion
+    #[account(
+        init_if_needed,
+        payer = redemption_admin,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = fee_destination,
+        associated_token::token_program = token_in_program
+    )]
+    pub fee_destination_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Program-derived mint authority for direct token minting
     ///
@@ -339,6 +365,33 @@ pub struct FulfillRedemptionRequestV2<'info> {
     )]
     pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
+    /// Global fee vault authority PDA — created on first fulfillment if not yet initialized
+    #[account(
+        init_if_needed,
+        payer = redemption_admin,
+        space = 8 + RedemptionFeeVaultAuthority::INIT_SPACE,
+        seeds = [seeds::REDEMPTION_FEE_VAULT_AUTHORITY],
+        bump,
+    )]
+    pub redemption_fee_vault_authority: Box<Account<'info, RedemptionFeeVaultAuthority>>,
+
+    /// The account that should receive fees.
+    /// Must equal `redemption_fee_vault_authority.fee_destination` when set,
+    /// or the vault authority PDA itself when `fee_destination` is default.
+    /// CHECK: validated in function body against stored fee_destination
+    pub fee_destination: UncheckedAccount<'info>,
+
+    /// ATA of `fee_destination` for token_in — receives the fee portion
+    #[account(
+        init_if_needed,
+        payer = redemption_admin,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = fee_destination,
+        associated_token::token_program = token_in_program
+    )]
+    pub fee_destination_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+
     /// CHECK: PDA derivation is validated through seeds constraint
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
@@ -425,6 +478,7 @@ pub fn fulfill_redemption_request(
             offer: &ctx.accounts.offer,
             redemption_offer: &mut ctx.accounts.redemption_offer,
             redemption_request: &mut ctx.accounts.redemption_request,
+            redemption_fee_vault_authority: &ctx.accounts.redemption_fee_vault_authority,
             vault_token_in_account: &ctx.accounts.vault_token_in_account,
             vault_token_out_account: &ctx.accounts.vault_token_out_account,
             token_in_mint: &mut ctx.accounts.token_in_mint,
@@ -433,6 +487,8 @@ pub fn fulfill_redemption_request(
             token_out_program: &ctx.accounts.token_out_program,
             user_token_out_account: &ctx.accounts.user_token_out_account,
             boss_token_in_account: &ctx.accounts.boss_token_in_account,
+            fee_destination: &ctx.accounts.fee_destination,
+            fee_destination_token_in_account: &ctx.accounts.fee_destination_token_in_account,
             mint_authority: &ctx.accounts.mint_authority,
             offer_vault_onyc_account: &ctx.accounts.offer_vault_onyc_account,
             redemption_vault_authority: &ctx.accounts.redemption_vault_authority,
@@ -459,6 +515,7 @@ pub fn fulfill_redemption_request_v2(
             offer: &ctx.accounts.offer,
             redemption_offer: &mut ctx.accounts.redemption_offer,
             redemption_request: &mut ctx.accounts.redemption_request,
+            redemption_fee_vault_authority: &ctx.accounts.redemption_fee_vault_authority,
             vault_token_in_account: &ctx.accounts.vault_token_in_account,
             vault_token_out_account: &ctx.accounts.vault_token_out_account,
             token_in_mint: &mut ctx.accounts.token_in_mint,
@@ -467,6 +524,8 @@ pub fn fulfill_redemption_request_v2(
             token_out_program: &ctx.accounts.token_out_program,
             user_token_out_account: &ctx.accounts.user_token_out_account,
             boss_token_in_account: &ctx.accounts.boss_token_in_account,
+            fee_destination: &ctx.accounts.fee_destination,
+            fee_destination_token_in_account: &ctx.accounts.fee_destination_token_in_account,
             mint_authority: &ctx.accounts.mint_authority,
             offer_vault_onyc_account: &ctx.accounts.offer_vault_onyc_account,
             redemption_vault_authority: &ctx.accounts.redemption_vault_authority,
@@ -488,6 +547,7 @@ struct ExecuteFulfillRedemptionRequestParams<'a, 'info> {
     offer: &'a AccountLoader<'info, Offer>,
     redemption_offer: &'a mut Account<'info, RedemptionOffer>,
     redemption_request: &'a mut Account<'info, RedemptionRequest>,
+    redemption_fee_vault_authority: &'a Account<'info, RedemptionFeeVaultAuthority>,
     vault_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
     vault_token_out_account: &'a InterfaceAccount<'info, TokenAccount>,
     token_in_mint: &'a mut InterfaceAccount<'info, Mint>,
@@ -496,6 +556,8 @@ struct ExecuteFulfillRedemptionRequestParams<'a, 'info> {
     token_out_program: &'a Interface<'info, TokenInterface>,
     user_token_out_account: &'a InterfaceAccount<'info, TokenAccount>,
     boss_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
+    fee_destination: &'a UncheckedAccount<'info>,
+    fee_destination_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
     mint_authority: &'a UncheckedAccount<'info>,
     offer_vault_onyc_account: &'a UncheckedAccount<'info>,
     redemption_vault_authority: &'a UncheckedAccount<'info>,
@@ -524,6 +586,20 @@ fn execute_fulfill_redemption_request(
     require!(
         amount <= remaining,
         FulfillRedemptionRequestErrorCode::AmountExceedsRemaining
+    );
+
+    // Validate fee_destination against stored value in the vault authority
+    let expected_fee_destination = {
+        let stored = params.redemption_fee_vault_authority.fee_destination;
+        if stored == Pubkey::default() {
+            params.redemption_fee_vault_authority.key()
+        } else {
+            stored
+        }
+    };
+    require!(
+        params.fee_destination.key() == expected_fee_destination,
+        FulfillRedemptionRequestErrorCode::InvalidFeeDestination
     );
 
     // Use shared core processing logic for redemption
@@ -570,6 +646,7 @@ fn execute_fulfill_redemption_request(
         token_in_fee_amount,
         vault_token_in_account: params.vault_token_in_account,
         boss_token_in_account: params.boss_token_in_account,
+        fee_destination_token_in_account: params.fee_destination_token_in_account,
         redemption_vault_authority: &params.redemption_vault_authority.to_account_info(),
         redemption_vault_authority_bump: params.redemption_vault_authority_bump,
         token_out_mint: params.token_out_mint,
@@ -718,4 +795,8 @@ pub enum FulfillRedemptionRequestErrorCode {
     /// Arithmetic underflow occurred
     #[msg("Arithmetic underflow")]
     ArithmeticUnderflow,
+
+    /// The provided fee_destination account does not match the expected fee destination
+    #[msg("Invalid fee destination account")]
+    InvalidFeeDestination,
 }
