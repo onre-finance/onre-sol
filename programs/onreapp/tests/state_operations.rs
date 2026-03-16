@@ -50,7 +50,10 @@ fn test_non_boss_cannot_remove_admin() {
 
     let ix = build_remove_admin_ix(&non_boss.pubkey(), &admin.pubkey());
     let result = send_tx(&mut svm, &[ix], &[&non_boss]);
-    assert!(result.is_err(), "non-boss should not be able to remove admin");
+    assert!(
+        result.is_err(),
+        "non-boss should not be able to remove admin"
+    );
 }
 
 #[test]
@@ -135,7 +138,10 @@ fn test_cannot_remove_same_admin_twice() {
 
     let ix = build_remove_admin_ix(&boss, &admin.pubkey());
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should not be able to remove same admin twice");
+    assert!(
+        result.is_err(),
+        "should not be able to remove same admin twice"
+    );
 }
 
 #[test]
@@ -184,7 +190,11 @@ fn test_boss_can_clear_all_admins() {
     let ix = build_clear_admins_ix(&boss);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    assert_eq!(read_state(&svm).active_admins().len(), 0, "all admins should be cleared");
+    assert_eq!(
+        read_state(&svm).active_admins().len(),
+        0,
+        "all admins should be cleared"
+    );
 }
 
 #[test]
@@ -201,7 +211,10 @@ fn test_non_boss_cannot_clear_admins() {
 
     let ix = build_clear_admins_ix(&non_boss.pubkey());
     let result = send_tx(&mut svm, &[ix], &[&non_boss]);
-    assert!(result.is_err(), "non-boss should not be able to clear admins");
+    assert!(
+        result.is_err(),
+        "non-boss should not be able to clear admins"
+    );
 }
 
 // ===========================================================================
@@ -255,7 +268,10 @@ fn test_non_boss_cannot_propose_boss() {
     let new_boss = Keypair::new();
     let ix = build_propose_boss_ix(&non_boss.pubkey(), &new_boss.pubkey());
     let result = send_tx(&mut svm, &[ix], &[&non_boss]);
-    assert!(result.is_err(), "non-boss should not be able to propose boss");
+    assert!(
+        result.is_err(),
+        "non-boss should not be able to propose boss"
+    );
 }
 
 #[test]
@@ -265,7 +281,10 @@ fn test_cannot_propose_default_boss() {
 
     let ix = build_propose_boss_ix(&boss, &Pubkey::default());
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should not be able to propose default address as boss");
+    assert!(
+        result.is_err(),
+        "should not be able to propose default address as boss"
+    );
 }
 
 #[test]
@@ -284,7 +303,10 @@ fn test_wrong_signer_cannot_accept_boss() {
 
     let ix = build_accept_boss_ix(&imposter.pubkey());
     let result = send_tx(&mut svm, &[ix], &[&imposter]);
-    assert!(result.is_err(), "non-proposed boss should not be able to accept");
+    assert!(
+        result.is_err(),
+        "non-proposed boss should not be able to accept"
+    );
 }
 
 #[test]
@@ -311,7 +333,10 @@ fn test_current_boss_cannot_accept_proposal() {
     // Current boss tries to accept
     let ix = build_accept_boss_ix(&boss);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "current boss should not be able to accept their own proposal");
+    assert!(
+        result.is_err(),
+        "current boss should not be able to accept their own proposal"
+    );
 }
 
 #[test]
@@ -351,7 +376,10 @@ fn test_first_proposed_boss_cannot_accept_after_change() {
     // First proposed boss tries to accept
     let ix = build_accept_boss_ix(&first.pubkey());
     let result = send_tx(&mut svm, &[ix], &[&first]);
-    assert!(result.is_err(), "first proposed boss should not be able to accept after change");
+    assert!(
+        result.is_err(),
+        "first proposed boss should not be able to accept after change"
+    );
 
     // Second one can
     let ix = build_accept_boss_ix(&second.pubkey());
@@ -365,7 +393,8 @@ fn test_new_boss_can_propose_another_transfer() {
     let boss = payer.pubkey();
 
     let new_boss = Keypair::new();
-    svm.airdrop(&new_boss.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
+    svm.airdrop(&new_boss.pubkey(), 10 * INITIAL_LAMPORTS)
+        .unwrap();
 
     // Complete first transfer
     let ix = build_propose_boss_ix(&boss, &new_boss.pubkey());
@@ -417,7 +446,10 @@ fn test_boss_can_disable_kill_switch() {
     let ix = build_set_kill_switch_ix(&boss, false);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    assert!(!read_state(&svm).is_killed, "kill switch should be disabled");
+    assert!(
+        !read_state(&svm).is_killed,
+        "kill switch should be disabled"
+    );
 }
 
 #[test]
@@ -434,7 +466,10 @@ fn test_admin_can_enable_kill_switch() {
     let ix = build_set_kill_switch_ix(&admin.pubkey(), true);
     send_tx(&mut svm, &[ix], &[&admin]).unwrap();
 
-    assert!(read_state(&svm).is_killed, "admin should be able to enable kill switch");
+    assert!(
+        read_state(&svm).is_killed,
+        "admin should be able to enable kill switch"
+    );
 }
 
 #[test]
@@ -453,8 +488,14 @@ fn test_admin_cannot_disable_kill_switch() {
 
     let ix = build_set_kill_switch_ix(&admin.pubkey(), false);
     let result = send_tx(&mut svm, &[ix], &[&admin]);
-    assert!(result.is_err(), "admin should not be able to disable kill switch");
-    assert!(read_state(&svm).is_killed, "kill switch should still be enabled");
+    assert!(
+        result.is_err(),
+        "admin should not be able to disable kill switch"
+    );
+    assert!(
+        read_state(&svm).is_killed,
+        "kill switch should still be enabled"
+    );
 }
 
 #[test]
@@ -466,7 +507,10 @@ fn test_random_user_cannot_toggle_kill_switch() {
 
     let ix = build_set_kill_switch_ix(&random.pubkey(), true);
     let result = send_tx(&mut svm, &[ix], &[&random]);
-    assert!(result.is_err(), "random user should not be able to enable kill switch");
+    assert!(
+        result.is_err(),
+        "random user should not be able to enable kill switch"
+    );
 }
 
 #[test]
@@ -532,7 +576,10 @@ fn test_non_boss_non_admin_cannot_disable_kill_switch() {
 
     let ix = build_set_kill_switch_ix(&random.pubkey(), false);
     let result = send_tx(&mut svm, &[ix], &[&random]);
-    assert!(result.is_err(), "non-boss non-admin should not be able to disable kill switch");
+    assert!(
+        result.is_err(),
+        "non-boss non-admin should not be able to disable kill switch"
+    );
     assert!(read_state(&svm).is_killed);
 }
 
@@ -573,7 +620,10 @@ fn test_removed_admin_cannot_enable_kill_switch() {
 
     let ix = build_set_kill_switch_ix(&admin.pubkey(), true);
     let result = send_tx(&mut svm, &[ix], &[&admin]);
-    assert!(result.is_err(), "removed admin should not be able to enable kill switch");
+    assert!(
+        result.is_err(),
+        "removed admin should not be able to enable kill switch"
+    );
 }
 
 // ===========================================================================
@@ -647,7 +697,10 @@ fn test_cannot_add_duplicate_approver() {
 
     let ix = build_add_approver_ix(&boss, &approver.pubkey());
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should not be able to add duplicate approver");
+    assert!(
+        result.is_err(),
+        "should not be able to add duplicate approver"
+    );
 }
 
 #[test]
@@ -657,7 +710,10 @@ fn test_cannot_add_default_approver() {
 
     let ix = build_add_approver_ix(&boss, &Pubkey::default());
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should not be able to add default pubkey as approver");
+    assert!(
+        result.is_err(),
+        "should not be able to add default pubkey as approver"
+    );
 }
 
 #[test]
@@ -670,7 +726,10 @@ fn test_non_boss_cannot_add_approver() {
     let approver = Keypair::new();
     let ix = build_add_approver_ix(&non_boss.pubkey(), &approver.pubkey());
     let result = send_tx(&mut svm, &[ix], &[&non_boss]);
-    assert!(result.is_err(), "non-boss should not be able to add approver");
+    assert!(
+        result.is_err(),
+        "non-boss should not be able to add approver"
+    );
 }
 
 #[test]
@@ -764,7 +823,10 @@ fn test_non_boss_cannot_remove_approver() {
 
     let ix = build_remove_approver_ix(&non_boss.pubkey(), &approver.pubkey());
     let result = send_tx(&mut svm, &[ix], &[&non_boss]);
-    assert!(result.is_err(), "non-boss should not be able to remove approver");
+    assert!(
+        result.is_err(),
+        "non-boss should not be able to remove approver"
+    );
 }
 
 #[test]
@@ -785,7 +847,10 @@ fn test_cannot_remove_default_approver() {
 
     let ix = build_remove_approver_ix(&boss, &Pubkey::default());
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should not be able to remove default pubkey approver");
+    assert!(
+        result.is_err(),
+        "should not be able to remove default pubkey approver"
+    );
 }
 
 #[test]
@@ -856,7 +921,10 @@ fn test_cannot_remove_same_approver_twice() {
 
     let ix = build_remove_approver_ix(&boss, &approver.pubkey());
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should not be able to remove same approver twice");
+    assert!(
+        result.is_err(),
+        "should not be able to remove same approver twice"
+    );
 }
 
 #[test]
@@ -998,7 +1066,10 @@ fn test_non_boss_cannot_configure_max_supply() {
 
     let ix = build_configure_max_supply_ix(&non_boss.pubkey(), 1_000_000);
     let result = send_tx(&mut svm, &[ix], &[&non_boss]);
-    assert!(result.is_err(), "non-boss should not be able to configure max supply");
+    assert!(
+        result.is_err(),
+        "non-boss should not be able to configure max supply"
+    );
 }
 
 #[test]
@@ -1040,5 +1111,8 @@ fn test_non_boss_cannot_set_redemption_admin() {
 
     let ix = build_set_redemption_admin_ix(&non_boss.pubkey(), &Keypair::new().pubkey());
     let result = send_tx(&mut svm, &[ix], &[&non_boss]);
-    assert!(result.is_err(), "non-boss should not be able to set redemption admin");
+    assert!(
+        result.is_err(),
+        "non-boss should not be able to set redemption admin"
+    );
 }

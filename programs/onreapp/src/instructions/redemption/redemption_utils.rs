@@ -1,6 +1,8 @@
 use crate::constants::{seeds, PRICE_DECIMALS};
 use crate::instructions::{calculate_current_step_price, find_active_vector_at, Offer};
-use crate::utils::{burn_tokens, calculate_fees, mint_tokens, program_controls_mint, transfer_tokens};
+use crate::utils::{
+    burn_tokens, calculate_fees, mint_tokens, program_controls_mint, transfer_tokens,
+};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
@@ -91,14 +93,18 @@ pub fn process_redemption_core(
         .checked_mul(10_u128.pow(token_out_mint.decimals as u32))
         .ok_or(RedemptionCoreError::OverflowError)?;
 
-    let denominator = 10_u128.pow(token_in_mint.decimals as u32)
+    let denominator = 10_u128
+        .pow(token_in_mint.decimals as u32)
         .checked_mul(10_u128.pow(PRICE_DECIMALS as u32))
         .ok_or(RedemptionCoreError::OverflowError)?;
 
     let result = numerator / denominator;
 
     // Validate result fits in u64 before casting
-    require!(result <= u64::MAX as u128, RedemptionCoreError::OverflowError);
+    require!(
+        result <= u64::MAX as u128,
+        RedemptionCoreError::OverflowError
+    );
 
     let token_out_amount = result as u64;
 
@@ -187,10 +193,8 @@ pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Resu
     ]];
 
     // Step 1: Handle token_in (burn or transfer to boss)
-    let has_token_in_mint_authority = program_controls_mint(
-        params.token_in_mint,
-        params.mint_authority_pda,
-    );
+    let has_token_in_mint_authority =
+        program_controls_mint(params.token_in_mint, params.mint_authority_pda);
 
     if has_token_in_mint_authority {
         // Burn net amount from vault
@@ -236,17 +240,13 @@ pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Resu
     }
 
     // Step 2: Distribute token_out to user
-    let has_token_out_mint_authority = program_controls_mint(
-        params.token_out_mint,
-        params.mint_authority_pda,
-    );
+    let has_token_out_mint_authority =
+        program_controls_mint(params.token_out_mint, params.mint_authority_pda);
 
     if has_token_out_mint_authority {
         // Mint token_out directly to user
-        let mint_authority_signer_seeds: &[&[&[u8]]] = &[&[
-            seeds::MINT_AUTHORITY,
-            &[params.mint_authority_bump],
-        ]];
+        let mint_authority_signer_seeds: &[&[&[u8]]] =
+            &[&[seeds::MINT_AUTHORITY, &[params.mint_authority_bump]]];
 
         mint_tokens(
             params.token_out_program,

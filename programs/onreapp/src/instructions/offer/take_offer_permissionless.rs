@@ -1,9 +1,13 @@
 use crate::constants::seeds;
+use crate::instructions::market_info::{
+    recompute_market_stats, update_market_stats_account, write_market_stats_account,
+};
 use crate::instructions::offer::offer_utils::{process_offer_core, verify_offer_approval};
 use crate::instructions::Offer;
-use crate::state::State;
+use crate::state::{MarketStats, State};
 use crate::utils::{
-    execute_token_operations, transfer_tokens, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams,
+    execute_token_operations, load_or_init_pda_account, transfer_tokens, u64_to_dec9,
+    ApprovalMessage, ExecTokenOpsParams,
 };
 use crate::OfferCoreError;
 use anchor_lang::{prelude::*, solana_program::sysvar, Accounts};
@@ -22,6 +26,12 @@ pub enum TakeOfferPermissionlessErrorCode {
     /// The offer does not allow permissionless operations
     #[msg("Permissionless take offer not allowed")]
     PermissionlessNotAllowed,
+    /// The market-stats account does not match the canonical PDA.
+    #[msg("Invalid market stats PDA")]
+    InvalidMarketStatsPda,
+    /// The market-stats account must be writable for refreshes.
+    #[msg("Market stats account must be writable")]
+    MarketStatsNotWritable,
 }
 
 /// Event emitted when an offer is successfully executed via permissionless flow
@@ -204,6 +214,15 @@ pub struct TakeOfferPermissionless<'info> {
     /// CHECK: PDA derivation is validated through seeds constraint
     pub mint_authority: UncheckedAccount<'info>,
 
+    /// Canonical global market-stats PDA refreshed after successful purchases.
+    ///
+    /// Kept unchecked here to avoid the larger typed account stack footprint in the
+    /// permissionless flow; the handler manually enforces PDA, owner, writability,
+    /// and Anchor account layout before reading or writing it.
+    /// CHECK: The handler validates the PDA seeds, writability, owner, and account data layout.
+    #[account(mut)]
+    pub market_stats: UncheckedAccount<'info>,
+
     /// Instructions sysvar for approval signature verification
     ///
     /// Required for cryptographic verification of approval messages
@@ -269,6 +288,17 @@ pub fn take_offer_permissionless(
     require_keys_eq!(pa, ctx.accounts.permissionless_authority.key());
     let (ma, ma_bump) = Pubkey::find_program_address(&[seeds::MINT_AUTHORITY], ctx.program_id);
     require_keys_eq!(ma, ctx.accounts.mint_authority.key());
+    let (market_stats_pda, market_stats_bump) =
+        Pubkey::find_program_address(&[seeds::MARKET_STATS], ctx.program_id);
+    require_keys_eq!(
+        market_stats_pda,
+        ctx.accounts.market_stats.key(),
+        TakeOfferPermissionlessErrorCode::InvalidMarketStatsPda
+    );
+    require!(
+        ctx.accounts.market_stats.is_writable,
+        TakeOfferPermissionlessErrorCode::MarketStatsNotWritable
+    );
 
     let offer = ctx.accounts.offer.load()?;
 
@@ -355,6 +385,28 @@ pub fn take_offer_permissionless(
         Some(&[&[seeds::PERMISSIONLESS_AUTHORITY, &[pa_bump]]]),
         result.token_out_amount,
     )?;
+
+    if ctx.accounts.token_out_mint.key() == ctx.accounts.state.onyc_mint {
+        let market_stats_account = ctx.accounts.market_stats.to_account_info();
+        let snapshot = recompute_market_stats(
+            &offer,
+            &ctx.accounts.token_out_mint,
+            &ctx.accounts.vault_token_out_account.to_account_info(),
+            &ctx.accounts.token_out_program,
+        )?;
+
+        let mut market_stats = load_or_init_pda_account::<MarketStats>(
+            &market_stats_account,
+            &ctx.accounts.user.to_account_info(),
+            &ctx.accounts.system_program.to_account_info(),
+            ctx.program_id,
+            market_stats_bump,
+        )?;
+        market_stats.bump = market_stats_bump;
+        update_market_stats_account(&mut market_stats, snapshot)?;
+        write_market_stats_account(&market_stats_account, &market_stats)
+            .map_err(|_| <MarketStats as crate::utils::PdaAccountInit>::invalid_data_error())?;
+    }
 
     msg!(
         "Offer taken (permissionless) - PDA: {}, token_in(excluding fee): {}, fee: {}, token_out: {}, user: {}, price: {}",

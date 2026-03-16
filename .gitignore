@@ -35,3 +35,8 @@ onre-sol.iml
 !**/.env_example
 
 trident-tests/target
+
+# Ralph local control files
+scripts/ralph/
+tasks/
+.ralph-worktrees/

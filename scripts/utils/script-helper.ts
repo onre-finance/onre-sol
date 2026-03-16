@@ -54,6 +54,7 @@ export class ScriptHelper {
         permissionlessVaultAuthorityPda: PublicKey;
         mintAuthorityPda: PublicKey;
         redemptionVaultAuthorityPda: PublicKey;
+        marketStatsPda: PublicKey;
     };
 
     private constructor(
@@ -75,6 +76,7 @@ export class ScriptHelper {
             permissionlessVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], program.programId)[0],
             mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], program.programId)[0],
             redemptionVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("redemption_offer_vault_authority")], program.programId)[0],
+            marketStatsPda: PublicKey.findProgramAddressSync([Buffer.from("market_stats")], program.programId)[0],
         };
     }
 
@@ -176,6 +178,14 @@ export class ScriptHelper {
 
     async getState() {
         return await this.program.account.state.fetch(this.statePda);
+    }
+
+    getMarketStatsPda(): PublicKey {
+        return this.pdas.marketStatsPda;
+    }
+
+    async getMarketStats() {
+        return await this.program.account.marketStats.fetch(this.pdas.marketStatsPda);
     }
 
     getRedemptionOfferPda(tokenInMint: PublicKey, tokenOutMint: PublicKey): PublicKey {
@@ -389,6 +399,7 @@ export class ScriptHelper {
                 vaultAuthority,
                 permissionlessAuthority,
                 mintAuthority,
+                marketStats: this.pdas.marketStatsPda,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
                 tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID
             })

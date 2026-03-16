@@ -1,9 +1,9 @@
 mod common;
 
 use common::*;
+use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
-use solana_sdk::pubkey::Pubkey;
 
 #[test]
 fn test_boss_can_close_state() {
@@ -21,7 +21,10 @@ fn test_boss_can_close_state() {
     let account = svm.get_account(&state_pda);
     // After close, account should either not exist or be owned by system program
     match account {
-        Some(acc) => assert_ne!(acc.owner, PROGRAM_ID, "state should no longer be owned by program"),
+        Some(acc) => assert_ne!(
+            acc.owner, PROGRAM_ID,
+            "state should no longer be owned by program"
+        ),
         None => {} // Account was fully removed
     }
 }
@@ -35,7 +38,10 @@ fn test_non_boss_cannot_close_state() {
 
     let ix = build_close_state_ix(&non_boss.pubkey());
     let result = send_tx(&mut svm, &[ix], &[&non_boss]);
-    assert!(result.is_err(), "non-boss should not be able to close state");
+    assert!(
+        result.is_err(),
+        "non-boss should not be able to close state"
+    );
 
     // Verify state still exists
     let state = read_state(&svm);
