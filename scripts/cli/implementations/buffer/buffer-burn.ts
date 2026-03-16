@@ -1,10 +1,10 @@
 import type { GlobalOptions } from "../../prompts";
 import { buildAndHandleTransaction, executeCommand } from "../../helpers";
-import { cacheBurnParams } from "../../params";
+import { bufferBurnParams } from "../../params";
 import { EventParser } from "@coral-xyz/anchor";
 
-export async function executeCacheBurn(opts: GlobalOptions & Record<string, any>): Promise<void> {
-    await executeCommand(opts, cacheBurnParams, async (context) => {
+export async function executeBufferBurn(opts: GlobalOptions & Record<string, any>): Promise<void> {
+    await executeCommand(opts, bufferBurnParams, async (context) => {
         const { helper, params } = context;
 
         const boss = await helper.getBoss();
@@ -35,7 +35,7 @@ export async function executeCacheBurn(opts: GlobalOptions & Record<string, any>
             let currentEvent = events.next();
             while (!currentEvent.done) {
                 const event = currentEvent.value;
-                if (event.name === "cacheBurnedForNavEvent") {
+                if (event.name === "bufferBurnedForNavEvent") {
                     burnEvent = event.data;
                     break;
                 }
@@ -43,7 +43,7 @@ export async function executeCacheBurn(opts: GlobalOptions & Record<string, any>
             }
 
             if (!burnEvent) {
-                throw new Error("Simulation succeeded but CacheBurnedForNavEvent was not found in logs");
+                throw new Error("Simulation succeeded but BufferBurnedForNavEvent was not found in logs");
             }
 
             if (opts.json) {
@@ -87,9 +87,9 @@ export async function executeCacheBurn(opts: GlobalOptions & Record<string, any>
                 });
             },
             title: "Burn For NAV Increase Transaction",
-            description: "Burns ONyc from CACHE vault to support NAV adjustment",
+            description: "Burns ONyc from BUFFER vault to support NAV adjustment",
             showParamSummary: {
-                title: "Burning from CACHE:",
+                title: "Burning from BUFFER:",
                 params: {
                     tokenInMint: params.tokenIn,
                     onycMint: params.onycMint,

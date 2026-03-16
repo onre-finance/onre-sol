@@ -5,5 +5,5 @@ export { registerVaultCommands } from "./vault";
 export { registerMintAuthorityCommands } from "./mint-authority";
 export { registerRedemptionCommands } from "./redemption";
 export { registerInitCommands } from "./init";
-export { registerCacheCommands } from "./cache";
+export { registerBufferCommands } from "./buffer";
 export { registerProgramCommands } from "./program";

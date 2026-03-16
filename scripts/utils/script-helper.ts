@@ -49,8 +49,8 @@ export class ScriptHelper {
         offerVaultAuthorityPda: PublicKey;
         permissionlessVaultAuthorityPda: PublicKey;
         mintAuthorityPda: PublicKey;
-        cacheStatePda: PublicKey;
-        cacheVaultAuthorityPda: PublicKey;
+        bufferStatePda: PublicKey;
+        bufferVaultAuthorityPda: PublicKey;
         managementFeeVaultAuthorityPda: PublicKey;
         performanceFeeVaultAuthorityPda: PublicKey;
         redemptionVaultAuthorityPda: PublicKey;
@@ -69,8 +69,8 @@ export class ScriptHelper {
             offerVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("offer_vault_authority")], program.programId)[0],
             permissionlessVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], program.programId)[0],
             mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], program.programId)[0],
-            cacheStatePda: PublicKey.findProgramAddressSync([Buffer.from("cache_state")], program.programId)[0],
-            cacheVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("cache_vault_authority")], program.programId)[0],
+            bufferStatePda: PublicKey.findProgramAddressSync([Buffer.from("buffer_state")], program.programId)[0],
+            bufferVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("buffer_vault_authority")], program.programId)[0],
             managementFeeVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("management_fee_vault_authority")], program.programId)[0],
             performanceFeeVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("performance_fee_vault_authority")], program.programId)[0],
             redemptionVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("redemption_offer_vault_authority")], program.programId)[0],
@@ -175,12 +175,12 @@ export class ScriptHelper {
         return await this.program.account.state.fetch(this.statePda);
     }
 
-    async getCacheState() {
-        return await this.program.account.cacheState.fetch(this.pdas.cacheStatePda);
+    async getBufferState() {
+        return await this.program.account.bufferState.fetch(this.pdas.bufferStatePda);
     }
 
-    getCacheVaultAta(onycMint: PublicKey): PublicKey {
-        return getAssociatedTokenAddressSync(onycMint, this.pdas.cacheVaultAuthorityPda, true, TOKEN_PROGRAM_ID);
+    getBufferVaultAta(onycMint: PublicKey): PublicKey {
+        return getAssociatedTokenAddressSync(onycMint, this.pdas.bufferVaultAuthorityPda, true, TOKEN_PROGRAM_ID);
     }
 
     getManagementFeeVaultAta(onycMint: PublicKey): PublicKey {
@@ -442,15 +442,15 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildInitializeCacheIx(params: { offer: PublicKey; onycMint: PublicKey; cacheAdmin: PublicKey; boss: PublicKey }) {
+    async buildInitializeBufferIx(params: { offer: PublicKey; onycMint: PublicKey; bufferAdmin: PublicKey; boss: PublicKey }) {
         const builder = this.program.methods
-            .initializeCache(params.cacheAdmin)
+            .initializeBuffer(params.bufferAdmin)
             .accountsPartial({
                 boss: params.boss,
                 onycMint: params.onycMint,
-                cacheState: this.pdas.cacheStatePda,
-                cacheVaultAuthority: this.pdas.cacheVaultAuthorityPda,
-                cacheVaultOnycAccount: this.getCacheVaultAta(params.onycMint),
+                bufferState: this.pdas.bufferStatePda,
+                bufferVaultAuthority: this.pdas.bufferVaultAuthorityPda,
+                bufferVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
                 managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
                 managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
                 performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
@@ -462,73 +462,72 @@ export class ScriptHelper {
         return await builder.instruction();
     }
 
-    async buildSetMainOfferIx(params: { offer: PublicKey; boss: PublicKey }) {
+    async buildSetBufferMainOfferIx(params: { offer: PublicKey; boss: PublicKey }) {
         return await this.program.methods
             .setMainOffer()
             .accountsPartial({
-                cacheState: this.pdas.cacheStatePda,
-                boss: params.boss,
                 offer: params.offer,
             })
             .instruction();
     }
 
-    async buildSetCacheAdminIx(params: { cacheAdmin: PublicKey; boss: PublicKey }) {
+    async buildSetBufferAdminIx(params: { bufferAdmin: PublicKey; boss: PublicKey }) {
         return await this.program.methods
-            .setCacheAdmin(params.cacheAdmin)
+            .setBufferAdmin(params.bufferAdmin)
             .accountsPartial({
-                cacheState: this.pdas.cacheStatePda,
+                bufferState: this.pdas.bufferStatePda,
                 boss: params.boss,
             })
             .instruction();
     }
 
-    async buildSetCacheGrossYieldIx(params: { grossYield: number; boss: PublicKey }) {
+    async buildSetBufferGrossYieldIx(params: { grossYield: number; boss: PublicKey }) {
         return await this.program.methods
-            .setCacheGrossYield(new BN(params.grossYield))
+            .setBufferGrossApr(new BN(params.grossYield))
             .accountsPartial({
-                cacheState: this.pdas.cacheStatePda,
+                bufferState: this.pdas.bufferStatePda,
                 boss: params.boss,
             })
             .instruction();
     }
 
-    async buildUpdateLowestSupplyIx(params: { onycMint: PublicKey }) {
+    async buildSetBufferFeeConfigIx(params: {
+        managementFeeBasisPoints: number;
+        managementFeeWallet: PublicKey;
+        performanceFeeBasisPoints: number;
+        performanceFeeWallet: PublicKey;
+        boss: PublicKey;
+    }) {
         return await this.program.methods
-            .updateLowestSupply()
+            .setBufferFeeConfig(
+                params.managementFeeBasisPoints,
+                params.managementFeeWallet,
+                params.performanceFeeBasisPoints,
+                params.performanceFeeWallet,
+            )
             .accountsPartial({
-                cacheState: this.pdas.cacheStatePda,
+                bufferState: this.pdas.bufferStatePda,
+                boss: params.boss,
+            })
+            .instruction();
+    }
+
+    async buildManageBufferIx(params: { offer: PublicKey; onycMint: PublicKey }) {
+        return await this.program.methods
+            .manageBuffer()
+            .accountsPartial({
+                bufferState: this.pdas.bufferStatePda,
                 onycMint: params.onycMint,
-            })
-            .instruction();
-    }
-
-    async buildSetCacheFeeConfigIx(params: { managementFeeBasisPoints: number; performanceFeeBasisPoints: number; boss: PublicKey }) {
-        return await this.program.methods
-            .setCacheFeeConfig(params.managementFeeBasisPoints, params.performanceFeeBasisPoints)
-            .accountsPartial({
-                cacheState: this.pdas.cacheStatePda,
-                boss: params.boss,
-            })
-            .instruction();
-    }
-
-    async buildAccrueCacheIx(params: { offer: PublicKey; onycMint: PublicKey; cacheAdmin: PublicKey }) {
-        return await this.program.methods
-            .accrueCache()
-            .accountsPartial({
-                cacheState: this.pdas.cacheStatePda,
-                onycMint: params.onycMint,
-                cacheAdmin: params.cacheAdmin,
                 offer: params.offer,
-                cacheVaultAuthority: this.pdas.cacheVaultAuthorityPda,
-                cacheVaultOnycAccount: this.getCacheVaultAta(params.onycMint),
+                bufferVaultAuthority: this.pdas.bufferVaultAuthorityPda,
+                bufferVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
                 managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
                 managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
                 performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
                 performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.onycMint),
                 mintAuthority: this.pdas.mintAuthorityPda,
                 tokenProgram: TOKEN_PROGRAM_ID,
+                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
             })
             .instruction();
     }
@@ -538,26 +537,27 @@ export class ScriptHelper {
             .burnForNavIncrease(new BN(params.assetAdjustmentAmount), new BN(params.targetNav))
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
-                cacheState: this.pdas.cacheStatePda,
+                bufferState: this.pdas.bufferStatePda,
                 onycMint: params.onycMint,
                 boss: params.boss,
                 offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
                 vaultTokenOutAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
-                cacheVaultAuthority: this.pdas.cacheVaultAuthorityPda,
-                cacheVaultOnycAccount: this.getCacheVaultAta(params.onycMint),
+                bufferVaultAuthority: this.pdas.bufferVaultAuthorityPda,
+                bufferVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
                 tokenProgram: TOKEN_PROGRAM_ID,
             })
             .instruction();
     }
 
-    async buildClaimManagementFeesIx(params: { boss: PublicKey; onycMint: PublicKey; amount: number }) {
+    async buildWithdrawManagementFeesIx(params: { boss: PublicKey; onycMint: PublicKey; amount: number }) {
         return await this.program.methods
-            .claimManagementFees(new BN(params.amount))
+            .withdrawManagementFees(new BN(params.amount))
             .accountsPartial({
-                cacheState: this.pdas.cacheStatePda,
+                bufferState: this.pdas.bufferStatePda,
                 managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
+                managementFeeRecipient: params.boss,
                 onycMint: params.onycMint,
-                bossOnycAccount: getAssociatedTokenAddressSync(params.onycMint, params.boss, false, TOKEN_PROGRAM_ID),
+                managementFeeRecipientOnycAccount: getAssociatedTokenAddressSync(params.onycMint, params.boss, false, TOKEN_PROGRAM_ID),
                 managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
                 boss: params.boss,
                 tokenProgram: TOKEN_PROGRAM_ID,
@@ -566,14 +566,15 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildClaimPerformanceFeesIx(params: { boss: PublicKey; onycMint: PublicKey; amount: number }) {
+    async buildWithdrawPerformanceFeesIx(params: { boss: PublicKey; onycMint: PublicKey; amount: number }) {
         return await this.program.methods
-            .claimPerformanceFees(new BN(params.amount))
+            .withdrawPerformanceFees(new BN(params.amount))
             .accountsPartial({
-                cacheState: this.pdas.cacheStatePda,
+                bufferState: this.pdas.bufferStatePda,
                 performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
+                performanceFeeRecipient: params.boss,
                 onycMint: params.onycMint,
-                bossOnycAccount: getAssociatedTokenAddressSync(params.onycMint, params.boss, false, TOKEN_PROGRAM_ID),
+                performanceFeeRecipientOnycAccount: getAssociatedTokenAddressSync(params.onycMint, params.boss, false, TOKEN_PROGRAM_ID),
                 performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.onycMint),
                 boss: params.boss,
                 tokenProgram: TOKEN_PROGRAM_ID,

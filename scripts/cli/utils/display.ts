@@ -74,26 +74,23 @@ export function printState(state: any, json: boolean = false): void {
 }
 
 /**
- * Print CACHE state
+ * Print BUFFER state
  */
-export function printCacheState(cacheState: any, json: boolean = false): void {
+export function printBufferState(bufferState: any, json: boolean = false): void {
     if (json) {
         console.log(
             JSON.stringify(
                 {
-                    onycMint: cacheState.onycMint.toBase58(),
-                    cacheAdmin: cacheState.cacheAdmin.toBase58(),
-                    grossYield: cacheState.grossYield.toString(),
-                    currentYield: cacheState.currentYield.toString(),
-                    lowestSupply: cacheState.lowestSupply.toString(),
-                    managementFeeBasisPoints: cacheState.managementFeeBasisPoints,
-                    performanceFeeBasisPoints: cacheState.performanceFeeBasisPoints,
-                    performanceFeeHighWatermark: cacheState.performanceFeeHighWatermark.toString(),
-                    totalManagementFeesAccrued: cacheState.totalManagementFeesAccrued.toString(),
-                    totalManagementFeesClaimed: cacheState.totalManagementFeesClaimed.toString(),
-                    totalPerformanceFeesAccrued: cacheState.totalPerformanceFeesAccrued.toString(),
-                    totalPerformanceFeesClaimed: cacheState.totalPerformanceFeesClaimed.toString(),
-                    lastAccrualTimestamp: cacheState.lastAccrualTimestamp.toString(),
+                    onycMint: bufferState.onycMint.toBase58(),
+                    bufferAdmin: bufferState.bufferAdmin.toBase58(),
+                    grossApr: bufferState.grossApr.toString(),
+                    lowestSupply: bufferState.lowestSupply.toString(),
+                    managementFeeBasisPoints: bufferState.managementFeeBasisPoints,
+                    managementFeeWallet: bufferState.managementFeeWallet.toBase58(),
+                    performanceFeeBasisPoints: bufferState.performanceFeeBasisPoints,
+                    performanceFeeWallet: bufferState.performanceFeeWallet.toBase58(),
+                    performanceFeeHighWatermark: bufferState.performanceFeeHighWatermark.toString(),
+                    lastAccrualTimestamp: bufferState.lastAccrualTimestamp.toString(),
                 },
                 null,
                 2,
@@ -102,7 +99,7 @@ export function printCacheState(cacheState: any, json: boolean = false): void {
         return;
     }
 
-    console.log(chalk.bold.blue("\n=== CACHE State ===\n"));
+    console.log(chalk.bold.blue("\n=== BUFFER State ===\n"));
 
     const table = new Table({
         head: [chalk.white("Field"), chalk.white("Value")],
@@ -110,19 +107,16 @@ export function printCacheState(cacheState: any, json: boolean = false): void {
     });
 
     table.push(
-        ["ONyc Mint", cacheState.onycMint.toBase58()],
-        ["CACHE Admin", cacheState.cacheAdmin.toBase58()],
-        ["Gross Yield (1e6)", cacheState.grossYield.toString()],
-        ["Current Yield (1e6)", cacheState.currentYield.toString()],
-        ["Lowest Supply", cacheState.lowestSupply.toString()],
-        ["Management Fee (bps)", cacheState.managementFeeBasisPoints.toString()],
-        ["Performance Fee (bps)", cacheState.performanceFeeBasisPoints.toString()],
-        ["Performance HWM", cacheState.performanceFeeHighWatermark.toString()],
-        ["Mgmt Fees Accrued", cacheState.totalManagementFeesAccrued.toString()],
-        ["Mgmt Fees Claimed", cacheState.totalManagementFeesClaimed.toString()],
-        ["Perf Fees Accrued", cacheState.totalPerformanceFeesAccrued.toString()],
-        ["Perf Fees Claimed", cacheState.totalPerformanceFeesClaimed.toString()],
-        ["Last Accrual Timestamp", cacheState.lastAccrualTimestamp.toString()],
+        ["ONyc Mint", bufferState.onycMint.toBase58()],
+        ["BUFFER Admin", bufferState.bufferAdmin.toBase58()],
+        ["Gross APR (1e6)", bufferState.grossApr.toString()],
+        ["Lowest Supply", bufferState.lowestSupply.toString()],
+        ["Management Fee (bps)", bufferState.managementFeeBasisPoints.toString()],
+        ["Management Fee Wallet", bufferState.managementFeeWallet.toBase58()],
+        ["Performance Fee (bps)", bufferState.performanceFeeBasisPoints.toString()],
+        ["Performance Fee Wallet", bufferState.performanceFeeWallet.toBase58()],
+        ["Performance HWM", bufferState.performanceFeeHighWatermark.toString()],
+        ["Last Accrual Timestamp", bufferState.lastAccrualTimestamp.toString()],
     );
 
     console.log(table.toString());

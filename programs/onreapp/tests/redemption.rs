@@ -192,8 +192,7 @@ fn test_make_redemption_offer_redemption_admin_can_create() {
     advance_slot(&mut svm);
 
     // Redemption admin should be able to create
-    let ix =
-        build_make_redemption_offer_ix(
+    let ix = build_make_redemption_offer_ix(
         &redemption_admin.pubkey(),
         &_onyc_mint,
         &usdc_mint,

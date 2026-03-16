@@ -1,18 +1,18 @@
 import type { NetworkConfig } from "../../utils/script-helper";
 import { ParamDefinition } from "../prompts/types";
 
-export const cacheInitParams: ParamDefinition[] = [
+export const bufferInitParams: ParamDefinition[] = [
     {
-        name: "cacheAdmin",
+        name: "bufferAdmin",
         type: "publicKey",
-        description: "CACHE admin public key",
+        description: "BUFFER admin public key",
         required: true,
-        flag: "--cache-admin",
+        flag: "--buffer-admin",
     },
     {
         name: "offer",
         type: "publicKey",
-        description: "Main offer PDA used by CACHE",
+        description: "Main offer PDA used by BUFFER",
         required: true,
         flag: "--offer",
     },
@@ -26,7 +26,7 @@ export const cacheInitParams: ParamDefinition[] = [
     },
 ];
 
-export const cacheOnycMintParam: ParamDefinition[] = [
+export const bufferOnycMintParam: ParamDefinition[] = [
     {
         name: "onycMint",
         type: "mint",
@@ -37,17 +37,17 @@ export const cacheOnycMintParam: ParamDefinition[] = [
     },
 ];
 
-export const cacheAdminParam: ParamDefinition[] = [
+export const bufferAdminParam: ParamDefinition[] = [
     {
-        name: "cacheAdmin",
+        name: "bufferAdmin",
         type: "publicKey",
-        description: "CACHE admin public key",
+        description: "BUFFER admin public key",
         required: true,
-        flag: "--cache-admin",
+        flag: "--buffer-admin",
     },
 ];
 
-export const cacheGrossYieldParams: ParamDefinition[] = [
+export const bufferGrossYieldParams: ParamDefinition[] = [
     {
         name: "grossYield",
         type: "apr",
@@ -57,17 +57,17 @@ export const cacheGrossYieldParams: ParamDefinition[] = [
     },
 ];
 
-export const cacheOfferParam: ParamDefinition[] = [
+export const bufferOfferParam: ParamDefinition[] = [
     {
         name: "offer",
         type: "publicKey",
-        description: "Main offer PDA used by CACHE",
+        description: "Main offer PDA used by BUFFER",
         required: true,
         flag: "--offer",
     },
 ];
 
-export const cacheBurnParams: ParamDefinition[] = [
+export const bufferBurnParams: ParamDefinition[] = [
     {
         name: "tokenIn",
         type: "mint",

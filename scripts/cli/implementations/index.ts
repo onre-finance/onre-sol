@@ -68,11 +68,10 @@ export { executeStateSetRedemptionAdmin } from "./state/state-set-redemption-adm
 export { executeStateClearAdmins } from "./state/state-clear-admins";
 export { executeStateClose } from "./state/state-close";
 
-// Cache implementations
-export { executeCacheGet } from "./cache/cache-get";
-export { executeCacheInitialize } from "./cache/cache-initialize";
-export { executeCacheSetAdmin } from "./cache/cache-set-admin";
-export { executeCacheSetYields } from "./cache/cache-set-yields";
-export { executeCacheUpdateLowestSupply } from "./cache/cache-update-lowest-supply";
-export { executeCacheAccrue } from "./cache/cache-accrue";
-export { executeCacheBurn } from "./cache/cache-burn";
+// Buffer implementations
+export { executeBufferGet } from "./buffer/buffer-get";
+export { executeBufferInitialize } from "./buffer/buffer-initialize";
+export { executeBufferSetAdmin } from "./buffer/buffer-set-admin";
+export { executeBufferSetYields } from "./buffer/buffer-set-yields";
+export { executeBufferManage } from "./buffer/buffer-manage";
+export { executeBufferBurn } from "./buffer/buffer-burn";
