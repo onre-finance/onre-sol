@@ -7021,6 +7021,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "marketStatsRefreshedEvent",
+      "discriminator": [
+        125,
+        246,
+        174,
+        224,
+        0,
+        163,
+        111,
+        76
+      ]
+    },
+    {
       "name": "maxSupplyConfiguredEvent",
       "discriminator": [
         180,
@@ -7307,19 +7320,6 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "refreshMarketStatsEvent",
-      "discriminator": [
-        139,
-        152,
-        21,
-        102,
-        141,
-        102,
-        210,
-        250
-      ]
-    },
-    {
       "name": "stateClosedEvent",
       "discriminator": [
         205,
@@ -7336,33 +7336,58 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "mathOverflow",
-      "msg": "Math overflow"
+      "name": "expired",
+      "msg": "The approval message has expired."
     },
     {
       "code": 6001,
-      "name": "maxSupplyExceeded",
-      "msg": "Minting would exceed maximum supply cap"
+      "name": "wrongProgram",
+      "msg": "The approval message is for the wrong program."
     },
     {
       "code": 6002,
-      "name": "transferFeeNotSupported",
-      "msg": "Token-2022 with transfer fees not supported"
+      "name": "wrongUser",
+      "msg": "The approval message is for the wrong user."
     },
     {
       "code": 6003,
-      "name": "zeroPriceNotAllowed",
-      "msg": "Price cannot be zero"
+      "name": "missingEd25519Ix",
+      "msg": "Missing Ed25519 instruction."
     },
     {
       "code": 6004,
-      "name": "decimalsExceedMax",
-      "msg": "Token decimals exceed maximum allowed (18)"
+      "name": "wrongIxProgram",
+      "msg": "The instruction is for the wrong program."
     },
     {
       "code": 6005,
-      "name": "resultOverflow",
-      "msg": "Result exceeds u64 maximum value"
+      "name": "badEd25519Accounts",
+      "msg": "Ed25519 instruction has accounts."
+    },
+    {
+      "code": 6006,
+      "name": "malformedEd25519Ix",
+      "msg": "Malformed Ed25519 instruction."
+    },
+    {
+      "code": 6007,
+      "name": "multipleSigs",
+      "msg": "Multiple signatures found in Ed25519 instruction."
+    },
+    {
+      "code": 6008,
+      "name": "wrongAuthority",
+      "msg": "The authority public key does not match."
+    },
+    {
+      "code": 6009,
+      "name": "msgMismatch",
+      "msg": "The message in the Ed25519 instruction does not match the approval message."
+    },
+    {
+      "code": 6010,
+      "name": "msgDeserialize",
+      "msg": "Failed to deserialize the approval message."
     }
   ],
   "types": [
@@ -7900,9 +7925,9 @@ export type Onreapp = {
           {
             "name": "navAdjustment",
             "docs": [
-              "Latest NAV adjustment value using the market-info precision."
+              "Latest signed NAV adjustment value using the market-info precision."
             ],
-            "type": "u64"
+            "type": "i64"
           },
           {
             "name": "tvl",
@@ -7943,6 +7968,45 @@ export type Onreapp = {
                 95
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "marketStatsRefreshedEvent",
+      "docs": [
+        "Event emitted when the canonical market-stats PDA is refreshed."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "marketStatsPda",
+            "docs": [
+              "Canonical market-stats PDA."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "offerPda",
+            "docs": [
+              "Offer PDA used for recomputation."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "docs": [
+              "Unix timestamp of the successful refresh."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Slot of the successful refresh."
+            ],
+            "type": "u64"
           }
         ]
       }
@@ -9174,45 +9238,6 @@ export type Onreapp = {
               "The boss account that performed the withdrawal"
             ],
             "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "refreshMarketStatsEvent",
-      "docs": [
-        "Event emitted when the canonical market-stats PDA is refreshed."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "marketStatsPda",
-            "docs": [
-              "Canonical market-stats PDA."
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "offerPda",
-            "docs": [
-              "Offer PDA used for recomputation."
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "timestamp",
-            "docs": [
-              "Unix timestamp of the successful refresh."
-            ],
-            "type": "i64"
-          },
-          {
-            "name": "slot",
-            "docs": [
-              "Slot of the successful refresh."
-            ],
-            "type": "u64"
           }
         ]
       }

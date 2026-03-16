@@ -6,6 +6,7 @@ use crate::instructions::offer::offer_utils::{
 };
 use crate::instructions::Offer;
 use crate::state::MarketStats;
+use crate::utils::PdaAccountInit;
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
@@ -15,6 +16,12 @@ pub enum MarketStatsErrorCode {
     /// The provided ONyc mint does not match the offer's token_out mint.
     #[msg("Invalid ONyc mint for market stats recomputation")]
     InvalidOnycMint,
+    /// The market-stats account has an unexpected owner.
+    #[msg("Invalid market stats owner")]
+    InvalidMarketStatsOwner,
+    /// The market-stats account data could not be decoded.
+    #[msg("Invalid market stats account data")]
+    InvalidMarketStatsData,
     /// The shared TVL computation overflowed.
     #[msg("Math overflow")]
     Overflow,
@@ -28,6 +35,38 @@ pub struct MarketStatsSnapshot {
     pub nav: u64,
     pub nav_adjustment: i64,
     pub tvl: u64,
+}
+
+impl PdaAccountInit for MarketStats {
+    fn pda_seed_prefixes() -> &'static [&'static [u8]] {
+        &[crate::constants::seeds::MARKET_STATS]
+    }
+
+    fn init_space() -> usize {
+        8 + MarketStats::INIT_SPACE
+    }
+
+    fn init_value(bump: u8) -> Self {
+        Self {
+            apy: 0,
+            circulating_supply: 0,
+            nav: 0,
+            nav_adjustment: 0,
+            tvl: 0,
+            last_updated_at: 0,
+            last_updated_slot: 0,
+            bump,
+            reserved: [0; 95],
+        }
+    }
+
+    fn invalid_owner_error() -> Error {
+        error!(MarketStatsErrorCode::InvalidMarketStatsOwner)
+    }
+
+    fn invalid_data_error() -> Error {
+        error!(MarketStatsErrorCode::InvalidMarketStatsData)
+    }
 }
 
 /// Recomputes the protocol's canonical market stats from the current on-chain state.

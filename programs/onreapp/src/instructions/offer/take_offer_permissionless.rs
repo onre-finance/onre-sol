@@ -1,16 +1,16 @@
 use crate::constants::seeds;
 use crate::instructions::market_info::{
-    read_market_stats_account, recompute_market_stats, update_market_stats_account,
-    write_market_stats_account,
+    recompute_market_stats, update_market_stats_account, write_market_stats_account,
 };
 use crate::instructions::offer::offer_utils::{process_offer_core, verify_offer_approval};
 use crate::instructions::Offer;
 use crate::state::{MarketStats, State};
 use crate::utils::{
-    execute_token_operations, transfer_tokens, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams,
+    execute_token_operations, load_or_init_pda_account, transfer_tokens, u64_to_dec9,
+    ApprovalMessage, ExecTokenOpsParams,
 };
 use crate::OfferCoreError;
-use anchor_lang::{prelude::*, solana_program::sysvar, system_program, Accounts};
+use anchor_lang::{prelude::*, solana_program::sysvar, Accounts};
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
@@ -32,12 +32,6 @@ pub enum TakeOfferPermissionlessErrorCode {
     /// The market-stats account must be writable for refreshes.
     #[msg("Market stats account must be writable")]
     MarketStatsNotWritable,
-    /// The market-stats account has an unexpected owner.
-    #[msg("Invalid market stats owner")]
-    InvalidMarketStatsOwner,
-    /// The market-stats account data could not be decoded.
-    #[msg("Invalid market stats account data")]
-    InvalidMarketStatsData,
 }
 
 /// Event emitted when an offer is successfully executed via permissionless flow
@@ -394,61 +388,24 @@ pub fn take_offer_permissionless(
 
     if ctx.accounts.token_out_mint.key() == ctx.accounts.state.onyc_mint {
         let market_stats_account = ctx.accounts.market_stats.to_account_info();
-        let is_new_market_stats = if market_stats_account.owner == &system_program::ID {
-            require!(
-                market_stats_account.data_is_empty(),
-                TakeOfferPermissionlessErrorCode::InvalidMarketStatsOwner
-            );
-            let rent_lamports = Rent::get()?.minimum_balance(8 + MarketStats::INIT_SPACE);
-            system_program::create_account(
-                CpiContext::new_with_signer(
-                    ctx.accounts.system_program.to_account_info(),
-                    system_program::CreateAccount {
-                        from: ctx.accounts.user.to_account_info(),
-                        to: market_stats_account.clone(),
-                    },
-                    &[&[seeds::MARKET_STATS, &[market_stats_bump]]],
-                ),
-                rent_lamports,
-                (8 + MarketStats::INIT_SPACE) as u64,
-                ctx.program_id,
-            )?;
-            true
-        } else {
-            require_keys_eq!(
-                *market_stats_account.owner,
-                *ctx.program_id,
-                TakeOfferPermissionlessErrorCode::InvalidMarketStatsOwner
-            );
-            false
-        };
-
         let snapshot = recompute_market_stats(
             &offer,
             &ctx.accounts.token_out_mint,
             &ctx.accounts.vault_token_out_account.to_account_info(),
             &ctx.accounts.token_out_program,
         )?;
-        let mut market_stats = if is_new_market_stats {
-            MarketStats {
-                apy: 0,
-                circulating_supply: 0,
-                nav: 0,
-                nav_adjustment: 0,
-                tvl: 0,
-                last_updated_at: 0,
-                last_updated_slot: 0,
-                bump: market_stats_bump,
-                reserved: [0; 95],
-            }
-        } else {
-            read_market_stats_account(&market_stats_account)
-                .map_err(|_| error!(TakeOfferPermissionlessErrorCode::InvalidMarketStatsData))?
-        };
+
+        let mut market_stats = load_or_init_pda_account::<MarketStats>(
+            &market_stats_account,
+            &ctx.accounts.user.to_account_info(),
+            &ctx.accounts.system_program.to_account_info(),
+            ctx.program_id,
+            market_stats_bump,
+        )?;
         market_stats.bump = market_stats_bump;
         update_market_stats_account(&mut market_stats, snapshot)?;
         write_market_stats_account(&market_stats_account, &market_stats)
-            .map_err(|_| error!(TakeOfferPermissionlessErrorCode::InvalidMarketStatsData))?;
+            .map_err(|_| <MarketStats as crate::utils::PdaAccountInit>::invalid_data_error())?;
     }
 
     msg!(
