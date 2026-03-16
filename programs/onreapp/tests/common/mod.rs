@@ -3,6 +3,7 @@
 use anchor_lang::AccountDeserialize;
 use litesvm::LiteSVM;
 use onreapp::instructions::RedemptionRequest;
+use onreapp::state::MarketStats;
 use solana_sdk::{
     account::Account,
     clock::Clock,
@@ -46,6 +47,7 @@ pub const OFFER_VAULT_AUTHORITY_SEED: &[u8] = b"offer_vault_authority";
 pub const REDEMPTION_OFFER_VAULT_AUTHORITY_SEED: &[u8] = b"redemption_offer_vault_authority";
 pub const PERMISSIONLESS_AUTHORITY_SEED: &[u8] = b"permissionless-1";
 pub const MINT_AUTHORITY_SEED: &[u8] = b"mint_authority";
+pub const MARKET_STATS_SEED: &[u8] = b"market_stats";
 
 // ---------------------------------------------------------------------------
 // ATA derivation
@@ -123,6 +125,10 @@ pub fn find_mint_authority_pda() -> (Pubkey, u8) {
     Pubkey::find_program_address(&[MINT_AUTHORITY_SEED], &PROGRAM_ID)
 }
 
+pub fn find_market_stats_pda() -> (Pubkey, u8) {
+    Pubkey::find_program_address(&[MARKET_STATS_SEED], &PROGRAM_ID)
+}
+
 pub fn find_program_data_pda() -> Pubkey {
     Pubkey::find_program_address(&[PROGRAM_ID.as_ref()], &BPF_UPGRADEABLE_LOADER_ID).0
 }
@@ -145,6 +151,15 @@ pub fn send_tx(
 pub fn get_token_balance(svm: &LiteSVM, token_account: &Pubkey) -> u64 {
     let account = svm.get_account(token_account).expect("account not found");
     u64::from_le_bytes(account.data[64..72].try_into().unwrap())
+}
+
+pub fn read_market_stats(svm: &LiteSVM) -> MarketStats {
+    let (market_stats_pda, _) = find_market_stats_pda();
+    let account = svm
+        .get_account(&market_stats_pda)
+        .expect("market stats account not found");
+    let mut data: &[u8] = &account.data;
+    MarketStats::try_deserialize(&mut data).expect("Failed to deserialize MarketStats")
 }
 
 // ---------------------------------------------------------------------------
@@ -320,6 +335,16 @@ pub fn create_token_account(
     )
     .unwrap();
 
+    if amount > 0 {
+        let mut mint_account = svm.get_account(mint).expect("mint account not found");
+        let current_supply = u64::from_le_bytes(mint_account.data[36..44].try_into().unwrap());
+        let new_supply = current_supply
+            .checked_add(amount)
+            .expect("mint supply overflow while seeding token account");
+        mint_account.data[36..44].copy_from_slice(&new_supply.to_le_bytes());
+        svm.set_account(*mint, mint_account).unwrap();
+    }
+
     ata
 }
 
@@ -387,6 +412,16 @@ pub fn create_token_account_2022(
         },
     )
     .unwrap();
+
+    if amount > 0 {
+        let mut mint_account = svm.get_account(mint).expect("mint account not found");
+        let current_supply = u64::from_le_bytes(mint_account.data[36..44].try_into().unwrap());
+        let new_supply = current_supply
+            .checked_add(amount)
+            .expect("mint supply overflow while seeding token account");
+        mint_account.data[36..44].copy_from_slice(&new_supply.to_le_bytes());
+        svm.set_account(*mint, mint_account).unwrap();
+    }
 
     ata
 }
@@ -760,6 +795,7 @@ pub fn build_take_offer_permissionless_ix(
     let (vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (permissionless_authority_pda, _) = find_permissionless_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
+    let (market_stats_pda, _) = find_market_stats_pda();
 
     let vault_token_in_ata = derive_ata(&vault_authority_pda, token_in_mint, token_in_program);
     let vault_token_out_ata = derive_ata(&vault_authority_pda, token_out_mint, token_out_program);
@@ -810,6 +846,7 @@ pub fn build_take_offer_permissionless_ix(
             AccountMeta::new(user_token_out_ata, false),           // user_token_out_account
             AccountMeta::new(boss_token_in_ata, false),            // boss_token_in_account
             AccountMeta::new_readonly(mint_authority_pda, false),  // mint_authority
+            AccountMeta::new(market_stats_pda, false),             // market_stats
             AccountMeta::new_readonly(SYSVAR_INSTRUCTIONS_ID, false), // instructions_sysvar
             AccountMeta::new(*user, true),                         // user (signer)
             AccountMeta::new_readonly(ATA_PROGRAM_ID, false),      // associated_token_program
@@ -971,6 +1008,7 @@ pub fn build_take_offer_ix(
     let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
     let (vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
+    let (market_stats_pda, _) = find_market_stats_pda();
 
     let vault_token_in_ata = derive_ata(&vault_authority_pda, token_in_mint, token_in_program);
     let vault_token_out_ata = derive_ata(&vault_authority_pda, token_out_mint, token_out_program);
@@ -1007,6 +1045,7 @@ pub fn build_take_offer_ix(
             AccountMeta::new(user_token_out_ata, false),
             AccountMeta::new(boss_token_in_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),
+            AccountMeta::new(market_stats_pda, false),
             AccountMeta::new_readonly(SYSVAR_INSTRUCTIONS_ID, false),
             AccountMeta::new(*user, true),
             AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
@@ -1360,7 +1399,11 @@ pub fn build_redemption_vault_withdraw_ix(
 // ---------------------------------------------------------------------------
 // Mint authority instruction builders
 // ---------------------------------------------------------------------------
-pub fn build_transfer_mint_authority_to_program_ix(boss: &Pubkey, mint: &Pubkey, token_program: &Pubkey) -> Instruction {
+pub fn build_transfer_mint_authority_to_program_ix(
+    boss: &Pubkey,
+    mint: &Pubkey,
+    token_program: &Pubkey,
+) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
 
@@ -1379,7 +1422,11 @@ pub fn build_transfer_mint_authority_to_program_ix(boss: &Pubkey, mint: &Pubkey,
     }
 }
 
-pub fn build_transfer_mint_authority_to_boss_ix(boss: &Pubkey, mint: &Pubkey, token_program: &Pubkey) -> Instruction {
+pub fn build_transfer_mint_authority_to_boss_ix(
+    boss: &Pubkey,
+    mint: &Pubkey,
+    token_program: &Pubkey,
+) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
 
@@ -1398,7 +1445,12 @@ pub fn build_transfer_mint_authority_to_boss_ix(boss: &Pubkey, mint: &Pubkey, to
     }
 }
 
-pub fn build_mint_to_ix(boss: &Pubkey, onyc_mint: &Pubkey, amount: u64, token_program: &Pubkey) -> Instruction {
+pub fn build_mint_to_ix(
+    boss: &Pubkey,
+    onyc_mint: &Pubkey,
+    amount: u64,
+    token_program: &Pubkey,
+) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let boss_onyc_ata = derive_ata(boss, onyc_mint, token_program);
@@ -1557,6 +1609,37 @@ pub fn build_get_circulating_supply_ix_with_token_program(
             AccountMeta::new_readonly(vault_authority_pda, false),
             AccountMeta::new_readonly(onyc_vault_ata, false),
             AccountMeta::new_readonly(*token_program, false),
+        ],
+        data,
+    }
+}
+
+pub fn build_refresh_market_stats_ix(
+    signer: &Pubkey,
+    token_in_mint: &Pubkey,
+    onyc_mint: &Pubkey,
+) -> Instruction {
+    let (offer_pda, _) = find_offer_pda(token_in_mint, onyc_mint);
+    let (state_pda, _) = find_state_pda();
+    let (vault_authority_pda, _) = find_offer_vault_authority_pda();
+    let (market_stats_pda, _) = find_market_stats_pda();
+    let onyc_vault_ata = get_associated_token_address(&vault_authority_pda, onyc_mint);
+
+    let data = ix_discriminator("refresh_market_stats").to_vec();
+
+    Instruction {
+        program_id: PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new_readonly(offer_pda, false),
+            AccountMeta::new_readonly(*token_in_mint, false),
+            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new_readonly(*onyc_mint, false),
+            AccountMeta::new_readonly(vault_authority_pda, false),
+            AccountMeta::new_readonly(onyc_vault_ata, false),
+            AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+            AccountMeta::new(market_stats_pda, false),
+            AccountMeta::new(*signer, true),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
         ],
         data,
     }
@@ -1892,5 +1975,3 @@ pub fn read_redemption_request(
         bump: request.bump,
     }
 }
-
-
