@@ -334,14 +334,18 @@ export class TestHelper {
 
     // Helper to send transactions
     async sendAndConfirmTransaction(tx: Transaction, signers: Keypair[]) {
+        await this.advanceSlot();
         tx.recentBlockhash = this.svm.latestBlockhash();
         tx.feePayer = this.payer.publicKey;
-        tx.sign(...signers);
+        const allSigners = [this.payer, ...signers.filter((signer) => !signer.publicKey.equals(this.payer.publicKey))];
+        tx.sign(...allSigners);
 
         const result = this.svm.sendTransaction(tx);
 
-        if ("Err" in result) {
-            throw new Error(`Transaction failed: ${JSON.stringify(result.Err)}`);
+        if (typeof (result as any).err === "function") {
+            const error: any = new Error(result.toString());
+            error.logs = result.meta().logs();
+            throw error;
         }
 
         return result;

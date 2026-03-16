@@ -25,12 +25,9 @@ pub struct ManageBuffer<'info> {
         mut,
         seeds = [seeds::BUFFER_STATE],
         bump = buffer_state.bump,
-        has_one = buffer_admin,
         has_one = onyc_mint,
     )]
     pub buffer_state: Box<Account<'info, BufferState>>,
-
-    pub buffer_admin: Signer<'info>,
 
     #[account(address = state.main_offer @ BufferErrorCode::InvalidMainOffer)]
     pub offer: AccountLoader<'info, Offer>,

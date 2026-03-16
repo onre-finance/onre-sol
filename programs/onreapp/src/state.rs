@@ -28,8 +28,10 @@ pub struct State {
     pub max_supply: u64,
     /// Admin account authorized to manage ONr token mints and redemptions
     pub redemption_admin: Pubkey,
+    /// Main offer account used for market operations and price discovery
+    pub main_offer: Pubkey,
     /// Reserved space for future program state extensions
-    pub reserved: [u8; 96],
+    pub reserved: [u8; 64],
 }
 
 /// Program-derived authority for permissionless token routing operations

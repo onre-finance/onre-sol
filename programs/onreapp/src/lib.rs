@@ -436,7 +436,7 @@ pub mod onreapp {
 
     /// Accrues BUFFER spread and mints ONyc to the BUFFER vault account.
     ///
-    /// Callable by buffer_admin only.
+    /// Callable by anyone.
     pub fn manage_buffer(ctx: Context<ManageBuffer>) -> Result<()> {
         buffer::manage_buffer(ctx)
     }

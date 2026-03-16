@@ -1,11 +1,10 @@
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { Keypair, PublicKey, SystemProgram, TransactionInstruction, Transaction } from "@solana/web3.js";
 import { AnchorProvider, BN, Program, Wallet } from "@coral-xyz/anchor";
 import { Onreapp } from "../target/types/onreapp";
-import { BPF_LOADER_PROGRAM_ID, BPF_UPGRADEABLE_LOADER_PROGRAM_ID, ONREAPP_PROGRAM_ID, TestHelper } from "./test_helper.ts";
+import { BPF_UPGRADEABLE_LOADER_PROGRAM_ID, ONREAPP_PROGRAM_ID, TestHelper } from "./test_helper.ts";
 import idl from "../target/idl/onreapp.json";
-import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-
-export { BPF_LOADER_PROGRAM_ID };
+import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { createHash } from "crypto";
 
 /**
  * Helper to check view transaction errors and throw with logs
@@ -18,6 +17,10 @@ function parseViewError(result: any): void {
     }
 }
 
+function instructionDiscriminator(name: string): Buffer {
+    return createHash("sha256").update(`global:${name}`).digest().subarray(0, 8);
+}
+
 export class OnreProgram {
     program: Program<Onreapp>;
     testHelper: TestHelper;
@@ -28,8 +31,8 @@ export class OnreProgram {
         redemptionVaultAuthorityPda: PublicKey;
         permissionlessAuthorityPda: PublicKey;
         mintAuthorityPda: PublicKey;
-        cacheStatePda: PublicKey;
-        cacheVaultAuthorityPda: PublicKey;
+        bufferStatePda: PublicKey;
+        bufferVaultAuthorityPda: PublicKey;
         marketStatsPda: PublicKey;
         managementFeeVaultAuthorityPda: PublicKey;
         performanceFeeVaultAuthorityPda: PublicKey;
@@ -39,8 +42,8 @@ export class OnreProgram {
         redemptionVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("redemption_offer_vault_authority")], ONREAPP_PROGRAM_ID)[0],
         permissionlessAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], ONREAPP_PROGRAM_ID)[0],
         mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], ONREAPP_PROGRAM_ID)[0],
-        cacheStatePda: PublicKey.findProgramAddressSync([Buffer.from("cache_state")], ONREAPP_PROGRAM_ID)[0],
-        cacheVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("cache_vault_authority")], ONREAPP_PROGRAM_ID)[0]
+        bufferStatePda: PublicKey.findProgramAddressSync([Buffer.from("buffer_state")], ONREAPP_PROGRAM_ID)[0],
+        bufferVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("buffer_vault_authority")], ONREAPP_PROGRAM_ID)[0]
         mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], ONREAPP_PROGRAM_ID)[0],
         marketStatsPda: PublicKey.findProgramAddressSync([Buffer.from("market_stats")], ONREAPP_PROGRAM_ID)[0]
         cacheVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("cache_vault_authority")], ONREAPP_PROGRAM_ID)[0],
@@ -177,7 +180,7 @@ export class OnreProgram {
         tokenInProgram?: PublicKey;
         tokenOutProgram?: PublicKey;
     }) {
-        const tx = this.program.methods.takeOfferPermissionless(new BN(params.tokenInAmount), null).accounts({
+        const tx = this.program.methods.takeOfferPermissionless(new BN(params.tokenInAmount), null).accountsPartial({
             tokenInMint: params.tokenInMint,
             tokenOutMint: params.tokenOutMint,
             user: params.user,
@@ -308,12 +311,12 @@ export class OnreProgram {
         await this.rpcWithOptionalSigner(tx, params?.signer);
     }
 
-    async initializeCache(params: { offer: PublicKey; onycMint: PublicKey; cacheAdmin: PublicKey; signer?: Keypair }) {
-        const tx = this.program.methods.initializeCache(params.cacheAdmin).accountsPartial({
+    async initializeBuffer(params: { offer: PublicKey; onycMint: PublicKey; bufferAdmin: PublicKey; signer?: Keypair }) {
+        const tx = this.program.methods.initializeBuffer(params.bufferAdmin).accountsPartial({
             onycMint: params.onycMint,
-            cacheState: this.pdas.cacheStatePda,
-            cacheVaultAuthority: this.pdas.cacheVaultAuthorityPda,
-            cacheVaultOnycAccount: this.getCacheVaultAta(params.onycMint),
+            bufferState: this.pdas.bufferStatePda,
+            bufferVaultAuthority: this.pdas.bufferVaultAuthorityPda,
+            bufferVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
             managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
             managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
             performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
@@ -325,61 +328,63 @@ export class OnreProgram {
         await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
-    async setCacheAdmin(params: { cacheAdmin: PublicKey; signer?: Keypair }) {
-        const tx = this.program.methods.setCacheAdmin(params.cacheAdmin);
+    async setBufferAdmin(params: { bufferAdmin: PublicKey; signer?: Keypair }) {
+        const tx = this.program.methods.setBufferAdmin(params.bufferAdmin);
 
         await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
-    async setMainOffer(params: { offer: PublicKey; signer?: Keypair }) {
-        const tx = this.program.methods.setMainOffer().accountsPartial({
-            offer: params.offer,
+    async setBufferMainOffer(params: { offer: PublicKey; signer?: Keypair }) {
+        const signer = params.signer ?? this.testHelper.payer;
+        const instruction = new TransactionInstruction({
+            programId: this.program.programId,
+            keys: [
+                { pubkey: this.pdas.statePda, isSigner: false, isWritable: true },
+                { pubkey: signer.publicKey, isSigner: true, isWritable: false },
+                { pubkey: params.offer, isSigner: false, isWritable: false },
+            ],
+            data: instructionDiscriminator("set_main_offer"),
         });
 
-        await this.rpcWithOptionalSigner(tx, params.signer);
+        const tx = new Transaction().add(instruction);
+        await this.testHelper.sendAndConfirmTransaction(tx, [signer]);
     }
 
-    async setCacheGrossYield(params: { grossYield: number; signer?: Keypair }) {
-        const tx = this.program.methods.setCacheGrossYield(new BN(params.grossYield)).accountsPartial({});
-
-        await this.rpcWithOptionalSigner(tx, params.signer);
-    }
-
-    async setCacheFeeConfig(params: { managementFeeBasisPoints: number; performanceFeeBasisPoints: number; signer?: Keypair }) {
-        const tx = this.program.methods.setCacheFeeConfig(params.managementFeeBasisPoints, params.performanceFeeBasisPoints);
+    async setBufferGrossYield(params: { grossYield: number; signer?: Keypair }) {
+        const tx = this.program.methods.setBufferGrossApr(new BN(params.grossYield)).accountsPartial({});
 
         await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
-    async updateLowestSupply(params: { onycMint: PublicKey }) {
-        await this.program.methods
-            .updateLowestSupply()
-            .accounts({
-                onycMint: params.onycMint,
-            })
-            .rpc();
+    async setBufferFeeConfig(params: { managementFeeBasisPoints: number; performanceFeeBasisPoints: number; signer?: Keypair }) {
+        const feeRecipient = (params.signer ?? this.testHelper.payer).publicKey;
+        const tx = this.program.methods.setBufferFeeConfig(
+            params.managementFeeBasisPoints,
+            feeRecipient,
+            params.performanceFeeBasisPoints,
+            feeRecipient,
+        );
+
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
-    async accrueCache(params: { offer: PublicKey; onycMint: PublicKey; signer?: Keypair }) {
-        const signer = params.signer ?? this.testHelper.payer;
-
+    async manageBuffer(params: { offer: PublicKey; onycMint: PublicKey; signer?: Keypair }) {
         const tx = this.program.methods
-            .accrueCache()
+            .manageBuffer()
             .accountsPartial({
-                cacheAdmin: signer.publicKey,
                 offer: params.offer,
                 onycMint: params.onycMint,
-                cacheState: this.pdas.cacheStatePda,
-                cacheVaultAuthority: this.pdas.cacheVaultAuthorityPda,
-                cacheVaultOnycAccount: this.getCacheVaultAta(params.onycMint),
+                bufferState: this.pdas.bufferStatePda,
+                bufferVaultAuthority: this.pdas.bufferVaultAuthorityPda,
+                bufferVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
                 managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
                 managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
                 performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
                 performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.onycMint),
                 mintAuthority: this.pdas.mintAuthorityPda,
                 tokenProgram: TOKEN_PROGRAM_ID,
-            })
-            .signers([signer]);
+                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            });
 
         await tx.rpc();
     }
@@ -387,62 +392,79 @@ export class OnreProgram {
     async burnForNavIncrease(params: { tokenInMint: PublicKey; onycMint: PublicKey; assetAdjustmentAmount: number; targetNav: number; signer?: Keypair }) {
         const signer = params.signer ?? this.testHelper.payer;
         const offerPda = PublicKey.findProgramAddressSync([Buffer.from("offer"), params.tokenInMint.toBuffer(), params.onycMint.toBuffer()], ONREAPP_PROGRAM_ID)[0];
+        await this.testHelper.advanceSlot();
+        const tx = await this.program.methods
+            .burnForNavIncrease(new BN(params.assetAdjustmentAmount), new BN(params.targetNav))
+            .accountsPartial({
+                boss: signer.publicKey,
+                offer: offerPda,
+                tokenInMint: params.tokenInMint,
+                onycMint: params.onycMint,
+                bufferState: this.pdas.bufferStatePda,
+                offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
+                vaultTokenOutAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
+                bufferVaultAuthority: this.pdas.bufferVaultAuthorityPda,
+                bufferVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
+                tokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .transaction();
+        await this.testHelper.sendAndConfirmTransaction(tx, [signer]);
+    }
 
-        const tx = this.program.methods.burnForNavIncrease(new BN(params.assetAdjustmentAmount), new BN(params.targetNav)).accounts({
-            state: this.pdas.statePda,
-            boss: signer.publicKey,
-            offer: offerPda,
-            tokenInMint: params.tokenInMint,
-            onycMint: params.onycMint,
-            cacheState: this.pdas.cacheStatePda,
-            offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
-            vaultTokenOutAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
-            cacheVaultAuthority: this.pdas.cacheVaultAuthorityPda,
-            cacheVaultOnycAccount: this.getCacheVaultAta(params.onycMint),
-            tokenProgram: TOKEN_PROGRAM_ID,
+    async withdrawManagementFees(params: { onycMint: PublicKey; amount: number; signer?: Keypair }) {
+        const signer = params.signer ?? this.testHelper.payer;
+        const data = Buffer.concat([
+            instructionDiscriminator("withdraw_management_fees"),
+            new BN(params.amount).toArrayLike(Buffer, "le", 8),
+        ]);
+        const instruction = new TransactionInstruction({
+            programId: this.program.programId,
+            keys: [
+                { pubkey: this.pdas.statePda, isSigner: false, isWritable: false },
+                { pubkey: this.pdas.bufferStatePda, isSigner: false, isWritable: true },
+                { pubkey: this.pdas.managementFeeVaultAuthorityPda, isSigner: false, isWritable: false },
+                { pubkey: signer.publicKey, isSigner: false, isWritable: false },
+                { pubkey: params.onycMint, isSigner: false, isWritable: true },
+                { pubkey: getAssociatedTokenAddressSync(params.onycMint, signer.publicKey, false, TOKEN_PROGRAM_ID), isSigner: false, isWritable: true },
+                { pubkey: this.getManagementFeeVaultAta(params.onycMint), isSigner: false, isWritable: true },
+                { pubkey: signer.publicKey, isSigner: true, isWritable: true },
+                { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+                { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+                { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+            ],
+            data,
         });
 
-        tx.signers([signer]);
-
-        await tx.rpc();
+        const tx = new Transaction().add(instruction);
+        await this.testHelper.sendAndConfirmTransaction(tx, [signer]);
     }
 
-    async claimManagementFees(params: { onycMint: PublicKey; amount: number; signer?: Keypair }) {
+    async withdrawPerformanceFees(params: { onycMint: PublicKey; amount: number; signer?: Keypair }) {
         const signer = params.signer ?? this.testHelper.payer;
-        const tx = this.program.methods
-            .claimManagementFees(new BN(params.amount))
-            .accounts({
-                state: this.pdas.statePda,
-                cacheState: this.pdas.cacheStatePda,
-                managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
-                onycMint: params.onycMint,
-                bossOnycAccount: getAssociatedTokenAddressSync(params.onycMint, signer.publicKey, false, TOKEN_PROGRAM_ID),
-                managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
-                boss: signer.publicKey,
-                tokenProgram: TOKEN_PROGRAM_ID,
-            })
-            .signers([signer]);
+        const data = Buffer.concat([
+            instructionDiscriminator("withdraw_performance_fees"),
+            new BN(params.amount).toArrayLike(Buffer, "le", 8),
+        ]);
+        const instruction = new TransactionInstruction({
+            programId: this.program.programId,
+            keys: [
+                { pubkey: this.pdas.statePda, isSigner: false, isWritable: false },
+                { pubkey: this.pdas.bufferStatePda, isSigner: false, isWritable: true },
+                { pubkey: this.pdas.performanceFeeVaultAuthorityPda, isSigner: false, isWritable: false },
+                { pubkey: signer.publicKey, isSigner: false, isWritable: false },
+                { pubkey: params.onycMint, isSigner: false, isWritable: true },
+                { pubkey: getAssociatedTokenAddressSync(params.onycMint, signer.publicKey, false, TOKEN_PROGRAM_ID), isSigner: false, isWritable: true },
+                { pubkey: this.getPerformanceFeeVaultAta(params.onycMint), isSigner: false, isWritable: true },
+                { pubkey: signer.publicKey, isSigner: true, isWritable: true },
+                { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+                { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+                { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+            ],
+            data,
+        });
 
-        await tx.rpc();
-    }
-
-    async claimPerformanceFees(params: { onycMint: PublicKey; amount: number; signer?: Keypair }) {
-        const signer = params.signer ?? this.testHelper.payer;
-        const tx = this.program.methods
-            .claimPerformanceFees(new BN(params.amount))
-            .accounts({
-                state: this.pdas.statePda,
-                cacheState: this.pdas.cacheStatePda,
-                performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
-                onycMint: params.onycMint,
-                bossOnycAccount: getAssociatedTokenAddressSync(params.onycMint, signer.publicKey, false, TOKEN_PROGRAM_ID),
-                performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.onycMint),
-                boss: signer.publicKey,
-                tokenProgram: TOKEN_PROGRAM_ID,
-            })
-            .signers([signer]);
-
-        await tx.rpc();
+        const tx = new Transaction().add(instruction);
+        await this.testHelper.sendAndConfirmTransaction(tx, [signer]);
     }
 
     async makeRedemptionOffer(params: { offer: PublicKey; feeBasisPoints?: number; signer?: Keypair; tokenInProgram?: PublicKey; tokenOutProgram?: PublicKey }) {
@@ -682,12 +704,12 @@ export class OnreProgram {
         return await this.program.account.state.fetch(this.pdas.statePda);
     }
 
-    async getCacheState() {
-        return await this.program.account.cacheState.fetch(this.pdas.cacheStatePda);
+    async getBufferState() {
+        return await this.program.account.bufferState.fetch(this.pdas.bufferStatePda);
     }
 
-    getCacheVaultAta(onycMint: PublicKey) {
-        return getAssociatedTokenAddressSync(onycMint, this.pdas.cacheVaultAuthorityPda, true, TOKEN_PROGRAM_ID);
+    getBufferVaultAta(onycMint: PublicKey) {
+        return getAssociatedTokenAddressSync(onycMint, this.pdas.bufferVaultAuthorityPda, true, TOKEN_PROGRAM_ID);
     }
 
     getManagementFeeVaultAta(onycMint: PublicKey) {
@@ -730,7 +752,7 @@ export class OnreProgram {
 
         const tx = this.program.methods
             .createRedemptionRequest(new BN(params.amount))
-            .accounts({
+            .accountsPartial({
                 redemptionOffer: params.redemptionOffer,
                 redeemer: params.redeemer.publicKey,
                 tokenInMint: redemptionOffer.tokenInMint,
@@ -748,7 +770,7 @@ export class OnreProgram {
 
         const tx = this.program.methods
             .cancelRedemptionRequest()
-            .accounts({
+            .accountsPartial({
                 redemptionOffer: params.redemptionOffer,
                 redemptionRequest: params.redemptionRequest,
                 signer: params.signer.publicKey,
@@ -783,7 +805,7 @@ export class OnreProgram {
 
         const tx = this.program.methods
             .fulfillRedemptionRequest(amount)
-            .accounts({
+            .accountsPartial({
                 offer: params.offer,
                 redemptionOffer: params.redemptionOffer,
                 redemptionRequest: params.redemptionRequest,

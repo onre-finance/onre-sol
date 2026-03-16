@@ -48,8 +48,8 @@ pub const REDEMPTION_OFFER_VAULT_AUTHORITY_SEED: &[u8] = b"redemption_offer_vaul
 pub const PERMISSIONLESS_AUTHORITY_SEED: &[u8] = b"permissionless-1";
 pub const MINT_AUTHORITY_SEED: &[u8] = b"mint_authority";
 pub const MARKET_STATS_SEED: &[u8] = b"market_stats";
-pub const CACHE_STATE_SEED: &[u8] = b"cache_state";
-pub const CACHE_VAULT_AUTHORITY_SEED: &[u8] = b"cache_vault_authority";
+pub const BUFFER_STATE_SEED: &[u8] = b"buffer_state";
+pub const BUFFER_VAULT_AUTHORITY_SEED: &[u8] = b"buffer_vault_authority";
 pub const MANAGEMENT_FEE_VAULT_AUTHORITY_SEED: &[u8] = b"management_fee_vault_authority";
 pub const PERFORMANCE_FEE_VAULT_AUTHORITY_SEED: &[u8] = b"performance_fee_vault_authority";
 
@@ -133,12 +133,12 @@ pub fn find_market_stats_pda() -> (Pubkey, u8) {
     Pubkey::find_program_address(&[MARKET_STATS_SEED], &PROGRAM_ID)
 }
 
-pub fn find_cache_state_pda() -> (Pubkey, u8) {
-    Pubkey::find_program_address(&[CACHE_STATE_SEED], &PROGRAM_ID)
+pub fn find_buffer_state_pda() -> (Pubkey, u8) {
+    Pubkey::find_program_address(&[BUFFER_STATE_SEED], &PROGRAM_ID)
 }
 
-pub fn find_cache_vault_authority_pda() -> (Pubkey, u8) {
-    Pubkey::find_program_address(&[CACHE_VAULT_AUTHORITY_SEED], &PROGRAM_ID)
+pub fn find_buffer_vault_authority_pda() -> (Pubkey, u8) {
+    Pubkey::find_program_address(&[BUFFER_VAULT_AUTHORITY_SEED], &PROGRAM_ID)
 }
 
 pub fn find_management_fee_vault_authority_pda() -> (Pubkey, u8) {
@@ -261,7 +261,6 @@ pub fn setup_initialized() -> (LiteSVM, Keypair, Pubkey) {
     send_tx(&mut svm, &[ix], &[&payer]).expect("initialize failed");
     (svm, payer, onyc_mint)
 }
-
 
 pub fn advance_slot(svm: &mut LiteSVM) {
     let clock: Clock = svm.get_sysvar();
@@ -733,20 +732,21 @@ pub fn build_set_onyc_mint_ix(boss: &Pubkey, onyc_mint: &Pubkey) -> Instruction 
 }
 
 // ---------------------------------------------------------------------------
-// Cache instruction builders
+// Buffer instruction builders
 // ---------------------------------------------------------------------------
-pub fn build_initialize_cache_ix(
+pub fn build_initialize_buffer_ix(
     boss: &Pubkey,
     offer: &Pubkey,
     onyc_mint: &Pubkey,
-    cache_admin: &Pubkey,
+    buffer_admin: &Pubkey,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
-    let (cache_state_pda, _) = find_cache_state_pda();
-    let (cache_vault_authority_pda, _) = find_cache_vault_authority_pda();
+    let (buffer_state_pda, _) = find_buffer_state_pda();
+    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
     let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
     let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
-    let cache_vault_onyc_ata = derive_ata(&cache_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
+    let buffer_vault_onyc_ata =
+        derive_ata(&buffer_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
     let management_fee_vault_onyc_ata = derive_ata(
         &management_fee_vault_authority_pda,
         onyc_mint,
@@ -758,20 +758,20 @@ pub fn build_initialize_cache_ix(
         &TOKEN_PROGRAM_ID,
     );
 
-    let mut data = ix_discriminator("initialize_cache").to_vec();
-    data.extend_from_slice(cache_admin.as_ref());
+    let mut data = ix_discriminator("initialize_buffer").to_vec();
+    data.extend_from_slice(buffer_admin.as_ref());
 
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
             AccountMeta::new(state_pda, false),
-            AccountMeta::new(cache_state_pda, false),
-            AccountMeta::new(cache_vault_authority_pda, false),
+            AccountMeta::new(buffer_state_pda, false),
+            AccountMeta::new(buffer_vault_authority_pda, false),
             AccountMeta::new(management_fee_vault_authority_pda, false),
             AccountMeta::new(performance_fee_vault_authority_pda, false),
             AccountMeta::new(*boss, true),
             AccountMeta::new(*onyc_mint, false),
-            AccountMeta::new(cache_vault_onyc_ata, false),
+            AccountMeta::new(buffer_vault_onyc_ata, false),
             AccountMeta::new(management_fee_vault_onyc_ata, false),
             AccountMeta::new(performance_fee_vault_onyc_ata, false),
             AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
@@ -785,15 +785,13 @@ pub fn build_initialize_cache_ix(
 
 pub fn build_set_main_offer_ix(boss: &Pubkey, offer: &Pubkey) -> Instruction {
     let (state_pda, _) = find_state_pda();
-    let (cache_state_pda, _) = find_cache_state_pda();
 
     let data = ix_discriminator("set_main_offer").to_vec();
 
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
-            AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new(cache_state_pda, false),
+            AccountMeta::new(state_pda, false),
             AccountMeta::new_readonly(*boss, true),
             AccountMeta::new_readonly(*offer, false),
         ],
@@ -801,39 +799,36 @@ pub fn build_set_main_offer_ix(boss: &Pubkey, offer: &Pubkey) -> Instruction {
     }
 }
 
-pub fn build_set_cache_admin_ix(boss: &Pubkey, new_cache_admin: &Pubkey) -> Instruction {
+pub fn build_set_buffer_admin_ix(boss: &Pubkey, new_buffer_admin: &Pubkey) -> Instruction {
     let (state_pda, _) = find_state_pda();
-    let (cache_state_pda, _) = find_cache_state_pda();
+    let (buffer_state_pda, _) = find_buffer_state_pda();
 
-    let mut data = ix_discriminator("set_cache_admin").to_vec();
-    data.extend_from_slice(new_cache_admin.as_ref());
+    let mut data = ix_discriminator("set_buffer_admin").to_vec();
+    data.extend_from_slice(new_buffer_admin.as_ref());
 
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
             AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new(cache_state_pda, false),
+            AccountMeta::new(buffer_state_pda, false),
             AccountMeta::new_readonly(*boss, true),
         ],
         data,
     }
 }
 
-pub fn build_set_cache_gross_yield_ix(
-    boss: &Pubkey,
-    gross_yield: u64,
-) -> Instruction {
+pub fn build_set_buffer_gross_yield_ix(boss: &Pubkey, gross_yield: u64) -> Instruction {
     let (state_pda, _) = find_state_pda();
-    let (cache_state_pda, _) = find_cache_state_pda();
+    let (buffer_state_pda, _) = find_buffer_state_pda();
 
-    let mut data = ix_discriminator("set_cache_gross_yield").to_vec();
+    let mut data = ix_discriminator("set_buffer_gross_apr").to_vec();
     data.extend_from_slice(&gross_yield.to_le_bytes());
 
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
             AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new(cache_state_pda, false),
+            AccountMeta::new(buffer_state_pda, false),
             AccountMeta::new_readonly(*boss, true),
         ],
         data,
@@ -841,51 +836,58 @@ pub fn build_set_cache_gross_yield_ix(
 }
 
 pub fn build_update_lowest_supply_ix(onyc_mint: &Pubkey) -> Instruction {
-    let (cache_state_pda, _) = find_cache_state_pda();
+    let (buffer_state_pda, _) = find_buffer_state_pda();
 
     let data = ix_discriminator("update_lowest_supply").to_vec();
 
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
-            AccountMeta::new(cache_state_pda, false),
+            AccountMeta::new(buffer_state_pda, false),
             AccountMeta::new_readonly(*onyc_mint, false),
         ],
         data,
     }
 }
 
-pub fn build_set_cache_fee_config_ix(
+pub fn build_set_buffer_fee_config_ix(
     boss: &Pubkey,
     management_fee_basis_points: u16,
     performance_fee_basis_points: u16,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
-    let (cache_state_pda, _) = find_cache_state_pda();
+    let (buffer_state_pda, _) = find_buffer_state_pda();
 
-    let mut data = ix_discriminator("set_cache_fee_config").to_vec();
+    let mut data = ix_discriminator("set_buffer_fee_config").to_vec();
     data.extend_from_slice(&management_fee_basis_points.to_le_bytes());
+    data.extend_from_slice(boss.as_ref());
     data.extend_from_slice(&performance_fee_basis_points.to_le_bytes());
+    data.extend_from_slice(boss.as_ref());
 
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
             AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new(cache_state_pda, false),
+            AccountMeta::new(buffer_state_pda, false),
             AccountMeta::new_readonly(*boss, true),
         ],
         data,
     }
 }
 
-pub fn build_accrue_cache_ix(cache_admin: &Pubkey, offer: &Pubkey, onyc_mint: &Pubkey) -> Instruction {
+pub fn build_manage_buffer_ix(
+    _caller: &Pubkey,
+    offer: &Pubkey,
+    onyc_mint: &Pubkey,
+) -> Instruction {
     let (state_pda, _) = find_state_pda();
-    let (cache_state_pda, _) = find_cache_state_pda();
-    let (cache_vault_authority_pda, _) = find_cache_vault_authority_pda();
+    let (buffer_state_pda, _) = find_buffer_state_pda();
+    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
     let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
     let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
-    let cache_vault_onyc_ata = derive_ata(&cache_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
+    let buffer_vault_onyc_ata =
+        derive_ata(&buffer_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
     let management_fee_vault_onyc_ata = derive_ata(
         &management_fee_vault_authority_pda,
         onyc_mint,
@@ -897,36 +899,36 @@ pub fn build_accrue_cache_ix(cache_admin: &Pubkey, offer: &Pubkey, onyc_mint: &P
         &TOKEN_PROGRAM_ID,
     );
 
-    let data = ix_discriminator("accrue_cache").to_vec();
+    let data = ix_discriminator("manage_buffer").to_vec();
 
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
             AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new(cache_state_pda, false),
-            AccountMeta::new_readonly(*cache_admin, true),
+            AccountMeta::new(buffer_state_pda, false),
             AccountMeta::new_readonly(*offer, false),
             AccountMeta::new(*onyc_mint, false),
-            AccountMeta::new_readonly(cache_vault_authority_pda, false),
-            AccountMeta::new(cache_vault_onyc_ata, false),
+            AccountMeta::new_readonly(buffer_vault_authority_pda, false),
+            AccountMeta::new(buffer_vault_onyc_ata, false),
             AccountMeta::new_readonly(management_fee_vault_authority_pda, false),
             AccountMeta::new(management_fee_vault_onyc_ata, false),
             AccountMeta::new_readonly(performance_fee_vault_authority_pda, false),
             AccountMeta::new(performance_fee_vault_onyc_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),
             AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+            AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
         ],
         data,
     }
 }
 
-pub fn build_claim_management_fees_ix(
+pub fn build_withdraw_management_fees_ix(
     boss: &Pubkey,
     onyc_mint: &Pubkey,
     amount: u64,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
-    let (cache_state_pda, _) = find_cache_state_pda();
+    let (buffer_state_pda, _) = find_buffer_state_pda();
     let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
     let boss_onyc_ata = derive_ata(boss, onyc_mint, &TOKEN_PROGRAM_ID);
     let management_fee_vault_onyc_ata = derive_ata(
@@ -935,15 +937,16 @@ pub fn build_claim_management_fees_ix(
         &TOKEN_PROGRAM_ID,
     );
 
-    let mut data = ix_discriminator("claim_management_fees").to_vec();
+    let mut data = ix_discriminator("withdraw_management_fees").to_vec();
     data.extend_from_slice(&amount.to_le_bytes());
 
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
             AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new(cache_state_pda, false),
+            AccountMeta::new(buffer_state_pda, false),
             AccountMeta::new_readonly(management_fee_vault_authority_pda, false),
+            AccountMeta::new_readonly(*boss, false),
             AccountMeta::new(*onyc_mint, false),
             AccountMeta::new(boss_onyc_ata, false),
             AccountMeta::new(management_fee_vault_onyc_ata, false),
@@ -956,13 +959,13 @@ pub fn build_claim_management_fees_ix(
     }
 }
 
-pub fn build_claim_performance_fees_ix(
+pub fn build_withdraw_performance_fees_ix(
     boss: &Pubkey,
     onyc_mint: &Pubkey,
     amount: u64,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
-    let (cache_state_pda, _) = find_cache_state_pda();
+    let (buffer_state_pda, _) = find_buffer_state_pda();
     let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
     let boss_onyc_ata = derive_ata(boss, onyc_mint, &TOKEN_PROGRAM_ID);
     let performance_fee_vault_onyc_ata = derive_ata(
@@ -971,15 +974,16 @@ pub fn build_claim_performance_fees_ix(
         &TOKEN_PROGRAM_ID,
     );
 
-    let mut data = ix_discriminator("claim_performance_fees").to_vec();
+    let mut data = ix_discriminator("withdraw_performance_fees").to_vec();
     data.extend_from_slice(&amount.to_le_bytes());
 
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
             AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new(cache_state_pda, false),
+            AccountMeta::new(buffer_state_pda, false),
             AccountMeta::new_readonly(performance_fee_vault_authority_pda, false),
+            AccountMeta::new_readonly(*boss, false),
             AccountMeta::new(*onyc_mint, false),
             AccountMeta::new(boss_onyc_ata, false),
             AccountMeta::new(performance_fee_vault_onyc_ata, false),
@@ -1001,11 +1005,12 @@ pub fn build_burn_for_nav_increase_ix(
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (offer_pda, _) = find_offer_pda(token_in_mint, onyc_mint);
-    let (cache_state_pda, _) = find_cache_state_pda();
+    let (buffer_state_pda, _) = find_buffer_state_pda();
     let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
-    let (cache_vault_authority_pda, _) = find_cache_vault_authority_pda();
+    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
     let vault_token_out_ata = derive_ata(&offer_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
-    let cache_vault_onyc_ata = derive_ata(&cache_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
+    let buffer_vault_onyc_ata =
+        derive_ata(&buffer_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
 
     let mut data = ix_discriminator("burn_for_nav_increase").to_vec();
     data.extend_from_slice(&asset_adjustment_amount.to_le_bytes());
@@ -1015,15 +1020,15 @@ pub fn build_burn_for_nav_increase_ix(
         program_id: PROGRAM_ID,
         accounts: vec![
             AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new(cache_state_pda, false),
+            AccountMeta::new(buffer_state_pda, false),
             AccountMeta::new_readonly(*boss, true),
             AccountMeta::new_readonly(offer_pda, false),
             AccountMeta::new_readonly(*token_in_mint, false),
             AccountMeta::new(*onyc_mint, false),
             AccountMeta::new_readonly(offer_vault_authority_pda, false),
-            AccountMeta::new_readonly(cache_vault_authority_pda, false),
+            AccountMeta::new_readonly(buffer_vault_authority_pda, false),
             AccountMeta::new_readonly(vault_token_out_ata, false),
-            AccountMeta::new(cache_vault_onyc_ata, false),
+            AccountMeta::new(buffer_vault_onyc_ata, false),
             AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
         ],
         data,
@@ -1541,6 +1546,7 @@ pub struct StateData {
     pub bump: u8,
     pub max_supply: u64,
     pub redemption_admin: Pubkey,
+    pub main_offer: Pubkey,
 }
 
 impl StateData {
@@ -1559,99 +1565,56 @@ pub fn read_state(svm: &LiteSVM) -> StateData {
     let account = svm
         .get_account(&state_pda)
         .expect("state account not found");
-    let data = &account.data;
-
-    let mut offset = 8; // skip Anchor discriminator
-
-    let boss = Pubkey::try_from(&data[offset..offset + 32]).unwrap();
-    offset += 32;
-
-    let proposed_boss = Pubkey::try_from(&data[offset..offset + 32]).unwrap();
-    offset += 32;
-
-    let is_killed = data[offset] != 0;
-    offset += 1;
-
-    let onyc_mint = Pubkey::try_from(&data[offset..offset + 32]).unwrap();
-    offset += 32;
-
-    let mut admins = [Pubkey::default(); MAX_ADMINS];
-    for i in 0..MAX_ADMINS {
-        admins[i] = Pubkey::try_from(&data[offset..offset + 32]).unwrap();
-        offset += 32;
-    }
-
-    let approver1 = Pubkey::try_from(&data[offset..offset + 32]).unwrap();
-    offset += 32;
-
-    let approver2 = Pubkey::try_from(&data[offset..offset + 32]).unwrap();
-    offset += 32;
-
-    let bump = data[offset];
-    offset += 1;
-
-    let max_supply = u64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
-    offset += 8;
-
-    let redemption_admin = Pubkey::try_from(&data[offset..offset + 32]).unwrap();
+    let mut data_slice = account.data.as_slice();
+    let state =
+        onreapp::state::State::try_deserialize(&mut data_slice).expect("failed to deserialize State account");
 
     StateData {
-        boss,
-        proposed_boss,
-        is_killed,
-        onyc_mint,
-        admins,
-        approver1,
-        approver2,
-        bump,
-        max_supply,
-        redemption_admin,
+        boss: state.boss,
+        proposed_boss: state.proposed_boss,
+        is_killed: state.is_killed,
+        onyc_mint: state.onyc_mint,
+        admins: state.admins,
+        approver1: state.approver1,
+        approver2: state.approver2,
+        bump: state.bump,
+        max_supply: state.max_supply,
+        redemption_admin: state.redemption_admin,
+        main_offer: state.main_offer,
     }
 }
 
-pub struct CacheStateData {
+pub struct BufferStateData {
     pub onyc_mint: Pubkey,
-    pub cache_admin: Pubkey,
-    pub main_offer: Pubkey,
+    pub buffer_admin: Pubkey,
     pub gross_yield: u64,
-    pub current_yield: u64,
     pub lowest_supply: u64,
     pub management_fee_basis_points: u16,
     pub performance_fee_basis_points: u16,
     pub performance_fee_high_watermark: u64,
-    pub total_management_fees_accrued: u64,
-    pub total_management_fees_claimed: u64,
-    pub total_performance_fees_accrued: u64,
-    pub total_performance_fees_claimed: u64,
     pub last_accrual_timestamp: i64,
     pub bump: u8,
 }
 
-pub fn read_cache_state(svm: &LiteSVM) -> CacheStateData {
-    let (cache_state_pda, _) = find_cache_state_pda();
+pub fn read_buffer_state(svm: &LiteSVM) -> BufferStateData {
+    let (buffer_state_pda, _) = find_buffer_state_pda();
     let account = svm
-        .get_account(&cache_state_pda)
-        .expect("cache state account not found");
+        .get_account(&buffer_state_pda)
+        .expect("buffer state account not found");
     let mut data_slice = account.data.as_slice();
-    let cache_state = onreapp::instructions::CacheState::try_deserialize(&mut data_slice)
-        .expect("failed to deserialize CacheState account");
+    let buffer_state = onreapp::instructions::BufferState::try_deserialize(&mut data_slice)
+        .expect("failed to deserialize BufferState account");
 
-    CacheStateData {
-        onyc_mint: cache_state.onyc_mint,
-        cache_admin: cache_state.cache_admin,
-        main_offer: cache_state.main_offer,
-        gross_yield: cache_state.gross_yield,
-        current_yield: cache_state.current_yield,
-        lowest_supply: cache_state.lowest_supply,
-        management_fee_basis_points: cache_state.management_fee_basis_points,
-        performance_fee_basis_points: cache_state.performance_fee_basis_points,
-        performance_fee_high_watermark: cache_state.performance_fee_high_watermark,
-        total_management_fees_accrued: cache_state.total_management_fees_accrued,
-        total_management_fees_claimed: cache_state.total_management_fees_claimed,
-        total_performance_fees_accrued: cache_state.total_performance_fees_accrued,
-        total_performance_fees_claimed: cache_state.total_performance_fees_claimed,
-        last_accrual_timestamp: cache_state.last_accrual_timestamp,
-        bump: cache_state.bump,
+    BufferStateData {
+        onyc_mint: buffer_state.onyc_mint,
+        buffer_admin: buffer_state.buffer_admin,
+        gross_yield: buffer_state.gross_apr,
+        lowest_supply: buffer_state.lowest_supply,
+        management_fee_basis_points: buffer_state.management_fee_basis_points,
+        performance_fee_basis_points: buffer_state.performance_fee_basis_points,
+        performance_fee_high_watermark: buffer_state.performance_fee_high_watermark,
+        last_accrual_timestamp: buffer_state.last_accrual_timestamp,
+        bump: buffer_state.bump,
     }
 }
 

@@ -97,6 +97,7 @@ pub struct InitializeBuffer<'info> {
 
 pub fn initialize_buffer(ctx: Context<InitializeBuffer>, buffer_admin: Pubkey) -> Result<()> {
     let buffer_state = &mut ctx.accounts.buffer_state;
+    let state = &mut ctx.accounts.state;
     let now = Clock::get()?.unix_timestamp;
     let offer = ctx
         .remaining_accounts
@@ -120,6 +121,7 @@ pub fn initialize_buffer(ctx: Context<InitializeBuffer>, buffer_admin: Pubkey) -
         OfferCoreError::InvalidTokenOutMint
     );
 
+    state.main_offer = main_offer;
     buffer_state.onyc_mint = ctx.accounts.onyc_mint.key();
     buffer_state.buffer_admin = buffer_admin;
     buffer_state.last_accrual_timestamp = now;
