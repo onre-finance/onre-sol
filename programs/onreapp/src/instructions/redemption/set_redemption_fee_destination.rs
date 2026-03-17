@@ -1,12 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::redemption::RedemptionFeeVaultAuthority;
 use crate::state::State;
-use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
-use anchor_spl::{
-    associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface},
-};
 
 /// Event emitted when the redemption fee destination is updated
 #[event]
@@ -43,48 +38,14 @@ pub struct SetRedemptionFeeDestination<'info> {
     )]
     pub redemption_fee_vault_authority: Account<'info, RedemptionFeeVaultAuthority>,
 
-    /// ATA of the old fee — sweep source
-    #[account(
-        init_if_needed,
-        payer = boss,
-        associated_token::mint = token_in_mint,
-        associated_token::authority = redemption_fee_vault_authority,
-        associated_token::token_program = token_in_program,
-    )]
-    pub fee_vault_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    /// ATA of the new fee destination for token_in — sweep target
-    #[account(
-        init_if_needed,
-        payer = boss,
-        associated_token::mint = token_in_mint,
-        associated_token::authority = new_fee_destination,
-        associated_token::token_program = token_in_program,
-    )]
-    pub new_destination_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    /// The new fee destination account; key must equal the `fee_destination` argument
-    /// CHECK: validated via `address` constraint against the instruction argument
-    #[account(address = fee_destination)]
-    pub new_fee_destination: UncheckedAccount<'info>,
-
-    /// The token mint whose fees are being rerouted
-    pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
-
-    /// Token program for token_in
-    pub token_in_program: Interface<'info, TokenInterface>,
-
-    /// Associated Token Program for ATA creation
-    pub associated_token_program: Program<'info, AssociatedToken>,
-
     /// System program required for account creation
     pub system_program: Program<'info, System>,
 }
 
-/// Sets (or updates) the redemption fee destination
+/// Sets (or updates) the redemption fee destination address.
 ///
-/// If the fee vault ATA has a non-zero balance it is swept to the new destination
-/// before the stored address is updated.
+/// Only updates the stored destination address; does not move any tokens.
+/// Use `withdraw_redemption_fees` to sweep accumulated fees.
 ///
 /// # Arguments
 /// * `ctx`             - Instruction context
@@ -100,25 +61,6 @@ pub fn set_redemption_fee_destination(
         old_destination != fee_destination,
         SetRedemptionFeeDestinationErrorCode::NoChange
     );
-
-    // Sweep any accumulated fees to the new destination
-    let vault_balance = ctx.accounts.fee_vault_token_in_account.amount;
-    if vault_balance > 0 {
-        let bump = ctx.bumps.redemption_fee_vault_authority;
-        let signer_seeds: &[&[&[u8]]] = &[&[seeds::REDEMPTION_FEE_VAULT_AUTHORITY, &[bump]]];
-
-        transfer_tokens(
-            &ctx.accounts.token_in_mint,
-            &ctx.accounts.token_in_program,
-            &ctx.accounts.fee_vault_token_in_account,
-            &ctx.accounts.new_destination_token_in_account,
-            &ctx.accounts
-                .redemption_fee_vault_authority
-                .to_account_info(),
-            Some(signer_seeds),
-            vault_balance,
-        )?;
-    }
 
     let vault_authority = &mut ctx.accounts.redemption_fee_vault_authority;
     vault_authority.fee_destination = fee_destination;

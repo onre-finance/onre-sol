@@ -6,6 +6,7 @@ pub mod redemption_offer_state;
 pub mod redemption_utils;
 pub mod set_redemption_fee_destination;
 pub mod update_redemption_offer_fee;
+pub mod withdraw_redemption_fees;
 
 pub use cancel_redemption_request::*;
 pub use create_redemption_request::*;
@@ -15,3 +16,4 @@ pub use redemption_offer_state::*;
 pub use redemption_utils::*;
 pub use set_redemption_fee_destination::*;
 pub use update_redemption_offer_fee::*;
+pub use withdraw_redemption_fees::*;
