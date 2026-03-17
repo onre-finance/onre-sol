@@ -1,7 +1,6 @@
 use crate::constants::seeds;
 use crate::instructions::market_info::market_stats::{
     calculate_circulating_supply, calculate_tvl as calculate_shared_tvl,
-    read_optional_token_account_amount,
 };
 use crate::instructions::offer::offer_utils::{
     calculate_current_step_price, find_active_vector_at,
@@ -10,6 +9,7 @@ use crate::instructions::Offer;
 use crate::OfferCoreError;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 
+use crate::utils::read_optional_token_account_amount;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::{Mint, TokenInterface};

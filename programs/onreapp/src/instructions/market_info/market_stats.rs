@@ -6,9 +6,9 @@ use crate::instructions::offer::offer_utils::{
 };
 use crate::instructions::Offer;
 use crate::state::MarketStats;
-use crate::utils::PdaAccountInit;
+use crate::utils::{read_optional_token_account_amount, PdaAccountInit};
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
+use anchor_spl::token_interface::{Mint, TokenInterface};
 
 /// Error codes for shared market-stats recomputation.
 #[error_code]
@@ -194,25 +194,6 @@ pub fn calculate_tvl(circulating_supply: u64, nav: u64) -> Result<u64> {
 
 pub fn calculate_circulating_supply(total_supply: u64, vault_amount: u64) -> u64 {
     total_supply - vault_amount
-}
-
-pub fn read_optional_token_account_amount(
-    vault_account: &AccountInfo,
-    token_program: &Interface<TokenInterface>,
-) -> Result<u64> {
-    if vault_account.owner != token_program.key {
-        return Ok(0);
-    }
-
-    if vault_account.data_is_empty() {
-        return Ok(0);
-    }
-
-    let data_ref = vault_account.data.borrow();
-    match TokenAccount::try_deserialize(&mut &data_ref[..]) {
-        Ok(parsed) => Ok(parsed.amount),
-        Err(_) => Ok(0),
-    }
 }
 
 #[cfg(test)]

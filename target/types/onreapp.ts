@@ -350,6 +350,197 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "burnForNavIncrease",
+      "docs": [
+        "Burns ONyc from BUFFER vault to increase NAV according to provided target inputs.",
+        "",
+        "Callable by boss only."
+      ],
+      "discriminator": [
+        8,
+        13,
+        69,
+        178,
+        183,
+        45,
+        102,
+        205
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offer",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint"
+        },
+        {
+          "name": "onycMint",
+          "writable": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offerVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vaultTokenOutAccount"
+        },
+        {
+          "name": "bufferVaultOnycAccount",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram"
+        }
+      ],
+      "args": [
+        {
+          "name": "assetAdjustmentAmount",
+          "type": "u64"
+        },
+        {
+          "name": "targetNav",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "cancelRedemptionRequest",
       "docs": [
         "Cancels a redemption request.",
@@ -2640,6 +2831,394 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "initializeBuffer",
+      "docs": [
+        "Initializes the standalone BUFFER pool state and vault accounts.",
+        "",
+        "Creates BUFFER state as a separate PDA so existing offer/redemption state",
+        "remains unchanged. Only the boss can initialize BUFFER."
+      ],
+      "discriminator": [
+        43,
+        127,
+        69,
+        196,
+        129,
+        6,
+        159,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferVaultAuthority",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "managementFeeVaultAuthority",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "performanceFeeVaultAuthority",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  102,
+                  111,
+                  114,
+                  109,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "onycMint",
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "bufferVaultOnycAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "bufferVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "managementFeeVaultOnycAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "managementFeeVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "performanceFeeVaultOnycAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "performanceFeeVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "bufferAdmin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "initializePermissionlessAuthority",
       "docs": [
         "Initializes a permissionless account.",
@@ -3338,6 +3917,403 @@ export type Onreapp = {
           "type": "u16"
         }
       ]
+    },
+    {
+      "name": "manageBuffer",
+      "docs": [
+        "Accrues BUFFER spread and mints ONyc to the BUFFER vault account.",
+        "",
+        "Callable by anyone."
+      ],
+      "discriminator": [
+        65,
+        41,
+        70,
+        97,
+        226,
+        242,
+        69,
+        17
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "offer"
+        },
+        {
+          "name": "onycMint",
+          "writable": true,
+          "relations": [
+            "state",
+            "bufferState"
+          ]
+        },
+        {
+          "name": "bufferVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferVaultOnycAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "bufferVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "managementFeeVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "managementFeeVaultOnycAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "managementFeeVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "performanceFeeVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  102,
+                  111,
+                  114,
+                  109,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "performanceFeeVaultOnycAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "performanceFeeVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "mintAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        }
+      ],
+      "args": []
     },
     {
       "name": "mintTo",
@@ -4898,6 +5874,243 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "setBufferAdmin",
+      "docs": [
+        "Sets the BUFFER admin authorized to call accrual.",
+        "",
+        "Only the boss can update the BUFFER admin."
+      ],
+      "discriminator": [
+        92,
+        204,
+        202,
+        230,
+        254,
+        111,
+        50,
+        35
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newBufferAdmin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "setBufferFeeConfig",
+      "docs": [
+        "Sets BUFFER fee split parameters.",
+        "",
+        "Both fee values are expressed in basis points and applied during accrual."
+      ],
+      "discriminator": [
+        68,
+        233,
+        51,
+        70,
+        228,
+        167,
+        74,
+        147
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "managementFeeBasisPoints",
+          "type": "u16"
+        },
+        {
+          "name": "managementFeeWallet",
+          "type": "pubkey"
+        },
+        {
+          "name": "performanceFeeBasisPoints",
+          "type": "u16"
+        },
+        {
+          "name": "performanceFeeWallet",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "setBufferGrossApr",
+      "docs": [
+        "Sets BUFFER gross yield.",
+        "",
+        "Current yield is read from the main offer during manage_buffer."
+      ],
+      "discriminator": [
+        245,
+        49,
+        142,
+        190,
+        30,
+        123,
+        184,
+        11
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "grossYield",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "setKillSwitch",
       "docs": [
         "Enables or disables the kill switch.",
@@ -4963,6 +6176,55 @@ export type Onreapp = {
           "type": "bool"
         }
       ]
+    },
+    {
+      "name": "setMainOffer",
+      "docs": [
+        "Sets the main offer stored in program state.",
+        "",
+        "Only the boss can update this value."
+      ],
+      "discriminator": [
+        129,
+        95,
+        103,
+        81,
+        225,
+        142,
+        102,
+        227
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offer"
+        }
+      ],
+      "args": []
     },
     {
       "name": "setOnycMint",
@@ -6755,9 +8017,526 @@ export type Onreapp = {
           "type": "u16"
         }
       ]
+    },
+    {
+      "name": "withdrawManagementFees",
+      "docs": [
+        "Transfers management fees from the management fee vault to the boss."
+      ],
+      "discriminator": [
+        175,
+        59,
+        185,
+        145,
+        48,
+        207,
+        144,
+        15
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferState",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "managementFeeVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "managementFeeRecipient"
+        },
+        {
+          "name": "onycMint",
+          "writable": true,
+          "relations": [
+            "state",
+            "bufferState"
+          ]
+        },
+        {
+          "name": "managementFeeRecipientOnycAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "managementFeeRecipient"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "managementFeeVaultOnycAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "managementFeeVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdrawPerformanceFees",
+      "docs": [
+        "Transfers performance fees from the performance fee vault to the boss."
+      ],
+      "discriminator": [
+        67,
+        217,
+        202,
+        9,
+        52,
+        159,
+        50,
+        42
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "performanceFeeVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  102,
+                  111,
+                  114,
+                  109,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "performanceFeeRecipient"
+        },
+        {
+          "name": "onycMint",
+          "writable": true,
+          "relations": [
+            "state",
+            "bufferState"
+          ]
+        },
+        {
+          "name": "performanceFeeRecipientOnycAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "performanceFeeRecipient"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "performanceFeeVaultOnycAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "performanceFeeVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [
+    {
+      "name": "bufferState",
+      "discriminator": [
+        90,
+        178,
+        221,
+        223,
+        231,
+        223,
+        64,
+        105
+      ]
+    },
     {
       "name": "marketStats",
       "discriminator": [
@@ -6943,6 +8722,110 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "bufferAdminUpdatedEvent",
+      "discriminator": [
+        181,
+        92,
+        86,
+        203,
+        20,
+        79,
+        122,
+        227
+      ]
+    },
+    {
+      "name": "bufferBurnedForNavEvent",
+      "discriminator": [
+        116,
+        208,
+        135,
+        209,
+        171,
+        149,
+        163,
+        99
+      ]
+    },
+    {
+      "name": "bufferFeeConfigUpdatedEvent",
+      "discriminator": [
+        222,
+        252,
+        155,
+        30,
+        192,
+        243,
+        117,
+        240
+      ]
+    },
+    {
+      "name": "bufferGrossYieldUpdatedEvent",
+      "discriminator": [
+        180,
+        139,
+        51,
+        75,
+        136,
+        10,
+        63,
+        87
+      ]
+    },
+    {
+      "name": "bufferInitializedEvent",
+      "discriminator": [
+        20,
+        3,
+        84,
+        4,
+        103,
+        231,
+        3,
+        246
+      ]
+    },
+    {
+      "name": "bufferLowestSupplyUpdatedEvent",
+      "discriminator": [
+        194,
+        51,
+        246,
+        57,
+        251,
+        53,
+        168,
+        116
+      ]
+    },
+    {
+      "name": "bufferMainOfferUpdatedEvent",
+      "discriminator": [
+        100,
+        116,
+        101,
+        92,
+        111,
+        245,
+        238,
+        189
+      ]
+    },
+    {
+      "name": "bufferManagedEvent",
+      "discriminator": [
+        74,
+        89,
+        18,
+        6,
+        155,
+        40,
+        131,
+        169
+      ]
+    },
+    {
       "name": "getApyEvent",
       "discriminator": [
         235,
@@ -7018,6 +8901,32 @@ export type Onreapp = {
         132,
         228,
         122
+      ]
+    },
+    {
+      "name": "mainOfferUpdatedEvent",
+      "discriminator": [
+        231,
+        184,
+        238,
+        159,
+        91,
+        90,
+        28,
+        198
+      ]
+    },
+    {
+      "name": "managementFeesWithdrawnEvent",
+      "discriminator": [
+        96,
+        131,
+        154,
+        11,
+        86,
+        65,
+        16,
+        202
       ]
     },
     {
@@ -7213,6 +9122,19 @@ export type Onreapp = {
         8,
         178,
         120
+      ]
+    },
+    {
+      "name": "performanceFeesWithdrawnEvent",
+      "discriminator": [
+        36,
+        91,
+        194,
+        195,
+        8,
+        143,
+        128,
+        156
       ]
     },
     {
@@ -7642,6 +9564,283 @@ export type Onreapp = {
       }
     },
     {
+      "name": "bufferAdminUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldBufferAdmin",
+            "type": "pubkey"
+          },
+          {
+            "name": "newBufferAdmin",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bufferBurnedForNavEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "burnAmount",
+            "type": "u64"
+          },
+          {
+            "name": "assetAdjustmentAmount",
+            "type": "u64"
+          },
+          {
+            "name": "totalAssets",
+            "type": "u64"
+          },
+          {
+            "name": "targetNav",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bufferFeeConfigUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldManagementFeeBasisPoints",
+            "type": "u16"
+          },
+          {
+            "name": "newManagementFeeBasisPoints",
+            "type": "u16"
+          },
+          {
+            "name": "oldManagementFeeWallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "newManagementFeeWallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "oldPerformanceFeeBasisPoints",
+            "type": "u16"
+          },
+          {
+            "name": "newPerformanceFeeBasisPoints",
+            "type": "u16"
+          },
+          {
+            "name": "oldPerformanceFeeWallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "newPerformanceFeeWallet",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bufferGrossYieldUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "grossYield",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bufferInitializedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bufferState",
+            "type": "pubkey"
+          },
+          {
+            "name": "onycMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "bufferAdmin",
+            "type": "pubkey"
+          },
+          {
+            "name": "mainOffer",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bufferLowestSupplyUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previousLowestSupply",
+            "type": "u64"
+          },
+          {
+            "name": "newLowestSupply",
+            "type": "u64"
+          },
+          {
+            "name": "currentSupply",
+            "type": "u64"
+          },
+          {
+            "name": "updated",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bufferMainOfferUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldMainOffer",
+            "type": "pubkey"
+          },
+          {
+            "name": "newMainOffer",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bufferManagedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "secondsElapsed",
+            "type": "u64"
+          },
+          {
+            "name": "spread",
+            "type": "u64"
+          },
+          {
+            "name": "grossMintAmount",
+            "type": "u64"
+          },
+          {
+            "name": "bufferMintAmount",
+            "type": "u64"
+          },
+          {
+            "name": "managementFeeMintAmount",
+            "type": "u64"
+          },
+          {
+            "name": "performanceFeeMintAmount",
+            "type": "u64"
+          },
+          {
+            "name": "previousLowestSupply",
+            "type": "u64"
+          },
+          {
+            "name": "newLowestSupply",
+            "type": "u64"
+          },
+          {
+            "name": "previousPerformanceFeeHighWatermark",
+            "type": "u64"
+          },
+          {
+            "name": "newPerformanceFeeHighWatermark",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bufferState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "onycMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "bufferAdmin",
+            "type": "pubkey"
+          },
+          {
+            "name": "grossApr",
+            "type": "u64"
+          },
+          {
+            "name": "lowestSupply",
+            "type": "u64"
+          },
+          {
+            "name": "managementFeeBasisPoints",
+            "type": "u16"
+          },
+          {
+            "name": "managementFeeWallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "performanceFeeBasisPoints",
+            "type": "u16"
+          },
+          {
+            "name": "performanceFeeWallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "performanceFeeHighWatermark",
+            "type": "u64"
+          },
+          {
+            "name": "lastAccrualTimestamp",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                72
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "getApyEvent",
       "docs": [
         "Event emitted when APY calculation is successfully completed",
@@ -7885,6 +10084,38 @@ export type Onreapp = {
             "docs": [
               "The account that toggled the kill switch"
             ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mainOfferUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldMainOffer",
+            "type": "pubkey"
+          },
+          {
+            "name": "newMainOffer",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "managementFeesWithdrawnEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
             "type": "pubkey"
           }
         ]
@@ -8529,7 +10760,7 @@ export type Onreapp = {
           {
             "name": "apr",
             "docs": [
-              "Annual Percentage Rate scaled by 1_000_000 (1_000_000 = 1% APR)",
+              "Annual Percentage Rate scaled by 1_000_000 (1_000_000 = 100% APR; 10_000 = 1%)",
               "",
               "Determines compound interest rate for price growth over time.",
               "Scale=6 where 1_000_000 = 1% annual rate."
@@ -8690,6 +10921,22 @@ export type Onreapp = {
               "The amount of tokens minted in base units"
             ],
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "performanceFeesWithdrawnEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
           }
         ]
       }
@@ -9329,6 +11576,13 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
+            "name": "mainOffer",
+            "docs": [
+              "Main offer account used for market operations and price discovery"
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "reserved",
             "docs": [
               "Reserved space for future program state extensions"
@@ -9336,7 +11590,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                96
+                64
               ]
             }
           }

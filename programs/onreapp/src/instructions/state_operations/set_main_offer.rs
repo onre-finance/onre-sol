@@ -28,7 +28,10 @@ pub fn set_main_offer(ctx: Context<SetMainOffer>) -> Result<()> {
     let state = &mut ctx.accounts.state;
     let new_main_offer = ctx.accounts.offer.key();
 
-    require!(new_main_offer != state.main_offer, SetMainOfferErrorCode::NoChange);
+    require!(
+        new_main_offer != state.main_offer,
+        SetMainOfferErrorCode::NoChange
+    );
 
     let old_main_offer = state.main_offer;
     state.main_offer = new_main_offer;

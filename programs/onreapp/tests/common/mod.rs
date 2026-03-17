@@ -875,11 +875,7 @@ pub fn build_set_buffer_fee_config_ix(
     }
 }
 
-pub fn build_manage_buffer_ix(
-    _caller: &Pubkey,
-    offer: &Pubkey,
-    onyc_mint: &Pubkey,
-) -> Instruction {
+pub fn build_manage_buffer_ix(_caller: &Pubkey, offer: &Pubkey, onyc_mint: &Pubkey) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (buffer_state_pda, _) = find_buffer_state_pda();
     let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
@@ -1566,8 +1562,8 @@ pub fn read_state(svm: &LiteSVM) -> StateData {
         .get_account(&state_pda)
         .expect("state account not found");
     let mut data_slice = account.data.as_slice();
-    let state =
-        onreapp::state::State::try_deserialize(&mut data_slice).expect("failed to deserialize State account");
+    let state = onreapp::state::State::try_deserialize(&mut data_slice)
+        .expect("failed to deserialize State account");
 
     StateData {
         boss: state.boss,

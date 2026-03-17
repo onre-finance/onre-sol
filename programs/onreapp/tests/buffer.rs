@@ -457,7 +457,10 @@ fn test_withdraw_fees_updates_vault_balances() {
     let boss_onyc_ata = derive_ata(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
     let buffer_state = read_buffer_state(&svm);
 
-    assert_eq!(get_token_balance(&svm, &management_fee_vault_ata), 9_600_000);
+    assert_eq!(
+        get_token_balance(&svm, &management_fee_vault_ata),
+        9_600_000
+    );
     assert_eq!(
         get_token_balance(&svm, &performance_fee_vault_ata),
         8_100_000
