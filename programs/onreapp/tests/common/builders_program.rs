@@ -307,6 +307,53 @@ pub fn build_mint_to_ix(
     }
 }
 
+pub fn build_mint_to_extended_ix(
+    boss: &Pubkey,
+    onyc_mint: &Pubkey,
+    amount: u64,
+    token_program: &Pubkey,
+    offer: &Pubkey,
+) -> Instruction {
+    let (state_pda, _) = find_state_pda();
+    let (mint_authority_pda, _) = find_mint_authority_pda();
+    let buffer_state_pda = find_buffer_state_pda().0;
+    let boss_onyc_ata = derive_ata(boss, onyc_mint, token_program);
+    let buffer_vault_onyc = derive_ata(&find_buffer_vault_authority_pda().0, onyc_mint, token_program);
+    let management_fee_vault_onyc = derive_ata(
+        &find_management_fee_vault_authority_pda().0,
+        onyc_mint,
+        token_program,
+    );
+    let performance_fee_vault_onyc = derive_ata(
+        &find_performance_fee_vault_authority_pda().0,
+        onyc_mint,
+        token_program,
+    );
+
+    let mut data = ix_discriminator("mint_to_extended").to_vec();
+    data.extend_from_slice(&amount.to_le_bytes());
+
+    Instruction {
+        program_id: PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new(*boss, true),
+            AccountMeta::new(*onyc_mint, false),
+            AccountMeta::new(boss_onyc_ata, false),
+            AccountMeta::new_readonly(mint_authority_pda, false),
+            AccountMeta::new_readonly(*token_program, false),
+            AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+            AccountMeta::new_readonly(*offer, false),
+            AccountMeta::new(buffer_state_pda, false),
+            AccountMeta::new(buffer_vault_onyc, false),
+            AccountMeta::new(management_fee_vault_onyc, false),
+            AccountMeta::new(performance_fee_vault_onyc, false),
+        ],
+        data,
+    }
+}
+
 pub fn build_get_nav_ix(token_in_mint: &Pubkey, token_out_mint: &Pubkey) -> Instruction {
     let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
     Instruction {

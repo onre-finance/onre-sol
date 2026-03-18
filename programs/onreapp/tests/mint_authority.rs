@@ -305,6 +305,103 @@ fn test_mint_to_fails_wrong_mint() {
     );
 }
 
+#[test]
+fn test_mint_to_extended_accrues_buffer_before_mint() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
+    let boss = payer.pubkey();
+
+    let usdc_mint = create_mint(&mut svm, &payer, 6, &boss);
+    let ix = build_make_offer_ix(
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let now = get_clock_time(&svm);
+    let ix = build_add_offer_vector_ix(
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        None,
+        now,
+        1_000_000_000,
+        0,
+        86_400,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_mint_to_ix(&boss, &onyc_mint, 1_000_000_000, &TOKEN_PROGRAM_ID);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let offer_pda = find_offer_pda(&usdc_mint, &onyc_mint).0;
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+    let buffer_admin = Keypair::new();
+    svm.airdrop(&buffer_admin.pubkey(), INITIAL_LAMPORTS).unwrap();
+
+    let ix =
+        build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint, &buffer_admin.pubkey());
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_set_buffer_gross_yield_ix(&boss, 100_000);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_set_buffer_fee_config_ix(&boss, 100, 1_000);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_manage_buffer_ix(&boss, &offer_pda, &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&buffer_admin]).unwrap();
+    advance_slot(&mut svm);
+    advance_clock_by(&mut svm, 31_536_000);
+
+    let ix = build_mint_to_extended_ix(
+        &boss,
+        &onyc_mint,
+        1_000_000_000,
+        &TOKEN_PROGRAM_ID,
+        &offer_pda,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let buffer_state = read_buffer_state(&svm);
+    let buffer_vault = derive_ata(&find_buffer_vault_authority_pda().0, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let management_fee_vault = derive_ata(
+        &find_management_fee_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let performance_fee_vault = derive_ata(
+        &find_performance_fee_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+
+    assert_eq!(get_token_balance(&svm, &buffer_vault), 81_000_000);
+    assert_eq!(get_token_balance(&svm, &management_fee_vault), 10_000_000);
+    assert_eq!(get_token_balance(&svm, &performance_fee_vault), 9_000_000);
+    assert_eq!(
+        get_token_balance(&svm, &get_associated_token_address(&boss, &onyc_mint)),
+        2_000_000_000
+    );
+    assert_eq!(buffer_state.lowest_supply, 2_100_000_000);
+}
+
 // ===========================================================================
 // Token-2022 Tests
 // ===========================================================================

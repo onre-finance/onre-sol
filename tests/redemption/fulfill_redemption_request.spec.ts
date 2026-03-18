@@ -115,6 +115,84 @@ describe("Fulfill redemption request", () => {
             expect(userOnycBalance).toBe(BigInt(10_000e9 - REDEMPTION_AMOUNT));
         });
 
+        test("Should accrue BUFFER before burning ONyc in fulfill_redemption_request_extended", async () => {
+            await program.transferMintAuthorityToProgram({ mint: onycMint });
+            await program.transferMintAuthorityToProgram({ mint: usdcMint });
+
+            const boss = testHelper.getBoss();
+            const bufferAdmin = testHelper.createUserAccount();
+            testHelper.createTokenAccount(onycMint, boss, BigInt(0), true);
+            testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
+
+            await program.initializeBuffer({
+                offer: offerPda,
+                onycMint,
+                bufferAdmin: bufferAdmin.publicKey,
+            });
+            await program.setBufferGrossYield({ grossYield: 100_000 });
+            await program.setBufferFeeConfig({
+                managementFeeBasisPoints: 100,
+                performanceFeeBasisPoints: 1_000,
+            });
+            await program.updateRedemptionOfferFee({
+                redemptionOffer: redemptionOfferPda,
+                newFeeBasisPoints: 500,
+            });
+
+            await program.manageBuffer({ offer: offerPda, onycMint, signer: bufferAdmin });
+
+            await program.createRedemptionRequest({
+                redemptionOffer: redemptionOfferPda,
+                redeemer,
+                amount: REDEMPTION_AMOUNT,
+            });
+
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
+            const supplyBefore = (await testHelper.getMintInfo(onycMint)).supply;
+            const grossAccrual = supplyBefore / 10n;
+            const managementFeeMint = grossAccrual / 10n;
+            const performanceFeeMint = (grossAccrual - managementFeeMint) / 10n;
+            const bufferMint = grossAccrual - managementFeeMint - performanceFeeMint;
+            const tokenInFeeAmount = BigInt(REDEMPTION_AMOUNT) / 20n;
+            const tokenInNetAmount = BigInt(REDEMPTION_AMOUNT) - tokenInFeeAmount;
+
+            await testHelper.advanceClockBy(31_536_000);
+
+            await program.fulfillRedemptionRequestExtended({
+                offer: offerPda,
+                redemptionOffer: redemptionOfferPda,
+                redemptionRequest: redemptionRequestPda,
+                redeemer: redeemer.publicKey,
+                redemptionAdmin,
+                tokenInMint: onycMint,
+                tokenOutMint: usdcMint,
+            });
+
+            const bufferVaultBalance = await testHelper.getTokenAccountBalance(program.getBufferVaultAta(onycMint));
+            const managementFeeVaultBalance = await testHelper.getTokenAccountBalance(
+                program.getManagementFeeVaultAta(onycMint)
+            );
+            const performanceFeeVaultBalance = await testHelper.getTokenAccountBalance(
+                program.getPerformanceFeeVaultAta(onycMint)
+            );
+            const bossOnycBalance = await testHelper.getTokenAccountBalance(
+                getAssociatedTokenAddressSync(onycMint, boss)
+            );
+            const userUsdcBalance = await testHelper.getTokenAccountBalance(
+                getAssociatedTokenAddressSync(usdcMint, redeemer.publicKey)
+            );
+            const bufferState = await program.getBufferState();
+
+            expect(bufferVaultBalance).toBe(bufferMint);
+            expect(managementFeeVaultBalance).toBe(managementFeeMint);
+            expect(performanceFeeVaultBalance).toBe(performanceFeeMint);
+            expect(bossOnycBalance).toBe(tokenInFeeAmount);
+            expect(userUsdcBalance).toBe(BigInt(950_000));
+            expect(bufferState.lowestSupply.toString()).toBe(
+                (supplyBefore + grossAccrual - tokenInNetAmount).toString()
+            );
+        });
+
         test("Should transfer token_in to boss when program lacks mint authority", async () => {
             // given - Program does NOT have mint authority for ONyc
             // Transfer USDC mint authority to program for minting token_out

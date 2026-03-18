@@ -1,17 +1,22 @@
 use crate::constants::seeds;
-use crate::instructions::buffer::manage_buffer::{accrue_buffer, set_buffer_baseline_after_supply_change};
+use crate::instructions::buffer::{
+    manage_buffer::{accrue_buffer, set_buffer_baseline_after_supply_change},
+    validate_buffer_onyc_vault_accounts, BufferAccrualAccounts,
+};
+use crate::instructions::buffer::accounts::{
+    __client_accounts_buffer_accrual_accounts, __cpi_client_accounts_buffer_accrual_accounts,
+    BufferAccrualAccountsBumps,
+};
 use crate::instructions::market_info::{
     recompute_market_stats, update_market_stats_account, write_market_stats_account,
 };
 use crate::instructions::offer::offer_utils::{
     is_onyc_token_out_mint, process_offer_core, should_accrue_onyc_mint, verify_offer_approval,
 };
-use crate::instructions::offer::take_offer::validate_take_offer_buffer_accounts;
 use crate::instructions::Offer;
 use crate::state::{MarketStats, State};
 use crate::utils::{
-    execute_token_operations, load_or_init_pda_account, load_pda_account, store_pda_account,
-    transfer_tokens, u64_to_dec9,
+    execute_token_operations, load_or_init_pda_account, transfer_tokens, u64_to_dec9,
     ApprovalMessage, ExecTokenOpsParams,
 };
 use crate::OfferCoreError;
@@ -52,63 +57,6 @@ pub struct OfferTakenPermissionlessEvent {
     pub fee_amount: u64,
     /// Public key of the user who executed the offer
     pub user: Pubkey,
-}
-
-#[derive(Accounts)]
-pub struct TakeOfferPermissionlessBufferAccounts<'info> {
-    /// CHECK: Parsed and validated only when ONyc accrual is required.
-    #[account(mut)]
-    pub buffer_state: UncheckedAccount<'info>,
-
-    /// CHECK: Validated in instruction logic against the expected buffer ATA.
-    #[account(mut)]
-    pub buffer_vault_onyc_account: UncheckedAccount<'info>,
-
-    /// CHECK: Validated in instruction logic against the expected management fee ATA.
-    #[account(mut)]
-    pub management_fee_vault_onyc_account: UncheckedAccount<'info>,
-
-    /// CHECK: Validated in instruction logic against the expected performance fee ATA.
-    #[account(mut)]
-    pub performance_fee_vault_onyc_account: UncheckedAccount<'info>,
-}
-
-impl<'info> TakeOfferPermissionlessBufferAccounts<'info> {
-    pub(crate) fn is_initialized(&self) -> bool {
-        self.try_load_buffer_state().is_ok()
-    }
-
-    fn try_load_buffer_state(&self) -> Result<crate::instructions::BufferState> {
-        load_pda_account(
-            &self.buffer_state,
-            &crate::ID,
-            crate::instructions::BufferErrorCode::InvalidOnycMint.into(),
-            crate::instructions::BufferErrorCode::InvalidOnycMint.into(),
-        )
-    }
-
-    pub(crate) fn load_buffer_state(&self) -> Result<crate::instructions::BufferState> {
-        self.try_load_buffer_state()
-    }
-
-    pub(crate) fn buffer_vault_onyc_account_info(&self) -> AccountInfo<'info> {
-        self.buffer_vault_onyc_account.to_account_info()
-    }
-
-    pub(crate) fn management_fee_vault_onyc_account_info(&self) -> AccountInfo<'info> {
-        self.management_fee_vault_onyc_account.to_account_info()
-    }
-
-    pub(crate) fn performance_fee_vault_onyc_account_info(&self) -> AccountInfo<'info> {
-        self.performance_fee_vault_onyc_account.to_account_info()
-    }
-
-    pub(crate) fn store_buffer_state(
-        &self,
-        buffer_state: &crate::instructions::BufferState,
-    ) -> Result<()> {
-        store_pda_account(&self.buffer_state, buffer_state)
-    }
 }
 
 /// Account structure for executing offers via permissionless flow with intermediary routing
@@ -389,7 +337,7 @@ pub struct TakeOfferPermissionlessExtended<'info> {
 
     /// CHECK: PDA derivation is validated by explicit key check in the handler
     pub mint_authority: UncheckedAccount<'info>,
-    pub buffer_accounts: TakeOfferPermissionlessBufferAccounts<'info>,
+    pub buffer_accounts: BufferAccrualAccounts<'info>,
 
     /// CHECK: The handler validates PDA, writability, owner, and account data layout.
     #[account(mut)]
@@ -528,7 +476,7 @@ fn execute_take_offer_permissionless<'info>(
     permissionless_token_out_account: &InterfaceAccount<'info, TokenAccount>,
     user_token_out_account: &InterfaceAccount<'info, TokenAccount>,
     mint_authority: &UncheckedAccount<'info>,
-    buffer_accounts: Option<&TakeOfferPermissionlessBufferAccounts<'info>>,
+    buffer_accounts: Option<&BufferAccrualAccounts<'info>>,
     market_stats: Option<&UncheckedAccount<'info>>,
     system_program: &Program<'info, System>,
 ) -> Result<()> {
@@ -590,7 +538,7 @@ fn execute_take_offer_permissionless<'info>(
             buffer_accounts.management_fee_vault_onyc_account_info();
         let performance_fee_vault_onyc_account =
             buffer_accounts.performance_fee_vault_onyc_account_info();
-        validate_take_offer_buffer_accounts(
+        validate_buffer_onyc_vault_accounts(
             program_id,
             &buffer_state,
             &buffer_vault_onyc_account,

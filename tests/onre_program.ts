@@ -881,6 +881,48 @@ export class OnreProgram {
         await tx.rpc();
     }
 
+    async fulfillRedemptionRequestExtended(params: {
+        offer: PublicKey;
+        redemptionOffer: PublicKey;
+        redemptionRequest: PublicKey;
+        redeemer: PublicKey;
+        redemptionAdmin: Keypair;
+        tokenInMint: PublicKey;
+        tokenOutMint: PublicKey;
+        amount?: BN;
+        tokenInProgram?: PublicKey;
+        tokenOutProgram?: PublicKey;
+    }) {
+        let amount = params.amount;
+        if (amount === undefined) {
+            const request = await this.program.account.redemptionRequest.fetch(params.redemptionRequest);
+            amount = (request.amount as BN).sub(request.fulfilledAmount as BN);
+        }
+
+        const tx = this.program.methods
+            .fulfillRedemptionRequestExtended(amount)
+            .accountsPartial({
+                offer: params.offer,
+                redemptionOffer: params.redemptionOffer,
+                redemptionRequest: params.redemptionRequest,
+                tokenInMint: params.tokenInMint,
+                tokenOutMint: params.tokenOutMint,
+                tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
+                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
+                redeemer: params.redeemer,
+                redemptionAdmin: params.redemptionAdmin.publicKey,
+                bufferAccounts: {
+                    bufferState: this.pdas.bufferStatePda,
+                    bufferVaultOnycAccount: this.getBufferVaultAta(params.tokenInMint),
+                    managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.tokenInMint),
+                    performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.tokenInMint),
+                },
+            })
+            .signers([params.redemptionAdmin]);
+
+        await tx.rpc();
+    }
+
     async getRedemptionRequest(redemptionOffer: PublicKey, counter: number) {
         const pda = this.getRedemptionRequestPda(redemptionOffer, counter);
         return await this.program.account.redemptionRequest.fetch(pda);

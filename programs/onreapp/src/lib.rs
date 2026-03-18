@@ -12,6 +12,8 @@ pub mod instructions;
 pub mod state;
 pub mod utils;
 
+pub use instructions::mint_authority::mint_to::{MintTo, MintToExtended};
+
 /// The main program module for the Onre App.
 ///
 /// This module defines the entry points for all program instructions. It facilitates the creation
@@ -498,6 +500,13 @@ pub mod onreapp {
         mint_authority::mint_to(ctx, amount)
     }
 
+    /// Mints ONyc tokens while accruing BUFFER before the mint.
+    ///
+    /// Uses the extended buffer-aware instruction that settles accrual before minting.
+    pub fn mint_to_extended(ctx: Context<MintToExtended>, amount: u64) -> Result<()> {
+        mint_authority::mint_to::mint_to_extended(ctx, amount)
+    }
+
     /// Gets the current NAV (price) for a specific offer.
     ///
     /// Delegates to `market_info::get_nav`.
@@ -715,6 +724,18 @@ pub mod onreapp {
         amount: u64,
     ) -> Result<()> {
         redemption::fulfill_redemption_request(ctx, amount)
+    }
+
+    /// Fulfills a redemption request with extended ONyc buffer accrual support.
+    ///
+    /// Delegates to `redemption::fulfill_redemption_request_extended`.
+    /// This preserves the legacy `fulfill_redemption_request` surface while allowing
+    /// the ONyc burn path to settle BUFFER accrual and reset the baseline.
+    pub fn fulfill_redemption_request_extended(
+        ctx: Context<FulfillRedemptionRequestExtended>,
+        amount: u64,
+    ) -> Result<()> {
+        redemption::fulfill_redemption_request_extended(ctx, amount)
     }
 
     /// Cancels a redemption request.

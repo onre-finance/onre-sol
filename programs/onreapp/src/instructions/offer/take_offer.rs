@@ -1,7 +1,11 @@
 use crate::constants::seeds;
 use crate::instructions::buffer::{
+    validate_buffer_onyc_vault_accounts, BufferAccrualAccounts,
     manage_buffer::{accrue_buffer, set_buffer_baseline_after_supply_change},
-    BufferErrorCode, BufferState,
+};
+use crate::instructions::buffer::accounts::{
+    __client_accounts_buffer_accrual_accounts, __cpi_client_accounts_buffer_accrual_accounts,
+    BufferAccrualAccountsBumps,
 };
 use crate::instructions::market_info::{recompute_market_stats, update_market_stats_account};
 use crate::instructions::offer::offer_utils::{
@@ -10,13 +14,11 @@ use crate::instructions::offer::offer_utils::{
 use crate::instructions::Offer;
 use crate::state::{MarketStats, State};
 use crate::utils::{
-    execute_token_operations, load_pda_account, store_pda_account, u64_to_dec9, ApprovalMessage,
-    ExecTokenOpsParams,
+    execute_token_operations, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams,
 };
 use crate::OfferCoreError;
 use anchor_lang::{prelude::*, solana_program::sysvar, Accounts};
 use anchor_spl::{
-    associated_token::get_associated_token_address_with_program_id,
     associated_token::AssociatedToken,
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
@@ -57,60 +59,6 @@ pub struct OfferTakenEvent {
 /// This struct defines all accounts required for offer execution including token
 /// operations, approval verification, and flexible burn/mint or transfer mechanisms
 /// depending on program mint authority status.
-#[derive(Accounts)]
-pub struct TakeOfferBufferAccounts<'info> {
-    /// CHECK: Parsed and validated only when ONyc accrual is required.
-    #[account(mut)]
-    pub buffer_state: UncheckedAccount<'info>,
-
-    /// CHECK: Validated in instruction logic against the expected buffer ATA.
-    #[account(mut)]
-    pub buffer_vault_onyc_account: UncheckedAccount<'info>,
-
-    /// CHECK: Validated in instruction logic against the expected management fee ATA.
-    #[account(mut)]
-    pub management_fee_vault_onyc_account: UncheckedAccount<'info>,
-
-    /// CHECK: Validated in instruction logic against the expected performance fee ATA.
-    #[account(mut)]
-    pub performance_fee_vault_onyc_account: UncheckedAccount<'info>,
-}
-
-impl<'info> TakeOfferBufferAccounts<'info> {
-    pub(crate) fn is_initialized(&self) -> bool {
-        self.try_load_buffer_state().is_ok()
-    }
-
-    fn try_load_buffer_state(&self) -> Result<BufferState> {
-        load_pda_account(
-            &self.buffer_state,
-            &crate::ID,
-            BufferErrorCode::InvalidOnycMint.into(),
-            BufferErrorCode::InvalidOnycMint.into(),
-        )
-    }
-
-    pub(crate) fn load_buffer_state(&self) -> Result<BufferState> {
-        self.try_load_buffer_state()
-    }
-
-    pub(crate) fn buffer_vault_onyc_account_info(&self) -> AccountInfo<'info> {
-        self.buffer_vault_onyc_account.to_account_info()
-    }
-
-    pub(crate) fn management_fee_vault_onyc_account_info(&self) -> AccountInfo<'info> {
-        self.management_fee_vault_onyc_account.to_account_info()
-    }
-
-    pub(crate) fn performance_fee_vault_onyc_account_info(&self) -> AccountInfo<'info> {
-        self.performance_fee_vault_onyc_account.to_account_info()
-    }
-
-    pub(crate) fn store_buffer_state(&self, buffer_state: &BufferState) -> Result<()> {
-        store_pda_account(&self.buffer_state, buffer_state)
-    }
-}
-
 #[derive(Accounts)]
 pub struct TakeOffer<'info> {
     /// The offer account containing pricing vectors and exchange configuration
@@ -374,7 +322,7 @@ pub struct TakeOfferExtended<'info> {
     )]
     pub mint_authority: UncheckedAccount<'info>,
 
-    pub buffer_accounts: TakeOfferBufferAccounts<'info>,
+    pub buffer_accounts: BufferAccrualAccounts<'info>,
 
     #[account(
         init_if_needed,
@@ -538,7 +486,7 @@ pub fn take_offer_extended(
         let performance_fee_vault_onyc_account =
             ctx.accounts.buffer_accounts.performance_fee_vault_onyc_account_info();
         let mint_authority = ctx.accounts.mint_authority.to_account_info();
-        validate_take_offer_buffer_accounts(
+        validate_buffer_onyc_vault_accounts(
             ctx.program_id,
             &buffer_state,
             &buffer_vault_onyc_account,
@@ -632,56 +580,6 @@ pub fn take_offer_extended(
         fee_amount: result.token_in_fee_amount,
         user: ctx.accounts.user.key(),
     });
-
-    Ok(())
-}
-
-pub(crate) fn validate_take_offer_buffer_accounts<'info>(
-    program_id: &Pubkey,
-    buffer_state: &BufferState,
-    buffer_vault_onyc_account: &AccountInfo<'info>,
-    management_fee_vault_onyc_account: &AccountInfo<'info>,
-    performance_fee_vault_onyc_account: &AccountInfo<'info>,
-    token_out_mint: &InterfaceAccount<'info, Mint>,
-    token_out_program: &Interface<'info, TokenInterface>,
-) -> Result<()> {
-    let expected_buffer_vault_onyc_account = get_associated_token_address_with_program_id(
-        &Pubkey::find_program_address(&[seeds::BUFFER_VAULT_AUTHORITY], program_id).0,
-        &token_out_mint.key(),
-        &token_out_program.key(),
-    );
-    let expected_management_fee_vault_onyc_account = get_associated_token_address_with_program_id(
-        &Pubkey::find_program_address(&[seeds::MANAGEMENT_FEE_VAULT_AUTHORITY], program_id).0,
-        &token_out_mint.key(),
-        &token_out_program.key(),
-    );
-    let expected_performance_fee_vault_onyc_account =
-        get_associated_token_address_with_program_id(
-            &Pubkey::find_program_address(&[seeds::PERFORMANCE_FEE_VAULT_AUTHORITY], program_id).0,
-            &token_out_mint.key(),
-            &token_out_program.key(),
-        );
-
-    require_keys_eq!(
-        buffer_state.onyc_mint,
-        token_out_mint.key(),
-        BufferErrorCode::InvalidOnycMint
-    );
-    require_keys_eq!(
-        buffer_vault_onyc_account.key(),
-        expected_buffer_vault_onyc_account,
-        BufferErrorCode::InvalidOnycMint
-    );
-    require_keys_eq!(
-        management_fee_vault_onyc_account.key(),
-        expected_management_fee_vault_onyc_account,
-        BufferErrorCode::InvalidOnycMint
-    );
-    require_keys_eq!(
-        performance_fee_vault_onyc_account.key(),
-        expected_performance_fee_vault_onyc_account,
-        BufferErrorCode::InvalidOnycMint
-    );
 
     Ok(())
 }

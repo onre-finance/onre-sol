@@ -1,3 +1,4 @@
+pub mod accounts;
 pub mod accrual_utils;
 pub mod burn_for_nav_increase;
 pub mod errors;
@@ -12,6 +13,7 @@ pub mod state;
 pub mod withdraw_management_fees;
 pub mod withdraw_performance_fees;
 
+pub use accounts::*;
 pub use accrual_utils::*;
 pub use burn_for_nav_increase::*;
 pub use errors::*;
