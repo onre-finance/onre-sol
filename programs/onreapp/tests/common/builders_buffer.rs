@@ -225,8 +225,15 @@ pub fn build_burn_for_nav_increase_ix(
     let (buffer_state_pda, _) = find_buffer_state_pda();
     let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
+    let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
+    let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
+    let (mint_authority_pda, _) = find_mint_authority_pda();
     let vault_token_out_ata = derive_ata(&offer_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
     let buffer_vault_onyc_ata = derive_ata(&buffer_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
+    let management_fee_vault_onyc_ata =
+        derive_ata(&management_fee_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
+    let performance_fee_vault_onyc_ata =
+        derive_ata(&performance_fee_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
 
     let mut data = ix_discriminator("burn_for_nav_increase").to_vec();
     data.extend_from_slice(&asset_adjustment_amount.to_le_bytes());
@@ -245,6 +252,11 @@ pub fn build_burn_for_nav_increase_ix(
             AccountMeta::new_readonly(buffer_vault_authority_pda, false),
             AccountMeta::new_readonly(vault_token_out_ata, false),
             AccountMeta::new(buffer_vault_onyc_ata, false),
+            AccountMeta::new_readonly(management_fee_vault_authority_pda, false),
+            AccountMeta::new(management_fee_vault_onyc_ata, false),
+            AccountMeta::new_readonly(performance_fee_vault_authority_pda, false),
+            AccountMeta::new(performance_fee_vault_onyc_ata, false),
+            AccountMeta::new_readonly(mint_authority_pda, false),
             AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
         ],
         data,
