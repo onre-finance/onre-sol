@@ -1344,7 +1344,6 @@ pub fn build_take_offer_ix(
     let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
     let (vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
-    let (market_stats_pda, _) = find_market_stats_pda();
 
     let vault_token_in_ata = derive_ata(&vault_authority_pda, token_in_mint, token_in_program);
     let vault_token_out_ata = derive_ata(&vault_authority_pda, token_out_mint, token_out_program);
@@ -1381,6 +1380,89 @@ pub fn build_take_offer_ix(
             AccountMeta::new(user_token_out_ata, false),
             AccountMeta::new(boss_token_in_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),
+            AccountMeta::new_readonly(SYSVAR_INSTRUCTIONS_ID, false),
+            AccountMeta::new(*user, true),
+            AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+        ],
+        data,
+    }
+}
+
+pub fn build_take_offer_extended_ix(
+    user: &Pubkey,
+    boss: &Pubkey,
+    token_in_mint: &Pubkey,
+    token_out_mint: &Pubkey,
+    token_in_amount: u64,
+    approval_message: Option<&[u8]>,
+    token_in_program: &Pubkey,
+    token_out_program: &Pubkey,
+) -> Instruction {
+    let (state_pda, _) = find_state_pda();
+    let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
+    let (vault_authority_pda, _) = find_offer_vault_authority_pda();
+    let (mint_authority_pda, _) = find_mint_authority_pda();
+    let (buffer_state_pda, _) = find_buffer_state_pda();
+    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
+    let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
+    let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
+    let (market_stats_pda, _) = find_market_stats_pda();
+
+    let vault_token_in_ata = derive_ata(&vault_authority_pda, token_in_mint, token_in_program);
+    let vault_token_out_ata = derive_ata(&vault_authority_pda, token_out_mint, token_out_program);
+    let user_token_in_ata = derive_ata(user, token_in_mint, token_in_program);
+    let user_token_out_ata = derive_ata(user, token_out_mint, token_out_program);
+    let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
+    let buffer_vault_onyc_ata = derive_ata(
+        &buffer_vault_authority_pda,
+        token_out_mint,
+        token_out_program,
+    );
+    let management_fee_vault_onyc_ata = derive_ata(
+        &management_fee_vault_authority_pda,
+        token_out_mint,
+        token_out_program,
+    );
+    let performance_fee_vault_onyc_ata = derive_ata(
+        &performance_fee_vault_authority_pda,
+        token_out_mint,
+        token_out_program,
+    );
+
+    let mut data = ix_discriminator("take_offer_extended").to_vec();
+    data.extend_from_slice(&token_in_amount.to_le_bytes());
+    match approval_message {
+        Some(msg_bytes) => {
+            data.push(1);
+            data.extend_from_slice(msg_bytes);
+        }
+        None => {
+            data.push(0);
+        }
+    }
+
+    Instruction {
+        program_id: PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new(offer_pda, false),
+            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new_readonly(*boss, false),
+            AccountMeta::new_readonly(vault_authority_pda, false),
+            AccountMeta::new(vault_token_in_ata, false),
+            AccountMeta::new(vault_token_out_ata, false),
+            AccountMeta::new(*token_in_mint, false),
+            AccountMeta::new_readonly(*token_in_program, false),
+            AccountMeta::new(*token_out_mint, false),
+            AccountMeta::new_readonly(*token_out_program, false),
+            AccountMeta::new(user_token_in_ata, false),
+            AccountMeta::new(user_token_out_ata, false),
+            AccountMeta::new(boss_token_in_ata, false),
+            AccountMeta::new_readonly(mint_authority_pda, false),
+            AccountMeta::new(buffer_state_pda, false),
+            AccountMeta::new(buffer_vault_onyc_ata, false),
+            AccountMeta::new(management_fee_vault_onyc_ata, false),
+            AccountMeta::new(performance_fee_vault_onyc_ata, false),
             AccountMeta::new(market_stats_pda, false),
             AccountMeta::new_readonly(SYSVAR_INSTRUCTIONS_ID, false),
             AccountMeta::new(*user, true),

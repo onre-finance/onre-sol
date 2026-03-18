@@ -2,7 +2,9 @@ use crate::constants::seeds;
 use crate::instructions::market_info::{
     recompute_market_stats, update_market_stats_account, write_market_stats_account,
 };
-use crate::instructions::offer::offer_utils::{process_offer_core, verify_offer_approval};
+use crate::instructions::offer::offer_utils::{
+    is_onyc_token_out_mint, process_offer_core, verify_offer_approval,
+};
 use crate::instructions::Offer;
 use crate::state::{MarketStats, State};
 use crate::utils::{
@@ -386,7 +388,7 @@ pub fn take_offer_permissionless(
         result.token_out_amount,
     )?;
 
-    if ctx.accounts.token_out_mint.key() == ctx.accounts.state.onyc_mint {
+    if is_onyc_token_out_mint(&ctx.accounts.state, &ctx.accounts.token_out_mint) {
         let market_stats_account = ctx.accounts.market_stats.to_account_info();
         let snapshot = recompute_market_stats(
             &offer,

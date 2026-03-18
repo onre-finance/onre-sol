@@ -236,6 +236,14 @@ pub mod onreapp {
         offer::take_offer(ctx, token_in_amount, approval_message)
     }
 
+    pub fn take_offer_extended(
+        ctx: Context<TakeOfferExtended>,
+        token_in_amount: u64,
+        approval_message: Option<ApprovalMessage>,
+    ) -> Result<()> {
+        offer::take_offer_extended(ctx, token_in_amount, approval_message)
+    }
+
     /// Takes a offer using permissionless flow with intermediary accounts.
     ///
     /// Delegates to `offer::take_offer_permissionless`.

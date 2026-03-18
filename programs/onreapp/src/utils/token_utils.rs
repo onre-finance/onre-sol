@@ -225,7 +225,7 @@ pub fn calculate_fees(token_in_amount: u64, fee_basis_points: u16) -> Result<Cal
 pub fn mint_tokens<'info>(
     token_program: &Interface<'info, TokenInterface>,
     mint: &InterfaceAccount<'info, Mint>,
-    to_account: &InterfaceAccount<'info, TokenAccount>,
+    to_account: &AccountInfo<'info>,
     authority: &AccountInfo<'info>,
     signer_seeds: &[&[&[u8]]],
     amount: u64,
@@ -247,7 +247,7 @@ pub fn mint_tokens<'info>(
     // Perform the mint operation
     let mint_accounts = MintToChecked {
         mint: mint.to_account_info(),
-        to: to_account.to_account_info(),
+        to: to_account.clone(),
         authority: authority.to_account_info(),
     };
 
@@ -445,7 +445,7 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
         mint_tokens(
             params.token_out_program,
             params.token_out_mint,
-            params.token_out_destination_account,
+            &params.token_out_destination_account.to_account_info(),
             params.mint_authority_pda,
             mint_authority_signer_seeds,
             params.token_out_amount,

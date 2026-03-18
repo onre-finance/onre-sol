@@ -121,7 +121,7 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
     mint_tokens(
         &ctx.accounts.token_program,
         &ctx.accounts.onyc_mint,
-        &ctx.accounts.boss_onyc_account,
+        &ctx.accounts.boss_onyc_account.to_account_info(),
         &ctx.accounts.mint_authority.to_account_info(),
         mint_authority_signer_seeds,
         amount,

@@ -1,3 +1,4 @@
+import { BN } from "@coral-xyz/anchor";
 import { Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID, createMintToInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { TestHelper } from "../test_helper";
@@ -1129,6 +1130,153 @@ describe("Take Offer", () => {
                 expect(userReceived).toBe(BigInt(1e9)); // Should receive 1 token out
                 expect(vaultDeducted).toBe(BigInt(0)); // No change to Vault (tokens were minted)
                 expect(bossPaid).toEqual(BigInt(0)); // Boss no change (tokens were minted)
+            });
+
+            it("Should accrue BUFFER and mint ONyc through take_offer with the correct fee split", async () => {
+                await program.transferMintAuthorityToProgram({
+                    mint: tokenOutMint
+                });
+
+                await program.mintTo({ amount: 1_000_000_000 });
+                await program.initializeBuffer({
+                    offer: program.getOfferPda(tokenInMint, tokenOutMint),
+                    onycMint: tokenOutMint,
+                    bufferAdmin: testHelper.getBoss(),
+                });
+                const currentTime = await testHelper.getCurrentClockTime();
+                await program.addOfferVector({
+                    tokenInMint,
+                    tokenOutMint,
+                    baseTime: currentTime,
+                    basePrice: 1e9,
+                    apr: 50_000,
+                    priceFixDuration: 86400
+                });
+                await program.setBufferGrossYield({ grossYield: 150_000 });
+                await program.setBufferFeeConfig({
+                    managementFeeBasisPoints: 100,
+                    performanceFeeBasisPoints: 1_000,
+                });
+
+                await program.manageBuffer({
+                    offer: program.getOfferPda(tokenInMint, tokenOutMint),
+                    onycMint: tokenOutMint,
+                });
+                await testHelper.advanceSlot();
+                await testHelper.advanceClockBy(31_536_000);
+
+                const bufferStateBefore = await program.getBufferState();
+                const bufferVaultBalanceBefore = await testHelper.getTokenAccountBalance(program.getBufferVaultAta(tokenOutMint));
+                const managementFeeBalanceBefore = await testHelper.getTokenAccountBalance(program.getManagementFeeVaultAta(tokenOutMint));
+                const performanceFeeBalanceBefore = await testHelper.getTokenAccountBalance(program.getPerformanceFeeVaultAta(tokenOutMint));
+                const mintInfoBefore = await testHelper.getMintInfo(tokenOutMint);
+
+                await program.takeOfferExtended({
+                    tokenInAmount: 1e6,
+                    tokenInMint,
+                    tokenOutMint,
+                    user: user.publicKey,
+                    signer: user
+                });
+
+                const bufferStateAfter = await program.getBufferState();
+                const bufferVaultBalanceAfter = await testHelper.getTokenAccountBalance(program.getBufferVaultAta(tokenOutMint));
+                const managementFeeBalanceAfter = await testHelper.getTokenAccountBalance(program.getManagementFeeVaultAta(tokenOutMint));
+                const performanceFeeBalanceAfter = await testHelper.getTokenAccountBalance(program.getPerformanceFeeVaultAta(tokenOutMint));
+                const userTokenOutBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+                const mintInfoAfter = await testHelper.getMintInfo(tokenOutMint);
+                const expectedGrossAccrual = mintInfoBefore.supply / BigInt(10);
+                const expectedManagementFee = expectedGrossAccrual / BigInt(10);
+                const expectedPerformanceFee = (expectedGrossAccrual - expectedManagementFee) / BigInt(10);
+                const expectedBufferAccrual =
+                    expectedGrossAccrual - expectedManagementFee - expectedPerformanceFee;
+                const userMintedAmount = (mintInfoAfter.supply - mintInfoBefore.supply) - expectedGrossAccrual;
+
+                expect(bufferStateBefore.lowestSupply.toString()).toBe(mintInfoBefore.supply.toString());
+                expect(bufferVaultBalanceAfter - bufferVaultBalanceBefore).toBe(expectedBufferAccrual);
+                expect(managementFeeBalanceAfter - managementFeeBalanceBefore).toBe(expectedManagementFee);
+                expect(performanceFeeBalanceAfter - performanceFeeBalanceBefore).toBe(expectedPerformanceFee);
+                expect(userTokenOutBalanceAfter).toBe(userMintedAmount);
+                expect(mintInfoAfter.supply - mintInfoBefore.supply).toBe(expectedGrossAccrual + userMintedAmount);
+                expect(bufferStateAfter.lowestSupply.toString()).toBe(mintInfoAfter.supply.toString());
+            });
+
+            it("Should allow take_offer_extended without BUFFER initialized and still refresh market stats", async () => {
+                await program.transferMintAuthorityToProgram({
+                    mint: tokenOutMint
+                });
+
+                const currentTime = await testHelper.getCurrentClockTime();
+                await program.addOfferVector({
+                    tokenInMint,
+                    tokenOutMint,
+                    baseTime: currentTime,
+                    basePrice: 1e9,
+                    apr: 0,
+                    priceFixDuration: 86400
+                });
+
+                await program.takeOfferExtended({
+                    tokenInAmount: 1e6,
+                    tokenInMint,
+                    tokenOutMint,
+                    user: user.publicKey,
+                    signer: user
+                });
+
+                const userTokenOutBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
+                const marketStats = await program.getMarketStats();
+
+                expect(userTokenOutBalanceAfter).toBe(BigInt(1e9));
+                expect(marketStats.circulatingSupply.toString()).not.toBe("0");
+            });
+
+            it("Should reject take_offer_extended with invalid buffer vault account on the accrual path", async () => {
+                await program.transferMintAuthorityToProgram({
+                    mint: tokenOutMint
+                });
+
+                await program.mintTo({ amount: 1_000_000_000 });
+                await program.initializeBuffer({
+                    offer: program.getOfferPda(tokenInMint, tokenOutMint),
+                    onycMint: tokenOutMint,
+                    bufferAdmin: testHelper.getBoss(),
+                });
+
+                const currentTime = await testHelper.getCurrentClockTime();
+                await program.addOfferVector({
+                    tokenInMint,
+                    tokenOutMint,
+                    baseTime: currentTime,
+                    basePrice: 1e9,
+                    apr: 50_000,
+                    priceFixDuration: 86400
+                });
+                await program.setBufferGrossYield({ grossYield: 150_000 });
+                await program.manageBuffer({
+                    offer: program.getOfferPda(tokenInMint, tokenOutMint),
+                    onycMint: tokenOutMint,
+                });
+                await testHelper.advanceSlot();
+                await testHelper.advanceClockBy(31_536_000);
+
+                const tx = program.program.methods.takeOfferExtended(new BN(1e6), null).accounts({
+                    tokenInMint,
+                    tokenOutMint,
+                    user: user.publicKey,
+                    tokenInProgram: TOKEN_PROGRAM_ID,
+                    tokenOutProgram: TOKEN_PROGRAM_ID,
+                    marketStats: program.getMarketStatsPda(),
+                    bufferAccounts: {
+                        bufferState: program.pdas.bufferStatePda,
+                        bufferVaultOnycAccount: bossTokenOutAccount,
+                        managementFeeVaultOnycAccount: program.getManagementFeeVaultAta(tokenOutMint),
+                        performanceFeeVaultOnycAccount: program.getPerformanceFeeVaultAta(tokenOutMint),
+                    },
+                });
+
+                tx.signers([user]);
+                await expect(tx.rpc()).rejects.toThrow("Invalid ONyc mint for BUFFER state");
             });
 
             it("Should burn token_in tokens when program has mint authority", async () => {

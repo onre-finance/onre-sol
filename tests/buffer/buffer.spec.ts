@@ -233,6 +233,7 @@ describe("BUFFER", () => {
 
         expect(vaultBalance).toBe(BigInt(50_000_000));
         expect(mintAfter.supply).toBe(BigInt(1_050_000_000));
+        expect((await program.getBufferState()).lowestSupply.toNumber()).toBe(1_050_000_000);
 
         const nonBoss = testHelper.createUserAccount();
         await expect(
@@ -244,6 +245,28 @@ describe("BUFFER", () => {
                 signer: nonBoss,
             }),
         ).rejects.toThrow();
+    });
+
+    test("burn for nav increase settles pending accrual before burning", async () => {
+        await setupBufferWithBalance({ grossYield: 100_000, currentYieldApr: 0 });
+        await testHelper.advanceSlot();
+        await testHelper.advanceClockBy(ONE_YEAR_SECONDS);
+
+        await program.burnForNavIncrease({
+            tokenInMint,
+            onycMint,
+            assetAdjustmentAmount: 50_000_000,
+            targetNav: NAV_1_0,
+        });
+
+        const bufferVaultAta = program.getBufferVaultAta(onycMint);
+        const vaultBalance = await testHelper.getTokenAccountBalance(bufferVaultAta);
+        const mintAfter = await testHelper.getMintInfo(onycMint);
+        const bufferState = await program.getBufferState();
+
+        expect(vaultBalance).toBe(BigInt(160_000_000));
+        expect(mintAfter.supply).toBe(BigInt(1_160_000_000));
+        expect(bufferState.lowestSupply.toNumber()).toBe(1_160_000_000);
     });
 
     test("burn for nav increase rejects invalid parameters", async () => {

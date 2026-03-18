@@ -49,8 +49,39 @@ where
     if account.owner != program_id {
         return Err(T::invalid_owner_error());
     }
+    deserialize_pda_account(account, T::invalid_data_error())
+}
 
+pub fn load_pda_account<T>(
+    account: &AccountInfo,
+    program_id: &Pubkey,
+    invalid_owner_error: Error,
+    invalid_data_error: Error,
+) -> Result<T>
+where
+    T: AccountDeserialize,
+{
+    if account.owner != program_id {
+        return Err(invalid_owner_error);
+    }
+    deserialize_pda_account(account, invalid_data_error)
+}
+
+pub fn store_pda_account<T>(account: &AccountInfo, value: &T) -> Result<()>
+where
+    T: AccountSerialize,
+{
+    let mut data = account.try_borrow_mut_data()?;
+    let dst: &mut [u8] = &mut data;
+    let mut cursor = std::io::Cursor::new(dst);
+    value.try_serialize(&mut cursor)
+}
+
+fn deserialize_pda_account<T>(account: &AccountInfo, invalid_data_error: Error) -> Result<T>
+where
+    T: AccountDeserialize,
+{
     let data = account.try_borrow_data()?;
     let mut slice: &[u8] = &data;
-    T::try_deserialize(&mut slice).map_err(|_| T::invalid_data_error())
+    T::try_deserialize(&mut slice).map_err(|_| invalid_data_error)
 }

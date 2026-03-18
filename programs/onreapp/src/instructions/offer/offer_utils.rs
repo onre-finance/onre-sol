@@ -1,6 +1,9 @@
 use crate::instructions::{Offer, OfferVector};
+use crate::state::State;
 use crate::utils::approver::approver_utils;
-use crate::utils::{calculate_fees, calculate_token_out_amount, ApprovalMessage};
+use crate::utils::{
+    calculate_fees, calculate_token_out_amount, program_controls_mint, ApprovalMessage,
+};
 use anchor_lang::prelude::*;
 use core::cmp::Ordering;
 use anchor_spl::token_interface::Mint;
@@ -152,6 +155,24 @@ pub fn process_offer_core(
         token_out_amount,
         token_in_fee_amount: fee_amounts.token_in_fee_amount,
     })
+}
+
+pub fn is_onyc_token_out_mint<'info>(
+    state: &Account<'info, State>,
+    token_out_mint: &InterfaceAccount<'info, Mint>,
+) -> bool {
+    token_out_mint.key() == state.onyc_mint
+}
+
+pub fn should_accrue_onyc_mint<'info>(
+    state: &Account<'info, State>,
+    token_out_mint: &InterfaceAccount<'info, Mint>,
+    buffer_is_initialized: bool,
+    mint_authority: &AccountInfo<'info>,
+) -> bool {
+    is_onyc_token_out_mint(state, token_out_mint)
+        && buffer_is_initialized
+        && program_controls_mint(token_out_mint, mint_authority)
 }
 
 /// Finds the currently active pricing vector at a specific time

@@ -1,14 +1,16 @@
 use crate::constants::{seeds, PRICE_DECIMALS};
-use crate::instructions::buffer::{BufferBurnedForNavEvent, BufferErrorCode, BufferState};
-use crate::instructions::market_info::offer_valuation_utils::{
-    compute_offer_current_price, compute_tvl_from_supply_and_price,
+use crate::instructions::buffer::{
+    manage_buffer::{accrue_buffer, set_buffer_baseline_after_supply_change},
+    BufferBurnedForNavEvent, BufferErrorCode, BufferState,
 };
+use crate::instructions::market_info::offer_valuation_utils::compute_tvl_from_supply_and_price;
 use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::math_utils::ceil_div_u128;
 use crate::utils::token_utils::{burn_tokens, read_optional_token_account_amount};
 use crate::OfferCoreError;
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::program_option::COption;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
@@ -20,14 +22,14 @@ pub struct BurnForNavIncrease<'info> {
         has_one = boss,
         has_one = onyc_mint,
     )]
-    pub state: Account<'info, State>,
+    pub state: Box<Account<'info, State>>,
 
     #[account(
         mut,
         seeds = [seeds::BUFFER_STATE],
         bump = buffer_state.bump,
     )]
-    pub buffer_state: Account<'info, BufferState>,
+    pub buffer_state: Box<Account<'info, BufferState>>,
 
     pub boss: Signer<'info>,
 
@@ -41,10 +43,10 @@ pub struct BurnForNavIncrease<'info> {
     )]
     pub offer: AccountLoader<'info, Offer>,
 
-    pub token_in_mint: InterfaceAccount<'info, Mint>,
+    pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(mut)]
-    pub onyc_mint: InterfaceAccount<'info, Mint>,
+    pub onyc_mint: Box<InterfaceAccount<'info, Mint>>,
 
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
@@ -61,7 +63,45 @@ pub struct BurnForNavIncrease<'info> {
     pub vault_token_out_account: UncheckedAccount<'info>,
 
     #[account(mut)]
-    pub buffer_vault_onyc_account: InterfaceAccount<'info, TokenAccount>,
+    pub buffer_vault_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    /// CHECK: PDA derivation is validated by seeds constraint
+    #[account(
+        seeds = [seeds::MANAGEMENT_FEE_VAULT_AUTHORITY],
+        bump,
+    )]
+    pub management_fee_vault_authority: UncheckedAccount<'info>,
+
+    #[account(
+        mut,
+        associated_token::mint = onyc_mint,
+        associated_token::authority = management_fee_vault_authority,
+        associated_token::token_program = token_program
+    )]
+    pub management_fee_vault_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    /// CHECK: PDA derivation is validated by seeds constraint
+    #[account(
+        seeds = [seeds::PERFORMANCE_FEE_VAULT_AUTHORITY],
+        bump,
+    )]
+    pub performance_fee_vault_authority: UncheckedAccount<'info>,
+
+    #[account(
+        mut,
+        associated_token::mint = onyc_mint,
+        associated_token::authority = performance_fee_vault_authority,
+        associated_token::token_program = token_program
+    )]
+    pub performance_fee_vault_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    /// CHECK: PDA derivation is validated by seeds constraint
+    #[account(
+        seeds = [seeds::MINT_AUTHORITY],
+        constraint = onyc_mint.mint_authority == COption::Some(mint_authority.key()) @ BufferErrorCode::NoMintAuthority,
+        bump
+    )]
+    pub mint_authority: UncheckedAccount<'info>,
 
     pub token_program: Interface<'info, TokenInterface>,
 }
@@ -73,6 +113,7 @@ pub fn burn_for_nav_increase(
 ) -> Result<()> {
     require!(target_nav > 0, BufferErrorCode::InvalidTargetNav);
 
+    let now = Clock::get()?.unix_timestamp;
     let offer = ctx.accounts.offer.load()?;
     require_keys_eq!(
         ctx.accounts.token_in_mint.key(),
@@ -99,18 +140,33 @@ pub fn burn_for_nav_increase(
         expected_buffer_vault_onyc_account,
         BufferErrorCode::InvalidOnycMint
     );
-    let current_time = Clock::get()?.unix_timestamp as u64;
-    let current_price = compute_offer_current_price(&offer, current_time)?;
+    let buffer_vault_onyc_account = ctx.accounts.buffer_vault_onyc_account.to_account_info();
+    let management_fee_vault_onyc_account =
+        ctx.accounts.management_fee_vault_onyc_account.to_account_info();
+    let performance_fee_vault_onyc_account =
+        ctx.accounts.performance_fee_vault_onyc_account.to_account_info();
+    let mint_authority = ctx.accounts.mint_authority.to_account_info();
+    let accrual = accrue_buffer(
+        &ctx.accounts.state,
+        &mut ctx.accounts.buffer_state,
+        &offer,
+        &ctx.accounts.onyc_mint,
+        buffer_vault_onyc_account,
+        management_fee_vault_onyc_account,
+        performance_fee_vault_onyc_account,
+        mint_authority,
+        ctx.bumps.mint_authority,
+        &ctx.accounts.token_program,
+        now,
+    )?;
+    let current_price = accrual.current_nav;
 
     let vault_token_out_amount = read_optional_token_account_amount(
         &ctx.accounts.vault_token_out_account,
         &ctx.accounts.token_program,
     )?;
-    let token_supply = ctx
-        .accounts
-        .onyc_mint
-        .supply
-        .saturating_sub(vault_token_out_amount);
+    let current_supply_after_accrual = accrual.post_accrual_supply;
+    let token_supply = current_supply_after_accrual.saturating_sub(vault_token_out_amount);
     let total_assets = compute_tvl_from_supply_and_price(token_supply, current_price)
         .ok_or(BufferErrorCode::MathOverflow)?;
 
@@ -133,7 +189,7 @@ pub fn burn_for_nav_increase(
     )
     .ok_or(BufferErrorCode::MathOverflow)?;
 
-    let current_supply = ctx.accounts.onyc_mint.supply as u128;
+    let current_supply = current_supply_after_accrual as u128;
     require!(
         required_supply_after <= current_supply,
         BufferErrorCode::InvalidBurnTarget
@@ -150,7 +206,7 @@ pub fn burn_for_nav_increase(
 
     let burn_amount = burn_amount_u128 as u64;
     require!(
-        burn_amount <= ctx.accounts.buffer_vault_onyc_account.amount,
+        burn_amount <= accrual.buffer_vault_balance_after_accrual,
         BufferErrorCode::InsufficientCacheBalance
     );
 
@@ -168,6 +224,11 @@ pub fn burn_for_nav_increase(
         buffer_vault_authority_signer_seeds,
         burn_amount,
     )?;
+
+    let post_burn_supply = current_supply_after_accrual
+        .checked_sub(burn_amount)
+        .ok_or(BufferErrorCode::MathOverflow)?;
+    set_buffer_baseline_after_supply_change(&mut ctx.accounts.buffer_state, post_burn_supply, now);
 
     emit!(BufferBurnedForNavEvent {
         burn_amount,
