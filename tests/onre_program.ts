@@ -215,8 +215,38 @@ export class OnreProgram {
             vaultAuthority: this.pdas.offerVaultAuthorityPda,
             permissionlessAuthority: this.pdas.permissionlessAuthorityPda,
             mintAuthority: this.pdas.mintAuthorityPda,
-        marketStats: this.pdas.marketStatsPda
-            });
+        });
+
+        await this.rpcWithOptionalSigner(tx, params.signer);
+    }
+
+    async takeOfferPermissionlessExtended(params: {
+        tokenInAmount: number;
+        tokenInMint: PublicKey;
+        tokenOutMint: PublicKey;
+        user: PublicKey;
+        signer?: Keypair;
+        tokenInProgram?: PublicKey;
+        tokenOutProgram?: PublicKey;
+    }) {
+        const tx = this.program.methods.takeOfferPermissionlessExtended(new BN(params.tokenInAmount), null).accountsPartial({
+            tokenInMint: params.tokenInMint,
+            tokenOutMint: params.tokenOutMint,
+            user: params.user,
+            tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
+            tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
+            boss: this.testHelper.payer.publicKey,
+            vaultAuthority: this.pdas.offerVaultAuthorityPda,
+            permissionlessAuthority: this.pdas.permissionlessAuthorityPda,
+            mintAuthority: this.pdas.mintAuthorityPda,
+            marketStats: this.pdas.marketStatsPda,
+            bufferAccounts: {
+                bufferState: this.pdas.bufferStatePda,
+                bufferVaultOnycAccount: this.getBufferVaultAta(params.tokenOutMint),
+                managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.tokenOutMint),
+                performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.tokenOutMint),
+            },
+        });
 
         await this.rpcWithOptionalSigner(tx, params.signer);
     }

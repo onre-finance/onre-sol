@@ -262,6 +262,14 @@ pub mod onreapp {
         offer::take_offer_permissionless(ctx, token_in_amount, approval_message)
     }
 
+    pub fn take_offer_permissionless_extended(
+        ctx: Context<TakeOfferPermissionlessExtended>,
+        token_in_amount: u64,
+        approval_message: Option<ApprovalMessage>,
+    ) -> Result<()> {
+        offer::take_offer_permissionless_extended(ctx, token_in_amount, approval_message)
+    }
+
     /// Proposes a new boss for ownership transfer.
     ///
     /// Delegates to `propose_boss::propose_boss` to propose a new boss authority.

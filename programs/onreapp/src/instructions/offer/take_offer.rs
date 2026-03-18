@@ -77,7 +77,7 @@ pub struct TakeOfferBufferAccounts<'info> {
 }
 
 impl<'info> TakeOfferBufferAccounts<'info> {
-    fn is_initialized(&self) -> bool {
+    pub(crate) fn is_initialized(&self) -> bool {
         self.try_load_buffer_state().is_ok()
     }
 
@@ -90,23 +90,23 @@ impl<'info> TakeOfferBufferAccounts<'info> {
         )
     }
 
-    fn load_buffer_state(&self) -> Result<BufferState> {
+    pub(crate) fn load_buffer_state(&self) -> Result<BufferState> {
         self.try_load_buffer_state()
     }
 
-    fn buffer_vault_onyc_account_info(&self) -> AccountInfo<'info> {
+    pub(crate) fn buffer_vault_onyc_account_info(&self) -> AccountInfo<'info> {
         self.buffer_vault_onyc_account.to_account_info()
     }
 
-    fn management_fee_vault_onyc_account_info(&self) -> AccountInfo<'info> {
+    pub(crate) fn management_fee_vault_onyc_account_info(&self) -> AccountInfo<'info> {
         self.management_fee_vault_onyc_account.to_account_info()
     }
 
-    fn performance_fee_vault_onyc_account_info(&self) -> AccountInfo<'info> {
+    pub(crate) fn performance_fee_vault_onyc_account_info(&self) -> AccountInfo<'info> {
         self.performance_fee_vault_onyc_account.to_account_info()
     }
 
-    fn store_buffer_state(&self, buffer_state: &BufferState) -> Result<()> {
+    pub(crate) fn store_buffer_state(&self, buffer_state: &BufferState) -> Result<()> {
         store_pda_account(&self.buffer_state, buffer_state)
     }
 }
@@ -636,7 +636,7 @@ pub fn take_offer_extended(
     Ok(())
 }
 
-fn validate_take_offer_buffer_accounts<'info>(
+pub(crate) fn validate_take_offer_buffer_accounts<'info>(
     program_id: &Pubkey,
     buffer_state: &BufferState,
     buffer_vault_onyc_account: &AccountInfo<'info>,
