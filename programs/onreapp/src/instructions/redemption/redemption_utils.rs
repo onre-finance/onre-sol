@@ -159,6 +159,61 @@ pub struct ExecuteRedemptionOpsParams<'a, 'info> {
     pub token_out_max_supply: u64,
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::utils::calculate_fees;
+
+    #[test]
+    fn test_zero_fee_basis_points() {
+        let result = calculate_fees(1_000_000_000, 0).unwrap();
+        assert_eq!(result.token_in_fee_amount, 0);
+        assert_eq!(result.token_in_net_amount, 1_000_000_000);
+    }
+
+    #[test]
+    fn test_100_bps_fee() {
+        // 1% on 1_000_000_000 → fee = ceil(1_000_000_000 * 100 / 10_000) = 10_000_000
+        let result = calculate_fees(1_000_000_000, 100).unwrap();
+        assert_eq!(result.token_in_fee_amount, 10_000_000);
+        assert_eq!(result.token_in_net_amount, 990_000_000);
+    }
+
+    #[test]
+    fn test_max_fee_basis_points_1000() {
+        // 10% on 1_000_000_000 → fee = ceil(1_000_000_000 * 1000 / 10_000) = 100_000_000
+        let result = calculate_fees(1_000_000_000, 1000).unwrap();
+        assert_eq!(result.token_in_fee_amount, 100_000_000);
+        assert_eq!(result.token_in_net_amount, 900_000_000);
+    }
+
+    #[test]
+    fn test_fee_rounding_ceiling() {
+        // 1 token at 100 bps: ceil(1 * 100 / 10_000) = ceil(0.01) = 1
+        let result = calculate_fees(1, 100).unwrap();
+        assert_eq!(result.token_in_fee_amount, 1);
+        assert_eq!(result.token_in_net_amount, 0);
+    }
+
+    #[test]
+    fn test_fee_plus_net_equals_total() {
+        // Invariant: fee + net == amount for any bps value
+        let amounts = [1u64, 100, 999, 1_000_000, 1_000_000_000];
+        let bps_values = [0u16, 1, 50, 100, 500, 1000];
+        for &amount in &amounts {
+            for &bps in &bps_values {
+                let result = calculate_fees(amount, bps).unwrap();
+                assert_eq!(
+                    result.token_in_fee_amount + result.token_in_net_amount,
+                    amount,
+                    "fee + net != total for amount={}, bps={}",
+                    amount,
+                    bps
+                );
+            }
+        }
+    }
+}
+
 /// Executes token operations for redemption
 ///
 /// This function handles the complete redemption token exchange process with intelligent
