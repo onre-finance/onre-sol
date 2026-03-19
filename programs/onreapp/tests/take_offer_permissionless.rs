@@ -445,6 +445,10 @@ fn setup_permissionless_extended_with_buffer() -> PermissionlessNoApprovalCtx {
 
     let buffer_admin = Keypair::new();
     ctx.svm.airdrop(&buffer_admin.pubkey(), INITIAL_LAMPORTS).unwrap();
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+    advance_slot(&mut ctx.svm);
+
     let ix = build_initialize_buffer_ix(&boss, &offer_pda, &ctx.onyc_mint, &buffer_admin.pubkey());
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
