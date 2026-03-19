@@ -116,6 +116,10 @@ fn setup_buffer_context(
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
     let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint, &buffer_admin.pubkey());
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
@@ -199,6 +203,9 @@ fn test_initialize_buffer_success() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let (offer_pda, _) = find_offer_pda(&token_in_mint, &onyc_mint);
 
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
     let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint, &buffer_admin.pubkey());
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
@@ -228,6 +235,32 @@ fn test_initialize_buffer_success() {
     assert!(svm.get_account(&buffer_vault_ata).is_some());
     assert!(svm.get_account(&management_fee_vault_ata).is_some());
     assert!(svm.get_account(&performance_fee_vault_ata).is_some());
+}
+
+#[test]
+fn test_initialize_buffer_accepts_valid_offer_without_state_main_offer() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
+    let boss = payer.pubkey();
+    let buffer_admin = Keypair::new();
+    let token_in_mint = create_mint(&mut svm, &payer, 6, &boss);
+    let ix = build_make_offer_ix(
+        &boss,
+        &token_in_mint,
+        &onyc_mint,
+        0,
+        false,
+        true,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let (offer_pda, _) = find_offer_pda(&token_in_mint, &onyc_mint);
+
+    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint, &buffer_admin.pubkey());
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let buffer_state = read_buffer_state(&svm);
+    assert_eq!(buffer_state.onyc_mint, onyc_mint);
+    assert_eq!(buffer_state.buffer_admin, buffer_admin.pubkey());
 }
 
 #[test]
