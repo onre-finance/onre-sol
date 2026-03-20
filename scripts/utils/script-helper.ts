@@ -742,10 +742,26 @@ export class ScriptHelper {
     }
 
     async buildMintToIx(params: { amount: number }) {
+        const state = await this.program.account.state.fetch(this.statePda);
+        const onycMint = state.onycMint as PublicKey;
+        const offer = (state.mainOffer as PublicKey).equals(PublicKey.default)
+            ? PublicKey.default
+            : (state.mainOffer as PublicKey);
+
         return await this.program.methods
             .mintTo(new BN(params.amount))
             .accounts({
                 tokenProgram: TOKEN_PROGRAM_ID,
+                offer,
+                bufferAccounts: {
+                    bufferState: this.pdas.bufferStatePda,
+                    bufferVaultOnycAccount: getAssociatedTokenAddressSync(onycMint, this.pdas.bufferVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
+                    managementFeeVaultOnycAccount: getAssociatedTokenAddressSync(onycMint, this.pdas.managementFeeVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
+                    performanceFeeVaultOnycAccount: getAssociatedTokenAddressSync(onycMint, this.pdas.performanceFeeVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
+                },
+                offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
+                offerVaultOnycAccount: getAssociatedTokenAddressSync(onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
+                marketStats: this.pdas.marketStatsPda,
             })
             .instruction();
     }

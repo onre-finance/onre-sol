@@ -5202,6 +5202,41 @@
             "System program required for account creation and rent payment"
           ],
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "offer"
+        },
+        {
+          "name": "buffer_accounts",
+          "accounts": [
+            {
+              "name": "buffer_state",
+              "writable": true
+            },
+            {
+              "name": "buffer_vault_onyc_account",
+              "writable": true
+            },
+            {
+              "name": "management_fee_vault_onyc_account",
+              "writable": true
+            },
+            {
+              "name": "performance_fee_vault_onyc_account",
+              "writable": true
+            }
+          ]
+        },
+        {
+          "name": "offer_vault_authority"
+        },
+        {
+          "name": "offer_vault_onyc_account",
+          "writable": true
+        },
+        {
+          "name": "market_stats",
+          "writable": true
         }
       ],
       "args": [
@@ -5363,6 +5398,42 @@
           "writable": true
         },
         {
+          "name": "offer_vault_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "offer_vault_onyc_account"
+        },
+        {
           "name": "buffer_vault_onyc_account",
           "writable": true
         },
@@ -5373,6 +5444,31 @@
         {
           "name": "performance_fee_vault_onyc_account",
           "writable": true
+        },
+        {
+          "name": "market_stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [

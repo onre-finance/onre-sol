@@ -552,8 +552,24 @@ export class OnreProgram {
     }
 
     async mintTo(params: { amount: number; signer?: Keypair }) {
+        const state = await this.getState();
+        const onycMint = state.onycMint as PublicKey;
+        const offer = (state.mainOffer as PublicKey).equals(SystemProgram.programId)
+            ? SystemProgram.programId
+            : (state.mainOffer as PublicKey);
+
         const tx = this.program.methods.mintTo(new BN(params.amount)).accounts({
             tokenProgram: TOKEN_PROGRAM_ID,
+            offer,
+            bufferAccounts: {
+                bufferState: this.pdas.bufferStatePda,
+                bufferVaultOnycAccount: this.getBufferVaultAta(onycMint),
+                managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(onycMint),
+                performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(onycMint),
+            },
+            offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
+            offerVaultOnycAccount: getAssociatedTokenAddressSync(onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
+            marketStats: this.pdas.marketStatsPda,
         });
 
         await this.rpcWithOptionalSigner(tx, params?.signer);

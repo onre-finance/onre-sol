@@ -286,28 +286,10 @@ pub fn build_mint_to_ix(
     amount: u64,
     token_program: &Pubkey,
 ) -> Instruction {
-    let (state_pda, _) = find_state_pda();
-    let (mint_authority_pda, _) = find_mint_authority_pda();
-    let boss_onyc_ata = derive_ata(boss, onyc_mint, token_program);
-    let mut data = ix_discriminator("mint_to").to_vec();
-    data.extend_from_slice(&amount.to_le_bytes());
-    Instruction {
-        program_id: PROGRAM_ID,
-        accounts: vec![
-            AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new(*boss, true),
-            AccountMeta::new(*onyc_mint, false),
-            AccountMeta::new(boss_onyc_ata, false),
-            AccountMeta::new_readonly(mint_authority_pda, false),
-            AccountMeta::new_readonly(*token_program, false),
-            AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
-            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
-        ],
-        data,
-    }
+    build_mint_to_ix_for_offer(boss, onyc_mint, amount, token_program, &Pubkey::default())
 }
 
-pub fn build_mint_to_extended_ix(
+pub fn build_mint_to_ix_for_offer(
     boss: &Pubkey,
     onyc_mint: &Pubkey,
     amount: u64,
@@ -316,9 +298,13 @@ pub fn build_mint_to_extended_ix(
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
+    let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
+    let (market_stats_pda, _) = find_market_stats_pda();
     let buffer_state_pda = find_buffer_state_pda().0;
     let boss_onyc_ata = derive_ata(boss, onyc_mint, token_program);
-    let buffer_vault_onyc = derive_ata(&find_buffer_vault_authority_pda().0, onyc_mint, token_program);
+    let offer_vault_onyc = derive_ata(&offer_vault_authority_pda, onyc_mint, token_program);
+    let buffer_vault_onyc =
+        derive_ata(&find_buffer_vault_authority_pda().0, onyc_mint, token_program);
     let management_fee_vault_onyc = derive_ata(
         &find_management_fee_vault_authority_pda().0,
         onyc_mint,
@@ -329,10 +315,8 @@ pub fn build_mint_to_extended_ix(
         onyc_mint,
         token_program,
     );
-
-    let mut data = ix_discriminator("mint_to_extended").to_vec();
+    let mut data = ix_discriminator("mint_to").to_vec();
     data.extend_from_slice(&amount.to_le_bytes());
-
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
@@ -349,6 +333,9 @@ pub fn build_mint_to_extended_ix(
             AccountMeta::new(buffer_vault_onyc, false),
             AccountMeta::new(management_fee_vault_onyc, false),
             AccountMeta::new(performance_fee_vault_onyc, false),
+            AccountMeta::new_readonly(offer_vault_authority_pda, false),
+            AccountMeta::new(offer_vault_onyc, false),
+            AccountMeta::new(market_stats_pda, false),
         ],
         data,
     }

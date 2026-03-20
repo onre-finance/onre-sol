@@ -306,7 +306,7 @@ fn test_mint_to_fails_wrong_mint() {
 }
 
 #[test]
-fn test_mint_to_extended_accrues_buffer_before_mint() {
+fn test_mint_to_accrues_buffer_before_mint() {
     let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
@@ -349,6 +349,7 @@ fn test_mint_to_extended_accrues_buffer_before_mint() {
     let ix = build_set_main_offer_ix(&boss, &offer_pda);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+
     let buffer_admin = Keypair::new();
     svm.airdrop(&buffer_admin.pubkey(), INITIAL_LAMPORTS).unwrap();
 
@@ -370,7 +371,7 @@ fn test_mint_to_extended_accrues_buffer_before_mint() {
     advance_slot(&mut svm);
     advance_clock_by(&mut svm, 31_536_000);
 
-    let ix = build_mint_to_extended_ix(
+    let ix = build_mint_to_ix_for_offer(
         &boss,
         &onyc_mint,
         1_000_000_000,
@@ -400,6 +401,13 @@ fn test_mint_to_extended_accrues_buffer_before_mint() {
         2_000_000_000
     );
     assert_eq!(buffer_state.lowest_supply, 2_100_000_000);
+
+    let market_stats = read_market_stats(&svm);
+    let (_, market_stats_bump) = find_market_stats_pda();
+    assert_eq!(market_stats.bump, market_stats_bump);
+    assert_eq!(market_stats.circulating_supply, 2_100_000_000);
+    assert_eq!(market_stats.nav, 1_000_000_000);
+    assert_eq!(market_stats.tvl, 2_100_000_000);
 }
 
 // ===========================================================================

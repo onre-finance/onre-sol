@@ -12,7 +12,7 @@ pub mod instructions;
 pub mod state;
 pub mod utils;
 
-pub use instructions::mint_authority::mint_to::{MintTo, MintToExtended};
+pub use instructions::mint_authority::mint_to::MintTo;
 
 /// The main program module for the Onre App.
 ///
@@ -498,13 +498,6 @@ pub mod onreapp {
     /// - `amount`: Amount of ONyc tokens to mint.
     pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
         mint_authority::mint_to(ctx, amount)
-    }
-
-    /// Mints ONyc tokens while accruing BUFFER before the mint.
-    ///
-    /// Uses the extended buffer-aware instruction that settles accrual before minting.
-    pub fn mint_to_extended(ctx: Context<MintToExtended>, amount: u64) -> Result<()> {
-        mint_authority::mint_to::mint_to_extended(ctx, amount)
     }
 
     /// Gets the current NAV (price) for a specific offer.

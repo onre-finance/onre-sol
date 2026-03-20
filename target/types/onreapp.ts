@@ -5208,6 +5208,41 @@ export type Onreapp = {
             "System program required for account creation and rent payment"
           ],
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "offer"
+        },
+        {
+          "name": "bufferAccounts",
+          "accounts": [
+            {
+              "name": "bufferState",
+              "writable": true
+            },
+            {
+              "name": "bufferVaultOnycAccount",
+              "writable": true
+            },
+            {
+              "name": "managementFeeVaultOnycAccount",
+              "writable": true
+            },
+            {
+              "name": "performanceFeeVaultOnycAccount",
+              "writable": true
+            }
+          ]
+        },
+        {
+          "name": "offerVaultAuthority"
+        },
+        {
+          "name": "offerVaultOnycAccount",
+          "writable": true
+        },
+        {
+          "name": "marketStats",
+          "writable": true
         }
       ],
       "args": [
@@ -5369,6 +5404,42 @@ export type Onreapp = {
           "writable": true
         },
         {
+          "name": "offerVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "offerVaultOnycAccount"
+        },
+        {
           "name": "bufferVaultOnycAccount",
           "writable": true
         },
@@ -5379,6 +5450,31 @@ export type Onreapp = {
         {
           "name": "performanceFeeVaultOnycAccount",
           "writable": true
+        },
+        {
+          "name": "marketStats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [

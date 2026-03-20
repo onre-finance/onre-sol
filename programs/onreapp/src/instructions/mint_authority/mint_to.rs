@@ -1,14 +1,20 @@
 use crate::constants::seeds;
 use crate::instructions::buffer::{
+    __client_accounts_buffer_accrual_accounts, __cpi_client_accounts_buffer_accrual_accounts,
+    accounts::BufferAccrualAccountsBumps, BufferAccrualAccounts,
     manage_buffer::{accrue_buffer, set_buffer_baseline_after_supply_change},
-    validate_buffer_onyc_vault_accounts, BufferErrorCode, BufferState,
+    validate_buffer_onyc_vault_accounts, BufferErrorCode,
 };
-use crate::instructions::Offer;
-use crate::state::State;
-use crate::utils::{load_pda_account, store_pda_account};
+use crate::instructions::market_info::{recompute_market_stats, update_market_stats_account};
+use crate::instructions::offer::offer_utils::should_accrue_onyc_mint;
+use crate::state::{MarketStats, State};
+use crate::utils::{
+    load_or_init_pda_account, load_pda_account, store_pda_account,
+};
 use crate::utils::token_utils::mint_tokens;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 /// Event emitted when ONyc tokens are successfully minted to the boss account
@@ -93,6 +99,31 @@ pub struct MintTo<'info> {
 
     /// System program required for account creation and rent payment
     pub system_program: Program<'info, System>,
+
+    /// CHECK: Parsed and validated only when the state points at a main offer.
+    pub offer: UncheckedAccount<'info>,
+
+    pub buffer_accounts: BufferAccrualAccounts<'info>,
+
+    /// CHECK: PDA derivation is validated by seeds constraint.
+    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
+    pub offer_vault_authority: UncheckedAccount<'info>,
+
+    /// CHECK: Validated in instruction logic against the expected offer vault ATA.
+    #[account(
+        mut,
+        constraint = offer_vault_onyc_account.key()
+            == get_associated_token_address_with_program_id(
+                &offer_vault_authority.key(),
+                &onyc_mint.key(),
+                &token_program.key(),
+            ) @ crate::instructions::market_info::GetCirculatingSupplyErrorCode::InvalidVaultAccount
+    )]
+    pub offer_vault_onyc_account: UncheckedAccount<'info>,
+
+    /// CHECK: Validated and optionally initialized in instruction logic.
+    #[account(mut)]
+    pub market_stats: UncheckedAccount<'info>,
 }
 
 /// Mints new ONyc tokens directly to the boss's account
@@ -121,6 +152,74 @@ pub struct MintTo<'info> {
 /// # Events
 /// * `OnycTokensMinted` - Emitted on successful minting with details
 pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
+    let now = Clock::get()?.unix_timestamp;
+    let offer = if ctx.accounts.state.main_offer == Pubkey::default() {
+        None
+    } else {
+        require_keys_eq!(
+            ctx.accounts.state.main_offer,
+            ctx.accounts.offer.key(),
+            BufferErrorCode::InvalidMainOffer
+        );
+        let offer = load_pda_account(
+            ctx.accounts.offer.as_ref(),
+            ctx.program_id,
+            BufferErrorCode::InvalidMainOffer.into(),
+            BufferErrorCode::InvalidMainOffer.into(),
+        )?;
+        Some(offer)
+    };
+    let should_accrue = offer.is_some()
+        && should_accrue_onyc_mint(
+            &ctx.accounts.state,
+            &ctx.accounts.onyc_mint,
+            ctx.accounts.buffer_accounts.is_initialized(),
+            &ctx.accounts.mint_authority.to_account_info(),
+        );
+
+    let post_accrual_supply = if should_accrue {
+        let offer = offer.as_ref().expect("offer is checked above");
+        let mut buffer_state = ctx.accounts.buffer_accounts.load_buffer_state()?;
+        let buffer_vault_onyc_account = ctx.accounts.buffer_accounts.buffer_vault_onyc_account_info();
+        let management_fee_vault_onyc_account =
+            ctx.accounts.buffer_accounts.management_fee_vault_onyc_account_info();
+        let performance_fee_vault_onyc_account =
+            ctx.accounts.buffer_accounts.performance_fee_vault_onyc_account_info();
+
+        validate_buffer_onyc_vault_accounts(
+            ctx.program_id,
+            &buffer_state,
+            &buffer_vault_onyc_account,
+            &management_fee_vault_onyc_account,
+            &performance_fee_vault_onyc_account,
+            &ctx.accounts.onyc_mint,
+            &ctx.accounts.token_program,
+        )?;
+
+        let accrual = accrue_buffer(
+            &ctx.accounts.state,
+            &mut buffer_state,
+            offer,
+            &ctx.accounts.onyc_mint,
+            buffer_vault_onyc_account,
+            management_fee_vault_onyc_account,
+            performance_fee_vault_onyc_account,
+            ctx.accounts.mint_authority.to_account_info(),
+            ctx.bumps.mint_authority,
+            &ctx.accounts.token_program,
+            now,
+        )?;
+
+        Some(
+            accrual
+                .post_accrual_supply
+                .checked_add(amount)
+                .ok_or(BufferErrorCode::MathOverflow)?,
+        )
+    } else {
+        None
+    };
+
     let mint_authority_seeds = &[seeds::MINT_AUTHORITY, &[ctx.bumps.mint_authority]];
     let mint_authority_signer_seeds = &[mint_authority_seeds.as_slice()];
 
@@ -135,130 +234,43 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
         ctx.accounts.state.max_supply,
     )?;
 
+    if let Some(post_mint_supply) = post_accrual_supply {
+        let mut buffer_state = ctx.accounts.buffer_accounts.load_buffer_state()?;
+        set_buffer_baseline_after_supply_change(&mut buffer_state, post_mint_supply, now);
+        ctx.accounts.buffer_accounts.store_buffer_state(&buffer_state)?;
+    }
+
+    if let Some(offer) = offer.as_ref() {
+        ctx.accounts.onyc_mint.reload()?;
+        let snapshot = recompute_market_stats(
+            offer,
+            &ctx.accounts.onyc_mint,
+            &ctx.accounts.offer_vault_onyc_account.to_account_info(),
+            &ctx.accounts.token_program,
+        )?;
+        let (market_stats_pda, market_stats_bump) =
+            Pubkey::find_program_address(&[seeds::MARKET_STATS], ctx.program_id);
+        require_keys_eq!(
+            ctx.accounts.market_stats.key(),
+            market_stats_pda,
+            BufferErrorCode::InvalidOnycMint
+        );
+        let market_stats_account = ctx.accounts.market_stats.to_account_info();
+        let mut market_stats = load_or_init_pda_account::<MarketStats>(
+            &market_stats_account,
+            &ctx.accounts.boss.to_account_info(),
+            &ctx.accounts.system_program.to_account_info(),
+            ctx.program_id,
+            market_stats_bump,
+        )?;
+        market_stats.bump = market_stats_bump;
+        update_market_stats_account(&mut market_stats, snapshot)?;
+        store_pda_account(&market_stats_account, &market_stats)?;
+    }
+
     msg!("Minted {} ONyc tokens to boss account", amount);
 
     // Emit event for transparency and off-chain tracking
-    emit!(OnycTokensMintedEvent {
-        onyc_mint: ctx.accounts.onyc_mint.key(),
-        boss: ctx.accounts.boss.key(),
-        amount,
-    });
-
-    Ok(())
-}
-
-#[derive(Accounts)]
-pub struct MintToExtended<'info> {
-    #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss, has_one = onyc_mint)]
-    pub state: Box<Account<'info, State>>,
-
-    #[account(mut)]
-    pub boss: Signer<'info>,
-
-    #[account(mut)]
-    pub onyc_mint: Box<InterfaceAccount<'info, Mint>>,
-
-    #[account(
-        init_if_needed,
-        payer = boss,
-        associated_token::mint = onyc_mint,
-        associated_token::authority = boss,
-        associated_token::token_program = token_program
-    )]
-    pub boss_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    /// CHECK: PDA derivation is validated by seeds constraint and mint authority constraint.
-    #[account(
-        seeds = [seeds::MINT_AUTHORITY],
-        constraint = onyc_mint.mint_authority.unwrap() == mint_authority.key() @ MintToErrorCode::NoMintAuthority,
-        bump
-    )]
-    pub mint_authority: UncheckedAccount<'info>,
-
-    pub token_program: Interface<'info, TokenInterface>,
-
-    pub associated_token_program: Program<'info, AssociatedToken>,
-
-    pub system_program: Program<'info, System>,
-
-    #[account(constraint = state.main_offer == offer.key() @ BufferErrorCode::InvalidOnycMint)]
-    pub offer: AccountLoader<'info, Offer>,
-
-    /// CHECK: Parsed and validated in instruction logic.
-    #[account(mut)]
-    pub buffer_state: UncheckedAccount<'info>,
-
-    /// CHECK: Validated in instruction logic against the expected buffer ATA.
-    #[account(mut)]
-    pub buffer_vault_onyc_account: UncheckedAccount<'info>,
-
-    /// CHECK: Validated in instruction logic against the expected management fee ATA.
-    #[account(mut)]
-    pub management_fee_vault_onyc_account: UncheckedAccount<'info>,
-
-    /// CHECK: Validated in instruction logic against the expected performance fee ATA.
-    #[account(mut)]
-    pub performance_fee_vault_onyc_account: UncheckedAccount<'info>,
-}
-
-pub fn mint_to_extended(ctx: Context<MintToExtended>, amount: u64) -> Result<()> {
-    let now = Clock::get()?.unix_timestamp;
-    let offer = ctx.accounts.offer.load()?;
-    let mut buffer_state: BufferState = load_pda_account(
-        &ctx.accounts.buffer_state.to_account_info(),
-        ctx.program_id,
-        BufferErrorCode::InvalidOnycMint.into(),
-        BufferErrorCode::InvalidOnycMint.into(),
-    )?;
-    let buffer_vault_onyc_account = ctx.accounts.buffer_vault_onyc_account.to_account_info();
-    let management_fee_vault_onyc_account =
-        ctx.accounts.management_fee_vault_onyc_account.to_account_info();
-    let performance_fee_vault_onyc_account =
-        ctx.accounts.performance_fee_vault_onyc_account.to_account_info();
-    validate_buffer_onyc_vault_accounts(
-        ctx.program_id,
-        &buffer_state,
-        &buffer_vault_onyc_account,
-        &management_fee_vault_onyc_account,
-        &performance_fee_vault_onyc_account,
-        &ctx.accounts.onyc_mint,
-        &ctx.accounts.token_program,
-    )?;
-
-    let accrual = accrue_buffer(
-        &ctx.accounts.state,
-        &mut buffer_state,
-        &offer,
-        &ctx.accounts.onyc_mint,
-        buffer_vault_onyc_account,
-        management_fee_vault_onyc_account,
-        performance_fee_vault_onyc_account,
-        ctx.accounts.mint_authority.to_account_info(),
-        ctx.bumps.mint_authority,
-        &ctx.accounts.token_program,
-        now,
-    )?;
-
-    let mint_authority_seeds = &[seeds::MINT_AUTHORITY, &[ctx.bumps.mint_authority]];
-    let mint_authority_signer_seeds = &[mint_authority_seeds.as_slice()];
-
-    mint_tokens(
-        &ctx.accounts.token_program,
-        &ctx.accounts.onyc_mint,
-        &ctx.accounts.boss_onyc_account.to_account_info(),
-        &ctx.accounts.mint_authority.to_account_info(),
-        mint_authority_signer_seeds,
-        amount,
-        ctx.accounts.state.max_supply,
-    )?;
-
-    let post_mint_supply = accrual
-        .post_accrual_supply
-        .checked_add(amount)
-        .ok_or(BufferErrorCode::MathOverflow)?;
-    set_buffer_baseline_after_supply_change(&mut buffer_state, post_mint_supply, now);
-    store_pda_account(&ctx.accounts.buffer_state.to_account_info(), &buffer_state)?;
-
     emit!(OnycTokensMintedEvent {
         onyc_mint: ctx.accounts.onyc_mint.key(),
         boss: ctx.accounts.boss.key(),
