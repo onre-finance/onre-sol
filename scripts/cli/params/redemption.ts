@@ -91,6 +91,46 @@ export const updateRedemptionFeeParams: ParamDefinition[] = [
     },
 ];
 
+export const setFeeDestinationParams: ParamDefinition[] = [
+    {
+        name: "feeDestination",
+        type: "publicKey",
+        description: "Fee destination address",
+        required: true,
+        flag: "--destination",
+        shortFlag: "-d",
+    },
+];
+
+export const withdrawFeesParams: ParamDefinition[] = [
+    {
+        name: "tokenIn",
+        type: "mint",
+        description: "Token mint to withdraw fees for",
+        required: true,
+        flag: "--token-in",
+        shortFlag: "-i",
+        default: (cfg: NetworkConfig) => cfg.mints.onyc,
+    },
+    {
+        name: "destination",
+        type: "publicKey",
+        description: "Destination wallet for withdrawn fees",
+        required: true,
+        flag: "--destination",
+        shortFlag: "-d",
+    },
+    {
+        name: "amount",
+        type: "amount",
+        description: "Amount to withdraw (0 or omit for full balance)",
+        required: false,
+        flag: "--amount",
+        shortFlag: "-a",
+        default: 0,
+    },
+];
+
 export const listRequestsParams: ParamDefinition[] = [
     ...redemptionTokenPairParams,
     {
