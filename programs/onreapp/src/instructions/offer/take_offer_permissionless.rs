@@ -1,22 +1,22 @@
 use crate::constants::seeds;
 use crate::instructions::buffer::{
-    manage_buffer::{accrue_buffer, set_buffer_baseline_after_supply_change},
-    validate_buffer_onyc_vault_accounts, BufferAccrualAccounts,
+    manage_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
+    BufferAccrualAccounts,
 };
 use crate::instructions::buffer::accounts::{
     __client_accounts_buffer_accrual_accounts, __cpi_client_accounts_buffer_accrual_accounts,
     BufferAccrualAccountsBumps,
 };
 use crate::instructions::market_info::{
-    recompute_market_stats, update_market_stats_account, write_market_stats_account,
+    refresh_market_stats_pda,
 };
 use crate::instructions::offer::offer_utils::{
     is_onyc_token_out_mint, process_offer_core, should_accrue_onyc_mint, verify_offer_approval,
 };
 use crate::instructions::Offer;
-use crate::state::{MarketStats, State};
+use crate::state::State;
 use crate::utils::{
-    execute_token_operations, load_or_init_pda_account, transfer_tokens, u64_to_dec9,
+    execute_token_operations, transfer_tokens, u64_to_dec9,
     ApprovalMessage, ExecTokenOpsParams,
 };
 use crate::OfferCoreError;
@@ -532,29 +532,12 @@ fn execute_take_offer_permissionless<'info>(
     let now = Clock::get()?.unix_timestamp;
     let post_accrual_supply = if should_accrue {
         let buffer_accounts = buffer_accounts.expect("checked above");
-        let mut buffer_state = buffer_accounts.load_buffer_state()?;
-        let buffer_vault_onyc_account = buffer_accounts.buffer_vault_onyc_account_info();
-        let management_fee_vault_onyc_account =
-            buffer_accounts.management_fee_vault_onyc_account_info();
-        let performance_fee_vault_onyc_account =
-            buffer_accounts.performance_fee_vault_onyc_account_info();
-        validate_buffer_onyc_vault_accounts(
+        let accrual = accrue_buffer_from_accounts(
             program_id,
-            &buffer_state,
-            &buffer_vault_onyc_account,
-            &management_fee_vault_onyc_account,
-            &performance_fee_vault_onyc_account,
-            token_out_mint,
-            token_out_program,
-        )?;
-        let accrual = accrue_buffer(
             state,
-            &mut buffer_state,
+            buffer_accounts,
             &offer,
             token_out_mint,
-            buffer_vault_onyc_account,
-            management_fee_vault_onyc_account,
-            performance_fee_vault_onyc_account,
             mint_authority.to_account_info(),
             ma_bump,
             token_out_program,
@@ -616,15 +599,12 @@ fn execute_take_offer_permissionless<'info>(
 
     if let Some(post_offer_supply) = post_accrual_supply {
         let buffer_accounts = buffer_accounts.expect("checked above");
-        let mut buffer_state = buffer_accounts.load_buffer_state()?;
-        set_buffer_baseline_after_supply_change(&mut buffer_state, post_offer_supply, now);
-        buffer_accounts.store_buffer_state(&buffer_state)?;
+        store_buffer_post_supply(buffer_accounts, post_offer_supply, now)?;
     }
 
     if is_onyc_token_out_mint(state, token_out_mint) {
         if let Some(market_stats) = market_stats {
-            let (market_stats_pda, market_stats_bump) =
-                Pubkey::find_program_address(&[seeds::MARKET_STATS], program_id);
+            let (market_stats_pda, _) = Pubkey::find_program_address(&[seeds::MARKET_STATS], program_id);
             require_keys_eq!(
                 market_stats_pda,
                 market_stats.key(),
@@ -635,26 +615,16 @@ fn execute_take_offer_permissionless<'info>(
                 TakeOfferPermissionlessErrorCode::MarketStatsNotWritable
             );
             token_out_mint.reload()?;
-            let market_stats_account = market_stats.to_account_info();
-            let snapshot = recompute_market_stats(
+            refresh_market_stats_pda(
                 &offer,
                 token_out_mint,
                 &vault_token_out_account.to_account_info(),
                 token_out_program,
-            )?;
-
-            let mut market_stats = load_or_init_pda_account::<MarketStats>(
-                &market_stats_account,
+                &market_stats.to_account_info(),
                 &user.to_account_info(),
                 &system_program.to_account_info(),
                 program_id,
-                market_stats_bump,
             )?;
-            market_stats.bump = market_stats_bump;
-            update_market_stats_account(&mut market_stats, snapshot)?;
-            write_market_stats_account(&market_stats_account, &market_stats).map_err(|_| {
-                <MarketStats as crate::utils::PdaAccountInit>::invalid_data_error()
-            })?;
         }
     }
 

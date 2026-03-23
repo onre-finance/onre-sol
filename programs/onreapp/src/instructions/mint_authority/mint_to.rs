@@ -2,15 +2,13 @@ use crate::constants::seeds;
 use crate::instructions::buffer::{
     __client_accounts_buffer_accrual_accounts, __cpi_client_accounts_buffer_accrual_accounts,
     accounts::BufferAccrualAccountsBumps, BufferAccrualAccounts,
-    manage_buffer::{accrue_buffer, set_buffer_baseline_after_supply_change},
-    validate_buffer_onyc_vault_accounts, BufferErrorCode,
+    manage_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
+    BufferErrorCode,
 };
-use crate::instructions::market_info::{recompute_market_stats, update_market_stats_account};
+use crate::instructions::market_info::refresh_market_stats_pda;
 use crate::instructions::offer::offer_utils::should_accrue_onyc_mint;
-use crate::state::{MarketStats, State};
-use crate::utils::{
-    load_or_init_pda_account, load_pda_account, store_pda_account,
-};
+use crate::state::State;
+use crate::utils::load_pda_account;
 use crate::utils::token_utils::mint_tokens;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
@@ -179,31 +177,12 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
 
     let post_accrual_supply = if should_accrue {
         let offer = offer.as_ref().expect("offer is checked above");
-        let mut buffer_state = ctx.accounts.buffer_accounts.load_buffer_state()?;
-        let buffer_vault_onyc_account = ctx.accounts.buffer_accounts.buffer_vault_onyc_account_info();
-        let management_fee_vault_onyc_account =
-            ctx.accounts.buffer_accounts.management_fee_vault_onyc_account_info();
-        let performance_fee_vault_onyc_account =
-            ctx.accounts.buffer_accounts.performance_fee_vault_onyc_account_info();
-
-        validate_buffer_onyc_vault_accounts(
+        let accrual = accrue_buffer_from_accounts(
             ctx.program_id,
-            &buffer_state,
-            &buffer_vault_onyc_account,
-            &management_fee_vault_onyc_account,
-            &performance_fee_vault_onyc_account,
-            &ctx.accounts.onyc_mint,
-            &ctx.accounts.token_program,
-        )?;
-
-        let accrual = accrue_buffer(
             &ctx.accounts.state,
-            &mut buffer_state,
+            &ctx.accounts.buffer_accounts,
             offer,
             &ctx.accounts.onyc_mint,
-            buffer_vault_onyc_account,
-            management_fee_vault_onyc_account,
-            performance_fee_vault_onyc_account,
             ctx.accounts.mint_authority.to_account_info(),
             ctx.bumps.mint_authority,
             &ctx.accounts.token_program,
@@ -235,37 +214,21 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
     )?;
 
     if let Some(post_mint_supply) = post_accrual_supply {
-        let mut buffer_state = ctx.accounts.buffer_accounts.load_buffer_state()?;
-        set_buffer_baseline_after_supply_change(&mut buffer_state, post_mint_supply, now);
-        ctx.accounts.buffer_accounts.store_buffer_state(&buffer_state)?;
+        store_buffer_post_supply(&ctx.accounts.buffer_accounts, post_mint_supply, now)?;
     }
 
     if let Some(offer) = offer.as_ref() {
         ctx.accounts.onyc_mint.reload()?;
-        let snapshot = recompute_market_stats(
+        refresh_market_stats_pda(
             offer,
             &ctx.accounts.onyc_mint,
             &ctx.accounts.offer_vault_onyc_account.to_account_info(),
             &ctx.accounts.token_program,
-        )?;
-        let (market_stats_pda, market_stats_bump) =
-            Pubkey::find_program_address(&[seeds::MARKET_STATS], ctx.program_id);
-        require_keys_eq!(
-            ctx.accounts.market_stats.key(),
-            market_stats_pda,
-            BufferErrorCode::InvalidOnycMint
-        );
-        let market_stats_account = ctx.accounts.market_stats.to_account_info();
-        let mut market_stats = load_or_init_pda_account::<MarketStats>(
-            &market_stats_account,
+            &ctx.accounts.market_stats.to_account_info(),
             &ctx.accounts.boss.to_account_info(),
             &ctx.accounts.system_program.to_account_info(),
             ctx.program_id,
-            market_stats_bump,
         )?;
-        market_stats.bump = market_stats_bump;
-        update_market_stats_account(&mut market_stats, snapshot)?;
-        store_pda_account(&market_stats_account, &market_stats)?;
     }
 
     msg!("Minted {} ONyc tokens to boss account", amount);

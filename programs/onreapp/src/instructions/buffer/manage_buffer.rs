@@ -1,7 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::buffer::{
     calculate_buffer_fee_split, calculate_gross_buffer_accrual, BufferErrorCode,
-    BufferManagedEvent, BufferState,
+    BufferManagedEvent, BufferState, BufferAccrualAccounts, validate_buffer_onyc_vault_accounts,
 };
 use crate::instructions::market_info::offer_valuation_utils::get_active_vector_and_current_price;
 use crate::instructions::Offer;
@@ -291,6 +291,47 @@ pub(crate) fn accrue_buffer<'info>(
     })
 }
 
+pub(crate) fn accrue_buffer_from_accounts<'info>(
+    program_id: &Pubkey,
+    state: &Account<'info, State>,
+    buffer_accounts: &BufferAccrualAccounts<'info>,
+    offer: &Offer,
+    onyc_mint: &InterfaceAccount<'info, Mint>,
+    mint_authority: AccountInfo<'info>,
+    mint_authority_bump: u8,
+    token_program: &Interface<'info, TokenInterface>,
+    now: i64,
+) -> Result<BufferAccrualResult> {
+    let mut buffer_state = buffer_accounts.load_buffer_state()?;
+    let buffer_vault_onyc_account = buffer_accounts.buffer_vault_onyc_account_info();
+    let management_fee_vault_onyc_account = buffer_accounts.management_fee_vault_onyc_account_info();
+    let performance_fee_vault_onyc_account = buffer_accounts.performance_fee_vault_onyc_account_info();
+
+    validate_buffer_onyc_vault_accounts(
+        program_id,
+        &buffer_state,
+        &buffer_vault_onyc_account,
+        &management_fee_vault_onyc_account,
+        &performance_fee_vault_onyc_account,
+        onyc_mint,
+        token_program,
+    )?;
+
+    accrue_buffer(
+        state,
+        &mut buffer_state,
+        offer,
+        onyc_mint,
+        buffer_vault_onyc_account,
+        management_fee_vault_onyc_account,
+        performance_fee_vault_onyc_account,
+        mint_authority,
+        mint_authority_bump,
+        token_program,
+        now,
+    )
+}
+
 pub(crate) fn set_buffer_baseline_after_supply_change(
     buffer_state: &mut BufferState,
     post_change_supply: u64,
@@ -298,4 +339,14 @@ pub(crate) fn set_buffer_baseline_after_supply_change(
 ) {
     buffer_state.lowest_supply = post_change_supply;
     buffer_state.last_accrual_timestamp = now;
+}
+
+pub(crate) fn store_buffer_post_supply<'info>(
+    buffer_accounts: &BufferAccrualAccounts<'info>,
+    post_change_supply: u64,
+    now: i64,
+) -> Result<()> {
+    let mut buffer_state = buffer_accounts.load_buffer_state()?;
+    set_buffer_baseline_after_supply_change(&mut buffer_state, post_change_supply, now);
+    buffer_accounts.store_buffer_state(&buffer_state)
 }

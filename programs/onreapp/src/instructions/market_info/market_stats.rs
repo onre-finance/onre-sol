@@ -1,4 +1,5 @@
 use crate::constants::PRICE_DECIMALS;
+use crate::constants::seeds;
 use crate::instructions::market_info::get_apy::calculate_apy_from_apr;
 use crate::instructions::market_info::get_nav_adjustment::find_previous_vector;
 use crate::instructions::offer::offer_utils::{
@@ -6,7 +7,9 @@ use crate::instructions::offer::offer_utils::{
 };
 use crate::instructions::Offer;
 use crate::state::MarketStats;
-use crate::utils::{read_optional_token_account_amount, PdaAccountInit};
+use crate::utils::{
+    load_or_init_pda_account, read_optional_token_account_amount, store_pda_account, PdaAccountInit,
+};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenInterface};
 
@@ -118,6 +121,50 @@ pub fn update_market_stats_account(
     let clock = Clock::get()?;
     apply_market_stats_snapshot(market_stats, snapshot, &clock);
     Ok(())
+}
+
+pub fn refresh_market_stats_typed(
+    offer: &Offer,
+    onyc_mint: &InterfaceAccount<Mint>,
+    onyc_vault_account: &AccountInfo,
+    token_program: &Interface<TokenInterface>,
+    market_stats: &mut MarketStats,
+    bump: u8,
+) -> Result<()> {
+    let snapshot = recompute_market_stats(offer, onyc_mint, onyc_vault_account, token_program)?;
+    market_stats.bump = bump;
+    update_market_stats_account(market_stats, snapshot)
+}
+
+pub fn refresh_market_stats_pda<'info>(
+    offer: &Offer,
+    onyc_mint: &InterfaceAccount<'info, Mint>,
+    onyc_vault_account: &AccountInfo<'info>,
+    token_program: &Interface<'info, TokenInterface>,
+    market_stats_account: &AccountInfo<'info>,
+    payer: &AccountInfo<'info>,
+    system_program: &AccountInfo<'info>,
+    program_id: &Pubkey,
+) -> Result<()> {
+    let snapshot = recompute_market_stats(offer, onyc_mint, onyc_vault_account, token_program)?;
+    let (market_stats_pda, market_stats_bump) =
+        Pubkey::find_program_address(&[seeds::MARKET_STATS], program_id);
+    require_keys_eq!(
+        market_stats_account.key(),
+        market_stats_pda,
+        MarketStatsErrorCode::InvalidMarketStatsOwner
+    );
+
+    let mut market_stats = load_or_init_pda_account::<MarketStats>(
+        market_stats_account,
+        payer,
+        system_program,
+        program_id,
+        market_stats_bump,
+    )?;
+    market_stats.bump = market_stats_bump;
+    update_market_stats_account(&mut market_stats, snapshot)?;
+    store_pda_account(market_stats_account, &market_stats)
 }
 
 pub fn apply_market_stats_snapshot(

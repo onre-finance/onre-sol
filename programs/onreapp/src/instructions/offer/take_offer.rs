@@ -1,13 +1,13 @@
 use crate::constants::seeds;
 use crate::instructions::buffer::{
-    validate_buffer_onyc_vault_accounts, BufferAccrualAccounts,
-    manage_buffer::{accrue_buffer, set_buffer_baseline_after_supply_change},
+    BufferAccrualAccounts,
+    manage_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
 };
 use crate::instructions::buffer::accounts::{
     __client_accounts_buffer_accrual_accounts, __cpi_client_accounts_buffer_accrual_accounts,
     BufferAccrualAccountsBumps,
 };
-use crate::instructions::market_info::{recompute_market_stats, update_market_stats_account};
+use crate::instructions::market_info::refresh_market_stats_typed;
 use crate::instructions::offer::offer_utils::{
     is_onyc_token_out_mint, process_offer_core, should_accrue_onyc_mint, verify_offer_approval,
 };
@@ -479,31 +479,13 @@ pub fn take_offer_extended(
 
     let now = Clock::get()?.unix_timestamp;
     let post_accrual_supply = if should_accrue_onyc_mint {
-        let mut buffer_state = ctx.accounts.buffer_accounts.load_buffer_state()?;
-        let buffer_vault_onyc_account = ctx.accounts.buffer_accounts.buffer_vault_onyc_account_info();
-        let management_fee_vault_onyc_account =
-            ctx.accounts.buffer_accounts.management_fee_vault_onyc_account_info();
-        let performance_fee_vault_onyc_account =
-            ctx.accounts.buffer_accounts.performance_fee_vault_onyc_account_info();
-        let mint_authority = ctx.accounts.mint_authority.to_account_info();
-        validate_buffer_onyc_vault_accounts(
+        let accrual = accrue_buffer_from_accounts(
             ctx.program_id,
-            &buffer_state,
-            &buffer_vault_onyc_account,
-            &management_fee_vault_onyc_account,
-            &performance_fee_vault_onyc_account,
-            &ctx.accounts.token_out_mint,
-            &ctx.accounts.token_out_program,
-        )?;
-        let accrual = accrue_buffer(
             &ctx.accounts.state,
-            &mut buffer_state,
+            &ctx.accounts.buffer_accounts,
             &offer,
             &ctx.accounts.token_out_mint,
-            buffer_vault_onyc_account,
-            management_fee_vault_onyc_account,
-            performance_fee_vault_onyc_account,
-            mint_authority,
+            ctx.accounts.mint_authority.to_account_info(),
             ctx.bumps.mint_authority,
             &ctx.accounts.token_out_program,
             now,
@@ -545,22 +527,19 @@ pub fn take_offer_extended(
     })?;
 
     if let Some(post_offer_supply) = post_accrual_supply {
-        let mut buffer_state = ctx.accounts.buffer_accounts.load_buffer_state()?;
-        set_buffer_baseline_after_supply_change(&mut buffer_state, post_offer_supply, now);
-        ctx.accounts.buffer_accounts.store_buffer_state(&buffer_state)?;
+        store_buffer_post_supply(&ctx.accounts.buffer_accounts, post_offer_supply, now)?;
     }
 
     if is_onyc_token_out_mint(&ctx.accounts.state, &ctx.accounts.token_out_mint) {
         ctx.accounts.token_out_mint.reload()?;
-        let snapshot = recompute_market_stats(
+        refresh_market_stats_typed(
             &offer,
             &ctx.accounts.token_out_mint,
             &ctx.accounts.vault_token_out_account.to_account_info(),
             &ctx.accounts.token_out_program,
+            &mut ctx.accounts.market_stats,
+            ctx.bumps.market_stats,
         )?;
-        let market_stats = &mut ctx.accounts.market_stats;
-        market_stats.bump = ctx.bumps.market_stats;
-        update_market_stats_account(market_stats, snapshot)?;
     }
 
     msg!(
