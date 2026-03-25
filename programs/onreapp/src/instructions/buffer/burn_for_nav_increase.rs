@@ -3,7 +3,7 @@ use crate::instructions::buffer::{
     manage_buffer::{accrue_buffer, set_buffer_baseline_after_supply_change},
     BufferBurnedForNavEvent, BufferErrorCode, BufferState,
 };
-use crate::instructions::market_info::calculate_tvl;
+use crate::instructions::market_info::{calculate_tvl, refresh_market_stats_pda};
 use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::math_utils::ceil_div_u128;
@@ -104,6 +104,11 @@ pub struct BurnForNavIncrease<'info> {
     pub mint_authority: UncheckedAccount<'info>,
 
     pub token_program: Interface<'info, TokenInterface>,
+    pub system_program: Program<'info, System>,
+
+    /// CHECK: Validated and optionally initialized in instruction logic.
+    #[account(mut)]
+    pub market_stats: UncheckedAccount<'info>,
 }
 
 pub fn burn_for_nav_increase(
@@ -229,6 +234,18 @@ pub fn burn_for_nav_increase(
         .checked_sub(burn_amount)
         .ok_or(BufferErrorCode::MathOverflow)?;
     set_buffer_baseline_after_supply_change(&mut ctx.accounts.buffer_state, post_burn_supply, now);
+
+    ctx.accounts.onyc_mint.reload()?;
+    refresh_market_stats_pda(
+        &offer,
+        &ctx.accounts.onyc_mint,
+        &ctx.accounts.vault_token_out_account.to_account_info(),
+        &ctx.accounts.token_program,
+        &ctx.accounts.market_stats.to_account_info(),
+        &ctx.accounts.boss.to_account_info(),
+        &ctx.accounts.system_program.to_account_info(),
+        ctx.program_id,
+    )?;
 
     emit!(BufferBurnedForNavEvent {
         burn_amount,

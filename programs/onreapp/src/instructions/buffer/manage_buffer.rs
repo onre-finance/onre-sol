@@ -3,13 +3,14 @@ use crate::instructions::buffer::{
     calculate_buffer_fee_split, calculate_gross_buffer_accrual, BufferErrorCode,
     BufferManagedEvent, BufferState, BufferAccrualAccounts, validate_buffer_onyc_vault_accounts,
 };
+use crate::instructions::market_info::refresh_market_stats_pda;
 use crate::instructions::market_info::offer_valuation_utils::get_active_vector_and_current_price;
 use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::token_utils::{mint_tokens, read_optional_token_account_amount, TokenUtilsErrorCode};
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program_option::COption;
-use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::associated_token::{get_associated_token_address_with_program_id, AssociatedToken};
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 pub(crate) struct BufferAccrualResult {
@@ -107,6 +108,30 @@ pub struct ManageBuffer<'info> {
 
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
+
+    #[account(mut)]
+    pub caller: Signer<'info>,
+
+    /// CHECK: PDA derivation is validated by seeds constraint
+    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
+    pub offer_vault_authority: UncheckedAccount<'info>,
+
+    /// CHECK: Address is validated against the canonical ATA derivation.
+    #[account(
+        constraint = offer_vault_onyc_account.key()
+            == get_associated_token_address_with_program_id(
+                &offer_vault_authority.key(),
+                &onyc_mint.key(),
+                &token_program.key(),
+            ) @ crate::instructions::market_info::GetCirculatingSupplyErrorCode::InvalidVaultAccount
+    )]
+    pub offer_vault_onyc_account: UncheckedAccount<'info>,
+
+    /// CHECK: Validated and optionally initialized in instruction logic.
+    #[account(mut)]
+    pub market_stats: UncheckedAccount<'info>,
+
+    pub system_program: Program<'info, System>,
 }
 
 pub fn manage_buffer(ctx: Context<ManageBuffer>) -> Result<()> {
@@ -130,6 +155,18 @@ pub fn manage_buffer(ctx: Context<ManageBuffer>) -> Result<()> {
         ctx.bumps.mint_authority,
         &ctx.accounts.token_program,
         now,
+    )?;
+
+    ctx.accounts.onyc_mint.reload()?;
+    refresh_market_stats_pda(
+        &offer,
+        &ctx.accounts.onyc_mint,
+        &ctx.accounts.offer_vault_onyc_account.to_account_info(),
+        &ctx.accounts.token_program,
+        &ctx.accounts.market_stats.to_account_info(),
+        &ctx.accounts.caller.to_account_info(),
+        &ctx.accounts.system_program.to_account_info(),
+        ctx.program_id,
     )?;
 
     emit!(BufferManagedEvent {

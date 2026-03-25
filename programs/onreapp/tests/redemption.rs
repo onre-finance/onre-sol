@@ -1638,6 +1638,10 @@ fn test_fulfill_redemption_request_burn_and_mint() {
     // Boss receives fee in onyc: 50_000_000
     let boss_onyc_ata = get_associated_token_address(&boss, &onyc_mint);
     assert_eq!(get_token_balance(&svm, &boss_onyc_ata), 50_000_000);
+
+    let market_stats = read_market_stats(&svm);
+    assert_eq!(market_stats.circulating_supply, 50_000_000);
+    assert_eq!(market_stats.tvl, 50_000_000);
 }
 
 #[test]

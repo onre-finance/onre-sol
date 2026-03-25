@@ -596,6 +596,9 @@ fn test_manage_buffer_mints_expected_amount() {
 
     assert_eq!(get_token_balance(&svm, &buffer_vault_ata), 100_000_000);
     assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_100_000_000);
+    let market_stats = read_market_stats(&svm);
+    assert_eq!(market_stats.circulating_supply, 1_100_000_000);
+    assert!(market_stats.tvl > market_stats.circulating_supply);
 }
 
 #[test]
@@ -634,6 +637,9 @@ fn test_burn_for_nav_increase_success() {
 
     assert_eq!(get_token_balance(&svm, &buffer_vault_ata), 50_000_000);
     assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_050_000_000);
+    let market_stats = read_market_stats(&svm);
+    assert_eq!(market_stats.circulating_supply, 1_050_000_000);
+    assert_eq!(market_stats.tvl, 1_050_000_000);
 }
 
 #[test]

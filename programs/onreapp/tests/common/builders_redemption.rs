@@ -124,8 +124,11 @@ pub fn build_fulfill_redemption_request_ix(
     let (redemption_request_pda, _) = find_redemption_request_pda(&redemption_offer_pda, request_id);
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
+    let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
+    let (market_stats_pda, _) = find_market_stats_pda();
     let vault_token_in_ata = derive_ata(&redemption_vault_authority_pda, token_in_mint, token_in_program);
     let vault_token_out_ata = derive_ata(&redemption_vault_authority_pda, token_out_mint, token_out_program);
+    let offer_vault_onyc_ata = derive_ata(&offer_vault_authority_pda, token_in_mint, token_in_program);
     let user_token_out_ata = derive_ata(redeemer, token_out_mint, token_out_program);
     let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
     let mut data = ix_discriminator("fulfill_redemption_request").to_vec();
@@ -152,6 +155,9 @@ pub fn build_fulfill_redemption_request_ix(
             AccountMeta::new(*redemption_admin, true),
             AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+            AccountMeta::new_readonly(offer_vault_authority_pda, false),
+            AccountMeta::new_readonly(offer_vault_onyc_ata, false),
+            AccountMeta::new(market_stats_pda, false),
         ],
         data,
     }

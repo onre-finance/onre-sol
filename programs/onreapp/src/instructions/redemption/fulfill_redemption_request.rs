@@ -8,6 +8,7 @@ use crate::instructions::buffer::accounts::{
     __client_accounts_buffer_accrual_accounts, __cpi_client_accounts_buffer_accrual_accounts,
     BufferAccrualAccountsBumps,
 };
+use crate::instructions::market_info::refresh_market_stats_pda;
 use crate::instructions::redemption::{
     execute_redemption_operations, process_redemption_core, ExecuteRedemptionOpsParams,
     RedemptionOffer, RedemptionRequest,
@@ -17,7 +18,7 @@ use crate::state::State;
 use crate::utils::program_controls_mint;
 use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::{
-    associated_token::AssociatedToken,
+    associated_token::{get_associated_token_address_with_program_id, AssociatedToken},
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
@@ -217,6 +218,25 @@ pub struct FulfillRedemptionRequest<'info> {
 
     /// System program required for account creation
     pub system_program: Program<'info, System>,
+
+    /// CHECK: PDA derivation is validated by seeds constraint
+    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
+    pub offer_vault_authority: UncheckedAccount<'info>,
+
+    /// CHECK: Address is validated against the canonical ATA derivation.
+    #[account(
+        constraint = offer_vault_onyc_account.key()
+            == get_associated_token_address_with_program_id(
+                &offer_vault_authority.key(),
+                &token_in_mint.key(),
+                &token_in_program.key(),
+            ) @ crate::instructions::market_info::GetCirculatingSupplyErrorCode::InvalidVaultAccount
+    )]
+    pub offer_vault_onyc_account: UncheckedAccount<'info>,
+
+    /// CHECK: Validated and optionally initialized in instruction logic.
+    #[account(mut)]
+    pub market_stats: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -343,6 +363,25 @@ pub struct FulfillRedemptionRequestExtended<'info> {
 
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
+
+    /// CHECK: PDA derivation is validated by seeds constraint
+    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
+    pub offer_vault_authority: UncheckedAccount<'info>,
+
+    /// CHECK: Address is validated against the canonical ATA derivation.
+    #[account(
+        constraint = offer_vault_onyc_account.key()
+            == get_associated_token_address_with_program_id(
+                &offer_vault_authority.key(),
+                &token_in_mint.key(),
+                &token_in_program.key(),
+            ) @ crate::instructions::market_info::GetCirculatingSupplyErrorCode::InvalidVaultAccount
+    )]
+    pub offer_vault_onyc_account: UncheckedAccount<'info>,
+
+    /// CHECK: Validated and optionally initialized in instruction logic.
+    #[account(mut)]
+    pub market_stats: UncheckedAccount<'info>,
 }
 
 /// Fulfills a redemption request, either fully or partially
@@ -389,18 +428,21 @@ pub fn fulfill_redemption_request(
             redemption_request: &mut ctx.accounts.redemption_request,
             vault_token_in_account: &ctx.accounts.vault_token_in_account,
             vault_token_out_account: &ctx.accounts.vault_token_out_account,
-            token_in_mint: &ctx.accounts.token_in_mint,
+            token_in_mint: &mut ctx.accounts.token_in_mint,
             token_in_program: &ctx.accounts.token_in_program,
             token_out_mint: &ctx.accounts.token_out_mint,
             token_out_program: &ctx.accounts.token_out_program,
             user_token_out_account: &ctx.accounts.user_token_out_account,
             boss_token_in_account: &ctx.accounts.boss_token_in_account,
             mint_authority: &ctx.accounts.mint_authority,
+            offer_vault_onyc_account: &ctx.accounts.offer_vault_onyc_account,
             redemption_vault_authority: &ctx.accounts.redemption_vault_authority,
             redemption_vault_authority_bump: ctx.bumps.redemption_vault_authority,
             mint_authority_bump: ctx.bumps.mint_authority,
+            market_stats: &ctx.accounts.market_stats,
             redeemer: &ctx.accounts.redeemer,
             redemption_admin: &ctx.accounts.redemption_admin,
+            system_program: &ctx.accounts.system_program,
             buffer_accounts: None,
         },
         amount,
@@ -420,18 +462,21 @@ pub fn fulfill_redemption_request_extended(
             redemption_request: &mut ctx.accounts.redemption_request,
             vault_token_in_account: &ctx.accounts.vault_token_in_account,
             vault_token_out_account: &ctx.accounts.vault_token_out_account,
-            token_in_mint: &ctx.accounts.token_in_mint,
+            token_in_mint: &mut ctx.accounts.token_in_mint,
             token_in_program: &ctx.accounts.token_in_program,
             token_out_mint: &ctx.accounts.token_out_mint,
             token_out_program: &ctx.accounts.token_out_program,
             user_token_out_account: &ctx.accounts.user_token_out_account,
             boss_token_in_account: &ctx.accounts.boss_token_in_account,
             mint_authority: &ctx.accounts.mint_authority,
+            offer_vault_onyc_account: &ctx.accounts.offer_vault_onyc_account,
             redemption_vault_authority: &ctx.accounts.redemption_vault_authority,
             redemption_vault_authority_bump: ctx.bumps.redemption_vault_authority,
             mint_authority_bump: ctx.bumps.mint_authority,
+            market_stats: &ctx.accounts.market_stats,
             redeemer: &ctx.accounts.redeemer,
             redemption_admin: &ctx.accounts.redemption_admin,
+            system_program: &ctx.accounts.system_program,
             buffer_accounts: Some(&ctx.accounts.buffer_accounts),
         },
         amount,
@@ -446,18 +491,21 @@ struct ExecuteFulfillRedemptionRequestParams<'a, 'info> {
     redemption_request: &'a mut Account<'info, RedemptionRequest>,
     vault_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
     vault_token_out_account: &'a InterfaceAccount<'info, TokenAccount>,
-    token_in_mint: &'a InterfaceAccount<'info, Mint>,
+    token_in_mint: &'a mut InterfaceAccount<'info, Mint>,
     token_in_program: &'a Interface<'info, TokenInterface>,
     token_out_mint: &'a InterfaceAccount<'info, Mint>,
     token_out_program: &'a Interface<'info, TokenInterface>,
     user_token_out_account: &'a InterfaceAccount<'info, TokenAccount>,
     boss_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
     mint_authority: &'a UncheckedAccount<'info>,
+    offer_vault_onyc_account: &'a UncheckedAccount<'info>,
     redemption_vault_authority: &'a UncheckedAccount<'info>,
     redemption_vault_authority_bump: u8,
     mint_authority_bump: u8,
+    market_stats: &'a UncheckedAccount<'info>,
     redeemer: &'a UncheckedAccount<'info>,
     redemption_admin: &'a Signer<'info>,
+    system_program: &'a Program<'info, System>,
     buffer_accounts: Option<&'a BufferAccrualAccounts<'info>>,
 }
 
@@ -492,10 +540,11 @@ fn execute_fulfill_redemption_request<'info>(
     let token_in_net_amount = result.token_in_net_amount;
     let token_in_fee_amount = result.token_in_fee_amount;
     let token_out_amount = result.token_out_amount;
+    let should_refresh_market_stats = params.token_in_mint.key() == params.state.onyc_mint
+        && program_controls_mint(params.token_in_mint, &params.mint_authority.to_account_info());
 
     if let Some(buffer_accounts) = params.buffer_accounts.filter(|_| {
-        params.token_in_mint.key() == params.state.onyc_mint
-            && program_controls_mint(params.token_in_mint, &params.mint_authority.to_account_info())
+        should_refresh_market_stats
     }) {
         let now = Clock::get()?.unix_timestamp;
         let accrual = accrue_buffer_from_accounts(
@@ -535,8 +584,6 @@ fn execute_fulfill_redemption_request<'info>(
             .ok_or(BufferErrorCode::MathOverflow)?;
         store_buffer_post_supply(buffer_accounts, post_burn_supply, now)?;
     } else {
-        drop(offer);
-
         // Execute token operations (burn/transfer token_in_net, mint/transfer token_out)
         // Fee transfer is handled inside execute_redemption_operations
         execute_redemption_operations(ExecuteRedemptionOpsParams {
@@ -557,6 +604,20 @@ fn execute_fulfill_redemption_request<'info>(
             mint_authority_bump: params.mint_authority_bump,
             token_out_max_supply: 0, // No max supply cap for redemptions
         })?;
+    }
+
+    if should_refresh_market_stats {
+        params.token_in_mint.reload()?;
+        refresh_market_stats_pda(
+            &offer,
+            params.token_in_mint,
+            &params.offer_vault_onyc_account.to_account_info(),
+            params.token_in_program,
+            &params.market_stats.to_account_info(),
+            &params.redemption_admin.to_account_info(),
+            &params.system_program.to_account_info(),
+            params.program_id,
+        )?;
     }
 
     // Update fulfilled amount on the request

@@ -746,6 +746,14 @@
         },
         {
           "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "market_stats",
+          "writable": true
         }
       ],
       "args": [
@@ -2408,6 +2416,46 @@
             "System program required for account creation"
           ],
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "offer_vault_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "offer_vault_onyc_account"
+        },
+        {
+          "name": "market_stats",
+          "writable": true
         }
       ],
       "args": [
@@ -2891,6 +2939,46 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "offer_vault_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "offer_vault_onyc_account"
+        },
+        {
+          "name": "market_stats",
+          "writable": true
         }
       ],
       "args": [
@@ -5012,6 +5100,55 @@
         {
           "name": "associated_token_program",
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "caller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "offer_vault_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "offer_vault_onyc_account"
+        },
+        {
+          "name": "market_stats",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -5228,176 +5365,6 @@
           ]
         },
         {
-          "name": "offer_vault_authority"
-        },
-        {
-          "name": "offer_vault_onyc_account",
-          "writable": true
-        },
-        {
-          "name": "market_stats",
-          "writable": true
-        }
-      ],
-      "args": [
-        {
-          "name": "amount",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "mint_to_extended",
-      "docs": [
-        "Mints ONyc tokens while accruing BUFFER before the mint.",
-        "",
-        "Uses the extended buffer-aware instruction that settles accrual before minting."
-      ],
-      "discriminator": [
-        149,
-        43,
-        15,
-        117,
-        138,
-        155,
-        165,
-        10
-      ],
-      "accounts": [
-        {
-          "name": "state",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "boss",
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "onyc_mint",
-          "writable": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "boss_onyc_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "boss"
-              },
-              {
-                "kind": "account",
-                "path": "token_program"
-              },
-              {
-                "kind": "account",
-                "path": "onyc_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "mint_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  105,
-                  110,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "token_program"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "offer"
-        },
-        {
-          "name": "buffer_state",
-          "writable": true
-        },
-        {
           "name": "offer_vault_authority",
           "pda": {
             "seeds": [
@@ -5431,44 +5398,12 @@
           }
         },
         {
-          "name": "offer_vault_onyc_account"
-        },
-        {
-          "name": "buffer_vault_onyc_account",
-          "writable": true
-        },
-        {
-          "name": "management_fee_vault_onyc_account",
-          "writable": true
-        },
-        {
-          "name": "performance_fee_vault_onyc_account",
+          "name": "offer_vault_onyc_account",
           "writable": true
         },
         {
           "name": "market_stats",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  114,
-                  107,
-                  101,
-                  116,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  115
-                ]
-              }
-            ]
-          }
+          "writable": true
         }
       ],
       "args": [
