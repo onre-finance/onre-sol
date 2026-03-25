@@ -163,7 +163,7 @@ pub fn get_apy(ctx: Context<GetAPY>) -> Result<u64> {
 /// fixed-point arithmetic to maintain accuracy across the full range of input values.
 ///
 /// # Mathematical Formula
-/// ```
+/// ```text
 /// APY = (1 + APR/365)^365 - 1
 /// ```
 ///

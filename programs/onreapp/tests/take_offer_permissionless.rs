@@ -479,7 +479,7 @@ fn test_permissionless_basic_success() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -526,7 +526,7 @@ fn test_permissionless_price_first_interval() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -563,7 +563,7 @@ fn test_permissionless_price_with_fee() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -605,7 +605,7 @@ fn test_permissionless_price_second_interval() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -658,7 +658,7 @@ fn test_permissionless_most_recent_active_vector() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -701,7 +701,7 @@ fn test_permissionless_fail_no_active_vector() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
     assert!(result.is_err(), "should fail with no active vector");
     assert!(
         ctx.svm.get_account(&market_stats_pda).is_none(),
@@ -738,7 +738,7 @@ fn test_permissionless_fail_insufficient_user_balance() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
     assert!(result.is_err(), "should fail with insufficient balance");
 }
 
@@ -772,7 +772,7 @@ fn test_permissionless_fail_insufficient_vault_balance() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
     assert!(
         result.is_err(),
         "should fail with insufficient vault balance"
@@ -813,7 +813,7 @@ fn test_permissionless_zero_apr_fixed_price() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -854,7 +854,7 @@ fn test_permissionless_high_apr_long_period() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -902,7 +902,7 @@ fn test_permissionless_vault_transfer_token_out() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let supply_after = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
     let user_onyc = get_token_balance(
@@ -961,7 +961,7 @@ fn test_permissionless_user_to_boss_transfer() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_usdc_after = get_token_balance(
         &ctx.svm,
@@ -1040,7 +1040,7 @@ fn test_permissionless_mint_token_out_with_mint_authority() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -1103,7 +1103,7 @@ fn test_permissionless_burn_token_in_with_mint_authority() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let supply_after = get_mint_supply(&ctx.svm, &ctx.usdc_mint);
     let boss_usdc_after = get_token_balance(
@@ -1157,7 +1157,7 @@ fn test_permissionless_fee_calculations_when_minting() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     // Boss receives full amount (fee included in transfer)
     let boss_usdc = get_token_balance(
@@ -1219,7 +1219,7 @@ fn test_permissionless_kill_switch_rejects() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
     assert!(
         result.is_err(),
         "kill switch should block permissionless take"
@@ -1334,7 +1334,7 @@ fn test_permissionless_kill_switch_disabled_allows() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
