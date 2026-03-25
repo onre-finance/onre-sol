@@ -3,7 +3,7 @@ use crate::instructions::buffer::{
     manage_buffer::{accrue_buffer, set_buffer_baseline_after_supply_change},
     BufferBurnedForNavEvent, BufferErrorCode, BufferState,
 };
-use crate::instructions::market_info::offer_valuation_utils::compute_tvl_from_supply_and_price;
+use crate::instructions::market_info::calculate_tvl;
 use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::math_utils::ceil_div_u128;
@@ -167,8 +167,8 @@ pub fn burn_for_nav_increase(
     )?;
     let current_supply_after_accrual = accrual.post_accrual_supply;
     let token_supply = current_supply_after_accrual.saturating_sub(vault_token_out_amount);
-    let total_assets = compute_tvl_from_supply_and_price(token_supply, current_price)
-        .ok_or(BufferErrorCode::MathOverflow)?;
+    let total_assets =
+        calculate_tvl(token_supply, current_price).map_err(|_| error!(BufferErrorCode::MathOverflow))?;
 
     require!(
         total_assets >= asset_adjustment_amount,

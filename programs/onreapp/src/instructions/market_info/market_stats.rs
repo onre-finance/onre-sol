@@ -2,8 +2,8 @@ use crate::constants::PRICE_DECIMALS;
 use crate::constants::seeds;
 use crate::instructions::market_info::get_apy::calculate_apy_from_apr;
 use crate::instructions::market_info::get_nav_adjustment::find_previous_vector;
-use crate::instructions::offer::offer_utils::{
-    calculate_current_step_price, calculate_step_price_at, find_active_vector_at,
+use crate::instructions::market_info::offer_valuation_utils::{
+    compute_signed_price_delta, compute_vector_price_at_time, get_active_vector_and_current_price,
 };
 use crate::instructions::Offer;
 use crate::state::MarketStats;
@@ -89,15 +89,8 @@ pub fn recompute_market_stats(
     );
 
     let current_time = Clock::get()?.unix_timestamp as u64;
-    let active_vector = find_active_vector_at(offer, current_time)?;
-
+    let (active_vector, nav) = get_active_vector_and_current_price(offer, current_time)?;
     let apy = calculate_apy_from_apr(active_vector.apr)?;
-    let nav = calculate_current_step_price(
-        active_vector.apr,
-        active_vector.base_price,
-        active_vector.base_time,
-        active_vector.price_fix_duration,
-    )?;
     let nav_adjustment = calculate_nav_adjustment(offer, active_vector)?;
 
     let vault_amount = read_optional_token_account_amount(onyc_vault_account, token_program)?;
@@ -200,29 +193,13 @@ pub fn calculate_nav_adjustment(
     offer: &Offer,
     active_vector: crate::instructions::OfferVector,
 ) -> Result<i64> {
-    let current_price = calculate_step_price_at(
-        active_vector.apr,
-        active_vector.base_price,
-        active_vector.base_time,
-        active_vector.price_fix_duration,
-        active_vector.start_time,
-    )?;
+    let current_price = compute_vector_price_at_time(&active_vector, active_vector.start_time)?;
 
     let adjustment = if let Some(previous_vector) =
         find_previous_vector(offer, active_vector.start_time)
     {
-        let previous_price = calculate_step_price_at(
-            previous_vector.apr,
-            previous_vector.base_price,
-            previous_vector.base_time,
-            previous_vector.price_fix_duration,
-            active_vector.start_time,
-        )?;
-
-        i64::try_from(current_price)
-            .and_then(|current_price| {
-                i64::try_from(previous_price).map(|previous_price| current_price - previous_price)
-            })
+        let previous_price = compute_vector_price_at_time(&previous_vector, active_vector.start_time)?;
+        compute_signed_price_delta(current_price, previous_price)
             .map_err(|_| error!(MarketStatsErrorCode::Overflow))?
     } else {
         i64::try_from(current_price).map_err(|_| error!(MarketStatsErrorCode::Overflow))?

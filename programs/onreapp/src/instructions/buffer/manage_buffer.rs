@@ -341,8 +341,8 @@ pub(crate) fn set_buffer_baseline_after_supply_change(
     buffer_state.last_accrual_timestamp = now;
 }
 
-pub(crate) fn store_buffer_post_supply<'info>(
-    buffer_accounts: &BufferAccrualAccounts<'info>,
+pub(crate) fn store_buffer_post_supply(
+    buffer_accounts: &BufferAccrualAccounts,
     post_change_supply: u64,
     now: i64,
 ) -> Result<()> {

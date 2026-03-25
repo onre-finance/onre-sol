@@ -1,7 +1,8 @@
 use crate::constants::seeds;
 use crate::instructions::market_info::market_stats::calculate_nav_adjustment as calculate_market_stats_nav_adjustment;
+use crate::instructions::market_info::offer_valuation_utils::compute_vector_price_at_time;
 use crate::instructions::offer::offer_utils::find_active_vector_at;
-use crate::instructions::{calculate_step_price_at, Offer};
+use crate::instructions::Offer;
 use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
@@ -115,23 +116,11 @@ pub fn get_nav_adjustment(ctx: Context<GetNavAdjustment>) -> Result<i64> {
     let active_vector = find_active_vector_at(&offer, current_time)?;
 
     // Calculate price at the start of the active vector
-    let current_price = calculate_step_price_at(
-        active_vector.apr,
-        active_vector.base_price,
-        active_vector.base_time,
-        active_vector.price_fix_duration,
-        active_vector.start_time,
-    )?;
+    let current_price = compute_vector_price_at_time(&active_vector, active_vector.start_time)?;
 
     let (previous_price_opt, adjustment) =
         if let Some(previous_vector) = find_previous_vector(&offer, active_vector.start_time) {
-            let previous_price = calculate_step_price_at(
-                previous_vector.apr,
-                previous_vector.base_price,
-                previous_vector.base_time,
-                previous_vector.price_fix_duration,
-                active_vector.start_time,
-            )?;
+            let previous_price = compute_vector_price_at_time(&previous_vector, active_vector.start_time)?;
 
             let shared_adjustment = calculate_market_stats_nav_adjustment(&offer, active_vector)?;
             (Some(previous_price), shared_adjustment)

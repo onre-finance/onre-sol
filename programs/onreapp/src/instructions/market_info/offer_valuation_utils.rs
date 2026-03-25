@@ -1,4 +1,3 @@
-use crate::constants::PRICE_DECIMALS;
 use crate::instructions::offer::offer_utils::{
     calculate_current_step_price, calculate_step_price_at, find_active_vector_at,
 };
@@ -44,11 +43,4 @@ pub fn compute_signed_price_delta(current_price: u64, previous_price: u64) -> Re
         .ok_or(OfferCoreError::OverflowError)?;
 
     i64::try_from(delta).map_err(|_| error!(OfferCoreError::OverflowError))
-}
-
-pub fn compute_tvl_from_supply_and_price(token_supply: u64, current_price: u64) -> Option<u64> {
-    (token_supply as u128)
-        .checked_mul(current_price as u128)
-        .and_then(|result| result.checked_div(10_u128.pow(PRICE_DECIMALS as u32)))
-        .and_then(|result| (result <= u64::MAX as u128).then_some(result as u64))
 }

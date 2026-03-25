@@ -1,5 +1,6 @@
 use crate::constants::{seeds, PRICE_DECIMALS};
-use crate::instructions::{calculate_current_step_price, find_active_vector_at, Offer};
+use crate::instructions::market_info::offer_valuation_utils::compute_offer_current_price;
+use crate::instructions::Offer;
 use crate::utils::{
     burn_tokens, calculate_fees, mint_tokens, program_controls_mint, transfer_tokens,
 };
@@ -67,16 +68,7 @@ pub fn process_redemption_core(
 ) -> Result<RedemptionProcessResult> {
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    // Find the currently active pricing vector
-    let active_vector = find_active_vector_at(offer, current_time)?;
-
-    // Calculate current price with 9 decimals
-    let current_price = calculate_current_step_price(
-        active_vector.apr,
-        active_vector.base_price,
-        active_vector.base_time,
-        active_vector.price_fix_duration,
-    )?;
+    let current_price = compute_offer_current_price(offer, current_time)?;
 
     // Calculate fees
     let fee_amounts = calculate_fees(token_in_amount, redemption_fee_basis_points)?;
