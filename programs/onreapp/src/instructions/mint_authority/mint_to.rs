@@ -46,7 +46,12 @@ pub enum MintToErrorCode {
 #[derive(Accounts)]
 pub struct MintTo<'info> {
     /// The program state account containing boss and ONyc mint validation
-    #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss, has_one = onyc_mint)]
+    #[account(
+        seeds = [seeds::STATE],
+        bump = state.bump,
+        has_one = boss,
+        has_one = onyc_mint
+    )]
     pub state: Box<Account<'info, State>>,
 
     /// The boss authorized to perform minting operations

@@ -1,8 +1,8 @@
 use crate::constants::seeds;
 use crate::instructions::offer::offer_utils::find_active_vector_at;
 use crate::instructions::Offer;
-use crate::OfferCoreError;
 use crate::utils::{mul_div_round_u128, pow_fixed};
+use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::Mint;
@@ -208,7 +208,8 @@ pub fn calculate_apy_from_apr(apr_scaled: u64) -> Result<u64> {
         .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
 
     // (1 + r/n)^n at 1e18 precision
-    let pow = pow_fixed(base, N as u64, INT_SCALE).ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
+    let pow =
+        pow_fixed(base, N as u64, INT_SCALE).ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
 
     // APY_int = pow - 1.0
     let apy_int = pow
@@ -216,8 +217,8 @@ pub fn calculate_apy_from_apr(apr_scaled: u64) -> Result<u64> {
         .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
 
     // Convert back to 1e6 scale with rounding: apy_scaled = round(apy_int * EXT_SCALE / INT_SCALE)
-    let apy_scaled_u128 =
-        mul_div_round_u128(apy_int, EXT_SCALE, INT_SCALE).ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
+    let apy_scaled_u128 = mul_div_round_u128(apy_int, EXT_SCALE, INT_SCALE)
+        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
 
     if apy_scaled_u128 > u64::MAX as u128 {
         return Err(error!(GetAPYErrorCode::Overflow));

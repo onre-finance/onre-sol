@@ -3,8 +3,7 @@ use crate::state::State;
 use crate::utils::approver::approver_utils;
 use crate::utils::{
     calculate_fees, calculate_token_out_amount, mul_div_round_u128, pow_fixed,
-    program_controls_mint,
-    ApprovalMessage,
+    program_controls_mint, ApprovalMessage,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
