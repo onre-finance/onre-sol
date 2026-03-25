@@ -99,7 +99,7 @@ fn test_price_first_interval() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -140,7 +140,7 @@ fn test_take_offer_failure_does_not_create_market_stats() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
 
     assert!(
         result.is_err(),
@@ -180,7 +180,7 @@ fn test_price_with_fee() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -225,7 +225,7 @@ fn test_ceiling_fee_small_amount() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let boss_usdc_after = get_token_balance(
         &ctx.svm,
@@ -270,7 +270,7 @@ fn test_price_same_interval() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     // Advance within same interval
     advance_clock_by(&mut ctx.svm, 30_000);
@@ -343,7 +343,7 @@ fn test_price_second_interval() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -401,7 +401,7 @@ fn test_use_most_recent_active_vector() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -443,7 +443,7 @@ fn test_fail_no_active_vector() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
     assert!(result.is_err(), "should fail with no active vector");
 }
 
@@ -476,7 +476,7 @@ fn test_fail_insufficient_user_balance() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
     assert!(result.is_err(), "should fail with insufficient balance");
 }
 
@@ -510,7 +510,7 @@ fn test_fail_insufficient_vault_balance() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
     assert!(
         result.is_err(),
         "should fail with insufficient vault balance"
@@ -565,7 +565,7 @@ fn test_transfer_tokens_correctly() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_usdc_after = get_token_balance(
         &ctx.svm,
@@ -631,7 +631,7 @@ fn test_wrong_token_in_mint() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
     assert!(result.is_err(), "wrong token_in should fail");
 }
 
@@ -672,7 +672,7 @@ fn test_wrong_token_out_mint() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
     assert!(result.is_err(), "wrong token_out should fail");
 }
 
@@ -707,7 +707,7 @@ fn test_zero_apr_fixed_price() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -748,7 +748,7 @@ fn test_high_apr_long_period() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -796,7 +796,7 @@ fn test_vault_transfer_token_out_no_mint_authority() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let supply_after = get_mint_supply(&ctx.svm, &ctx.usdc_mint);
     let user_onyc = get_token_balance(
@@ -853,7 +853,7 @@ fn test_user_to_boss_transfer_no_mint_authority() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_usdc_after = get_token_balance(
         &ctx.svm,
@@ -918,7 +918,7 @@ fn test_kill_switch_rejects_take_offer() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
     assert!(result.is_err(), "kill switch should block take_offer");
 }
 
@@ -971,7 +971,7 @@ fn test_kill_switch_disabled_allows_take_offer() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -1165,7 +1165,7 @@ fn test_mint_token_out_with_program_mint_authority() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -1234,7 +1234,7 @@ fn test_burn_token_in_with_program_mint_authority() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let supply_after = get_mint_supply(&ctx.svm, &ctx.usdc_mint);
     let boss_usdc_after = get_token_balance(
@@ -1288,7 +1288,7 @@ fn test_fee_collection_with_mint_authority_burn() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     // Boss receives full amount
     let boss_usdc = get_token_balance(
