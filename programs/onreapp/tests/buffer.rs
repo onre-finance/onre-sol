@@ -238,7 +238,7 @@ fn test_initialize_buffer_success() {
 }
 
 #[test]
-fn test_initialize_buffer_accepts_valid_offer_without_state_main_offer() {
+fn test_initialize_buffer_requires_state_main_offer() {
     let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
     let buffer_admin = Keypair::new();
@@ -256,11 +256,11 @@ fn test_initialize_buffer_accepts_valid_offer_without_state_main_offer() {
     let (offer_pda, _) = find_offer_pda(&token_in_mint, &onyc_mint);
 
     let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint, &buffer_admin.pubkey());
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-
-    let buffer_state = read_buffer_state(&svm);
-    assert_eq!(buffer_state.onyc_mint, onyc_mint);
-    assert_eq!(buffer_state.buffer_admin, buffer_admin.pubkey());
+    let result = send_tx(&mut svm, &[ix], &[&payer]);
+    assert!(
+        result.is_err(),
+        "initialize_buffer should require state.main_offer"
+    );
 }
 
 #[test]
@@ -281,6 +281,9 @@ fn test_set_buffer_admin_boss_only() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let (offer_pda, _) = find_offer_pda(&token_in_mint, &onyc_mint);
+
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint, &admin1.pubkey());
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -314,6 +317,9 @@ fn test_set_buffer_admin_rejects_no_change() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let (offer_pda, _) = find_offer_pda(&token_in_mint, &onyc_mint);
+
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint, &admin.pubkey());
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -355,6 +361,9 @@ fn test_set_main_offer_updates_program_state() {
 
     let (offer_a_pda, _) = find_offer_pda(&token_in_mint_a, &onyc_mint);
     let (offer_b_pda, _) = find_offer_pda(&token_in_mint_b, &onyc_mint);
+
+    let ix = build_set_main_offer_ix(&boss, &offer_a_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let ix = build_initialize_buffer_ix(&boss, &offer_a_pda, &onyc_mint, &buffer_admin.pubkey());
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();

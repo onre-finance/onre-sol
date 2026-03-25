@@ -36,7 +36,9 @@ impl OfferData {
 
 pub fn read_offer(svm: &LiteSVM, token_in_mint: &Pubkey, token_out_mint: &Pubkey) -> OfferData {
     let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
-    let account = svm.get_account(&offer_pda).expect("offer account not found");
+    let account = svm
+        .get_account(&offer_pda)
+        .expect("offer account not found");
     let data = &account.data;
     let mut offset = 8;
     let tin = Pubkey::try_from(&data[offset..offset + 32]).unwrap();
@@ -120,10 +122,12 @@ impl StateData {
 
 pub fn read_state(svm: &LiteSVM) -> StateData {
     let (state_pda, _) = find_state_pda();
-    let account = svm.get_account(&state_pda).expect("state account not found");
+    let account = svm
+        .get_account(&state_pda)
+        .expect("state account not found");
     let mut data_slice = account.data.as_slice();
-    let state =
-        onreapp::state::State::try_deserialize(&mut data_slice).expect("failed to deserialize State account");
+    let state = onreapp::state::State::try_deserialize(&mut data_slice)
+        .expect("failed to deserialize State account");
     StateData {
         boss: state.boss,
         proposed_boss: state.proposed_boss,
@@ -153,7 +157,9 @@ pub struct BufferStateData {
 
 pub fn read_buffer_state(svm: &LiteSVM) -> BufferStateData {
     let (buffer_state_pda, _) = find_buffer_state_pda();
-    let account = svm.get_account(&buffer_state_pda).expect("buffer state account not found");
+    let account = svm
+        .get_account(&buffer_state_pda)
+        .expect("buffer state account not found");
     let mut data_slice = account.data.as_slice();
     let buffer_state = onreapp::instructions::BufferState::try_deserialize(&mut data_slice)
         .expect("failed to deserialize BufferState account");
@@ -261,8 +267,8 @@ pub fn read_redemption_request(
         .get_account(&pda)
         .expect("redemption request account not found");
     let mut data: &[u8] = &account.data;
-    let request =
-        RedemptionRequest::try_deserialize(&mut data).expect("Failed to deserialize RedemptionRequest");
+    let request = RedemptionRequest::try_deserialize(&mut data)
+        .expect("Failed to deserialize RedemptionRequest");
     RedemptionRequestData {
         offer: request.offer,
         request_id: request.request_id,

@@ -29,7 +29,10 @@ pub fn build_add_admin_ix(boss: &Pubkey, new_admin: &Pubkey) -> Instruction {
     data.extend_from_slice(new_admin.as_ref());
     Instruction {
         program_id: PROGRAM_ID,
-        accounts: vec![AccountMeta::new(state_pda, false), AccountMeta::new_readonly(*boss, true)],
+        accounts: vec![
+            AccountMeta::new(state_pda, false),
+            AccountMeta::new_readonly(*boss, true),
+        ],
         data,
     }
 }
@@ -40,7 +43,10 @@ pub fn build_remove_admin_ix(boss: &Pubkey, admin_to_remove: &Pubkey) -> Instruc
     data.extend_from_slice(admin_to_remove.as_ref());
     Instruction {
         program_id: PROGRAM_ID,
-        accounts: vec![AccountMeta::new(state_pda, false), AccountMeta::new_readonly(*boss, true)],
+        accounts: vec![
+            AccountMeta::new(state_pda, false),
+            AccountMeta::new_readonly(*boss, true),
+        ],
         data,
     }
 }
@@ -49,7 +55,10 @@ pub fn build_clear_admins_ix(boss: &Pubkey) -> Instruction {
     let (state_pda, _) = find_state_pda();
     Instruction {
         program_id: PROGRAM_ID,
-        accounts: vec![AccountMeta::new(state_pda, false), AccountMeta::new_readonly(*boss, true)],
+        accounts: vec![
+            AccountMeta::new(state_pda, false),
+            AccountMeta::new_readonly(*boss, true),
+        ],
         data: ix_discriminator("clear_admins").to_vec(),
     }
 }
@@ -60,7 +69,10 @@ pub fn build_propose_boss_ix(boss: &Pubkey, new_boss: &Pubkey) -> Instruction {
     data.extend_from_slice(new_boss.as_ref());
     Instruction {
         program_id: PROGRAM_ID,
-        accounts: vec![AccountMeta::new(state_pda, false), AccountMeta::new_readonly(*boss, true)],
+        accounts: vec![
+            AccountMeta::new(state_pda, false),
+            AccountMeta::new_readonly(*boss, true),
+        ],
         data,
     }
 }
@@ -69,7 +81,10 @@ pub fn build_accept_boss_ix(new_boss: &Pubkey) -> Instruction {
     let (state_pda, _) = find_state_pda();
     Instruction {
         program_id: PROGRAM_ID,
-        accounts: vec![AccountMeta::new(state_pda, false), AccountMeta::new_readonly(*new_boss, true)],
+        accounts: vec![
+            AccountMeta::new(state_pda, false),
+            AccountMeta::new_readonly(*new_boss, true),
+        ],
         data: ix_discriminator("accept_boss").to_vec(),
     }
 }
@@ -80,7 +95,10 @@ pub fn build_set_kill_switch_ix(signer: &Pubkey, enable: bool) -> Instruction {
     data.push(if enable { 1 } else { 0 });
     Instruction {
         program_id: PROGRAM_ID,
-        accounts: vec![AccountMeta::new(state_pda, false), AccountMeta::new_readonly(*signer, true)],
+        accounts: vec![
+            AccountMeta::new(state_pda, false),
+            AccountMeta::new_readonly(*signer, true),
+        ],
         data,
     }
 }
@@ -91,7 +109,10 @@ pub fn build_add_approver_ix(boss: &Pubkey, approver: &Pubkey) -> Instruction {
     data.extend_from_slice(approver.as_ref());
     Instruction {
         program_id: PROGRAM_ID,
-        accounts: vec![AccountMeta::new(state_pda, false), AccountMeta::new_readonly(*boss, true)],
+        accounts: vec![
+            AccountMeta::new(state_pda, false),
+            AccountMeta::new_readonly(*boss, true),
+        ],
         data,
     }
 }
@@ -102,7 +123,10 @@ pub fn build_remove_approver_ix(boss: &Pubkey, approver: &Pubkey) -> Instruction
     data.extend_from_slice(approver.as_ref());
     Instruction {
         program_id: PROGRAM_ID,
-        accounts: vec![AccountMeta::new(state_pda, false), AccountMeta::new_readonly(*boss, true)],
+        accounts: vec![
+            AccountMeta::new(state_pda, false),
+            AccountMeta::new_readonly(*boss, true),
+        ],
         data,
     }
 }
@@ -113,7 +137,10 @@ pub fn build_configure_max_supply_ix(boss: &Pubkey, max_supply: u64) -> Instruct
     data.extend_from_slice(&max_supply.to_le_bytes());
     Instruction {
         program_id: PROGRAM_ID,
-        accounts: vec![AccountMeta::new(state_pda, false), AccountMeta::new_readonly(*boss, true)],
+        accounts: vec![
+            AccountMeta::new(state_pda, false),
+            AccountMeta::new_readonly(*boss, true),
+        ],
         data,
     }
 }
@@ -124,7 +151,10 @@ pub fn build_set_redemption_admin_ix(boss: &Pubkey, redemption_admin: &Pubkey) -
     data.extend_from_slice(redemption_admin.as_ref());
     Instruction {
         program_id: PROGRAM_ID,
-        accounts: vec![AccountMeta::new(state_pda, false), AccountMeta::new_readonly(*boss, true)],
+        accounts: vec![
+            AccountMeta::new(state_pda, false),
+            AccountMeta::new_readonly(*boss, true),
+        ],
         data,
     }
 }
@@ -303,8 +333,11 @@ pub fn build_mint_to_ix_for_offer(
     let buffer_state_pda = find_buffer_state_pda().0;
     let boss_onyc_ata = derive_ata(boss, onyc_mint, token_program);
     let offer_vault_onyc = derive_ata(&offer_vault_authority_pda, onyc_mint, token_program);
-    let buffer_vault_onyc =
-        derive_ata(&find_buffer_vault_authority_pda().0, onyc_mint, token_program);
+    let buffer_vault_onyc = derive_ata(
+        &find_buffer_vault_authority_pda().0,
+        onyc_mint,
+        token_program,
+    );
     let management_fee_vault_onyc = derive_ata(
         &find_management_fee_vault_authority_pda().0,
         onyc_mint,

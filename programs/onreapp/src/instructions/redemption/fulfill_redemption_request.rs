@@ -1,12 +1,11 @@
 use crate::constants::seeds;
-use crate::instructions::buffer::{
-    BufferAccrualAccounts,
-    manage_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
-    BufferErrorCode,
-};
 use crate::instructions::buffer::accounts::{
-    __client_accounts_buffer_accrual_accounts, __cpi_client_accounts_buffer_accrual_accounts,
-    BufferAccrualAccountsBumps,
+    BufferAccrualAccountsBumps, __client_accounts_buffer_accrual_accounts,
+    __cpi_client_accounts_buffer_accrual_accounts,
+};
+use crate::instructions::buffer::{
+    manage_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
+    BufferAccrualAccounts, BufferErrorCode,
 };
 use crate::instructions::market_info::refresh_market_stats_pda;
 use crate::instructions::redemption::{
@@ -541,11 +540,15 @@ fn execute_fulfill_redemption_request<'info>(
     let token_in_fee_amount = result.token_in_fee_amount;
     let token_out_amount = result.token_out_amount;
     let should_refresh_market_stats = params.token_in_mint.key() == params.state.onyc_mint
-        && program_controls_mint(params.token_in_mint, &params.mint_authority.to_account_info());
+        && program_controls_mint(
+            params.token_in_mint,
+            &params.mint_authority.to_account_info(),
+        );
 
-    if let Some(buffer_accounts) = params.buffer_accounts.filter(|_| {
-        should_refresh_market_stats
-    }) {
+    if let Some(buffer_accounts) = params
+        .buffer_accounts
+        .filter(|_| should_refresh_market_stats)
+    {
         let now = Clock::get()?.unix_timestamp;
         let accrual = accrue_buffer_from_accounts(
             params.program_id,

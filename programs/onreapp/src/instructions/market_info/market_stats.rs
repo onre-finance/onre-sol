@@ -1,5 +1,5 @@
-use crate::constants::PRICE_DECIMALS;
 use crate::constants::seeds;
+use crate::constants::PRICE_DECIMALS;
 use crate::instructions::market_info::get_apy::calculate_apy_from_apr;
 use crate::instructions::market_info::get_nav_adjustment::find_previous_vector;
 use crate::instructions::market_info::offer_valuation_utils::{
@@ -195,15 +195,15 @@ pub fn calculate_nav_adjustment(
 ) -> Result<i64> {
     let current_price = compute_vector_price_at_time(&active_vector, active_vector.start_time)?;
 
-    let adjustment = if let Some(previous_vector) =
-        find_previous_vector(offer, active_vector.start_time)
-    {
-        let previous_price = compute_vector_price_at_time(&previous_vector, active_vector.start_time)?;
-        compute_signed_price_delta(current_price, previous_price)
-            .map_err(|_| error!(MarketStatsErrorCode::Overflow))?
-    } else {
-        i64::try_from(current_price).map_err(|_| error!(MarketStatsErrorCode::Overflow))?
-    };
+    let adjustment =
+        if let Some(previous_vector) = find_previous_vector(offer, active_vector.start_time) {
+            let previous_price =
+                compute_vector_price_at_time(&previous_vector, active_vector.start_time)?;
+            compute_signed_price_delta(current_price, previous_price)
+                .map_err(|_| error!(MarketStatsErrorCode::Overflow))?
+        } else {
+            i64::try_from(current_price).map_err(|_| error!(MarketStatsErrorCode::Overflow))?
+        };
 
     Ok(adjustment)
 }

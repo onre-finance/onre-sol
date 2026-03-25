@@ -157,7 +157,6 @@ fn test_take_offer_permissionless_with_valid_approval() {
         &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
     assert_eq!(boss_usdc, token_in_amount, "boss should have received USDC");
-
 }
 
 #[test]
@@ -444,7 +443,9 @@ fn setup_permissionless_extended_with_buffer() -> PermissionlessNoApprovalCtx {
     advance_slot(&mut ctx.svm);
 
     let buffer_admin = Keypair::new();
-    ctx.svm.airdrop(&buffer_admin.pubkey(), INITIAL_LAMPORTS).unwrap();
+    ctx.svm
+        .airdrop(&buffer_admin.pubkey(), INITIAL_LAMPORTS)
+        .unwrap();
     let ix = build_set_main_offer_ix(&boss, &offer_pda);
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
@@ -550,15 +551,36 @@ fn test_permissionless_extended_accrues_buffer_and_refreshes_market_stats() {
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
     let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
-    let buffer_vault_ata = derive_ata(&buffer_vault_authority_pda, &ctx.onyc_mint, &TOKEN_PROGRAM_ID);
+    let buffer_vault_ata = derive_ata(
+        &buffer_vault_authority_pda,
+        &ctx.onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
     let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
-    let management_fee_vault_ata = derive_ata(&management_fee_vault_authority_pda, &ctx.onyc_mint, &TOKEN_PROGRAM_ID);
+    let management_fee_vault_ata = derive_ata(
+        &management_fee_vault_authority_pda,
+        &ctx.onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
     let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
-    let performance_fee_vault_ata = derive_ata(&performance_fee_vault_authority_pda, &ctx.onyc_mint, &TOKEN_PROGRAM_ID);
+    let performance_fee_vault_ata = derive_ata(
+        &performance_fee_vault_authority_pda,
+        &ctx.onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
 
-    assert_eq!(get_token_balance(&ctx.svm, &buffer_vault_ata), 81_081_000_000);
-    assert_eq!(get_token_balance(&ctx.svm, &management_fee_vault_ata), 10_010_000_000);
-    assert_eq!(get_token_balance(&ctx.svm, &performance_fee_vault_ata), 9_009_000_000);
+    assert_eq!(
+        get_token_balance(&ctx.svm, &buffer_vault_ata),
+        81_081_000_000
+    );
+    assert_eq!(
+        get_token_balance(&ctx.svm, &management_fee_vault_ata),
+        10_010_000_000
+    );
+    assert_eq!(
+        get_token_balance(&ctx.svm, &performance_fee_vault_ata),
+        9_009_000_000
+    );
     assert_eq!(
         get_token_balance(
             &ctx.svm,
@@ -566,7 +588,10 @@ fn test_permissionless_extended_accrues_buffer_and_refreshes_market_stats() {
         ),
         1_000_000_000
     );
-    assert_eq!(read_buffer_state(&ctx.svm).lowest_supply, get_mint_supply(&ctx.svm, &ctx.onyc_mint));
+    assert_eq!(
+        read_buffer_state(&ctx.svm).lowest_supply,
+        get_mint_supply(&ctx.svm, &ctx.onyc_mint)
+    );
 
     let market_stats = read_market_stats(&ctx.svm);
     let (_, expected_bump) = find_market_stats_pda();

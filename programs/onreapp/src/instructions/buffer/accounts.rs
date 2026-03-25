@@ -78,12 +78,11 @@ pub fn validate_buffer_onyc_vault_accounts<'info>(
         &onyc_mint.key(),
         &token_program.key(),
     );
-    let expected_performance_fee_vault_onyc_account =
-        get_associated_token_address_with_program_id(
-            &Pubkey::find_program_address(&[seeds::PERFORMANCE_FEE_VAULT_AUTHORITY], program_id).0,
-            &onyc_mint.key(),
-            &token_program.key(),
-        );
+    let expected_performance_fee_vault_onyc_account = get_associated_token_address_with_program_id(
+        &Pubkey::find_program_address(&[seeds::PERFORMANCE_FEE_VAULT_AUTHORITY], program_id).0,
+        &onyc_mint.key(),
+        &token_program.key(),
+    );
 
     require_keys_eq!(
         buffer_state.onyc_mint,

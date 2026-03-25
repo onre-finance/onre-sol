@@ -75,7 +75,8 @@ fn setup_redemption_extended_with_buffer() -> (LiteSVM, Keypair, Pubkey, Pubkey,
     let boss = payer.pubkey();
     let usdc_mint = create_mint(&mut svm, &payer, 6, &boss);
     let buffer_admin = Keypair::new();
-    svm.airdrop(&buffer_admin.pubkey(), INITIAL_LAMPORTS).unwrap();
+    svm.airdrop(&buffer_admin.pubkey(), INITIAL_LAMPORTS)
+        .unwrap();
 
     let ix = build_set_redemption_admin_ix(&boss, &boss);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -1692,8 +1693,14 @@ fn test_fulfill_redemption_request_extended_accrues_buffer_before_burn() {
     let user_usdc_ata = get_associated_token_address(&user.pubkey(), &usdc_mint);
 
     assert_eq!(get_token_balance(&svm, &buffer_vault_ata), 81_000_000);
-    assert_eq!(get_token_balance(&svm, &management_fee_vault_ata), 10_000_000);
-    assert_eq!(get_token_balance(&svm, &performance_fee_vault_ata), 9_000_000);
+    assert_eq!(
+        get_token_balance(&svm, &management_fee_vault_ata),
+        10_000_000
+    );
+    assert_eq!(
+        get_token_balance(&svm, &performance_fee_vault_ata),
+        9_000_000
+    );
     assert_eq!(get_token_balance(&svm, &boss_onyc_ata), 50_000_000);
     assert_eq!(get_token_balance(&svm, &user_usdc_ata), 950_000);
     assert_eq!(read_buffer_state(&svm).lowest_supply, 150_000_000);

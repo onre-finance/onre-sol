@@ -120,7 +120,8 @@ pub fn get_nav_adjustment(ctx: Context<GetNavAdjustment>) -> Result<i64> {
 
     let (previous_price_opt, adjustment) =
         if let Some(previous_vector) = find_previous_vector(&offer, active_vector.start_time) {
-            let previous_price = compute_vector_price_at_time(&previous_vector, active_vector.start_time)?;
+            let previous_price =
+                compute_vector_price_at_time(&previous_vector, active_vector.start_time)?;
 
             let shared_adjustment = calculate_market_stats_nav_adjustment(&offer, active_vector)?;
             (Some(previous_price), shared_adjustment)

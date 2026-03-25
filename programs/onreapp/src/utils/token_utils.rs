@@ -173,7 +173,7 @@ pub struct CalculateFeeResult {
 /// * `MathOverflow` - If calculations exceed u128 limits
 ///
 /// # Example
-/// ```ignore
+/// ```text
 /// // 5% fee on 1000 tokens = 50 fee, 950 remaining
 /// let result = calculate_fees(1000, 500)?;
 /// assert_eq!(result.token_in_fee_amount, 50);

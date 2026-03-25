@@ -351,10 +351,10 @@ fn test_mint_to_accrues_buffer_before_mint() {
     advance_slot(&mut svm);
 
     let buffer_admin = Keypair::new();
-    svm.airdrop(&buffer_admin.pubkey(), INITIAL_LAMPORTS).unwrap();
+    svm.airdrop(&buffer_admin.pubkey(), INITIAL_LAMPORTS)
+        .unwrap();
 
-    let ix =
-        build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint, &buffer_admin.pubkey());
+    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint, &buffer_admin.pubkey());
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -381,7 +381,11 @@ fn test_mint_to_accrues_buffer_before_mint() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let buffer_state = read_buffer_state(&svm);
-    let buffer_vault = derive_ata(&find_buffer_vault_authority_pda().0, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let buffer_vault = derive_ata(
+        &find_buffer_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
     let management_fee_vault = derive_ata(
         &find_management_fee_vault_authority_pda().0,
         &onyc_mint,

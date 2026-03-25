@@ -1,13 +1,16 @@
 use crate::constants::seeds;
 use crate::instructions::buffer::{
-    calculate_buffer_fee_split, calculate_gross_buffer_accrual, BufferErrorCode,
-    BufferManagedEvent, BufferState, BufferAccrualAccounts, validate_buffer_onyc_vault_accounts,
+    calculate_buffer_fee_split, calculate_gross_buffer_accrual,
+    validate_buffer_onyc_vault_accounts, BufferAccrualAccounts, BufferErrorCode,
+    BufferManagedEvent, BufferState,
 };
-use crate::instructions::market_info::refresh_market_stats_pda;
 use crate::instructions::market_info::offer_valuation_utils::get_active_vector_and_current_price;
+use crate::instructions::market_info::refresh_market_stats_pda;
 use crate::instructions::Offer;
 use crate::state::State;
-use crate::utils::token_utils::{mint_tokens, read_optional_token_account_amount, TokenUtilsErrorCode};
+use crate::utils::token_utils::{
+    mint_tokens, read_optional_token_account_amount, TokenUtilsErrorCode,
+};
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program_option::COption;
 use anchor_spl::associated_token::{get_associated_token_address_with_program_id, AssociatedToken};
@@ -138,10 +141,14 @@ pub fn manage_buffer(ctx: Context<ManageBuffer>) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     let offer = ctx.accounts.offer.load()?;
     let buffer_vault_onyc_account = ctx.accounts.buffer_vault_onyc_account.to_account_info();
-    let management_fee_vault_onyc_account =
-        ctx.accounts.management_fee_vault_onyc_account.to_account_info();
-    let performance_fee_vault_onyc_account =
-        ctx.accounts.performance_fee_vault_onyc_account.to_account_info();
+    let management_fee_vault_onyc_account = ctx
+        .accounts
+        .management_fee_vault_onyc_account
+        .to_account_info();
+    let performance_fee_vault_onyc_account = ctx
+        .accounts
+        .performance_fee_vault_onyc_account
+        .to_account_info();
     let mint_authority = ctx.accounts.mint_authority.to_account_info();
     let result = accrue_buffer(
         &ctx.accounts.state,
@@ -341,8 +348,10 @@ pub(crate) fn accrue_buffer_from_accounts<'info>(
 ) -> Result<BufferAccrualResult> {
     let mut buffer_state = buffer_accounts.load_buffer_state()?;
     let buffer_vault_onyc_account = buffer_accounts.buffer_vault_onyc_account_info();
-    let management_fee_vault_onyc_account = buffer_accounts.management_fee_vault_onyc_account_info();
-    let performance_fee_vault_onyc_account = buffer_accounts.performance_fee_vault_onyc_account_info();
+    let management_fee_vault_onyc_account =
+        buffer_accounts.management_fee_vault_onyc_account_info();
+    let performance_fee_vault_onyc_account =
+        buffer_accounts.performance_fee_vault_onyc_account_info();
 
     validate_buffer_onyc_vault_accounts(
         program_id,

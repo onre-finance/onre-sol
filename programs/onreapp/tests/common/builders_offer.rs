@@ -89,8 +89,16 @@ pub fn build_take_offer_permissionless_ix(
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let vault_token_in_ata = derive_ata(&vault_authority_pda, token_in_mint, token_in_program);
     let vault_token_out_ata = derive_ata(&vault_authority_pda, token_out_mint, token_out_program);
-    let permissionless_token_in_ata = derive_ata(&permissionless_authority_pda, token_in_mint, token_in_program);
-    let permissionless_token_out_ata = derive_ata(&permissionless_authority_pda, token_out_mint, token_out_program);
+    let permissionless_token_in_ata = derive_ata(
+        &permissionless_authority_pda,
+        token_in_mint,
+        token_in_program,
+    );
+    let permissionless_token_out_ata = derive_ata(
+        &permissionless_authority_pda,
+        token_out_mint,
+        token_out_program,
+    );
     let user_token_in_ata = derive_ata(user, token_in_mint, token_in_program);
     let user_token_out_ata = derive_ata(user, token_out_mint, token_out_program);
     let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
@@ -157,9 +165,21 @@ pub fn build_take_offer_permissionless_extended_ix(
     let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
     let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
-    let buffer_vault_onyc_ata = derive_ata(&buffer_vault_authority_pda, token_out_mint, token_out_program);
-    let management_fee_vault_onyc_ata = derive_ata(&management_fee_vault_authority_pda, token_out_mint, token_out_program);
-    let performance_fee_vault_onyc_ata = derive_ata(&performance_fee_vault_authority_pda, token_out_mint, token_out_program);
+    let buffer_vault_onyc_ata = derive_ata(
+        &buffer_vault_authority_pda,
+        token_out_mint,
+        token_out_program,
+    );
+    let management_fee_vault_onyc_ata = derive_ata(
+        &management_fee_vault_authority_pda,
+        token_out_mint,
+        token_out_program,
+    );
+    let performance_fee_vault_onyc_ata = derive_ata(
+        &performance_fee_vault_authority_pda,
+        token_out_mint,
+        token_out_program,
+    );
     ix.data = ix_discriminator("take_offer_permissionless_extended").to_vec();
     ix.data.extend_from_slice(&token_in_amount.to_le_bytes());
     match approval_message {
@@ -169,11 +189,16 @@ pub fn build_take_offer_permissionless_extended_ix(
         }
         None => ix.data.push(0),
     }
-    ix.accounts.insert(17, AccountMeta::new(buffer_state_pda, false));
-    ix.accounts.insert(18, AccountMeta::new(buffer_vault_onyc_ata, false));
-    ix.accounts.insert(19, AccountMeta::new(management_fee_vault_onyc_ata, false));
-    ix.accounts.insert(20, AccountMeta::new(performance_fee_vault_onyc_ata, false));
-    ix.accounts.insert(21, AccountMeta::new(market_stats_pda, false));
+    ix.accounts
+        .insert(17, AccountMeta::new(buffer_state_pda, false));
+    ix.accounts
+        .insert(18, AccountMeta::new(buffer_vault_onyc_ata, false));
+    ix.accounts
+        .insert(19, AccountMeta::new(management_fee_vault_onyc_ata, false));
+    ix.accounts
+        .insert(20, AccountMeta::new(performance_fee_vault_onyc_ata, false));
+    ix.accounts
+        .insert(21, AccountMeta::new(market_stats_pda, false));
     ix
 }
 
@@ -321,9 +346,21 @@ pub fn build_take_offer_extended_ix(
     let user_token_in_ata = derive_ata(user, token_in_mint, token_in_program);
     let user_token_out_ata = derive_ata(user, token_out_mint, token_out_program);
     let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
-    let buffer_vault_onyc_ata = derive_ata(&buffer_vault_authority_pda, token_out_mint, token_out_program);
-    let management_fee_vault_onyc_ata = derive_ata(&management_fee_vault_authority_pda, token_out_mint, token_out_program);
-    let performance_fee_vault_onyc_ata = derive_ata(&performance_fee_vault_authority_pda, token_out_mint, token_out_program);
+    let buffer_vault_onyc_ata = derive_ata(
+        &buffer_vault_authority_pda,
+        token_out_mint,
+        token_out_program,
+    );
+    let management_fee_vault_onyc_ata = derive_ata(
+        &management_fee_vault_authority_pda,
+        token_out_mint,
+        token_out_program,
+    );
+    let performance_fee_vault_onyc_ata = derive_ata(
+        &performance_fee_vault_authority_pda,
+        token_out_mint,
+        token_out_program,
+    );
     let mut data = ix_discriminator("take_offer_extended").to_vec();
     data.extend_from_slice(&token_in_amount.to_le_bytes());
     match approval_message {

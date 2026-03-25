@@ -263,10 +263,19 @@ fn test_take_offer_extended_accrues_buffer_and_splits_fees() {
     );
 
     assert_eq!(get_token_balance(&svm, &buffer_vault_ata), 81_000_000);
-    assert_eq!(get_token_balance(&svm, &management_fee_vault_ata), 10_000_000);
-    assert_eq!(get_token_balance(&svm, &performance_fee_vault_ata), 9_000_000);
     assert_eq!(
-        get_token_balance(&svm, &get_associated_token_address(&user.pubkey(), &onyc_mint)),
+        get_token_balance(&svm, &management_fee_vault_ata),
+        10_000_000
+    );
+    assert_eq!(
+        get_token_balance(&svm, &performance_fee_vault_ata),
+        9_000_000
+    );
+    assert_eq!(
+        get_token_balance(
+            &svm,
+            &get_associated_token_address(&user.pubkey(), &onyc_mint)
+        ),
         1_000_000_000
     );
 

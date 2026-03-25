@@ -29,7 +29,8 @@ pub fn read_market_stats(svm: &LiteSVM) -> MarketStats {
 pub fn setup() -> (LiteSVM, Keypair) {
     let mut svm = LiteSVM::new();
     let payer = Keypair::new();
-    svm.airdrop(&payer.pubkey(), 100 * INITIAL_LAMPORTS).unwrap();
+    svm.airdrop(&payer.pubkey(), 100 * INITIAL_LAMPORTS)
+        .unwrap();
 
     let program_bytes = include_bytes!("../../../../target/deploy/onreapp.so");
     let program_data_pda = find_program_data_pda();

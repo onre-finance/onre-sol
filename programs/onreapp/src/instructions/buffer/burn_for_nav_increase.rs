@@ -146,10 +146,14 @@ pub fn burn_for_nav_increase(
         BufferErrorCode::InvalidOnycMint
     );
     let buffer_vault_onyc_account = ctx.accounts.buffer_vault_onyc_account.to_account_info();
-    let management_fee_vault_onyc_account =
-        ctx.accounts.management_fee_vault_onyc_account.to_account_info();
-    let performance_fee_vault_onyc_account =
-        ctx.accounts.performance_fee_vault_onyc_account.to_account_info();
+    let management_fee_vault_onyc_account = ctx
+        .accounts
+        .management_fee_vault_onyc_account
+        .to_account_info();
+    let performance_fee_vault_onyc_account = ctx
+        .accounts
+        .performance_fee_vault_onyc_account
+        .to_account_info();
     let mint_authority = ctx.accounts.mint_authority.to_account_info();
     let accrual = accrue_buffer(
         &ctx.accounts.state,
@@ -172,8 +176,8 @@ pub fn burn_for_nav_increase(
     )?;
     let current_supply_after_accrual = accrual.post_accrual_supply;
     let token_supply = current_supply_after_accrual.saturating_sub(vault_token_out_amount);
-    let total_assets =
-        calculate_tvl(token_supply, current_price).map_err(|_| error!(BufferErrorCode::MathOverflow))?;
+    let total_assets = calculate_tvl(token_supply, current_price)
+        .map_err(|_| error!(BufferErrorCode::MathOverflow))?;
 
     require!(
         total_assets >= asset_adjustment_amount,

@@ -1,11 +1,11 @@
 use crate::constants::seeds;
-use crate::instructions::buffer::{
-    BufferAccrualAccounts,
-    manage_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
-};
 use crate::instructions::buffer::accounts::{
-    __client_accounts_buffer_accrual_accounts, __cpi_client_accounts_buffer_accrual_accounts,
-    BufferAccrualAccountsBumps,
+    BufferAccrualAccountsBumps, __client_accounts_buffer_accrual_accounts,
+    __cpi_client_accounts_buffer_accrual_accounts,
+};
+use crate::instructions::buffer::{
+    manage_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
+    BufferAccrualAccounts,
 };
 use crate::instructions::market_info::refresh_market_stats_typed;
 use crate::instructions::offer::offer_utils::{
@@ -13,9 +13,7 @@ use crate::instructions::offer::offer_utils::{
 };
 use crate::instructions::Offer;
 use crate::state::{MarketStats, State};
-use crate::utils::{
-    execute_token_operations, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams,
-};
+use crate::utils::{execute_token_operations, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams};
 use crate::OfferCoreError;
 use anchor_lang::{prelude::*, solana_program::sysvar, Accounts};
 use anchor_spl::{
@@ -492,9 +490,9 @@ pub fn take_offer_extended(
         )?;
         Some(
             accrual
-            .post_accrual_supply
-            .checked_add(result.token_out_amount)
-            .ok_or(TakeOfferErrorCode::MathOverflow)?,
+                .post_accrual_supply
+                .checked_add(result.token_out_amount)
+                .ok_or(TakeOfferErrorCode::MathOverflow)?,
         )
     } else {
         None

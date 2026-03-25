@@ -1,23 +1,20 @@
 use crate::constants::seeds;
+use crate::instructions::buffer::accounts::{
+    BufferAccrualAccountsBumps, __client_accounts_buffer_accrual_accounts,
+    __cpi_client_accounts_buffer_accrual_accounts,
+};
 use crate::instructions::buffer::{
     manage_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
     BufferAccrualAccounts,
 };
-use crate::instructions::buffer::accounts::{
-    __client_accounts_buffer_accrual_accounts, __cpi_client_accounts_buffer_accrual_accounts,
-    BufferAccrualAccountsBumps,
-};
-use crate::instructions::market_info::{
-    refresh_market_stats_pda,
-};
+use crate::instructions::market_info::refresh_market_stats_pda;
 use crate::instructions::offer::offer_utils::{
     is_onyc_token_out_mint, process_offer_core, should_accrue_onyc_mint, verify_offer_approval,
 };
 use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::{
-    execute_token_operations, transfer_tokens, u64_to_dec9,
-    ApprovalMessage, ExecTokenOpsParams,
+    execute_token_operations, transfer_tokens, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams,
 };
 use crate::OfferCoreError;
 use anchor_lang::{prelude::*, solana_program::sysvar, Accounts};
@@ -604,7 +601,8 @@ fn execute_take_offer_permissionless<'info>(
 
     if is_onyc_token_out_mint(state, token_out_mint) {
         if let Some(market_stats) = market_stats {
-            let (market_stats_pda, _) = Pubkey::find_program_address(&[seeds::MARKET_STATS], program_id);
+            let (market_stats_pda, _) =
+                Pubkey::find_program_address(&[seeds::MARKET_STATS], program_id);
             require_keys_eq!(
                 market_stats_pda,
                 market_stats.key(),

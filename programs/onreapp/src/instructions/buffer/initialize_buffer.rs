@@ -4,7 +4,6 @@ use crate::instructions::Offer;
 use crate::state::State;
 use crate::OfferCoreError;
 use anchor_lang::prelude::*;
-use anchor_lang::Discriminator;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
@@ -62,6 +61,9 @@ pub struct InitializeBuffer<'info> {
 
     pub onyc_mint: Box<InterfaceAccount<'info, Mint>>,
 
+    #[account(address = state.main_offer @ BufferErrorCode::InvalidMainOffer)]
+    pub offer: AccountLoader<'info, Offer>,
+
     #[account(
         init_if_needed,
         payer = boss,
@@ -97,25 +99,11 @@ pub struct InitializeBuffer<'info> {
 pub fn initialize_buffer(ctx: Context<InitializeBuffer>, buffer_admin: Pubkey) -> Result<()> {
     let buffer_state = &mut ctx.accounts.buffer_state;
     let now = Clock::get()?.unix_timestamp;
-    let offer = ctx
-        .remaining_accounts
-        .first()
-        .ok_or(error!(BufferErrorCode::InvalidMainOffer))?;
-    let main_offer = offer.key();
-    let offer_data = offer.try_borrow_data()?;
-    require!(
-        offer_data.len() >= 8 + 64,
-        BufferErrorCode::InvalidMainOffer
-    );
-    require!(
-        &offer_data[..8] == Offer::DISCRIMINATOR,
-        BufferErrorCode::InvalidMainOffer
-    );
-    let token_out_mint = Pubkey::try_from(&offer_data[40..72])
-        .map_err(|_| error!(BufferErrorCode::InvalidMainOffer))?;
+    let main_offer = ctx.accounts.offer.key();
+    let offer = ctx.accounts.offer.load()?;
     require_keys_eq!(
         ctx.accounts.onyc_mint.key(),
-        token_out_mint,
+        offer.token_out_mint,
         OfferCoreError::InvalidTokenOutMint
     );
 
