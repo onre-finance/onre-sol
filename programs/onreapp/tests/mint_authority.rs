@@ -350,11 +350,10 @@ fn test_mint_to_accrues_buffer_before_mint() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let buffer_admin = Keypair::new();
-    svm.airdrop(&buffer_admin.pubkey(), INITIAL_LAMPORTS)
-        .unwrap();
+    let caller = Keypair::new();
+    svm.airdrop(&caller.pubkey(), INITIAL_LAMPORTS).unwrap();
 
-    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint, &buffer_admin.pubkey());
+    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -366,8 +365,8 @@ fn test_mint_to_accrues_buffer_before_mint() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_manage_buffer_ix(&buffer_admin.pubkey(), &offer_pda, &onyc_mint);
-    send_tx(&mut svm, &[ix], &[&buffer_admin]).unwrap();
+    let ix = build_manage_buffer_ix(&caller.pubkey(), &offer_pda, &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&caller]).unwrap();
     advance_slot(&mut svm);
     advance_clock_by(&mut svm, 31_536_000);
 

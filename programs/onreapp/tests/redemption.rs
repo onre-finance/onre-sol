@@ -74,9 +74,8 @@ fn setup_redemption_extended_with_buffer() -> (LiteSVM, Keypair, Pubkey, Pubkey,
     let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
     let usdc_mint = create_mint(&mut svm, &payer, 6, &boss);
-    let buffer_admin = Keypair::new();
-    svm.airdrop(&buffer_admin.pubkey(), INITIAL_LAMPORTS)
-        .unwrap();
+    let caller = Keypair::new();
+    svm.airdrop(&caller.pubkey(), INITIAL_LAMPORTS).unwrap();
 
     let ix = build_set_redemption_admin_ix(&boss, &boss);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -132,7 +131,7 @@ fn setup_redemption_extended_with_buffer() -> (LiteSVM, Keypair, Pubkey, Pubkey,
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint, &buffer_admin.pubkey());
+    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 

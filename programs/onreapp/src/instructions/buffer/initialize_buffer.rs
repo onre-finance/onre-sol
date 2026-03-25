@@ -96,7 +96,7 @@ pub struct InitializeBuffer<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn initialize_buffer(ctx: Context<InitializeBuffer>, buffer_admin: Pubkey) -> Result<()> {
+pub fn initialize_buffer(ctx: Context<InitializeBuffer>) -> Result<()> {
     let buffer_state = &mut ctx.accounts.buffer_state;
     let now = Clock::get()?.unix_timestamp;
     let main_offer = ctx.accounts.offer.key();
@@ -108,14 +108,12 @@ pub fn initialize_buffer(ctx: Context<InitializeBuffer>, buffer_admin: Pubkey) -
     );
 
     buffer_state.onyc_mint = ctx.accounts.onyc_mint.key();
-    buffer_state.buffer_admin = buffer_admin;
     buffer_state.last_accrual_timestamp = now;
     buffer_state.bump = ctx.bumps.buffer_state;
 
     emit!(BufferInitializedEvent {
         buffer_state: buffer_state.key(),
         onyc_mint: buffer_state.onyc_mint,
-        buffer_admin,
         main_offer,
         timestamp: now,
     });

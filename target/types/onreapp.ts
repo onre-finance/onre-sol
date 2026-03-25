@@ -4009,12 +4009,7 @@ export type Onreapp = {
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": [
-        {
-          "name": "bufferAdmin",
-          "type": "pubkey"
-        }
-      ]
+      "args": []
     },
     {
       "name": "initializePermissionlessAuthority",
@@ -6781,81 +6776,6 @@ export type Onreapp = {
       "args": [
         {
           "name": "approver",
-          "type": "pubkey"
-        }
-      ]
-    },
-    {
-      "name": "setBufferAdmin",
-      "docs": [
-        "Sets the BUFFER admin authorized to call accrual.",
-        "",
-        "Only the boss can update the BUFFER admin."
-      ],
-      "discriminator": [
-        92,
-        204,
-        202,
-        230,
-        254,
-        111,
-        50,
-        35
-      ],
-      "accounts": [
-        {
-          "name": "state",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "bufferState",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  98,
-                  117,
-                  102,
-                  102,
-                  101,
-                  114,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "boss",
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        }
-      ],
-      "args": [
-        {
-          "name": "newBufferAdmin",
           "type": "pubkey"
         }
       ]
@@ -10640,19 +10560,6 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "bufferAdminUpdatedEvent",
-      "discriminator": [
-        181,
-        92,
-        86,
-        203,
-        20,
-        79,
-        122,
-        227
-      ]
-    },
-    {
       "name": "bufferBurnedForNavEvent",
       "discriminator": [
         116,
@@ -11457,22 +11364,6 @@ export type Onreapp = {
       }
     },
     {
-      "name": "bufferAdminUpdatedEvent",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "oldBufferAdmin",
-            "type": "pubkey"
-          },
-          {
-            "name": "newBufferAdmin",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
       "name": "bufferBurnedForNavEvent",
       "type": {
         "kind": "struct",
@@ -11559,10 +11450,6 @@ export type Onreapp = {
           },
           {
             "name": "onycMint",
-            "type": "pubkey"
-          },
-          {
-            "name": "bufferAdmin",
             "type": "pubkey"
           },
           {
@@ -11679,10 +11566,6 @@ export type Onreapp = {
         "fields": [
           {
             "name": "onycMint",
-            "type": "pubkey"
-          },
-          {
-            "name": "bufferAdmin",
             "type": "pubkey"
           },
           {

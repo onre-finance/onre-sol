@@ -1,6 +1,4 @@
-use crate::instructions::offer::offer_utils::{
-    calculate_current_step_price, calculate_step_price_at, find_active_vector_at,
-};
+use crate::instructions::offer::offer_utils::{calculate_step_price_at, find_active_vector_at};
 use crate::instructions::{Offer, OfferVector};
 use crate::OfferCoreError;
 use anchor_lang::prelude::*;
@@ -10,11 +8,12 @@ pub fn get_active_vector_and_current_price(
     current_time: u64,
 ) -> Result<(OfferVector, u64)> {
     let active_vector = find_active_vector_at(offer, current_time)?;
-    let current_price = calculate_current_step_price(
+    let current_price = calculate_step_price_at(
         active_vector.apr,
         active_vector.base_price,
         active_vector.base_time,
         active_vector.price_fix_duration,
+        current_time,
     )?;
 
     Ok((active_vector, current_price))

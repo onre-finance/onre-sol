@@ -6,7 +6,6 @@ pub const YIELD_SCALE: u128 = 1_000_000;
 #[account]
 pub struct BufferState {
     pub onyc_mint: Pubkey,
-    pub buffer_admin: Pubkey,
     pub gross_apr: u64,
     pub lowest_supply: u64,
     pub management_fee_basis_points: u16,
@@ -20,5 +19,5 @@ pub struct BufferState {
 }
 
 impl BufferState {
-    pub const INIT_SPACE: usize = 32 + 32 + 8 + 8 + 2 + 32 + 2 + 32 + 8 + 8 + 1 + 72;
+    pub const INIT_SPACE: usize = 32 + 8 + 8 + 2 + 32 + 2 + 32 + 8 + 8 + 1 + 72;
 }

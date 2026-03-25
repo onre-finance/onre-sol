@@ -5,8 +5,8 @@ use crate::utils::{
     calculate_fees, calculate_token_out_amount, program_controls_mint, ApprovalMessage,
 };
 use anchor_lang::prelude::*;
-use core::cmp::Ordering;
 use anchor_spl::token_interface::Mint;
+use core::cmp::Ordering;
 
 const INT_SCALE: u128 = 1_000_000_000_000_000_000;
 const SECONDS_IN_DAY: u64 = 86_400;
@@ -350,7 +350,8 @@ fn mul_div_round(a: u128, b: u128, denom: u128) -> Result<u128> {
     let adj = prod
         .checked_add(denom / 2)
         .ok_or(OfferCoreError::OverflowError)?;
-    adj.checked_div(denom).ok_or_else(|| error!(OfferCoreError::OverflowError))
+    adj.checked_div(denom)
+        .ok_or_else(|| error!(OfferCoreError::OverflowError))
 }
 
 fn pow_fixed(mut base: u128, mut exp: u64, scale: u128) -> Result<u128> {

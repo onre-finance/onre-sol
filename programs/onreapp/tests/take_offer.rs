@@ -68,9 +68,8 @@ fn setup_take_offer_extended_with_buffer() -> (litesvm::LiteSVM, Keypair, Pubkey
     let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
     let usdc_mint = create_mint(&mut svm, &payer, 6, &boss);
-    let buffer_admin = Keypair::new();
-    svm.airdrop(&buffer_admin.pubkey(), INITIAL_LAMPORTS)
-        .unwrap();
+    let caller = Keypair::new();
+    svm.airdrop(&caller.pubkey(), INITIAL_LAMPORTS).unwrap();
 
     let ix = build_make_offer_ix(
         &boss,
@@ -111,7 +110,7 @@ fn setup_take_offer_extended_with_buffer() -> (litesvm::LiteSVM, Keypair, Pubkey
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint, &buffer_admin.pubkey());
+    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -466,13 +465,13 @@ fn test_price_second_interval() {
     // Advance to second interval
     advance_clock_by(&mut ctx.svm, 86_400);
 
-    // Price: 1.0 * (1 + 0.0365 * 2*86400/31536000) = 1.0002
+    // With compounded step pricing, the snapped second-interval price is 1.000200010.
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
         &ctx.onyc_mint,
-        1_000_200,
+        1_000_201,
         None,
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
@@ -483,7 +482,7 @@ fn test_price_second_interval() {
         &ctx.svm,
         &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
     );
-    assert_eq!(user_onyc, 1_000_000_000);
+    assert_eq!(user_onyc, 1_000_000_989);
 }
 
 // ===========================================================================
@@ -871,13 +870,13 @@ fn test_high_apr_long_period() {
     // Advance 1 year
     advance_clock_by(&mut ctx.svm, 86400 * 365);
 
-    // After 1 year: price = 1.0 * (1 + 0.365 * 366/365) ≈ 1.366
+    // With compounded step pricing, 36.5% APR snapped to day 366 is 1.441691565.
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
         &ctx.onyc_mint,
-        1_366_000,
+        1_441_692,
         None,
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
@@ -888,7 +887,7 @@ fn test_high_apr_long_period() {
         &ctx.svm,
         &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
     );
-    assert_eq!(user_onyc, 1_000_000_000);
+    assert_eq!(user_onyc, 1_000_000_301);
 }
 
 // ===========================================================================

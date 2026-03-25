@@ -4,7 +4,6 @@ pub fn build_initialize_buffer_ix(
     boss: &Pubkey,
     offer: &Pubkey,
     onyc_mint: &Pubkey,
-    buffer_admin: &Pubkey,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (buffer_state_pda, _) = find_buffer_state_pda();
@@ -24,9 +23,6 @@ pub fn build_initialize_buffer_ix(
         &TOKEN_PROGRAM_ID,
     );
 
-    let mut data = ix_discriminator("initialize_buffer").to_vec();
-    data.extend_from_slice(buffer_admin.as_ref());
-
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
@@ -45,7 +41,7 @@ pub fn build_initialize_buffer_ix(
             AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
         ],
-        data,
+        data: ix_discriminator("initialize_buffer").to_vec(),
     }
 }
 
@@ -59,22 +55,6 @@ pub fn build_set_main_offer_ix(boss: &Pubkey, offer: &Pubkey) -> Instruction {
             AccountMeta::new_readonly(*offer, false),
         ],
         data: ix_discriminator("set_main_offer").to_vec(),
-    }
-}
-
-pub fn build_set_buffer_admin_ix(boss: &Pubkey, new_buffer_admin: &Pubkey) -> Instruction {
-    let (state_pda, _) = find_state_pda();
-    let (buffer_state_pda, _) = find_buffer_state_pda();
-    let mut data = ix_discriminator("set_buffer_admin").to_vec();
-    data.extend_from_slice(new_buffer_admin.as_ref());
-    Instruction {
-        program_id: PROGRAM_ID,
-        accounts: vec![
-            AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new(buffer_state_pda, false),
-            AccountMeta::new_readonly(*boss, true),
-        ],
-        data,
     }
 }
 

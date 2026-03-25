@@ -4003,12 +4003,7 @@
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": [
-        {
-          "name": "buffer_admin",
-          "type": "pubkey"
-        }
-      ]
+      "args": []
     },
     {
       "name": "initialize_permissionless_authority",
@@ -6775,81 +6770,6 @@
       "args": [
         {
           "name": "approver",
-          "type": "pubkey"
-        }
-      ]
-    },
-    {
-      "name": "set_buffer_admin",
-      "docs": [
-        "Sets the BUFFER admin authorized to call accrual.",
-        "",
-        "Only the boss can update the BUFFER admin."
-      ],
-      "discriminator": [
-        92,
-        204,
-        202,
-        230,
-        254,
-        111,
-        50,
-        35
-      ],
-      "accounts": [
-        {
-          "name": "state",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "buffer_state",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  98,
-                  117,
-                  102,
-                  102,
-                  101,
-                  114,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "boss",
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        }
-      ],
-      "args": [
-        {
-          "name": "new_buffer_admin",
           "type": "pubkey"
         }
       ]
@@ -10634,19 +10554,6 @@
       ]
     },
     {
-      "name": "BufferAdminUpdatedEvent",
-      "discriminator": [
-        181,
-        92,
-        86,
-        203,
-        20,
-        79,
-        122,
-        227
-      ]
-    },
-    {
       "name": "BufferBurnedForNavEvent",
       "discriminator": [
         116,
@@ -11451,22 +11358,6 @@
       }
     },
     {
-      "name": "BufferAdminUpdatedEvent",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "old_buffer_admin",
-            "type": "pubkey"
-          },
-          {
-            "name": "new_buffer_admin",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
       "name": "BufferBurnedForNavEvent",
       "type": {
         "kind": "struct",
@@ -11553,10 +11444,6 @@
           },
           {
             "name": "onyc_mint",
-            "type": "pubkey"
-          },
-          {
-            "name": "buffer_admin",
             "type": "pubkey"
           },
           {
@@ -11673,10 +11560,6 @@
         "fields": [
           {
             "name": "onyc_mint",
-            "type": "pubkey"
-          },
-          {
-            "name": "buffer_admin",
             "type": "pubkey"
           },
           {

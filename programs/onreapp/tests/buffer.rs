@@ -52,9 +52,8 @@ fn setup_buffer_context(
     let boss = payer.pubkey();
     let token_in_mint = create_mint(&mut svm, &payer, 6, &boss);
     let yield_token_in_mint = create_mint(&mut svm, &payer, 6, &boss);
-    let buffer_admin = Keypair::new();
-    svm.airdrop(&buffer_admin.pubkey(), INITIAL_LAMPORTS)
-        .unwrap();
+    let caller = Keypair::new();
+    svm.airdrop(&caller.pubkey(), INITIAL_LAMPORTS).unwrap();
 
     let ix = build_make_offer_ix(
         &boss,
@@ -120,7 +119,7 @@ fn setup_buffer_context(
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint, &buffer_admin.pubkey());
+    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -138,25 +137,25 @@ fn setup_buffer_context(
         advance_slot(&mut svm);
     }
 
-    (svm, payer, token_in_mint, onyc_mint, buffer_admin)
+    (svm, payer, token_in_mint, onyc_mint, caller)
 }
 
 fn setup_buffer_with_balance() -> (litesvm::LiteSVM, Keypair, Pubkey, Pubkey, Keypair) {
-    let (mut svm, payer, token_in_mint, onyc_mint, buffer_admin) =
+    let (mut svm, payer, token_in_mint, onyc_mint, caller) =
         setup_buffer_context(150_000, 50_000, 0, 0);
     let offer_pda = read_state(&svm).main_offer;
 
     // First accrual initializes lowest_supply to current supply.
-    let ix = build_manage_buffer_ix(&buffer_admin.pubkey(), &offer_pda, &onyc_mint);
-    send_tx(&mut svm, &[ix], &[&buffer_admin]).unwrap();
+    let ix = build_manage_buffer_ix(&caller.pubkey(), &offer_pda, &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&caller]).unwrap();
     advance_slot(&mut svm);
 
     // Second accrual after one year should mint 10% of 1_000_000_000 = 100_000_000.
     advance_clock_by(&mut svm, ONE_YEAR_SECONDS);
-    let ix = build_manage_buffer_ix(&buffer_admin.pubkey(), &offer_pda, &onyc_mint);
-    send_tx(&mut svm, &[ix], &[&buffer_admin]).unwrap();
+    let ix = build_manage_buffer_ix(&caller.pubkey(), &offer_pda, &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&caller]).unwrap();
 
-    (svm, payer, token_in_mint, onyc_mint, buffer_admin)
+    (svm, payer, token_in_mint, onyc_mint, caller)
 }
 
 fn setup_buffer_with_fee_split(
@@ -164,7 +163,7 @@ fn setup_buffer_with_fee_split(
     performance_fee_basis_points: u16,
     accrual_periods: usize,
 ) -> (litesvm::LiteSVM, Keypair, Pubkey, Pubkey, Keypair) {
-    let (mut svm, payer, token_in_mint, onyc_mint, buffer_admin) = setup_buffer_context(
+    let (mut svm, payer, token_in_mint, onyc_mint, caller) = setup_buffer_context(
         150_000,
         50_000,
         management_fee_basis_points,
@@ -172,24 +171,23 @@ fn setup_buffer_with_fee_split(
     );
     let offer_pda = read_state(&svm).main_offer;
 
-    let ix = build_manage_buffer_ix(&buffer_admin.pubkey(), &offer_pda, &onyc_mint);
-    send_tx(&mut svm, &[ix], &[&buffer_admin]).unwrap();
+    let ix = build_manage_buffer_ix(&caller.pubkey(), &offer_pda, &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&caller]).unwrap();
 
     for _ in 0..accrual_periods {
         advance_slot(&mut svm);
         advance_clock_by(&mut svm, ONE_YEAR_SECONDS);
-        let ix = build_manage_buffer_ix(&buffer_admin.pubkey(), &offer_pda, &onyc_mint);
-        send_tx(&mut svm, &[ix], &[&buffer_admin]).unwrap();
+        let ix = build_manage_buffer_ix(&caller.pubkey(), &offer_pda, &onyc_mint);
+        send_tx(&mut svm, &[ix], &[&caller]).unwrap();
     }
 
-    (svm, payer, token_in_mint, onyc_mint, buffer_admin)
+    (svm, payer, token_in_mint, onyc_mint, caller)
 }
 
 #[test]
 fn test_initialize_buffer_success() {
     let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
-    let buffer_admin = Keypair::new();
     let token_in_mint = create_mint(&mut svm, &payer, 6, &boss);
     let ix = build_make_offer_ix(
         &boss,
@@ -206,12 +204,11 @@ fn test_initialize_buffer_success() {
     let ix = build_set_main_offer_ix(&boss, &offer_pda);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint, &buffer_admin.pubkey());
+    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let buffer_state = read_buffer_state(&svm);
     assert_eq!(buffer_state.onyc_mint, onyc_mint);
-    assert_eq!(buffer_state.buffer_admin, buffer_admin.pubkey());
     assert_eq!(buffer_state.gross_yield, 0);
     assert_eq!(buffer_state.lowest_supply, 0);
     assert_eq!(buffer_state.management_fee_basis_points, 0);
@@ -241,7 +238,6 @@ fn test_initialize_buffer_success() {
 fn test_initialize_buffer_requires_state_main_offer() {
     let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
-    let buffer_admin = Keypair::new();
     let token_in_mint = create_mint(&mut svm, &payer, 6, &boss);
     let ix = build_make_offer_ix(
         &boss,
@@ -255,7 +251,7 @@ fn test_initialize_buffer_requires_state_main_offer() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let (offer_pda, _) = find_offer_pda(&token_in_mint, &onyc_mint);
 
-    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint, &buffer_admin.pubkey());
+    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(
         result.is_err(),
@@ -264,80 +260,11 @@ fn test_initialize_buffer_requires_state_main_offer() {
 }
 
 #[test]
-fn test_set_buffer_admin_boss_only() {
-    let (mut svm, payer, onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-    let admin1 = Keypair::new();
-    let admin2 = Keypair::new();
-    let token_in_mint = create_mint(&mut svm, &payer, 6, &boss);
-    let ix = build_make_offer_ix(
-        &boss,
-        &token_in_mint,
-        &onyc_mint,
-        0,
-        false,
-        true,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let (offer_pda, _) = find_offer_pda(&token_in_mint, &onyc_mint);
-
-    let ix = build_set_main_offer_ix(&boss, &offer_pda);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-
-    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint, &admin1.pubkey());
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_set_buffer_admin_ix(&boss, &admin2.pubkey());
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    assert_eq!(read_buffer_state(&svm).buffer_admin, admin2.pubkey());
-
-    let non_boss = Keypair::new();
-    svm.airdrop(&non_boss.pubkey(), INITIAL_LAMPORTS).unwrap();
-    let ix = build_set_buffer_admin_ix(&non_boss.pubkey(), &admin1.pubkey());
-    let result = send_tx(&mut svm, &[ix], &[&non_boss]);
-    assert!(result.is_err(), "non-boss should not set buffer admin");
-}
-
-#[test]
-fn test_set_buffer_admin_rejects_no_change() {
-    let (mut svm, payer, onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-    let admin = Keypair::new();
-    let token_in_mint = create_mint(&mut svm, &payer, 6, &boss);
-    let ix = build_make_offer_ix(
-        &boss,
-        &token_in_mint,
-        &onyc_mint,
-        0,
-        false,
-        true,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let (offer_pda, _) = find_offer_pda(&token_in_mint, &onyc_mint);
-
-    let ix = build_set_main_offer_ix(&boss, &offer_pda);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-
-    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint, &admin.pubkey());
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_set_buffer_admin_ix(&boss, &admin.pubkey());
-    let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "setting same buffer admin should fail");
-}
-
-#[test]
 fn test_set_main_offer_updates_program_state() {
     let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
     let token_in_mint_a = create_mint(&mut svm, &payer, 6, &boss);
     let token_in_mint_b = create_mint(&mut svm, &payer, 6, &boss);
-    let buffer_admin = Keypair::new();
-
     let ix = build_make_offer_ix(
         &boss,
         &token_in_mint_a,
@@ -365,7 +292,7 @@ fn test_set_main_offer_updates_program_state() {
     let ix = build_set_main_offer_ix(&boss, &offer_a_pda);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    let ix = build_initialize_buffer_ix(&boss, &offer_a_pda, &onyc_mint, &buffer_admin.pubkey());
+    let ix = build_initialize_buffer_ix(&boss, &offer_a_pda, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -377,7 +304,7 @@ fn test_set_main_offer_updates_program_state() {
 
 #[test]
 fn test_set_buffer_gross_yield_rejects_no_change() {
-    let (mut svm, payer, _token_in_mint, _onyc_mint, _buffer_admin) =
+    let (mut svm, payer, _token_in_mint, _onyc_mint, _caller) =
         setup_buffer_context(150_000, 50_000, 0, 0);
     let boss = payer.pubkey();
 
@@ -388,13 +315,13 @@ fn test_set_buffer_gross_yield_rejects_no_change() {
 
 #[test]
 fn test_manage_buffer_first_call_sets_lowest_supply_no_mint() {
-    let (mut svm, _payer, _token_in_mint, onyc_mint, buffer_admin) =
+    let (mut svm, _payer, _token_in_mint, onyc_mint, caller) =
         setup_buffer_context(150_000, 50_000, 0, 0);
     let initial_supply = get_mint_supply(&svm, &onyc_mint);
     let offer_pda = read_state(&svm).main_offer;
 
-    let ix = build_manage_buffer_ix(&buffer_admin.pubkey(), &offer_pda, &onyc_mint);
-    send_tx(&mut svm, &[ix], &[&buffer_admin]).unwrap();
+    let ix = build_manage_buffer_ix(&caller.pubkey(), &offer_pda, &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&caller]).unwrap();
 
     let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
     let buffer_vault_ata = derive_ata(&buffer_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
@@ -407,18 +334,18 @@ fn test_manage_buffer_first_call_sets_lowest_supply_no_mint() {
 
 #[test]
 fn test_manage_buffer_zero_spread_mints_nothing() {
-    let (mut svm, _payer, _token_in_mint, onyc_mint, buffer_admin) =
+    let (mut svm, _payer, _token_in_mint, onyc_mint, caller) =
         setup_buffer_context(50_000, 50_000, 0, 0);
     let offer_pda = read_state(&svm).main_offer;
 
     // Baseline call sets lowest_supply.
-    let ix = build_manage_buffer_ix(&buffer_admin.pubkey(), &offer_pda, &onyc_mint);
-    send_tx(&mut svm, &[ix], &[&buffer_admin]).unwrap();
+    let ix = build_manage_buffer_ix(&caller.pubkey(), &offer_pda, &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&caller]).unwrap();
     advance_slot(&mut svm);
 
     advance_clock_by(&mut svm, ONE_YEAR_SECONDS);
-    let ix = build_manage_buffer_ix(&buffer_admin.pubkey(), &offer_pda, &onyc_mint);
-    send_tx(&mut svm, &[ix], &[&buffer_admin]).unwrap();
+    let ix = build_manage_buffer_ix(&caller.pubkey(), &offer_pda, &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&caller]).unwrap();
 
     let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
     let buffer_vault_ata = derive_ata(&buffer_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
@@ -428,7 +355,7 @@ fn test_manage_buffer_zero_spread_mints_nothing() {
 
 #[test]
 fn test_set_buffer_fee_config_rejects_no_change() {
-    let (mut svm, payer, _token_in_mint, _onyc_mint, _buffer_admin) =
+    let (mut svm, payer, _token_in_mint, _onyc_mint, _caller) =
         setup_buffer_context(150_000, 50_000, 100, 1_000);
     let boss = payer.pubkey();
 
@@ -439,7 +366,7 @@ fn test_set_buffer_fee_config_rejects_no_change() {
 
 #[test]
 fn test_manage_buffer_splits_fees_into_separate_vaults() {
-    let (svm, _payer, _token_in_mint, onyc_mint, _buffer_admin) =
+    let (svm, _payer, _token_in_mint, onyc_mint, _caller) =
         setup_buffer_with_fee_split(100, 1_000, 1);
 
     let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
@@ -473,7 +400,7 @@ fn test_manage_buffer_splits_fees_into_separate_vaults() {
 
 #[test]
 fn test_withdraw_fees_updates_vault_balances() {
-    let (mut svm, payer, _token_in_mint, onyc_mint, _buffer_admin) =
+    let (mut svm, payer, _token_in_mint, onyc_mint, _caller) =
         setup_buffer_with_fee_split(100, 1_000, 1);
     let boss = payer.pubkey();
 
@@ -513,7 +440,7 @@ fn test_withdraw_fees_updates_vault_balances() {
 
 #[test]
 fn test_performance_fee_waits_for_high_watermark_recovery() {
-    let (mut svm, payer, token_in_mint, onyc_mint, buffer_admin) =
+    let (mut svm, payer, token_in_mint, onyc_mint, caller) =
         setup_buffer_with_fee_split(100, 1_000, 2);
     let boss = payer.pubkey();
     let offer_pda = read_state(&svm).main_offer;
@@ -533,8 +460,8 @@ fn test_performance_fee_waits_for_high_watermark_recovery() {
     let performance_fee_balance_before = get_token_balance(&svm, &performance_fee_vault_ata);
 
     advance_clock_by(&mut svm, ONE_YEAR_SECONDS);
-    let ix = build_manage_buffer_ix(&buffer_admin.pubkey(), &offer_pda, &onyc_mint);
-    send_tx(&mut svm, &[ix], &[&buffer_admin]).unwrap();
+    let ix = build_manage_buffer_ix(&caller.pubkey(), &offer_pda, &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&caller]).unwrap();
 
     let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
     let buffer_vault_ata = derive_ata(&buffer_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
@@ -547,17 +474,17 @@ fn test_performance_fee_waits_for_high_watermark_recovery() {
 
 #[test]
 fn test_manage_buffer_zero_seconds_mints_nothing() {
-    let (mut svm, _payer, _token_in_mint, onyc_mint, buffer_admin) =
+    let (mut svm, _payer, _token_in_mint, onyc_mint, caller) =
         setup_buffer_context(150_000, 50_000, 0, 0);
     let offer_pda = read_state(&svm).main_offer;
 
-    let ix = build_manage_buffer_ix(&buffer_admin.pubkey(), &offer_pda, &onyc_mint);
-    send_tx(&mut svm, &[ix], &[&buffer_admin]).unwrap();
+    let ix = build_manage_buffer_ix(&caller.pubkey(), &offer_pda, &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&caller]).unwrap();
     advance_slot(&mut svm);
 
     // Same timestamp call should mint zero.
-    let ix = build_manage_buffer_ix(&buffer_admin.pubkey(), &offer_pda, &onyc_mint);
-    send_tx(&mut svm, &[ix], &[&buffer_admin]).unwrap();
+    let ix = build_manage_buffer_ix(&caller.pubkey(), &offer_pda, &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&caller]).unwrap();
 
     let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
     let buffer_vault_ata = derive_ata(&buffer_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
@@ -566,18 +493,18 @@ fn test_manage_buffer_zero_seconds_mints_nothing() {
 
 #[test]
 fn test_manage_buffer_partial_period_math() {
-    let (mut svm, _payer, _token_in_mint, onyc_mint, buffer_admin) =
+    let (mut svm, _payer, _token_in_mint, onyc_mint, caller) =
         setup_buffer_context(150_000, 50_000, 0, 0);
     let offer_pda = read_state(&svm).main_offer;
 
     // Baseline call sets lowest_supply.
-    let ix = build_manage_buffer_ix(&buffer_admin.pubkey(), &offer_pda, &onyc_mint);
-    send_tx(&mut svm, &[ix], &[&buffer_admin]).unwrap();
+    let ix = build_manage_buffer_ix(&caller.pubkey(), &offer_pda, &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&caller]).unwrap();
     advance_slot(&mut svm);
 
     advance_clock_by(&mut svm, ONE_DAY_SECONDS);
-    let ix = build_manage_buffer_ix(&buffer_admin.pubkey(), &offer_pda, &onyc_mint);
-    send_tx(&mut svm, &[ix], &[&buffer_admin]).unwrap();
+    let ix = build_manage_buffer_ix(&caller.pubkey(), &offer_pda, &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&caller]).unwrap();
 
     // Accrual formula:
     // mint = lowest_supply * spread * elapsed / SECONDS_PER_YEAR / YIELD_SCALE
@@ -598,7 +525,7 @@ fn test_manage_buffer_partial_period_math() {
 
 #[test]
 fn test_manage_buffer_mints_expected_amount() {
-    let (svm, _payer, _token_in_mint, onyc_mint, _buffer_admin) = setup_buffer_with_balance();
+    let (svm, _payer, _token_in_mint, onyc_mint, _caller) = setup_buffer_with_balance();
 
     let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
     let buffer_vault_ata = derive_ata(&buffer_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
@@ -611,25 +538,8 @@ fn test_manage_buffer_mints_expected_amount() {
 }
 
 #[test]
-fn test_manage_buffer_allows_non_buffer_admin() {
-    let (mut svm, payer, _token_in_mint, onyc_mint, buffer_admin) = setup_buffer_with_balance();
-    let boss = payer.pubkey();
-    let offer_pda = read_state(&svm).main_offer;
-
-    // Change admin to a new key, then ensure the old admin can still call manage_buffer.
-    let new_admin = Keypair::new();
-    let ix = build_set_buffer_admin_ix(&boss, &new_admin.pubkey());
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    advance_clock_by(&mut svm, ONE_YEAR_SECONDS);
-    let ix = build_manage_buffer_ix(&buffer_admin.pubkey(), &offer_pda, &onyc_mint);
-    send_tx(&mut svm, &[ix], &[&buffer_admin]).unwrap();
-}
-
-#[test]
 fn test_burn_for_nav_increase_success() {
-    let (mut svm, payer, token_in_mint, onyc_mint, _buffer_admin) = setup_buffer_with_balance();
+    let (mut svm, payer, token_in_mint, onyc_mint, _caller) = setup_buffer_with_balance();
     let boss = payer.pubkey();
 
     // `asset_adjustment_amount` is in token-in units.
@@ -653,7 +563,7 @@ fn test_burn_for_nav_increase_success() {
 
 #[test]
 fn test_burn_for_nav_increase_rejects_non_boss() {
-    let (mut svm, _payer, token_in_mint, onyc_mint, _buffer_admin) = setup_buffer_with_balance();
+    let (mut svm, _payer, token_in_mint, onyc_mint, _caller) = setup_buffer_with_balance();
 
     let non_boss = Keypair::new();
     svm.airdrop(&non_boss.pubkey(), INITIAL_LAMPORTS).unwrap();
@@ -671,7 +581,7 @@ fn test_burn_for_nav_increase_rejects_non_boss() {
 
 #[test]
 fn test_burn_for_nav_increase_rejects_target_nav_zero() {
-    let (mut svm, payer, token_in_mint, onyc_mint, _buffer_admin) = setup_buffer_with_balance();
+    let (mut svm, payer, token_in_mint, onyc_mint, _caller) = setup_buffer_with_balance();
     let boss = payer.pubkey();
 
     let ix = build_burn_for_nav_increase_ix(&boss, &token_in_mint, &onyc_mint, 10_000_000, 0);
@@ -681,7 +591,7 @@ fn test_burn_for_nav_increase_rejects_target_nav_zero() {
 
 #[test]
 fn test_burn_for_nav_increase_rejects_asset_adjustment_above_total_assets() {
-    let (mut svm, payer, token_in_mint, onyc_mint, _buffer_admin) = setup_buffer_with_balance();
+    let (mut svm, payer, token_in_mint, onyc_mint, _caller) = setup_buffer_with_balance();
     let boss = payer.pubkey();
 
     // Asset adjustment is token-in units (USDC-like 6 decimals here).
@@ -696,7 +606,7 @@ fn test_burn_for_nav_increase_rejects_asset_adjustment_above_total_assets() {
 
 #[test]
 fn test_burn_for_nav_increase_rejects_insufficient_buffer_balance() {
-    let (mut svm, payer, token_in_mint, onyc_mint, _buffer_admin) = setup_buffer_with_balance();
+    let (mut svm, payer, token_in_mint, onyc_mint, _caller) = setup_buffer_with_balance();
     let boss = payer.pubkey();
 
     let ix =
@@ -710,7 +620,7 @@ fn test_burn_for_nav_increase_rejects_insufficient_buffer_balance() {
 
 #[test]
 fn test_burn_for_nav_increase_rejects_no_burn_needed() {
-    let (mut svm, payer, token_in_mint, onyc_mint, _buffer_admin) = setup_buffer_with_balance();
+    let (mut svm, payer, token_in_mint, onyc_mint, _caller) = setup_buffer_with_balance();
     let boss = payer.pubkey();
 
     let ix = build_burn_for_nav_increase_ix(&boss, &token_in_mint, &onyc_mint, 0, NAV_1_0);
@@ -723,7 +633,7 @@ fn test_burn_for_nav_increase_rejects_no_burn_needed() {
 
 #[test]
 fn test_burn_for_nav_increase_rejects_invalid_burn_target() {
-    let (mut svm, payer, token_in_mint, onyc_mint, _buffer_admin) = setup_buffer_with_balance();
+    let (mut svm, payer, token_in_mint, onyc_mint, _caller) = setup_buffer_with_balance();
     let boss = payer.pubkey();
 
     let ix = build_burn_for_nav_increase_ix(&boss, &token_in_mint, &onyc_mint, 0, 900_000_000);

@@ -145,7 +145,6 @@ pub fn read_state(svm: &LiteSVM) -> StateData {
 
 pub struct BufferStateData {
     pub onyc_mint: Pubkey,
-    pub buffer_admin: Pubkey,
     pub gross_yield: u64,
     pub lowest_supply: u64,
     pub management_fee_basis_points: u16,
@@ -165,7 +164,6 @@ pub fn read_buffer_state(svm: &LiteSVM) -> BufferStateData {
         .expect("failed to deserialize BufferState account");
     BufferStateData {
         onyc_mint: buffer_state.onyc_mint,
-        buffer_admin: buffer_state.buffer_admin,
         gross_yield: buffer_state.gross_apr,
         lowest_supply: buffer_state.lowest_supply,
         management_fee_basis_points: buffer_state.management_fee_basis_points,

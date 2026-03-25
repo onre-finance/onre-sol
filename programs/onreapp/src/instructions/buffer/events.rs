@@ -4,15 +4,8 @@ use anchor_lang::prelude::*;
 pub struct BufferInitializedEvent {
     pub buffer_state: Pubkey,
     pub onyc_mint: Pubkey,
-    pub buffer_admin: Pubkey,
     pub main_offer: Pubkey,
     pub timestamp: i64,
-}
-
-#[event]
-pub struct BufferAdminUpdatedEvent {
-    pub old_buffer_admin: Pubkey,
-    pub new_buffer_admin: Pubkey,
 }
 
 #[event]

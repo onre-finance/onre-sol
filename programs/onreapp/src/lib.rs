@@ -408,15 +408,8 @@ pub mod onreapp {
     ///
     /// Creates BUFFER state as a separate PDA so existing offer/redemption state
     /// remains unchanged. Only the boss can initialize BUFFER.
-    pub fn initialize_buffer(ctx: Context<InitializeBuffer>, buffer_admin: Pubkey) -> Result<()> {
-        buffer::initialize_buffer(ctx, buffer_admin)
-    }
-
-    /// Sets the BUFFER admin authorized to call accrual.
-    ///
-    /// Only the boss can update the BUFFER admin.
-    pub fn set_buffer_admin(ctx: Context<SetBufferAdmin>, new_buffer_admin: Pubkey) -> Result<()> {
-        buffer::set_buffer_admin(ctx, new_buffer_admin)
+    pub fn initialize_buffer(ctx: Context<InitializeBuffer>) -> Result<()> {
+        buffer::initialize_buffer(ctx)
     }
 
     /// Sets the main offer stored in program state.

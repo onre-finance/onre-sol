@@ -442,15 +442,13 @@ fn setup_permissionless_extended_with_buffer() -> PermissionlessNoApprovalCtx {
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
 
-    let buffer_admin = Keypair::new();
-    ctx.svm
-        .airdrop(&buffer_admin.pubkey(), INITIAL_LAMPORTS)
-        .unwrap();
+    let caller = Keypair::new();
+    ctx.svm.airdrop(&caller.pubkey(), INITIAL_LAMPORTS).unwrap();
     let ix = build_set_main_offer_ix(&boss, &offer_pda);
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
 
-    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &ctx.onyc_mint, &buffer_admin.pubkey());
+    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &ctx.onyc_mint);
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
 
@@ -702,12 +700,13 @@ fn test_permissionless_price_second_interval() {
     // Advance to second interval
     advance_clock_by(&mut ctx.svm, 86_400);
 
+    // With compounded step pricing, the snapped second-interval price is 1.000200010.
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
         &ctx.onyc_mint,
-        1_000_200,
+        1_000_201,
         None,
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
@@ -718,7 +717,7 @@ fn test_permissionless_price_second_interval() {
         &ctx.svm,
         &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
     );
-    assert_eq!(user_onyc, 1_000_000_000);
+    assert_eq!(user_onyc, 1_000_000_989);
 }
 
 #[test]
@@ -950,13 +949,13 @@ fn test_permissionless_high_apr_long_period() {
     // Advance 1 year
     advance_clock_by(&mut ctx.svm, 86400 * 365);
 
-    // After 1 year: price ≈ 1.366
+    // With compounded step pricing, 36.5% APR snapped to day 366 is 1.441691565.
     let ix = build_take_offer_permissionless_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
         &ctx.onyc_mint,
-        1_366_000,
+        1_441_692,
         None,
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
@@ -967,7 +966,7 @@ fn test_permissionless_high_apr_long_period() {
         &ctx.svm,
         &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
     );
-    assert_eq!(user_onyc, 1_000_000_000);
+    assert_eq!(user_onyc, 1_000_000_301);
 }
 
 // ===========================================================================
