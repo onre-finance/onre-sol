@@ -2,6 +2,7 @@ use crate::constants::seeds;
 use crate::instructions::offer::offer_utils::find_active_vector_at;
 use crate::instructions::Offer;
 use crate::OfferCoreError;
+use crate::utils::pow_fixed;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::Mint;
@@ -207,7 +208,7 @@ pub fn calculate_apy_from_apr(apr_scaled: u64) -> Result<u64> {
         .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
 
     // (1 + r/n)^n at 1e18 precision
-    let pow = pow_fixed(base, N as u32, INT_SCALE)?;
+    let pow = pow_fixed(base, N as u64, INT_SCALE).ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
 
     // APY_int = pow - 1.0
     let apy_int = pow
@@ -249,36 +250,4 @@ fn mul_div_round(a: u128, b: u128, denom: u128) -> Result<u128> {
     Ok(adj
         .checked_div(denom)
         .ok_or_else(|| error!(GetAPYErrorCode::DivByZero))?)
-}
-
-/// Computes fixed-point exponentiation using the binary exponentiation algorithm
-///
-/// Calculates base^exp in fixed-point arithmetic where both input and output
-/// use the same scale factor. This implementation uses exponentiation by squaring
-/// for efficient computation with O(log n) complexity.
-///
-/// # Arguments
-/// * `base` - Base value in fixed-point format
-/// * `exp` - Integer exponent (not scaled)
-/// * `scale` - Scale factor used for fixed-point representation
-///
-/// # Returns
-/// * `Ok(result)` - base^exp in the same scale as input
-/// * `Err(_)` - If overflow occurs during calculation
-///
-/// # Algorithm
-/// Uses binary exponentiation (exponentiation by squaring) to efficiently
-/// compute large powers while maintaining precision in fixed-point arithmetic.
-fn pow_fixed(mut base: u128, mut exp: u32, scale: u128) -> Result<u128> {
-    let mut acc = scale; // 1.0
-    while exp > 0 {
-        if (exp & 1) == 1 {
-            acc = mul_div_round(acc, base, scale)?;
-        }
-        exp >>= 1;
-        if exp > 0 {
-            base = mul_div_round(base, base, scale)?;
-        }
-    }
-    Ok(acc)
 }

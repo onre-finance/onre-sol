@@ -21,3 +21,27 @@ pub fn mul_basis_points_floor(amount: u64, basis_points: u16) -> Option<u64> {
 
     u64::try_from(amount_u128).ok()
 }
+
+/// Fixed-point exponentiation by squaring with half-up rounding at each multiply.
+///
+/// `base` and the returned value use the same fixed-point `scale`.
+/// Returns `None` on overflow.
+pub fn pow_fixed(mut base: u128, mut exp: u64, scale: u128) -> Option<u128> {
+    let mut acc = scale;
+    while exp > 0 {
+        if (exp & 1) == 1 {
+            acc = mul_div_round_u128(acc, base, scale)?;
+        }
+        exp >>= 1;
+        if exp > 0 {
+            base = mul_div_round_u128(base, base, scale)?;
+        }
+    }
+    Some(acc)
+}
+
+fn mul_div_round_u128(a: u128, b: u128, denom: u128) -> Option<u128> {
+    let prod = a.checked_mul(b)?;
+    let adj = prod.checked_add(denom / 2)?;
+    adj.checked_div(denom)
+}

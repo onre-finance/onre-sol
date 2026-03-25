@@ -2,7 +2,8 @@ use crate::instructions::{Offer, OfferVector};
 use crate::state::State;
 use crate::utils::approver::approver_utils;
 use crate::utils::{
-    calculate_fees, calculate_token_out_amount, program_controls_mint, ApprovalMessage,
+    calculate_fees, calculate_token_out_amount, pow_fixed, program_controls_mint,
+    ApprovalMessage,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
@@ -238,10 +239,12 @@ pub fn calculate_vector_price(apr: u64, base_price: u64, elapsed_time: u64) -> R
     let full_days = elapsed_time / SECONDS_IN_DAY;
     let remaining_seconds = elapsed_time % SECONDS_IN_DAY;
 
-    let mut factor = pow_fixed(daily_factor, full_days, INT_SCALE)?;
+    let mut factor =
+        pow_fixed(daily_factor, full_days, INT_SCALE).ok_or(OfferCoreError::OverflowError)?;
     if remaining_seconds > 0 {
         let second_factor = nth_root_fixed(daily_factor, SECONDS_IN_DAY, INT_SCALE)?;
-        let partial_day_factor = pow_fixed(second_factor, remaining_seconds, INT_SCALE)?;
+        let partial_day_factor = pow_fixed(second_factor, remaining_seconds, INT_SCALE)
+            .ok_or(OfferCoreError::OverflowError)?;
         factor = mul_div_round(factor, partial_day_factor, INT_SCALE)?;
     }
 
@@ -352,20 +355,6 @@ fn mul_div_round(a: u128, b: u128, denom: u128) -> Result<u128> {
         .ok_or(OfferCoreError::OverflowError)?;
     adj.checked_div(denom)
         .ok_or_else(|| error!(OfferCoreError::OverflowError))
-}
-
-fn pow_fixed(mut base: u128, mut exp: u64, scale: u128) -> Result<u128> {
-    let mut acc = scale;
-    while exp > 0 {
-        if (exp & 1) == 1 {
-            acc = mul_div_round(acc, base, scale)?;
-        }
-        exp >>= 1;
-        if exp > 0 {
-            base = mul_div_round(base, base, scale)?;
-        }
-    }
-    Ok(acc)
 }
 
 fn nth_root_fixed(value: u128, n: u64, scale: u128) -> Result<u128> {
