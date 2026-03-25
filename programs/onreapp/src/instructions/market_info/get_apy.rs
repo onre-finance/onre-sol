@@ -2,7 +2,7 @@ use crate::constants::seeds;
 use crate::instructions::offer::offer_utils::find_active_vector_at;
 use crate::instructions::Offer;
 use crate::OfferCoreError;
-use crate::utils::pow_fixed;
+use crate::utils::{mul_div_round_u128, pow_fixed};
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::Mint;
@@ -216,38 +216,12 @@ pub fn calculate_apy_from_apr(apr_scaled: u64) -> Result<u64> {
         .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
 
     // Convert back to 1e6 scale with rounding: apy_scaled = round(apy_int * EXT_SCALE / INT_SCALE)
-    let apy_scaled_u128 = mul_div_round(apy_int, EXT_SCALE, INT_SCALE)?;
+    let apy_scaled_u128 =
+        mul_div_round_u128(apy_int, EXT_SCALE, INT_SCALE).ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
 
     if apy_scaled_u128 > u64::MAX as u128 {
         return Err(error!(GetAPYErrorCode::Overflow));
     }
 
     Ok(apy_scaled_u128 as u64)
-}
-
-/// Performs multiplication followed by division with proper rounding
-///
-/// Calculates (a * b) / denom with half-up rounding to minimize precision loss
-/// in fixed-point arithmetic operations. All operations are overflow-protected.
-///
-/// # Arguments
-/// * `a` - First multiplicand
-/// * `b` - Second multiplicand
-/// * `denom` - Denominator for division
-///
-/// # Returns
-/// * `Ok(result)` - Rounded result of (a * b) / denom
-/// * `Err(_)` - If overflow or division by zero occurs
-#[inline]
-fn mul_div_round(a: u128, b: u128, denom: u128) -> Result<u128> {
-    // (a*b + denom/2) / denom  (round half-up)
-    let prod = a
-        .checked_mul(b)
-        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
-    let adj = prod
-        .checked_add(denom / 2)
-        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
-    Ok(adj
-        .checked_div(denom)
-        .ok_or_else(|| error!(GetAPYErrorCode::DivByZero))?)
 }

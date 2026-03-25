@@ -40,7 +40,7 @@ pub fn pow_fixed(mut base: u128, mut exp: u64, scale: u128) -> Option<u128> {
     Some(acc)
 }
 
-fn mul_div_round_u128(a: u128, b: u128, denom: u128) -> Option<u128> {
+pub fn mul_div_round_u128(a: u128, b: u128, denom: u128) -> Option<u128> {
     let prod = a.checked_mul(b)?;
     let adj = prod.checked_add(denom / 2)?;
     adj.checked_div(denom)

@@ -2,7 +2,8 @@ use crate::instructions::{Offer, OfferVector};
 use crate::state::State;
 use crate::utils::approver::approver_utils;
 use crate::utils::{
-    calculate_fees, calculate_token_out_amount, pow_fixed, program_controls_mint,
+    calculate_fees, calculate_token_out_amount, mul_div_round_u128, pow_fixed,
+    program_controls_mint,
     ApprovalMessage,
 };
 use anchor_lang::prelude::*;
@@ -245,10 +246,12 @@ pub fn calculate_vector_price(apr: u64, base_price: u64, elapsed_time: u64) -> R
         let second_factor = nth_root_fixed(daily_factor, SECONDS_IN_DAY, INT_SCALE)?;
         let partial_day_factor = pow_fixed(second_factor, remaining_seconds, INT_SCALE)
             .ok_or(OfferCoreError::OverflowError)?;
-        factor = mul_div_round(factor, partial_day_factor, INT_SCALE)?;
+        factor = mul_div_round_u128(factor, partial_day_factor, INT_SCALE)
+            .ok_or(OfferCoreError::OverflowError)?;
     }
 
-    let price_u128 = mul_div_round(base_price as u128, factor, INT_SCALE)?;
+    let price_u128 = mul_div_round_u128(base_price as u128, factor, INT_SCALE)
+        .ok_or(OfferCoreError::OverflowError)?;
 
     if price_u128 > u64::MAX as u128 {
         return Err(error!(OfferCoreError::OverflowError));
@@ -347,16 +350,6 @@ pub fn find_vector_index_by_start_time(offer: &Offer, start_time: u64) -> Option
         .position(|vector| vector.start_time == start_time)
 }
 
-#[inline]
-fn mul_div_round(a: u128, b: u128, denom: u128) -> Result<u128> {
-    let prod = a.checked_mul(b).ok_or(OfferCoreError::OverflowError)?;
-    let adj = prod
-        .checked_add(denom / 2)
-        .ok_or(OfferCoreError::OverflowError)?;
-    adj.checked_div(denom)
-        .ok_or_else(|| error!(OfferCoreError::OverflowError))
-}
-
 fn nth_root_fixed(value: u128, n: u64, scale: u128) -> Result<u128> {
     if n == 0 {
         return Err(error!(OfferCoreError::OverflowError));
@@ -384,7 +377,7 @@ fn compare_pow_fixed(mut base: u128, mut exp: u64, scale: u128, target: u128) ->
 
     while exp > 0 {
         if (exp & 1) == 1 {
-            acc = mul_div_round(acc, base, scale)?;
+            acc = mul_div_round_u128(acc, base, scale).ok_or(OfferCoreError::OverflowError)?;
             if acc > target {
                 return Ok(Ordering::Greater);
             }
@@ -392,7 +385,7 @@ fn compare_pow_fixed(mut base: u128, mut exp: u64, scale: u128, target: u128) ->
 
         exp >>= 1;
         if exp > 0 {
-            base = mul_div_round(base, base, scale)?;
+            base = mul_div_round_u128(base, base, scale).ok_or(OfferCoreError::OverflowError)?;
             if base > target {
                 return Ok(Ordering::Greater);
             }
