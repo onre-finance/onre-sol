@@ -127,6 +127,10 @@ fn setup_redemption_extended_with_buffer() -> (LiteSVM, Keypair, Pubkey, Pubkey,
     advance_slot(&mut svm);
 
     let (offer_pda, _) = find_offer_pda(&usdc_mint, &onyc_mint);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
     let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint, &buffer_admin.pubkey());
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);

@@ -1,7 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::buffer::{
-    validate_buffer_onyc_vault_accounts, BufferAccrualAccounts,
-    manage_buffer::{accrue_buffer, set_buffer_baseline_after_supply_change},
+    BufferAccrualAccounts,
+    manage_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
     BufferErrorCode,
 };
 use crate::instructions::buffer::accounts::{
@@ -497,26 +497,13 @@ fn execute_fulfill_redemption_request<'info>(
         params.token_in_mint.key() == params.state.onyc_mint
             && program_controls_mint(params.token_in_mint, &params.mint_authority.to_account_info())
     }) {
-        let mut buffer_state = buffer_accounts.load_buffer_state()?;
-        validate_buffer_onyc_vault_accounts(
-            params.program_id,
-            &buffer_state,
-            &buffer_accounts.buffer_vault_onyc_account_info(),
-            &buffer_accounts.management_fee_vault_onyc_account_info(),
-            &buffer_accounts.performance_fee_vault_onyc_account_info(),
-            params.token_in_mint,
-            params.token_in_program,
-        )?;
-
         let now = Clock::get()?.unix_timestamp;
-        let accrual = accrue_buffer(
+        let accrual = accrue_buffer_from_accounts(
+            params.program_id,
             params.state,
-            &mut buffer_state,
+            buffer_accounts,
             &offer,
             params.token_in_mint,
-            buffer_accounts.buffer_vault_onyc_account_info(),
-            buffer_accounts.management_fee_vault_onyc_account_info(),
-            buffer_accounts.performance_fee_vault_onyc_account_info(),
             params.mint_authority.to_account_info(),
             params.mint_authority_bump,
             params.token_in_program,
@@ -546,8 +533,7 @@ fn execute_fulfill_redemption_request<'info>(
             .post_accrual_supply
             .checked_sub(token_in_net_amount)
             .ok_or(BufferErrorCode::MathOverflow)?;
-        set_buffer_baseline_after_supply_change(&mut buffer_state, post_burn_supply, now);
-        buffer_accounts.store_buffer_state(&buffer_state)?;
+        store_buffer_post_supply(buffer_accounts, post_burn_supply, now)?;
     } else {
         drop(offer);
 
