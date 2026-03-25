@@ -3,6 +3,12 @@ use crate::instructions::{Offer, OfferVector};
 use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 
+pub struct OfferValuationSnapshot {
+    pub active_vector: OfferVector,
+    pub current_price: u64,
+    pub next_price_change_timestamp: u64,
+}
+
 pub fn get_active_vector_and_current_price(
     offer: &Offer,
     current_time: u64,
@@ -17,6 +23,21 @@ pub fn get_active_vector_and_current_price(
     )?;
 
     Ok((active_vector, current_price))
+}
+
+pub fn get_offer_valuation_snapshot(
+    offer: &Offer,
+    current_time: u64,
+) -> Result<OfferValuationSnapshot> {
+    let (active_vector, current_price) = get_active_vector_and_current_price(offer, current_time)?;
+    let next_price_change_timestamp =
+        compute_next_price_change_timestamp(offer, &active_vector, current_time)?;
+
+    Ok(OfferValuationSnapshot {
+        active_vector,
+        current_price,
+        next_price_change_timestamp,
+    })
 }
 
 pub fn compute_offer_current_price(offer: &Offer, current_time: u64) -> Result<u64> {
@@ -42,4 +63,35 @@ pub fn compute_signed_price_delta(current_price: u64, previous_price: u64) -> Re
         .ok_or(OfferCoreError::OverflowError)?;
 
     i64::try_from(delta).map_err(|_| error!(OfferCoreError::OverflowError))
+}
+
+fn compute_next_price_change_timestamp(
+    offer: &Offer,
+    active_vector: &OfferVector,
+    current_time: u64,
+) -> Result<u64> {
+    let elapsed_since_base = current_time.saturating_sub(active_vector.base_time);
+    let current_step = elapsed_since_base / active_vector.price_fix_duration;
+    let next_interval_timestamp = active_vector
+        .base_time
+        .checked_add(
+            (current_step + 1)
+                .checked_mul(active_vector.price_fix_duration)
+                .ok_or(OfferCoreError::OverflowError)?,
+        )
+        .ok_or(OfferCoreError::OverflowError)?;
+
+    Ok(match find_next_vector_after(offer, current_time) {
+        Some(vector) => next_interval_timestamp.min(vector.start_time),
+        None => next_interval_timestamp,
+    })
+}
+
+fn find_next_vector_after(offer: &Offer, current_time: u64) -> Option<OfferVector> {
+    offer
+        .vectors
+        .iter()
+        .filter(|vector| vector.start_time > current_time)
+        .min_by_key(|vector| vector.start_time)
+        .copied()
 }

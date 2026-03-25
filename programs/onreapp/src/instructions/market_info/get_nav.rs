@@ -1,6 +1,6 @@
 use crate::constants::seeds;
-use crate::instructions::market_info::offer_valuation_utils::get_active_vector_and_current_price;
-use crate::instructions::{Offer, OfferVector};
+use crate::instructions::market_info::offer_valuation_utils::get_offer_valuation_snapshot;
+use crate::instructions::Offer;
 use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
@@ -81,28 +81,9 @@ pub fn get_nav(ctx: Context<GetNAV>) -> Result<u64> {
     let offer = ctx.accounts.offer.load()?;
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    let (active_vector, current_price) = get_active_vector_and_current_price(&offer, current_time)?;
-
-    // Calculate when the next NAV change will occur
-    let elapsed_since_base = current_time.saturating_sub(active_vector.base_time);
-    let current_step = elapsed_since_base / active_vector.price_fix_duration;
-    let next_interval_timestamp = active_vector
-        .base_time
-        .checked_add(
-            (current_step + 1)
-                .checked_mul(active_vector.price_fix_duration)
-                .ok_or(OfferCoreError::OverflowError)?,
-        )
-        .ok_or(OfferCoreError::OverflowError)?;
-
-    // Find the next vector that will become active
-    let next_vector = find_next_vector_after(&offer, current_time);
-
-    // Next NAV change is the minimum of next interval and next vector start time
-    let next_price_change_timestamp = match next_vector {
-        Some(vector) => next_interval_timestamp.min(vector.start_time),
-        None => next_interval_timestamp,
-    };
+    let valuation = get_offer_valuation_snapshot(&offer, current_time)?;
+    let current_price = valuation.current_price;
+    let next_price_change_timestamp = valuation.next_price_change_timestamp;
 
     msg!(
         "NAV Info - Offer PDA: {}, Current Timestamp: {}, Current Price: {}, Next Change: {}",
@@ -120,25 +101,4 @@ pub fn get_nav(ctx: Context<GetNAV>) -> Result<u64> {
     });
 
     Ok(current_price)
-}
-
-/// Finds the next vector that will become active after the current time
-///
-/// Searches through all vectors to find the one with the smallest start_time
-/// that is still in the future (greater than current_time).
-///
-/// # Arguments
-/// * `offer` - The offer containing pricing vectors to search
-/// * `current_time` - The current Unix timestamp
-///
-/// # Returns
-/// * `Some(OfferVector)` - The next future vector if one exists
-/// * `None` - If no vectors are scheduled in the future
-fn find_next_vector_after(offer: &Offer, current_time: u64) -> Option<OfferVector> {
-    offer
-        .vectors
-        .iter()
-        .filter(|vector| vector.start_time > current_time)
-        .min_by_key(|vector| vector.start_time)
-        .copied()
 }

@@ -42,7 +42,7 @@ pub struct MarketStatsSnapshot {
 
 impl PdaAccountInit for MarketStats {
     fn pda_seed_prefixes() -> &'static [&'static [u8]] {
-        &[crate::constants::seeds::MARKET_STATS]
+        &[seeds::MARKET_STATS]
     }
 
     fn init_space() -> usize {
