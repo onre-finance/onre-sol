@@ -363,7 +363,7 @@ pub(crate) fn accrue_buffer_from_accounts<'info>(
         token_program,
     )?;
 
-    accrue_buffer(
+    let result = accrue_buffer(
         state,
         &mut buffer_state,
         offer,
@@ -375,7 +375,11 @@ pub(crate) fn accrue_buffer_from_accounts<'info>(
         mint_authority_bump,
         token_program,
         now,
-    )
+    )?;
+
+    buffer_accounts.store_buffer_state(&buffer_state)?;
+
+    Ok(result)
 }
 
 pub(crate) fn set_buffer_baseline_after_supply_change(

@@ -590,6 +590,10 @@ fn test_permissionless_extended_accrues_buffer_and_refreshes_market_stats() {
         read_buffer_state(&ctx.svm).lowest_supply,
         get_mint_supply(&ctx.svm, &ctx.onyc_mint)
     );
+    assert!(
+        read_buffer_state(&ctx.svm).performance_fee_high_watermark >= 1_000_000_000,
+        "permissionless take_offer accrual should persist the updated performance fee watermark"
+    );
 
     let market_stats = read_market_stats(&ctx.svm);
     let (_, expected_bump) = find_market_stats_pda();

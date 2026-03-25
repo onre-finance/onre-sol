@@ -283,6 +283,10 @@ fn test_take_offer_extended_accrues_buffer_and_splits_fees() {
     assert_eq!(supply_before, 1_000_000_000);
     assert_eq!(supply_after, 2_100_000_000);
     assert_eq!(buffer_state.lowest_supply, supply_after);
+    assert!(
+        buffer_state.performance_fee_high_watermark >= 1_000_000_000,
+        "take_offer accrual should persist the updated performance fee watermark"
+    );
 }
 
 #[test]

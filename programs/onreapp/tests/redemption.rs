@@ -1702,7 +1702,12 @@ fn test_fulfill_redemption_request_extended_accrues_buffer_before_burn() {
     );
     assert_eq!(get_token_balance(&svm, &boss_onyc_ata), 50_000_000);
     assert_eq!(get_token_balance(&svm, &user_usdc_ata), 950_000);
-    assert_eq!(read_buffer_state(&svm).lowest_supply, 150_000_000);
+    let buffer_state = read_buffer_state(&svm);
+    assert_eq!(buffer_state.lowest_supply, 150_000_000);
+    assert!(
+        buffer_state.performance_fee_high_watermark >= 1_000_000_000,
+        "redemption accrual should persist the updated performance fee watermark"
+    );
 }
 
 #[test]

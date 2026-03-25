@@ -404,6 +404,10 @@ fn test_mint_to_accrues_buffer_before_mint() {
         2_000_000_000
     );
     assert_eq!(buffer_state.lowest_supply, 2_100_000_000);
+    assert!(
+        buffer_state.performance_fee_high_watermark >= 1_000_000_000,
+        "accrual before mint should persist the updated performance fee watermark"
+    );
 
     let market_stats = read_market_stats(&svm);
     let (_, market_stats_bump) = find_market_stats_pda();
