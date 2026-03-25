@@ -9,6 +9,12 @@ pub struct OfferValuationSnapshot {
     pub next_price_change_timestamp: u64,
 }
 
+pub struct NavAdjustmentSnapshot {
+    pub current_price: u64,
+    pub previous_price: Option<u64>,
+    pub adjustment: i64,
+}
+
 pub fn get_active_vector_and_current_price(
     offer: &Offer,
     current_time: u64,
@@ -65,6 +71,31 @@ pub fn compute_signed_price_delta(current_price: u64, previous_price: u64) -> Re
     i64::try_from(delta).map_err(|_| error!(OfferCoreError::OverflowError))
 }
 
+pub fn get_nav_adjustment_snapshot(
+    offer: &Offer,
+    active_vector: &OfferVector,
+) -> Result<NavAdjustmentSnapshot> {
+    let current_price = compute_vector_price_at_time(active_vector, active_vector.start_time)?;
+
+    let (previous_price, adjustment) =
+        if let Some(previous_vector) = find_previous_vector(offer, active_vector.start_time) {
+            let previous_price =
+                compute_vector_price_at_time(&previous_vector, active_vector.start_time)?;
+            let adjustment = compute_signed_price_delta(current_price, previous_price)?;
+            (Some(previous_price), adjustment)
+        } else {
+            let adjustment =
+                i64::try_from(current_price).map_err(|_| error!(OfferCoreError::OverflowError))?;
+            (None, adjustment)
+        };
+
+    Ok(NavAdjustmentSnapshot {
+        current_price,
+        previous_price,
+        adjustment,
+    })
+}
+
 fn compute_next_price_change_timestamp(
     offer: &Offer,
     active_vector: &OfferVector,
@@ -93,5 +124,14 @@ fn find_next_vector_after(offer: &Offer, current_time: u64) -> Option<OfferVecto
         .iter()
         .filter(|vector| vector.start_time > current_time)
         .min_by_key(|vector| vector.start_time)
+        .copied()
+}
+
+pub fn find_previous_vector(offer: &Offer, current_vector_start_time: u64) -> Option<OfferVector> {
+    offer
+        .vectors
+        .iter()
+        .filter(|vector| vector.start_time != 0 && vector.start_time < current_vector_start_time)
+        .max_by_key(|vector| vector.start_time)
         .copied()
 }
