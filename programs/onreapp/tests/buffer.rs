@@ -356,7 +356,10 @@ fn test_set_main_offer_rejects_no_change() {
     let ix = build_set_main_offer_ix(&boss, &offer_pda);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
 
-    assert!(result.is_err(), "set_main_offer should reject no-op updates");
+    assert!(
+        result.is_err(),
+        "set_main_offer should reject no-op updates"
+    );
 }
 
 #[test]
@@ -595,6 +598,22 @@ fn test_manage_buffer_mints_expected_amount() {
 }
 
 #[test]
+fn test_manage_buffer_rejects_kill_switch() {
+    let (mut svm, payer, _token_in_mint, onyc_mint, caller) =
+        setup_buffer_context(150_000, 50_000, 0, 0);
+    let boss = payer.pubkey();
+    let offer_pda = read_state(&svm).main_offer;
+
+    let ix = build_set_kill_switch_ix(&boss, true);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_manage_buffer_ix(&caller.pubkey(), &offer_pda, &onyc_mint);
+    let result = send_tx(&mut svm, &[ix], &[&caller]);
+    assert!(result.is_err(), "manage_buffer should reject when killed");
+}
+
+#[test]
 fn test_burn_for_nav_increase_success() {
     let (mut svm, payer, token_in_mint, onyc_mint, _caller) = setup_buffer_with_balance();
     let boss = payer.pubkey();
@@ -616,6 +635,23 @@ fn test_burn_for_nav_increase_success() {
     let market_stats = read_market_stats(&svm);
     assert_eq!(market_stats.circulating_supply, 1_050_000_000);
     assert_eq!(market_stats.tvl, 1_050_000_000);
+}
+
+#[test]
+fn test_burn_for_nav_increase_rejects_kill_switch() {
+    let (mut svm, payer, token_in_mint, onyc_mint, _caller) = setup_buffer_with_balance();
+    let boss = payer.pubkey();
+
+    let ix = build_set_kill_switch_ix(&boss, true);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_burn_for_nav_increase_ix(&boss, &token_in_mint, &onyc_mint, 50_000_000, NAV_1_0);
+    let result = send_tx(&mut svm, &[ix], &[&payer]);
+    assert!(
+        result.is_err(),
+        "burn_for_nav_increase should reject when killed"
+    );
 }
 
 #[test]

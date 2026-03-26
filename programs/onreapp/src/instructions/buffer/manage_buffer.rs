@@ -39,6 +39,7 @@ pub struct ManageBuffer<'info> {
         seeds = [seeds::STATE],
         bump = state.bump,
         has_one = onyc_mint,
+        constraint = !state.is_killed @ BufferErrorCode::KillSwitchActivated,
     )]
     pub state: Box<Account<'info, State>>,
 

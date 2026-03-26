@@ -23,6 +23,7 @@ pub struct BurnForNavIncrease<'info> {
         bump = state.bump,
         has_one = boss,
         has_one = onyc_mint,
+        constraint = !state.is_killed @ BufferErrorCode::KillSwitchActivated,
     )]
     pub state: Box<Account<'info, State>>,
 

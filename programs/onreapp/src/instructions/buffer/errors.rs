@@ -2,6 +2,8 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum BufferErrorCode {
+    #[msg("Kill switch is activated")]
+    KillSwitchActivated,
     #[msg("Invalid ONyc mint for BUFFER state")]
     InvalidOnycMint,
     #[msg("Invalid main offer for BUFFER state")]
