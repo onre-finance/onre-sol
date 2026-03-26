@@ -442,11 +442,12 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildInitializeBufferIx(params: { offer: PublicKey; onycMint: PublicKey; bufferAdmin: PublicKey; boss: PublicKey }) {
+    async buildInitializeBufferIx(params: { offer: PublicKey; onycMint: PublicKey; boss: PublicKey }) {
         const builder = this.program.methods
-            .initializeBuffer(params.bufferAdmin)
+            .initializeBuffer()
             .accountsPartial({
                 boss: params.boss,
+                offer: params.offer,
                 onycMint: params.onycMint,
                 bufferState: this.pdas.bufferStatePda,
                 bufferVaultAuthority: this.pdas.bufferVaultAuthorityPda,
@@ -458,7 +459,6 @@ export class ScriptHelper {
                 tokenProgram: TOKEN_PROGRAM_ID,
                 associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
             });
-        builder.remainingAccounts([{ pubkey: params.offer, isSigner: false, isWritable: false }]);
         return await builder.instruction();
     }
 
@@ -467,16 +467,6 @@ export class ScriptHelper {
             .setMainOffer()
             .accountsPartial({
                 offer: params.offer,
-            })
-            .instruction();
-    }
-
-    async buildSetBufferAdminIx(params: { bufferAdmin: PublicKey; boss: PublicKey }) {
-        return await this.program.methods
-            .setBufferAdmin(params.bufferAdmin)
-            .accountsPartial({
-                bufferState: this.pdas.bufferStatePda,
-                boss: params.boss,
             })
             .instruction();
     }

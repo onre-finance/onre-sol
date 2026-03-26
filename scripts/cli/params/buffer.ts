@@ -3,13 +3,6 @@ import { ParamDefinition } from "../prompts/types";
 
 export const bufferInitParams: ParamDefinition[] = [
     {
-        name: "bufferAdmin",
-        type: "publicKey",
-        description: "BUFFER admin public key",
-        required: true,
-        flag: "--buffer-admin",
-    },
-    {
         name: "offer",
         type: "publicKey",
         description: "Main offer PDA used by BUFFER",
@@ -34,16 +27,6 @@ export const bufferOnycMintParam: ParamDefinition[] = [
         required: true,
         flag: "--onyc-mint",
         default: (cfg: NetworkConfig) => cfg.mints.onyc,
-    },
-];
-
-export const bufferAdminParam: ParamDefinition[] = [
-    {
-        name: "bufferAdmin",
-        type: "publicKey",
-        description: "BUFFER admin public key",
-        required: true,
-        flag: "--buffer-admin",
     },
 ];
 

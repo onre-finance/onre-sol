@@ -82,7 +82,6 @@ export function printBufferState(bufferState: any, json: boolean = false): void 
             JSON.stringify(
                 {
                     onycMint: bufferState.onycMint.toBase58(),
-                    bufferAdmin: bufferState.bufferAdmin.toBase58(),
                     grossApr: bufferState.grossApr.toString(),
                     lowestSupply: bufferState.lowestSupply.toString(),
                     managementFeeBasisPoints: bufferState.managementFeeBasisPoints,
@@ -108,7 +107,6 @@ export function printBufferState(bufferState: any, json: boolean = false): void 
 
     table.push(
         ["ONyc Mint", bufferState.onycMint.toBase58()],
-        ["BUFFER Admin", bufferState.bufferAdmin.toBase58()],
         ["Gross APR (1e6)", bufferState.grossApr.toString()],
         ["Lowest Supply", bufferState.lowestSupply.toString()],
         ["Management Fee (bps)", bufferState.managementFeeBasisPoints.toString()],

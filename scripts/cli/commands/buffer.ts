@@ -5,7 +5,6 @@ import {
     executeBufferBurn,
     executeBufferGet,
     executeBufferInitialize,
-    executeBufferSetAdmin,
     executeBufferSetYields,
 } from "../implementations";
 
@@ -21,21 +20,11 @@ export function registerBufferCommands(program: Command): void {
     program
         .command("initialize")
         .description("Initialize BUFFER state and vault")
-        .option("--buffer-admin <address>", "BUFFER admin public key")
         .option("--offer <address>", "Main offer PDA")
         .option("--onyc-mint <address>", "ONyc mint")
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeBufferInitialize(opts);
-        });
-
-    program
-        .command("set-admin")
-        .description("Set BUFFER admin")
-        .option("--buffer-admin <address>", "BUFFER admin public key")
-        .action(async (options, cmd) => {
-            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
-            await executeBufferSetAdmin(opts);
         });
 
     program

@@ -71,7 +71,6 @@ export { executeStateClose } from "./state/state-close";
 // Buffer implementations
 export { executeBufferGet } from "./buffer/buffer-get";
 export { executeBufferInitialize } from "./buffer/buffer-initialize";
-export { executeBufferSetAdmin } from "./buffer/buffer-set-admin";
 export { executeBufferSetYields } from "./buffer/buffer-set-yields";
 export { executeBufferManage } from "./buffer/buffer-manage";
 export { executeBufferBurn } from "./buffer/buffer-burn";

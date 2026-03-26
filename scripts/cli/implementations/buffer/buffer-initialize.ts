@@ -11,7 +11,6 @@ export async function executeBufferInitialize(opts: GlobalOptions & Record<strin
                 const boss = await helper.getBoss();
                 return helper.buildInitializeBufferIx({
                     boss,
-                    bufferAdmin: params.bufferAdmin,
                     offer: params.offer,
                     onycMint: params.onycMint,
                 });
@@ -21,7 +20,6 @@ export async function executeBufferInitialize(opts: GlobalOptions & Record<strin
             showParamSummary: {
                 title: "Initializing BUFFER:",
                 params: {
-                    bufferAdmin: params.bufferAdmin,
                     offer: params.offer,
                     onycMint: params.onycMint,
                 },
