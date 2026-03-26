@@ -526,10 +526,9 @@ fn execute_take_offer_permissionless<'info>(
             )
         })
         .unwrap_or(false);
-    let now = Clock::get()?.unix_timestamp;
-    let post_accrual_supply = if should_accrue {
+    let accrual = if should_accrue {
         let buffer_accounts = buffer_accounts.expect("checked above");
-        let accrual = accrue_buffer_from_accounts(
+        Some(accrue_buffer_from_accounts(
             program_id,
             state,
             buffer_accounts,
@@ -538,13 +537,7 @@ fn execute_take_offer_permissionless<'info>(
             mint_authority.to_account_info(),
             ma_bump,
             token_out_program,
-        )?;
-        Some(
-            accrual
-                .post_accrual_supply
-                .checked_add(result.token_out_amount)
-                .ok_or(OfferCoreError::OverflowError)?,
-        )
+        )?)
     } else {
         None
     };
@@ -593,9 +586,16 @@ fn execute_take_offer_permissionless<'info>(
         result.token_out_amount,
     )?;
 
-    if let Some(post_offer_supply) = post_accrual_supply {
-        let buffer_accounts = buffer_accounts.expect("checked above");
-        store_buffer_post_supply(buffer_accounts, post_offer_supply, now)?;
+    if let Some(accrual) = accrual {
+        let post_offer_supply = accrual
+            .post_accrual_supply
+            .checked_add(result.token_out_amount)
+            .ok_or(OfferCoreError::OverflowError)?;
+        store_buffer_post_supply(
+            buffer_accounts.expect("accrual implies buffer accounts"),
+            post_offer_supply,
+            accrual.timestamp,
+        )?;
     }
 
     if is_onyc_token_out_mint(state, token_out_mint) {

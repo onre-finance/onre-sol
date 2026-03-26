@@ -474,10 +474,8 @@ pub fn take_offer_extended(
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
     )?;
-
-    let now = Clock::get()?.unix_timestamp;
-    let post_accrual_supply = if should_accrue_onyc_mint {
-        let accrual = accrue_buffer_from_accounts(
+    let accrual = if should_accrue_onyc_mint {
+        Some(accrue_buffer_from_accounts(
             ctx.program_id,
             &ctx.accounts.state,
             &ctx.accounts.buffer_accounts,
@@ -486,13 +484,7 @@ pub fn take_offer_extended(
             ctx.accounts.mint_authority.to_account_info(),
             ctx.bumps.mint_authority,
             &ctx.accounts.token_out_program,
-        )?;
-        Some(
-            accrual
-                .post_accrual_supply
-                .checked_add(result.token_out_amount)
-                .ok_or(TakeOfferErrorCode::MathOverflow)?,
-        )
+        )?)
     } else {
         None
     };
@@ -523,8 +515,16 @@ pub fn take_offer_extended(
         token_out_max_supply: ctx.accounts.state.max_supply,
     })?;
 
-    if let Some(post_offer_supply) = post_accrual_supply {
-        store_buffer_post_supply(&ctx.accounts.buffer_accounts, post_offer_supply, now)?;
+    if let Some(accrual) = accrual {
+        let post_offer_supply = accrual
+            .post_accrual_supply
+            .checked_add(result.token_out_amount)
+            .ok_or(TakeOfferErrorCode::MathOverflow)?;
+        store_buffer_post_supply(
+            &ctx.accounts.buffer_accounts,
+            post_offer_supply,
+            accrual.timestamp,
+        )?;
     }
 
     if is_onyc_token_out_mint(&ctx.accounts.state, &ctx.accounts.token_out_mint) {

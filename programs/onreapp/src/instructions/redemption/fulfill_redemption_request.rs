@@ -508,8 +508,8 @@ struct ExecuteFulfillRedemptionRequestParams<'a, 'info> {
     buffer_accounts: Option<&'a BufferAccrualAccounts<'info>>,
 }
 
-fn execute_fulfill_redemption_request<'info>(
-    mut params: ExecuteFulfillRedemptionRequestParams<'_, 'info>,
+fn execute_fulfill_redemption_request(
+    mut params: ExecuteFulfillRedemptionRequestParams,
     amount: u64,
 ) -> Result<()> {
     // Validate amount
@@ -544,12 +544,11 @@ fn execute_fulfill_redemption_request<'info>(
             params.token_in_mint,
             &params.mint_authority.to_account_info(),
         );
-    let now = Clock::get()?.unix_timestamp;
-    let post_accrual_supply = if let Some(buffer_accounts) = params
+    let accrual = if let Some(buffer_accounts) = params
         .buffer_accounts
         .filter(|_| should_refresh_market_stats)
     {
-        let accrual = accrue_buffer_from_accounts(
+        Some(accrue_buffer_from_accounts(
             params.program_id,
             params.state,
             buffer_accounts,
@@ -558,64 +557,42 @@ fn execute_fulfill_redemption_request<'info>(
             params.mint_authority.to_account_info(),
             params.mint_authority_bump,
             params.token_in_program,
-        )?;
-        Some(accrual.post_accrual_supply)
+        )?)
     } else {
         None
     };
 
-    if post_accrual_supply.is_some() {
-        execute_redemption_operations(ExecuteRedemptionOpsParams {
-            token_in_program: params.token_in_program,
-            token_out_program: params.token_out_program,
-            token_in_mint: params.token_in_mint,
-            token_in_net_amount,
-            token_in_fee_amount,
-            vault_token_in_account: params.vault_token_in_account,
-            boss_token_in_account: params.boss_token_in_account,
-            redemption_vault_authority: &params.redemption_vault_authority.to_account_info(),
-            redemption_vault_authority_bump: params.redemption_vault_authority_bump,
-            token_out_mint: params.token_out_mint,
-            token_out_amount,
-            vault_token_out_account: params.vault_token_out_account,
-            user_token_out_account: params.user_token_out_account,
-            mint_authority_pda: &params.mint_authority.to_account_info(),
-            mint_authority_bump: params.mint_authority_bump,
-            token_out_max_supply: 0,
-        })?;
+    execute_redemption_operations(ExecuteRedemptionOpsParams {
+        token_in_program: params.token_in_program,
+        token_out_program: params.token_out_program,
+        token_in_mint: params.token_in_mint,
+        token_in_net_amount,
+        token_in_fee_amount,
+        vault_token_in_account: params.vault_token_in_account,
+        boss_token_in_account: params.boss_token_in_account,
+        redemption_vault_authority: &params.redemption_vault_authority.to_account_info(),
+        redemption_vault_authority_bump: params.redemption_vault_authority_bump,
+        token_out_mint: params.token_out_mint,
+        token_out_amount,
+        vault_token_out_account: params.vault_token_out_account,
+        user_token_out_account: params.user_token_out_account,
+        mint_authority_pda: &params.mint_authority.to_account_info(),
+        mint_authority_bump: params.mint_authority_bump,
+        token_out_max_supply: 0,
+    })?;
 
-        let post_burn_supply = post_accrual_supply
-            .expect("checked above")
+    if let Some(accrual) = accrual {
+        let post_burn_supply = accrual
+            .post_accrual_supply
             .checked_sub(token_in_net_amount)
             .ok_or(crate::instructions::buffer::BufferErrorCode::MathOverflow)?;
         store_buffer_post_supply(
             params
                 .buffer_accounts
-                .expect("post_accrual_supply implies buffer accounts"),
+                .expect("accrual implies buffer accounts"),
             post_burn_supply,
-            now,
+            accrual.timestamp,
         )?;
-    } else {
-        // Execute token operations (burn/transfer token_in_net, mint/transfer token_out)
-        // Fee transfer is handled inside execute_redemption_operations
-        execute_redemption_operations(ExecuteRedemptionOpsParams {
-            token_in_program: params.token_in_program,
-            token_out_program: params.token_out_program,
-            token_in_mint: params.token_in_mint,
-            token_in_net_amount,
-            token_in_fee_amount,
-            vault_token_in_account: params.vault_token_in_account,
-            boss_token_in_account: params.boss_token_in_account,
-            redemption_vault_authority: &params.redemption_vault_authority.to_account_info(),
-            redemption_vault_authority_bump: params.redemption_vault_authority_bump,
-            token_out_mint: params.token_out_mint,
-            token_out_amount,
-            vault_token_out_account: params.vault_token_out_account,
-            user_token_out_account: params.user_token_out_account,
-            mint_authority_pda: &params.mint_authority.to_account_info(),
-            mint_authority_bump: params.mint_authority_bump,
-            token_out_max_supply: 0, // No max supply cap for redemptions
-        })?;
     }
 
     if should_refresh_market_stats {

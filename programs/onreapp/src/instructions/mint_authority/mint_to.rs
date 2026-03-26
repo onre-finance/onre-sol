@@ -178,11 +178,9 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
             ctx.accounts.buffer_accounts.is_initialized(),
             &ctx.accounts.mint_authority.to_account_info(),
         );
-
-    let now = Clock::get()?.unix_timestamp;
-    let post_accrual_supply = if should_accrue {
+    let accrual = if should_accrue {
         let offer = offer.as_ref().expect("offer is checked above");
-        let accrual = accrue_buffer_from_accounts(
+        Some(accrue_buffer_from_accounts(
             ctx.program_id,
             &ctx.accounts.state,
             &ctx.accounts.buffer_accounts,
@@ -191,22 +189,13 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
             ctx.accounts.mint_authority.to_account_info(),
             ctx.bumps.mint_authority,
             &ctx.accounts.token_program,
-        )?;
-
-        Some(
-            accrual
-                .post_accrual_supply
-                .checked_add(amount)
-                .ok_or(BufferErrorCode::MathOverflow)?,
-        )
+        )?)
     } else {
         None
     };
 
     let mint_authority_seeds = &[seeds::MINT_AUTHORITY, &[ctx.bumps.mint_authority]];
     let mint_authority_signer_seeds = &[mint_authority_seeds.as_slice()];
-
-    // Mint tokens to the boss's ONyc account with max supply validation
     mint_tokens(
         &ctx.accounts.token_program,
         &ctx.accounts.onyc_mint,
@@ -217,8 +206,16 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
         ctx.accounts.state.max_supply,
     )?;
 
-    if let Some(post_mint_supply) = post_accrual_supply {
-        store_buffer_post_supply(&ctx.accounts.buffer_accounts, post_mint_supply, now)?;
+    if let Some(accrual) = accrual {
+        let post_mint_supply = accrual
+            .post_accrual_supply
+            .checked_add(amount)
+            .ok_or(BufferErrorCode::MathOverflow)?;
+        store_buffer_post_supply(
+            &ctx.accounts.buffer_accounts,
+            post_mint_supply,
+            accrual.timestamp,
+        )?;
     }
 
     if let Some(offer) = offer.as_ref() {
