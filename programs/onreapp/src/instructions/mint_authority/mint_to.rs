@@ -155,7 +155,6 @@ pub struct MintTo<'info> {
 /// # Events
 /// * `OnycTokensMinted` - Emitted on successful minting with details
 pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
-    let now = Clock::get()?.unix_timestamp;
     let offer = if ctx.accounts.state.main_offer == Pubkey::default() {
         None
     } else {
@@ -180,6 +179,7 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
             &ctx.accounts.mint_authority.to_account_info(),
         );
 
+    let now = Clock::get()?.unix_timestamp;
     let post_accrual_supply = if should_accrue {
         let offer = offer.as_ref().expect("offer is checked above");
         let accrual = accrue_buffer_from_accounts(
@@ -191,7 +191,6 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
             ctx.accounts.mint_authority.to_account_info(),
             ctx.bumps.mint_authority,
             &ctx.accounts.token_program,
-            now,
         )?;
 
         Some(

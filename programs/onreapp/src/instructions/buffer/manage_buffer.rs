@@ -344,8 +344,8 @@ pub(crate) fn accrue_buffer_from_accounts<'info>(
     mint_authority: AccountInfo<'info>,
     mint_authority_bump: u8,
     token_program: &Interface<'info, TokenInterface>,
-    now: i64,
 ) -> Result<BufferAccrualResult> {
+    let now = Clock::get()?.unix_timestamp;
     let mut buffer_state = buffer_accounts.load_buffer_state()?;
     let buffer_vault_onyc_account = buffer_accounts.buffer_vault_onyc_account_info();
     let management_fee_vault_onyc_account =

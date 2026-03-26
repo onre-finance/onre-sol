@@ -5,7 +5,7 @@ use crate::instructions::buffer::accounts::{
 };
 use crate::instructions::buffer::{
     manage_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
-    BufferAccrualAccounts, BufferErrorCode,
+    BufferAccrualAccounts,
 };
 use crate::instructions::market_info::refresh_market_stats_pda;
 use crate::instructions::redemption::{
@@ -544,12 +544,11 @@ fn execute_fulfill_redemption_request<'info>(
             params.token_in_mint,
             &params.mint_authority.to_account_info(),
         );
-
-    if let Some(buffer_accounts) = params
+    let now = Clock::get()?.unix_timestamp;
+    let post_accrual_supply = if let Some(buffer_accounts) = params
         .buffer_accounts
         .filter(|_| should_refresh_market_stats)
     {
-        let now = Clock::get()?.unix_timestamp;
         let accrual = accrue_buffer_from_accounts(
             params.program_id,
             params.state,
@@ -559,9 +558,13 @@ fn execute_fulfill_redemption_request<'info>(
             params.mint_authority.to_account_info(),
             params.mint_authority_bump,
             params.token_in_program,
-            now,
         )?;
+        Some(accrual.post_accrual_supply)
+    } else {
+        None
+    };
 
+    if post_accrual_supply.is_some() {
         execute_redemption_operations(ExecuteRedemptionOpsParams {
             token_in_program: params.token_in_program,
             token_out_program: params.token_out_program,
@@ -581,11 +584,17 @@ fn execute_fulfill_redemption_request<'info>(
             token_out_max_supply: 0,
         })?;
 
-        let post_burn_supply = accrual
-            .post_accrual_supply
+        let post_burn_supply = post_accrual_supply
+            .expect("checked above")
             .checked_sub(token_in_net_amount)
-            .ok_or(BufferErrorCode::MathOverflow)?;
-        store_buffer_post_supply(buffer_accounts, post_burn_supply, now)?;
+            .ok_or(crate::instructions::buffer::BufferErrorCode::MathOverflow)?;
+        store_buffer_post_supply(
+            params
+                .buffer_accounts
+                .expect("post_accrual_supply implies buffer accounts"),
+            post_burn_supply,
+            now,
+        )?;
     } else {
         // Execute token operations (burn/transfer token_in_net, mint/transfer token_out)
         // Fee transfer is handled inside execute_redemption_operations

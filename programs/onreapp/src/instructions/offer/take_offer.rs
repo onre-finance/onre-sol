@@ -486,7 +486,6 @@ pub fn take_offer_extended(
             ctx.accounts.mint_authority.to_account_info(),
             ctx.bumps.mint_authority,
             &ctx.accounts.token_out_program,
-            now,
         )?;
         Some(
             accrual

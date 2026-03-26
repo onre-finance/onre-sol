@@ -538,7 +538,6 @@ fn execute_take_offer_permissionless<'info>(
             mint_authority.to_account_info(),
             ma_bump,
             token_out_program,
-            now,
         )?;
         Some(
             accrual
