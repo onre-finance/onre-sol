@@ -303,6 +303,63 @@ fn test_set_main_offer_updates_program_state() {
 }
 
 #[test]
+fn test_set_main_offer_rejects_offer_with_wrong_token_out_mint() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
+    let boss = payer.pubkey();
+    let token_in_mint = create_mint(&mut svm, &payer, 6, &boss);
+    let wrong_token_out_mint = create_mint(&mut svm, &payer, 9, &boss);
+
+    let ix = build_make_offer_ix(
+        &boss,
+        &token_in_mint,
+        &wrong_token_out_mint,
+        0,
+        false,
+        true,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let (offer_pda, _) = find_offer_pda(&token_in_mint, &wrong_token_out_mint);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    let result = send_tx(&mut svm, &[ix], &[&payer]);
+
+    assert!(
+        result.is_err(),
+        "set_main_offer should reject offers whose token_out_mint is not state.onyc_mint"
+    );
+    assert_eq!(read_state(&svm).main_offer, Pubkey::default());
+    assert_ne!(wrong_token_out_mint, onyc_mint);
+}
+
+#[test]
+fn test_set_main_offer_rejects_no_change() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
+    let boss = payer.pubkey();
+    let token_in_mint = create_mint(&mut svm, &payer, 6, &boss);
+
+    let ix = build_make_offer_ix(
+        &boss,
+        &token_in_mint,
+        &onyc_mint,
+        0,
+        false,
+        true,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let (offer_pda, _) = find_offer_pda(&token_in_mint, &onyc_mint);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    let result = send_tx(&mut svm, &[ix], &[&payer]);
+
+    assert!(result.is_err(), "set_main_offer should reject no-op updates");
+}
+
+#[test]
 fn test_set_buffer_gross_yield_rejects_no_change() {
     let (mut svm, payer, _token_in_mint, _onyc_mint, _caller) =
         setup_buffer_context(150_000, 50_000, 0, 0);
