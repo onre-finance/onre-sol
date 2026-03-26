@@ -178,7 +178,7 @@ export class OnreProgram {
         tokenInProgram?: PublicKey;
         tokenOutProgram?: PublicKey;
     }) {
-        const tx = this.program.methods.takeOfferExtended(new BN(params.tokenInAmount), null).accounts({
+        const tx = this.program.methods.takeOfferExtended(new BN(params.tokenInAmount), null).accountsPartial({
             tokenInMint: params.tokenInMint,
             tokenOutMint: params.tokenOutMint,
             user: params.user,
@@ -565,7 +565,7 @@ export class OnreProgram {
             ? SystemProgram.programId
             : (state.mainOffer as PublicKey);
 
-        const tx = this.program.methods.mintTo(new BN(params.amount)).accounts({
+        const tx = this.program.methods.mintTo(new BN(params.amount)).accountsPartial({
             tokenProgram: TOKEN_PROGRAM_ID,
             offer,
             bufferAccounts: {

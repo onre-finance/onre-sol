@@ -28,6 +28,8 @@ import chalk from "chalk";
  * Available networks: mainnet-prod, mainnet-test, mainnet-dev, devnet-test, devnet-dev
  */
 export const config = getNetworkConfig();
+export const USDC_MINT = config.mints.usdc;
+export const ONYC_MINT = config.mints.onyc;
 
 // Re-export for convenience
 export type { NetworkConfig };
@@ -44,6 +46,7 @@ export class ScriptHelper {
     networkConfig: NetworkConfig;
     wallet: Wallet;
     walletSource?: string;
+    walletKeypair?: Keypair;
 
     pdas: {
         offerVaultAuthorityPda: PublicKey;
@@ -63,6 +66,7 @@ export class ScriptHelper {
         this.networkConfig = networkConfig;
         this.wallet = wallet;
         this.walletSource = walletSource;
+        this.walletKeypair = (wallet as Wallet & { payer?: Keypair }).payer;
         [this.statePda] = PublicKey.findProgramAddressSync([Buffer.from("state")], program.programId);
 
         this.pdas = {
@@ -369,8 +373,8 @@ export class ScriptHelper {
         const mintAuthority = this.pdas.mintAuthorityPda;
 
         return await this.program.methods
-            .takeOfferPermissionless(new BN(params.tokenInAmount), null)
-            .accounts({
+            .takeOfferPermissionlessExtended(new BN(params.tokenInAmount), null)
+            .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
                 user: params.user,
@@ -740,7 +744,7 @@ export class ScriptHelper {
 
         return await this.program.methods
             .mintTo(new BN(params.amount))
-            .accounts({
+            .accountsPartial({
                 tokenProgram: TOKEN_PROGRAM_ID,
                 offer,
                 bufferAccounts: {

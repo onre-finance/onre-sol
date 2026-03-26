@@ -24,8 +24,8 @@ import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes/index.js";
 
 import type { MessageTransmitter } from "./types/message_transmitter.ts";
 import type { TokenMessengerMinter } from "./types/token_messenger_minter.ts";
-import messageTransmitterIdl from "./idl/message_transmitter.json" with { type: "json" };
-import tokenMessengerMinterIdl from "./idl/token_messenger_minter.json" with { type: "json" };
+import messageTransmitterIdl from "./idl/message_transmitter.json";
+import tokenMessengerMinterIdl from "./idl/token_messenger_minter.json";
 import anchor from "@coral-xyz/anchor";
 import { encode } from "@coral-xyz/anchor/dist/cjs/utils/bytes/utf8.js";
 

@@ -1258,7 +1258,7 @@ describe("Take Offer", () => {
                 await testHelper.advanceSlot();
                 await testHelper.advanceClockBy(31_536_000);
 
-                const tx = program.program.methods.takeOfferExtended(new BN(1e6), null).accounts({
+                const tx = program.program.methods.takeOfferExtended(new BN(1e6), null).accountsPartial({
                     tokenInMint,
                     tokenOutMint,
                     user: user.publicKey,
