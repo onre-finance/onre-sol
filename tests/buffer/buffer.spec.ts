@@ -8,7 +8,6 @@ describe("BUFFER", () => {
     let program: OnreProgram;
     let tokenInMint: PublicKey;
     let onycMint: PublicKey;
-    let bufferAdmin: Keypair;
     let offerPda: PublicKey;
 
     const NAV_1_0 = 1_000_000_000;
@@ -26,7 +25,6 @@ describe("BUFFER", () => {
         program = new OnreProgram(testHelper);
         tokenInMint = testHelper.createMint(6);
         onycMint = testHelper.createMint(9, null, BigInt(0));
-        bufferAdmin = testHelper.createUserAccount();
 
         await program.initialize({ onycMint });
 
@@ -49,6 +47,7 @@ describe("BUFFER", () => {
             apr: 0,
             priceFixDuration: 86_400,
         });
+        await program.setMainOffer({ offer: offerPda });
     });
 
     async function setupBufferWithBalance(params?: {
@@ -75,7 +74,7 @@ describe("BUFFER", () => {
 
         await program.transferMintAuthorityToProgram({ mint: onycMint });
         await program.mintTo({ amount: 1_000_000_000 });
-        await program.initializeBuffer({ offer: offerPda, onycMint, bufferAdmin: bufferAdmin.publicKey });
+        await program.initializeBuffer({ offer: offerPda, onycMint });
         await program.setBufferGrossYield({ grossYield });
         if (managementFeeBasisPoints !== 0 || performanceFeeBasisPoints !== 0) {
             await program.setBufferFeeConfig({
@@ -85,37 +84,32 @@ describe("BUFFER", () => {
         }
 
         // First call sets lowestSupply from 0 -> current supply.
-        await program.manageBuffer({ offer: offerPda, onycMint, signer: bufferAdmin });
+        await program.manageBuffer({ offer: offerPda, onycMint });
         for (let i = 0; i < accrualPeriods; i++) {
             await testHelper.advanceSlot();
             await testHelper.advanceClockBy(ONE_YEAR_SECONDS);
-            await program.manageBuffer({ offer: offerPda, onycMint, signer: bufferAdmin });
+            await program.manageBuffer({ offer: offerPda, onycMint });
         }
     }
 
     test("initializes BUFFER state", async () => {
-        await program.initializeBuffer({ offer: offerPda, onycMint, bufferAdmin: bufferAdmin.publicKey });
+        await program.initializeBuffer({ offer: offerPda, onycMint });
         const state = await program.getBufferState();
 
         expect(state.onycMint).toEqual(onycMint);
-        expect(state.bufferAdmin).toEqual(bufferAdmin.publicKey);
         expect((await program.getState()).mainOffer).toEqual(offerPda);
         expect(state.grossApr.toNumber()).toBe(0);
         expect(state.managementFeeBasisPoints).toBe(0);
+        expect(state.managementFeeWallet).toEqual(PublicKey.default);
         expect(state.performanceFeeBasisPoints).toBe(0);
+        expect(state.performanceFeeWallet).toEqual(PublicKey.default);
         expect(state.performanceFeeHighWatermark.toNumber()).toBe(0);
     });
 
-    test("boss sets buffer admin, non-boss fails", async () => {
-        await program.initializeBuffer({ offer: offerPda, onycMint, bufferAdmin: bufferAdmin.publicKey });
-
-        const newAdmin = testHelper.createUserAccount();
-        await program.setBufferAdmin({ bufferAdmin: newAdmin.publicKey });
-        const updated = await program.getBufferState();
-        expect(updated.bufferAdmin).toEqual(newAdmin.publicKey);
-
+    test("boss-only buffer configuration rejects non-boss", async () => {
+        await program.initializeBuffer({ offer: offerPda, onycMint });
         const nonBoss = testHelper.createUserAccount();
-        await expect(program.setBufferAdmin({ bufferAdmin: bufferAdmin.publicKey, signer: nonBoss })).rejects.toThrow();
+        await expect(program.setBufferGrossYield({ grossYield: 150_000, signer: nonBoss })).rejects.toThrow();
     });
 
     test("accrues BUFFER mint to vault", async () => {
@@ -207,7 +201,7 @@ describe("BUFFER", () => {
         await testHelper.advanceSlot();
         await testHelper.advanceClockBy(ONE_YEAR_SECONDS);
         await testHelper.advanceSlot();
-        await program.manageBuffer({ offer: offerPda, onycMint, signer: bufferAdmin });
+        await program.manageBuffer({ offer: offerPda, onycMint });
         await testHelper.advanceSlot();
         await testHelper.getTokenAccountBalance(program.getBufferVaultAta(onycMint));
         const performanceFeeBalance = await testHelper.getTokenAccountBalance(program.getPerformanceFeeVaultAta(onycMint));

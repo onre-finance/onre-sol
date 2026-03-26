@@ -78,7 +78,7 @@ describe("Get NAV", () => {
             const nav = await program.getNAV({ tokenInMint, tokenOutMint });
 
             // Validate price
-            expect(nav).toBe(1.0004e9);
+            expect(nav).toBe(1_000_400_060);
         });
 
         it("Should be read-only instruction (no state changes)", async () => {
@@ -127,7 +127,7 @@ describe("Get NAV", () => {
 
             // Should calculate price for 3rd interval
             const nav = await program.getNAV({ tokenInMint, tokenOutMint });
-            expect(nav).toBe(1.0002e9);
+            expect(nav).toBe(1_000_200_010);
         });
 
         it("Should handle 0 APR values", async () => {

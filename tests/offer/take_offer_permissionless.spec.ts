@@ -366,7 +366,7 @@ describe("Take Offer Permissionless", () => {
             // Advance to second interval
             await testHelper.advanceClockBy(86_400); // 1 day
 
-            const expectedTokenInAmount = 1.0002e6; // 1.0002 USDC
+            const expectedTokenInAmount = 1_000_201;
 
             await program.takeOfferPermissionless({
                 tokenInAmount: expectedTokenInAmount,
@@ -378,8 +378,7 @@ describe("Take Offer Permissionless", () => {
 
             const userBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
-            // Should receive 1 token out
-            expect(userBalanceAfter).toBe(BigInt(1e9));
+            expect(userBalanceAfter).toBe(BigInt(1_000_000_989));
         });
 
         it("Should use most recent active vector", async () => {
@@ -427,11 +426,13 @@ describe("Take Offer Permissionless", () => {
         it("Should accrue BUFFER and refresh market stats through take_offer_permissionless_extended", async () => {
             await program.transferMintAuthorityToProgram({ mint: tokenOutMint });
             await program.mintTo({ amount: 1e9 });
+            await program.setMainOffer({
+                offer: program.getOfferPda(tokenInMint, tokenOutMint),
+            });
 
             await program.initializeBuffer({
                 offer: program.getOfferPda(tokenInMint, tokenOutMint),
                 onycMint: tokenOutMint,
-                bufferAdmin: user.publicKey,
             });
             await program.setBufferGrossYield({ grossYield: 100_000 });
             await program.setBufferFeeConfig({
@@ -631,7 +632,7 @@ describe("Take Offer Permissionless", () => {
             // Advance 1 year (365 days)
             await testHelper.advanceClockBy(86400 * 365);
 
-            const expectedTokenInAmount = 1_366_000;
+            const expectedTokenInAmount = 1_441_692;
 
             await program.takeOfferPermissionless({
                 tokenInAmount: expectedTokenInAmount,
@@ -643,7 +644,7 @@ describe("Take Offer Permissionless", () => {
 
             const userBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
-            expect(userBalanceAfter).toEqual(BigInt(1_000_000_000));
+            expect(userBalanceAfter).toEqual(BigInt(1_000_000_301));
         });
     });
 

@@ -373,10 +373,8 @@ describe("Take Offer", () => {
             // Advance to second interval
             await testHelper.advanceClockBy(86_400); // 1 day
 
-            // Price in second interval: 1.0 * (1 + 0.0365 * (2 * 86400) / (365*24*3600))
-            // = 1.0 * (1 + 0.0365 * 2/365) = 1.0 * 1.0002 = 1.0002
-
-            const expectedTokenInAmount = 1_000_200; // 1.0002 USDC
+            // With compounded step pricing, the snapped second-interval price is 1.000200010.
+            const expectedTokenInAmount = 1_000_201;
 
             await program.takeOffer({
                 tokenInAmount: expectedTokenInAmount,
@@ -388,8 +386,7 @@ describe("Take Offer", () => {
 
             const userBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
-            // Should receive 1 token out
-            expect(userBalanceAfter).toBe(BigInt(1e9));
+            expect(userBalanceAfter).toBe(BigInt(1_000_000_989));
         });
     });
 
@@ -964,10 +961,8 @@ describe("Take Offer", () => {
             // Advance 1 year (365 days)
             await testHelper.advanceClockBy(86400 * 365);
 
-            // After 1 year with 36.5% APR: price = 1.0 * (1 + 0.365) = 1.365
-            // But due to discrete intervals, it uses (366 * D) / S formula
-            // Let's calculate the actual expected price and use a tolerance
-            const expectedTokenInAmount = 1_366_000; // Based on the actual calculation from logs
+            // With compounded step pricing, 36.5% APR snapped to day 366 is 1.441691565.
+            const expectedTokenInAmount = 1_441_692;
 
             await program.takeOffer({
                 tokenInAmount: expectedTokenInAmount,
@@ -979,8 +974,7 @@ describe("Take Offer", () => {
 
             const userBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
-            // Should receive 1 token out
-            expect(userBalanceAfter).toEqual(BigInt(1_000_000_000));
+            expect(userBalanceAfter).toEqual(BigInt(1_000_000_301));
         });
     });
 
@@ -1138,10 +1132,12 @@ describe("Take Offer", () => {
                 });
 
                 await program.mintTo({ amount: 1_000_000_000 });
+                await program.setMainOffer({
+                    offer: program.getOfferPda(tokenInMint, tokenOutMint),
+                });
                 await program.initializeBuffer({
                     offer: program.getOfferPda(tokenInMint, tokenOutMint),
                     onycMint: tokenOutMint,
-                    bufferAdmin: testHelper.getBoss(),
                 });
                 const currentTime = await testHelper.getCurrentClockTime();
                 await program.addOfferVector({
@@ -1237,10 +1233,12 @@ describe("Take Offer", () => {
                 });
 
                 await program.mintTo({ amount: 1_000_000_000 });
+                await program.setMainOffer({
+                    offer: program.getOfferPda(tokenInMint, tokenOutMint),
+                });
                 await program.initializeBuffer({
                     offer: program.getOfferPda(tokenInMint, tokenOutMint),
                     onycMint: tokenOutMint,
-                    bufferAdmin: testHelper.getBoss(),
                 });
 
                 const currentTime = await testHelper.getCurrentClockTime();

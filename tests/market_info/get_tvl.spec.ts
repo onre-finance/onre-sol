@@ -132,7 +132,7 @@ describe("Get TVL", () => {
                     tokenOutMint
                 });
 
-                expect(tvl.toString()).toBe("1000199998999800000");
+                expect(tvl.toString()).toBe("1000200008999799990");
             });
 
             it("Should handle 0 APR values correctly", async () => {

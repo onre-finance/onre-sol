@@ -366,8 +366,9 @@ export class OnreProgram {
         await this.rpcWithOptionalSigner(tx, params?.signer);
     }
 
-    async initializeBuffer(params: { offer: PublicKey; onycMint: PublicKey; bufferAdmin: PublicKey; signer?: Keypair }) {
-        const tx = this.program.methods.initializeBuffer(params.bufferAdmin).accountsPartial({
+    async initializeBuffer(params: { offer: PublicKey; onycMint: PublicKey; signer?: Keypair }) {
+        const tx = this.program.methods.initializeBuffer().accountsPartial({
+            offer: params.offer,
             onycMint: params.onycMint,
             bufferState: this.pdas.bufferStatePda,
             bufferVaultAuthority: this.pdas.bufferVaultAuthorityPda,
@@ -378,18 +379,11 @@ export class OnreProgram {
             performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.onycMint),
             tokenProgram: TOKEN_PROGRAM_ID,
         });
-        tx.remainingAccounts([{ pubkey: params.offer, isSigner: false, isWritable: false }]);
 
         await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
-    async setBufferAdmin(params: { bufferAdmin: PublicKey; signer?: Keypair }) {
-        const tx = this.program.methods.setBufferAdmin(params.bufferAdmin);
-
-        await this.rpcWithOptionalSigner(tx, params.signer);
-    }
-
-    async setBufferMainOffer(params: { offer: PublicKey; signer?: Keypair }) {
+    async setMainOffer(params: { offer: PublicKey; signer?: Keypair }) {
         const signer = params.signer ?? this.testHelper.payer;
         const instruction = new TransactionInstruction({
             programId: this.program.programId,
@@ -424,6 +418,7 @@ export class OnreProgram {
     }
 
     async manageBuffer(params: { offer: PublicKey; onycMint: PublicKey; signer?: Keypair }) {
+        const caller = params.signer?.publicKey ?? this.testHelper.payer.publicKey;
         const tx = this.program.methods
             .manageBuffer()
             .accountsPartial({
@@ -437,11 +432,21 @@ export class OnreProgram {
                 performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
                 performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.onycMint),
                 mintAuthority: this.pdas.mintAuthorityPda,
+                caller,
+                offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
+                offerVaultOnycAccount: getAssociatedTokenAddressSync(
+                    params.onycMint,
+                    this.pdas.offerVaultAuthorityPda,
+                    true,
+                    TOKEN_PROGRAM_ID,
+                ),
+                marketStats: this.pdas.marketStatsPda,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+                systemProgram: SystemProgram.programId,
             });
 
-        await tx.rpc();
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async burnForNavIncrease(params: { tokenInMint: PublicKey; onycMint: PublicKey; assetAdjustmentAmount: number; targetNav: number; signer?: Keypair }) {
@@ -465,7 +470,9 @@ export class OnreProgram {
                 performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
                 performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.onycMint),
                 mintAuthority: this.pdas.mintAuthorityPda,
+                marketStats: this.pdas.marketStatsPda,
                 tokenProgram: TOKEN_PROGRAM_ID,
+                systemProgram: SystemProgram.programId,
             })
             .transaction();
         await this.testHelper.sendAndConfirmTransaction(tx, [signer]);
@@ -891,6 +898,14 @@ export class OnreProgram {
                 tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
                 redeemer: params.redeemer,
                 redemptionAdmin: params.redemptionAdmin.publicKey,
+                offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
+                offerVaultOnycAccount: getAssociatedTokenAddressSync(
+                    params.tokenInMint,
+                    this.pdas.offerVaultAuthorityPda,
+                    true,
+                    params.tokenInProgram ?? TOKEN_PROGRAM_ID,
+                ),
+                marketStats: this.pdas.marketStatsPda,
             })
             .signers([params.redemptionAdmin]);
 
@@ -927,6 +942,14 @@ export class OnreProgram {
                 tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
                 redeemer: params.redeemer,
                 redemptionAdmin: params.redemptionAdmin.publicKey,
+                offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
+                offerVaultOnycAccount: getAssociatedTokenAddressSync(
+                    params.tokenInMint,
+                    this.pdas.offerVaultAuthorityPda,
+                    true,
+                    params.tokenInProgram ?? TOKEN_PROGRAM_ID,
+                ),
+                marketStats: this.pdas.marketStatsPda,
                 bufferAccounts: {
                     bufferState: this.pdas.bufferStatePda,
                     bufferVaultOnycAccount: this.getBufferVaultAta(params.tokenInMint),
