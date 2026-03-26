@@ -342,7 +342,7 @@ export class TestHelper {
 
         const result = this.svm.sendTransaction(tx);
 
-        if (typeof (result as any).err === "function") {
+        if ("err" in result && typeof result.err === "function") {
             const error: any = new Error(result.toString());
             error.logs = result.meta().logs();
             throw error;
@@ -401,7 +401,7 @@ export class TestHelper {
                 const result = svm.sendTransaction(tx);
 
                 // Check if it's a FailedTransactionMetadata (has err() method)
-                if (typeof result.err === 'function') {
+                if ("err" in result && typeof result.err === 'function') {
                     const logs = result.meta().logs();
                     // Use result.toString() which includes the full error info
                     const error: any = new Error(result.toString());
@@ -426,7 +426,7 @@ export class TestHelper {
                     const result = svm.simulateTransaction(tx);
 
                     if ("Err" in result) {
-                        const err = result.Err;
+                        const err: any = result.Err;
                         const meta = err.meta();
                         // Return error in Solana RPC format
                         return {
