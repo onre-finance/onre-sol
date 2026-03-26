@@ -1645,6 +1645,98 @@ fn test_fulfill_redemption_request_burn_and_mint() {
 }
 
 #[test]
+fn test_fulfill_redemption_request_rejects_token_out_transfer_fee() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
+    let boss = payer.pubkey();
+
+    let usdc_mint = create_mint_2022_with_transfer_fee(&mut svm, &payer, 6, &boss, 500, 1_000_000);
+
+    let ix = build_set_redemption_admin_ix(&boss, &boss);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_make_offer_ix(
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        false,
+        &TOKEN_2022_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let current_time = get_clock_time(&svm);
+    let ix = build_add_offer_vector_ix(
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        None,
+        current_time,
+        1_000_000_000,
+        0,
+        86_400,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_clock_by(&mut svm, 1);
+
+    let ix = build_make_redemption_offer_ix(
+        &boss,
+        &onyc_mint,
+        &usdc_mint,
+        500,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_2022_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let user = Keypair::new();
+    svm.airdrop(&user.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
+    create_token_account(&mut svm, &onyc_mint, &user.pubkey(), 1_000_000_000);
+    create_token_account_2022(&mut svm, &usdc_mint, &user.pubkey(), 0);
+    create_token_account(&mut svm, &onyc_mint, &boss, 0);
+
+    let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
+    create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
+    create_token_account_2022(
+        &mut svm,
+        &usdc_mint,
+        &redemption_vault_authority,
+        2_000_000_000,
+    );
+
+    let ix = build_create_redemption_request_ix(
+        &user.pubkey(),
+        &onyc_mint,
+        &usdc_mint,
+        1_000_000_000,
+        0,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[ix], &[&user]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_fulfill_redemption_request_ix(
+        &boss,
+        &boss,
+        &user.pubkey(),
+        &onyc_mint,
+        &usdc_mint,
+        0,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_2022_PROGRAM_ID,
+        1_000_000_000,
+    );
+    let result = send_tx(&mut svm, &[ix], &[&payer]);
+    assert!(
+        result.is_err(),
+        "token_out with transfer fee should be rejected"
+    );
+}
+
+#[test]
 fn test_fulfill_redemption_request_extended_accrues_buffer_before_burn() {
     let (mut svm, payer, usdc_mint, onyc_mint, user) = setup_redemption_extended_with_buffer();
     let boss = payer.pubkey();

@@ -2,7 +2,8 @@ use crate::constants::{seeds, PRICE_DECIMALS};
 use crate::instructions::market_info::offer_valuation_utils::compute_offer_current_price;
 use crate::instructions::Offer;
 use crate::utils::{
-    burn_tokens, calculate_fees, mint_tokens, program_controls_mint, transfer_tokens,
+    burn_tokens, calculate_fees, has_transfer_fee, mint_tokens, program_controls_mint,
+    transfer_tokens, TokenUtilsErrorCode,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
@@ -179,6 +180,15 @@ pub struct ExecuteRedemptionOpsParams<'a, 'info> {
 /// * `Ok(())` - If all token operations complete successfully
 /// * `Err(_)` - If any transfer, mint, or burn operation fails
 pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Result<()> {
+    require!(
+        !has_transfer_fee(params.token_in_mint)?,
+        TokenUtilsErrorCode::TransferFeeNotSupported
+    );
+    require!(
+        !has_transfer_fee(params.token_out_mint)?,
+        TokenUtilsErrorCode::TransferFeeNotSupported
+    );
+
     let vault_authority_signer_seeds: &[&[&[u8]]] = &[&[
         seeds::REDEMPTION_OFFER_VAULT_AUTHORITY,
         &[params.redemption_vault_authority_bump],
