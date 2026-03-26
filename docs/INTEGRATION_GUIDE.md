@@ -258,6 +258,22 @@ If your integration touches BUFFER:
 - `manage_buffer` must be passed the same offer stored in `state.main_offer`
 - During `manage_buffer`, `current_yield` is recomputed from the active vector APR on `main_offer`
 
+### Recommended BUFFER Rollout
+
+Recommended rollout sequence for enabling BUFFER on an already-running deployment:
+
+1. upgrade the program
+2. let integrators/backend switch to the extended instruction paths
+3. stop using the legacy fulfillment paths
+4. upgrade the program again to remove or disable the legacy paths
+5. initialize BUFFER
+
+Operational note:
+
+- `fulfill_redemption_request_extended` is designed to work before BUFFER is initialized
+- before BUFFER initialization, the extended path behaves as a no-accrual redemption flow
+- after BUFFER is initialized, set `gross_apr` deliberately as part of activation so accrual starts only when you intend it to
+
 ### Vault Token Accounts (ATAs)
 ```typescript
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";

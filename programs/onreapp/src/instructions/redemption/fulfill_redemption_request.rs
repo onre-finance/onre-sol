@@ -546,7 +546,7 @@ fn execute_fulfill_redemption_request(
         );
     let accrual = if let Some(buffer_accounts) = params
         .buffer_accounts
-        .filter(|_| should_refresh_market_stats)
+        .filter(|accounts| should_refresh_market_stats && accounts.is_initialized())
     {
         Some(accrue_buffer_from_accounts(
             params.program_id,

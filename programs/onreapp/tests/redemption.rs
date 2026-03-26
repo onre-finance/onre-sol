@@ -1803,6 +1803,55 @@ fn test_fulfill_redemption_request_extended_accrues_buffer_before_burn() {
 }
 
 #[test]
+fn test_fulfill_redemption_request_extended_works_without_initialized_buffer() {
+    let (mut svm, payer, _usdc_mint, _onyc_mint, redemption_tin, redemption_tout) =
+        setup_redemption();
+    let boss = payer.pubkey();
+
+    let user = Keypair::new();
+    svm.airdrop(&user.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
+    create_token_account(&mut svm, &redemption_tin, &user.pubkey(), 1_000_000_000);
+    create_token_account(&mut svm, &redemption_tout, &user.pubkey(), 0);
+    create_token_account(&mut svm, &redemption_tin, &boss, 0);
+
+    let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
+    create_token_account(&mut svm, &redemption_tin, &redemption_vault_authority, 0);
+    create_token_account(
+        &mut svm,
+        &redemption_tout,
+        &redemption_vault_authority,
+        2_000_000_000,
+    );
+
+    let ix = build_create_redemption_request_ix(
+        &user.pubkey(),
+        &redemption_tin,
+        &redemption_tout,
+        1_000_000_000,
+        0,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[ix], &[&user]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_fulfill_redemption_request_extended_ix(
+        &boss,
+        &boss,
+        &user.pubkey(),
+        &redemption_tin,
+        &redemption_tout,
+        0,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+        1_000_000_000,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let user_token_out_ata = get_associated_token_address(&user.pubkey(), &redemption_tout);
+    assert_eq!(get_token_balance(&svm, &user_token_out_ata), 950_000);
+}
+
+#[test]
 fn test_fulfill_redemption_request_transfer_mode_fee_to_boss() {
     let mut ctx = setup_fulfillable_request(500, 1_000_000_000);
     let boss = ctx.payer.pubkey();
