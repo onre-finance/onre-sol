@@ -3,7 +3,9 @@ use crate::instructions::buffer::{
     manage_buffer::{accrue_buffer, set_buffer_baseline_after_supply_change},
     BufferBurnedForNavEvent, BufferErrorCode, BufferState,
 };
-use crate::instructions::market_info::{calculate_tvl, refresh_market_stats_pda};
+use crate::instructions::market_info::{
+    calculate_circulating_supply, calculate_tvl, refresh_market_stats_pda,
+};
 use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::math_utils::ceil_div_u128;
@@ -168,37 +170,38 @@ pub fn burn_for_nav_increase(
         &ctx.accounts.token_program,
         now,
     )?;
-    let current_price = accrual.current_nav;
+    let current_nav = accrual.current_nav;
+    let post_accrual_supply = accrual.post_accrual_supply;
 
     let vault_token_out_amount = read_optional_token_account_amount(
         &ctx.accounts.vault_token_out_account,
         &ctx.accounts.token_program,
     )?;
-    let current_supply_after_accrual = accrual.post_accrual_supply;
-    let token_supply = current_supply_after_accrual.saturating_sub(vault_token_out_amount);
-    let total_assets = calculate_tvl(token_supply, current_price)
+    let circulating_supply =
+        calculate_circulating_supply(post_accrual_supply, vault_token_out_amount);
+    let total_assets_before_burn = calculate_tvl(circulating_supply, current_nav)
         .map_err(|_| error!(BufferErrorCode::MathOverflow))?;
 
     require!(
-        total_assets >= asset_adjustment_amount,
+        total_assets_before_burn >= asset_adjustment_amount,
         BufferErrorCode::InvalidAssetAdjustmentAmount
     );
 
     let nav_scale = 10u128
         .checked_pow(PRICE_DECIMALS as u32)
         .ok_or(BufferErrorCode::MathOverflow)?;
-    let assets_after = (total_assets - asset_adjustment_amount) as u128;
+    let assets_after_adjustment = (total_assets_before_burn - asset_adjustment_amount) as u128;
     let target_nav_u128 = target_nav as u128;
 
     let required_supply_after = ceil_div_u128(
-        assets_after
+        assets_after_adjustment
             .checked_mul(nav_scale)
             .ok_or(BufferErrorCode::MathOverflow)?,
         target_nav_u128,
     )
     .ok_or(BufferErrorCode::MathOverflow)?;
 
-    let current_supply = current_supply_after_accrual as u128;
+    let current_supply = post_accrual_supply as u128;
     require!(
         required_supply_after <= current_supply,
         BufferErrorCode::InvalidBurnTarget
@@ -234,7 +237,7 @@ pub fn burn_for_nav_increase(
         burn_amount,
     )?;
 
-    let post_burn_supply = current_supply_after_accrual
+    let post_burn_supply = post_accrual_supply
         .checked_sub(burn_amount)
         .ok_or(BufferErrorCode::MathOverflow)?;
     set_buffer_baseline_after_supply_change(&mut ctx.accounts.buffer_state, post_burn_supply, now);
@@ -254,7 +257,7 @@ pub fn burn_for_nav_increase(
     emit!(BufferBurnedForNavEvent {
         burn_amount,
         asset_adjustment_amount,
-        total_assets,
+        total_assets: total_assets_before_burn,
         target_nav,
     });
 
