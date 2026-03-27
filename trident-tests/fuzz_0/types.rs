@@ -6,6 +6,20 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+// Ensure exactly one network feature is active (must match the program build)
+#[cfg(all(feature = "mainnet", feature = "mainnet-test"))]
+compile_error!("'mainnet' and 'mainnet-test' features are mutually exclusive");
+#[cfg(all(feature = "mainnet", feature = "devnet-test"))]
+compile_error!("'mainnet' and 'devnet-test' features are mutually exclusive");
+#[cfg(all(feature = "mainnet", feature = "devnet-dev"))]
+compile_error!("'mainnet' and 'devnet-dev' features are mutually exclusive");
+#[cfg(all(feature = "mainnet-test", feature = "devnet-test"))]
+compile_error!("'mainnet-test' and 'devnet-test' features are mutually exclusive");
+#[cfg(all(feature = "mainnet-test", feature = "devnet-dev"))]
+compile_error!("'mainnet-test' and 'devnet-dev' features are mutually exclusive");
+#[cfg(all(feature = "devnet-test", feature = "devnet-dev"))]
+compile_error!("'devnet-test' and 'devnet-dev' features are mutually exclusive");
+
 use borsh::BorshDeserialize;
 use borsh::BorshSerialize;
 use trident_fuzz::fuzzing::*;
@@ -24,9 +38,20 @@ pub mod onreapp {
     // Program ID
     // ------------------------------------------------------------------------
 
-    /// Returns the program ID for onreapp
+    /// Returns the program ID for onreapp based on the active feature flag.
+    /// Must match the feature used when building the program binary.
     pub fn program_id() -> Pubkey {
-        pubkey!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe")
+        #[cfg(feature = "mainnet")]
+        { pubkey!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe") }
+
+        #[cfg(feature = "mainnet-test")]
+        { pubkey!("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2") }
+
+        #[cfg(feature = "devnet-test")]
+        { pubkey!("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2") }
+
+        #[cfg(feature = "devnet-dev")]
+        { pubkey!("devHfQHgiFNifkLW49RCXpyTUZMyKuBNnFSbrQ8XsbX") }
     }
 
     // ------------------------------------------------------------------------
@@ -1771,7 +1796,7 @@ pub mod onreapp {
             self.accounts.boss = AccountMeta::new(accounts.boss, true);
 
             self.accounts.program = AccountMeta::new_readonly(
-                pubkey!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe"),
+                program_id(),
                 false,
             );
 
