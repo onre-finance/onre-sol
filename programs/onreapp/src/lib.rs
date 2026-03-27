@@ -4,13 +4,16 @@ use anchor_lang::prelude::*;
 use instructions::*;
 use utils::ApprovalMessage;
 
-// Program ID declaration
-declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
-
 pub mod constants;
 pub mod instructions;
 pub mod state;
 pub mod utils;
+pub mod program_id;
+
+pub use program_id::ONRE_PROGRAM_ID;
+
+// Program ID declaration
+declare_id!(ONRE_PROGRAM_ID);
 
 pub use instructions::mint_authority::mint_to::MintTo;
 

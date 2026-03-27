@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/onreapp.json`.
  */
 export type Onreapp = {
-  "address": "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe",
+  "address": "onreprogramid",
   "metadata": {
     "name": "onreapp",
     "version": "0.1.0",
