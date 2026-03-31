@@ -23,6 +23,7 @@ async function main() {
         registerRedemptionCommands,
         registerInitCommands,
         registerProgramCommands,
+        registerBufferCommands,
     } = await import("./commands/index.js");
 
     // Create the main program
@@ -58,6 +59,9 @@ async function main() {
 
     const initCmd = program.command("init").description("Initialize program and authorities");
     registerInitCommands(initCmd);
+
+    const bufferCmd = program.command("buffer").description("BUFFER pool operations");
+    registerBufferCommands(bufferCmd);
 
     const programCmd = program.command("program").description("Program management (extend data account)");
     registerProgramCommands(programCmd);

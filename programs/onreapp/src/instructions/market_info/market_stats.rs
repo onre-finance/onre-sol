@@ -1,14 +1,16 @@
+use crate::constants::seeds;
 use crate::constants::PRICE_DECIMALS;
 use crate::instructions::market_info::get_apy::calculate_apy_from_apr;
-use crate::instructions::market_info::get_nav_adjustment::find_previous_vector;
-use crate::instructions::offer::offer_utils::{
-    calculate_current_step_price, calculate_step_price_at, find_active_vector_at,
+use crate::instructions::market_info::offer_valuation_utils::{
+    get_active_vector_and_current_price, get_nav_adjustment_snapshot,
 };
 use crate::instructions::Offer;
 use crate::state::MarketStats;
-use crate::utils::PdaAccountInit;
+use crate::utils::{
+    load_or_init_pda_account, read_optional_token_account_amount, store_pda_account, PdaAccountInit,
+};
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
+use anchor_spl::token_interface::{Mint, TokenInterface};
 
 /// Error codes for shared market-stats recomputation.
 #[error_code]
@@ -39,7 +41,7 @@ pub struct MarketStatsSnapshot {
 
 impl PdaAccountInit for MarketStats {
     fn pda_seed_prefixes() -> &'static [&'static [u8]] {
-        &[crate::constants::seeds::MARKET_STATS]
+        &[seeds::MARKET_STATS]
     }
 
     fn init_space() -> usize {
@@ -86,15 +88,8 @@ pub fn recompute_market_stats(
     );
 
     let current_time = Clock::get()?.unix_timestamp as u64;
-    let active_vector = find_active_vector_at(offer, current_time)?;
-
+    let (active_vector, nav) = get_active_vector_and_current_price(offer, current_time)?;
     let apy = calculate_apy_from_apr(active_vector.apr)?;
-    let nav = calculate_current_step_price(
-        active_vector.apr,
-        active_vector.base_price,
-        active_vector.base_time,
-        active_vector.price_fix_duration,
-    )?;
     let nav_adjustment = calculate_nav_adjustment(offer, active_vector)?;
 
     let vault_amount = read_optional_token_account_amount(onyc_vault_account, token_program)?;
@@ -118,6 +113,50 @@ pub fn update_market_stats_account(
     let clock = Clock::get()?;
     apply_market_stats_snapshot(market_stats, snapshot, &clock);
     Ok(())
+}
+
+pub fn refresh_market_stats_typed(
+    offer: &Offer,
+    onyc_mint: &InterfaceAccount<Mint>,
+    onyc_vault_account: &AccountInfo,
+    token_program: &Interface<TokenInterface>,
+    market_stats: &mut MarketStats,
+    bump: u8,
+) -> Result<()> {
+    let snapshot = recompute_market_stats(offer, onyc_mint, onyc_vault_account, token_program)?;
+    market_stats.bump = bump;
+    update_market_stats_account(market_stats, snapshot)
+}
+
+pub fn refresh_market_stats_pda<'info>(
+    offer: &Offer,
+    onyc_mint: &InterfaceAccount<'info, Mint>,
+    onyc_vault_account: &AccountInfo<'info>,
+    token_program: &Interface<'info, TokenInterface>,
+    market_stats_account: &AccountInfo<'info>,
+    payer: &AccountInfo<'info>,
+    system_program: &AccountInfo<'info>,
+    program_id: &Pubkey,
+) -> Result<()> {
+    let snapshot = recompute_market_stats(offer, onyc_mint, onyc_vault_account, token_program)?;
+    let (market_stats_pda, market_stats_bump) =
+        Pubkey::find_program_address(&[seeds::MARKET_STATS], program_id);
+    require_keys_eq!(
+        market_stats_account.key(),
+        market_stats_pda,
+        MarketStatsErrorCode::InvalidMarketStatsOwner
+    );
+
+    let mut market_stats = load_or_init_pda_account::<MarketStats>(
+        market_stats_account,
+        payer,
+        system_program,
+        program_id,
+        market_stats_bump,
+    )?;
+    market_stats.bump = market_stats_bump;
+    update_market_stats_account(&mut market_stats, snapshot)?;
+    store_pda_account(market_stats_account, &market_stats)
 }
 
 pub fn apply_market_stats_snapshot(
@@ -153,35 +192,9 @@ pub fn calculate_nav_adjustment(
     offer: &Offer,
     active_vector: crate::instructions::OfferVector,
 ) -> Result<i64> {
-    let current_price = calculate_step_price_at(
-        active_vector.apr,
-        active_vector.base_price,
-        active_vector.base_time,
-        active_vector.price_fix_duration,
-        active_vector.start_time,
-    )?;
-
-    let adjustment = if let Some(previous_vector) =
-        find_previous_vector(offer, active_vector.start_time)
-    {
-        let previous_price = calculate_step_price_at(
-            previous_vector.apr,
-            previous_vector.base_price,
-            previous_vector.base_time,
-            previous_vector.price_fix_duration,
-            active_vector.start_time,
-        )?;
-
-        i64::try_from(current_price)
-            .and_then(|current_price| {
-                i64::try_from(previous_price).map(|previous_price| current_price - previous_price)
-            })
-            .map_err(|_| error!(MarketStatsErrorCode::Overflow))?
-    } else {
-        i64::try_from(current_price).map_err(|_| error!(MarketStatsErrorCode::Overflow))?
-    };
-
-    Ok(adjustment)
+    Ok(get_nav_adjustment_snapshot(offer, &active_vector)
+        .map_err(|_| error!(MarketStatsErrorCode::Overflow))?
+        .adjustment)
 }
 
 pub fn calculate_tvl(circulating_supply: u64, nav: u64) -> Result<u64> {
@@ -193,26 +206,7 @@ pub fn calculate_tvl(circulating_supply: u64, nav: u64) -> Result<u64> {
 }
 
 pub fn calculate_circulating_supply(total_supply: u64, vault_amount: u64) -> u64 {
-    total_supply - vault_amount
-}
-
-pub fn read_optional_token_account_amount(
-    vault_account: &AccountInfo,
-    token_program: &Interface<TokenInterface>,
-) -> Result<u64> {
-    if vault_account.owner != token_program.key {
-        return Ok(0);
-    }
-
-    if vault_account.data_is_empty() {
-        return Ok(0);
-    }
-
-    let data_ref = vault_account.data.borrow();
-    match TokenAccount::try_deserialize(&mut &data_ref[..]) {
-        Ok(parsed) => Ok(parsed.amount),
-        Err(_) => Ok(0),
-    }
+    total_supply.saturating_sub(vault_amount)
 }
 
 #[cfg(test)]

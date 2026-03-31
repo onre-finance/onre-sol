@@ -1,7 +1,17 @@
 use crate::constants::seeds;
+use crate::instructions::buffer::{
+    __client_accounts_buffer_accrual_accounts, __cpi_client_accounts_buffer_accrual_accounts,
+    accounts::BufferAccrualAccountsBumps,
+    manage_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
+    BufferAccrualAccounts, BufferErrorCode,
+};
+use crate::instructions::market_info::refresh_market_stats_pda;
+use crate::instructions::offer::offer_utils::should_accrue_onyc_mint;
 use crate::state::State;
+use crate::utils::load_pda_account;
 use crate::utils::token_utils::mint_tokens;
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
@@ -36,8 +46,13 @@ pub enum MintToErrorCode {
 #[derive(Accounts)]
 pub struct MintTo<'info> {
     /// The program state account containing boss and ONyc mint validation
-    #[account(seeds = [seeds::STATE], bump = state.bump, has_one = boss, has_one = onyc_mint)]
-    pub state: Account<'info, State>,
+    #[account(
+        seeds = [seeds::STATE],
+        bump = state.bump,
+        has_one = boss,
+        has_one = onyc_mint
+    )]
+    pub state: Box<Account<'info, State>>,
 
     /// The boss authorized to perform minting operations
     ///
@@ -51,7 +66,7 @@ pub struct MintTo<'info> {
     /// Must match the ONyc mint stored in program state and be mutable
     /// to allow supply updates during minting.
     #[account(mut)]
-    pub onyc_mint: InterfaceAccount<'info, Mint>,
+    pub onyc_mint: Box<InterfaceAccount<'info, Mint>>,
 
     /// The boss's ONyc token account to receive minted tokens
     ///
@@ -64,13 +79,14 @@ pub struct MintTo<'info> {
         associated_token::authority = boss,
         associated_token::token_program = token_program
     )]
-    pub boss_onyc_account: InterfaceAccount<'info, TokenAccount>,
+    pub boss_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Program-derived account that serves as the mint authority
     ///
     /// This PDA must be the current mint authority for the ONyc token.
     /// Validated to ensure the program has permission to mint tokens.
     /// CHECK: PDA derivation is validated by seeds constraint
+    /// CHECK: PDA derivation is validated by seeds constraint and mint authority constraint.
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
         constraint = onyc_mint.mint_authority.unwrap() == mint_authority.key() @ MintToErrorCode::NoMintAuthority,
@@ -86,6 +102,31 @@ pub struct MintTo<'info> {
 
     /// System program required for account creation and rent payment
     pub system_program: Program<'info, System>,
+
+    /// CHECK: Parsed and validated only when the state points at a main offer.
+    pub offer: UncheckedAccount<'info>,
+
+    pub buffer_accounts: BufferAccrualAccounts<'info>,
+
+    /// CHECK: PDA derivation is validated by seeds constraint.
+    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
+    pub offer_vault_authority: UncheckedAccount<'info>,
+
+    /// CHECK: Validated in instruction logic against the expected offer vault ATA.
+    #[account(
+        mut,
+        constraint = offer_vault_onyc_account.key()
+            == get_associated_token_address_with_program_id(
+                &offer_vault_authority.key(),
+                &onyc_mint.key(),
+                &token_program.key(),
+            ) @ crate::instructions::market_info::GetCirculatingSupplyErrorCode::InvalidVaultAccount
+    )]
+    pub offer_vault_onyc_account: UncheckedAccount<'info>,
+
+    /// CHECK: Validated and optionally initialized in instruction logic.
+    #[account(mut)]
+    pub market_stats: UncheckedAccount<'info>,
 }
 
 /// Mints new ONyc tokens directly to the boss's account
@@ -114,19 +155,82 @@ pub struct MintTo<'info> {
 /// # Events
 /// * `OnycTokensMinted` - Emitted on successful minting with details
 pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
+    let offer = if ctx.accounts.state.main_offer == Pubkey::default() {
+        None
+    } else {
+        require_keys_eq!(
+            ctx.accounts.state.main_offer,
+            ctx.accounts.offer.key(),
+            BufferErrorCode::InvalidMainOffer
+        );
+        let offer = load_pda_account(
+            ctx.accounts.offer.as_ref(),
+            ctx.program_id,
+            BufferErrorCode::InvalidMainOffer.into(),
+            BufferErrorCode::InvalidMainOffer.into(),
+        )?;
+        Some(offer)
+    };
+    let should_accrue = offer.is_some()
+        && should_accrue_onyc_mint(
+            &ctx.accounts.state,
+            &ctx.accounts.onyc_mint,
+            ctx.accounts.buffer_accounts.is_initialized(),
+            &ctx.accounts.mint_authority.to_account_info(),
+        );
+    let accrual = if should_accrue {
+        let offer = offer.as_ref().expect("offer is checked above");
+        Some(accrue_buffer_from_accounts(
+            ctx.program_id,
+            &ctx.accounts.state,
+            &ctx.accounts.buffer_accounts,
+            offer,
+            &ctx.accounts.onyc_mint,
+            ctx.accounts.mint_authority.to_account_info(),
+            ctx.bumps.mint_authority,
+            &ctx.accounts.token_program,
+        )?)
+    } else {
+        None
+    };
+
     let mint_authority_seeds = &[seeds::MINT_AUTHORITY, &[ctx.bumps.mint_authority]];
     let mint_authority_signer_seeds = &[mint_authority_seeds.as_slice()];
-
-    // Mint tokens to the boss's ONyc account with max supply validation
     mint_tokens(
         &ctx.accounts.token_program,
         &ctx.accounts.onyc_mint,
-        &ctx.accounts.boss_onyc_account,
+        &ctx.accounts.boss_onyc_account.to_account_info(),
         &ctx.accounts.mint_authority.to_account_info(),
         mint_authority_signer_seeds,
         amount,
         ctx.accounts.state.max_supply,
     )?;
+
+    if let Some(accrual) = accrual {
+        let post_mint_supply = accrual
+            .post_accrual_supply
+            .checked_add(amount)
+            .ok_or(BufferErrorCode::MathOverflow)?;
+        store_buffer_post_supply(
+            &ctx.accounts.buffer_accounts,
+            post_mint_supply,
+            accrual.timestamp,
+        )?;
+    }
+
+    if let Some(offer) = offer.as_ref() {
+        ctx.accounts.onyc_mint.reload()?;
+        refresh_market_stats_pda(
+            offer,
+            &ctx.accounts.onyc_mint,
+            &ctx.accounts.offer_vault_onyc_account.to_account_info(),
+            &ctx.accounts.token_program,
+            &ctx.accounts.market_stats.to_account_info(),
+            &ctx.accounts.boss.to_account_info(),
+            &ctx.accounts.system_program.to_account_info(),
+            ctx.program_id,
+        )?;
+    }
 
     msg!("Minted {} ONyc tokens to boss account", amount);
 

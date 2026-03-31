@@ -1,10 +1,9 @@
 use crate::constants::seeds;
-use crate::instructions::market_info::market_stats::{
-    calculate_circulating_supply, read_optional_token_account_amount,
-};
+use crate::instructions::market_info::market_stats::calculate_circulating_supply;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 
 use crate::state::State;
+use crate::utils::token_utils::read_optional_token_account_amount;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::{Mint, TokenInterface};

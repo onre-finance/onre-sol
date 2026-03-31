@@ -43,7 +43,9 @@
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
+    "@types/bn.js": "^5.2.0",
     "@types/node": "^22.10.5",
+    "@types/node-fetch": "2",
     "dotenv": "^16.5.0",
     "litesvm": "0.4.0",
     "prettier": "^3.5.2",

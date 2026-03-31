@@ -12,6 +12,8 @@ pub mod instructions;
 pub mod state;
 pub mod utils;
 
+pub use instructions::mint_authority::mint_to::MintTo;
+
 /// The main program module for the Onre App.
 ///
 /// This module defines the entry points for all program instructions. It facilitates the creation
@@ -236,6 +238,14 @@ pub mod onreapp {
         offer::take_offer(ctx, token_in_amount, approval_message)
     }
 
+    pub fn take_offer_extended(
+        ctx: Context<TakeOfferExtended>,
+        token_in_amount: u64,
+        approval_message: Option<ApprovalMessage>,
+    ) -> Result<()> {
+        offer::take_offer_extended(ctx, token_in_amount, approval_message)
+    }
+
     /// Takes a offer using permissionless flow with intermediary accounts.
     ///
     /// Delegates to `offer::take_offer_permissionless`.
@@ -252,6 +262,14 @@ pub mod onreapp {
         approval_message: Option<ApprovalMessage>,
     ) -> Result<()> {
         offer::take_offer_permissionless(ctx, token_in_amount, approval_message)
+    }
+
+    pub fn take_offer_permissionless_extended(
+        ctx: Context<TakeOfferPermissionlessExtended>,
+        token_in_amount: u64,
+        approval_message: Option<ApprovalMessage>,
+    ) -> Result<()> {
+        offer::take_offer_permissionless_extended(ctx, token_in_amount, approval_message)
     }
 
     /// Proposes a new boss for ownership transfer.
@@ -384,6 +402,81 @@ pub mod onreapp {
         new_redemption_admin: Pubkey,
     ) -> Result<()> {
         state_operations::set_redemption_admin(ctx, new_redemption_admin)
+    }
+
+    /// Initializes the standalone BUFFER pool state and vault accounts.
+    ///
+    /// Creates BUFFER state as a separate PDA so existing offer/redemption state
+    /// remains unchanged. Only the boss can initialize BUFFER.
+    pub fn initialize_buffer(ctx: Context<InitializeBuffer>) -> Result<()> {
+        buffer::initialize_buffer(ctx)
+    }
+
+    /// Sets the main offer stored in program state.
+    ///
+    /// Only the boss can update this value.
+    pub fn set_main_offer(ctx: Context<SetMainOffer>) -> Result<()> {
+        state_operations::set_main_offer(ctx)
+    }
+
+    /// Sets BUFFER gross yield.
+    ///
+    /// Current yield is read from the main offer during manage_buffer.
+    pub fn set_buffer_gross_apr(ctx: Context<SetBufferGrossYield>, gross_yield: u64) -> Result<()> {
+        buffer::set_buffer_gross_apr(ctx, gross_yield)
+    }
+
+    /// Sets BUFFER fee split parameters.
+    ///
+    /// Both fee values are expressed in basis points and applied during accrual.
+    pub fn set_buffer_fee_config(
+        ctx: Context<SetBufferFeeConfig>,
+        management_fee_basis_points: u16,
+        management_fee_wallet: Pubkey,
+        performance_fee_basis_points: u16,
+        performance_fee_wallet: Pubkey,
+    ) -> Result<()> {
+        buffer::set_buffer_fee_config(
+            ctx,
+            management_fee_basis_points,
+            management_fee_wallet,
+            performance_fee_basis_points,
+            performance_fee_wallet,
+        )
+    }
+
+    /// Accrues BUFFER spread and mints ONyc to the BUFFER vault account.
+    ///
+    /// Callable by anyone.
+    pub fn manage_buffer(ctx: Context<ManageBuffer>) -> Result<()> {
+        buffer::manage_buffer(ctx)
+    }
+
+    /// Burns ONyc from BUFFER vault to increase NAV according to provided target inputs.
+    ///
+    /// Callable by boss only.
+    pub fn burn_for_nav_increase(
+        ctx: Context<BurnForNavIncrease>,
+        asset_adjustment_amount: u64,
+        target_nav: u64,
+    ) -> Result<()> {
+        buffer::burn_for_nav_increase(ctx, asset_adjustment_amount, target_nav)
+    }
+
+    /// Transfers management fees from the management fee vault to the boss.
+    pub fn withdraw_management_fees(
+        ctx: Context<WithdrawManagementFees>,
+        amount: u64,
+    ) -> Result<()> {
+        buffer::withdraw_management_fees(ctx, amount)
+    }
+
+    /// Transfers performance fees from the performance fee vault to the boss.
+    pub fn withdraw_performance_fees(
+        ctx: Context<WithdrawPerformanceFees>,
+        amount: u64,
+    ) -> Result<()> {
+        buffer::withdraw_performance_fees(ctx, amount)
     }
 
     /// Mints ONyc tokens to the boss's account.
@@ -617,6 +710,18 @@ pub mod onreapp {
         amount: u64,
     ) -> Result<()> {
         redemption::fulfill_redemption_request(ctx, amount)
+    }
+
+    /// Fulfills a redemption request with extended ONyc buffer accrual support.
+    ///
+    /// Delegates to `redemption::fulfill_redemption_request_extended`.
+    /// This preserves the legacy `fulfill_redemption_request` surface while allowing
+    /// the ONyc burn path to settle BUFFER accrual and reset the baseline.
+    pub fn fulfill_redemption_request_extended(
+        ctx: Context<FulfillRedemptionRequestExtended>,
+        amount: u64,
+    ) -> Result<()> {
+        redemption::fulfill_redemption_request_extended(ctx, amount)
     }
 
     /// Cancels a redemption request.

@@ -1,15 +1,13 @@
 use crate::constants::seeds;
 use crate::instructions::market_info::market_stats::{
     calculate_circulating_supply, calculate_tvl as calculate_shared_tvl,
-    read_optional_token_account_amount,
 };
-use crate::instructions::offer::offer_utils::{
-    calculate_current_step_price, find_active_vector_at,
-};
+use crate::instructions::market_info::offer_valuation_utils::get_active_vector_and_current_price;
 use crate::instructions::Offer;
 use crate::OfferCoreError;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 
+use crate::utils::read_optional_token_account_amount;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::{Mint, TokenInterface};
@@ -130,16 +128,7 @@ pub fn get_tvl(ctx: Context<GetTVL>) -> Result<u64> {
     let offer = ctx.accounts.offer.load()?;
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    // Find the currently active pricing vector
-    let active_vector = find_active_vector_at(&offer, current_time)?;
-
-    // Calculate current price (NAV) with 9 decimals
-    let current_price = calculate_current_step_price(
-        active_vector.apr,
-        active_vector.base_price,
-        active_vector.base_time,
-        active_vector.price_fix_duration,
-    )?;
+    let (_, current_price) = get_active_vector_and_current_price(&offer, current_time)?;
 
     let vault_token_out_amount = read_optional_token_account_amount(
         &ctx.accounts.vault_token_out_account,

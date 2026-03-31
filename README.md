@@ -22,12 +22,13 @@ anchor keys sync && anchor build
 
 ```
 programs/onreapp/src/
-├── lib.rs                    # Entry point — all 32 instructions declared here
+├── lib.rs                    # Entry point — all program instructions declared here
 ├── state.rs                  # Global State account (boss, admins, approvers, kill switch)
 ├── constants.rs              # PDA seeds, limits, decimals
 ├── utils/                    # Token helpers, ed25519 signature parsing, approver verification
 └── instructions/
     ├── initialization/       # initialize, initialize_permissionless_authority
+    ├── buffer/               # BUFFER state, accrual, fee accounting, burn support
     ├── offer/                # make/take/close offers, manage price vectors, fees
     ├── redemption/           # redemption offers, requests, fulfillment, cancellation
     ├── state_operations/     # Boss transfer, admin/approver management, kill switch, max supply
@@ -53,7 +54,28 @@ Offers use up to 10 `OfferVector` entries with APR-based compound interest. Pric
 
 ### Token Support
 
-The program supports both **SPL Token** and **Token-2022** with transfer fee extensions.
+The program supports both **SPL Token** and **Token-2022**.
+
+`take_offer` and redemption payout paths reject Token-2022 mints with non-zero transfer fees.
+
+### BUFFER Yield Model
+
+The BUFFER module stores two separate inputs for accrual:
+
+| Field | Source |
+|------|--------|
+| `gross_apr` | Set explicitly by `set_buffer_gross_apr` |
+| `current_yield` | Read from the active APR on `state.main_offer` during `manage_buffer` |
+
+`state.main_offer` must be set before `initialize_buffer`. It can be updated later with `set_main_offer`, and it must always point to an offer whose `token_out_mint` is ONyc.
+
+Typical on-chain BUFFER setup order:
+
+1. create the ONyc offer
+2. set `state.main_offer`
+3. call `initialize_buffer`
+4. call `set_buffer_gross_apr`
+5. optionally call `set_buffer_fee_config`
 
 ### Constants
 
@@ -67,6 +89,8 @@ The program supports both **SPL Token** and **Token-2022** with transfer fee ext
 ## Instructions
 
 **Initialization**: `initialize`, `initialize_permissionless_authority`
+
+**BUFFER**: `initialize_buffer`, `set_main_offer`, `set_buffer_gross_apr`, `set_buffer_fee_config`, `manage_buffer`, `burn_for_nav_increase`, `withdraw_management_fees`, `withdraw_performance_fees`
 
 **Offers**: `make_offer`, `add_offer_vector`, `delete_offer_vector`, `delete_all_offer_vectors`, `update_offer_fee`, `take_offer`, `take_offer_permissionless`
 
@@ -118,6 +142,22 @@ tsx scripts/utils/get-state.ts
 tsx scripts/offer/fetch-offer.ts
 tsx scripts/market_info/get-nav.ts
 ```
+
+### BUFFER CLI Notes
+
+The current CLI exposes only a subset of the on-chain BUFFER flow:
+
+- available commands: `buffer get`, `buffer initialize`, `buffer set-gross-yield`, `buffer manage`, `buffer burn`
+- `buffer initialize` requires `--offer` and `--onyc-mint`
+- `buffer manage` requires `--offer`; the passed offer must match `state.main_offer`
+- `current_yield` is not set manually; it is derived from the active APR on the main offer during accrual
+
+The CLI does not currently expose the full administrative BUFFER flow. In particular, README examples should not assume CLI support for:
+
+- `set_main_offer`
+- `set_buffer_fee_config`
+- `withdraw_management_fees`
+- `withdraw_performance_fees`
 
 Scripts that modify state output base58-encoded transactions for signing via Squad multisig. Read-only scripts print results directly.
 

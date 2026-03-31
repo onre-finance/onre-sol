@@ -186,7 +186,7 @@ describe("Create redemption request", () => {
 
     test("Redeemer pays for account creation", async () => {
         // given
-        const initialBalance = testHelper.svm.getBalance(redeemer.publicKey);
+        const initialBalance = testHelper.svm.getBalance(redeemer.publicKey) ?? 0n;
 
         // when
         await program.createRedemptionRequest({
@@ -196,7 +196,7 @@ describe("Create redemption request", () => {
         });
 
         // then
-        const finalBalance = testHelper.svm.getBalance(redeemer.publicKey);
+        const finalBalance = testHelper.svm.getBalance(redeemer.publicKey) ?? 0n;
 
         // Balance should decrease (account rent + transaction fees)
         expect(finalBalance).toBeLessThan(initialBalance);
