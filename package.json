@@ -6,7 +6,7 @@
   "type": "module",
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "anchor-build": "anchor build && mkdir -p ../tests/fixtures && cp target/deploy/onreapp.so ../tests/fixtures/",
+    "anchor-build": "anchor build && mkdir -p tests/fixtures && cp target/deploy/onreapp.so tests/fixtures/",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
