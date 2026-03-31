@@ -1,11 +1,11 @@
 pub mod accounts;
+pub(crate) mod accrue_buffer;
 pub mod accrual_utils;
 pub mod burn_for_nav_increase;
 pub mod errors;
 pub mod events;
 mod fee_utils;
 pub mod initialize_buffer;
-pub(crate) mod manage_buffer;
 pub mod set_buffer_fee_config;
 pub mod set_buffer_gross_apr;
 pub mod state;

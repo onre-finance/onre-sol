@@ -2,7 +2,7 @@ use crate::constants::seeds;
 use crate::instructions::buffer::{
     __client_accounts_buffer_accrual_accounts, __cpi_client_accounts_buffer_accrual_accounts,
     accounts::BufferAccrualAccountsBumps,
-    manage_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
+    accrue_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
     BufferAccrualAccounts, BufferErrorCode,
 };
 use crate::instructions::market_info::refresh_market_stats_pda;
