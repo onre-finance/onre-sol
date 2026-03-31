@@ -455,7 +455,7 @@ export class ScriptHelper {
                 onycMint: params.onycMint,
                 bufferState: this.pdas.bufferStatePda,
                 reserveVaultAuthority: this.pdas.reserveVaultAuthorityPda,
-                bufferVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
+                reserveVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
                 managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
                 managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
                 performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
@@ -517,7 +517,7 @@ export class ScriptHelper {
                 offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
                 vaultTokenOutAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
                 reserveVaultAuthority: this.pdas.reserveVaultAuthorityPda,
-                bufferVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
+                reserveVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
                 tokenProgram: TOKEN_PROGRAM_ID,
             })
             .instruction();
@@ -729,7 +729,7 @@ export class ScriptHelper {
                 offer,
                 bufferAccounts: {
                     bufferState: this.pdas.bufferStatePda,
-                    bufferVaultOnycAccount: getAssociatedTokenAddressSync(onycMint, this.pdas.reserveVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
+                    reserveVaultOnycAccount: getAssociatedTokenAddressSync(onycMint, this.pdas.reserveVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
                     managementFeeVaultOnycAccount: getAssociatedTokenAddressSync(onycMint, this.pdas.managementFeeVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
                     performanceFeeVaultOnycAccount: getAssociatedTokenAddressSync(onycMint, this.pdas.performanceFeeVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
                 },

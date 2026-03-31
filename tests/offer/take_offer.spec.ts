@@ -1257,7 +1257,7 @@ describe("Take Offer", () => {
                     marketStats: program.getMarketStatsPda(),
                     bufferAccounts: {
                         bufferState: program.pdas.bufferStatePda,
-                        bufferVaultOnycAccount: bossTokenOutAccount,
+                        reserveVaultOnycAccount: bossTokenOutAccount,
                         managementFeeVaultOnycAccount: program.getManagementFeeVaultAta(tokenOutMint),
                         performanceFeeVaultOnycAccount: program.getPerformanceFeeVaultAta(tokenOutMint),
                     },

@@ -187,7 +187,7 @@ export class OnreProgram {
             marketStats: this.pdas.marketStatsPda,
             bufferAccounts: {
                 bufferState: this.pdas.bufferStatePda,
-                bufferVaultOnycAccount: this.getBufferVaultAta(params.tokenOutMint),
+                reserveVaultOnycAccount: this.getBufferVaultAta(params.tokenOutMint),
                 managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.tokenOutMint),
                 performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.tokenOutMint),
             },
@@ -242,7 +242,7 @@ export class OnreProgram {
             marketStats: this.pdas.marketStatsPda,
             bufferAccounts: {
                 bufferState: this.pdas.bufferStatePda,
-                bufferVaultOnycAccount: this.getBufferVaultAta(params.tokenOutMint),
+                reserveVaultOnycAccount: this.getBufferVaultAta(params.tokenOutMint),
                 managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.tokenOutMint),
                 performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.tokenOutMint),
             },
@@ -372,7 +372,7 @@ export class OnreProgram {
             onycMint: params.onycMint,
             bufferState: this.pdas.bufferStatePda,
             reserveVaultAuthority: this.pdas.reserveVaultAuthorityPda,
-            bufferVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
+            reserveVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
             managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
             managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
             performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
@@ -432,7 +432,7 @@ export class OnreProgram {
                 offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
                 vaultTokenOutAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
                 reserveVaultAuthority: this.pdas.reserveVaultAuthorityPda,
-                bufferVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
+                reserveVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
                 managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
                 managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
                 performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
@@ -538,7 +538,7 @@ export class OnreProgram {
             offer,
             bufferAccounts: {
                 bufferState: this.pdas.bufferStatePda,
-                bufferVaultOnycAccount: this.getBufferVaultAta(onycMint),
+                reserveVaultOnycAccount: this.getBufferVaultAta(onycMint),
                 managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(onycMint),
                 performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(onycMint),
             },
@@ -920,7 +920,7 @@ export class OnreProgram {
                 marketStats: this.pdas.marketStatsPda,
                 bufferAccounts: {
                     bufferState: this.pdas.bufferStatePda,
-                    bufferVaultOnycAccount: this.getBufferVaultAta(params.tokenInMint),
+                    reserveVaultOnycAccount: this.getBufferVaultAta(params.tokenInMint),
                     managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.tokenInMint),
                     performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.tokenInMint),
                 },

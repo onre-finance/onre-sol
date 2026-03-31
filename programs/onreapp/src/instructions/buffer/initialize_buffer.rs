@@ -71,7 +71,7 @@ pub struct InitializeBuffer<'info> {
         associated_token::authority = reserve_vault_authority,
         associated_token::token_program = token_program
     )]
-    pub buffer_vault_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub reserve_vault_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         init_if_needed,
