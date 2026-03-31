@@ -13,7 +13,7 @@ pub struct BufferAccrualAccounts<'info> {
 
     /// CHECK: Validated in instruction logic against the expected buffer ATA.
     #[account(mut)]
-    pub buffer_vault_onyc_account: UncheckedAccount<'info>,
+    pub reserve_vault_onyc_account: UncheckedAccount<'info>,
 
     /// CHECK: Validated in instruction logic against the expected management fee ATA.
     #[account(mut)]
@@ -42,8 +42,8 @@ impl<'info> BufferAccrualAccounts<'info> {
         self.try_load_buffer_state()
     }
 
-    pub fn buffer_vault_onyc_account_info(&self) -> AccountInfo<'info> {
-        self.buffer_vault_onyc_account.to_account_info()
+    pub fn reserve_vault_onyc_account_info(&self) -> AccountInfo<'info> {
+        self.reserve_vault_onyc_account.to_account_info()
     }
 
     pub fn management_fee_vault_onyc_account_info(&self) -> AccountInfo<'info> {
@@ -62,14 +62,14 @@ impl<'info> BufferAccrualAccounts<'info> {
 pub fn validate_buffer_onyc_vault_accounts<'info>(
     program_id: &Pubkey,
     buffer_state: &BufferState,
-    buffer_vault_onyc_account: &AccountInfo<'info>,
+    reserve_vault_onyc_account: &AccountInfo<'info>,
     management_fee_vault_onyc_account: &AccountInfo<'info>,
     performance_fee_vault_onyc_account: &AccountInfo<'info>,
     onyc_mint: &InterfaceAccount<'info, Mint>,
     token_program: &Interface<'info, TokenInterface>,
 ) -> Result<()> {
-    let expected_buffer_vault_onyc_account = get_associated_token_address_with_program_id(
-        &Pubkey::find_program_address(&[seeds::BUFFER_VAULT_AUTHORITY], program_id).0,
+    let expected_reserve_vault_onyc_account = get_associated_token_address_with_program_id(
+        &Pubkey::find_program_address(&[seeds::RESERVE_VAULT_AUTHORITY], program_id).0,
         &onyc_mint.key(),
         &token_program.key(),
     );
@@ -90,8 +90,8 @@ pub fn validate_buffer_onyc_vault_accounts<'info>(
         BufferErrorCode::InvalidOnycMint
     );
     require_keys_eq!(
-        buffer_vault_onyc_account.key(),
-        expected_buffer_vault_onyc_account,
+        reserve_vault_onyc_account.key(),
+        expected_reserve_vault_onyc_account,
         BufferErrorCode::InvalidOnycMint
     );
     require_keys_eq!(

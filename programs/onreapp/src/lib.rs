@@ -238,12 +238,12 @@ pub mod onreapp {
         offer::take_offer(ctx, token_in_amount, approval_message)
     }
 
-    pub fn take_offer_extended(
-        ctx: Context<TakeOfferExtended>,
+    pub fn take_offer_v2(
+        ctx: Context<TakeOfferV2>,
         token_in_amount: u64,
         approval_message: Option<ApprovalMessage>,
     ) -> Result<()> {
-        offer::take_offer_extended(ctx, token_in_amount, approval_message)
+        offer::take_offer_v2(ctx, token_in_amount, approval_message)
     }
 
     /// Takes a offer using permissionless flow with intermediary accounts.
@@ -264,12 +264,12 @@ pub mod onreapp {
         offer::take_offer_permissionless(ctx, token_in_amount, approval_message)
     }
 
-    pub fn take_offer_permissionless_extended(
-        ctx: Context<TakeOfferPermissionlessExtended>,
+    pub fn take_offer_permissionless_v2(
+        ctx: Context<TakeOfferPermissionlessV2>,
         token_in_amount: u64,
         approval_message: Option<ApprovalMessage>,
     ) -> Result<()> {
-        offer::take_offer_permissionless_extended(ctx, token_in_amount, approval_message)
+        offer::take_offer_permissionless_v2(ctx, token_in_amount, approval_message)
     }
 
     /// Proposes a new boss for ownership transfer.
@@ -705,16 +705,16 @@ pub mod onreapp {
         redemption::fulfill_redemption_request(ctx, amount)
     }
 
-    /// Fulfills a redemption request with extended ONyc buffer accrual support.
+    /// Fulfills a redemption request with V2 ONyc buffer accrual support.
     ///
-    /// Delegates to `redemption::fulfill_redemption_request_extended`.
+    /// Delegates to `redemption::fulfill_redemption_request_v2`.
     /// This preserves the legacy `fulfill_redemption_request` surface while allowing
     /// the ONyc burn path to settle BUFFER accrual and reset the baseline.
-    pub fn fulfill_redemption_request_extended(
-        ctx: Context<FulfillRedemptionRequestExtended>,
+    pub fn fulfill_redemption_request_v2(
+        ctx: Context<FulfillRedemptionRequestV2>,
         amount: u64,
     ) -> Result<()> {
-        redemption::fulfill_redemption_request_extended(ctx, amount)
+        redemption::fulfill_redemption_request_v2(ctx, amount)
     }
 
     /// Cancels a redemption request.

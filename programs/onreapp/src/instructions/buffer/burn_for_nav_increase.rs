@@ -57,16 +57,16 @@ pub struct BurnForNavIncrease<'info> {
 
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
-        seeds = [seeds::BUFFER_VAULT_AUTHORITY],
+        seeds = [seeds::RESERVE_VAULT_AUTHORITY],
         bump,
     )]
-    pub buffer_vault_authority: UncheckedAccount<'info>,
+    pub reserve_vault_authority: UncheckedAccount<'info>,
 
     /// CHECK: Account is validated in instruction logic to allow uninitialized vault account
     pub vault_token_out_account: UncheckedAccount<'info>,
 
     #[account(mut)]
-    pub buffer_vault_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub reserve_vault_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
@@ -117,7 +117,7 @@ pub struct BurnForNavIncrease<'info> {
 pub fn burn_for_nav_increase(
     ctx: Context<BurnForNavIncrease>,
     asset_adjustment_amount: u64,
-    target_nav: u64,
+    target_nav: u64, // TODO: take this from the main offer
 ) -> Result<()> {
     require!(target_nav > 0, BufferErrorCode::InvalidTargetNav);
 
@@ -138,17 +138,17 @@ pub fn burn_for_nav_increase(
         expected_vault_token_out_account,
         BufferErrorCode::InvalidOnycMint
     );
-    let expected_buffer_vault_onyc_account = get_associated_token_address_with_program_id(
-        &ctx.accounts.buffer_vault_authority.key(),
+    let expected_reserve_vault_onyc_account = get_associated_token_address_with_program_id(
+        &ctx.accounts.reserve_vault_authority.key(),
         &ctx.accounts.onyc_mint.key(),
         &ctx.accounts.token_program.key(),
     );
     require_keys_eq!(
-        ctx.accounts.buffer_vault_onyc_account.key(),
-        expected_buffer_vault_onyc_account,
+        ctx.accounts.reserve_vault_onyc_account.key(),
+        expected_reserve_vault_onyc_account,
         BufferErrorCode::InvalidOnycMint
     );
-    let buffer_vault_onyc_account = ctx.accounts.buffer_vault_onyc_account.to_account_info();
+    let reserve_vault_onyc_account = ctx.accounts.reserve_vault_onyc_account.to_account_info();
     let management_fee_vault_onyc_account = ctx
         .accounts
         .management_fee_vault_onyc_account
@@ -163,7 +163,7 @@ pub fn burn_for_nav_increase(
         &mut ctx.accounts.buffer_state,
         &offer,
         &ctx.accounts.onyc_mint,
-        buffer_vault_onyc_account,
+        reserve_vault_onyc_account,
         management_fee_vault_onyc_account,
         performance_fee_vault_onyc_account,
         mint_authority,
@@ -219,22 +219,22 @@ pub fn burn_for_nav_increase(
 
     let burn_amount = burn_amount_u128 as u64;
     require!(
-        burn_amount <= accrual.buffer_vault_balance_after_accrual,
+        burn_amount <= accrual.reserve_vault_balance_after_accrual,
         BufferErrorCode::InsufficientCacheBalance
     );
 
-    let buffer_vault_authority_seeds = &[
-        seeds::BUFFER_VAULT_AUTHORITY,
-        &[ctx.bumps.buffer_vault_authority],
+    let reserve_vault_authority_seeds = &[
+        seeds::RESERVE_VAULT_AUTHORITY,
+        &[ctx.bumps.reserve_vault_authority],
     ];
-    let buffer_vault_authority_signer_seeds = &[buffer_vault_authority_seeds.as_slice()];
+    let reserve_vault_authority_signer_seeds = &[reserve_vault_authority_seeds.as_slice()];
 
     burn_tokens(
         &ctx.accounts.token_program,
         &ctx.accounts.onyc_mint,
-        &ctx.accounts.buffer_vault_onyc_account,
-        &ctx.accounts.buffer_vault_authority.to_account_info(),
-        buffer_vault_authority_signer_seeds,
+        &ctx.accounts.reserve_vault_onyc_account,
+        &ctx.accounts.reserve_vault_authority.to_account_info(),
+        reserve_vault_authority_signer_seeds,
         burn_amount,
     )?;
 

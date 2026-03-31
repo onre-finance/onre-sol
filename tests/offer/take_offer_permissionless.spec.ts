@@ -423,7 +423,7 @@ describe("Take Offer Permissionless", () => {
             expect(userBalanceAfter).toBe(BigInt(1e9));
         });
 
-        it("Should accrue BUFFER and refresh market stats through take_offer_permissionless_extended", async () => {
+        it("Should accrue BUFFER and refresh market stats through take_offer_permissionless_v2", async () => {
             await program.transferMintAuthorityToProgram({ mint: tokenOutMint });
             await program.mintTo({ amount: 1e9 });
             await program.setMainOffer({
@@ -453,7 +453,7 @@ describe("Take Offer Permissionless", () => {
 
             await testHelper.advanceClockBy(31_536_000);
 
-            await program.takeOfferPermissionlessExtended({
+            await program.takeOfferPermissionlessV2({
                 tokenInAmount: 1e6,
                 tokenInMint,
                 tokenOutMint,
@@ -477,7 +477,7 @@ describe("Take Offer Permissionless", () => {
 
             const bufferState = await program.getBufferState();
             const postTradeSupply = supplyBefore + grossAccrual + BigInt(1e9);
-            expect(bufferState.lowestSupply.toString()).toBe(postTradeSupply.toString());
+            expect(bufferState.previousSupply.toString()).toBe(postTradeSupply.toString());
 
             const marketStats = await program.getMarketStats();
             const vaultTokenOutBalance = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
