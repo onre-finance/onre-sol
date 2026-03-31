@@ -239,7 +239,7 @@ pub struct TakeOfferPermissionless<'info> {
 }
 
 #[derive(Accounts)]
-pub struct TakeOfferPermissionlessExtended<'info> {
+pub struct TakeOfferPermissionlessV2<'info> {
     #[account(
         mut,
         seeds = [
@@ -418,8 +418,8 @@ pub fn take_offer_permissionless(
 }
 
 #[inline(never)]
-pub fn take_offer_permissionless_extended(
-    ctx: Context<TakeOfferPermissionlessExtended>,
+pub fn take_offer_permissionless_v2(
+    ctx: Context<TakeOfferPermissionlessV2>,
     token_in_amount: u64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {

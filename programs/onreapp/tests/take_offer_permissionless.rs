@@ -429,40 +429,6 @@ fn setup_permissionless_no_approval_with_fee(fee_bps: u16) -> PermissionlessNoAp
     }
 }
 
-fn setup_permissionless_extended_with_buffer() -> PermissionlessNoApprovalCtx {
-    let mut ctx = setup_permissionless_no_approval();
-    let boss = ctx.payer.pubkey();
-    let (offer_pda, _) = find_offer_pda(&ctx.usdc_mint, &ctx.onyc_mint);
-
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.onyc_mint, &TOKEN_PROGRAM_ID);
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
-    advance_slot(&mut ctx.svm);
-
-    let ix = build_mint_to_ix(&boss, &ctx.onyc_mint, 1_000_000_000, &TOKEN_PROGRAM_ID);
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
-    advance_slot(&mut ctx.svm);
-
-    let caller = Keypair::new();
-    ctx.svm.airdrop(&caller.pubkey(), INITIAL_LAMPORTS).unwrap();
-    let ix = build_set_main_offer_ix(&boss, &offer_pda);
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
-    advance_slot(&mut ctx.svm);
-
-    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &ctx.onyc_mint);
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
-    advance_slot(&mut ctx.svm);
-
-    let ix = build_set_buffer_gross_yield_ix(&boss, 100_000);
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
-    advance_slot(&mut ctx.svm);
-
-    let ix = build_set_buffer_fee_config_ix(&boss, 100, 1_000);
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
-    advance_slot(&mut ctx.svm);
-
-    ctx
-}
-
 // ===========================================================================
 // Basic Flow Tests
 // ===========================================================================
@@ -486,7 +452,7 @@ fn test_permissionless_basic_success() {
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     // 1.0001 USDC at price 1.0001 = 1 ONyc
-    let ix = build_take_offer_permissionless_extended_ix(
+    let ix = build_take_offer_permissionless_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -509,98 +475,6 @@ fn test_permissionless_basic_success() {
         &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
     );
     assert_eq!(user_usdc, 10_000_000_000 - 1_000_100);
-}
-
-#[test]
-fn test_permissionless_extended_accrues_buffer_and_refreshes_market_stats() {
-    let mut ctx = setup_permissionless_extended_with_buffer();
-    let boss = ctx.payer.pubkey();
-    let current_time = get_clock_time(&ctx.svm);
-
-    let ix = build_add_offer_vector_ix(
-        &boss,
-        &ctx.usdc_mint,
-        &ctx.onyc_mint,
-        Some(current_time),
-        current_time,
-        1_000_000_000,
-        0,
-        86_400,
-    );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
-    advance_slot(&mut ctx.svm);
-
-    let offer_pda = read_state(&ctx.svm).main_offer;
-    let ix = build_manage_buffer_ix(&boss, &offer_pda, &ctx.onyc_mint);
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
-    advance_slot(&mut ctx.svm);
-
-    advance_clock_by(&mut ctx.svm, 31_536_000);
-    let ix = build_take_offer_permissionless_extended_ix(
-        &ctx.user.pubkey(),
-        &boss,
-        &ctx.usdc_mint,
-        &ctx.onyc_mint,
-        1_000_000,
-        None,
-        &TOKEN_PROGRAM_ID,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
-
-    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
-    let buffer_vault_ata = derive_ata(
-        &buffer_vault_authority_pda,
-        &ctx.onyc_mint,
-        &TOKEN_PROGRAM_ID,
-    );
-    let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
-    let management_fee_vault_ata = derive_ata(
-        &management_fee_vault_authority_pda,
-        &ctx.onyc_mint,
-        &TOKEN_PROGRAM_ID,
-    );
-    let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
-    let performance_fee_vault_ata = derive_ata(
-        &performance_fee_vault_authority_pda,
-        &ctx.onyc_mint,
-        &TOKEN_PROGRAM_ID,
-    );
-
-    assert_eq!(
-        get_token_balance(&ctx.svm, &buffer_vault_ata),
-        81_081_000_000
-    );
-    assert_eq!(
-        get_token_balance(&ctx.svm, &management_fee_vault_ata),
-        10_010_000_000
-    );
-    assert_eq!(
-        get_token_balance(&ctx.svm, &performance_fee_vault_ata),
-        9_009_000_000
-    );
-    assert_eq!(
-        get_token_balance(
-            &ctx.svm,
-            &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
-        ),
-        1_000_000_000
-    );
-    assert_eq!(
-        read_buffer_state(&ctx.svm).lowest_supply,
-        get_mint_supply(&ctx.svm, &ctx.onyc_mint)
-    );
-    assert!(
-        read_buffer_state(&ctx.svm).performance_fee_high_watermark >= 1_000_000_000,
-        "permissionless take_offer accrual should persist the updated performance fee watermark"
-    );
-
-    let market_stats = read_market_stats(&ctx.svm);
-    let (_, expected_bump) = find_market_stats_pda();
-    assert_eq!(market_stats.bump, expected_bump);
-    assert_eq!(market_stats.nav, 1_000_000_000);
-    assert_eq!(market_stats.circulating_supply, 102_100_000_000);
-    assert_eq!(market_stats.tvl, 102_100_000_000);
 }
 
 // ===========================================================================

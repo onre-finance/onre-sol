@@ -53,7 +53,7 @@ export class ScriptHelper {
         permissionlessVaultAuthorityPda: PublicKey;
         mintAuthorityPda: PublicKey;
         bufferStatePda: PublicKey;
-        bufferVaultAuthorityPda: PublicKey;
+        reserveVaultAuthorityPda: PublicKey;
         managementFeeVaultAuthorityPda: PublicKey;
         performanceFeeVaultAuthorityPda: PublicKey;
         redemptionVaultAuthorityPda: PublicKey;
@@ -74,7 +74,7 @@ export class ScriptHelper {
             permissionlessVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], program.programId)[0],
             mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], program.programId)[0],
             bufferStatePda: PublicKey.findProgramAddressSync([Buffer.from("buffer_state")], program.programId)[0],
-            bufferVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("buffer_vault_authority")], program.programId)[0],
+            reserveVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("reserve_vault_authority")], program.programId)[0],
             managementFeeVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("management_fee_vault_authority")], program.programId)[0],
             performanceFeeVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("performance_fee_vault_authority")], program.programId)[0],
             redemptionVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("redemption_offer_vault_authority")], program.programId)[0],
@@ -184,7 +184,7 @@ export class ScriptHelper {
     }
 
     getBufferVaultAta(onycMint: PublicKey): PublicKey {
-        return getAssociatedTokenAddressSync(onycMint, this.pdas.bufferVaultAuthorityPda, true, TOKEN_PROGRAM_ID);
+        return getAssociatedTokenAddressSync(onycMint, this.pdas.reserveVaultAuthorityPda, true, TOKEN_PROGRAM_ID);
     }
 
     getManagementFeeVaultAta(onycMint: PublicKey): PublicKey {
@@ -373,7 +373,7 @@ export class ScriptHelper {
         const mintAuthority = this.pdas.mintAuthorityPda;
 
         return await this.program.methods
-            .takeOfferPermissionlessExtended(new BN(params.tokenInAmount), null)
+            .takeOfferPermissionlessV2(new BN(params.tokenInAmount), null)
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
@@ -454,8 +454,8 @@ export class ScriptHelper {
                 offer: params.offer,
                 onycMint: params.onycMint,
                 bufferState: this.pdas.bufferStatePda,
-                bufferVaultAuthority: this.pdas.bufferVaultAuthorityPda,
-                bufferVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
+                reserveVaultAuthority: this.pdas.reserveVaultAuthorityPda,
+                reserveVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
                 managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
                 managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
                 performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
@@ -516,8 +516,8 @@ export class ScriptHelper {
                 boss: params.boss,
                 offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
                 vaultTokenOutAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
-                bufferVaultAuthority: this.pdas.bufferVaultAuthorityPda,
-                bufferVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
+                reserveVaultAuthority: this.pdas.reserveVaultAuthorityPda,
+                reserveVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
                 tokenProgram: TOKEN_PROGRAM_ID,
             })
             .instruction();
@@ -729,7 +729,7 @@ export class ScriptHelper {
                 offer,
                 bufferAccounts: {
                     bufferState: this.pdas.bufferStatePda,
-                    bufferVaultOnycAccount: getAssociatedTokenAddressSync(onycMint, this.pdas.bufferVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
+                    reserveVaultOnycAccount: getAssociatedTokenAddressSync(onycMint, this.pdas.reserveVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
                     managementFeeVaultOnycAccount: getAssociatedTokenAddressSync(onycMint, this.pdas.managementFeeVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
                     performanceFeeVaultOnycAccount: getAssociatedTokenAddressSync(onycMint, this.pdas.performanceFeeVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
                 },

@@ -187,7 +187,7 @@ pub fn build_fulfill_redemption_request_ix(
     }
 }
 
-pub fn build_fulfill_redemption_request_extended_ix(
+pub fn build_fulfill_redemption_request_v2_ix(
     redemption_admin: &Pubkey,
     boss: &Pubkey,
     redeemer: &Pubkey,
@@ -210,11 +210,11 @@ pub fn build_fulfill_redemption_request_extended_ix(
         amount,
     );
     let (buffer_state_pda, _) = find_buffer_state_pda();
-    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
     let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
     let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
     let buffer_vault_onyc_ata =
-        derive_ata(&buffer_vault_authority_pda, token_in_mint, token_in_program);
+        derive_ata(&reserve_vault_authority_pda, token_in_mint, token_in_program);
     let management_fee_vault_onyc_ata = derive_ata(
         &management_fee_vault_authority_pda,
         token_in_mint,
@@ -226,7 +226,7 @@ pub fn build_fulfill_redemption_request_extended_ix(
         token_in_program,
     );
 
-    ix.data = ix_discriminator("fulfill_redemption_request_extended").to_vec();
+    ix.data = ix_discriminator("fulfill_redemption_request_v2").to_vec();
     ix.data.extend_from_slice(&amount.to_le_bytes());
     ix.accounts
         .insert(17, AccountMeta::new(buffer_state_pda, false));

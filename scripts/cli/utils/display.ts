@@ -83,7 +83,7 @@ export function printBufferState(bufferState: any, json: boolean = false): void 
                 {
                     onycMint: bufferState.onycMint.toBase58(),
                     grossApr: bufferState.grossApr.toString(),
-                    lowestSupply: bufferState.lowestSupply.toString(),
+                    previousSupply: bufferState.previousSupply.toString(),
                     managementFeeBasisPoints: bufferState.managementFeeBasisPoints,
                     managementFeeWallet: bufferState.managementFeeWallet.toBase58(),
                     performanceFeeBasisPoints: bufferState.performanceFeeBasisPoints,
@@ -108,7 +108,7 @@ export function printBufferState(bufferState: any, json: boolean = false): void 
     table.push(
         ["ONyc Mint", bufferState.onycMint.toBase58()],
         ["Gross APR (1e6)", bufferState.grossApr.toString()],
-        ["Lowest Supply", bufferState.lowestSupply.toString()],
+        ["Previous Supply", bufferState.previousSupply.toString()],
         ["Management Fee (bps)", bufferState.managementFeeBasisPoints.toString()],
         ["Management Fee Wallet", bufferState.managementFeeWallet.toBase58()],
         ["Performance Fee (bps)", bufferState.performanceFeeBasisPoints.toString()],

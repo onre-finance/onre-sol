@@ -146,7 +146,7 @@ pub fn read_state(svm: &LiteSVM) -> StateData {
 pub struct BufferStateData {
     pub onyc_mint: Pubkey,
     pub gross_yield: u64,
-    pub lowest_supply: u64,
+    pub previous_supply: u64,
     pub management_fee_basis_points: u16,
     pub performance_fee_basis_points: u16,
     pub performance_fee_high_watermark: u64,
@@ -165,7 +165,7 @@ pub fn read_buffer_state(svm: &LiteSVM) -> BufferStateData {
     BufferStateData {
         onyc_mint: buffer_state.onyc_mint,
         gross_yield: buffer_state.gross_apr,
-        lowest_supply: buffer_state.lowest_supply,
+        previous_supply: buffer_state.previous_supply,
         management_fee_basis_points: buffer_state.management_fee_basis_points,
         performance_fee_basis_points: buffer_state.performance_fee_basis_points,
         performance_fee_high_watermark: buffer_state.performance_fee_high_watermark,

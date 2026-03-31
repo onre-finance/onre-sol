@@ -140,7 +140,7 @@ pub fn build_take_offer_permissionless_ix(
     }
 }
 
-pub fn build_take_offer_permissionless_extended_ix(
+pub fn build_take_offer_permissionless_v2_ix(
     user: &Pubkey,
     boss: &Pubkey,
     token_in_mint: &Pubkey,
@@ -161,12 +161,12 @@ pub fn build_take_offer_permissionless_extended_ix(
         token_out_program,
     );
     let (buffer_state_pda, _) = find_buffer_state_pda();
-    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
     let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
     let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
     let buffer_vault_onyc_ata = derive_ata(
-        &buffer_vault_authority_pda,
+        &reserve_vault_authority_pda,
         token_out_mint,
         token_out_program,
     );
@@ -180,7 +180,7 @@ pub fn build_take_offer_permissionless_extended_ix(
         token_out_mint,
         token_out_program,
     );
-    ix.data = ix_discriminator("take_offer_permissionless_extended").to_vec();
+    ix.data = ix_discriminator("take_offer_permissionless_v2").to_vec();
     ix.data.extend_from_slice(&token_in_amount.to_le_bytes());
     match approval_message {
         Some(msg_bytes) => {
@@ -322,7 +322,7 @@ pub fn build_take_offer_ix(
     }
 }
 
-pub fn build_take_offer_extended_ix(
+pub fn build_take_offer_v2_ix(
     user: &Pubkey,
     boss: &Pubkey,
     token_in_mint: &Pubkey,
@@ -337,7 +337,7 @@ pub fn build_take_offer_extended_ix(
     let (vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let (buffer_state_pda, _) = find_buffer_state_pda();
-    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
     let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
     let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
@@ -347,7 +347,7 @@ pub fn build_take_offer_extended_ix(
     let user_token_out_ata = derive_ata(user, token_out_mint, token_out_program);
     let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
     let buffer_vault_onyc_ata = derive_ata(
-        &buffer_vault_authority_pda,
+        &reserve_vault_authority_pda,
         token_out_mint,
         token_out_program,
     );
@@ -361,7 +361,7 @@ pub fn build_take_offer_extended_ix(
         token_out_mint,
         token_out_program,
     );
-    let mut data = ix_discriminator("take_offer_extended").to_vec();
+    let mut data = ix_discriminator("take_offer_v2").to_vec();
     data.extend_from_slice(&token_in_amount.to_le_bytes());
     match approval_message {
         Some(msg_bytes) => {

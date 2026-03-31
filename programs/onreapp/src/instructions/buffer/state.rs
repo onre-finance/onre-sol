@@ -7,7 +7,7 @@ pub const YIELD_SCALE: u128 = 1_000_000;
 pub struct BufferState {
     pub onyc_mint: Pubkey,
     pub gross_apr: u64,
-    pub lowest_supply: u64,
+    pub previous_supply: u64,
     pub management_fee_basis_points: u16,
     pub management_fee_wallet: Pubkey,
     pub performance_fee_basis_points: u16,

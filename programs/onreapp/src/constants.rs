@@ -33,8 +33,8 @@ pub mod seeds {
     /// Seed for the BUFFER pool state account
     pub const BUFFER_STATE: &[u8] = b"buffer_state";
 
-    /// Seed for the BUFFER vault authority account
-    pub const BUFFER_VAULT_AUTHORITY: &[u8] = b"buffer_vault_authority";
+    /// Seed for the reserve vault authority account
+    pub const RESERVE_VAULT_AUTHORITY: &[u8] = b"reserve_vault_authority";
 
     /// Seed for the management fee vault authority account
     pub const MANAGEMENT_FEE_VAULT_AUTHORITY: &[u8] = b"management_fee_vault_authority";

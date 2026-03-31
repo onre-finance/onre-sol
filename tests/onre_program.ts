@@ -32,7 +32,7 @@ export class OnreProgram {
         permissionlessAuthorityPda: PublicKey;
         mintAuthorityPda: PublicKey;
         bufferStatePda: PublicKey;
-        bufferVaultAuthorityPda: PublicKey;
+        reserveVaultAuthorityPda: PublicKey;
         marketStatsPda: PublicKey;
         managementFeeVaultAuthorityPda: PublicKey;
         performanceFeeVaultAuthorityPda: PublicKey;
@@ -43,7 +43,7 @@ export class OnreProgram {
         permissionlessAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], ONREAPP_PROGRAM_ID)[0],
         mintAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], ONREAPP_PROGRAM_ID)[0],
         bufferStatePda: PublicKey.findProgramAddressSync([Buffer.from("buffer_state")], ONREAPP_PROGRAM_ID)[0],
-        bufferVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("buffer_vault_authority")], ONREAPP_PROGRAM_ID)[0],
+        reserveVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("reserve_vault_authority")], ONREAPP_PROGRAM_ID)[0],
         marketStatsPda: PublicKey.findProgramAddressSync([Buffer.from("market_stats")], ONREAPP_PROGRAM_ID)[0],
         managementFeeVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("management_fee_vault_authority")], ONREAPP_PROGRAM_ID)[0],
         performanceFeeVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("performance_fee_vault_authority")], ONREAPP_PROGRAM_ID)[0],
@@ -169,7 +169,7 @@ export class OnreProgram {
         await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
-    async takeOfferExtended(params: {
+    async takeOfferV2(params: {
         tokenInAmount: number;
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
@@ -178,7 +178,7 @@ export class OnreProgram {
         tokenInProgram?: PublicKey;
         tokenOutProgram?: PublicKey;
     }) {
-        const tx = this.program.methods.takeOfferExtended(new BN(params.tokenInAmount), null).accountsPartial({
+        const tx = this.program.methods.takeOfferV2(new BN(params.tokenInAmount), null).accountsPartial({
             tokenInMint: params.tokenInMint,
             tokenOutMint: params.tokenOutMint,
             user: params.user,
@@ -187,7 +187,7 @@ export class OnreProgram {
             marketStats: this.pdas.marketStatsPda,
             bufferAccounts: {
                 bufferState: this.pdas.bufferStatePda,
-                bufferVaultOnycAccount: this.getBufferVaultAta(params.tokenOutMint),
+                reserveVaultOnycAccount: this.getBufferVaultAta(params.tokenOutMint),
                 managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.tokenOutMint),
                 performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.tokenOutMint),
             },
@@ -220,7 +220,7 @@ export class OnreProgram {
         await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
-    async takeOfferPermissionlessExtended(params: {
+    async takeOfferPermissionlessV2(params: {
         tokenInAmount: number;
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
@@ -229,7 +229,7 @@ export class OnreProgram {
         tokenInProgram?: PublicKey;
         tokenOutProgram?: PublicKey;
     }) {
-        const tx = this.program.methods.takeOfferPermissionlessExtended(new BN(params.tokenInAmount), null).accountsPartial({
+        const tx = this.program.methods.takeOfferPermissionlessV2(new BN(params.tokenInAmount), null).accountsPartial({
             tokenInMint: params.tokenInMint,
             tokenOutMint: params.tokenOutMint,
             user: params.user,
@@ -242,7 +242,7 @@ export class OnreProgram {
             marketStats: this.pdas.marketStatsPda,
             bufferAccounts: {
                 bufferState: this.pdas.bufferStatePda,
-                bufferVaultOnycAccount: this.getBufferVaultAta(params.tokenOutMint),
+                reserveVaultOnycAccount: this.getBufferVaultAta(params.tokenOutMint),
                 managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.tokenOutMint),
                 performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.tokenOutMint),
             },
@@ -371,8 +371,8 @@ export class OnreProgram {
             offer: params.offer,
             onycMint: params.onycMint,
             bufferState: this.pdas.bufferStatePda,
-            bufferVaultAuthority: this.pdas.bufferVaultAuthorityPda,
-            bufferVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
+            reserveVaultAuthority: this.pdas.reserveVaultAuthorityPda,
+            reserveVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
             managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
             managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
             performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
@@ -431,8 +431,8 @@ export class OnreProgram {
                 bufferState: this.pdas.bufferStatePda,
                 offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
                 vaultTokenOutAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
-                bufferVaultAuthority: this.pdas.bufferVaultAuthorityPda,
-                bufferVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
+                reserveVaultAuthority: this.pdas.reserveVaultAuthorityPda,
+                reserveVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
                 managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
                 managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
                 performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
@@ -538,7 +538,7 @@ export class OnreProgram {
             offer,
             bufferAccounts: {
                 bufferState: this.pdas.bufferStatePda,
-                bufferVaultOnycAccount: this.getBufferVaultAta(onycMint),
+                reserveVaultOnycAccount: this.getBufferVaultAta(onycMint),
                 managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(onycMint),
                 performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(onycMint),
             },
@@ -760,7 +760,7 @@ export class OnreProgram {
     }
 
     getBufferVaultAta(onycMint: PublicKey) {
-        return getAssociatedTokenAddressSync(onycMint, this.pdas.bufferVaultAuthorityPda, true, TOKEN_PROGRAM_ID);
+        return getAssociatedTokenAddressSync(onycMint, this.pdas.reserveVaultAuthorityPda, true, TOKEN_PROGRAM_ID);
     }
 
     getManagementFeeVaultAta(onycMint: PublicKey) {
@@ -880,7 +880,7 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async fulfillRedemptionRequestExtended(params: {
+    async fulfillRedemptionRequestV2(params: {
         offer: PublicKey;
         redemptionOffer: PublicKey;
         redemptionRequest: PublicKey;
@@ -899,7 +899,7 @@ export class OnreProgram {
         }
 
         const tx = this.program.methods
-            .fulfillRedemptionRequestExtended(amount)
+            .fulfillRedemptionRequestV2(amount)
             .accountsPartial({
                 offer: params.offer,
                 redemptionOffer: params.redemptionOffer,
@@ -920,7 +920,7 @@ export class OnreProgram {
                 marketStats: this.pdas.marketStatsPda,
                 bufferAccounts: {
                     bufferState: this.pdas.bufferStatePda,
-                    bufferVaultOnycAccount: this.getBufferVaultAta(params.tokenInMint),
+                    reserveVaultOnycAccount: this.getBufferVaultAta(params.tokenInMint),
                     managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.tokenInMint),
                     performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.tokenInMint),
                 },

@@ -239,7 +239,7 @@ pub struct FulfillRedemptionRequest<'info> {
 }
 
 #[derive(Accounts)]
-pub struct FulfillRedemptionRequestExtended<'info> {
+pub struct FulfillRedemptionRequestV2<'info> {
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
@@ -448,8 +448,8 @@ pub fn fulfill_redemption_request(
     )
 }
 
-pub fn fulfill_redemption_request_extended(
-    ctx: Context<FulfillRedemptionRequestExtended>,
+pub fn fulfill_redemption_request_v2(
+    ctx: Context<FulfillRedemptionRequestV2>,
     amount: u64,
 ) -> Result<()> {
     execute_fulfill_redemption_request(
