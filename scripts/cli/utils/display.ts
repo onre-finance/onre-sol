@@ -74,6 +74,53 @@ export function printState(state: any, json: boolean = false): void {
 }
 
 /**
+ * Print BUFFER state
+ */
+export function printBufferState(bufferState: any, json: boolean = false): void {
+    if (json) {
+        console.log(
+            JSON.stringify(
+                {
+                    onycMint: bufferState.onycMint.toBase58(),
+                    grossApr: bufferState.grossApr.toString(),
+                    lowestSupply: bufferState.lowestSupply.toString(),
+                    managementFeeBasisPoints: bufferState.managementFeeBasisPoints,
+                    managementFeeWallet: bufferState.managementFeeWallet.toBase58(),
+                    performanceFeeBasisPoints: bufferState.performanceFeeBasisPoints,
+                    performanceFeeWallet: bufferState.performanceFeeWallet.toBase58(),
+                    performanceFeeHighWatermark: bufferState.performanceFeeHighWatermark.toString(),
+                    lastAccrualTimestamp: bufferState.lastAccrualTimestamp.toString(),
+                },
+                null,
+                2,
+            ),
+        );
+        return;
+    }
+
+    console.log(chalk.bold.blue("\n=== BUFFER State ===\n"));
+
+    const table = new Table({
+        head: [chalk.white("Field"), chalk.white("Value")],
+        colWidths: [24, 52],
+    });
+
+    table.push(
+        ["ONyc Mint", bufferState.onycMint.toBase58()],
+        ["Gross APR (1e6)", bufferState.grossApr.toString()],
+        ["Lowest Supply", bufferState.lowestSupply.toString()],
+        ["Management Fee (bps)", bufferState.managementFeeBasisPoints.toString()],
+        ["Management Fee Wallet", bufferState.managementFeeWallet.toBase58()],
+        ["Performance Fee (bps)", bufferState.performanceFeeBasisPoints.toString()],
+        ["Performance Fee Wallet", bufferState.performanceFeeWallet.toBase58()],
+        ["Performance HWM", bufferState.performanceFeeHighWatermark.toString()],
+        ["Last Accrual Timestamp", bufferState.lastAccrualTimestamp.toString()],
+    );
+
+    console.log(table.toString());
+}
+
+/**
  * Print offer details
  */
 export function printOffer(offer: any, tokenInMint: string, tokenOutMint: string, json: boolean = false): void {
@@ -629,13 +676,7 @@ export function printRedemptionRequestsList(requests: Array<{ id: number; reques
     requests.forEach(({ id, request }) => {
         const fulfilledAmount = request.fulfilledAmount ?? 0;
         const remaining = BigInt(request.amount.toString()) - BigInt(fulfilledAmount.toString());
-        table.push([
-            id.toString(),
-            request.redeemer.toBase58(),
-            request.amount.toString(),
-            fulfilledAmount.toString(),
-            remaining.toString(),
-        ]);
+        table.push([id.toString(), request.redeemer.toBase58(), request.amount.toString(), fulfilledAmount.toString(), remaining.toString()]);
     });
 
     console.log(table.toString());

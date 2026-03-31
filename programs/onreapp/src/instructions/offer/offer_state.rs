@@ -65,7 +65,7 @@ pub struct OfferVector {
     pub base_time: u64,
     /// Initial price with scale=9 (1_000_000_000 = 1.0) at vector start
     pub base_price: u64,
-    /// Annual Percentage Rate scaled by 1_000_000 (1_000_000 = 1% APR)
+    /// Annual Percentage Rate scaled by 1_000_000 (1_000_000 = 100% APR; 10_000 = 1%)
     ///
     /// Determines compound interest rate for price growth over time.
     /// Scale=6 where 1_000_000 = 1% annual rate.

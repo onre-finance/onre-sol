@@ -4,6 +4,7 @@ pub mod get_nav;
 pub mod get_nav_adjustment;
 pub mod get_tvl;
 pub mod market_stats;
+pub mod offer_valuation_utils;
 pub mod refresh_market_stats;
 
 pub use get_apy::*;

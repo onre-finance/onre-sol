@@ -3,7 +3,7 @@ import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import { evmAddressToBytes32, getAnchorConnection, getDepositForBurnPdas, getAttestation, getPrograms, ETH_DOMAIN_ID, SOLANA_DOMAIN_ID } from "./utils.ts";
 import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes/index.js";
 import { Contract, getBytes, JsonRpcProvider, Wallet } from "ethers";
-import messageTransmitterAbi from "./abis/MessageTransmitter.json" with { type: "json" }
+import messageTransmitterAbi from "./abis/MessageTransmitter.json"
 import anchor from "@coral-xyz/anchor";
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 

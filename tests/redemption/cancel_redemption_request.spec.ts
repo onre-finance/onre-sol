@@ -254,7 +254,7 @@ describe("Cancel redemption request", () => {
         // Get initial redemption_admin balance
         const initialAdminBalance = testHelper.svm.getBalance(
             redemptionAdmin.publicKey
-        );
+        ) ?? 0n;
 
         // when
         await program.cancelRedemptionRequest({
@@ -272,7 +272,7 @@ describe("Cancel redemption request", () => {
         // and - Rent should be returned to redemption_admin
         const finalAdminBalance = testHelper.svm.getBalance(
             redemptionAdmin.publicKey
-        );
+        ) ?? 0n;
         expect(finalAdminBalance).toBeGreaterThan(initialAdminBalance);
     });
 

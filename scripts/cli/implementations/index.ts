@@ -67,3 +67,10 @@ export { executeStateMaxSupply } from "./state/state-max-supply";
 export { executeStateSetRedemptionAdmin } from "./state/state-set-redemption-admin";
 export { executeStateClearAdmins } from "./state/state-clear-admins";
 export { executeStateClose } from "./state/state-close";
+
+// Buffer implementations
+export { executeBufferGet } from "./buffer/buffer-get";
+export { executeBufferInitialize } from "./buffer/buffer-initialize";
+export { executeBufferSetYields } from "./buffer/buffer-set-yields";
+export { executeBufferManage } from "./buffer/buffer-manage";
+export { executeBufferBurn } from "./buffer/buffer-burn";

@@ -1,9 +1,13 @@
 use crate::instructions::{Offer, OfferVector};
+use crate::state::State;
 use crate::utils::approver::approver_utils;
-use crate::utils::{calculate_fees, calculate_token_out_amount, ApprovalMessage};
+use crate::utils::{
+    calculate_fees, calculate_token_out_amount, mul_div_round_u128, pow_fixed,
+    program_controls_mint, ApprovalMessage,
+};
 use anchor_lang::prelude::*;
-use core::cmp::Ordering;
 use anchor_spl::token_interface::Mint;
+use core::cmp::Ordering;
 
 const INT_SCALE: u128 = 1_000_000_000_000_000_000;
 const SECONDS_IN_DAY: u64 = 86_400;
@@ -154,6 +158,24 @@ pub fn process_offer_core(
     })
 }
 
+pub fn is_onyc_token_out_mint<'info>(
+    state: &Account<'info, State>,
+    token_out_mint: &InterfaceAccount<'info, Mint>,
+) -> bool {
+    token_out_mint.key() == state.onyc_mint
+}
+
+pub fn should_accrue_onyc_mint<'info>(
+    state: &Account<'info, State>,
+    token_out_mint: &InterfaceAccount<'info, Mint>,
+    buffer_is_initialized: bool,
+    mint_authority: &AccountInfo<'info>,
+) -> bool {
+    is_onyc_token_out_mint(state, token_out_mint)
+        && buffer_is_initialized
+        && program_controls_mint(token_out_mint, mint_authority)
+}
+
 /// Finds the currently active pricing vector at a specific time
 ///
 /// Searches through the offer's pricing vectors to find the one that should be
@@ -217,14 +239,18 @@ pub fn calculate_vector_price(apr: u64, base_price: u64, elapsed_time: u64) -> R
     let full_days = elapsed_time / SECONDS_IN_DAY;
     let remaining_seconds = elapsed_time % SECONDS_IN_DAY;
 
-    let mut factor = pow_fixed(daily_factor, full_days, INT_SCALE)?;
+    let mut factor =
+        pow_fixed(daily_factor, full_days, INT_SCALE).ok_or(OfferCoreError::OverflowError)?;
     if remaining_seconds > 0 {
         let second_factor = nth_root_fixed(daily_factor, SECONDS_IN_DAY, INT_SCALE)?;
-        let partial_day_factor = pow_fixed(second_factor, remaining_seconds, INT_SCALE)?;
-        factor = mul_div_round(factor, partial_day_factor, INT_SCALE)?;
+        let partial_day_factor = pow_fixed(second_factor, remaining_seconds, INT_SCALE)
+            .ok_or(OfferCoreError::OverflowError)?;
+        factor = mul_div_round_u128(factor, partial_day_factor, INT_SCALE)
+            .ok_or(OfferCoreError::OverflowError)?;
     }
 
-    let price_u128 = mul_div_round(base_price as u128, factor, INT_SCALE)?;
+    let price_u128 = mul_div_round_u128(base_price as u128, factor, INT_SCALE)
+        .ok_or(OfferCoreError::OverflowError)?;
 
     if price_u128 > u64::MAX as u128 {
         return Err(error!(OfferCoreError::OverflowError));
@@ -323,29 +349,6 @@ pub fn find_vector_index_by_start_time(offer: &Offer, start_time: u64) -> Option
         .position(|vector| vector.start_time == start_time)
 }
 
-#[inline]
-fn mul_div_round(a: u128, b: u128, denom: u128) -> Result<u128> {
-    let prod = a.checked_mul(b).ok_or(OfferCoreError::OverflowError)?;
-    let adj = prod
-        .checked_add(denom / 2)
-        .ok_or(OfferCoreError::OverflowError)?;
-    adj.checked_div(denom).ok_or_else(|| error!(OfferCoreError::OverflowError))
-}
-
-fn pow_fixed(mut base: u128, mut exp: u64, scale: u128) -> Result<u128> {
-    let mut acc = scale;
-    while exp > 0 {
-        if (exp & 1) == 1 {
-            acc = mul_div_round(acc, base, scale)?;
-        }
-        exp >>= 1;
-        if exp > 0 {
-            base = mul_div_round(base, base, scale)?;
-        }
-    }
-    Ok(acc)
-}
-
 fn nth_root_fixed(value: u128, n: u64, scale: u128) -> Result<u128> {
     if n == 0 {
         return Err(error!(OfferCoreError::OverflowError));
@@ -373,7 +376,7 @@ fn compare_pow_fixed(mut base: u128, mut exp: u64, scale: u128, target: u128) ->
 
     while exp > 0 {
         if (exp & 1) == 1 {
-            acc = mul_div_round(acc, base, scale)?;
+            acc = mul_div_round_u128(acc, base, scale).ok_or(OfferCoreError::OverflowError)?;
             if acc > target {
                 return Ok(Ordering::Greater);
             }
@@ -381,7 +384,7 @@ fn compare_pow_fixed(mut base: u128, mut exp: u64, scale: u128, target: u128) ->
 
         exp >>= 1;
         if exp > 0 {
-            base = mul_div_round(base, base, scale)?;
+            base = mul_div_round_u128(base, base, scale).ok_or(OfferCoreError::OverflowError)?;
             if base > target {
                 return Ok(Ordering::Greater);
             }

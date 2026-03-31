@@ -1,7 +1,9 @@
 use crate::constants::{seeds, PRICE_DECIMALS};
-use crate::instructions::{calculate_current_step_price, find_active_vector_at, Offer};
+use crate::instructions::market_info::offer_valuation_utils::compute_offer_current_price;
+use crate::instructions::Offer;
 use crate::utils::{
-    burn_tokens, calculate_fees, mint_tokens, program_controls_mint, transfer_tokens,
+    burn_tokens, calculate_fees, has_transfer_fee, mint_tokens, program_controls_mint,
+    transfer_tokens, TokenUtilsErrorCode,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
@@ -67,16 +69,7 @@ pub fn process_redemption_core(
 ) -> Result<RedemptionProcessResult> {
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    // Find the currently active pricing vector
-    let active_vector = find_active_vector_at(offer, current_time)?;
-
-    // Calculate current price with 9 decimals
-    let current_price = calculate_current_step_price(
-        active_vector.apr,
-        active_vector.base_price,
-        active_vector.base_time,
-        active_vector.price_fix_duration,
-    )?;
+    let current_price = compute_offer_current_price(offer, current_time)?;
 
     // Calculate fees
     let fee_amounts = calculate_fees(token_in_amount, redemption_fee_basis_points)?;
@@ -187,6 +180,15 @@ pub struct ExecuteRedemptionOpsParams<'a, 'info> {
 /// * `Ok(())` - If all token operations complete successfully
 /// * `Err(_)` - If any transfer, mint, or burn operation fails
 pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Result<()> {
+    require!(
+        !has_transfer_fee(params.token_in_mint)?,
+        TokenUtilsErrorCode::TransferFeeNotSupported
+    );
+    require!(
+        !has_transfer_fee(params.token_out_mint)?,
+        TokenUtilsErrorCode::TransferFeeNotSupported
+    );
+
     let vault_authority_signer_seeds: &[&[&[u8]]] = &[&[
         seeds::REDEMPTION_OFFER_VAULT_AUTHORITY,
         &[params.redemption_vault_authority_bump],
@@ -251,7 +253,7 @@ pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Resu
         mint_tokens(
             params.token_out_program,
             params.token_out_mint,
-            params.user_token_out_account,
+            &params.user_token_out_account.to_account_info(),
             params.mint_authority_pda,
             mint_authority_signer_seeds,
             params.token_out_amount,

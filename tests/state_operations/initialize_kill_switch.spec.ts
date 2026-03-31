@@ -29,7 +29,7 @@ describe("Initialize Kill Switch", () => {
         await expect(
             program.program.methods
                 .initialize()
-                .accounts({
+                .accountsPartial({
                     boss: testHelper.getBoss() // boss account is the real boss
                 })
                 .signers([nonBoss]) // but nonBoss is trying to sign

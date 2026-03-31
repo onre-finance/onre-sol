@@ -64,6 +64,75 @@ fn setup_take_offer_with_fee(fee_bps: u16) -> TakeOfferCtx {
     }
 }
 
+fn setup_take_offer_extended_with_buffer() -> (litesvm::LiteSVM, Keypair, Pubkey, Pubkey, Keypair) {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
+    let boss = payer.pubkey();
+    let usdc_mint = create_mint(&mut svm, &payer, 6, &boss);
+    let caller = Keypair::new();
+    svm.airdrop(&caller.pubkey(), INITIAL_LAMPORTS).unwrap();
+
+    let ix = build_make_offer_ix(
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let now = get_clock_time(&svm);
+    let ix = build_add_offer_vector_ix(
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        Some(now),
+        now,
+        1_000_000_000,
+        0,
+        86_400,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_mint_to_ix(&boss, &onyc_mint, 1_000_000_000, &TOKEN_PROGRAM_ID);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let (offer_pda, _) = find_offer_pda(&usdc_mint, &onyc_mint);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_set_buffer_gross_yield_ix(&boss, 100_000);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_set_buffer_fee_config_ix(&boss, 100, 1_000);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let user = Keypair::new();
+    svm.airdrop(&user.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
+    create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 10_000_000_000);
+    create_token_account(&mut svm, &usdc_mint, &boss, 0);
+
+    let (vault_authority, _) = find_offer_vault_authority_pda();
+    create_token_account(&mut svm, &onyc_mint, &vault_authority, 0);
+
+    (svm, payer, usdc_mint, onyc_mint, user)
+}
+
 // ===========================================================================
 // Price Calculation Tests
 // ===========================================================================
@@ -89,7 +158,7 @@ fn test_price_first_interval() {
     advance_clock_by(&mut ctx.svm, 1);
 
     // Price in first interval: 1.0 * (1 + 0.0365 * 86400/31536000) = 1.0001
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_extended_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -149,6 +218,74 @@ fn test_take_offer_failure_does_not_create_market_stats() {
     assert!(
         ctx.svm.get_account(&market_stats_pda).is_none(),
         "market stats PDA creation should roll back when take_offer fails"
+    );
+}
+
+#[test]
+fn test_take_offer_extended_accrues_buffer_and_splits_fees() {
+    let (mut svm, payer, usdc_mint, onyc_mint, user) = setup_take_offer_extended_with_buffer();
+    let boss = payer.pubkey();
+    let offer_pda = read_state(&svm).main_offer;
+
+    let ix = build_manage_buffer_ix(&boss, &offer_pda, &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    advance_clock_by(&mut svm, 31_536_000);
+    let supply_before = get_mint_supply(&svm, &onyc_mint);
+
+    let ix = build_take_offer_extended_ix(
+        &user.pubkey(),
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        1_000_000,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[ix], &[&user]).unwrap();
+
+    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
+    let buffer_vault_ata = derive_ata(&buffer_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
+    let management_fee_vault_ata = derive_ata(
+        &management_fee_vault_authority_pda,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
+    let performance_fee_vault_ata = derive_ata(
+        &performance_fee_vault_authority_pda,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+
+    assert_eq!(get_token_balance(&svm, &buffer_vault_ata), 81_000_000);
+    assert_eq!(
+        get_token_balance(&svm, &management_fee_vault_ata),
+        10_000_000
+    );
+    assert_eq!(
+        get_token_balance(&svm, &performance_fee_vault_ata),
+        9_000_000
+    );
+    assert_eq!(
+        get_token_balance(
+            &svm,
+            &get_associated_token_address(&user.pubkey(), &onyc_mint)
+        ),
+        1_000_000_000
+    );
+
+    let supply_after = get_mint_supply(&svm, &onyc_mint);
+    let buffer_state = read_buffer_state(&svm);
+    assert_eq!(supply_before, 1_000_000_000);
+    assert_eq!(supply_after, 2_100_000_000);
+    assert_eq!(buffer_state.lowest_supply, supply_after);
+    assert!(
+        buffer_state.performance_fee_high_watermark >= 1_000_000_000,
+        "take_offer accrual should persist the updated performance fee watermark"
     );
 }
 
@@ -332,13 +469,13 @@ fn test_price_second_interval() {
     // Advance to second interval
     advance_clock_by(&mut ctx.svm, 86_400);
 
-    // Price: 1.0 * (1 + 0.0365 * 2*86400/31536000) = 1.0002
+    // With compounded step pricing, the snapped second-interval price is 1.000200010.
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
         &ctx.onyc_mint,
-        1_000_200,
+        1_000_201,
         None,
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
@@ -349,7 +486,7 @@ fn test_price_second_interval() {
         &ctx.svm,
         &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
     );
-    assert_eq!(user_onyc, 1_000_000_000);
+    assert_eq!(user_onyc, 1_000_000_989);
 }
 
 // ===========================================================================
@@ -737,13 +874,13 @@ fn test_high_apr_long_period() {
     // Advance 1 year
     advance_clock_by(&mut ctx.svm, 86400 * 365);
 
-    // After 1 year: price = 1.0 * (1 + 0.365 * 366/365) ≈ 1.366
+    // With compounded step pricing, 36.5% APR snapped to day 366 is 1.441691565.
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
         &ctx.onyc_mint,
-        1_366_000,
+        1_441_692,
         None,
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
@@ -754,7 +891,7 @@ fn test_high_apr_long_period() {
         &ctx.svm,
         &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
     );
-    assert_eq!(user_onyc, 1_000_000_000);
+    assert_eq!(user_onyc, 1_000_000_301);
 }
 
 // ===========================================================================

@@ -334,14 +334,18 @@ export class TestHelper {
 
     // Helper to send transactions
     async sendAndConfirmTransaction(tx: Transaction, signers: Keypair[]) {
+        await this.advanceSlot();
         tx.recentBlockhash = this.svm.latestBlockhash();
         tx.feePayer = this.payer.publicKey;
-        tx.sign(...signers);
+        const allSigners = [this.payer, ...signers.filter((signer) => !signer.publicKey.equals(this.payer.publicKey))];
+        tx.sign(...allSigners);
 
         const result = this.svm.sendTransaction(tx);
 
-        if ("Err" in result) {
-            throw new Error(`Transaction failed: ${JSON.stringify(result.Err)}`);
+        if ("err" in result && typeof result.err === "function") {
+            const error: any = new Error(result.toString());
+            error.logs = result.meta().logs();
+            throw error;
         }
 
         return result;
@@ -397,7 +401,7 @@ export class TestHelper {
                 const result = svm.sendTransaction(tx);
 
                 // Check if it's a FailedTransactionMetadata (has err() method)
-                if (typeof result.err === 'function') {
+                if ("err" in result && typeof result.err === 'function') {
                     const logs = result.meta().logs();
                     // Use result.toString() which includes the full error info
                     const error: any = new Error(result.toString());
@@ -422,7 +426,7 @@ export class TestHelper {
                     const result = svm.simulateTransaction(tx);
 
                     if ("Err" in result) {
-                        const err = result.Err;
+                        const err: any = result.Err;
                         const meta = err.meta();
                         // Return error in Solana RPC format
                         return {

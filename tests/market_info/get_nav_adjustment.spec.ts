@@ -110,7 +110,7 @@ describe("Get NAV Adjustment", () => {
 
             // Last interval price in first vector is 1.0002
             // First interval price in second vector is 1.50015 (1.5 * 1.0001)
-            expect(adjustment).toBe(0.49995e9);
+            expect(adjustment).toBe(499_949_990);
         });
 
         it("Should calculate negative adjustment when price decreases between vectors", async () => {
@@ -143,7 +143,7 @@ describe("Get NAV Adjustment", () => {
             // Get adjustment - should be negative since we went from higher to lower price
             const adjustment = await program.getNavAdjustment({ tokenInMint, tokenOutMint });
 
-            expect(adjustment).toBe(-1.0003e9);
+            expect(adjustment).toBe(-1_000_300_020);
         });
 
         it("Should handle multiple vector transitions correctly", async () => {
