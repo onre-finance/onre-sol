@@ -479,18 +479,19 @@
           }
         },
         {
-          "name": "buffer_vault_authority",
+          "name": "reserve_vault_authority",
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  98,
-                  117,
-                  102,
-                  102,
+                  114,
+                  101,
+                  115,
                   101,
                   114,
+                  118,
+                  101,
                   95,
                   118,
                   97,
@@ -516,7 +517,7 @@
           "name": "vault_token_out_account"
         },
         {
-          "name": "buffer_vault_onyc_account",
+          "name": "reserve_vault_onyc_account",
           "writable": true
         },
         {
@@ -2466,23 +2467,23 @@
       ]
     },
     {
-      "name": "fulfill_redemption_request_extended",
+      "name": "fulfill_redemption_request_v2",
       "docs": [
-        "Fulfills a redemption request with extended ONyc buffer accrual support.",
+        "Fulfills a redemption request with V2 ONyc buffer accrual support.",
         "",
-        "Delegates to `redemption::fulfill_redemption_request_extended`.",
+        "Delegates to `redemption::fulfill_redemption_request_v2`.",
         "This preserves the legacy `fulfill_redemption_request` surface while allowing",
         "the ONyc burn path to settle BUFFER accrual and reset the baseline."
       ],
       "discriminator": [
-        9,
-        87,
-        238,
-        91,
-        8,
-        89,
-        187,
-        157
+        57,
+        62,
+        174,
+        162,
+        47,
+        200,
+        185,
+        208
       ],
       "accounts": [
         {
@@ -2919,7 +2920,7 @@
               "writable": true
             },
             {
-              "name": "buffer_vault_onyc_account",
+              "name": "reserve_vault_onyc_account",
               "writable": true
             },
             {
@@ -3682,19 +3683,20 @@
           }
         },
         {
-          "name": "buffer_vault_authority",
+          "name": "reserve_vault_authority",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  98,
-                  117,
-                  102,
-                  102,
+                  114,
+                  101,
+                  115,
                   101,
                   114,
+                  118,
+                  101,
                   95,
                   118,
                   97,
@@ -3821,13 +3823,13 @@
           "name": "offer"
         },
         {
-          "name": "buffer_vault_onyc_account",
+          "name": "reserve_vault_onyc_account",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "buffer_vault_authority"
+                "path": "reserve_vault_authority"
               },
               {
                 "kind": "account",
@@ -4903,7 +4905,7 @@
               "writable": true
             },
             {
-              "name": "buffer_vault_onyc_account",
+              "name": "reserve_vault_onyc_account",
               "writable": true
             },
             {
@@ -7294,507 +7296,6 @@
       ]
     },
     {
-      "name": "take_offer_extended",
-      "discriminator": [
-        23,
-        228,
-        210,
-        101,
-        186,
-        59,
-        178,
-        9
-      ],
-      "accounts": [
-        {
-          "name": "offer",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token_in_mint"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "state",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "boss",
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "vault_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "vault_token_in_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "vault_authority"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "vault_token_out_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "vault_authority"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "token_in_mint",
-          "writable": true
-        },
-        {
-          "name": "token_in_program"
-        },
-        {
-          "name": "token_out_mint",
-          "writable": true
-        },
-        {
-          "name": "token_out_program"
-        },
-        {
-          "name": "user_token_in_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "user_token_out_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "boss_token_in_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "boss"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "mint_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  105,
-                  110,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "buffer_accounts",
-          "accounts": [
-            {
-              "name": "buffer_state",
-              "writable": true
-            },
-            {
-              "name": "buffer_vault_onyc_account",
-              "writable": true
-            },
-            {
-              "name": "management_fee_vault_onyc_account",
-              "writable": true
-            },
-            {
-              "name": "performance_fee_vault_onyc_account",
-              "writable": true
-            }
-          ]
-        },
-        {
-          "name": "market_stats",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  114,
-                  107,
-                  101,
-                  116,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  115
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "instructions_sysvar",
-          "address": "Sysvar1nstructions1111111111111111111111111"
-        },
-        {
-          "name": "user",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "token_in_amount",
-          "type": "u64"
-        },
-        {
-          "name": "approval_message",
-          "type": {
-            "option": {
-              "defined": {
-                "name": "ApprovalMessage"
-              }
-            }
-          }
-        }
-      ]
-    },
-    {
       "name": "take_offer_permissionless",
       "docs": [
         "Takes a offer using permissionless flow with intermediary accounts.",
@@ -8433,16 +7934,16 @@
       ]
     },
     {
-      "name": "take_offer_permissionless_extended",
+      "name": "take_offer_permissionless_v2",
       "discriminator": [
-        83,
-        142,
+        250,
+        180,
+        68,
         89,
-        162,
-        51,
-        192,
-        200,
-        122
+        124,
+        124,
+        31,
+        250
       ],
       "accounts": [
         {
@@ -8924,7 +8425,7 @@
               "writable": true
             },
             {
-              "name": "buffer_vault_onyc_account",
+              "name": "reserve_vault_onyc_account",
               "writable": true
             },
             {
@@ -8940,6 +8441,507 @@
         {
           "name": "market_stats",
           "writable": true
+        },
+        {
+          "name": "instructions_sysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "token_in_amount",
+          "type": "u64"
+        },
+        {
+          "name": "approval_message",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "ApprovalMessage"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "take_offer_v2",
+      "discriminator": [
+        203,
+        29,
+        22,
+        81,
+        189,
+        205,
+        210,
+        60
+      ],
+      "accounts": [
+        {
+          "name": "offer",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "vault_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_token_in_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vault_authority"
+              },
+              {
+                "kind": "account",
+                "path": "token_in_program"
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vault_token_out_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vault_authority"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_program"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_in_mint",
+          "writable": true
+        },
+        {
+          "name": "token_in_program"
+        },
+        {
+          "name": "token_out_mint",
+          "writable": true
+        },
+        {
+          "name": "token_out_program"
+        },
+        {
+          "name": "user_token_in_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "token_in_program"
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "user_token_out_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_program"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "boss_token_in_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "account",
+                "path": "token_in_program"
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "mint_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "buffer_accounts",
+          "accounts": [
+            {
+              "name": "buffer_state",
+              "writable": true
+            },
+            {
+              "name": "reserve_vault_onyc_account",
+              "writable": true
+            },
+            {
+              "name": "management_fee_vault_onyc_account",
+              "writable": true
+            },
+            {
+              "name": "performance_fee_vault_onyc_account",
+              "writable": true
+            }
+          ]
+        },
+        {
+          "name": "market_stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "instructions_sysvar",
@@ -10954,15 +10956,15 @@
             "type": "u64"
           },
           {
-            "name": "spread",
-            "type": "u64"
-          },
-          {
-            "name": "gross_mint_amount",
+            "name": "apr_delta",
             "type": "u64"
           },
           {
             "name": "buffer_mint_amount",
+            "type": "u64"
+          },
+          {
+            "name": "reserve_mint_amount",
             "type": "u64"
           },
           {
@@ -10974,15 +10976,15 @@
             "type": "u64"
           },
           {
-            "name": "previous_lowest_supply",
+            "name": "old_previous_supply",
             "type": "u64"
           },
           {
-            "name": "new_lowest_supply",
+            "name": "new_previous_supply",
             "type": "u64"
           },
           {
-            "name": "previous_performance_fee_high_watermark",
+            "name": "old_previous_performance_fee_high_watermark",
             "type": "u64"
           },
           {
@@ -11110,11 +11112,11 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "previous_lowest_supply",
+            "name": "old_previous_supply",
             "type": "u64"
           },
           {
-            "name": "new_lowest_supply",
+            "name": "new_previous_supply",
             "type": "u64"
           },
           {
@@ -11162,7 +11164,7 @@
             "type": "u64"
           },
           {
-            "name": "lowest_supply",
+            "name": "previous_supply",
             "type": "u64"
           },
           {

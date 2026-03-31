@@ -140,7 +140,7 @@ pub fn build_take_offer_permissionless_ix(
     }
 }
 
-pub fn build_take_offer_permissionless_extended_ix(
+pub fn build_take_offer_permissionless_v2_ix(
     user: &Pubkey,
     boss: &Pubkey,
     token_in_mint: &Pubkey,
@@ -180,7 +180,7 @@ pub fn build_take_offer_permissionless_extended_ix(
         token_out_mint,
         token_out_program,
     );
-    ix.data = ix_discriminator("take_offer_permissionless_extended").to_vec();
+    ix.data = ix_discriminator("take_offer_permissionless_v2").to_vec();
     ix.data.extend_from_slice(&token_in_amount.to_le_bytes());
     match approval_message {
         Some(msg_bytes) => {
@@ -322,7 +322,7 @@ pub fn build_take_offer_ix(
     }
 }
 
-pub fn build_take_offer_extended_ix(
+pub fn build_take_offer_v2_ix(
     user: &Pubkey,
     boss: &Pubkey,
     token_in_mint: &Pubkey,
@@ -361,7 +361,7 @@ pub fn build_take_offer_extended_ix(
         token_out_mint,
         token_out_program,
     );
-    let mut data = ix_discriminator("take_offer_extended").to_vec();
+    let mut data = ix_discriminator("take_offer_v2").to_vec();
     data.extend_from_slice(&token_in_amount.to_le_bytes());
     match approval_message {
         Some(msg_bytes) => {

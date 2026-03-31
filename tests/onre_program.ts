@@ -169,7 +169,7 @@ export class OnreProgram {
         await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
-    async takeOfferExtended(params: {
+    async takeOfferV2(params: {
         tokenInAmount: number;
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
@@ -178,7 +178,7 @@ export class OnreProgram {
         tokenInProgram?: PublicKey;
         tokenOutProgram?: PublicKey;
     }) {
-        const tx = this.program.methods.takeOfferExtended(new BN(params.tokenInAmount), null).accountsPartial({
+        const tx = this.program.methods.takeOfferV2(new BN(params.tokenInAmount), null).accountsPartial({
             tokenInMint: params.tokenInMint,
             tokenOutMint: params.tokenOutMint,
             user: params.user,
@@ -220,7 +220,7 @@ export class OnreProgram {
         await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
-    async takeOfferPermissionlessExtended(params: {
+    async takeOfferPermissionlessV2(params: {
         tokenInAmount: number;
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
@@ -229,7 +229,7 @@ export class OnreProgram {
         tokenInProgram?: PublicKey;
         tokenOutProgram?: PublicKey;
     }) {
-        const tx = this.program.methods.takeOfferPermissionlessExtended(new BN(params.tokenInAmount), null).accountsPartial({
+        const tx = this.program.methods.takeOfferPermissionlessV2(new BN(params.tokenInAmount), null).accountsPartial({
             tokenInMint: params.tokenInMint,
             tokenOutMint: params.tokenOutMint,
             user: params.user,
@@ -880,7 +880,7 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async fulfillRedemptionRequestExtended(params: {
+    async fulfillRedemptionRequestV2(params: {
         offer: PublicKey;
         redemptionOffer: PublicKey;
         redemptionRequest: PublicKey;
@@ -899,7 +899,7 @@ export class OnreProgram {
         }
 
         const tx = this.program.methods
-            .fulfillRedemptionRequestExtended(amount)
+            .fulfillRedemptionRequestV2(amount)
             .accountsPartial({
                 offer: params.offer,
                 redemptionOffer: params.redemptionOffer,

@@ -74,18 +74,6 @@ pub fn build_set_buffer_gross_yield_ix(boss: &Pubkey, gross_yield: u64) -> Instr
     }
 }
 
-pub fn build_update_lowest_supply_ix(onyc_mint: &Pubkey) -> Instruction {
-    let (buffer_state_pda, _) = find_buffer_state_pda();
-    Instruction {
-        program_id: PROGRAM_ID,
-        accounts: vec![
-            AccountMeta::new(buffer_state_pda, false),
-            AccountMeta::new_readonly(*onyc_mint, false),
-        ],
-        data: ix_discriminator("update_lowest_supply").to_vec(),
-    }
-}
-
 pub fn build_set_buffer_fee_config_ix(
     boss: &Pubkey,
     management_fee_basis_points: u16,
@@ -109,53 +97,6 @@ pub fn build_set_buffer_fee_config_ix(
     }
 }
 
-pub fn build_manage_buffer_ix(caller: &Pubkey, offer: &Pubkey, onyc_mint: &Pubkey) -> Instruction {
-    let (state_pda, _) = find_state_pda();
-    let (buffer_state_pda, _) = find_buffer_state_pda();
-    let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
-    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
-    let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
-    let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
-    let (mint_authority_pda, _) = find_mint_authority_pda();
-    let (market_stats_pda, _) = find_market_stats_pda();
-    let offer_vault_onyc_ata = derive_ata(&offer_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
-    let buffer_vault_onyc_ata =
-        derive_ata(&reserve_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
-    let management_fee_vault_onyc_ata = derive_ata(
-        &management_fee_vault_authority_pda,
-        onyc_mint,
-        &TOKEN_PROGRAM_ID,
-    );
-    let performance_fee_vault_onyc_ata = derive_ata(
-        &performance_fee_vault_authority_pda,
-        onyc_mint,
-        &TOKEN_PROGRAM_ID,
-    );
-    Instruction {
-        program_id: PROGRAM_ID,
-        accounts: vec![
-            AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new(buffer_state_pda, false),
-            AccountMeta::new_readonly(*offer, false),
-            AccountMeta::new(*onyc_mint, false),
-            AccountMeta::new_readonly(reserve_vault_authority_pda, false),
-            AccountMeta::new(buffer_vault_onyc_ata, false),
-            AccountMeta::new_readonly(management_fee_vault_authority_pda, false),
-            AccountMeta::new(management_fee_vault_onyc_ata, false),
-            AccountMeta::new_readonly(performance_fee_vault_authority_pda, false),
-            AccountMeta::new(performance_fee_vault_onyc_ata, false),
-            AccountMeta::new_readonly(mint_authority_pda, false),
-            AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
-            AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
-            AccountMeta::new(*caller, true),
-            AccountMeta::new_readonly(offer_vault_authority_pda, false),
-            AccountMeta::new_readonly(offer_vault_onyc_ata, false),
-            AccountMeta::new(market_stats_pda, false),
-            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
-        ],
-        data: ix_discriminator("manage_buffer").to_vec(),
-    }
-}
 
 pub fn build_withdraw_management_fees_ix(
     boss: &Pubkey,

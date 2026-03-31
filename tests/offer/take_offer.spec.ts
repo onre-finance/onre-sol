@@ -1161,7 +1161,7 @@ describe("Take Offer", () => {
                 const performanceFeeBalanceBefore = await testHelper.getTokenAccountBalance(program.getPerformanceFeeVaultAta(tokenOutMint));
                 const mintInfoBefore = await testHelper.getMintInfo(tokenOutMint);
 
-                await program.takeOfferExtended({
+                await program.takeOfferV2({
                     tokenInAmount: 1e6,
                     tokenInMint,
                     tokenOutMint,
@@ -1191,7 +1191,7 @@ describe("Take Offer", () => {
                 expect(bufferStateAfter.previousSupply.toString()).toBe(mintInfoAfter.supply.toString());
             });
 
-            it("Should allow take_offer_extended without BUFFER initialized and still refresh market stats", async () => {
+            it("Should allow take_offer_v2 without BUFFER initialized and still refresh market stats", async () => {
                 await program.transferMintAuthorityToProgram({
                     mint: tokenOutMint
                 });
@@ -1206,7 +1206,7 @@ describe("Take Offer", () => {
                     priceFixDuration: 86400
                 });
 
-                await program.takeOfferExtended({
+                await program.takeOfferV2({
                     tokenInAmount: 1e6,
                     tokenInMint,
                     tokenOutMint,
@@ -1221,7 +1221,7 @@ describe("Take Offer", () => {
                 expect(marketStats.circulatingSupply.toString()).not.toBe("0");
             });
 
-            it("Should reject take_offer_extended with invalid buffer vault account on the accrual path", async () => {
+            it("Should reject take_offer_v2 with invalid buffer vault account on the accrual path", async () => {
                 await program.transferMintAuthorityToProgram({
                     mint: tokenOutMint
                 });
@@ -1248,7 +1248,7 @@ describe("Take Offer", () => {
                 await testHelper.advanceSlot();
                 await testHelper.advanceClockBy(31_536_000);
 
-                const tx = program.program.methods.takeOfferExtended(new BN(1e6), null).accountsPartial({
+                const tx = program.program.methods.takeOfferV2(new BN(1e6), null).accountsPartial({
                     tokenInMint,
                     tokenOutMint,
                     user: user.publicKey,

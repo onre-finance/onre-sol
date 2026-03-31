@@ -70,92 +70,6 @@ fn setup_redemption() -> (
     (svm, payer, usdc_mint, onyc_mint, onyc_mint, usdc_mint)
 }
 
-fn setup_redemption_extended_with_buffer() -> (LiteSVM, Keypair, Pubkey, Pubkey, Keypair) {
-    let (mut svm, payer, onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-    let usdc_mint = create_mint(&mut svm, &payer, 6, &boss);
-    let caller = Keypair::new();
-    svm.airdrop(&caller.pubkey(), INITIAL_LAMPORTS).unwrap();
-
-    let ix = build_set_redemption_admin_ix(&boss, &boss);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_make_offer_ix(
-        &boss,
-        &usdc_mint,
-        &onyc_mint,
-        0,
-        false,
-        false,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let current_time = get_clock_time(&svm);
-    let ix = build_add_offer_vector_ix(
-        &boss,
-        &usdc_mint,
-        &onyc_mint,
-        None,
-        current_time,
-        1_000_000_000,
-        0,
-        86_400,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_clock_by(&mut svm, 1);
-
-    let ix = build_make_redemption_offer_ix(
-        &boss,
-        &onyc_mint,
-        &usdc_mint,
-        500,
-        &TOKEN_PROGRAM_ID,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_transfer_mint_authority_to_program_ix(&boss, &usdc_mint, &TOKEN_PROGRAM_ID);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let (offer_pda, _) = find_offer_pda(&usdc_mint, &onyc_mint);
-    let ix = build_set_main_offer_ix(&boss, &offer_pda);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_set_buffer_gross_yield_ix(&boss, 100_000);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_set_buffer_fee_config_ix(&boss, 100, 1_000);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let user = Keypair::new();
-    svm.airdrop(&user.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
-    create_token_account(&mut svm, &onyc_mint, &user.pubkey(), 1_000_000_000);
-    create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
-    create_token_account(&mut svm, &onyc_mint, &boss, 0);
-
-    let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
-    create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
-    create_token_account(&mut svm, &usdc_mint, &redemption_vault_authority, 0);
-
-    (svm, payer, usdc_mint, onyc_mint, user)
-}
-
 // ===========================================================================
 // make_redemption_offer tests
 // ===========================================================================
@@ -1737,73 +1651,7 @@ fn test_fulfill_redemption_request_rejects_token_out_transfer_fee() {
 }
 
 #[test]
-fn test_fulfill_redemption_request_extended_accrues_buffer_before_burn() {
-    let (mut svm, payer, usdc_mint, onyc_mint, user) = setup_redemption_extended_with_buffer();
-    let boss = payer.pubkey();
-    let offer_pda = read_state(&svm).main_offer;
-
-    let ix = build_manage_buffer_ix(&boss, &offer_pda, &onyc_mint);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_create_redemption_request_ix(
-        &user.pubkey(),
-        &onyc_mint,
-        &usdc_mint,
-        1_000_000_000,
-        0,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&user]).unwrap();
-    advance_slot(&mut svm);
-
-    advance_clock_by(&mut svm, 31_536_000);
-
-    let ix = build_fulfill_redemption_request_extended_ix(
-        &boss,
-        &boss,
-        &user.pubkey(),
-        &onyc_mint,
-        &usdc_mint,
-        0,
-        &TOKEN_PROGRAM_ID,
-        &TOKEN_PROGRAM_ID,
-        1_000_000_000,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-
-    let (reserve_vault_authority, _) = find_reserve_vault_authority_pda();
-    let (management_fee_vault_authority, _) = find_management_fee_vault_authority_pda();
-    let (performance_fee_vault_authority, _) = find_performance_fee_vault_authority_pda();
-    let buffer_vault_ata = get_associated_token_address(&reserve_vault_authority, &onyc_mint);
-    let management_fee_vault_ata =
-        get_associated_token_address(&management_fee_vault_authority, &onyc_mint);
-    let performance_fee_vault_ata =
-        get_associated_token_address(&performance_fee_vault_authority, &onyc_mint);
-    let boss_onyc_ata = get_associated_token_address(&boss, &onyc_mint);
-    let user_usdc_ata = get_associated_token_address(&user.pubkey(), &usdc_mint);
-
-    assert_eq!(get_token_balance(&svm, &buffer_vault_ata), 81_000_000);
-    assert_eq!(
-        get_token_balance(&svm, &management_fee_vault_ata),
-        10_000_000
-    );
-    assert_eq!(
-        get_token_balance(&svm, &performance_fee_vault_ata),
-        9_000_000
-    );
-    assert_eq!(get_token_balance(&svm, &boss_onyc_ata), 50_000_000);
-    assert_eq!(get_token_balance(&svm, &user_usdc_ata), 950_000);
-    let buffer_state = read_buffer_state(&svm);
-    assert_eq!(buffer_state.previous_supply, 150_000_000);
-    assert!(
-        buffer_state.performance_fee_high_watermark >= 1_000_000_000,
-        "redemption accrual should persist the updated performance fee watermark"
-    );
-}
-
-#[test]
-fn test_fulfill_redemption_request_extended_works_without_initialized_buffer() {
+fn test_fulfill_redemption_request_v2_works_without_initialized_buffer() {
     let (mut svm, payer, _usdc_mint, _onyc_mint, redemption_tin, redemption_tout) =
         setup_redemption();
     let boss = payer.pubkey();
@@ -1834,7 +1682,7 @@ fn test_fulfill_redemption_request_extended_works_without_initialized_buffer() {
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_fulfill_redemption_request_extended_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),

@@ -222,7 +222,7 @@ pub struct TakeOffer<'info> {
 }
 
 #[derive(Accounts)]
-pub struct TakeOfferExtended<'info> {
+pub struct TakeOfferV2<'info> {
     #[account(
         mut,
         seeds = [
@@ -445,8 +445,8 @@ pub fn take_offer(
     Ok(())
 }
 
-pub fn take_offer_extended(
-    ctx: Context<TakeOfferExtended>,
+pub fn take_offer_v2(
+    ctx: Context<TakeOfferV2>,
     token_in_amount: u64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {

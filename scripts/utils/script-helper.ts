@@ -373,7 +373,7 @@ export class ScriptHelper {
         const mintAuthority = this.pdas.mintAuthorityPda;
 
         return await this.program.methods
-            .takeOfferPermissionlessExtended(new BN(params.tokenInAmount), null)
+            .takeOfferPermissionlessV2(new BN(params.tokenInAmount), null)
             .accountsPartial({
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,

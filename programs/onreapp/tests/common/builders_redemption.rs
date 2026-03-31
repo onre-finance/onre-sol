@@ -187,7 +187,7 @@ pub fn build_fulfill_redemption_request_ix(
     }
 }
 
-pub fn build_fulfill_redemption_request_extended_ix(
+pub fn build_fulfill_redemption_request_v2_ix(
     redemption_admin: &Pubkey,
     boss: &Pubkey,
     redeemer: &Pubkey,
@@ -226,7 +226,7 @@ pub fn build_fulfill_redemption_request_extended_ix(
         token_in_program,
     );
 
-    ix.data = ix_discriminator("fulfill_redemption_request_extended").to_vec();
+    ix.data = ix_discriminator("fulfill_redemption_request_v2").to_vec();
     ix.data.extend_from_slice(&amount.to_le_bytes());
     ix.accounts
         .insert(17, AccountMeta::new(buffer_state_pda, false));
