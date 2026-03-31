@@ -41,7 +41,9 @@ pub struct BufferLowestSupplyUpdatedEvent {
 }
 
 #[event]
-pub struct BufferManagedEvent {
+pub struct BufferAccruedEvent {
+    pub token_in_mint: Pubkey,
+    pub onyc_mint: Pubkey,
     pub seconds_elapsed: u64,
     pub spread: u64,
     pub gross_mint_amount: u64,
@@ -52,6 +54,8 @@ pub struct BufferManagedEvent {
     pub new_lowest_supply: u64,
     pub previous_performance_fee_high_watermark: u64,
     pub new_performance_fee_high_watermark: u64,
+    pub current_nav: u64,
+    pub post_accrual_supply: u64,
     pub timestamp: i64,
 }
 

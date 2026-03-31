@@ -1130,8 +1130,6 @@ describe("Take Offer", () => {
                 await program.transferMintAuthorityToProgram({
                     mint: tokenOutMint
                 });
-
-                await program.mintTo({ amount: 1_000_000_000 });
                 await program.setMainOffer({
                     offer: program.getOfferPda(tokenInMint, tokenOutMint),
                 });
@@ -1148,15 +1146,11 @@ describe("Take Offer", () => {
                     apr: 50_000,
                     priceFixDuration: 86400
                 });
+                await program.mintTo({ amount: 1_000_000_000 });
                 await program.setBufferGrossYield({ grossYield: 150_000 });
                 await program.setBufferFeeConfig({
                     managementFeeBasisPoints: 100,
                     performanceFeeBasisPoints: 1_000,
-                });
-
-                await program.manageBuffer({
-                    offer: program.getOfferPda(tokenInMint, tokenOutMint),
-                    onycMint: tokenOutMint,
                 });
                 await testHelper.advanceSlot();
                 await testHelper.advanceClockBy(31_536_000);
@@ -1232,7 +1226,6 @@ describe("Take Offer", () => {
                     mint: tokenOutMint
                 });
 
-                await program.mintTo({ amount: 1_000_000_000 });
                 await program.setMainOffer({
                     offer: program.getOfferPda(tokenInMint, tokenOutMint),
                 });
@@ -1250,11 +1243,8 @@ describe("Take Offer", () => {
                     apr: 50_000,
                     priceFixDuration: 86400
                 });
+                await program.mintTo({ amount: 1_000_000_000 });
                 await program.setBufferGrossYield({ grossYield: 150_000 });
-                await program.manageBuffer({
-                    offer: program.getOfferPda(tokenInMint, tokenOutMint),
-                    onycMint: tokenOutMint,
-                });
                 await testHelper.advanceSlot();
                 await testHelper.advanceClockBy(31_536_000);
 

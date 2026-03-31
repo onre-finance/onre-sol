@@ -128,6 +128,7 @@ describe("Fulfill redemption request", () => {
                 offer: offerPda,
                 onycMint,
             });
+            await program.mintTo({ amount: 1_000_000_000 });
             await program.setBufferGrossYield({ grossYield: 100_000 });
             await program.setBufferFeeConfig({
                 managementFeeBasisPoints: 100,
@@ -137,9 +138,6 @@ describe("Fulfill redemption request", () => {
                 redemptionOffer: redemptionOfferPda,
                 newFeeBasisPoints: 500,
             });
-
-            await program.manageBuffer({ offer: offerPda, onycMint });
-
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
@@ -185,7 +183,7 @@ describe("Fulfill redemption request", () => {
             expect(bufferVaultBalance).toBe(bufferMint);
             expect(managementFeeVaultBalance).toBe(managementFeeMint);
             expect(performanceFeeVaultBalance).toBe(performanceFeeMint);
-            expect(bossOnycBalance).toBe(tokenInFeeAmount);
+            expect(bossOnycBalance).toBe(BigInt(1_000_000_000) + tokenInFeeAmount);
             expect(userUsdcBalance).toBe(BigInt(950_000));
             expect(bufferState.lowestSupply.toString()).toBe(
                 (supplyBefore + grossAccrual - tokenInNetAmount).toString()
