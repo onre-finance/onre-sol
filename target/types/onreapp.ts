@@ -2999,6 +2999,120 @@ export type Onreapp = {
           }
         },
         {
+          "name": "redemptionFeeVaultAuthority",
+          "docs": [
+            "Global fee vault authority PDA — created on first fulfillment if not yet initialized"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "feeDestination",
+          "docs": [
+            "The account that should receive fees.",
+            "Must equal `redemption_fee_vault_authority.fee_destination` when set,",
+            "or the vault authority PDA itself when `fee_destination` is default."
+          ]
+        },
+        {
+          "name": "feeDestinationTokenInAccount",
+          "docs": [
+            "ATA of `fee_destination` for token_in — receives the fee portion"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "feeDestination"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
           "name": "mintAuthority",
           "pda": {
             "seeds": [
@@ -6863,13 +6977,13 @@ export type Onreapp = {
     {
       "name": "setRedemptionFeeDestination",
       "docs": [
-        "Sets or updates the fee destination for redemption fees.",
+        "Sets or updates the fee destination address for redemption fees.",
         "",
         "Delegates to `redemption::set_redemption_fee_destination`.",
+        "Only updates the stored destination address; does not move any tokens.",
+        "Use `withdraw_redemption_fees` to sweep accumulated fees.",
         "When `fee_destination` is `Pubkey::default()`, fees accumulate in the program's",
-        "fee vault PDA ATA. When set to any other address, fees are transferred directly",
-        "there on every fulfillment. Changing the destination also sweeps any previously",
-        "accumulated balance from the vault to the new address.",
+        "fee vault PDA ATA. When set to any other address, fees are routed there on every fulfillment.",
         "Emits a `RedemptionFeeDestinationUpdatedEvent` upon success.",
         "",
         "# Arguments",
@@ -6966,151 +7080,6 @@ export type Onreapp = {
               }
             ]
           }
-        },
-        {
-          "name": "feeVaultTokenInAccount",
-          "docs": [
-            "ATA of the fee vault authority for token_in — sweep source"
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "redemptionFeeVaultAuthority"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "newDestinationTokenInAccount",
-          "docs": [
-            "ATA of the new fee destination for token_in — sweep target"
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "newFeeDestination"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "newFeeDestination",
-          "docs": [
-            "The new fee destination account; key must equal the `fee_destination` argument"
-          ]
-        },
-        {
-          "name": "tokenInMint",
-          "docs": [
-            "The token mint whose fees are being rerouted"
-          ]
-        },
-        {
-          "name": "tokenInProgram",
-          "docs": [
-            "Token program for token_in"
-          ]
-        },
-        {
-          "name": "associatedTokenProgram",
-          "docs": [
-            "Associated Token Program for ATA creation"
-          ],
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         },
         {
           "name": "systemProgram",
@@ -10296,6 +10265,269 @@ export type Onreapp = {
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "withdrawRedemptionFees",
+      "docs": [
+        "Withdraws accumulated redemption fees from the vault to a destination chosen by the boss.",
+        "",
+        "Delegates to `redemption::withdraw_redemption_fees`.",
+        "Pass `amount = 0` to withdraw the full vault balance.",
+        "Emits a `RedemptionFeesWithdrawnEvent` upon success.",
+        "",
+        "# Arguments",
+        "- `ctx`: Context for `WithdrawRedemptionFees`.",
+        "- `amount`: Amount to withdraw; 0 means full balance.",
+        "",
+        "# Access Control",
+        "- Boss only"
+      ],
+      "discriminator": [
+        94,
+        252,
+        120,
+        140,
+        99,
+        224,
+        254,
+        159
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "docs": [
+            "Program state account — boss access control"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "Boss must sign; also pays for any new ATA creation"
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "redemptionFeeVaultAuthority",
+          "docs": [
+            "Global fee vault authority PDA"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "feeVaultTokenInAccount",
+          "docs": [
+            "ATA of the fee vault — source of the withdrawal"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionFeeVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "destinationTokenInAccount",
+          "docs": [
+            "ATA of the destination — created if needed"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "destination"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "destination",
+          "docs": [
+            "Destination wallet; boss decides where fees go"
+          ]
+        },
+        {
+          "name": "tokenInMint",
+          "docs": [
+            "The token mint whose fees are being withdrawn"
+          ]
+        },
+        {
+          "name": "tokenInProgram",
+          "docs": [
+            "Token program for token_in"
+          ]
+        },
+        {
+          "name": "associatedTokenProgram",
+          "docs": [
+            "Associated Token Program for ATA creation"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "docs": [
+            "System program required for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -10939,6 +11171,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "redemptionFeesWithdrawnEvent",
+      "discriminator": [
+        243,
+        210,
+        33,
+        160,
+        29,
+        199,
+        252,
+        85
+      ]
+    },
+    {
       "name": "redemptionOfferCreatedEvent",
       "discriminator": [
         171,
@@ -11046,33 +11291,58 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "mathOverflow",
-      "msg": "Math overflow"
+      "name": "expired",
+      "msg": "The approval message has expired."
     },
     {
       "code": 6001,
-      "name": "maxSupplyExceeded",
-      "msg": "Minting would exceed maximum supply cap"
+      "name": "wrongProgram",
+      "msg": "The approval message is for the wrong program."
     },
     {
       "code": 6002,
-      "name": "transferFeeNotSupported",
-      "msg": "Token-2022 with transfer fees not supported"
+      "name": "wrongUser",
+      "msg": "The approval message is for the wrong user."
     },
     {
       "code": 6003,
-      "name": "zeroPriceNotAllowed",
-      "msg": "Price cannot be zero"
+      "name": "missingEd25519Ix",
+      "msg": "Missing Ed25519 instruction."
     },
     {
       "code": 6004,
-      "name": "decimalsExceedMax",
-      "msg": "Token decimals exceed maximum allowed (18)"
+      "name": "wrongIxProgram",
+      "msg": "The instruction is for the wrong program."
     },
     {
       "code": 6005,
-      "name": "resultOverflow",
-      "msg": "Result exceeds u64 maximum value"
+      "name": "badEd25519Accounts",
+      "msg": "Ed25519 instruction has accounts."
+    },
+    {
+      "code": 6006,
+      "name": "malformedEd25519Ix",
+      "msg": "Malformed Ed25519 instruction."
+    },
+    {
+      "code": 6007,
+      "name": "multipleSigs",
+      "msg": "Multiple signatures found in Ed25519 instruction."
+    },
+    {
+      "code": 6008,
+      "name": "wrongAuthority",
+      "msg": "The authority public key does not match."
+    },
+    {
+      "code": 6009,
+      "name": "msgMismatch",
+      "msg": "The message in the Ed25519 instruction does not match the approval message."
+    },
+    {
+      "code": 6010,
+      "name": "msgDeserialize",
+      "msg": "Failed to deserialize the approval message."
     }
   ],
   "types": [
@@ -12805,6 +13075,31 @@ export type Onreapp = {
                 31
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionFeesWithdrawnEvent",
+      "docs": [
+        "Event emitted when redemption fees are withdrawn from the vault"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "destination",
+            "docs": [
+              "Destination that received the fees"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Amount of token_in withdrawn"
+            ],
+            "type": "u64"
           }
         ]
       }
