@@ -4706,452 +4706,6 @@
       ]
     },
     {
-      "name": "manage_buffer",
-      "docs": [
-        "Accrues BUFFER spread and mints ONyc to the BUFFER vault account.",
-        "",
-        "Callable by anyone."
-      ],
-      "discriminator": [
-        65,
-        41,
-        70,
-        97,
-        226,
-        242,
-        69,
-        17
-      ],
-      "accounts": [
-        {
-          "name": "state",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "buffer_state",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  98,
-                  117,
-                  102,
-                  102,
-                  101,
-                  114,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "offer"
-        },
-        {
-          "name": "onyc_mint",
-          "writable": true,
-          "relations": [
-            "state",
-            "buffer_state"
-          ]
-        },
-        {
-          "name": "buffer_vault_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  98,
-                  117,
-                  102,
-                  102,
-                  101,
-                  114,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "buffer_vault_onyc_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "buffer_vault_authority"
-              },
-              {
-                "kind": "account",
-                "path": "token_program"
-              },
-              {
-                "kind": "account",
-                "path": "onyc_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "management_fee_vault_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  110,
-                  97,
-                  103,
-                  101,
-                  109,
-                  101,
-                  110,
-                  116,
-                  95,
-                  102,
-                  101,
-                  101,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "management_fee_vault_onyc_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "management_fee_vault_authority"
-              },
-              {
-                "kind": "account",
-                "path": "token_program"
-              },
-              {
-                "kind": "account",
-                "path": "onyc_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "performance_fee_vault_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  101,
-                  114,
-                  102,
-                  111,
-                  114,
-                  109,
-                  97,
-                  110,
-                  99,
-                  101,
-                  95,
-                  102,
-                  101,
-                  101,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "performance_fee_vault_onyc_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "performance_fee_vault_authority"
-              },
-              {
-                "kind": "account",
-                "path": "token_program"
-              },
-              {
-                "kind": "account",
-                "path": "onyc_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "mint_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  105,
-                  110,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "token_program"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "caller",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "offer_vault_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "offer_vault_onyc_account"
-        },
-        {
-          "name": "market_stats",
-          "writable": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "mint_to",
       "docs": [
         "Mints ONyc tokens to the boss's account.",
@@ -6866,7 +6420,7 @@
       "docs": [
         "Sets BUFFER gross yield.",
         "",
-        "Current yield is read from the main offer during manage_buffer."
+        "Current yield is read from the main offer during BUFFER accrual."
       ],
       "discriminator": [
         245,
@@ -10554,6 +10108,19 @@
       ]
     },
     {
+      "name": "BufferAccruedEvent",
+      "discriminator": [
+        142,
+        74,
+        130,
+        231,
+        194,
+        58,
+        5,
+        20
+      ]
+    },
+    {
       "name": "BufferBurnedForNavEvent",
       "discriminator": [
         116,
@@ -10629,19 +10196,6 @@
         245,
         238,
         189
-      ]
-    },
-    {
-      "name": "BufferManagedEvent",
-      "discriminator": [
-        74,
-        89,
-        18,
-        6,
-        155,
-        40,
-        131,
-        169
       ]
     },
     {
@@ -11383,6 +10937,74 @@
       }
     },
     {
+      "name": "BufferAccruedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "token_in_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "onyc_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "seconds_elapsed",
+            "type": "u64"
+          },
+          {
+            "name": "spread",
+            "type": "u64"
+          },
+          {
+            "name": "gross_mint_amount",
+            "type": "u64"
+          },
+          {
+            "name": "buffer_mint_amount",
+            "type": "u64"
+          },
+          {
+            "name": "management_fee_mint_amount",
+            "type": "u64"
+          },
+          {
+            "name": "performance_fee_mint_amount",
+            "type": "u64"
+          },
+          {
+            "name": "previous_lowest_supply",
+            "type": "u64"
+          },
+          {
+            "name": "new_lowest_supply",
+            "type": "u64"
+          },
+          {
+            "name": "previous_performance_fee_high_watermark",
+            "type": "u64"
+          },
+          {
+            "name": "new_performance_fee_high_watermark",
+            "type": "u64"
+          },
+          {
+            "name": "current_nav",
+            "type": "u64"
+          },
+          {
+            "name": "post_accrual_supply",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "BufferBurnedForNavEvent",
       "type": {
         "kind": "struct",
@@ -11522,58 +11144,6 @@
           {
             "name": "new_main_offer",
             "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "BufferManagedEvent",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "seconds_elapsed",
-            "type": "u64"
-          },
-          {
-            "name": "spread",
-            "type": "u64"
-          },
-          {
-            "name": "gross_mint_amount",
-            "type": "u64"
-          },
-          {
-            "name": "buffer_mint_amount",
-            "type": "u64"
-          },
-          {
-            "name": "management_fee_mint_amount",
-            "type": "u64"
-          },
-          {
-            "name": "performance_fee_mint_amount",
-            "type": "u64"
-          },
-          {
-            "name": "previous_lowest_supply",
-            "type": "u64"
-          },
-          {
-            "name": "new_lowest_supply",
-            "type": "u64"
-          },
-          {
-            "name": "previous_performance_fee_high_watermark",
-            "type": "u64"
-          },
-          {
-            "name": "new_performance_fee_high_watermark",
-            "type": "u64"
-          },
-          {
-            "name": "timestamp",
-            "type": "i64"
           }
         ]
       }
