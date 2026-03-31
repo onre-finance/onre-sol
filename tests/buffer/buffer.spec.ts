@@ -72,9 +72,9 @@ describe("BUFFER", () => {
             priceFixDuration: 86_400,
         });
 
+        await program.initializeBuffer({ offer: offerPda, onycMint });
         await program.transferMintAuthorityToProgram({ mint: onycMint });
         await program.mintTo({ amount: 1_000_000_000 });
-        await program.initializeBuffer({ offer: offerPda, onycMint });
         await program.setBufferGrossYield({ grossYield });
         if (managementFeeBasisPoints !== 0 || performanceFeeBasisPoints !== 0) {
             await program.setBufferFeeConfig({
@@ -83,12 +83,10 @@ describe("BUFFER", () => {
             });
         }
 
-        // First call sets lowestSupply from 0 -> current supply.
-        await program.manageBuffer({ offer: offerPda, onycMint });
         for (let i = 0; i < accrualPeriods; i++) {
             await testHelper.advanceSlot();
             await testHelper.advanceClockBy(ONE_YEAR_SECONDS);
-            await program.manageBuffer({ offer: offerPda, onycMint });
+            await program.mintTo({ amount: 0 });
         }
     }
 
@@ -117,17 +115,6 @@ describe("BUFFER", () => {
         const bufferVaultAta = program.getBufferVaultAta(onycMint);
         const vaultBalance = await testHelper.getTokenAccountBalance(bufferVaultAta);
         expect(vaultBalance).toBe(BigInt(100_000_000));
-    });
-
-    test("anyone can accrue", async () => {
-        await setupBufferWithBalance();
-        await testHelper.advanceSlot();
-        await testHelper.advanceClockBy(ONE_YEAR_SECONDS);
-        await program.manageBuffer({ offer: offerPda, onycMint });
-
-        const bufferVaultAta = program.getBufferVaultAta(onycMint);
-        const vaultBalance = await testHelper.getTokenAccountBalance(bufferVaultAta);
-        expect(vaultBalance > BigInt(100_000_000)).toBe(true);
     });
 
     test("set buffer yields rejects no-change", async () => {
@@ -201,7 +188,7 @@ describe("BUFFER", () => {
         await testHelper.advanceSlot();
         await testHelper.advanceClockBy(ONE_YEAR_SECONDS);
         await testHelper.advanceSlot();
-        await program.manageBuffer({ offer: offerPda, onycMint });
+        await program.mintTo({ amount: 0 });
         await testHelper.advanceSlot();
         await testHelper.getTokenAccountBalance(program.getBufferVaultAta(onycMint));
         const performanceFeeBalance = await testHelper.getTokenAccountBalance(program.getPerformanceFeeVaultAta(onycMint));
