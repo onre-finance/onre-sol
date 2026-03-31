@@ -8,12 +8,41 @@ pub mod constants;
 pub mod instructions;
 pub mod state;
 pub mod utils;
-pub mod program_id;
 
-pub use program_id::ONRE_PROGRAM_ID;
+#[cfg(all(feature = "mainnet", feature = "mainnet-test"))]
+compile_error!("'mainnet' and 'mainnet-test' features are mutually exclusive. Have you missed to disable default features?");
+
+#[cfg(all(feature = "mainnet", feature = "devnet-test"))]
+compile_error!("'mainnet' and 'devnet-test' features are mutually exclusive. Have you missed to disable default features?");
+
+#[cfg(all(feature = "mainnet", feature = "devnet-dev"))]
+compile_error!("'mainnet' and 'devnet-dev' features are mutually exclusive. Have you missed to disable default features?");
+
+#[cfg(all(feature = "mainnet-test", feature = "devnet-test"))]
+compile_error!("'mainnet-test' and 'devnet-test' features are mutually exclusive. Have you missed to disable default features?");
+
+#[cfg(all(feature = "mainnet-test", feature = "devnet-dev"))]
+compile_error!("'mainnet-test' and 'devnet-dev' features are mutually exclusive. Have you missed to disable default features?");
+
+#[cfg(all(feature = "devnet-test", feature = "devnet-dev"))]
+compile_error!("'devnet-test' and 'devnet-dev' features are mutually exclusive. Have you missed to disable default features?");
+
+#[cfg(not(any(feature = "mainnet", feature = "mainnet-test", feature = "devnet-test", feature = "devnet-dev")))]
+compile_error!("No environment feature enabled. Please enable one of: 'mainnet', 'mainnet-test', 'devnet-test', 'devnet-dev'");
+
 
 // Program ID declaration
-declare_id!(ONRE_PROGRAM_ID);
+#[cfg(feature = "mainnet")]
+declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
+
+#[cfg(feature = "mainnet-test")]
+declare_id!("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2");
+
+#[cfg(feature = "devnet-test")]
+declare_id!("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2");
+
+#[cfg(feature = "devnet-dev")]
+declare_id!("devHfQHgiFNifkLW49RCXpyTUZMyKuBNnFSbrQ8XsbX");
 
 pub use instructions::mint_authority::mint_to::MintTo;
 
