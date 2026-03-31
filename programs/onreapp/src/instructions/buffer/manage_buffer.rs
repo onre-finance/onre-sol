@@ -1,7 +1,8 @@
 use crate::constants::seeds;
 use crate::instructions::buffer::{
     calculate_buffer_fee_split, calculate_gross_buffer_accrual,
-    validate_buffer_onyc_vault_accounts, BufferAccrualAccounts, BufferErrorCode, BufferState,
+    validate_buffer_onyc_vault_accounts, BufferAccruedEvent, BufferAccrualAccounts,
+    BufferErrorCode, BufferState,
 };
 use crate::instructions::market_info::offer_valuation_utils::get_active_vector_and_current_price;
 use crate::instructions::Offer;
@@ -49,12 +50,31 @@ pub(crate) fn accrue_buffer<'info>(
     if previous_lowest_supply == 0 {
         set_buffer_baseline_after_supply_change(buffer_state, current_supply_before_mint, now);
 
-        return Ok(BufferAccrualResult {
+        let result = BufferAccrualResult {
             timestamp: now,
             current_nav,
             post_accrual_supply: buffer_state.lowest_supply,
             buffer_vault_balance_after_accrual: buffer_vault_balance_before_mint,
-        });
+        };
+        emit_buffer_accrued_event(
+            offer,
+            onyc_mint,
+            seconds_elapsed,
+            spread,
+            0,
+            0,
+            0,
+            0,
+            previous_lowest_supply,
+            buffer_state.lowest_supply,
+            previous_performance_fee_high_watermark,
+            buffer_state.performance_fee_high_watermark,
+            current_nav,
+            result.post_accrual_supply,
+            now,
+        );
+
+        return Ok(result);
     }
 
     let gross_mint_amount = calculate_gross_buffer_accrual(
@@ -133,12 +153,31 @@ pub(crate) fn accrue_buffer<'info>(
     buffer_state.performance_fee_high_watermark = fee_split.new_performance_fee_high_watermark;
     set_buffer_baseline_after_supply_change(buffer_state, post_accrual_supply, now);
 
-    Ok(BufferAccrualResult {
+    let result = BufferAccrualResult {
         timestamp: now,
         current_nav,
         post_accrual_supply,
         buffer_vault_balance_after_accrual,
-    })
+    };
+    emit_buffer_accrued_event(
+        offer,
+        onyc_mint,
+        seconds_elapsed,
+        spread,
+        fee_split.gross_mint_amount,
+        fee_split.buffer_mint_amount,
+        fee_split.management_fee_mint_amount,
+        fee_split.performance_fee_mint_amount,
+        previous_lowest_supply,
+        buffer_state.lowest_supply,
+        previous_performance_fee_high_watermark,
+        buffer_state.performance_fee_high_watermark,
+        current_nav,
+        result.post_accrual_supply,
+        now,
+    );
+
+    Ok(result)
 }
 
 pub(crate) fn accrue_buffer_from_accounts<'info>(
@@ -205,4 +244,40 @@ pub(crate) fn store_buffer_post_supply(
     let mut buffer_state = buffer_accounts.load_buffer_state()?;
     set_buffer_baseline_after_supply_change(&mut buffer_state, post_change_supply, now);
     buffer_accounts.store_buffer_state(&buffer_state)
+}
+
+fn emit_buffer_accrued_event(
+    offer: &Offer,
+    onyc_mint: &InterfaceAccount<'_, Mint>,
+    seconds_elapsed: u64,
+    spread: u64,
+    gross_mint_amount: u64,
+    buffer_mint_amount: u64,
+    management_fee_mint_amount: u64,
+    performance_fee_mint_amount: u64,
+    previous_lowest_supply: u64,
+    new_lowest_supply: u64,
+    previous_performance_fee_high_watermark: u64,
+    new_performance_fee_high_watermark: u64,
+    current_nav: u64,
+    post_accrual_supply: u64,
+    timestamp: i64,
+) {
+    emit!(BufferAccruedEvent {
+        token_in_mint: offer.token_in_mint,
+        onyc_mint: onyc_mint.key(),
+        seconds_elapsed,
+        spread,
+        gross_mint_amount,
+        buffer_mint_amount,
+        management_fee_mint_amount,
+        performance_fee_mint_amount,
+        previous_lowest_supply,
+        new_lowest_supply,
+        previous_performance_fee_high_watermark,
+        new_performance_fee_high_watermark,
+        current_nav,
+        post_accrual_supply,
+        timestamp,
+    });
 }
