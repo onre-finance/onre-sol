@@ -20,6 +20,9 @@ compile_error!("'mainnet-test' and 'devnet-dev' features are mutually exclusive.
 #[cfg(all(feature = "devnet-test", feature = "devnet-dev"))]
 compile_error!("'devnet-test' and 'devnet-dev' features are mutually exclusive. Have you missed to disable default features?");
 
+#[cfg(not(any(feature = "mainnet", feature = "mainnet-test", feature = "devnet-test", feature = "devnet-dev")))]
+compile_error!("No environment feature enabled. Please enable one of: 'mainnet', 'mainnet-test', 'devnet-test', 'devnet-dev'");
+
 pub const ONRE_MAINNET_PROGRAM_ID: Pubkey = pubkey!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
 pub const ONRE_MAINNET_TEST_PROGRAM_ID: Pubkey = pubkey!("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2");
 pub const ONRE_DEVNET_TEST_PROGRAM_ID: Pubkey = pubkey!("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2");
