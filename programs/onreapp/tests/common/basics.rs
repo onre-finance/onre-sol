@@ -26,7 +26,7 @@ pub const PERMISSIONLESS_AUTHORITY_SEED: &[u8] = b"permissionless-1";
 pub const MINT_AUTHORITY_SEED: &[u8] = b"mint_authority";
 pub const MARKET_STATS_SEED: &[u8] = b"market_stats";
 pub const BUFFER_STATE_SEED: &[u8] = b"buffer_state";
-pub const BUFFER_VAULT_AUTHORITY_SEED: &[u8] = b"buffer_vault_authority";
+pub const RESERVE_VAULT_AUTHORITY_SEED: &[u8] = b"reserve_vault_authority";
 pub const MANAGEMENT_FEE_VAULT_AUTHORITY_SEED: &[u8] = b"management_fee_vault_authority";
 pub const PERFORMANCE_FEE_VAULT_AUTHORITY_SEED: &[u8] = b"performance_fee_vault_authority";
 pub const REDEMPTION_OFFER_SEED: &[u8] = b"redemption_offer";
@@ -107,8 +107,8 @@ pub fn find_buffer_state_pda() -> (Pubkey, u8) {
     Pubkey::find_program_address(&[BUFFER_STATE_SEED], &PROGRAM_ID)
 }
 
-pub fn find_buffer_vault_authority_pda() -> (Pubkey, u8) {
-    Pubkey::find_program_address(&[BUFFER_VAULT_AUTHORITY_SEED], &PROGRAM_ID)
+pub fn find_reserve_vault_authority_pda() -> (Pubkey, u8) {
+    Pubkey::find_program_address(&[RESERVE_VAULT_AUTHORITY_SEED], &PROGRAM_ID)
 }
 
 pub fn find_management_fee_vault_authority_pda() -> (Pubkey, u8) {

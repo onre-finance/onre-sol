@@ -381,7 +381,7 @@ fn test_mint_to_accrues_buffer_before_mint() {
 
     let buffer_state = read_buffer_state(&svm);
     let buffer_vault = derive_ata(
-        &find_buffer_vault_authority_pda().0,
+        &find_reserve_vault_authority_pda().0,
         &onyc_mint,
         &TOKEN_PROGRAM_ID,
     );
@@ -403,7 +403,7 @@ fn test_mint_to_accrues_buffer_before_mint() {
         get_token_balance(&svm, &get_associated_token_address(&boss, &onyc_mint)),
         2_000_000_000
     );
-    assert_eq!(buffer_state.lowest_supply, 2_100_000_000);
+    assert_eq!(buffer_state.previous_supply, 2_100_000_000);
     assert!(
         buffer_state.performance_fee_high_watermark >= 1_000_000_000,
         "accrual before mint should persist the updated performance fee watermark"

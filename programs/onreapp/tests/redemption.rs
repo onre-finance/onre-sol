@@ -1772,10 +1772,10 @@ fn test_fulfill_redemption_request_extended_accrues_buffer_before_burn() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    let (buffer_vault_authority, _) = find_buffer_vault_authority_pda();
+    let (reserve_vault_authority, _) = find_reserve_vault_authority_pda();
     let (management_fee_vault_authority, _) = find_management_fee_vault_authority_pda();
     let (performance_fee_vault_authority, _) = find_performance_fee_vault_authority_pda();
-    let buffer_vault_ata = get_associated_token_address(&buffer_vault_authority, &onyc_mint);
+    let buffer_vault_ata = get_associated_token_address(&reserve_vault_authority, &onyc_mint);
     let management_fee_vault_ata =
         get_associated_token_address(&management_fee_vault_authority, &onyc_mint);
     let performance_fee_vault_ata =
@@ -1795,7 +1795,7 @@ fn test_fulfill_redemption_request_extended_accrues_buffer_before_burn() {
     assert_eq!(get_token_balance(&svm, &boss_onyc_ata), 50_000_000);
     assert_eq!(get_token_balance(&svm, &user_usdc_ata), 950_000);
     let buffer_state = read_buffer_state(&svm);
-    assert_eq!(buffer_state.lowest_supply, 150_000_000);
+    assert_eq!(buffer_state.previous_supply, 150_000_000);
     assert!(
         buffer_state.performance_fee_high_watermark >= 1_000_000_000,
         "redemption accrual should persist the updated performance fee watermark"

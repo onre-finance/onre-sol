@@ -185,7 +185,7 @@ describe("Fulfill redemption request", () => {
             expect(performanceFeeVaultBalance).toBe(performanceFeeMint);
             expect(bossOnycBalance).toBe(BigInt(1_000_000_000) + tokenInFeeAmount);
             expect(userUsdcBalance).toBe(BigInt(950_000));
-            expect(bufferState.lowestSupply.toString()).toBe(
+            expect(bufferState.previousSupply.toString()).toBe(
                 (supplyBefore + grossAccrual - tokenInNetAmount).toString()
             );
         });

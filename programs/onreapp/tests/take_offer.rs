@@ -246,8 +246,8 @@ fn test_take_offer_extended_accrues_buffer_and_splits_fees() {
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
 
-    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
-    let buffer_vault_ata = derive_ata(&buffer_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
+    let buffer_vault_ata = derive_ata(&reserve_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
     let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
     let management_fee_vault_ata = derive_ata(
         &management_fee_vault_authority_pda,
@@ -282,7 +282,7 @@ fn test_take_offer_extended_accrues_buffer_and_splits_fees() {
     let buffer_state = read_buffer_state(&svm);
     assert_eq!(supply_before, 1_000_000_000);
     assert_eq!(supply_after, 2_100_000_000);
-    assert_eq!(buffer_state.lowest_supply, supply_after);
+    assert_eq!(buffer_state.previous_supply, supply_after);
     assert!(
         buffer_state.performance_fee_high_watermark >= 1_000_000_000,
         "take_offer accrual should persist the updated performance fee watermark"

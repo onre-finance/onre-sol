@@ -210,13 +210,13 @@ fn test_initialize_buffer_success() {
     let buffer_state = read_buffer_state(&svm);
     assert_eq!(buffer_state.onyc_mint, onyc_mint);
     assert_eq!(buffer_state.gross_yield, 0);
-    assert_eq!(buffer_state.lowest_supply, 0);
+    assert_eq!(buffer_state.previous_supply, 0);
     assert_eq!(buffer_state.management_fee_basis_points, 0);
     assert_eq!(buffer_state.performance_fee_basis_points, 0);
     assert_eq!(buffer_state.performance_fee_high_watermark, 0);
 
-    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
-    let buffer_vault_ata = derive_ata(&buffer_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
+    let buffer_vault_ata = derive_ata(&reserve_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
     let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
     let management_fee_vault_ata = derive_ata(
         &management_fee_vault_authority_pda,
@@ -383,13 +383,13 @@ fn test_manage_buffer_first_call_sets_lowest_supply_no_mint() {
     let ix = build_manage_buffer_ix(&caller.pubkey(), &offer_pda, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&caller]).unwrap();
 
-    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
-    let buffer_vault_ata = derive_ata(&buffer_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
+    let buffer_vault_ata = derive_ata(&reserve_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
     let buffer_state = read_buffer_state(&svm);
 
     assert_eq!(get_token_balance(&svm, &buffer_vault_ata), 0);
     assert_eq!(get_mint_supply(&svm, &onyc_mint), initial_supply);
-    assert_eq!(buffer_state.lowest_supply, initial_supply);
+    assert_eq!(buffer_state.previous_supply, initial_supply);
 }
 
 #[test]
@@ -407,8 +407,8 @@ fn test_manage_buffer_zero_spread_mints_nothing() {
     let ix = build_manage_buffer_ix(&caller.pubkey(), &offer_pda, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&caller]).unwrap();
 
-    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
-    let buffer_vault_ata = derive_ata(&buffer_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
+    let buffer_vault_ata = derive_ata(&reserve_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
     assert_eq!(get_token_balance(&svm, &buffer_vault_ata), 0);
     assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_000_000_000);
 }
@@ -429,8 +429,8 @@ fn test_manage_buffer_splits_fees_into_separate_vaults() {
     let (svm, _payer, _token_in_mint, onyc_mint, _caller) =
         setup_buffer_with_fee_split(100, 1_000, 1);
 
-    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
-    let buffer_vault_ata = derive_ata(&buffer_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
+    let buffer_vault_ata = derive_ata(&reserve_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
     let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
     let management_fee_vault_ata = derive_ata(
         &management_fee_vault_authority_pda,
@@ -523,8 +523,8 @@ fn test_performance_fee_waits_for_high_watermark_recovery() {
     let ix = build_manage_buffer_ix(&caller.pubkey(), &offer_pda, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&caller]).unwrap();
 
-    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
-    let buffer_vault_ata = derive_ata(&buffer_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
+    let buffer_vault_ata = derive_ata(&reserve_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
     let buffer_state = read_buffer_state(&svm);
 
     assert!(get_token_balance(&svm, &buffer_vault_ata) < 162_000_000);
@@ -546,8 +546,8 @@ fn test_manage_buffer_zero_seconds_mints_nothing() {
     let ix = build_manage_buffer_ix(&caller.pubkey(), &offer_pda, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&caller]).unwrap();
 
-    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
-    let buffer_vault_ata = derive_ata(&buffer_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
+    let buffer_vault_ata = derive_ata(&reserve_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
     assert_eq!(get_token_balance(&svm, &buffer_vault_ata), 0);
 }
 
@@ -574,8 +574,8 @@ fn test_manage_buffer_partial_period_math() {
     // elapsed = 86_400 (1 day)
     // mint = 1_000_000_000 * 100_000 * 86_400 / 31_536_000 / 1_000_000 = 273_972
     let expected_mint = 273_972u64;
-    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
-    let buffer_vault_ata = derive_ata(&buffer_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
+    let buffer_vault_ata = derive_ata(&reserve_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
     assert_eq!(get_token_balance(&svm, &buffer_vault_ata), expected_mint);
     assert_eq!(
         get_mint_supply(&svm, &onyc_mint),
@@ -587,8 +587,8 @@ fn test_manage_buffer_partial_period_math() {
 fn test_manage_buffer_mints_expected_amount() {
     let (svm, _payer, _token_in_mint, onyc_mint, _caller) = setup_buffer_with_balance();
 
-    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
-    let buffer_vault_ata = derive_ata(&buffer_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
+    let buffer_vault_ata = derive_ata(&reserve_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
 
     assert_eq!(get_token_balance(&svm, &buffer_vault_ata), 100_000_000);
     assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_100_000_000);
@@ -627,8 +627,8 @@ fn test_burn_for_nav_increase_success() {
     let ix = build_burn_for_nav_increase_ix(&boss, &token_in_mint, &onyc_mint, 50_000_000, NAV_1_0);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
-    let buffer_vault_ata = derive_ata(&buffer_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
+    let buffer_vault_ata = derive_ata(&reserve_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
 
     assert_eq!(get_token_balance(&svm, &buffer_vault_ata), 50_000_000);
     assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_050_000_000);

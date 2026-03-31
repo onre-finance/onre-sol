@@ -69,7 +69,7 @@ pub fn validate_buffer_onyc_vault_accounts<'info>(
     token_program: &Interface<'info, TokenInterface>,
 ) -> Result<()> {
     let expected_buffer_vault_onyc_account = get_associated_token_address_with_program_id(
-        &Pubkey::find_program_address(&[seeds::BUFFER_VAULT_AUTHORITY], program_id).0,
+        &Pubkey::find_program_address(&[seeds::RESERVE_VAULT_AUTHORITY], program_id).0,
         &onyc_mint.key(),
         &token_program.key(),
     );

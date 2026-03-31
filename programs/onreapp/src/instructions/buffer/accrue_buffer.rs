@@ -14,6 +14,16 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenInterface};
 
 pub(crate) struct BufferAccrualResult {
+    pub seconds_elapsed: u64,
+    pub apr_delta: u64,
+    pub buffer_mint_amount: u64,
+    pub reserve_mint_amount: u64,
+    pub management_fee_mint_amount: u64,
+    pub performance_fee_mint_amount: u64,
+    pub old_previous_supply: u64,
+    pub new_previous_supply: u64,
+    pub old_previous_performance_fee_high_watermark: u64,
+    pub new_performance_fee_high_watermark: u64,
     pub timestamp: i64,
     pub current_nav: u64,
     pub post_accrual_supply: u64,
@@ -40,14 +50,14 @@ pub(crate) fn accrue_buffer<'info>(
 
     let (active_vector, current_nav) = get_active_vector_and_current_price(offer, now as u64)?;
     let seconds_elapsed = (now - buffer_state.last_accrual_timestamp) as u64;
-    let spread = buffer_state.gross_apr.saturating_sub(active_vector.apr);
-    let previous_lowest_supply = buffer_state.lowest_supply;
+    let apr_delta = buffer_state.gross_apr.saturating_sub(active_vector.apr);
+    let old_previous_supply = buffer_state.previous_supply;
     let current_supply_before_mint = onyc_mint.supply;
     let buffer_vault_balance_before_mint =
         read_optional_token_account_amount(&buffer_vault_onyc_account, token_program)?;
-    let previous_performance_fee_high_watermark = buffer_state.performance_fee_high_watermark;
+    let old_previous_performance_fee_high_watermark = buffer_state.performance_fee_high_watermark;
 
-    if previous_lowest_supply == 0 {
+    if old_previous_supply == 0 {
         set_buffer_baseline_after_supply_change(buffer_state, current_supply_before_mint, now);
 
         let result = BufferAccrualResult {
@@ -77,25 +87,25 @@ pub(crate) fn accrue_buffer<'info>(
         return Ok(result);
     }
 
-    let gross_mint_amount = calculate_gross_buffer_accrual(
-        previous_lowest_supply,
+    let buffer_mint_amount = calculate_gross_buffer_accrual(
+        old_previous_supply,
         buffer_state.gross_apr,
         active_vector.apr,
         seconds_elapsed,
     )?;
     let fee_split = calculate_buffer_fee_split(
-        gross_mint_amount,
-        spread,
+        buffer_mint_amount,
+        apr_delta,
         buffer_state.management_fee_basis_points,
         buffer_state.performance_fee_basis_points,
         current_nav,
-        previous_performance_fee_high_watermark,
+        old_previous_performance_fee_high_watermark,
     )?;
 
-    if gross_mint_amount > 0 {
+    if buffer_mint_amount > 0 {
         if state.max_supply > 0 {
             let new_supply = current_supply_before_mint
-                .checked_add(gross_mint_amount)
+                .checked_add(buffer_mint_amount)
                 .ok_or(BufferErrorCode::MathOverflow)?;
             require!(
                 new_supply <= state.max_supply,
@@ -106,14 +116,14 @@ pub(crate) fn accrue_buffer<'info>(
         let mint_authority_seeds = &[seeds::MINT_AUTHORITY, &[mint_authority_bump]];
         let mint_authority_signer_seeds = &[mint_authority_seeds.as_slice()];
 
-        if fee_split.buffer_mint_amount > 0 {
+        if fee_split.reserve_mint_amount > 0 {
             mint_tokens(
                 token_program,
                 onyc_mint,
                 &buffer_vault_onyc_account,
                 &mint_authority,
                 mint_authority_signer_seeds,
-                fee_split.buffer_mint_amount,
+                fee_split.reserve_mint_amount,
                 state.max_supply,
             )?;
         }
@@ -144,10 +154,10 @@ pub(crate) fn accrue_buffer<'info>(
     }
 
     let post_accrual_supply = current_supply_before_mint
-        .checked_add(gross_mint_amount)
+        .checked_add(buffer_mint_amount)
         .ok_or(BufferErrorCode::MathOverflow)?;
     let buffer_vault_balance_after_accrual = buffer_vault_balance_before_mint
-        .checked_add(fee_split.buffer_mint_amount)
+        .checked_add(fee_split.reserve_mint_amount)
         .ok_or(BufferErrorCode::MathOverflow)?;
 
     buffer_state.performance_fee_high_watermark = fee_split.new_performance_fee_high_watermark;
@@ -163,15 +173,16 @@ pub(crate) fn accrue_buffer<'info>(
         offer,
         onyc_mint,
         seconds_elapsed,
-        spread,
-        fee_split.gross_mint_amount,
-        fee_split.buffer_mint_amount,
-        fee_split.management_fee_mint_amount,
-        fee_split.performance_fee_mint_amount,
-        previous_lowest_supply,
-        buffer_state.lowest_supply,
-        previous_performance_fee_high_watermark,
-        buffer_state.performance_fee_high_watermark,
+        apr_delta,
+        buffer_mint_amount: fee_split.buffer_mint_amount,
+        reserve_mint_amount: fee_split.reserve_mint_amount,
+        management_fee_mint_amount: fee_split.management_fee_mint_amount,
+        performance_fee_mint_amount: fee_split.performance_fee_mint_amount,
+        old_previous_supply,
+        new_previous_supply: buffer_state.previous_supply,
+        old_previous_performance_fee_high_watermark,
+        new_performance_fee_high_watermark: buffer_state.performance_fee_high_watermark,
+        timestamp: now,
         current_nav,
         result.post_accrual_supply,
         now,
@@ -232,7 +243,7 @@ pub(crate) fn set_buffer_baseline_after_supply_change(
     post_change_supply: u64,
     now: i64,
 ) {
-    buffer_state.lowest_supply = post_change_supply;
+    buffer_state.previous_supply = post_change_supply;
     buffer_state.last_accrual_timestamp = now;
 }
 

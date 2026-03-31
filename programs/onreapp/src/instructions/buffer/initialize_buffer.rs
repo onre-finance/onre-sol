@@ -31,10 +31,10 @@ pub struct InitializeBuffer<'info> {
         init_if_needed,
         payer = boss,
         space = 8,
-        seeds = [seeds::BUFFER_VAULT_AUTHORITY],
+        seeds = [seeds::RESERVE_VAULT_AUTHORITY],
         bump
     )]
-    pub buffer_vault_authority: UncheckedAccount<'info>,
+    pub reserve_vault_authority: UncheckedAccount<'info>,
 
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
@@ -68,7 +68,7 @@ pub struct InitializeBuffer<'info> {
         init_if_needed,
         payer = boss,
         associated_token::mint = onyc_mint,
-        associated_token::authority = buffer_vault_authority,
+        associated_token::authority = reserve_vault_authority,
         associated_token::token_program = token_program
     )]
     pub buffer_vault_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,

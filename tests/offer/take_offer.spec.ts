@@ -1182,13 +1182,13 @@ describe("Take Offer", () => {
                     expectedGrossAccrual - expectedManagementFee - expectedPerformanceFee;
                 const userMintedAmount = (mintInfoAfter.supply - mintInfoBefore.supply) - expectedGrossAccrual;
 
-                expect(bufferStateBefore.lowestSupply.toString()).toBe(mintInfoBefore.supply.toString());
+                expect(bufferStateBefore.previousSupply.toString()).toBe(mintInfoBefore.supply.toString());
                 expect(bufferVaultBalanceAfter - bufferVaultBalanceBefore).toBe(expectedBufferAccrual);
                 expect(managementFeeBalanceAfter - managementFeeBalanceBefore).toBe(expectedManagementFee);
                 expect(performanceFeeBalanceAfter - performanceFeeBalanceBefore).toBe(expectedPerformanceFee);
                 expect(userTokenOutBalanceAfter).toBe(userMintedAmount);
                 expect(mintInfoAfter.supply - mintInfoBefore.supply).toBe(expectedGrossAccrual + userMintedAmount);
-                expect(bufferStateAfter.lowestSupply.toString()).toBe(mintInfoAfter.supply.toString());
+                expect(bufferStateAfter.previousSupply.toString()).toBe(mintInfoAfter.supply.toString());
             });
 
             it("Should allow take_offer_extended without BUFFER initialized and still refresh market stats", async () => {

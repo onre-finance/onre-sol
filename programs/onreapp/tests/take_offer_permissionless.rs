@@ -548,9 +548,9 @@ fn test_permissionless_extended_accrues_buffer_and_refreshes_market_stats() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
 
-    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
     let buffer_vault_ata = derive_ata(
-        &buffer_vault_authority_pda,
+        &reserve_vault_authority_pda,
         &ctx.onyc_mint,
         &TOKEN_PROGRAM_ID,
     );
@@ -587,7 +587,7 @@ fn test_permissionless_extended_accrues_buffer_and_refreshes_market_stats() {
         1_000_000_000
     );
     assert_eq!(
-        read_buffer_state(&ctx.svm).lowest_supply,
+        read_buffer_state(&ctx.svm).previous_supply,
         get_mint_supply(&ctx.svm, &ctx.onyc_mint)
     );
     assert!(

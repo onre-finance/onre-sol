@@ -214,7 +214,7 @@ describe("BUFFER", () => {
 
         expect(vaultBalance).toBe(BigInt(50_000_000));
         expect(mintAfter.supply).toBe(BigInt(1_050_000_000));
-        expect((await program.getBufferState()).lowestSupply.toNumber()).toBe(1_050_000_000);
+        expect((await program.getBufferState()).previousSupply.toNumber()).toBe(1_050_000_000);
 
         const nonBoss = testHelper.createUserAccount();
         await expect(
@@ -247,7 +247,7 @@ describe("BUFFER", () => {
 
         expect(vaultBalance).toBe(BigInt(160_000_000));
         expect(mintAfter.supply).toBe(BigInt(1_160_000_000));
-        expect(bufferState.lowestSupply.toNumber()).toBe(1_160_000_000);
+        expect(bufferState.previousSupply.toNumber()).toBe(1_160_000_000);
     });
 
     test("burn for nav increase rejects invalid parameters", async () => {

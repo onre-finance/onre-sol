@@ -7,11 +7,11 @@ pub fn build_initialize_buffer_ix(
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (buffer_state_pda, _) = find_buffer_state_pda();
-    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
     let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
     let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
     let buffer_vault_onyc_ata =
-        derive_ata(&buffer_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
+        derive_ata(&reserve_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
     let management_fee_vault_onyc_ata = derive_ata(
         &management_fee_vault_authority_pda,
         onyc_mint,
@@ -28,7 +28,7 @@ pub fn build_initialize_buffer_ix(
         accounts: vec![
             AccountMeta::new(state_pda, false),
             AccountMeta::new(buffer_state_pda, false),
-            AccountMeta::new(buffer_vault_authority_pda, false),
+            AccountMeta::new(reserve_vault_authority_pda, false),
             AccountMeta::new(management_fee_vault_authority_pda, false),
             AccountMeta::new(performance_fee_vault_authority_pda, false),
             AccountMeta::new(*boss, true),
@@ -113,14 +113,14 @@ pub fn build_manage_buffer_ix(caller: &Pubkey, offer: &Pubkey, onyc_mint: &Pubke
     let (state_pda, _) = find_state_pda();
     let (buffer_state_pda, _) = find_buffer_state_pda();
     let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
-    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
     let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
     let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
     let offer_vault_onyc_ata = derive_ata(&offer_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
     let buffer_vault_onyc_ata =
-        derive_ata(&buffer_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
+        derive_ata(&reserve_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
     let management_fee_vault_onyc_ata = derive_ata(
         &management_fee_vault_authority_pda,
         onyc_mint,
@@ -138,7 +138,7 @@ pub fn build_manage_buffer_ix(caller: &Pubkey, offer: &Pubkey, onyc_mint: &Pubke
             AccountMeta::new(buffer_state_pda, false),
             AccountMeta::new_readonly(*offer, false),
             AccountMeta::new(*onyc_mint, false),
-            AccountMeta::new_readonly(buffer_vault_authority_pda, false),
+            AccountMeta::new_readonly(reserve_vault_authority_pda, false),
             AccountMeta::new(buffer_vault_onyc_ata, false),
             AccountMeta::new_readonly(management_fee_vault_authority_pda, false),
             AccountMeta::new(management_fee_vault_onyc_ata, false),
@@ -238,14 +238,14 @@ pub fn build_burn_for_nav_increase_ix(
     let (offer_pda, _) = find_offer_pda(token_in_mint, onyc_mint);
     let (buffer_state_pda, _) = find_buffer_state_pda();
     let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
-    let (buffer_vault_authority_pda, _) = find_buffer_vault_authority_pda();
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
     let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
     let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
     let vault_token_out_ata = derive_ata(&offer_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
     let buffer_vault_onyc_ata =
-        derive_ata(&buffer_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
+        derive_ata(&reserve_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
     let management_fee_vault_onyc_ata = derive_ata(
         &management_fee_vault_authority_pda,
         onyc_mint,
@@ -271,7 +271,7 @@ pub fn build_burn_for_nav_increase_ix(
             AccountMeta::new_readonly(*token_in_mint, false),
             AccountMeta::new(*onyc_mint, false),
             AccountMeta::new_readonly(offer_vault_authority_pda, false),
-            AccountMeta::new_readonly(buffer_vault_authority_pda, false),
+            AccountMeta::new_readonly(reserve_vault_authority_pda, false),
             AccountMeta::new_readonly(vault_token_out_ata, false),
             AccountMeta::new(buffer_vault_onyc_ata, false),
             AccountMeta::new_readonly(management_fee_vault_authority_pda, false),

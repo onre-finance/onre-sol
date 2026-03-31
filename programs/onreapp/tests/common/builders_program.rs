@@ -334,7 +334,7 @@ pub fn build_mint_to_ix_for_offer(
     let boss_onyc_ata = derive_ata(boss, onyc_mint, token_program);
     let offer_vault_onyc = derive_ata(&offer_vault_authority_pda, onyc_mint, token_program);
     let buffer_vault_onyc = derive_ata(
-        &find_buffer_vault_authority_pda().0,
+        &find_reserve_vault_authority_pda().0,
         onyc_mint,
         token_program,
     );

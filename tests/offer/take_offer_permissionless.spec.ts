@@ -477,7 +477,7 @@ describe("Take Offer Permissionless", () => {
 
             const bufferState = await program.getBufferState();
             const postTradeSupply = supplyBefore + grossAccrual + BigInt(1e9);
-            expect(bufferState.lowestSupply.toString()).toBe(postTradeSupply.toString());
+            expect(bufferState.previousSupply.toString()).toBe(postTradeSupply.toString());
 
             const marketStats = await program.getMarketStats();
             const vaultTokenOutBalance = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
