@@ -1,7 +1,6 @@
 import { Command } from "commander";
 import type { GlobalOptions } from "../prompts";
 import {
-    executeBufferManage,
     executeBufferBurn,
     executeBufferGet,
     executeBufferInitialize,
@@ -34,16 +33,6 @@ export function registerBufferCommands(program: Command): void {
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeBufferSetYields(opts);
-        });
-
-    program
-        .command("manage")
-        .description("Manage BUFFER spread")
-        .option("--offer <address>", "Main offer PDA")
-        .option("--onyc-mint <address>", "ONyc mint")
-        .action(async (options, cmd) => {
-            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
-            await executeBufferManage(opts);
         });
 
     program

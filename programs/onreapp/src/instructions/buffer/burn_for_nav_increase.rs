@@ -1,6 +1,6 @@
 use crate::constants::{seeds, PRICE_DECIMALS};
 use crate::instructions::buffer::{
-    manage_buffer::{accrue_buffer, set_buffer_baseline_after_supply_change},
+    accrue_buffer::{accrue_buffer, set_buffer_baseline_after_supply_change},
     BufferBurnedForNavEvent, BufferErrorCode, BufferState,
 };
 use crate::instructions::market_info::{

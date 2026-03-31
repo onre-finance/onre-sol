@@ -255,8 +255,7 @@ If your integration touches BUFFER:
 - `initialize_buffer` must be given an offer account, and that offer's `token_out_mint` must be the ONyc mint
 - `set_main_offer` changes which offer is used as the source of APR for BUFFER
 - `set_buffer_gross_apr` only updates `gross_apr`
-- `manage_buffer` must be passed the same offer stored in `state.main_offer`
-- During `manage_buffer`, `current_yield` is recomputed from the active vector APR on `main_offer`
+- BUFFER accrual reads `current_yield` from the active vector APR on `state.main_offer`
 
 ### Recommended BUFFER Rollout
 

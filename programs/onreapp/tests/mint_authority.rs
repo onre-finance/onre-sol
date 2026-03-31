@@ -417,6 +417,68 @@ fn test_mint_to_accrues_buffer_before_mint() {
     assert_eq!(market_stats.tvl, 2_100_000_000);
 }
 
+#[test]
+fn test_mint_to_works_with_main_offer_before_buffer_initialization() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
+    let boss = payer.pubkey();
+
+    let usdc_mint = create_mint(&mut svm, &payer, 6, &boss);
+    let ix = build_make_offer_ix(
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let now = get_clock_time(&svm);
+    let ix = build_add_offer_vector_ix(
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        None,
+        now,
+        1_000_000_000,
+        0,
+        86_400,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let offer_pda = find_offer_pda(&usdc_mint, &onyc_mint).0;
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_mint_to_ix_for_offer(
+        &boss,
+        &onyc_mint,
+        1_000_000_000,
+        &TOKEN_PROGRAM_ID,
+        &offer_pda,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let boss_onyc_ata = get_associated_token_address(&boss, &onyc_mint);
+    assert_eq!(get_token_balance(&svm, &boss_onyc_ata), 1_000_000_000);
+    assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_000_000_000);
+
+    let market_stats = read_market_stats(&svm);
+    let (_, market_stats_bump) = find_market_stats_pda();
+    assert_eq!(market_stats.bump, market_stats_bump);
+    assert_eq!(market_stats.circulating_supply, 1_000_000_000);
+    assert_eq!(market_stats.nav, 1_000_000_000);
+    assert_eq!(market_stats.tvl, 1_000_000_000);
+}
+
 // ===========================================================================
 // Token-2022 Tests
 // ===========================================================================

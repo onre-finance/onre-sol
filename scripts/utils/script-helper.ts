@@ -506,26 +506,6 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildManageBufferIx(params: { offer: PublicKey; onycMint: PublicKey }) {
-        return await this.program.methods
-            .manageBuffer()
-            .accountsPartial({
-                bufferState: this.pdas.bufferStatePda,
-                onycMint: params.onycMint,
-                offer: params.offer,
-                bufferVaultAuthority: this.pdas.bufferVaultAuthorityPda,
-                bufferVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
-                managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
-                managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
-                performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
-                performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.onycMint),
-                mintAuthority: this.pdas.mintAuthorityPda,
-                tokenProgram: TOKEN_PROGRAM_ID,
-                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-            })
-            .instruction();
-    }
-
     async buildBurnForNavIncreaseIx(params: { tokenInMint: PublicKey; onycMint: PublicKey; assetAdjustmentAmount: number; targetNav: number; boss: PublicKey }) {
         return await this.program.methods
             .burnForNavIncrease(new BN(params.assetAdjustmentAmount), new BN(params.targetNav))

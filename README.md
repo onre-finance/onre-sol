@@ -65,7 +65,7 @@ The BUFFER module stores two separate inputs for accrual:
 | Field | Source |
 |------|--------|
 | `gross_apr` | Set explicitly by `set_buffer_gross_apr` |
-| `current_yield` | Read from the active APR on `state.main_offer` during `manage_buffer` |
+| `current_yield` | Read from the active APR on `state.main_offer` during buffer accrual |
 
 `state.main_offer` must be set before `initialize_buffer`. It can be updated later with `set_main_offer`, and it must always point to an offer whose `token_out_mint` is ONyc.
 
@@ -90,7 +90,7 @@ Typical on-chain BUFFER setup order:
 
 **Initialization**: `initialize`, `initialize_permissionless_authority`
 
-**BUFFER**: `initialize_buffer`, `set_main_offer`, `set_buffer_gross_apr`, `set_buffer_fee_config`, `manage_buffer`, `burn_for_nav_increase`, `withdraw_management_fees`, `withdraw_performance_fees`
+**BUFFER**: `initialize_buffer`, `set_main_offer`, `set_buffer_gross_apr`, `set_buffer_fee_config`, `burn_for_nav_increase`, `withdraw_management_fees`, `withdraw_performance_fees`
 
 **Offers**: `make_offer`, `add_offer_vector`, `delete_offer_vector`, `delete_all_offer_vectors`, `update_offer_fee`, `take_offer`, `take_offer_permissionless`
 
@@ -147,9 +147,8 @@ tsx scripts/market_info/get-nav.ts
 
 The current CLI exposes only a subset of the on-chain BUFFER flow:
 
-- available commands: `buffer get`, `buffer initialize`, `buffer set-gross-yield`, `buffer manage`, `buffer burn`
+- available commands: `buffer get`, `buffer initialize`, `buffer set-gross-yield`, `buffer burn`
 - `buffer initialize` requires `--offer` and `--onyc-mint`
-- `buffer manage` requires `--offer`; the passed offer must match `state.main_offer`
 - `current_yield` is not set manually; it is derived from the active APR on the main offer during accrual
 
 The CLI does not currently expose the full administrative BUFFER flow. In particular, README examples should not assume CLI support for:

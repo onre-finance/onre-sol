@@ -29,13 +29,13 @@ The new baseline after accrual is:
 
 `post_accrual_supply`
 
-In `manage_buffer`, this is written as:
+In the shared accrual helper, this is written as:
 
 `current_supply_before_mint + gross_mint_amount`
 
-## `manage_buffer`
+## BUFFER Accrual
 
-`manage_buffer` performs one full accrual cycle.
+Any BUFFER-aware instruction performs one full accrual cycle before applying its own supply change.
 
 Inputs:
 
@@ -60,7 +60,7 @@ Steps:
    - `lowest_supply = current_supply_before_mint + gross_mint_amount`
    - `last_accrual_timestamp = now`
 
-If `lowest_supply == 0`, `manage_buffer` initializes the baseline:
+If `lowest_supply == 0`, the accrual path initializes the baseline:
 
 - `lowest_supply = current_supply_before_mint`
 - `last_accrual_timestamp = now`
@@ -69,7 +69,7 @@ and performs no accrual mint.
 
 ## Any Other ONyc Supply Change
 
-Any instruction that changes ONyc supply outside `manage_buffer` should be handled as:
+Any instruction that changes ONyc supply should be handled as:
 
 1. Accrue pending BUFFER from stored baseline up to `now`
 2. Perform the ONyc mint or burn
@@ -105,7 +105,7 @@ Initial state:
 - `last_accrual_timestamp = 0`
 - ONyc supply = `1,000`
 
-Call `manage_buffer` at `T1`.
+Call any BUFFER-aware instruction at `T1`.
 
 Steps:
 
@@ -120,7 +120,7 @@ Result:
 - current unpaid interval starts at `T1`
 - baseline supply for that interval is `1,000`
 
-## Example 2: One `manage_buffer` Cycle
+## Example 2: One BUFFER Accrual Cycle
 
 Initial state:
 
@@ -150,7 +150,7 @@ Result:
 - interval `T1 -> T2` is settled
 - next unpaid interval starts at `T2` with baseline `1,050`
 
-## Example 3: `manage_buffer`, Then User Buy
+## Example 3: Accrual, Then User Buy
 
 State after prior accrual:
 
@@ -210,7 +210,7 @@ Sequence:
    - `lowest_supply = 1,460`
    - `last_accrual_timestamp = T5`
 
-## Example 5: `manage_buffer`, Then Redemption Burn
+## Example 5: Accrual, Then Redemption Burn
 
 State:
 
@@ -231,7 +231,7 @@ Sequence:
    - `lowest_supply = 1,355`
    - `last_accrual_timestamp = T6`
 
-## Example 6: `manage_buffer`, Then NAV Burn
+## Example 6: Accrual, Then NAV Burn
 
 State:
 

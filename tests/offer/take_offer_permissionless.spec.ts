@@ -434,13 +434,6 @@ describe("Take Offer Permissionless", () => {
                 offer: program.getOfferPda(tokenInMint, tokenOutMint),
                 onycMint: tokenOutMint,
             });
-            await program.setBufferGrossYield({ grossYield: 100_000 });
-            await program.setBufferFeeConfig({
-                managementFeeBasisPoints: 100,
-                performanceFeeBasisPoints: 1_000,
-            });
-            const supplyBefore = (await testHelper.getMintInfo(tokenOutMint)).supply;
-
             const currentTime = await testHelper.getCurrentClockTime();
             await program.addOfferVector({
                 tokenInMint,
@@ -450,11 +443,14 @@ describe("Take Offer Permissionless", () => {
                 apr: 0,
                 priceFixDuration: 86_400,
             });
-
-            await program.manageBuffer({
-                offer: program.getOfferPda(tokenInMint, tokenOutMint),
-                onycMint: tokenOutMint,
+            await program.mintTo({ amount: 1_000_000_000 });
+            await program.setBufferGrossYield({ grossYield: 100_000 });
+            await program.setBufferFeeConfig({
+                managementFeeBasisPoints: 100,
+                performanceFeeBasisPoints: 1_000,
             });
+            const supplyBefore = (await testHelper.getMintInfo(tokenOutMint)).supply;
+
             await testHelper.advanceClockBy(31_536_000);
 
             await program.takeOfferPermissionlessExtended({

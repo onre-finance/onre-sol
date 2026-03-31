@@ -421,7 +421,7 @@ pub mod onreapp {
 
     /// Sets BUFFER gross yield.
     ///
-    /// Current yield is read from the main offer during manage_buffer.
+    /// Current yield is read from the main offer during BUFFER accrual.
     pub fn set_buffer_gross_apr(ctx: Context<SetBufferGrossYield>, gross_yield: u64) -> Result<()> {
         buffer::set_buffer_gross_apr(ctx, gross_yield)
     }
@@ -443,13 +443,6 @@ pub mod onreapp {
             performance_fee_basis_points,
             performance_fee_wallet,
         )
-    }
-
-    /// Accrues BUFFER spread and mints ONyc to the BUFFER vault account.
-    ///
-    /// Callable by anyone.
-    pub fn manage_buffer(ctx: Context<ManageBuffer>) -> Result<()> {
-        buffer::manage_buffer(ctx)
     }
 
     /// Burns ONyc from BUFFER vault to increase NAV according to provided target inputs.
