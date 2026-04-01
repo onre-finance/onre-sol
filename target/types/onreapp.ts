@@ -1948,45 +1948,7 @@ export type Onreapp = {
         },
         {
           "name": "redemptionOffer",
-          "docs": [
-            "The redemption offer account"
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  100,
-                  101,
-                  109,
-                  112,
-                  116,
-                  105,
-                  111,
-                  110,
-                  95,
-                  111,
-                  102,
-                  102,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "redemption_offer.token_in_mint",
-                "account": "redemptionOffer"
-              },
-              {
-                "kind": "account",
-                "path": "redemption_offer.token_out_mint",
-                "account": "redemptionOffer"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "redemptionRequest",
@@ -2370,46 +2332,7 @@ export type Onreapp = {
           "docs": [
             "Global fee vault authority PDA — created on first fulfillment if not yet initialized"
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  100,
-                  101,
-                  109,
-                  112,
-                  116,
-                  105,
-                  111,
-                  110,
-                  95,
-                  102,
-                  101,
-                  101,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "feeDestination",
@@ -2634,42 +2557,7 @@ export type Onreapp = {
         },
         {
           "name": "redemptionOffer",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  100,
-                  101,
-                  109,
-                  112,
-                  116,
-                  105,
-                  111,
-                  110,
-                  95,
-                  111,
-                  102,
-                  102,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "redemption_offer.token_in_mint",
-                "account": "redemptionOffer"
-              },
-              {
-                "kind": "account",
-                "path": "redemption_offer.token_out_mint",
-                "account": "redemptionOffer"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "redemptionRequest",
@@ -3003,46 +2891,7 @@ export type Onreapp = {
           "docs": [
             "Global fee vault authority PDA — created on first fulfillment if not yet initialized"
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  100,
-                  101,
-                  109,
-                  112,
-                  116,
-                  105,
-                  111,
-                  110,
-                  95,
-                  102,
-                  101,
-                  101,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "feeDestination",

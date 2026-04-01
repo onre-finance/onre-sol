@@ -14,7 +14,10 @@ use crate::instructions::redemption::{
 };
 use crate::instructions::Offer;
 use crate::state::State;
-use crate::utils::program_controls_mint;
+use crate::utils::{
+    load_or_init_pda_account, load_pda_account, program_controls_mint, store_pda_account,
+    PdaAccountInit,
+};
 use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::{
     associated_token::{get_associated_token_address_with_program_id, AssociatedToken},
@@ -72,19 +75,9 @@ pub struct FulfillRedemptionRequest<'info> {
     /// CHECK: offer address is validated through redemption_offer constraint
     pub offer: AccountLoader<'info, Offer>,
 
-    /// The redemption offer account
-    #[account(
-        mut,
-        seeds = [
-            seeds::REDEMPTION_OFFER,
-            redemption_offer.token_in_mint.as_ref(),
-            redemption_offer.token_out_mint.as_ref()
-        ],
-        bump = redemption_offer.bump,
-        constraint = redemption_offer.offer == offer.key()
-            @ FulfillRedemptionRequestErrorCode::OfferMismatch
-    )]
-    pub redemption_offer: Box<Account<'info, RedemptionOffer>>,
+    /// CHECK: Validated and stored manually in instruction logic.
+    #[account(mut)]
+    pub redemption_offer: UncheckedAccount<'info>,
 
     /// The redemption request account to fulfill (partially or fully)
     ///
@@ -141,11 +134,7 @@ pub struct FulfillRedemptionRequest<'info> {
     /// Input token mint (typically ONyc)
     ///
     /// Must be mutable to allow burning operations when program has mint authority.
-    #[account(
-        mut,
-        constraint = token_in_mint.key() == redemption_offer.token_in_mint
-            @ FulfillRedemptionRequestErrorCode::InvalidTokenInMint
-    )]
+    #[account(mut)]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
 
     /// Token program interface for input token operations
@@ -154,11 +143,7 @@ pub struct FulfillRedemptionRequest<'info> {
     /// Output token mint (typically stablecoin like USDC)
     ///
     /// Must be mutable to allow minting operations when program has mint authority.
-    #[account(
-        mut,
-        constraint = token_out_mint.key() == redemption_offer.token_out_mint
-            @ FulfillRedemptionRequestErrorCode::InvalidTokenOutMint
-    )]
+    #[account(mut)]
     pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
 
     /// Token program interface for output token operations
@@ -189,14 +174,9 @@ pub struct FulfillRedemptionRequest<'info> {
     pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Global fee vault authority PDA — created on first fulfillment if not yet initialized
-    #[account(
-        init_if_needed,
-        payer = redemption_admin,
-        space = 8 + RedemptionFeeVaultAuthority::INIT_SPACE,
-        seeds = [seeds::REDEMPTION_FEE_VAULT_AUTHORITY],
-        bump,
-    )]
-    pub redemption_fee_vault_authority: Box<Account<'info, RedemptionFeeVaultAuthority>>,
+    /// CHECK: PDA address is validated and the account is initialized/loaded manually.
+    #[account(mut)]
+    pub redemption_fee_vault_authority: UncheckedAccount<'info>,
 
     /// The account that should receive fees.
     /// Must equal `redemption_fee_vault_authority.fee_destination` when set,
@@ -280,18 +260,9 @@ pub struct FulfillRedemptionRequestV2<'info> {
     /// CHECK: offer address is validated through redemption_offer constraint
     pub offer: AccountLoader<'info, Offer>,
 
-    #[account(
-        mut,
-        seeds = [
-            seeds::REDEMPTION_OFFER,
-            redemption_offer.token_in_mint.as_ref(),
-            redemption_offer.token_out_mint.as_ref()
-        ],
-        bump = redemption_offer.bump,
-        constraint = redemption_offer.offer == offer.key()
-            @ FulfillRedemptionRequestErrorCode::OfferMismatch
-    )]
-    pub redemption_offer: Box<Account<'info, RedemptionOffer>>,
+    /// CHECK: Validated and stored manually in instruction logic.
+    #[account(mut)]
+    pub redemption_offer: UncheckedAccount<'info>,
 
     #[account(
         mut,
@@ -329,20 +300,12 @@ pub struct FulfillRedemptionRequestV2<'info> {
     )]
     pub vault_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(
-        mut,
-        constraint = token_in_mint.key() == redemption_offer.token_in_mint
-            @ FulfillRedemptionRequestErrorCode::InvalidTokenInMint
-    )]
+    #[account(mut)]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
 
     pub token_in_program: Interface<'info, TokenInterface>,
 
-    #[account(
-        mut,
-        constraint = token_out_mint.key() == redemption_offer.token_out_mint
-            @ FulfillRedemptionRequestErrorCode::InvalidTokenOutMint
-    )]
+    #[account(mut)]
     pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
 
     pub token_out_program: Interface<'info, TokenInterface>,
@@ -366,14 +329,9 @@ pub struct FulfillRedemptionRequestV2<'info> {
     pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Global fee vault authority PDA — created on first fulfillment if not yet initialized
-    #[account(
-        init_if_needed,
-        payer = redemption_admin,
-        space = 8 + RedemptionFeeVaultAuthority::INIT_SPACE,
-        seeds = [seeds::REDEMPTION_FEE_VAULT_AUTHORITY],
-        bump,
-    )]
-    pub redemption_fee_vault_authority: Box<Account<'info, RedemptionFeeVaultAuthority>>,
+    /// CHECK: PDA address is validated and the account is initialized/loaded manually.
+    #[account(mut)]
+    pub redemption_fee_vault_authority: UncheckedAccount<'info>,
 
     /// The account that should receive fees.
     /// Must equal `redemption_fee_vault_authority.fee_destination` when set,
@@ -471,14 +429,29 @@ pub fn fulfill_redemption_request(
     ctx: Context<FulfillRedemptionRequest>,
     amount: u64,
 ) -> Result<()> {
+    let mut redemption_offer = load_redemption_offer(
+        ctx.program_id,
+        &ctx.accounts.offer,
+        &ctx.accounts.redemption_offer,
+        &ctx.accounts.token_in_mint,
+        &ctx.accounts.token_out_mint,
+    )?;
+    let mut redemption_fee_vault_authority = load_redemption_fee_vault_authority(
+        ctx.program_id,
+        &ctx.accounts.redemption_fee_vault_authority,
+        &ctx.accounts.redemption_admin.to_account_info(),
+        &ctx.accounts.system_program.to_account_info(),
+    )?;
     execute_fulfill_redemption_request(
         ExecuteFulfillRedemptionRequestParams {
             program_id: ctx.program_id,
             state: &ctx.accounts.state,
             offer: &ctx.accounts.offer,
-            redemption_offer: &mut ctx.accounts.redemption_offer,
+            redemption_offer_account: &ctx.accounts.redemption_offer,
+            redemption_offer: &mut redemption_offer,
             redemption_request: &mut ctx.accounts.redemption_request,
-            redemption_fee_vault_authority: &ctx.accounts.redemption_fee_vault_authority,
+            redemption_fee_vault_authority_account: &ctx.accounts.redemption_fee_vault_authority,
+            redemption_fee_vault_authority: &mut redemption_fee_vault_authority,
             vault_token_in_account: &ctx.accounts.vault_token_in_account,
             vault_token_out_account: &ctx.accounts.vault_token_out_account,
             token_in_mint: &mut ctx.accounts.token_in_mint,
@@ -508,14 +481,29 @@ pub fn fulfill_redemption_request_v2(
     ctx: Context<FulfillRedemptionRequestV2>,
     amount: u64,
 ) -> Result<()> {
+    let mut redemption_offer = load_redemption_offer(
+        ctx.program_id,
+        &ctx.accounts.offer,
+        &ctx.accounts.redemption_offer,
+        &ctx.accounts.token_in_mint,
+        &ctx.accounts.token_out_mint,
+    )?;
+    let mut redemption_fee_vault_authority = load_redemption_fee_vault_authority(
+        ctx.program_id,
+        &ctx.accounts.redemption_fee_vault_authority,
+        &ctx.accounts.redemption_admin.to_account_info(),
+        &ctx.accounts.system_program.to_account_info(),
+    )?;
     execute_fulfill_redemption_request(
         ExecuteFulfillRedemptionRequestParams {
             program_id: ctx.program_id,
             state: &ctx.accounts.state,
             offer: &ctx.accounts.offer,
-            redemption_offer: &mut ctx.accounts.redemption_offer,
+            redemption_offer_account: &ctx.accounts.redemption_offer,
+            redemption_offer: &mut redemption_offer,
             redemption_request: &mut ctx.accounts.redemption_request,
-            redemption_fee_vault_authority: &ctx.accounts.redemption_fee_vault_authority,
+            redemption_fee_vault_authority_account: &ctx.accounts.redemption_fee_vault_authority,
+            redemption_fee_vault_authority: &mut redemption_fee_vault_authority,
             vault_token_in_account: &ctx.accounts.vault_token_in_account,
             vault_token_out_account: &ctx.accounts.vault_token_out_account,
             token_in_mint: &mut ctx.accounts.token_in_mint,
@@ -545,9 +533,11 @@ struct ExecuteFulfillRedemptionRequestParams<'a, 'info> {
     program_id: &'a Pubkey,
     state: &'a Account<'info, State>,
     offer: &'a AccountLoader<'info, Offer>,
-    redemption_offer: &'a mut Account<'info, RedemptionOffer>,
+    redemption_offer_account: &'a UncheckedAccount<'info>,
+    redemption_offer: &'a mut RedemptionOffer,
     redemption_request: &'a mut Account<'info, RedemptionRequest>,
-    redemption_fee_vault_authority: &'a Account<'info, RedemptionFeeVaultAuthority>,
+    redemption_fee_vault_authority_account: &'a UncheckedAccount<'info>,
+    redemption_fee_vault_authority: &'a mut RedemptionFeeVaultAuthority,
     vault_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
     vault_token_out_account: &'a InterfaceAccount<'info, TokenAccount>,
     token_in_mint: &'a mut InterfaceAccount<'info, Mint>,
@@ -568,6 +558,102 @@ struct ExecuteFulfillRedemptionRequestParams<'a, 'info> {
     redemption_admin: &'a Signer<'info>,
     system_program: &'a Program<'info, System>,
     buffer_accounts: Option<&'a BufferAccrualAccounts<'info>>,
+}
+
+impl PdaAccountInit for RedemptionFeeVaultAuthority {
+    fn pda_seed_prefixes() -> &'static [&'static [u8]] {
+        &[seeds::REDEMPTION_FEE_VAULT_AUTHORITY]
+    }
+
+    fn init_space() -> usize {
+        8 + RedemptionFeeVaultAuthority::INIT_SPACE
+    }
+
+    fn init_value(bump: u8) -> Self {
+        Self {
+            fee_destination: Pubkey::default(),
+            bump,
+            reserved: [0; 31],
+        }
+    }
+
+    fn invalid_owner_error() -> Error {
+        error!(FulfillRedemptionRequestErrorCode::InvalidRedemptionFeeVaultAuthorityOwner)
+    }
+
+    fn invalid_data_error() -> Error {
+        error!(FulfillRedemptionRequestErrorCode::InvalidRedemptionFeeVaultAuthorityData)
+    }
+}
+
+fn load_redemption_offer<'info>(
+    program_id: &Pubkey,
+    offer: &AccountLoader<'info, Offer>,
+    redemption_offer_account: &UncheckedAccount<'info>,
+    token_in_mint: &InterfaceAccount<'info, Mint>,
+    token_out_mint: &InterfaceAccount<'info, Mint>,
+) -> Result<RedemptionOffer> {
+    let redemption_offer: RedemptionOffer = load_pda_account(
+        &redemption_offer_account.to_account_info(),
+        program_id,
+        FulfillRedemptionRequestErrorCode::InvalidRedemptionOfferOwner.into(),
+        FulfillRedemptionRequestErrorCode::InvalidRedemptionOfferData.into(),
+    )?;
+    let (expected_redemption_offer, _) = Pubkey::find_program_address(
+        &[
+            seeds::REDEMPTION_OFFER,
+            token_in_mint.key().as_ref(),
+            token_out_mint.key().as_ref(),
+        ],
+        program_id,
+    );
+
+    require_keys_eq!(
+        redemption_offer_account.key(),
+        expected_redemption_offer,
+        FulfillRedemptionRequestErrorCode::OfferMismatch
+    );
+    require_keys_eq!(
+        redemption_offer.offer,
+        offer.key(),
+        FulfillRedemptionRequestErrorCode::OfferMismatch
+    );
+    require_keys_eq!(
+        token_in_mint.key(),
+        redemption_offer.token_in_mint,
+        FulfillRedemptionRequestErrorCode::InvalidTokenInMint
+    );
+    require_keys_eq!(
+        token_out_mint.key(),
+        redemption_offer.token_out_mint,
+        FulfillRedemptionRequestErrorCode::InvalidTokenOutMint
+    );
+
+    Ok(redemption_offer)
+}
+
+fn load_redemption_fee_vault_authority<'info>(
+    program_id: &Pubkey,
+    redemption_fee_vault_authority_account: &UncheckedAccount<'info>,
+    payer: &AccountInfo<'info>,
+    system_program: &AccountInfo<'info>,
+) -> Result<RedemptionFeeVaultAuthority> {
+    let (expected_redemption_fee_vault_authority, bump) =
+        Pubkey::find_program_address(&[seeds::REDEMPTION_FEE_VAULT_AUTHORITY], program_id);
+
+    require_keys_eq!(
+        redemption_fee_vault_authority_account.key(),
+        expected_redemption_fee_vault_authority,
+        FulfillRedemptionRequestErrorCode::InvalidRedemptionFeeVaultAuthority
+    );
+
+    load_or_init_pda_account::<RedemptionFeeVaultAuthority>(
+        &redemption_fee_vault_authority_account.to_account_info(),
+        payer,
+        system_program,
+        program_id,
+        bump,
+    )
 }
 
 fn execute_fulfill_redemption_request(
@@ -592,7 +678,7 @@ fn execute_fulfill_redemption_request(
     let expected_fee_destination = {
         let stored = params.redemption_fee_vault_authority.fee_destination;
         if stored == Pubkey::default() {
-            params.redemption_fee_vault_authority.key()
+            params.redemption_fee_vault_authority_account.key()
         } else {
             stored
         }
@@ -724,7 +810,7 @@ fn execute_fulfill_redemption_request(
 
     emit!(RedemptionRequestFulfilledEvent {
         redemption_request_pda: params.redemption_request.key(),
-        redemption_offer_pda: params.redemption_offer.key(),
+        redemption_offer_pda: params.redemption_offer_account.key(),
         redeemer: params.redeemer.key(),
         token_in_net_amount,
         token_in_fee_amount,
@@ -734,6 +820,15 @@ fn execute_fulfill_redemption_request(
         total_fulfilled_amount: new_fulfilled_amount,
         is_fully_fulfilled,
     });
+
+    store_pda_account(
+        &params.redemption_offer_account.to_account_info(),
+        params.redemption_offer,
+    )?;
+    store_pda_account(
+        &params.redemption_fee_vault_authority_account.to_account_info(),
+        params.redemption_fee_vault_authority,
+    )?;
 
     // Close the request account only when fully settled; rent goes to redemption_admin
     if is_fully_fulfilled {
@@ -775,6 +870,26 @@ pub enum FulfillRedemptionRequestErrorCode {
     /// Invalid token_out mint
     #[msg("Invalid token_out mint")]
     InvalidTokenOutMint,
+
+    /// Redemption offer account is not owned by this program
+    #[msg("Invalid redemption offer owner")]
+    InvalidRedemptionOfferOwner,
+
+    /// Redemption offer account data is invalid
+    #[msg("Invalid redemption offer data")]
+    InvalidRedemptionOfferData,
+
+    /// Redemption fee vault authority PDA is invalid
+    #[msg("Invalid redemption fee vault authority")]
+    InvalidRedemptionFeeVaultAuthority,
+
+    /// Redemption fee vault authority account is not owned by this program
+    #[msg("Invalid redemption fee vault authority owner")]
+    InvalidRedemptionFeeVaultAuthorityOwner,
+
+    /// Redemption fee vault authority account data is invalid
+    #[msg("Invalid redemption fee vault authority data")]
+    InvalidRedemptionFeeVaultAuthorityData,
 
     /// Invalid redeemer
     #[msg("Redeemer does not match redemption request")]

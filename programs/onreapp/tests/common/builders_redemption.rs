@@ -138,6 +138,7 @@ pub fn build_fulfill_redemption_request_ix(
     let (redemption_request_pda, _) =
         find_redemption_request_pda(&redemption_offer_pda, request_id);
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
+    let (redemption_fee_vault_authority_pda, _) = find_redemption_fee_vault_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
@@ -155,6 +156,9 @@ pub fn build_fulfill_redemption_request_ix(
         derive_ata(&offer_vault_authority_pda, token_in_mint, token_in_program);
     let user_token_out_ata = derive_ata(redeemer, token_out_mint, token_out_program);
     let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
+    let fee_destination = redemption_fee_vault_authority_pda;
+    let fee_destination_token_in_ata =
+        derive_ata(&fee_destination, token_in_mint, token_in_program);
     let mut data = ix_discriminator("fulfill_redemption_request").to_vec();
     data.extend_from_slice(&amount.to_le_bytes());
     Instruction {
@@ -174,6 +178,9 @@ pub fn build_fulfill_redemption_request_ix(
             AccountMeta::new_readonly(*token_out_program, false),
             AccountMeta::new(user_token_out_ata, false),
             AccountMeta::new(boss_token_in_ata, false),
+            AccountMeta::new(redemption_fee_vault_authority_pda, false),
+            AccountMeta::new_readonly(fee_destination, false),
+            AccountMeta::new(fee_destination_token_in_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),
             AccountMeta::new_readonly(*redeemer, false),
             AccountMeta::new(*redemption_admin, true),
@@ -229,13 +236,13 @@ pub fn build_fulfill_redemption_request_v2_ix(
     ix.data = ix_discriminator("fulfill_redemption_request_v2").to_vec();
     ix.data.extend_from_slice(&amount.to_le_bytes());
     ix.accounts
-        .insert(17, AccountMeta::new(buffer_state_pda, false));
+        .insert(20, AccountMeta::new(buffer_state_pda, false));
     ix.accounts
-        .insert(18, AccountMeta::new(buffer_vault_onyc_ata, false));
+        .insert(21, AccountMeta::new(buffer_vault_onyc_ata, false));
     ix.accounts
-        .insert(19, AccountMeta::new(management_fee_vault_onyc_ata, false));
+        .insert(22, AccountMeta::new(management_fee_vault_onyc_ata, false));
     ix.accounts
-        .insert(20, AccountMeta::new(performance_fee_vault_onyc_ata, false));
+        .insert(23, AccountMeta::new(performance_fee_vault_onyc_ata, false));
 
     ix
 }

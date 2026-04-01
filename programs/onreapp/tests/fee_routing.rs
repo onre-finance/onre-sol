@@ -1,6 +1,7 @@
 mod common;
 
 use common::*;
+use solana_sdk::compute_budget::ComputeBudgetInstruction;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
@@ -91,7 +92,8 @@ fn create_and_fulfill(ctx: &mut FeeRoutingCtx, fee_destination: &Pubkey) {
         &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
         REDEMPTION_AMOUNT, fee_destination,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+    let cu_ix = ComputeBudgetInstruction::set_compute_unit_limit(300_000);
+    send_tx(&mut ctx.svm, &[cu_ix, ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
 }
 
