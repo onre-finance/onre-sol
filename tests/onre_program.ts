@@ -419,32 +419,42 @@ export class OnreProgram {
         await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
-    async burnForNavIncrease(params: { tokenInMint: PublicKey; onycMint: PublicKey; assetAdjustmentAmount: number; targetNav: number; signer?: Keypair }) {
+    async burnForNavIncrease(params: { tokenInMint?: PublicKey; onycMint: PublicKey; assetAdjustmentAmount: number; targetNav?: number; mainOffer?: PublicKey; signer?: Keypair }) {
+        if (params.targetNav !== undefined && params.targetNav <= 0) {
+            throw new Error("targetNav must be positive");
+        }
         const signer = params.signer ?? this.testHelper.payer;
-        const offerPda = PublicKey.findProgramAddressSync([Buffer.from("offer"), params.tokenInMint.toBuffer(), params.onycMint.toBuffer()], ONREAPP_PROGRAM_ID)[0];
+        const state = await this.getState();
+        const mainOffer = params.mainOffer ?? state.mainOffer;
         await this.testHelper.advanceSlot();
-        const tx = await this.program.methods
-            .burnForNavIncrease(new BN(params.assetAdjustmentAmount), new BN(params.targetNav))
-            .accountsPartial({
-                boss: signer.publicKey,
-                offer: offerPda,
-                tokenInMint: params.tokenInMint,
-                onycMint: params.onycMint,
-                bufferState: this.pdas.bufferStatePda,
-                offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
-                vaultTokenOutAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
-                reserveVaultAuthority: this.pdas.reserveVaultAuthorityPda,
-                reserveVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
-                managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
-                managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
-                performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
-                performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.onycMint),
-                mintAuthority: this.pdas.mintAuthorityPda,
-                marketStats: this.pdas.marketStatsPda,
-                tokenProgram: TOKEN_PROGRAM_ID,
-                systemProgram: SystemProgram.programId,
-            })
-            .transaction();
+        const data = Buffer.concat([
+            instructionDiscriminator("burn_for_nav_increase"),
+            new BN(params.assetAdjustmentAmount).toArrayLike(Buffer, "le", 8),
+        ]);
+        const instruction = new TransactionInstruction({
+            programId: this.program.programId,
+            keys: [
+                { pubkey: this.pdas.statePda, isSigner: false, isWritable: false },
+                { pubkey: this.pdas.bufferStatePda, isSigner: false, isWritable: true },
+                { pubkey: signer.publicKey, isSigner: true, isWritable: false },
+                { pubkey: mainOffer, isSigner: false, isWritable: false },
+                { pubkey: params.onycMint, isSigner: false, isWritable: true },
+                { pubkey: this.pdas.offerVaultAuthorityPda, isSigner: false, isWritable: false },
+                { pubkey: this.pdas.reserveVaultAuthorityPda, isSigner: false, isWritable: false },
+                { pubkey: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID), isSigner: false, isWritable: false },
+                { pubkey: this.getBufferVaultAta(params.onycMint), isSigner: false, isWritable: true },
+                { pubkey: this.pdas.managementFeeVaultAuthorityPda, isSigner: false, isWritable: false },
+                { pubkey: this.getManagementFeeVaultAta(params.onycMint), isSigner: false, isWritable: true },
+                { pubkey: this.pdas.performanceFeeVaultAuthorityPda, isSigner: false, isWritable: false },
+                { pubkey: this.getPerformanceFeeVaultAta(params.onycMint), isSigner: false, isWritable: true },
+                { pubkey: this.pdas.mintAuthorityPda, isSigner: false, isWritable: false },
+                { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+                { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+                { pubkey: this.pdas.marketStatsPda, isSigner: false, isWritable: true },
+            ],
+            data,
+        });
+        const tx = new Transaction().add(instruction);
         await this.testHelper.sendAndConfirmTransaction(tx, [signer]);
     }
 
@@ -886,7 +896,10 @@ export class OnreProgram {
                     true,
                     params.tokenInProgram ?? TOKEN_PROGRAM_ID,
                 ),
+                redemptionFeeVaultAuthority: this.pdas.redemptionFeeVaultAuthorityPda,
                 marketStats: this.pdas.marketStatsPda,
+                feeDestination,
+                feeDestinationTokenInAccount,
             })
             .signers([params.redemptionAdmin]);
 
@@ -904,12 +917,22 @@ export class OnreProgram {
         amount?: BN;
         tokenInProgram?: PublicKey;
         tokenOutProgram?: PublicKey;
+        /** Fee destination owner. Defaults to redemptionFeeVaultAuthorityPda. */
+        feeDestination?: PublicKey;
     }) {
         let amount = params.amount;
         if (amount === undefined) {
             const request = await this.program.account.redemptionRequest.fetch(params.redemptionRequest);
             amount = (request.amount as BN).sub(request.fulfilledAmount as BN);
         }
+        const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
+        const feeDestination = params.feeDestination ?? this.pdas.redemptionFeeVaultAuthorityPda;
+        const feeDestinationTokenInAccount = getAssociatedTokenAddressSync(
+            params.tokenInMint,
+            feeDestination,
+            true,
+            tokenInProgram
+        );
 
         const tx = this.program.methods
             .fulfillRedemptionRequestV2(amount)
@@ -937,6 +960,7 @@ export class OnreProgram {
                     managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.tokenInMint),
                     performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.tokenInMint),
                 },
+                redemptionFeeVaultAuthority: this.pdas.redemptionFeeVaultAuthorityPda,
                 feeDestination,
                 feeDestinationTokenInAccount,
             })

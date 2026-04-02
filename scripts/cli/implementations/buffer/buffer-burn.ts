@@ -8,14 +8,15 @@ export async function executeBufferBurn(opts: GlobalOptions & Record<string, any
         const { helper, params } = context;
 
         const boss = await helper.getBoss();
+        const state = await helper.getState();
+        const mainOffer = state.mainOffer;
 
         if (opts.simulate) {
             const ix = await helper.buildBurnForNavIncreaseIx({
                 boss,
-                tokenInMint: params.tokenIn,
                 onycMint: params.onycMint,
                 assetAdjustmentAmount: params.assetAdjustmentAmount,
-                targetNav: params.targetNav,
+                mainOffer,
             });
 
             const tx = await helper.prepareTransaction({ ix, payer: boss });
@@ -80,10 +81,9 @@ export async function executeBufferBurn(opts: GlobalOptions & Record<string, any
             buildIx: async (helper) => {
                 return helper.buildBurnForNavIncreaseIx({
                     boss,
-                    tokenInMint: params.tokenIn,
                     onycMint: params.onycMint,
                     assetAdjustmentAmount: params.assetAdjustmentAmount,
-                    targetNav: params.targetNav,
+                    mainOffer,
                 });
             },
             title: "Burn For NAV Increase Transaction",

@@ -58,7 +58,7 @@ pub fn calculate_buffer_fee_split(
         let management_fee_apr = (management_fee_basis_points as u64)
             .checked_mul(100)
             .ok_or(BufferErrorCode::MathOverflow)?
-        .min(apr_delta);
+            .min(apr_delta);
 
         let fee_u128 = (buffer_mint_amount as u128)
             .checked_mul(management_fee_apr as u128)

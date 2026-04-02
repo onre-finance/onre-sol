@@ -4,7 +4,8 @@ use crate::instructions::buffer::{
     BufferBurnedForNavEvent, BufferErrorCode, BufferState,
 };
 use crate::instructions::market_info::{
-    calculate_circulating_supply, calculate_tvl, refresh_market_stats_pda,
+    calculate_circulating_supply, calculate_tvl,
+    offer_valuation_utils::compute_offer_current_price, refresh_market_stats_pda,
 };
 use crate::instructions::Offer;
 use crate::state::State;
@@ -37,16 +38,9 @@ pub struct BurnForNavIncrease<'info> {
     pub boss: Signer<'info>,
 
     #[account(
-        seeds = [
-            seeds::OFFER,
-            token_in_mint.key().as_ref(),
-            onyc_mint.key().as_ref()
-        ],
-        bump
+        address = state.main_offer @ BufferErrorCode::InvalidMainOffer
     )]
-    pub offer: AccountLoader<'info, Offer>,
-
-    pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub main_offer: AccountLoader<'info, Offer>,
 
     #[account(mut)]
     pub onyc_mint: Box<InterfaceAccount<'info, Mint>>,
@@ -117,17 +111,16 @@ pub struct BurnForNavIncrease<'info> {
 pub fn burn_for_nav_increase(
     ctx: Context<BurnForNavIncrease>,
     asset_adjustment_amount: u64,
-    target_nav: u64, // TODO: take this from the main offer
 ) -> Result<()> {
-    require!(target_nav > 0, BufferErrorCode::InvalidTargetNav);
-
     let now = Clock::get()?.unix_timestamp;
-    let offer = ctx.accounts.offer.load()?;
+    let main_offer = ctx.accounts.main_offer.load()?;
     require_keys_eq!(
-        ctx.accounts.token_in_mint.key(),
-        offer.token_in_mint,
-        OfferCoreError::InvalidTokenInMint
+        ctx.accounts.onyc_mint.key(),
+        main_offer.token_out_mint,
+        OfferCoreError::InvalidTokenOutMint
     );
+    let target_nav = compute_offer_current_price(&main_offer, now as u64)?;
+    require!(target_nav > 0, BufferErrorCode::InvalidTargetNav);
     let expected_vault_token_out_account = get_associated_token_address_with_program_id(
         &ctx.accounts.offer_vault_authority.key(),
         &ctx.accounts.onyc_mint.key(),
@@ -161,7 +154,7 @@ pub fn burn_for_nav_increase(
     let accrual = accrue_buffer(
         &ctx.accounts.state,
         &mut ctx.accounts.buffer_state,
-        &offer,
+        &main_offer,
         &ctx.accounts.onyc_mint,
         reserve_vault_onyc_account,
         management_fee_vault_onyc_account,
@@ -245,7 +238,7 @@ pub fn burn_for_nav_increase(
 
     ctx.accounts.onyc_mint.reload()?;
     refresh_market_stats_pda(
-        &offer,
+        &main_offer,
         &ctx.accounts.onyc_mint,
         &ctx.accounts.vault_token_out_account.to_account_info(),
         &ctx.accounts.token_program,

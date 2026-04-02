@@ -411,32 +411,7 @@
           ]
         },
         {
-          "name": "offer",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token_in_mint"
-              },
-              {
-                "kind": "account",
-                "path": "onyc_mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "token_in_mint"
+          "name": "main_offer"
         },
         {
           "name": "onyc_mint",
@@ -760,10 +735,6 @@
       "args": [
         {
           "name": "asset_adjustment_amount",
-          "type": "u64"
-        },
-        {
-          "name": "target_nav",
           "type": "u64"
         }
       ]

@@ -1,7 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::buffer::{
     calculate_buffer_fee_split, calculate_gross_buffer_accrual,
-    validate_buffer_onyc_vault_accounts, BufferAccruedEvent, BufferAccrualAccounts,
+    validate_buffer_onyc_vault_accounts, BufferAccrualAccounts, BufferAccruedEvent,
     BufferErrorCode, BufferState,
 };
 use crate::instructions::market_info::offer_valuation_utils::get_active_vector_and_current_price;
@@ -76,11 +76,7 @@ pub(crate) fn accrue_buffer<'info>(
             post_accrual_supply: buffer_state.previous_supply,
             reserve_vault_balance_after_accrual: reserve_vault_balance_before_mint,
         };
-        emit_buffer_accrued_event(
-            offer,
-            onyc_mint,
-            &result,
-        );
+        emit_buffer_accrued_event(offer, onyc_mint, &result);
 
         return Ok(result);
     }
@@ -177,11 +173,7 @@ pub(crate) fn accrue_buffer<'info>(
         post_accrual_supply,
         reserve_vault_balance_after_accrual,
     };
-    emit_buffer_accrued_event(
-        offer,
-        onyc_mint,
-        &result,
-    );
+    emit_buffer_accrued_event(offer, onyc_mint, &result);
 
     Ok(result)
 }
@@ -268,8 +260,8 @@ fn emit_buffer_accrued_event(
         performance_fee_mint_amount: result.performance_fee_mint_amount,
         old_previous_supply: result.old_previous_supply,
         new_previous_supply: result.new_previous_supply,
-        old_previous_performance_fee_high_watermark:
-            result.old_previous_performance_fee_high_watermark,
+        old_previous_performance_fee_high_watermark: result
+            .old_previous_performance_fee_high_watermark,
         new_performance_fee_high_watermark: result.new_performance_fee_high_watermark,
         current_nav: result.current_nav,
         post_accrual_supply: result.post_accrual_supply,
