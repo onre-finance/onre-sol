@@ -49,6 +49,8 @@ export { executeRedemptionFulfill } from "./redemption/redemption-fulfill";
 export { executeRedemptionCancel } from "./redemption/redemption-cancel";
 export { executeRedemptionListRequests } from "./redemption/redemption-list-requests";
 export { executeRedemptionFetchVaults } from "./redemption/redemption-fetch-vaults";
+export { executeRedemptionSetFeeDestination } from "./redemption/redemption-set-fee-destination";
+export { executeRedemptionWithdrawFees } from "./redemption/redemption-withdraw-fees";
 
 // Program implementations
 export { executeProgramExtend } from "./program/program-extend";

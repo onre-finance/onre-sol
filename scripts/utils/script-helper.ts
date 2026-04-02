@@ -58,6 +58,7 @@ export class ScriptHelper {
         performanceFeeVaultAuthorityPda: PublicKey;
         redemptionVaultAuthorityPda: PublicKey;
         marketStatsPda: PublicKey;
+        redemptionFeeVaultAuthorityPda: PublicKey;
     };
 
     private constructor(program: Program<Onreapp>, connection: Connection, networkConfig: NetworkConfig, wallet: Wallet, walletSource?: string) {
@@ -79,6 +80,7 @@ export class ScriptHelper {
             performanceFeeVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("performance_fee_vault_authority")], program.programId)[0],
             redemptionVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("redemption_offer_vault_authority")], program.programId)[0],
             marketStatsPda: PublicKey.findProgramAddressSync([Buffer.from("market_stats")], program.programId)[0],
+            redemptionFeeVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("redemption_fee_vault_authority")], program.programId)[0],
         };
     }
 
@@ -822,6 +824,36 @@ export class ScriptHelper {
             .accountsPartial({
                 redemptionOffer: params.redemptionOfferPda,
                 boss: params.boss,
+            })
+            .instruction();
+    }
+
+    async buildSetRedemptionFeeDestinationIx(params: {
+        feeDestination: PublicKey;
+        boss: PublicKey;
+    }) {
+        return await this.program.methods
+            .setRedemptionFeeDestination(params.feeDestination)
+            .accountsPartial({
+                boss: params.boss
+            })
+            .instruction();
+    }
+
+    async buildWithdrawRedemptionFeesIx(params: {
+        tokenInMint: PublicKey;
+        tokenInProgram: PublicKey;
+        destination: PublicKey;
+        amount: BN;
+        boss: PublicKey;
+    }) {
+        return await this.program.methods
+            .withdrawRedemptionFees(params.amount)
+            .accountsPartial({
+                boss: params.boss,
+                destination: params.destination,
+                tokenInMint: params.tokenInMint,
+                tokenInProgram: params.tokenInProgram
             })
             .instruction();
     }

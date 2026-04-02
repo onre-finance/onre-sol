@@ -208,7 +208,7 @@ pub fn calculate_tvl(circulating_supply: u64, nav: u64) -> Result<u64> {
 pub fn calculate_circulating_supply(total_supply: u64, vault_amount: u64) -> u64 {
     total_supply
         .checked_sub(vault_amount)
-        .expect("vault amount exceeds total supply")
+        .expect("circulating supply underflow: vault exceeds total supply")
 }
 
 #[cfg(test)]

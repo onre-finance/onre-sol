@@ -9,40 +9,38 @@ pub mod instructions;
 pub mod state;
 pub mod utils;
 
-#[cfg(all(feature = "mainnet", feature = "mainnet-test"))]
-compile_error!("'mainnet' and 'mainnet-test' features are mutually exclusive. Have you missed to disable default features?");
+const _ENV_FEATURE_COUNT: usize = cfg!(feature = "mainnet-test") as usize
+    + cfg!(feature = "devnet-test") as usize
+    + cfg!(feature = "devnet-dev") as usize;
 
-#[cfg(all(feature = "mainnet", feature = "devnet-test"))]
-compile_error!("'mainnet' and 'devnet-test' features are mutually exclusive. Have you missed to disable default features?");
-
-#[cfg(all(feature = "mainnet", feature = "devnet-dev"))]
-compile_error!("'mainnet' and 'devnet-dev' features are mutually exclusive. Have you missed to disable default features?");
-
-#[cfg(all(feature = "mainnet-test", feature = "devnet-test"))]
-compile_error!("'mainnet-test' and 'devnet-test' features are mutually exclusive. Have you missed to disable default features?");
-
-#[cfg(all(feature = "mainnet-test", feature = "devnet-dev"))]
-compile_error!("'mainnet-test' and 'devnet-dev' features are mutually exclusive. Have you missed to disable default features?");
-
-#[cfg(all(feature = "devnet-test", feature = "devnet-dev"))]
-compile_error!("'devnet-test' and 'devnet-dev' features are mutually exclusive. Have you missed to disable default features?");
-
-#[cfg(not(any(feature = "mainnet", feature = "mainnet-test", feature = "devnet-test", feature = "devnet-dev")))]
-compile_error!("No environment feature enabled. Please enable one of: 'mainnet', 'mainnet-test', 'devnet-test', 'devnet-dev'");
+const _: () = assert!(
+    _ENV_FEATURE_COUNT <= 1,
+    "Environment features are mutually exclusive: enable at most one of 'mainnet-test', 'devnet-test', or 'devnet-dev'. Mainnet is the default when no environment feature is set."
+);
 
 
 // Program ID declaration
-#[cfg(feature = "mainnet")]
-declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
+cfg_if::cfg_if! {
+    if #[cfg(feature = "mainnet-test")] {
+        mod program_id {
+            anchor_lang::declare_id!("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2");
+        }
+    } else if #[cfg(feature = "devnet-test")] {
+        mod program_id {
+            anchor_lang::declare_id!("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2");
+        }
+    } else if #[cfg(feature = "devnet-dev")] {
+        mod program_id {
+            anchor_lang::declare_id!("devHfQHgiFNifkLW49RCXpyTUZMyKuBNnFSbrQ8XsbX");
+        }
+    } else {
+        mod program_id {
+            anchor_lang::declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
+        }
+    }
+}
 
-#[cfg(feature = "mainnet-test")]
-declare_id!("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2");
-
-#[cfg(feature = "devnet-test")]
-declare_id!("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2");
-
-#[cfg(feature = "devnet-dev")]
-declare_id!("devHfQHgiFNifkLW49RCXpyTUZMyKuBNnFSbrQ8XsbX");
+pub use program_id::*;
 
 pub use instructions::mint_authority::mint_to::MintTo;
 
@@ -766,6 +764,47 @@ pub mod onreapp {
     /// - Request must be in pending state (status = 0)
     pub fn cancel_redemption_request(ctx: Context<CancelRedemptionRequest>) -> Result<()> {
         redemption::cancel_redemption_request(ctx)
+    }
+
+    /// Sets or updates the fee destination address for redemption fees.
+    ///
+    /// Delegates to `redemption::set_redemption_fee_destination`.
+    /// Only updates the stored destination address; does not move any tokens.
+    /// Use `withdraw_redemption_fees` to sweep accumulated fees.
+    /// When `fee_destination` is `Pubkey::default()`, fees accumulate in the program's
+    /// fee vault PDA ATA. When set to any other address, fees are routed there on every fulfillment.
+    /// Emits a `RedemptionFeeDestinationUpdatedEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `SetRedemptionFeeDestination`.
+    /// - `fee_destination`: Pubkey of the new fee recipient.
+    ///
+    /// # Access Control
+    /// - Boss only
+    pub fn set_redemption_fee_destination(
+        ctx: Context<SetRedemptionFeeDestination>,
+        fee_destination: Pubkey,
+    ) -> Result<()> {
+        redemption::set_redemption_fee_destination(ctx, fee_destination)
+    }
+
+    /// Withdraws accumulated redemption fees from the vault to a destination chosen by the boss.
+    ///
+    /// Delegates to `redemption::withdraw_redemption_fees`.
+    /// Pass `amount = 0` to withdraw the full vault balance.
+    /// Emits a `RedemptionFeesWithdrawnEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `WithdrawRedemptionFees`.
+    /// - `amount`: Amount to withdraw; 0 means full balance.
+    ///
+    /// # Access Control
+    /// - Boss only
+    pub fn withdraw_redemption_fees(
+        ctx: Context<WithdrawRedemptionFees>,
+        amount: u64,
+    ) -> Result<()> {
+        redemption::withdraw_redemption_fees(ctx, amount)
     }
 
     /// Updates the fee configuration for a specific redemption offer.
