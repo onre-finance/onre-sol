@@ -1,6 +1,7 @@
 use crate::constants::seeds;
-use crate::instructions::market_info::{recompute_market_stats, update_market_stats_account};
-use crate::instructions::Offer;
+use crate::instructions::market_info::{
+    load_main_offer, recompute_market_stats, update_market_stats_account,
+};
 use crate::state::{MarketStats, State};
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
@@ -22,23 +23,10 @@ pub struct MarketStatsRefreshedEvent {
 /// Account structure for permissionless market-stats refreshes.
 #[derive(Accounts)]
 pub struct RefreshMarketStats<'info> {
-    /// The offer that defines the canonical NAV/APY vectors.
-    #[account(
-        seeds = [
-            seeds::OFFER,
-            token_in_mint.key().as_ref(),
-            onyc_mint.key().as_ref()
-        ],
-        bump = offer.load()?.bump
-    )]
-    pub offer: AccountLoader<'info, Offer>,
+    /// CHECK: Validated in instruction logic against state.main_offer.
+    pub main_offer: UncheckedAccount<'info>,
 
     /// The input mint paired with ONyc for the tracked offer.
-    #[account(
-        constraint =
-            token_in_mint.key() == offer.load()?.token_in_mint
-            @ crate::OfferCoreError::InvalidTokenInMint
-    )]
     pub token_in_mint: InterfaceAccount<'info, Mint>,
 
     /// Program state holding the canonical ONyc mint.
@@ -46,11 +34,6 @@ pub struct RefreshMarketStats<'info> {
     pub state: Box<Account<'info, State>>,
 
     /// The canonical ONyc mint for global market stats.
-    #[account(
-        constraint =
-            onyc_mint.key() == offer.load()?.token_out_mint
-            @ crate::OfferCoreError::InvalidTokenOutMint
-    )]
     pub onyc_mint: InterfaceAccount<'info, Mint>,
 
     /// Offer vault authority PDA that owns the ONyc vault ATA.
@@ -93,9 +76,23 @@ pub struct RefreshMarketStats<'info> {
 
 /// Recomputes and writes the canonical market-stats PDA without requiring admin access.
 pub fn refresh_market_stats(ctx: Context<RefreshMarketStats>) -> Result<()> {
-    let offer = ctx.accounts.offer.load()?;
+    let main_offer = load_main_offer(
+        ctx.program_id,
+        &ctx.accounts.main_offer.to_account_info(),
+        &ctx.accounts.state,
+    )?;
+    require_keys_eq!(
+        ctx.accounts.token_in_mint.key(),
+        main_offer.token_in_mint,
+        crate::OfferCoreError::InvalidTokenInMint
+    );
+    require_keys_eq!(
+        ctx.accounts.onyc_mint.key(),
+        main_offer.token_out_mint,
+        crate::OfferCoreError::InvalidTokenOutMint
+    );
     let snapshot = recompute_market_stats(
-        &offer,
+        &main_offer,
         &ctx.accounts.onyc_mint,
         &ctx.accounts.onyc_vault_account.to_account_info(),
         &ctx.accounts.token_program,
@@ -108,7 +105,7 @@ pub fn refresh_market_stats(ctx: Context<RefreshMarketStats>) -> Result<()> {
     let clock = Clock::get()?;
     emit!(MarketStatsRefreshedEvent {
         market_stats_pda: ctx.accounts.market_stats.key(),
-        offer_pda: ctx.accounts.offer.key(),
+        offer_pda: ctx.accounts.main_offer.key(),
         timestamp: clock.unix_timestamp,
         slot: clock.slot,
     });

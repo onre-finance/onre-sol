@@ -2465,6 +2465,9 @@
         {
           "name": "market_stats",
           "writable": true
+        },
+        {
+          "name": "main_offer"
         }
       ],
       "args": [
@@ -3028,6 +3031,9 @@
         {
           "name": "market_stats",
           "writable": true
+        },
+        {
+          "name": "main_offer"
         }
       ],
       "args": [
@@ -4943,7 +4949,7 @@
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "offer"
+          "name": "main_offer"
         },
         {
           "name": "buffer_accounts",
@@ -6101,32 +6107,7 @@
       ],
       "accounts": [
         {
-          "name": "offer",
-          "docs": [
-            "The offer that defines the canonical NAV/APY vectors."
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token_in_mint"
-              },
-              {
-                "kind": "account",
-                "path": "onyc_mint"
-              }
-            ]
-          }
+          "name": "main_offer"
         },
         {
           "name": "token_in_mint",
@@ -8628,6 +8609,9 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "main_offer"
         }
       ],
       "args": [
@@ -9129,6 +9113,9 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "main_offer"
         }
       ],
       "args": [

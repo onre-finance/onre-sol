@@ -324,7 +324,7 @@ pub fn build_mint_to_ix_for_offer(
     onyc_mint: &Pubkey,
     amount: u64,
     token_program: &Pubkey,
-    offer: &Pubkey,
+    main_offer: &Pubkey,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
@@ -361,7 +361,7 @@ pub fn build_mint_to_ix_for_offer(
             AccountMeta::new_readonly(*token_program, false),
             AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
-            AccountMeta::new_readonly(*offer, false),
+            AccountMeta::new_readonly(*main_offer, false),
             AccountMeta::new(buffer_state_pda, false),
             AccountMeta::new(buffer_vault_onyc, false),
             AccountMeta::new(management_fee_vault_onyc, false),
@@ -495,7 +495,7 @@ pub fn build_refresh_market_stats_ix(
     token_in_mint: &Pubkey,
     onyc_mint: &Pubkey,
 ) -> Instruction {
-    let (offer_pda, _) = find_offer_pda(token_in_mint, onyc_mint);
+    let (main_offer_pda, _) = find_offer_pda(token_in_mint, onyc_mint);
     let (state_pda, _) = find_state_pda();
     let (vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
@@ -503,7 +503,7 @@ pub fn build_refresh_market_stats_ix(
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
-            AccountMeta::new_readonly(offer_pda, false),
+            AccountMeta::new_readonly(main_offer_pda, false),
             AccountMeta::new_readonly(*token_in_mint, false),
             AccountMeta::new_readonly(state_pda, false),
             AccountMeta::new_readonly(*onyc_mint, false),

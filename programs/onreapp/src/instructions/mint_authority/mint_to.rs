@@ -5,10 +5,9 @@ use crate::instructions::buffer::{
     accrue_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
     BufferAccrualAccounts, BufferErrorCode,
 };
-use crate::instructions::market_info::refresh_market_stats_pda;
+use crate::instructions::market_info::{load_main_offer, refresh_market_stats_pda};
 use crate::instructions::offer::offer_utils::should_accrue_onyc_mint;
 use crate::state::State;
-use crate::utils::load_pda_account;
 use crate::utils::token_utils::mint_tokens;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
@@ -104,7 +103,7 @@ pub struct MintTo<'info> {
     pub system_program: Program<'info, System>,
 
     /// CHECK: Parsed and validated only when the state points at a main offer.
-    pub offer: UncheckedAccount<'info>,
+    pub main_offer: UncheckedAccount<'info>,
 
     pub buffer_accounts: BufferAccrualAccounts<'info>,
 
@@ -158,16 +157,10 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
     let offer = if ctx.accounts.state.main_offer == Pubkey::default() {
         None
     } else {
-        require_keys_eq!(
-            ctx.accounts.state.main_offer,
-            ctx.accounts.offer.key(),
-            BufferErrorCode::InvalidMainOffer
-        );
-        let offer = load_pda_account(
-            ctx.accounts.offer.as_ref(),
+        let offer = load_main_offer(
             ctx.program_id,
-            BufferErrorCode::InvalidMainOffer.into(),
-            BufferErrorCode::InvalidMainOffer.into(),
+            &ctx.accounts.main_offer.to_account_info(),
+            &ctx.accounts.state,
         )?;
         Some(offer)
     };

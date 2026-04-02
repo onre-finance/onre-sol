@@ -2471,6 +2471,9 @@ export type Onreapp = {
         {
           "name": "marketStats",
           "writable": true
+        },
+        {
+          "name": "mainOffer"
         }
       ],
       "args": [
@@ -3034,6 +3037,9 @@ export type Onreapp = {
         {
           "name": "marketStats",
           "writable": true
+        },
+        {
+          "name": "mainOffer"
         }
       ],
       "args": [
@@ -4949,7 +4955,7 @@ export type Onreapp = {
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "offer"
+          "name": "mainOffer"
         },
         {
           "name": "bufferAccounts",
@@ -6107,32 +6113,7 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "offer",
-          "docs": [
-            "The offer that defines the canonical NAV/APY vectors."
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              },
-              {
-                "kind": "account",
-                "path": "onycMint"
-              }
-            ]
-          }
+          "name": "mainOffer"
         },
         {
           "name": "tokenInMint",
@@ -8634,6 +8615,9 @@ export type Onreapp = {
         {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "mainOffer"
         }
       ],
       "args": [
@@ -9135,6 +9119,9 @@ export type Onreapp = {
         {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "mainOffer"
         }
       ],
       "args": [
@@ -13511,6 +13498,32 @@ export type Onreapp = {
       "name": "stateClosedEvent",
       "docs": [
         "Event emitted when the state account is successfully closed",
+        "",
+        "Provides transparency for tracking the closure of the program's main state account."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "statePda",
+            "docs": [
+              "The PDA address of the state account that was closed"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "boss",
+            "docs": [
+              "The boss account that initiated the closure and received the rent"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    }
+  ]
+};
+d when the state account is successfully closed",
         "",
         "Provides transparency for tracking the closure of the program's main state account."
       ],

@@ -7,7 +7,8 @@ use crate::instructions::market_info::offer_valuation_utils::{
 use crate::instructions::Offer;
 use crate::state::MarketStats;
 use crate::utils::{
-    load_or_init_pda_account, read_optional_token_account_amount, store_pda_account, PdaAccountInit,
+    load_or_init_pda_account, load_pda_account, read_optional_token_account_amount,
+    store_pda_account, PdaAccountInit,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenInterface};
@@ -27,6 +28,8 @@ pub enum MarketStatsErrorCode {
     /// The shared TVL computation overflowed.
     #[msg("Math overflow")]
     Overflow,
+    #[msg("Invalid main offer")]
+    InvalidMainOffer,
 }
 
 /// Canonical in-memory representation of the derived market stats values.
@@ -157,6 +160,25 @@ pub fn refresh_market_stats_pda<'info>(
     market_stats.bump = market_stats_bump;
     update_market_stats_account(&mut market_stats, snapshot)?;
     store_pda_account(market_stats_account, &market_stats)
+}
+
+pub fn load_main_offer(
+    program_id: &Pubkey,
+    market_offer_account: &AccountInfo,
+    state: &crate::state::State,
+) -> Result<Offer> {
+    require_keys_eq!(
+        market_offer_account.key(),
+        state.main_offer,
+        MarketStatsErrorCode::InvalidMainOffer
+    );
+
+    load_pda_account(
+        market_offer_account,
+        program_id,
+        MarketStatsErrorCode::InvalidMainOffer.into(),
+        MarketStatsErrorCode::InvalidMainOffer.into(),
+    )
 }
 
 pub fn apply_market_stats_snapshot(

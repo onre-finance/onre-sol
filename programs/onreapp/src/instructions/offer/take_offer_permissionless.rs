@@ -7,7 +7,7 @@ use crate::instructions::buffer::{
     accrue_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
     BufferAccrualAccounts,
 };
-use crate::instructions::market_info::refresh_market_stats_pda;
+use crate::instructions::market_info::{load_main_offer, refresh_market_stats_pda};
 use crate::instructions::offer::offer_utils::{
     is_onyc_token_out_mint, process_offer_core, should_accrue_onyc_mint, verify_offer_approval,
 };
@@ -349,6 +349,9 @@ pub struct TakeOfferPermissionlessV2<'info> {
 
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
+
+    /// CHECK: Validated in instruction logic against state.main_offer.
+    pub main_offer: UncheckedAccount<'info>,
 }
 
 /// Executes offers via permissionless flow with secure intermediary routing
@@ -413,6 +416,7 @@ pub fn take_offer_permissionless(
         &ctx.accounts.mint_authority,
         None,
         None,
+        None,
         &ctx.accounts.system_program,
     )
 }
@@ -447,6 +451,7 @@ pub fn take_offer_permissionless_v2(
         &ctx.accounts.mint_authority,
         Some(&ctx.accounts.buffer_accounts),
         Some(&ctx.accounts.market_stats),
+        Some(&ctx.accounts.main_offer),
         &ctx.accounts.system_program,
     )
 }
@@ -475,6 +480,7 @@ fn execute_take_offer_permissionless<'info>(
     mint_authority: &UncheckedAccount<'info>,
     buffer_accounts: Option<&BufferAccrualAccounts<'info>>,
     market_stats: Option<&UncheckedAccount<'info>>,
+    main_offer_account: Option<&UncheckedAccount<'info>>,
     system_program: &Program<'info, System>,
 ) -> Result<()> {
     let (va, va_bump) = Pubkey::find_program_address(&[seeds::OFFER_VAULT_AUTHORITY], program_id);
@@ -600,6 +606,13 @@ fn execute_take_offer_permissionless<'info>(
 
     if is_onyc_token_out_mint(state, token_out_mint) {
         if let Some(market_stats) = market_stats {
+            let main_offer = load_main_offer(
+                program_id,
+                &main_offer_account
+                    .expect("main_offer is required when market stats are refreshed")
+                    .to_account_info(),
+                state,
+            )?;
             let (market_stats_pda, _) =
                 Pubkey::find_program_address(&[seeds::MARKET_STATS], program_id);
             require_keys_eq!(
@@ -613,7 +626,7 @@ fn execute_take_offer_permissionless<'info>(
             );
             token_out_mint.reload()?;
             refresh_market_stats_pda(
-                &offer,
+                &main_offer,
                 token_out_mint,
                 &vault_token_out_account.to_account_info(),
                 token_out_program,
