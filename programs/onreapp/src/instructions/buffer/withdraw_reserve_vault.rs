@@ -73,6 +73,7 @@ pub fn withdraw_reserve_vault(ctx: Context<WithdrawReserveVault>, amount: u64) -
 
     emit!(ReserveVaultWithdrawnEvent {
         amount,
+        mint: ctx.accounts.onyc_mint.key(),
         boss: ctx.accounts.boss.key(),
     });
 

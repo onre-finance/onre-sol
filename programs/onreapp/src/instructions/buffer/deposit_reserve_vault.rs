@@ -58,6 +58,7 @@ pub fn deposit_reserve_vault(ctx: Context<DepositReserveVault>, amount: u64) -> 
 
     emit!(ReserveVaultDepositedEvent {
         amount,
+        mint: ctx.accounts.onyc_mint.key(),
         depositor: ctx.accounts.depositor.key(),
     });
 
