@@ -97,7 +97,6 @@ pub fn build_set_buffer_fee_config_ix(
     }
 }
 
-
 pub fn build_withdraw_management_fees_ix(
     boss: &Pubkey,
     onyc_mint: &Pubkey,
@@ -170,13 +169,11 @@ pub fn build_withdraw_performance_fees_ix(
 
 pub fn build_burn_for_nav_increase_ix(
     boss: &Pubkey,
-    token_in_mint: &Pubkey,
+    main_offer: &Pubkey,
     onyc_mint: &Pubkey,
     asset_adjustment_amount: u64,
-    target_nav: u64,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
-    let (offer_pda, _) = find_offer_pda(token_in_mint, onyc_mint);
     let (buffer_state_pda, _) = find_buffer_state_pda();
     let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
@@ -200,7 +197,6 @@ pub fn build_burn_for_nav_increase_ix(
 
     let mut data = ix_discriminator("burn_for_nav_increase").to_vec();
     data.extend_from_slice(&asset_adjustment_amount.to_le_bytes());
-    data.extend_from_slice(&target_nav.to_le_bytes());
 
     Instruction {
         program_id: PROGRAM_ID,
@@ -208,8 +204,7 @@ pub fn build_burn_for_nav_increase_ix(
             AccountMeta::new_readonly(state_pda, false),
             AccountMeta::new(buffer_state_pda, false),
             AccountMeta::new_readonly(*boss, true),
-            AccountMeta::new_readonly(offer_pda, false),
-            AccountMeta::new_readonly(*token_in_mint, false),
+            AccountMeta::new_readonly(*main_offer, false),
             AccountMeta::new(*onyc_mint, false),
             AccountMeta::new_readonly(offer_vault_authority_pda, false),
             AccountMeta::new_readonly(reserve_vault_authority_pda, false),

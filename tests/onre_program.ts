@@ -419,18 +419,18 @@ export class OnreProgram {
         await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
-    async burnForNavIncrease(params: { tokenInMint: PublicKey; onycMint: PublicKey; assetAdjustmentAmount: number; targetNav: number; signer?: Keypair }) {
+    async burnForNavIncrease(params: { onycMint: PublicKey; assetAdjustmentAmount: number; mainOffer?: PublicKey; signer?: Keypair }) {
         const signer = params.signer ?? this.testHelper.payer;
-        const offerPda = PublicKey.findProgramAddressSync([Buffer.from("offer"), params.tokenInMint.toBuffer(), params.onycMint.toBuffer()], ONREAPP_PROGRAM_ID)[0];
+        const state = await this.getState();
+        const mainOffer = params.mainOffer ?? state.mainOffer;
         await this.testHelper.advanceSlot();
-        const tx = await this.program.methods
-            .burnForNavIncrease(new BN(params.assetAdjustmentAmount), new BN(params.targetNav))
+        const tx = this.program.methods
+            .burnForNavIncrease(new BN(params.assetAdjustmentAmount))
             .accountsPartial({
                 boss: signer.publicKey,
-                offer: offerPda,
-                tokenInMint: params.tokenInMint,
-                onycMint: params.onycMint,
                 bufferState: this.pdas.bufferStatePda,
+                mainOffer,
+                onycMint: params.onycMint,
                 offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
                 vaultTokenOutAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
                 reserveVaultAuthority: this.pdas.reserveVaultAuthorityPda,
@@ -443,9 +443,8 @@ export class OnreProgram {
                 marketStats: this.pdas.marketStatsPda,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: SystemProgram.programId,
-            })
-            .transaction();
-        await this.testHelper.sendAndConfirmTransaction(tx, [signer]);
+            });
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async withdrawManagementFees(params: { onycMint: PublicKey; amount: number; signer?: Keypair }) {
@@ -886,7 +885,10 @@ export class OnreProgram {
                     true,
                     params.tokenInProgram ?? TOKEN_PROGRAM_ID,
                 ),
+                redemptionFeeVaultAuthority: this.pdas.redemptionFeeVaultAuthorityPda,
                 marketStats: this.pdas.marketStatsPda,
+                feeDestination,
+                feeDestinationTokenInAccount,
             })
             .signers([params.redemptionAdmin]);
 
@@ -904,12 +906,22 @@ export class OnreProgram {
         amount?: BN;
         tokenInProgram?: PublicKey;
         tokenOutProgram?: PublicKey;
+        /** Fee destination owner. Defaults to redemptionFeeVaultAuthorityPda. */
+        feeDestination?: PublicKey;
     }) {
         let amount = params.amount;
         if (amount === undefined) {
             const request = await this.program.account.redemptionRequest.fetch(params.redemptionRequest);
             amount = (request.amount as BN).sub(request.fulfilledAmount as BN);
         }
+        const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
+        const feeDestination = params.feeDestination ?? this.pdas.redemptionFeeVaultAuthorityPda;
+        const feeDestinationTokenInAccount = getAssociatedTokenAddressSync(
+            params.tokenInMint,
+            feeDestination,
+            true,
+            tokenInProgram
+        );
 
         const tx = this.program.methods
             .fulfillRedemptionRequestV2(amount)
@@ -937,6 +949,7 @@ export class OnreProgram {
                     managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.tokenInMint),
                     performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.tokenInMint),
                 },
+                redemptionFeeVaultAuthority: this.pdas.redemptionFeeVaultAuthorityPda,
                 feeDestination,
                 feeDestinationTokenInAccount,
             })

@@ -349,7 +349,6 @@ pub struct FulfillRedemptionRequestV2<'info> {
     )]
     pub fee_destination_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-
     /// CHECK: PDA derivation is validated through seeds constraint
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
@@ -826,7 +825,9 @@ fn execute_fulfill_redemption_request(
         params.redemption_offer,
     )?;
     store_pda_account(
-        &params.redemption_fee_vault_authority_account.to_account_info(),
+        &params
+            .redemption_fee_vault_authority_account
+            .to_account_info(),
         params.redemption_fee_vault_authority,
     )?;
 
