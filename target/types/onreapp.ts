@@ -523,7 +523,7 @@ export type Onreapp = {
           "name": "vaultTokenOutAccount"
         },
         {
-          "name": "reserveVaultOnycAccount",
+          "name": "bufferVaultOnycAccount",
           "writable": true
         },
         {
@@ -2510,23 +2510,23 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "fulfillRedemptionRequestV2",
+      "name": "fulfillRedemptionRequestExtended",
       "docs": [
-        "Fulfills a redemption request with V2 ONyc buffer accrual support.",
+        "Fulfills a redemption request with extended ONyc buffer accrual support.",
         "",
-        "Delegates to `redemption::fulfill_redemption_request_v2`.",
+        "Delegates to `redemption::fulfill_redemption_request_extended`.",
         "This preserves the legacy `fulfill_redemption_request` surface while allowing",
         "the ONyc burn path to settle BUFFER accrual and reset the baseline."
       ],
       "discriminator": [
-        57,
-        62,
-        174,
-        162,
-        47,
-        200,
-        185,
-        208
+        9,
+        87,
+        238,
+        91,
+        8,
+        89,
+        187,
+        157
       ],
       "accounts": [
         {
@@ -3003,7 +3003,7 @@ export type Onreapp = {
               "writable": true
             },
             {
-              "name": "reserveVaultOnycAccount",
+              "name": "bufferVaultOnycAccount",
               "writable": true
             },
             {
@@ -3906,7 +3906,7 @@ export type Onreapp = {
           "name": "offer"
         },
         {
-          "name": "reserveVaultOnycAccount",
+          "name": "bufferVaultOnycAccount",
           "writable": true,
           "pda": {
             "seeds": [
@@ -4791,6 +4791,453 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "manageBuffer",
+      "docs": [
+        "Accrues BUFFER APR delta and mints ONyc across the reserve and fee vaults.",
+        "",
+        "Callable by anyone."
+      ],
+      "discriminator": [
+        65,
+        41,
+        70,
+        97,
+        226,
+        242,
+        69,
+        17
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "offer"
+        },
+        {
+          "name": "onycMint",
+          "writable": true,
+          "relations": [
+            "state",
+            "bufferState"
+          ]
+        },
+        {
+          "name": "reserveVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  115,
+                  101,
+                  114,
+                  118,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferVaultOnycAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "reserveVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "managementFeeVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "managementFeeVaultOnycAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "managementFeeVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "performanceFeeVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  102,
+                  111,
+                  114,
+                  109,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "performanceFeeVaultOnycAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "performanceFeeVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "mintAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "caller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "offerVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "offerVaultOnycAccount"
+        },
+        {
+          "name": "marketStats",
+          "writable": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "mintTo",
       "docs": [
         "Mints ONyc tokens to the boss's account.",
@@ -4988,7 +5435,7 @@ export type Onreapp = {
               "writable": true
             },
             {
-              "name": "reserveVaultOnycAccount",
+              "name": "bufferVaultOnycAccount",
               "writable": true
             },
             {
@@ -6505,7 +6952,7 @@ export type Onreapp = {
       "docs": [
         "Sets BUFFER gross yield.",
         "",
-        "Current yield is read from the main offer during BUFFER accrual."
+        "Current yield is read from the main offer during manage_buffer."
       ],
       "discriminator": [
         245,
@@ -7501,6 +7948,507 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "takeOfferExtended",
+      "discriminator": [
+        23,
+        228,
+        210,
+        101,
+        186,
+        59,
+        178,
+        9
+      ],
+      "accounts": [
+        {
+          "name": "offer",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "vaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vaultTokenInAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenOutAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenInMint",
+          "writable": true
+        },
+        {
+          "name": "tokenInProgram"
+        },
+        {
+          "name": "tokenOutMint",
+          "writable": true
+        },
+        {
+          "name": "tokenOutProgram"
+        },
+        {
+          "name": "userTokenInAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "userTokenOutAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "bossTokenInAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "boss"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "mintAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferAccounts",
+          "accounts": [
+            {
+              "name": "bufferState",
+              "writable": true
+            },
+            {
+              "name": "bufferVaultOnycAccount",
+              "writable": true
+            },
+            {
+              "name": "managementFeeVaultOnycAccount",
+              "writable": true
+            },
+            {
+              "name": "performanceFeeVaultOnycAccount",
+              "writable": true
+            }
+          ]
+        },
+        {
+          "name": "marketStats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "instructionsSysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "tokenInAmount",
+          "type": "u64"
+        },
+        {
+          "name": "approvalMessage",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "approvalMessage"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "takeOfferPermissionless",
       "docs": [
         "Takes a offer using permissionless flow with intermediary accounts.",
@@ -8139,16 +9087,16 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "takeOfferPermissionlessV2",
+      "name": "takeOfferPermissionlessExtended",
       "discriminator": [
-        250,
-        180,
-        68,
+        83,
+        142,
         89,
-        124,
-        124,
-        31,
-        250
+        162,
+        51,
+        192,
+        200,
+        122
       ],
       "accounts": [
         {
@@ -8630,7 +9578,7 @@ export type Onreapp = {
               "writable": true
             },
             {
-              "name": "reserveVaultOnycAccount",
+              "name": "bufferVaultOnycAccount",
               "writable": true
             },
             {
@@ -8646,507 +9594,6 @@ export type Onreapp = {
         {
           "name": "marketStats",
           "writable": true
-        },
-        {
-          "name": "instructionsSysvar",
-          "address": "Sysvar1nstructions1111111111111111111111111"
-        },
-        {
-          "name": "user",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "associatedTokenProgram",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "tokenInAmount",
-          "type": "u64"
-        },
-        {
-          "name": "approvalMessage",
-          "type": {
-            "option": {
-              "defined": {
-                "name": "approvalMessage"
-              }
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "takeOfferV2",
-      "discriminator": [
-        203,
-        29,
-        22,
-        81,
-        189,
-        205,
-        210,
-        60
-      ],
-      "accounts": [
-        {
-          "name": "offer",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutMint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "state",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "boss",
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "vaultAuthority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "vaultTokenInAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "vaultAuthority"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "vaultTokenOutAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "vaultAuthority"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "tokenInMint",
-          "writable": true
-        },
-        {
-          "name": "tokenInProgram"
-        },
-        {
-          "name": "tokenOutMint",
-          "writable": true
-        },
-        {
-          "name": "tokenOutProgram"
-        },
-        {
-          "name": "userTokenInAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "userTokenOutAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "bossTokenInAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "boss"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "mintAuthority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  105,
-                  110,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "bufferAccounts",
-          "accounts": [
-            {
-              "name": "bufferState",
-              "writable": true
-            },
-            {
-              "name": "reserveVaultOnycAccount",
-              "writable": true
-            },
-            {
-              "name": "managementFeeVaultOnycAccount",
-              "writable": true
-            },
-            {
-              "name": "performanceFeeVaultOnycAccount",
-              "writable": true
-            }
-          ]
-        },
-        {
-          "name": "marketStats",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  114,
-                  107,
-                  101,
-                  116,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  115
-                ]
-              }
-            ]
-          }
         },
         {
           "name": "instructionsSysvar",
@@ -10591,19 +11038,6 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "bufferAccruedEvent",
-      "discriminator": [
-        142,
-        74,
-        130,
-        231,
-        194,
-        58,
-        5,
-        20
-      ]
-    },
-    {
       "name": "bufferBurnedForNavEvent",
       "discriminator": [
         116,
@@ -10679,6 +11113,19 @@ export type Onreapp = {
         245,
         238,
         189
+      ]
+    },
+    {
+      "name": "bufferManagedEvent",
+      "discriminator": [
+        74,
+        89,
+        18,
+        6,
+        155,
+        40,
+        131,
+        169
       ]
     },
     {
@@ -11421,74 +11868,6 @@ export type Onreapp = {
       }
     },
     {
-      "name": "bufferAccruedEvent",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "tokenInMint",
-            "type": "pubkey"
-          },
-          {
-            "name": "onycMint",
-            "type": "pubkey"
-          },
-          {
-            "name": "secondsElapsed",
-            "type": "u64"
-          },
-          {
-            "name": "aprDelta",
-            "type": "u64"
-          },
-          {
-            "name": "bufferMintAmount",
-            "type": "u64"
-          },
-          {
-            "name": "reserveMintAmount",
-            "type": "u64"
-          },
-          {
-            "name": "managementFeeMintAmount",
-            "type": "u64"
-          },
-          {
-            "name": "performanceFeeMintAmount",
-            "type": "u64"
-          },
-          {
-            "name": "oldPreviousSupply",
-            "type": "u64"
-          },
-          {
-            "name": "newPreviousSupply",
-            "type": "u64"
-          },
-          {
-            "name": "oldPreviousPerformanceFeeHighWatermark",
-            "type": "u64"
-          },
-          {
-            "name": "newPerformanceFeeHighWatermark",
-            "type": "u64"
-          },
-          {
-            "name": "currentNav",
-            "type": "u64"
-          },
-          {
-            "name": "postAccrualSupply",
-            "type": "u64"
-          },
-          {
-            "name": "timestamp",
-            "type": "i64"
-          }
-        ]
-      }
-    },
-    {
       "name": "bufferBurnedForNavEvent",
       "type": {
         "kind": "struct",
@@ -11628,6 +12007,58 @@ export type Onreapp = {
           {
             "name": "newMainOffer",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bufferManagedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "secondsElapsed",
+            "type": "u64"
+          },
+          {
+            "name": "aprDelta",
+            "type": "u64"
+          },
+          {
+            "name": "bufferMintAmount",
+            "type": "u64"
+          },
+          {
+            "name": "reserveMintAmount",
+            "type": "u64"
+          },
+          {
+            "name": "managementFeeMintAmount",
+            "type": "u64"
+          },
+          {
+            "name": "performanceFeeMintAmount",
+            "type": "u64"
+          },
+          {
+            "name": "oldPreviousSupply",
+            "type": "u64"
+          },
+          {
+            "name": "newPreviousSupply",
+            "type": "u64"
+          },
+          {
+            "name": "oldPreviousPerformanceFeeHighWatermark",
+            "type": "u64"
+          },
+          {
+            "name": "newPerformanceFeeHighWatermark",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }

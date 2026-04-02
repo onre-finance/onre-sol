@@ -4,6 +4,7 @@ pub const SECONDS_PER_YEAR: u128 = 31_536_000;
 pub const YIELD_SCALE: u128 = 1_000_000;
 
 #[account]
+#[derive(InitSpace)]
 pub struct BufferState {
     pub onyc_mint: Pubkey,
     pub gross_apr: u64,
@@ -16,8 +17,4 @@ pub struct BufferState {
     pub last_accrual_timestamp: i64,
     pub bump: u8,
     pub reserved: [u8; 72],
-}
-
-impl BufferState {
-    pub const INIT_SPACE: usize = 32 + 8 + 8 + 2 + 32 + 2 + 32 + 8 + 8 + 1 + 72;
 }
