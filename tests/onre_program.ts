@@ -419,10 +419,7 @@ export class OnreProgram {
         await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
-    async burnForNavIncrease(params: { tokenInMint?: PublicKey; onycMint: PublicKey; assetAdjustmentAmount: number; targetNav?: number; mainOffer?: PublicKey; signer?: Keypair }) {
-        if (params.targetNav !== undefined && params.targetNav <= 0) {
-            throw new Error("targetNav must be positive");
-        }
+    async burnForNavIncrease(params: { onycMint: PublicKey; assetAdjustmentAmount: number; mainOffer?: PublicKey; signer?: Keypair }) {
         const signer = params.signer ?? this.testHelper.payer;
         const state = await this.getState();
         const mainOffer = params.mainOffer ?? state.mainOffer;
