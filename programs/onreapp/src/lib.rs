@@ -723,14 +723,14 @@ pub mod onreapp {
         redemption::create_redemption_request(ctx, amount)
     }
 
-    /// Fulfills a redemption request with V2 ONyc buffer accrual support.
+    /// Fulfills a redemption request with ONyc buffer accrual support.
     ///
-    /// Delegates to `redemption::fulfill_redemption_request_v2`.
-    pub fn fulfill_redemption_request_v2(
-        ctx: Context<FulfillRedemptionRequestV2>,
+    /// Delegates to `redemption::fulfill_redemption_request`.
+    pub fn fulfill_redemption_request(
+        ctx: Context<FulfillRedemptionRequest>,
         amount: u64,
     ) -> Result<()> {
-        redemption::fulfill_redemption_request_v2(ctx, amount)
+        redemption::fulfill_redemption_request(ctx, amount)
     }
 
     /// Cancels a redemption request.

@@ -121,7 +121,7 @@ pub fn build_cancel_redemption_request_ix(
     }
 }
 
-pub fn build_fulfill_redemption_request_v2_ix(
+pub fn build_fulfill_redemption_request_ix(
     redemption_admin: &Pubkey,
     boss: &Pubkey,
     redeemer: &Pubkey,
@@ -178,7 +178,7 @@ pub fn build_fulfill_redemption_request_v2_ix(
         token_in_mint,
         token_in_program,
     );
-    let mut data = ix_discriminator("fulfill_redemption_request_v2").to_vec();
+    let mut data = ix_discriminator("fulfill_redemption_request").to_vec();
     data.extend_from_slice(&amount.to_le_bytes());
 
     Instruction {
@@ -294,7 +294,7 @@ pub fn build_fulfill_redemption_request_with_fee_dest_ix(
         token_in_mint,
         token_in_program,
     );
-    let mut data = ix_discriminator("fulfill_redemption_request_v2").to_vec();
+    let mut data = ix_discriminator("fulfill_redemption_request").to_vec();
     data.extend_from_slice(&amount.to_le_bytes());
     Instruction {
         program_id: PROGRAM_ID,

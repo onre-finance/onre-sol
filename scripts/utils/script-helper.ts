@@ -810,7 +810,7 @@ export class ScriptHelper {
         amount: BN;
     }) {
         return await this.program.methods
-            .fulfillRedemptionRequestV2(params.amount)
+            .fulfillRedemptionRequest(params.amount)
             .accountsPartial({
                 redemptionOffer: params.redemptionOfferPda,
                 redemptionRequest: params.redemptionRequestPda,

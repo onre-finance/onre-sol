@@ -83,7 +83,7 @@ describe("Fee routing in fulfill_redemption_request", () => {
         const counter = offer.requestCounter.toNumber() - 1;
         const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, counter);
 
-        await program.fulfillRedemptionRequestV2({
+        await program.fulfillRedemptionRequest({
             offer: offerPda,
             redemptionOffer: redemptionOfferPda,
             redemptionRequest: redemptionRequestPda,
@@ -171,7 +171,7 @@ describe("Fee routing in fulfill_redemption_request", () => {
         // Pass a different wallet as fee destination — should be rejected
         const wrongWallet = testHelper.createUserAccount();
         await expect(
-            program.fulfillRedemptionRequestV2({
+            program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -215,7 +215,7 @@ describe("Fee routing in fulfill_redemption_request", () => {
         const counter = offer.requestCounter.toNumber() - 1;
         const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, counter);
 
-        await program.fulfillRedemptionRequestV2({
+        await program.fulfillRedemptionRequest({
             offer: offerPda,
             redemptionOffer: redemptionOfferPda,
             redemptionRequest: redemptionRequestPda,

@@ -88,7 +88,7 @@ describe("Fulfill redemption request", () => {
             const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -112,7 +112,7 @@ describe("Fulfill redemption request", () => {
             expect(userOnycBalance).toBe(BigInt(10_000e9 - REDEMPTION_AMOUNT));
         });
 
-        test("Should accrue BUFFER before burning ONyc in fulfill_redemption_request_v2", async () => {
+        test("Should accrue BUFFER before burning ONyc in fulfill_redemption_request", async () => {
             await program.transferMintAuthorityToProgram({ mint: onycMint });
             await program.transferMintAuthorityToProgram({ mint: usdcMint });
 
@@ -151,7 +151,7 @@ describe("Fulfill redemption request", () => {
 
             await testHelper.advanceClockBy(31_536_000);
 
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -196,7 +196,7 @@ describe("Fulfill redemption request", () => {
             const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -238,7 +238,7 @@ describe("Fulfill redemption request", () => {
             const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -281,7 +281,7 @@ describe("Fulfill redemption request", () => {
             const initialAdminBalance = testHelper.svm.getBalance(redemptionAdmin.publicKey) ?? 0n;
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -321,7 +321,7 @@ describe("Fulfill redemption request", () => {
             const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -359,7 +359,7 @@ describe("Fulfill redemption request", () => {
             const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -402,7 +402,7 @@ describe("Fulfill redemption request", () => {
             });
 
             // when - Fulfill both requests
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: program.getRedemptionRequestPda(redemptionOfferPda, 0),
@@ -412,7 +412,7 @@ describe("Fulfill redemption request", () => {
                 tokenOutMint: usdcMint,
             });
 
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: program.getRedemptionRequestPda(redemptionOfferPda, 1),
@@ -443,7 +443,7 @@ describe("Fulfill redemption request", () => {
 
             // when/then
             await expect(
-                program.fulfillRedemptionRequestV2({
+                program.fulfillRedemptionRequest({
                     offer: offerPda,
                     redemptionOffer: redemptionOfferPda,
                     redemptionRequest: redemptionRequestPda,
@@ -478,7 +478,7 @@ describe("Fulfill redemption request", () => {
 
             // when/then
             await expect(
-                program.fulfillRedemptionRequestV2({
+                program.fulfillRedemptionRequest({
                     offer: offerPda,
                     redemptionOffer: redemptionOfferPda,
                     redemptionRequest: redemptionRequestPda,
@@ -509,7 +509,7 @@ describe("Fulfill redemption request", () => {
             const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // Fulfill once
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -521,7 +521,7 @@ describe("Fulfill redemption request", () => {
 
             // when/then - Try to fulfill again
             await expect(
-                program.fulfillRedemptionRequestV2({
+                program.fulfillRedemptionRequest({
                     offer: offerPda,
                     redemptionOffer: redemptionOfferPda,
                     redemptionRequest: redemptionRequestPda,
@@ -578,7 +578,7 @@ describe("Fulfill redemption request", () => {
             const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -625,7 +625,7 @@ describe("Fulfill redemption request", () => {
             const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -672,7 +672,7 @@ describe("Fulfill redemption request", () => {
             const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -719,7 +719,7 @@ describe("Fulfill redemption request", () => {
             const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -782,7 +782,7 @@ describe("Fulfill redemption request", () => {
             const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -829,7 +829,7 @@ describe("Fulfill redemption request", () => {
             const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -881,7 +881,7 @@ describe("Fulfill redemption request", () => {
             const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -946,7 +946,7 @@ describe("Fulfill redemption request", () => {
             const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPdaWithFee, 0);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda2,
                 redemptionOffer: redemptionOfferPdaWithFee,
                 redemptionRequest: redemptionRequestPda,
@@ -1022,7 +1022,7 @@ describe("Fulfill redemption request", () => {
             const initialBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda3,
                 redemptionOffer: redemptionOfferPdaWithFee,
                 redemptionRequest: redemptionRequestPda,
@@ -1099,7 +1099,7 @@ describe("Fulfill redemption request", () => {
             const initialBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda4,
                 redemptionOffer: redemptionOfferPdaNoFee,
                 redemptionRequest: redemptionRequestPda,
@@ -1174,7 +1174,7 @@ describe("Fulfill redemption request", () => {
             const initialBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda5,
                 redemptionOffer: redemptionOfferPdaWithFee,
                 redemptionRequest: redemptionRequestPda,
@@ -1257,7 +1257,7 @@ describe("Fulfill redemption request", () => {
             const initialBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda6,
                 redemptionOffer: redemptionOfferPdaWithFee,
                 redemptionRequest: redemptionRequestPda,
@@ -1346,7 +1346,7 @@ describe("Fulfill redemption request", () => {
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -1426,7 +1426,7 @@ describe("Fulfill redemption request", () => {
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -1506,7 +1506,7 @@ describe("Fulfill redemption request", () => {
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -1586,7 +1586,7 @@ describe("Fulfill redemption request", () => {
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -1666,7 +1666,7 @@ describe("Fulfill redemption request", () => {
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -1746,7 +1746,7 @@ describe("Fulfill redemption request", () => {
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -1826,7 +1826,7 @@ describe("Fulfill redemption request", () => {
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -1906,7 +1906,7 @@ describe("Fulfill redemption request", () => {
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -1986,7 +1986,7 @@ describe("Fulfill redemption request", () => {
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -2066,7 +2066,7 @@ describe("Fulfill redemption request", () => {
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
             // when
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,
@@ -2115,7 +2115,7 @@ describe("Fulfill redemption request", () => {
 
             // when/then - Should fail with no active vector error
             await expect(
-                program.fulfillRedemptionRequestV2({
+                program.fulfillRedemptionRequest({
                     offer: offerPda,
                     redemptionOffer: redemptionOfferPda,
                     redemptionRequest: redemptionRequestPda,

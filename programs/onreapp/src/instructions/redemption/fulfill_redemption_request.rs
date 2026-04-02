@@ -248,7 +248,7 @@ pub struct FulfillRedemptionRequest<'info> {
 }
 
 #[derive(Accounts)]
-pub struct FulfillRedemptionRequestV2<'info> {
+pub struct FulfillRedemptionRequest<'info> {
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
@@ -483,8 +483,8 @@ pub fn fulfill_redemption_request(
     )
 }
 
-pub fn fulfill_redemption_request_v2(
-    ctx: Context<FulfillRedemptionRequestV2>,
+pub fn fulfill_redemption_request(
+    ctx: Context<FulfillRedemptionRequest>,
     amount: u64,
 ) -> Result<()> {
     let mut redemption_offer = load_redemption_offer(

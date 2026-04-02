@@ -81,7 +81,7 @@ describe("Partial fulfill redemption request", () => {
         test("Should update fulfilled_amount after partial fulfill", async () => {
             const pda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: pda,
@@ -100,7 +100,7 @@ describe("Partial fulfill redemption request", () => {
         test("Should keep account open after partial fulfill", async () => {
             const pda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: pda,
@@ -119,19 +119,19 @@ describe("Partial fulfill redemption request", () => {
             const pda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // Three distinct amounts so bankrun doesn't deduplicate the transactions
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda, redemptionOffer: redemptionOfferPda, redemptionRequest: pda,
                 redeemer: redeemer.publicKey, redemptionAdmin,
                 tokenInMint: onycMint, tokenOutMint: usdcMint,
                 amount: new BN(FIRST_PARTIAL)
             });
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda, redemptionOffer: redemptionOfferPda, redemptionRequest: pda,
                 redeemer: redeemer.publicKey, redemptionAdmin,
                 tokenInMint: onycMint, tokenOutMint: usdcMint,
                 amount: new BN(SECOND_PARTIAL)
             });
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda, redemptionOffer: redemptionOfferPda, redemptionRequest: pda,
                 redeemer: redeemer.publicKey, redemptionAdmin,
                 tokenInMint: onycMint, tokenOutMint: usdcMint,
@@ -150,7 +150,7 @@ describe("Partial fulfill redemption request", () => {
             const pda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
             const userUsdcAccount = getAssociatedTokenAddressSync(usdcMint, redeemer.publicKey);
 
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda, redemptionOffer: redemptionOfferPda, redemptionRequest: pda,
                 redeemer: redeemer.publicKey, redemptionAdmin,
                 tokenInMint: onycMint, tokenOutMint: usdcMint,
@@ -159,7 +159,7 @@ describe("Partial fulfill redemption request", () => {
             expect(await testHelper.getTokenAccountBalance(userUsdcAccount))
                 .toBe(BigInt(onycToUsdc(FIRST_PARTIAL)));
 
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda, redemptionOffer: redemptionOfferPda, redemptionRequest: pda,
                 redeemer: redeemer.publicKey, redemptionAdmin,
                 tokenInMint: onycMint, tokenOutMint: usdcMint,
@@ -168,7 +168,7 @@ describe("Partial fulfill redemption request", () => {
             expect(await testHelper.getTokenAccountBalance(userUsdcAccount))
                 .toBe(BigInt(onycToUsdc(FIRST_PARTIAL + SECOND_PARTIAL)));
 
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda, redemptionOffer: redemptionOfferPda, redemptionRequest: pda,
                 redeemer: redeemer.publicKey, redemptionAdmin,
                 tokenInMint: onycMint, tokenOutMint: usdcMint,
@@ -184,7 +184,7 @@ describe("Partial fulfill redemption request", () => {
             const offerBefore = await program.program.account.redemptionOffer.fetch(redemptionOfferPda);
             const requestedBefore = BigInt(offerBefore.requestedRedemptions.toString());
 
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda, redemptionOffer: redemptionOfferPda, redemptionRequest: pda,
                 redeemer: redeemer.publicKey, redemptionAdmin,
                 tokenInMint: onycMint, tokenOutMint: usdcMint,
@@ -199,7 +199,7 @@ describe("Partial fulfill redemption request", () => {
         test("Should increment executed_redemptions by fulfilled amount each call", async () => {
             const pda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda, redemptionOffer: redemptionOfferPda, redemptionRequest: pda,
                 redeemer: redeemer.publicKey, redemptionAdmin,
                 tokenInMint: onycMint, tokenOutMint: usdcMint,
@@ -215,19 +215,19 @@ describe("Partial fulfill redemption request", () => {
         test("Should have correct executed_redemptions after full redemption in three calls", async () => {
             const pda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda, redemptionOffer: redemptionOfferPda, redemptionRequest: pda,
                 redeemer: redeemer.publicKey, redemptionAdmin,
                 tokenInMint: onycMint, tokenOutMint: usdcMint,
                 amount: new BN(FIRST_PARTIAL)
             });
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda, redemptionOffer: redemptionOfferPda, redemptionRequest: pda,
                 redeemer: redeemer.publicKey, redemptionAdmin,
                 tokenInMint: onycMint, tokenOutMint: usdcMint,
                 amount: new BN(SECOND_PARTIAL)
             });
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda, redemptionOffer: redemptionOfferPda, redemptionRequest: pda,
                 redeemer: redeemer.publicKey, redemptionAdmin,
                 tokenInMint: onycMint, tokenOutMint: usdcMint,
@@ -249,7 +249,7 @@ describe("Partial fulfill redemption request", () => {
             const onycBefore = await testHelper.getTokenAccountBalance(userOnycAccount);
 
             // Partially fulfill FIRST_PARTIAL (burned from vault, not from user account)
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda, redemptionOffer: redemptionOfferPda, redemptionRequest: pda,
                 redeemer: redeemer.publicKey, redemptionAdmin,
                 tokenInMint: onycMint, tokenOutMint: usdcMint,
@@ -278,7 +278,7 @@ describe("Partial fulfill redemption request", () => {
         test("Should have correct requested_redemptions after cancel of partially fulfilled request", async () => {
             const pda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda, redemptionOffer: redemptionOfferPda, redemptionRequest: pda,
                 redeemer: redeemer.publicKey, redemptionAdmin,
                 tokenInMint: onycMint, tokenOutMint: usdcMint,
@@ -302,7 +302,7 @@ describe("Partial fulfill redemption request", () => {
             const pda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             await expect(
-                program.fulfillRedemptionRequestV2({
+                program.fulfillRedemptionRequest({
                     offer: offerPda, redemptionOffer: redemptionOfferPda, redemptionRequest: pda,
                     redeemer: redeemer.publicKey, redemptionAdmin,
                     tokenInMint: onycMint, tokenOutMint: usdcMint,
@@ -315,7 +315,7 @@ describe("Partial fulfill redemption request", () => {
             const pda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             await expect(
-                program.fulfillRedemptionRequestV2({
+                program.fulfillRedemptionRequest({
                     offer: offerPda, redemptionOffer: redemptionOfferPda, redemptionRequest: pda,
                     redeemer: redeemer.publicKey, redemptionAdmin,
                     tokenInMint: onycMint, tokenOutMint: usdcMint,
@@ -328,7 +328,7 @@ describe("Partial fulfill redemption request", () => {
             const pda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // Fulfill FIRST + SECOND, leaving only THIRD remaining
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda, redemptionOffer: redemptionOfferPda, redemptionRequest: pda,
                 redeemer: redeemer.publicKey, redemptionAdmin,
                 tokenInMint: onycMint, tokenOutMint: usdcMint,
@@ -337,7 +337,7 @@ describe("Partial fulfill redemption request", () => {
 
             // Attempt to fulfill more than the remaining THIRD_PARTIAL
             await expect(
-                program.fulfillRedemptionRequestV2({
+                program.fulfillRedemptionRequest({
                     offer: offerPda, redemptionOffer: redemptionOfferPda, redemptionRequest: pda,
                     redeemer: redeemer.publicKey, redemptionAdmin,
                     tokenInMint: onycMint, tokenOutMint: usdcMint,

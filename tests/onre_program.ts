@@ -926,7 +926,7 @@ export class OnreProgram {
         await tx.rpc();
     }
 
-    async fulfillRedemptionRequestV2(params: {
+    async fulfillRedemptionRequest(params: {
         offer: PublicKey;
         redemptionOffer: PublicKey;
         redemptionRequest: PublicKey;
@@ -952,7 +952,7 @@ export class OnreProgram {
         const feeDestinationTokenInAccount = getAssociatedTokenAddressSync(params.tokenInMint, feeDestination, true, tokenInProgram);
 
         const tx = this.program.methods
-            .fulfillRedemptionRequestV2(amount)
+            .fulfillRedemptionRequest(amount)
             .accountsPartial({
                 offer: params.offer,
                 redemptionOffer: params.redemptionOffer,
