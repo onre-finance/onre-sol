@@ -7,7 +7,7 @@ use crate::instructions::buffer::{
     accrue_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
     BufferAccrualAccounts,
 };
-use crate::instructions::market_info::refresh_market_stats_pda;
+use crate::instructions::market_info::{load_main_offer, refresh_market_stats_pda};
 use crate::instructions::redemption::{
     execute_redemption_operations, process_redemption_core, ExecuteRedemptionOpsParams,
     RedemptionFeeVaultAuthority, RedemptionOffer, RedemptionRequest,
@@ -242,6 +242,9 @@ pub struct FulfillRedemptionRequest<'info> {
     /// CHECK: Validated and optionally initialized in instruction logic.
     #[account(mut)]
     pub market_stats: UncheckedAccount<'info>,
+
+    /// CHECK: Validated in instruction logic against state.main_offer.
+    pub main_offer: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -391,6 +394,9 @@ pub struct FulfillRedemptionRequestV2<'info> {
     /// CHECK: Validated and optionally initialized in instruction logic.
     #[account(mut)]
     pub market_stats: UncheckedAccount<'info>,
+
+    /// CHECK: Validated in instruction logic against state.main_offer.
+    pub main_offer: UncheckedAccount<'info>,
 }
 
 /// Fulfills a redemption request, either fully or partially
@@ -467,6 +473,7 @@ pub fn fulfill_redemption_request(
             redemption_vault_authority_bump: ctx.bumps.redemption_vault_authority,
             mint_authority_bump: ctx.bumps.mint_authority,
             market_stats: &ctx.accounts.market_stats,
+            main_offer: &ctx.accounts.main_offer,
             redeemer: &ctx.accounts.redeemer,
             redemption_admin: &ctx.accounts.redemption_admin,
             system_program: &ctx.accounts.system_program,
@@ -519,6 +526,7 @@ pub fn fulfill_redemption_request_v2(
             redemption_vault_authority_bump: ctx.bumps.redemption_vault_authority,
             mint_authority_bump: ctx.bumps.mint_authority,
             market_stats: &ctx.accounts.market_stats,
+            main_offer: &ctx.accounts.main_offer,
             redeemer: &ctx.accounts.redeemer,
             redemption_admin: &ctx.accounts.redemption_admin,
             system_program: &ctx.accounts.system_program,
@@ -553,6 +561,7 @@ struct ExecuteFulfillRedemptionRequestParams<'a, 'info> {
     redemption_vault_authority_bump: u8,
     mint_authority_bump: u8,
     market_stats: &'a UncheckedAccount<'info>,
+    main_offer: &'a UncheckedAccount<'info>,
     redeemer: &'a UncheckedAccount<'info>,
     redemption_admin: &'a Signer<'info>,
     system_program: &'a Program<'info, System>,
@@ -758,9 +767,14 @@ fn execute_fulfill_redemption_request(
     }
 
     if should_refresh_market_stats {
+        let main_offer = load_main_offer(
+            params.program_id,
+            &params.main_offer.to_account_info(),
+            params.state,
+        )?;
         params.token_in_mint.reload()?;
         refresh_market_stats_pda(
-            &offer,
+            &main_offer,
             params.token_in_mint,
             &params.offer_vault_onyc_account.to_account_info(),
             params.token_in_program,

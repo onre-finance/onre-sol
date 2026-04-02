@@ -180,6 +180,8 @@ export class OnreProgram {
         tokenInProgram?: PublicKey;
         tokenOutProgram?: PublicKey;
     }) {
+        const state = await this.getState();
+        const mainOffer = state.mainOffer as PublicKey;
         const tx = this.program.methods.takeOfferV2(new BN(params.tokenInAmount), null).accountsPartial({
             tokenInMint: params.tokenInMint,
             tokenOutMint: params.tokenOutMint,
@@ -187,6 +189,7 @@ export class OnreProgram {
             tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
             tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
             marketStats: this.pdas.marketStatsPda,
+            mainOffer,
             bufferAccounts: {
                 bufferState: this.pdas.bufferStatePda,
                 reserveVaultOnycAccount: this.getBufferVaultAta(params.tokenOutMint),
@@ -231,6 +234,8 @@ export class OnreProgram {
         tokenInProgram?: PublicKey;
         tokenOutProgram?: PublicKey;
     }) {
+        const state = await this.getState();
+        const mainOffer = state.mainOffer as PublicKey;
         const tx = this.program.methods.takeOfferPermissionlessV2(new BN(params.tokenInAmount), null).accountsPartial({
             tokenInMint: params.tokenInMint,
             tokenOutMint: params.tokenOutMint,
@@ -242,6 +247,7 @@ export class OnreProgram {
             permissionlessAuthority: this.pdas.permissionlessAuthorityPda,
             mintAuthority: this.pdas.mintAuthorityPda,
             marketStats: this.pdas.marketStatsPda,
+            mainOffer,
             bufferAccounts: {
                 bufferState: this.pdas.bufferStatePda,
                 reserveVaultOnycAccount: this.getBufferVaultAta(params.tokenOutMint),
@@ -564,11 +570,11 @@ export class OnreProgram {
     async mintTo(params: { amount: number; signer?: Keypair }) {
         const state = await this.getState();
         const onycMint = state.onycMint as PublicKey;
-        const offer = (state.mainOffer as PublicKey).equals(SystemProgram.programId) ? SystemProgram.programId : (state.mainOffer as PublicKey);
+        const mainOffer = (state.mainOffer as PublicKey).equals(SystemProgram.programId) ? SystemProgram.programId : (state.mainOffer as PublicKey);
 
         const tx = this.program.methods.mintTo(new BN(params.amount)).accountsPartial({
             tokenProgram: TOKEN_PROGRAM_ID,
-            offer,
+            mainOffer,
             bufferAccounts: {
                 bufferState: this.pdas.bufferStatePda,
                 reserveVaultOnycAccount: this.getBufferVaultAta(onycMint),
@@ -891,6 +897,8 @@ export class OnreProgram {
 
         const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
         const feeDestination = params.feeDestination ?? this.pdas.redemptionFeeVaultAuthorityPda;
+        const state = await this.getState();
+        const mainOffer = state.mainOffer as PublicKey;
         const feeDestinationTokenInAccount = getAssociatedTokenAddressSync(params.tokenInMint, feeDestination, true, tokenInProgram);
 
         const tx = this.program.methods
@@ -909,6 +917,7 @@ export class OnreProgram {
                 offerVaultOnycAccount: getAssociatedTokenAddressSync(params.tokenInMint, this.pdas.offerVaultAuthorityPda, true, params.tokenInProgram ?? TOKEN_PROGRAM_ID),
                 redemptionFeeVaultAuthority: this.pdas.redemptionFeeVaultAuthorityPda,
                 marketStats: this.pdas.marketStatsPda,
+                mainOffer,
                 feeDestination,
                 feeDestinationTokenInAccount,
             })
@@ -938,6 +947,8 @@ export class OnreProgram {
         }
         const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
         const feeDestination = params.feeDestination ?? this.pdas.redemptionFeeVaultAuthorityPda;
+        const state = await this.getState();
+        const mainOffer = state.mainOffer as PublicKey;
         const feeDestinationTokenInAccount = getAssociatedTokenAddressSync(params.tokenInMint, feeDestination, true, tokenInProgram);
 
         const tx = this.program.methods
@@ -955,6 +966,7 @@ export class OnreProgram {
                 offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
                 offerVaultOnycAccount: getAssociatedTokenAddressSync(params.tokenInMint, this.pdas.offerVaultAuthorityPda, true, params.tokenInProgram ?? TOKEN_PROGRAM_ID),
                 marketStats: this.pdas.marketStatsPda,
+                mainOffer,
                 bufferAccounts: {
                     bufferState: this.pdas.bufferStatePda,
                     reserveVaultOnycAccount: this.getBufferVaultAta(params.tokenInMint),

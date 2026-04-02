@@ -45,6 +45,11 @@ fn setup_fee_routing() -> FeeRoutingCtx {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
+    let (offer_pda, _) = find_offer_pda(&usdc_mint, &onyc_mint);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
     // Add a pricing vector: price=1.0, apr=0
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(

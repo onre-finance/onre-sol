@@ -39,6 +39,11 @@ fn setup_redemption() -> (
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
+    let (offer_pda, _) = find_offer_pda(&usdc_mint, &onyc_mint);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
     // Add a vector so we have pricing
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
@@ -1223,6 +1228,11 @@ fn test_fulfill_redemption_request_accumulates_executed() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
+    let (offer_pda, _) = find_offer_pda(&usdc_mint, &onyc_mint);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
         &boss,
@@ -1466,6 +1476,11 @@ fn test_fulfill_redemption_request_burn_and_mint() {
         false,
         &TOKEN_PROGRAM_ID,
     );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let (offer_pda, _) = find_offer_pda(&usdc_mint, &onyc_mint);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 

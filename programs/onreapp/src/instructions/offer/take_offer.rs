@@ -7,7 +7,7 @@ use crate::instructions::buffer::{
     accrue_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
     BufferAccrualAccounts,
 };
-use crate::instructions::market_info::refresh_market_stats_typed;
+use crate::instructions::market_info::{load_main_offer, refresh_market_stats_typed};
 use crate::instructions::offer::offer_utils::{
     is_onyc_token_out_mint, process_offer_core, should_accrue_onyc_mint, verify_offer_approval,
 };
@@ -340,6 +340,9 @@ pub struct TakeOfferV2<'info> {
 
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
+
+    /// CHECK: Validated in instruction logic against state.main_offer.
+    pub main_offer: UncheckedAccount<'info>,
 }
 
 /// Executes an offer transaction with flexible burn/mint or transfer mechanisms
@@ -528,9 +531,14 @@ pub fn take_offer_v2(
     }
 
     if is_onyc_token_out_mint(&ctx.accounts.state, &ctx.accounts.token_out_mint) {
+        let main_offer = load_main_offer(
+            ctx.program_id,
+            &ctx.accounts.main_offer.to_account_info(),
+            &ctx.accounts.state,
+        )?;
         ctx.accounts.token_out_mint.reload()?;
         refresh_market_stats_typed(
-            &offer,
+            &main_offer,
             &ctx.accounts.token_out_mint,
             &ctx.accounts.vault_token_out_account.to_account_info(),
             &ctx.accounts.token_out_program,

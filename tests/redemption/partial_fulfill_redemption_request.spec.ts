@@ -52,6 +52,8 @@ describe("Partial fulfill redemption request", () => {
             priceFixDuration: 86400
         });
 
+        await program.setMainOffer({ offer: offerPda });
+
         await program.makeRedemptionOffer({ offer: offerPda });
         redemptionOfferPda = program.getRedemptionOfferPda(onycMint, usdcMint);
 

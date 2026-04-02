@@ -42,6 +42,10 @@ fn setup_take_offer_with_fee(fee_bps: u16) -> TakeOfferCtx {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
+    let (offer_pda, _) = find_offer_pda(&usdc_mint, &onyc_mint);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
     // Create vault accounts (pre-funded)
     let (vault_authority, _) = find_offer_vault_authority_pda();
     create_token_account(&mut svm, &usdc_mint, &vault_authority, 0);
