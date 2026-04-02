@@ -181,7 +181,7 @@ export class OnreProgram {
         tokenOutProgram?: PublicKey;
     }) {
         const state = await this.getState();
-        const mainOffer = (state.mainOffer as PublicKey).equals(PublicKey.default) ? this.getOfferPda(params.tokenInMint, params.tokenOutMint) : (state.mainOffer as PublicKey);
+        const mainOffer = state.mainOffer as PublicKey;
         const tx = this.program.methods.takeOfferV2(new BN(params.tokenInAmount), null).accountsPartial({
             tokenInMint: params.tokenInMint,
             tokenOutMint: params.tokenOutMint,
@@ -235,7 +235,7 @@ export class OnreProgram {
         tokenOutProgram?: PublicKey;
     }) {
         const state = await this.getState();
-        const mainOffer = (state.mainOffer as PublicKey).equals(PublicKey.default) ? this.getOfferPda(params.tokenInMint, params.tokenOutMint) : (state.mainOffer as PublicKey);
+        const mainOffer = state.mainOffer as PublicKey;
         const tx = this.program.methods.takeOfferPermissionlessV2(new BN(params.tokenInAmount), null).accountsPartial({
             tokenInMint: params.tokenInMint,
             tokenOutMint: params.tokenOutMint,
@@ -898,7 +898,7 @@ export class OnreProgram {
         const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
         const feeDestination = params.feeDestination ?? this.pdas.redemptionFeeVaultAuthorityPda;
         const state = await this.getState();
-        const mainOffer = (state.mainOffer as PublicKey).equals(PublicKey.default) ? params.offer : (state.mainOffer as PublicKey);
+        const mainOffer = state.mainOffer as PublicKey;
         const feeDestinationTokenInAccount = getAssociatedTokenAddressSync(params.tokenInMint, feeDestination, true, tokenInProgram);
 
         const tx = this.program.methods
@@ -948,7 +948,7 @@ export class OnreProgram {
         const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
         const feeDestination = params.feeDestination ?? this.pdas.redemptionFeeVaultAuthorityPda;
         const state = await this.getState();
-        const mainOffer = (state.mainOffer as PublicKey).equals(PublicKey.default) ? params.offer : (state.mainOffer as PublicKey);
+        const mainOffer = state.mainOffer as PublicKey;
         const feeDestinationTokenInAccount = getAssociatedTokenAddressSync(params.tokenInMint, feeDestination, true, tokenInProgram);
 
         const tx = this.program.methods
