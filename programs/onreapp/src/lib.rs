@@ -484,6 +484,20 @@ pub mod onreapp {
         buffer::burn_for_nav_increase(ctx, asset_adjustment_amount)
     }
 
+    /// Deposits ONyc into the BUFFER reserve vault.
+    ///
+    /// Callable by any signer.
+    pub fn deposit_reserve_vault(ctx: Context<DepositReserveVault>, amount: u64) -> Result<()> {
+        buffer::deposit_reserve_vault(ctx, amount)
+    }
+
+    /// Withdraws ONyc from the BUFFER reserve vault.
+    ///
+    /// Callable by boss only.
+    pub fn withdraw_reserve_vault(ctx: Context<WithdrawReserveVault>, amount: u64) -> Result<()> {
+        buffer::withdraw_reserve_vault(ctx, amount)
+    }
+
     /// Transfers management fees from the management fee vault to the boss.
     pub fn withdraw_management_fees(
         ctx: Context<WithdrawManagementFees>,
