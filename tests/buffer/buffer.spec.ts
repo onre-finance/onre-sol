@@ -61,7 +61,7 @@ describe("BUFFER", () => {
 
         const now = await testHelper.getCurrentClockTime();
         await program.deleteAllOfferVectors(tokenInMint, onycMint);
-        await testHelper.advanceSlot()
+        await testHelper.advanceSlot();
         await program.addOfferVector({
             tokenInMint,
             tokenOutMint: onycMint,
@@ -162,6 +162,55 @@ describe("BUFFER", () => {
         expect(managementFeeBalance).toBe(BigInt(9_600_000));
         expect(performanceFeeBalance).toBe(BigInt(8_100_000));
         expect(bossBalance).toBe(BigInt(1_001_300_000));
+    });
+
+    test("any user can deposit ONyc to reserve vault", async () => {
+        await program.initializeBuffer({ offer: offerPda, onycMint });
+
+        const depositor = testHelper.createUserAccount();
+        const depositorAta = testHelper.createTokenAccount(onycMint, depositor.publicKey, BigInt(250_000_000));
+
+        await program.depositReserveVault({
+            onycMint,
+            amount: 250_000_000,
+            signer: depositor,
+        });
+
+        const reserveVaultBalance = await testHelper.getTokenAccountBalance(program.getBufferVaultAta(onycMint));
+        const depositorBalance = await testHelper.getTokenAccountBalance(depositorAta);
+
+        expect(reserveVaultBalance).toBe(BigInt(250_000_000));
+        expect(depositorBalance).toBe(BigInt(0));
+    });
+
+    test("only boss can withdraw ONyc from reserve vault", async () => {
+        await program.initializeBuffer({ offer: offerPda, onycMint });
+
+        const depositor = testHelper.createUserAccount();
+        testHelper.createTokenAccount(onycMint, depositor.publicKey, BigInt(300_000_000));
+        await program.depositReserveVault({
+            onycMint,
+            amount: 300_000_000,
+            signer: depositor,
+        });
+
+        await program.withdrawReserveVault({ onycMint, amount: 120_000_000 });
+
+        const reserveVaultBalance = await testHelper.getTokenAccountBalance(program.getBufferVaultAta(onycMint));
+        const bossAta = getAssociatedTokenAddressSync(onycMint, testHelper.payer.publicKey);
+        const bossBalance = await testHelper.getTokenAccountBalance(bossAta);
+
+        expect(reserveVaultBalance).toBe(BigInt(180_000_000));
+        expect(bossBalance).toBe(BigInt(120_000_000));
+
+        const nonBoss = testHelper.createUserAccount();
+        await expect(
+            program.withdrawReserveVault({
+                onycMint,
+                amount: 1,
+                signer: nonBoss,
+            }),
+        ).rejects.toThrow();
     });
 
     test("performance fee only applies after recovering the high watermark", async () => {

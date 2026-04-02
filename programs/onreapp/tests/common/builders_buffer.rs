@@ -97,6 +97,68 @@ pub fn build_set_buffer_fee_config_ix(
     }
 }
 
+pub fn build_deposit_reserve_vault_ix(
+    depositor: &Pubkey,
+    onyc_mint: &Pubkey,
+    amount: u64,
+) -> Instruction {
+    let (buffer_state_pda, _) = find_buffer_state_pda();
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
+    let depositor_onyc_ata = derive_ata(depositor, onyc_mint, &TOKEN_PROGRAM_ID);
+    let reserve_vault_onyc_ata =
+        derive_ata(&reserve_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
+    let mut data = ix_discriminator("deposit_reserve_vault").to_vec();
+    data.extend_from_slice(&amount.to_le_bytes());
+
+    Instruction {
+        program_id: PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new_readonly(buffer_state_pda, false),
+            AccountMeta::new_readonly(reserve_vault_authority_pda, false),
+            AccountMeta::new_readonly(*onyc_mint, false),
+            AccountMeta::new(depositor_onyc_ata, false),
+            AccountMeta::new(reserve_vault_onyc_ata, false),
+            AccountMeta::new(*depositor, true),
+            AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+            AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+        ],
+        data,
+    }
+}
+
+pub fn build_withdraw_reserve_vault_ix(
+    boss: &Pubkey,
+    onyc_mint: &Pubkey,
+    amount: u64,
+) -> Instruction {
+    let (state_pda, _) = find_state_pda();
+    let (buffer_state_pda, _) = find_buffer_state_pda();
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
+    let boss_onyc_ata = derive_ata(boss, onyc_mint, &TOKEN_PROGRAM_ID);
+    let reserve_vault_onyc_ata =
+        derive_ata(&reserve_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
+    let mut data = ix_discriminator("withdraw_reserve_vault").to_vec();
+    data.extend_from_slice(&amount.to_le_bytes());
+
+    Instruction {
+        program_id: PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new_readonly(buffer_state_pda, false),
+            AccountMeta::new_readonly(reserve_vault_authority_pda, false),
+            AccountMeta::new_readonly(*onyc_mint, false),
+            AccountMeta::new(boss_onyc_ata, false),
+            AccountMeta::new(reserve_vault_onyc_ata, false),
+            AccountMeta::new(*boss, true),
+            AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+            AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+        ],
+        data,
+    }
+}
+
 pub fn build_withdraw_management_fees_ix(
     boss: &Pubkey,
     onyc_mint: &Pubkey,
