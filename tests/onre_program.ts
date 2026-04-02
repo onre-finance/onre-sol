@@ -427,35 +427,27 @@ export class OnreProgram {
         const state = await this.getState();
         const mainOffer = params.mainOffer ?? state.mainOffer;
         await this.testHelper.advanceSlot();
-        const data = Buffer.concat([
-            instructionDiscriminator("burn_for_nav_increase"),
-            new BN(params.assetAdjustmentAmount).toArrayLike(Buffer, "le", 8),
-        ]);
-        const instruction = new TransactionInstruction({
-            programId: this.program.programId,
-            keys: [
-                { pubkey: this.pdas.statePda, isSigner: false, isWritable: false },
-                { pubkey: this.pdas.bufferStatePda, isSigner: false, isWritable: true },
-                { pubkey: signer.publicKey, isSigner: true, isWritable: false },
-                { pubkey: mainOffer, isSigner: false, isWritable: false },
-                { pubkey: params.onycMint, isSigner: false, isWritable: true },
-                { pubkey: this.pdas.offerVaultAuthorityPda, isSigner: false, isWritable: false },
-                { pubkey: this.pdas.reserveVaultAuthorityPda, isSigner: false, isWritable: false },
-                { pubkey: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID), isSigner: false, isWritable: false },
-                { pubkey: this.getBufferVaultAta(params.onycMint), isSigner: false, isWritable: true },
-                { pubkey: this.pdas.managementFeeVaultAuthorityPda, isSigner: false, isWritable: false },
-                { pubkey: this.getManagementFeeVaultAta(params.onycMint), isSigner: false, isWritable: true },
-                { pubkey: this.pdas.performanceFeeVaultAuthorityPda, isSigner: false, isWritable: false },
-                { pubkey: this.getPerformanceFeeVaultAta(params.onycMint), isSigner: false, isWritable: true },
-                { pubkey: this.pdas.mintAuthorityPda, isSigner: false, isWritable: false },
-                { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-                { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-                { pubkey: this.pdas.marketStatsPda, isSigner: false, isWritable: true },
-            ],
-            data,
-        });
-        const tx = new Transaction().add(instruction);
-        await this.testHelper.sendAndConfirmTransaction(tx, [signer]);
+        const tx = this.program.methods
+            .burnForNavIncrease(new BN(params.assetAdjustmentAmount))
+            .accountsPartial({
+                boss: signer.publicKey,
+                bufferState: this.pdas.bufferStatePda,
+                mainOffer,
+                onycMint: params.onycMint,
+                offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
+                vaultTokenOutAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
+                reserveVaultAuthority: this.pdas.reserveVaultAuthorityPda,
+                reserveVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
+                managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
+                managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
+                performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
+                performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.onycMint),
+                mintAuthority: this.pdas.mintAuthorityPda,
+                marketStats: this.pdas.marketStatsPda,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                systemProgram: SystemProgram.programId,
+            });
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async withdrawManagementFees(params: { onycMint: PublicKey; amount: number; signer?: Keypair }) {
