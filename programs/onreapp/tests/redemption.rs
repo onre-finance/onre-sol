@@ -523,7 +523,7 @@ fn test_fulfill_redemption_request_transfer_mode() {
     advance_slot(&mut svm);
 
     // Fulfill the request (boss is redemption_admin)
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -579,7 +579,7 @@ fn test_fulfill_redemption_request_rejects_non_admin() {
     let non_admin = Keypair::new();
     svm.airdrop(&non_admin.pubkey(), INITIAL_LAMPORTS).unwrap();
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &non_admin.pubkey(),
         &boss,
         &user.pubkey(),
@@ -1188,7 +1188,7 @@ fn test_fulfill_redemption_request_updates_statistics() {
     let mut ctx = setup_fulfillable_request(500, 1_000_000_000);
     let boss = ctx.payer.pubkey();
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &ctx.user.pubkey(),
@@ -1286,7 +1286,7 @@ fn test_fulfill_redemption_request_accumulates_executed() {
         send_tx(&mut svm, &[ix], &[&user]).unwrap();
         advance_slot(&mut svm);
 
-        let ix = build_fulfill_redemption_request_ix(
+        let ix = build_fulfill_redemption_request_v2_ix(
             &boss,
             &boss,
             &user.pubkey(),
@@ -1311,7 +1311,7 @@ fn test_fulfill_redemption_request_zero_fee() {
     let mut ctx = setup_fulfillable_request(0, 1_000_000_000);
     let boss = ctx.payer.pubkey();
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &ctx.user.pubkey(),
@@ -1341,7 +1341,7 @@ fn test_fulfill_redemption_request_kill_switch() {
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &ctx.user.pubkey(),
@@ -1434,7 +1434,7 @@ fn test_fulfill_redemption_request_with_apr_growth() {
     // Price grows with compound interest
     advance_clock_by(&mut svm, 86400);
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -1543,7 +1543,7 @@ fn test_fulfill_redemption_request_burn_and_mint() {
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -1648,7 +1648,7 @@ fn test_fulfill_redemption_request_rejects_token_out_transfer_fee() {
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -1720,7 +1720,7 @@ fn test_fulfill_redemption_request_transfer_mode_fee_to_boss() {
     let mut ctx = setup_fulfillable_request(500, 1_000_000_000);
     let boss = ctx.payer.pubkey();
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &ctx.user.pubkey(),
@@ -1813,7 +1813,7 @@ fn test_fulfill_redemption_request_different_price() {
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -1910,7 +1910,7 @@ fn test_fulfill_redemption_request_fee_with_apr() {
     // Advance time by 1 step (86400s)
     advance_clock_by(&mut svm, 86400);
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -2065,7 +2065,7 @@ fn test_fulfill_redemption_token2022_transfer_mode() {
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -2125,7 +2125,7 @@ fn test_fulfill_redemption_token2022_burn_mint_mode() {
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -2224,7 +2224,7 @@ fn test_fulfill_redemption_token2022_with_fee() {
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -2379,7 +2379,7 @@ fn test_fulfill_redemption_request_rejects_already_fulfilled() {
     let mut ctx = setup_fulfillable_request(500, 1_000_000_000);
     let boss = ctx.payer.pubkey();
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &ctx.user.pubkey(),
@@ -2394,7 +2394,7 @@ fn test_fulfill_redemption_request_rejects_already_fulfilled() {
     advance_slot(&mut ctx.svm);
 
     // Try to fulfill again
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &ctx.user.pubkey(),
@@ -2489,7 +2489,7 @@ fn test_fulfill_redemption_request_fails_no_active_vector() {
     advance_slot(&mut svm);
 
     // Try to fulfill without active vector
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -2578,7 +2578,7 @@ fn test_fulfill_redemption_request_price_1_003() {
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -2670,7 +2670,7 @@ fn test_fulfill_redemption_request_price_0_5() {
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -2762,7 +2762,7 @@ fn test_fulfill_redemption_request_price_pi() {
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -2785,7 +2785,7 @@ fn test_fulfill_redemption_request_very_small_amount() {
     let mut ctx = setup_fulfillable_request(0, 1_000); // very small: 1000 lamports of onyc
     let boss = ctx.payer.pubkey();
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &ctx.user.pubkey(),
@@ -2883,7 +2883,7 @@ fn test_fulfill_redemption_request_price_0_123456789() {
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -2985,7 +2985,7 @@ fn fulfill_token2022_with_params(apr: u64, fee_bps: u16, advance_days: u64) {
         advance_clock_by(&mut svm, advance_days * 86400);
     }
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -3505,7 +3505,7 @@ fn test_fulfill_redemption_request_decrements_requested_redemptions() {
     let offer_data = read_redemption_offer(&ctx.svm, &ctx.redemption_tin, &ctx.redemption_tout);
     assert_eq!(offer_data.requested_redemptions, 1_000_000_000);
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &ctx.user.pubkey(),
@@ -3618,7 +3618,7 @@ fn test_fulfill_redemption_request_different_decimals() {
     advance_slot(&mut svm);
 
     // Fulfill the request
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),

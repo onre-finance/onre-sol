@@ -94,7 +94,7 @@ Typical on-chain BUFFER setup order:
 
 **Offers**: `make_offer`, `add_offer_vector`, `delete_offer_vector`, `delete_all_offer_vectors`, `update_offer_fee`, `take_offer`, `take_offer_permissionless`
 
-**Redemption**: `make_redemption_offer`, `create_redemption_request`, `fulfill_redemption_request`, `cancel_redemption_request`, `update_redemption_offer_fee`
+**Redemption**: `make_redemption_offer`, `create_redemption_request`, `fulfill_redemption_request_v2`, `cancel_redemption_request`, `update_redemption_offer_fee`
 
 **State Operations**: `propose_boss`, `accept_boss`, `add_admin`, `remove_admin`, `clear_admins`, `set_kill_switch`, `set_onyc_mint`, `set_redemption_admin`, `add_approver`, `remove_approver`, `configure_max_supply`, `close_state`
 

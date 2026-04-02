@@ -723,35 +723,9 @@ pub mod onreapp {
         redemption::create_redemption_request(ctx, amount)
     }
 
-    /// Fulfills a redemption request, either fully or partially.
-    ///
-    /// Delegates to `redemption::fulfill_redemption_request`.
-    /// Processes `amount` tokens from a pending redemption request at the current NAV price.
-    /// If `amount` is less than the remaining unfulfilled balance the request stays open
-    /// and further fulfillment calls can be made. When `amount` equals the remaining balance
-    /// the request is fully settled and the account is closed.
-    /// - Burns token_in (ONyc) if program has mint authority, else sends to boss
-    /// - Mints token_out if program has mint authority, else transfers from vault
-    /// Emits a `RedemptionRequestFulfilledEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`:    Context for `FulfillRedemptionRequest`.
-    /// - `amount`: token_in amount to process; must be > 0 and ≤ remaining unfulfilled balance.
-    ///
-    /// # Access Control
-    /// - Only redemption_admin can fulfill redemptions
-    pub fn fulfill_redemption_request(
-        ctx: Context<FulfillRedemptionRequest>,
-        amount: u64,
-    ) -> Result<()> {
-        redemption::fulfill_redemption_request(ctx, amount)
-    }
-
     /// Fulfills a redemption request with V2 ONyc buffer accrual support.
     ///
     /// Delegates to `redemption::fulfill_redemption_request_v2`.
-    /// This preserves the legacy `fulfill_redemption_request` surface while allowing
-    /// the ONyc burn path to settle BUFFER accrual and reset the baseline.
     pub fn fulfill_redemption_request_v2(
         ctx: Context<FulfillRedemptionRequestV2>,
         amount: u64,

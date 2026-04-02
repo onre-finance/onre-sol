@@ -139,7 +139,7 @@ fn test_partial_fulfill_updates_fulfilled_amount() {
         setup_partial(0, 9_000_000_000);
     let boss = payer.pubkey();
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -166,7 +166,7 @@ fn test_partial_fulfill_account_stays_open() {
         setup_partial(0, 9_000_000_000);
     let boss = payer.pubkey();
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -194,7 +194,7 @@ fn test_partial_fulfill_account_closed_after_final_call() {
     let boss = payer.pubkey();
 
     for amount in [2_000_000_000u64, 3_000_000_000, 4_000_000_000] {
-        let ix = build_fulfill_redemption_request_ix(
+        let ix = build_fulfill_redemption_request_v2_ix(
             &boss,
             &boss,
             &user.pubkey(),
@@ -227,7 +227,7 @@ fn test_partial_fulfill_decrements_requested_redemptions_per_call() {
 
     let before = read_redemption_offer(&svm, &onyc_mint, &usdc_mint).requested_redemptions;
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -253,7 +253,7 @@ fn test_partial_fulfill_increments_executed_redemptions_per_call() {
     let (mut svm, payer, onyc_mint, usdc_mint, _, _, user) = setup_partial(0, 9_000_000_000);
     let boss = payer.pubkey();
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -279,7 +279,7 @@ fn test_full_3_call_redemption_correct_offer_stats() {
     let boss = payer.pubkey();
 
     for amount in [2_000_000_000u64, 3_000_000_000, 4_000_000_000] {
-        let ix = build_fulfill_redemption_request_ix(
+        let ix = build_fulfill_redemption_request_v2_ix(
             &boss,
             &boss,
             &user.pubkey(),
@@ -315,7 +315,7 @@ fn test_partial_fulfill_cumulative_usdc_received() {
     let user_usdc_ata = get_associated_token_address(&user.pubkey(), &usdc_mint);
 
     // 2 ONyc → 2 USDC = 2_000_000 (6 dec)
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -334,7 +334,7 @@ fn test_partial_fulfill_cumulative_usdc_received() {
     );
 
     // 3 ONyc → 3 USDC cumulative 5 USDC = 5_000_000
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -353,7 +353,7 @@ fn test_partial_fulfill_cumulative_usdc_received() {
     );
 
     // 4 ONyc → 4 USDC cumulative 9 USDC = 9_000_000
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -387,7 +387,7 @@ fn test_cancel_after_partial_returns_remaining() {
     let balance_after_lock = get_token_balance(&svm, &user_onyc_ata);
 
     // Partially fulfill 3 ONyc (burned from vault)
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -431,7 +431,7 @@ fn test_cancel_after_partial_requested_redemptions_zero() {
     let (mut svm, payer, onyc_mint, usdc_mint, _, _, user) = setup_partial(0, 9_000_000_000);
     let boss = payer.pubkey();
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -471,7 +471,7 @@ fn test_partial_fulfill_rejects_zero_amount() {
     let (mut svm, payer, onyc_mint, usdc_mint, _, _, user) = setup_partial(0, 9_000_000_000);
     let boss = payer.pubkey();
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -491,7 +491,7 @@ fn test_partial_fulfill_rejects_amount_exceeding_remaining() {
     let (mut svm, payer, onyc_mint, usdc_mint, _, _, user) = setup_partial(0, 9_000_000_000);
     let boss = payer.pubkey();
 
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -515,7 +515,7 @@ fn test_partial_fulfill_rejects_overfill_after_first_partial() {
     let boss = payer.pubkey();
 
     // Fulfill 5 ONyc → 4 ONyc remaining
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
@@ -530,7 +530,7 @@ fn test_partial_fulfill_rejects_overfill_after_first_partial() {
     advance_slot(&mut svm);
 
     // Try to fulfill 5 ONyc again (more than remaining 4)
-    let ix = build_fulfill_redemption_request_ix(
+    let ix = build_fulfill_redemption_request_v2_ix(
         &boss,
         &boss,
         &user.pubkey(),
