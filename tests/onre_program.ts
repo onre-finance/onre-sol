@@ -36,6 +36,7 @@ export class OnreProgram {
         marketStatsPda: PublicKey;
         managementFeeVaultAuthorityPda: PublicKey;
         performanceFeeVaultAuthorityPda: PublicKey;
+        redemptionFeeVaultAuthorityPda: PublicKey;
     } = {
         statePda: PublicKey.findProgramAddressSync([Buffer.from("state")], ONREAPP_PROGRAM_ID)[0],
         offerVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("offer_vault_authority")], ONREAPP_PROGRAM_ID)[0],
@@ -47,6 +48,7 @@ export class OnreProgram {
         marketStatsPda: PublicKey.findProgramAddressSync([Buffer.from("market_stats")], ONREAPP_PROGRAM_ID)[0],
         managementFeeVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("management_fee_vault_authority")], ONREAPP_PROGRAM_ID)[0],
         performanceFeeVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("performance_fee_vault_authority")], ONREAPP_PROGRAM_ID)[0],
+        redemptionFeeVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("redemption_fee_vault_authority")], ONREAPP_PROGRAM_ID)[0],
     };
 
     constructor(testHelper: TestHelper) {
@@ -847,12 +849,23 @@ export class OnreProgram {
         amount?: BN;
         tokenInProgram?: PublicKey;
         tokenOutProgram?: PublicKey;
+        /** Fee destination owner. Defaults to redemptionFeeVaultAuthorityPda. */
+        feeDestination?: PublicKey;
     }) {
         let amount = params.amount;
         if (amount === undefined) {
             const request = await this.program.account.redemptionRequest.fetch(params.redemptionRequest);
             amount = (request.amount as BN).sub(request.fulfilledAmount as BN);
         }
+
+        const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
+        const feeDestination = params.feeDestination ?? this.pdas.redemptionFeeVaultAuthorityPda;
+        const feeDestinationTokenInAccount = getAssociatedTokenAddressSync(
+            params.tokenInMint,
+            feeDestination,
+            true,
+            tokenInProgram
+        );
 
         const tx = this.program.methods
             .fulfillRedemptionRequest(amount)
@@ -906,7 +919,7 @@ export class OnreProgram {
                 redemptionRequest: params.redemptionRequest,
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
-                tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
+                tokenInProgram,
                 tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
                 redeemer: params.redeemer,
                 redemptionAdmin: params.redemptionAdmin.publicKey,
@@ -924,10 +937,26 @@ export class OnreProgram {
                     managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.tokenInMint),
                     performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.tokenInMint),
                 },
+                feeDestination,
+                feeDestinationTokenInAccount,
             })
             .signers([params.redemptionAdmin]);
 
         await tx.rpc();
+    }
+
+    async setRedemptionFeeDestination(params: {
+        feeDestination: PublicKey;
+        boss?: Keypair;
+    }) {
+        const boss = params.boss ?? this.testHelper.payer;
+        await this.program.methods
+            .setRedemptionFeeDestination(params.feeDestination)
+            .accounts({
+                boss: boss.publicKey,
+            })
+            .signers([boss])
+            .rpc();
     }
 
     async getRedemptionRequest(redemptionOffer: PublicKey, counter: number) {

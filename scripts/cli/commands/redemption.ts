@@ -10,7 +10,9 @@ import {
     executeRedemptionListOffers,
     executeRedemptionListRequests,
     executeRedemptionMakeOffer,
+    executeRedemptionSetFeeDestination,
     executeRedemptionUpdateFee,
+    executeRedemptionWithdrawFees,
 } from "../implementations";
 
 /**
@@ -117,6 +119,28 @@ export function registerRedemptionCommands(program: Command): void {
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeRedemptionFetchVaults(opts);
+        });
+
+    // redemption set-fee-destination
+    program
+        .command("set-fee-destination")
+        .description("Set the redemption fee destination address (boss only)")
+        .option("-d, --destination <address>", "Fee destination address")
+        .action(async (options, cmd) => {
+            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            await executeRedemptionSetFeeDestination(opts);
+        });
+
+    // redemption withdraw-fees
+    program
+        .command("withdraw-fees")
+        .description("Withdraw accumulated redemption fees from the vault (boss only)")
+        .option("-i, --token-in <mint>", "Token mint to withdraw fees for")
+        .option("-d, --destination <address>", "Destination wallet for withdrawn fees")
+        .option("-a, --amount <amount>", "Amount to withdraw (0 or omit for full balance)")
+        .action(async (options, cmd) => {
+            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            await executeRedemptionWithdrawFees(opts);
         });
 
     // redemption list-requests

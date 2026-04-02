@@ -22,6 +22,7 @@ pub const STATE_SEED: &[u8] = b"state";
 pub const OFFER_SEED: &[u8] = b"offer";
 pub const OFFER_VAULT_AUTHORITY_SEED: &[u8] = b"offer_vault_authority";
 pub const REDEMPTION_OFFER_VAULT_AUTHORITY_SEED: &[u8] = b"redemption_offer_vault_authority";
+pub const REDEMPTION_FEE_VAULT_AUTHORITY_SEED: &[u8] = b"redemption_fee_vault_authority";
 pub const PERMISSIONLESS_AUTHORITY_SEED: &[u8] = b"permissionless-1";
 pub const MINT_AUTHORITY_SEED: &[u8] = b"mint_authority";
 pub const MARKET_STATS_SEED: &[u8] = b"market_stats";
@@ -89,6 +90,10 @@ pub fn find_offer_vault_authority_pda() -> (Pubkey, u8) {
 
 pub fn find_redemption_vault_authority_pda() -> (Pubkey, u8) {
     Pubkey::find_program_address(&[REDEMPTION_OFFER_VAULT_AUTHORITY_SEED], &PROGRAM_ID)
+}
+
+pub fn find_redemption_fee_vault_authority_pda() -> (Pubkey, u8) {
+    Pubkey::find_program_address(&[REDEMPTION_FEE_VAULT_AUTHORITY_SEED], &PROGRAM_ID)
 }
 
 pub fn find_permissionless_authority_pda() -> (Pubkey, u8) {

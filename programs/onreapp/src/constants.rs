@@ -41,6 +41,9 @@ pub mod seeds {
 
     /// Seed for the performance fee vault authority account
     pub const PERFORMANCE_FEE_VAULT_AUTHORITY: &[u8] = b"performance_fee_vault_authority";
+
+    /// Seed for the redemption fee vault authority PDA
+    pub const REDEMPTION_FEE_VAULT_AUTHORITY: &[u8] = b"redemption_fee_vault_authority";
 }
 
 /// Maximum number of pricing vectors allowed per offer

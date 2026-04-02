@@ -1543,15 +1543,16 @@ fn test_fulfill_redemption_request_burn_and_mint() {
 
     // With burn+mint mode:
     // fee=5%, net = 950_000_000 onyc
-    // Net burned from vault, fee transferred to boss
+    // Net burned from vault, fee transferred to fee vault PDA ATA
     // token_out = 950_000_000 * 1.0 * 10^6 / (10^9 * 10^9) = 950_000
     // usdc minted to user
     let user_usdc_ata = get_associated_token_address(&user.pubkey(), &usdc_mint);
     assert_eq!(get_token_balance(&svm, &user_usdc_ata), 950_000);
 
-    // Boss receives fee in onyc: 50_000_000
-    let boss_onyc_ata = get_associated_token_address(&boss, &onyc_mint);
-    assert_eq!(get_token_balance(&svm, &boss_onyc_ata), 50_000_000);
+    // Fee vault PDA ATA receives fee in onyc: 50_000_000
+    let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
+    let fee_vault_onyc_ata = get_associated_token_address(&fee_vault_pda, &onyc_mint);
+    assert_eq!(get_token_balance(&svm, &fee_vault_onyc_ata), 50_000_000);
 
     let market_stats = read_market_stats(&svm);
     assert_eq!(market_stats.circulating_supply, 50_000_000);
@@ -1717,9 +1718,10 @@ fn test_fulfill_redemption_request_transfer_mode_fee_to_boss() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
-    // In transfer mode (no mint authority), boss gets full amount (net + fee)
+    // In transfer mode (no mint authority), boss gets net amount only (fee goes to fee vault PDA ATA)
+    // fee=5%, net=950_000_000
     let boss_onyc_ata = get_associated_token_address(&boss, &ctx.onyc_mint);
-    assert_eq!(get_token_balance(&ctx.svm, &boss_onyc_ata), 1_000_000_000);
+    assert_eq!(get_token_balance(&ctx.svm, &boss_onyc_ata), 950_000_000);
 }
 
 #[test]
@@ -2121,13 +2123,14 @@ fn test_fulfill_redemption_token2022_burn_mint_mode() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    // fee=5%, net=950_000_000, burned from vault; fee=50_000_000 to boss
+    // fee=5%, net=950_000_000, burned from vault; fee=50_000_000 to fee vault PDA ATA
     // token_out = 950_000 usdc minted to user
     let user_usdc_ata = get_associated_token_address_2022(&user.pubkey(), &usdc_mint);
     assert_eq!(get_token_balance(&svm, &user_usdc_ata), 950_000);
 
-    let boss_onyc_ata = get_associated_token_address_2022(&boss, &onyc_mint);
-    assert_eq!(get_token_balance(&svm, &boss_onyc_ata), 50_000_000);
+    let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
+    let fee_vault_onyc_ata = get_associated_token_address_2022(&fee_vault_pda, &onyc_mint);
+    assert_eq!(get_token_balance(&svm, &fee_vault_onyc_ata), 50_000_000);
 }
 
 #[test]
@@ -2992,16 +2995,19 @@ fn fulfill_token2022_with_params(apr: u64, fee_bps: u16, advance_days: u64) {
 
     // With fee, user receives less than full price
     if fee_bps > 0 {
-        // Net amount after fee
+        // Net amount after fee (ceiling division matches on-chain calculation for round bps)
         let fee = 1_000_000_000u64 * fee_bps as u64 / 10_000;
-        let _net = 1_000_000_000u64 - fee;
-        // Boss should have received fee in onyc (transferred)
+        let net = 1_000_000_000u64 - fee;
+        // Boss receives net onyc (transfer mode); fee goes to fee vault PDA ATA
         let boss_onyc_ata = get_associated_token_address_2022(&boss, &onyc_mint);
         let boss_onyc = get_token_balance(&svm, &boss_onyc_ata);
         assert_eq!(
-            boss_onyc, 1_000_000_000,
-            "boss receives full onyc in transfer mode"
+            boss_onyc, net,
+            "boss receives net onyc in transfer mode"
         );
+        let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
+        let fee_vault_ata = get_associated_token_address_2022(&fee_vault_pda, &onyc_mint);
+        assert_eq!(get_token_balance(&svm, &fee_vault_ata), fee, "fee vault receives fee");
     }
 }
 

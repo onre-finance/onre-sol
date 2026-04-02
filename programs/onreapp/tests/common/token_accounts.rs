@@ -98,6 +98,12 @@ pub fn create_mint_2022(
     mint.pubkey()
 }
 
+pub fn set_mint_supply(svm: &mut LiteSVM, mint: &Pubkey, supply: u64) {
+    let mut mint_account = svm.get_account(mint).expect("mint account not found");
+    mint_account.data[36..44].copy_from_slice(&supply.to_le_bytes());
+    svm.set_account(*mint, mint_account).unwrap();
+}
+
 pub fn create_token_account_2022(
     svm: &mut LiteSVM,
     mint: &Pubkey,
