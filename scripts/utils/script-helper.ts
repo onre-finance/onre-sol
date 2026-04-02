@@ -735,7 +735,7 @@ export class ScriptHelper {
             .mintTo(new BN(params.amount))
             .accountsPartial({
                 tokenProgram: TOKEN_PROGRAM_ID,
-                offer,
+                mainOffer: offer,
                 bufferAccounts: {
                     bufferState: this.pdas.bufferStatePda,
                     reserveVaultOnycAccount: getAssociatedTokenAddressSync(onycMint, this.pdas.reserveVaultAuthorityPda, true, TOKEN_PROGRAM_ID),

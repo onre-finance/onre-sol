@@ -33,6 +33,10 @@ fn setup_permissionless_offer() -> PermissionlessOfferCtx {
     );
     send_tx(&mut svm, &[ix], &[&payer]).expect("make_offer failed");
 
+    let (offer_pda, _) = find_offer_pda(&usdc_mint, &onyc_mint);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).expect("set_main_offer failed");
+
     // Add offer vector: start_time = current clock time, base_price = 1.0 (1_000_000_000),
     // apr = 0, price_fix_duration = 86400 (1 day)
     let current_time = 1704067200u64; // Jan 1, 2024 (matches setup clock)
@@ -403,6 +407,10 @@ fn setup_permissionless_no_approval_with_fee(fee_bps: u16) -> PermissionlessNoAp
         true,
         &TOKEN_PROGRAM_ID,
     );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let (offer_pda, _) = find_offer_pda(&usdc_mint, &onyc_mint);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let (vault_authority, _) = find_offer_vault_authority_pda();
