@@ -68,6 +68,18 @@ pub struct BufferBurnedForNavEvent {
 }
 
 #[event]
+pub struct ReserveVaultDepositedEvent {
+    pub amount: u64,
+    pub depositor: Pubkey,
+}
+
+#[event]
+pub struct ReserveVaultWithdrawnEvent {
+    pub amount: u64,
+    pub boss: Pubkey,
+}
+
+#[event]
 pub struct ManagementFeesWithdrawnEvent {
     pub amount: u64,
     pub boss: Pubkey,

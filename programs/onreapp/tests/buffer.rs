@@ -287,6 +287,71 @@ fn test_set_main_offer_rejects_offer_with_wrong_token_out_mint() {
 }
 
 #[test]
+fn test_deposit_reserve_vault_allows_any_depositor() {
+    let (mut svm, _payer, _token_in_mint, onyc_mint, caller) = setup_buffer_context(1, 0, 0, 0);
+    let deposit_amount = 250_000_000;
+    let caller_onyc_ata =
+        create_token_account(&mut svm, &onyc_mint, &caller.pubkey(), deposit_amount);
+    let reserve_vault_onyc_ata = derive_ata(
+        &find_reserve_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+
+    let ix = build_deposit_reserve_vault_ix(&caller.pubkey(), &onyc_mint, deposit_amount);
+    send_tx(&mut svm, &[ix], &[&caller]).unwrap();
+
+    assert_eq!(get_token_balance(&svm, &caller_onyc_ata), 0);
+    assert_eq!(
+        get_token_balance(&svm, &reserve_vault_onyc_ata),
+        deposit_amount
+    );
+}
+
+#[test]
+fn test_withdraw_reserve_vault_allows_boss() {
+    let (mut svm, payer, _token_in_mint, onyc_mint, caller) = setup_buffer_context(1, 0, 0, 0);
+    let deposit_amount = 300_000_000;
+    let withdraw_amount = 120_000_000;
+    create_token_account(&mut svm, &onyc_mint, &caller.pubkey(), deposit_amount);
+    let reserve_vault_onyc_ata = derive_ata(
+        &find_reserve_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let boss_onyc_ata = derive_ata(&payer.pubkey(), &onyc_mint, &TOKEN_PROGRAM_ID);
+
+    let deposit_ix = build_deposit_reserve_vault_ix(&caller.pubkey(), &onyc_mint, deposit_amount);
+    send_tx(&mut svm, &[deposit_ix], &[&caller]).unwrap();
+
+    let withdraw_ix = build_withdraw_reserve_vault_ix(&payer.pubkey(), &onyc_mint, withdraw_amount);
+    send_tx(&mut svm, &[withdraw_ix], &[&payer]).unwrap();
+
+    assert_eq!(
+        get_token_balance(&svm, &reserve_vault_onyc_ata),
+        deposit_amount - withdraw_amount
+    );
+    assert_eq!(
+        get_token_balance(&svm, &boss_onyc_ata),
+        1_000_000_000 + withdraw_amount
+    );
+}
+
+#[test]
+fn test_withdraw_reserve_vault_rejects_non_boss() {
+    let (mut svm, _payer, _token_in_mint, onyc_mint, caller) = setup_buffer_context(1, 0, 0, 0);
+    let deposit_amount = 150_000_000;
+    create_token_account(&mut svm, &onyc_mint, &caller.pubkey(), deposit_amount);
+
+    let deposit_ix = build_deposit_reserve_vault_ix(&caller.pubkey(), &onyc_mint, deposit_amount);
+    send_tx(&mut svm, &[deposit_ix], &[&caller]).unwrap();
+
+    let withdraw_ix = build_withdraw_reserve_vault_ix(&caller.pubkey(), &onyc_mint, 1);
+    let result = send_tx(&mut svm, &[withdraw_ix], &[&caller]);
+    assert!(result.is_err(), "non-boss withdrawal should fail");
+}
+
+#[test]
 fn test_set_main_offer_rejects_no_change() {
     let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
