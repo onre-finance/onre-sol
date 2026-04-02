@@ -172,8 +172,8 @@ describe("Fulfill redemption request", () => {
             const performanceFeeVaultBalance = await testHelper.getTokenAccountBalance(
                 program.getPerformanceFeeVaultAta(onycMint)
             );
-            const bossOnycBalance = await testHelper.getTokenAccountBalance(
-                getAssociatedTokenAddressSync(onycMint, boss)
+            const feeVaultBalance = await testHelper.getTokenAccountBalance(
+                getAssociatedTokenAddressSync(onycMint, program.pdas.redemptionFeeVaultAuthorityPda, true)
             );
             const userUsdcBalance = await testHelper.getTokenAccountBalance(
                 getAssociatedTokenAddressSync(usdcMint, redeemer.publicKey)
@@ -183,7 +183,7 @@ describe("Fulfill redemption request", () => {
             expect(bufferVaultBalance).toBe(bufferMint);
             expect(managementFeeVaultBalance).toBe(managementFeeMint);
             expect(performanceFeeVaultBalance).toBe(performanceFeeMint);
-            expect(bossOnycBalance).toBe(BigInt(1_000_000_000) + tokenInFeeAmount);
+            expect(feeVaultBalance).toBe(tokenInFeeAmount);
             expect(userUsdcBalance).toBe(BigInt(950_000));
             expect(bufferState.previousSupply.toString()).toBe(
                 (supplyBefore + grossAccrual - tokenInNetAmount).toString()

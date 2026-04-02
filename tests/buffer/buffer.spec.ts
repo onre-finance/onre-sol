@@ -175,10 +175,8 @@ describe("BUFFER", () => {
         await testHelper.advanceSlot();
 
         await program.burnForNavIncrease({
-            tokenInMint,
             onycMint,
             assetAdjustmentAmount: 110_000_000,
-            targetNav: NAV_1_0,
         });
 
         const stateAfterBurn = await program.getBufferState();
@@ -202,10 +200,8 @@ describe("BUFFER", () => {
         await setupBufferWithBalance({ grossYield: 100_000, currentYieldApr: 0 });
 
         await program.burnForNavIncrease({
-            tokenInMint,
             onycMint,
             assetAdjustmentAmount: 50_000_000,
-            targetNav: NAV_1_0,
         });
 
         const bufferVaultAta = program.getBufferVaultAta(onycMint);
@@ -219,10 +215,8 @@ describe("BUFFER", () => {
         const nonBoss = testHelper.createUserAccount();
         await expect(
             program.burnForNavIncrease({
-                tokenInMint,
                 onycMint,
                 assetAdjustmentAmount: 10_000_000,
-                targetNav: NAV_1_0,
                 signer: nonBoss,
             }),
         ).rejects.toThrow();
@@ -234,10 +228,8 @@ describe("BUFFER", () => {
         await testHelper.advanceClockBy(ONE_YEAR_SECONDS);
 
         await program.burnForNavIncrease({
-            tokenInMint,
             onycMint,
             assetAdjustmentAmount: 50_000_000,
-            targetNav: NAV_1_0,
         });
 
         const bufferVaultAta = program.getBufferVaultAta(onycMint);
@@ -256,19 +248,8 @@ describe("BUFFER", () => {
 
         await expect(
             program.burnForNavIncrease({
-                tokenInMint,
-                onycMint,
-                assetAdjustmentAmount: 10_000_000,
-                targetNav: 0,
-            }),
-        ).rejects.toThrow();
-
-        await expect(
-            program.burnForNavIncrease({
-                tokenInMint,
                 onycMint,
                 assetAdjustmentAmount: 200_000_000,
-                targetNav: NAV_1_0,
             }),
         ).rejects.toThrow();
     });

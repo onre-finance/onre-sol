@@ -417,32 +417,7 @@ export type Onreapp = {
           ]
         },
         {
-          "name": "offer",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              },
-              {
-                "kind": "account",
-                "path": "onycMint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "tokenInMint"
+          "name": "mainOffer"
         },
         {
           "name": "onycMint",
@@ -766,10 +741,6 @@ export type Onreapp = {
       "args": [
         {
           "name": "assetAdjustmentAmount",
-          "type": "u64"
-        },
-        {
-          "name": "targetNav",
           "type": "u64"
         }
       ]

@@ -220,8 +220,11 @@ pub fn build_fulfill_redemption_request_v2_ix(
     let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
     let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
     let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
-    let buffer_vault_onyc_ata =
-        derive_ata(&reserve_vault_authority_pda, token_in_mint, token_in_program);
+    let buffer_vault_onyc_ata = derive_ata(
+        &reserve_vault_authority_pda,
+        token_in_mint,
+        token_in_program,
+    );
     let management_fee_vault_onyc_ata = derive_ata(
         &management_fee_vault_authority_pda,
         token_in_mint,

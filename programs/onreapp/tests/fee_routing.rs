@@ -8,7 +8,7 @@ use solana_sdk::signer::Signer;
 
 const REDEMPTION_AMOUNT: u64 = 1_000_000_000; // 1 ONyc (9 decimals)
 const FEE_BASIS_POINTS: u16 = 100; // 1%
-// fee = ceil(1_000_000_000 * 100 / 10_000) = 10_000_000
+                                   // fee = ceil(1_000_000_000 * 100 / 10_000) = 10_000_000
 const EXPECTED_FEE: u64 = 10_000_000;
 // token_out = net * price * 10^6 / (10^9 * 10^9) = 990_000_000 * 1e9 * 1e6 / 1e18 = 990_000
 const EXPECTED_TOKEN_OUT: u64 = 990_000; // 0.99 USDC (6 decimals)
@@ -33,23 +33,41 @@ fn setup_fee_routing() -> FeeRoutingCtx {
     advance_slot(&mut svm);
 
     // Create offer: usdc -> onyc (original direction)
-    let ix = build_make_offer_ix(&boss, &usdc_mint, &onyc_mint, 0, false, false, &TOKEN_PROGRAM_ID);
+    let ix = build_make_offer_ix(
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
     // Add a pricing vector: price=1.0, apr=0
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
-        &boss, &usdc_mint, &onyc_mint,
-        None, current_time, 1_000_000_000, 0, 86400,
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        None,
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
 
     // Create redemption offer: onyc -> usdc with 1% fee
     let ix = build_make_redemption_offer_ix(
-        &boss, &onyc_mint, &usdc_mint, FEE_BASIS_POINTS,
-        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
+        &boss,
+        &onyc_mint,
+        &usdc_mint,
+        FEE_BASIS_POINTS,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
@@ -70,7 +88,13 @@ fn setup_fee_routing() -> FeeRoutingCtx {
     set_mint_authority(&mut svm, &onyc_mint, &mint_authority_pda);
     set_mint_authority(&mut svm, &usdc_mint, &mint_authority_pda);
 
-    FeeRoutingCtx { svm, payer, onyc_mint, usdc_mint, user }
+    FeeRoutingCtx {
+        svm,
+        payer,
+        onyc_mint,
+        usdc_mint,
+        user,
+    }
 }
 
 fn create_and_fulfill(ctx: &mut FeeRoutingCtx, fee_destination: &Pubkey) {
@@ -80,17 +104,27 @@ fn create_and_fulfill(ctx: &mut FeeRoutingCtx, fee_destination: &Pubkey) {
     let counter = offer_data.request_counter;
 
     let ix = build_create_redemption_request_ix(
-        &ctx.user.pubkey(), &ctx.onyc_mint, &ctx.usdc_mint,
-        REDEMPTION_AMOUNT, counter, &TOKEN_PROGRAM_ID,
+        &ctx.user.pubkey(),
+        &ctx.onyc_mint,
+        &ctx.usdc_mint,
+        REDEMPTION_AMOUNT,
+        counter,
+        &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
     advance_slot(&mut ctx.svm);
 
     let ix = build_fulfill_redemption_request_with_fee_dest_ix(
-        &boss, &boss, &ctx.user.pubkey(),
-        &ctx.onyc_mint, &ctx.usdc_mint, counter,
-        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
-        REDEMPTION_AMOUNT, fee_destination,
+        &boss,
+        &boss,
+        &ctx.user.pubkey(),
+        &ctx.onyc_mint,
+        &ctx.usdc_mint,
+        counter,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+        REDEMPTION_AMOUNT,
+        fee_destination,
     );
     let cu_ix = ComputeBudgetInstruction::set_compute_unit_limit(300_000);
     send_tx(&mut ctx.svm, &[cu_ix, ix], &[&ctx.payer]).unwrap();
@@ -126,7 +160,9 @@ fn test_fee_routing_fees_go_to_custom_wallet_when_set() {
     let boss = ctx.payer.pubkey();
 
     let custom_wallet = Keypair::new();
-    ctx.svm.airdrop(&custom_wallet.pubkey(), INITIAL_LAMPORTS).unwrap();
+    ctx.svm
+        .airdrop(&custom_wallet.pubkey(), INITIAL_LAMPORTS)
+        .unwrap();
 
     let ix = build_set_redemption_fee_destination_ix(&boss, &custom_wallet.pubkey());
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
@@ -157,7 +193,9 @@ fn test_fee_routing_change_mid_stream() {
 
     // Change fee destination to a new wallet
     let custom_wallet = Keypair::new();
-    ctx.svm.airdrop(&custom_wallet.pubkey(), INITIAL_LAMPORTS).unwrap();
+    ctx.svm
+        .airdrop(&custom_wallet.pubkey(), INITIAL_LAMPORTS)
+        .unwrap();
     let ix = build_set_redemption_fee_destination_ix(&boss, &custom_wallet.pubkey());
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
@@ -179,7 +217,9 @@ fn test_fee_routing_rejects_invalid_fee_destination() {
     let boss = ctx.payer.pubkey();
 
     let custom_wallet = Keypair::new();
-    ctx.svm.airdrop(&custom_wallet.pubkey(), INITIAL_LAMPORTS).unwrap();
+    ctx.svm
+        .airdrop(&custom_wallet.pubkey(), INITIAL_LAMPORTS)
+        .unwrap();
 
     let ix = build_set_redemption_fee_destination_ix(&boss, &custom_wallet.pubkey());
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
@@ -189,8 +229,12 @@ fn test_fee_routing_rejects_invalid_fee_destination() {
     let counter = offer_data.request_counter;
 
     let ix = build_create_redemption_request_ix(
-        &ctx.user.pubkey(), &ctx.onyc_mint, &ctx.usdc_mint,
-        REDEMPTION_AMOUNT, counter, &TOKEN_PROGRAM_ID,
+        &ctx.user.pubkey(),
+        &ctx.onyc_mint,
+        &ctx.usdc_mint,
+        REDEMPTION_AMOUNT,
+        counter,
+        &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
     advance_slot(&mut ctx.svm);
@@ -198,10 +242,16 @@ fn test_fee_routing_rejects_invalid_fee_destination() {
     // Pass a different wallet as fee destination — should be rejected
     let wrong_wallet = Keypair::new();
     let ix = build_fulfill_redemption_request_with_fee_dest_ix(
-        &boss, &boss, &ctx.user.pubkey(),
-        &ctx.onyc_mint, &ctx.usdc_mint, counter,
-        &TOKEN_PROGRAM_ID, &TOKEN_PROGRAM_ID,
-        REDEMPTION_AMOUNT, &wrong_wallet.pubkey(),
+        &boss,
+        &boss,
+        &ctx.user.pubkey(),
+        &ctx.onyc_mint,
+        &ctx.usdc_mint,
+        counter,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+        REDEMPTION_AMOUNT,
+        &wrong_wallet.pubkey(),
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]);
     assert!(result.is_err(), "wrong fee destination should be rejected");
@@ -237,5 +287,8 @@ fn test_fee_routing_fee_math_correctness() {
 
     // User USDC ATA should have EXPECTED_TOKEN_OUT
     let user_usdc_ata = get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint);
-    assert_eq!(get_token_balance(&ctx.svm, &user_usdc_ata), EXPECTED_TOKEN_OUT);
+    assert_eq!(
+        get_token_balance(&ctx.svm, &user_usdc_ata),
+        EXPECTED_TOKEN_OUT
+    );
 }

@@ -18,7 +18,6 @@ const _: () = assert!(
     "Environment features are mutually exclusive: enable at most one of 'mainnet-test', 'devnet-test', or 'devnet-dev'. Mainnet is the default when no environment feature is set."
 );
 
-
 // Program ID declaration
 cfg_if::cfg_if! {
     if #[cfg(feature = "mainnet-test")] {
@@ -481,9 +480,8 @@ pub mod onreapp {
     pub fn burn_for_nav_increase(
         ctx: Context<BurnForNavIncrease>,
         asset_adjustment_amount: u64,
-        target_nav: u64,
     ) -> Result<()> {
-        buffer::burn_for_nav_increase(ctx, asset_adjustment_amount, target_nav)
+        buffer::burn_for_nav_increase(ctx, asset_adjustment_amount)
     }
 
     /// Transfers management fees from the management fee vault to the boss.

@@ -138,7 +138,6 @@ fn setup_buffer_context(
     (svm, payer, token_in_mint, onyc_mint, caller)
 }
 
-
 #[test]
 fn test_initialize_buffer_success() {
     let (mut svm, payer, onyc_mint) = setup_initialized();

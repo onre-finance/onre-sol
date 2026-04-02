@@ -508,19 +508,26 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildBurnForNavIncreaseIx(params: { tokenInMint: PublicKey; onycMint: PublicKey; assetAdjustmentAmount: number; targetNav: number; boss: PublicKey }) {
+    async buildBurnForNavIncreaseIx(params: { onycMint: PublicKey; assetAdjustmentAmount: number; boss: PublicKey; mainOffer: PublicKey }) {
         return await this.program.methods
-            .burnForNavIncrease(new BN(params.assetAdjustmentAmount), new BN(params.targetNav))
+            .burnForNavIncrease(new BN(params.assetAdjustmentAmount))
             .accountsPartial({
-                tokenInMint: params.tokenInMint,
                 bufferState: this.pdas.bufferStatePda,
                 onycMint: params.onycMint,
                 boss: params.boss,
+                mainOffer: params.mainOffer,
                 offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
                 vaultTokenOutAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
                 reserveVaultAuthority: this.pdas.reserveVaultAuthorityPda,
                 reserveVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
+                managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
+                managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.onycMint),
+                performanceFeeVaultAuthority: this.pdas.performanceFeeVaultAuthorityPda,
+                performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.onycMint),
+                mintAuthority: this.pdas.mintAuthorityPda,
+                marketStats: this.pdas.marketStatsPda,
                 tokenProgram: TOKEN_PROGRAM_ID,
+                systemProgram: anchor.web3.SystemProgram.programId,
             })
             .instruction();
     }

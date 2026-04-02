@@ -80,15 +80,15 @@ pub struct WithdrawRedemptionFees<'info> {
 /// # Arguments
 /// * `ctx`    - Instruction context
 /// * `amount` - Amount to withdraw. Pass `0` to withdraw the full vault balance.
-pub fn withdraw_redemption_fees(
-    ctx: Context<WithdrawRedemptionFees>,
-    amount: u64,
-) -> Result<()> {
+pub fn withdraw_redemption_fees(ctx: Context<WithdrawRedemptionFees>, amount: u64) -> Result<()> {
     let vault_balance = ctx.accounts.fee_vault_token_in_account.amount;
 
     let effective_amount = if amount == 0 { vault_balance } else { amount };
 
-    require!(effective_amount > 0, WithdrawRedemptionFeesErrorCode::ZeroBalance);
+    require!(
+        effective_amount > 0,
+        WithdrawRedemptionFeesErrorCode::ZeroBalance
+    );
     require!(
         effective_amount <= vault_balance,
         WithdrawRedemptionFeesErrorCode::InsufficientBalance
@@ -102,7 +102,9 @@ pub fn withdraw_redemption_fees(
         &ctx.accounts.token_in_program,
         &ctx.accounts.fee_vault_token_in_account,
         &ctx.accounts.destination_token_in_account,
-        &ctx.accounts.redemption_fee_vault_authority.to_account_info(),
+        &ctx.accounts
+            .redemption_fee_vault_authority
+            .to_account_info(),
         Some(signer_seeds),
         effective_amount,
     )?;

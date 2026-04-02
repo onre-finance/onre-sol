@@ -3001,13 +3001,14 @@ fn fulfill_token2022_with_params(apr: u64, fee_bps: u16, advance_days: u64) {
         // Boss receives net onyc (transfer mode); fee goes to fee vault PDA ATA
         let boss_onyc_ata = get_associated_token_address_2022(&boss, &onyc_mint);
         let boss_onyc = get_token_balance(&svm, &boss_onyc_ata);
-        assert_eq!(
-            boss_onyc, net,
-            "boss receives net onyc in transfer mode"
-        );
+        assert_eq!(boss_onyc, net, "boss receives net onyc in transfer mode");
         let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
         let fee_vault_ata = get_associated_token_address_2022(&fee_vault_pda, &onyc_mint);
-        assert_eq!(get_token_balance(&svm, &fee_vault_ata), fee, "fee vault receives fee");
+        assert_eq!(
+            get_token_balance(&svm, &fee_vault_ata),
+            fee,
+            "fee vault receives fee"
+        );
     }
 }
 
