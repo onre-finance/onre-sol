@@ -124,6 +124,7 @@ pub fn build_cancel_redemption_request_ix(
 pub fn build_fulfill_redemption_request_ix(
     redemption_admin: &Pubkey,
     boss: &Pubkey,
+    main_offer: &Pubkey,
     redeemer: &Pubkey,
     token_in_mint: &Pubkey,
     token_out_mint: &Pubkey,
@@ -133,7 +134,6 @@ pub fn build_fulfill_redemption_request_ix(
     amount: u64,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
-    let (offer_pda, _) = find_offer_pda(token_out_mint, token_in_mint);
     let (redemption_offer_pda, _) = find_redemption_offer_pda(token_in_mint, token_out_mint);
     let (redemption_request_pda, _) =
         find_redemption_request_pda(&redemption_offer_pda, request_id);
@@ -186,7 +186,7 @@ pub fn build_fulfill_redemption_request_ix(
         accounts: vec![
             AccountMeta::new_readonly(state_pda, false),
             AccountMeta::new_readonly(*boss, false),
-            AccountMeta::new_readonly(offer_pda, false),
+            AccountMeta::new_readonly(*main_offer, false),
             AccountMeta::new(redemption_offer_pda, false),
             AccountMeta::new(redemption_request_pda, false),
             AccountMeta::new_readonly(redemption_vault_authority_pda, false),
@@ -213,7 +213,7 @@ pub fn build_fulfill_redemption_request_ix(
             AccountMeta::new_readonly(offer_vault_authority_pda, false),
             AccountMeta::new_readonly(offer_vault_onyc_ata, false),
             AccountMeta::new(market_stats_pda, false),
-            AccountMeta::new_readonly(offer_pda, false),
+            AccountMeta::new_readonly(*main_offer, false),
         ],
         data,
     }
@@ -242,6 +242,7 @@ pub fn build_set_redemption_fee_destination_ix(
 pub fn build_fulfill_redemption_request_with_fee_dest_ix(
     redemption_admin: &Pubkey,
     boss: &Pubkey,
+    main_offer: &Pubkey,
     redeemer: &Pubkey,
     token_in_mint: &Pubkey,
     token_out_mint: &Pubkey,
@@ -252,7 +253,6 @@ pub fn build_fulfill_redemption_request_with_fee_dest_ix(
     fee_destination: &Pubkey,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
-    let (offer_pda, _) = find_offer_pda(token_out_mint, token_in_mint);
     let (redemption_offer_pda, _) = find_redemption_offer_pda(token_in_mint, token_out_mint);
     let (redemption_request_pda, _) =
         find_redemption_request_pda(&redemption_offer_pda, request_id);
@@ -302,7 +302,7 @@ pub fn build_fulfill_redemption_request_with_fee_dest_ix(
         accounts: vec![
             AccountMeta::new_readonly(state_pda, false),
             AccountMeta::new_readonly(*boss, false),
-            AccountMeta::new_readonly(offer_pda, false),
+            AccountMeta::new_readonly(*main_offer, false),
             AccountMeta::new(redemption_offer_pda, false),
             AccountMeta::new(redemption_request_pda, false),
             AccountMeta::new_readonly(redemption_vault_authority_pda, false),
@@ -329,7 +329,7 @@ pub fn build_fulfill_redemption_request_with_fee_dest_ix(
             AccountMeta::new_readonly(offer_vault_authority_pda, false),
             AccountMeta::new_readonly(offer_vault_onyc_ata, false),
             AccountMeta::new(market_stats_pda, false),
-            AccountMeta::new_readonly(offer_pda, false),
+            AccountMeta::new_readonly(*main_offer, false),
         ],
         data,
     }

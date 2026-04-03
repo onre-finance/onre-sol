@@ -39,8 +39,8 @@ fn setup_redemption() -> (
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let (offer_pda, _) = find_offer_pda(&usdc_mint, &onyc_mint);
-    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    let (main_offer, _) = find_offer_pda(&usdc_mint, &onyc_mint);
+    let ix = build_set_main_offer_ix(&boss, &main_offer);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -73,6 +73,20 @@ fn setup_redemption() -> (
     advance_slot(&mut svm);
 
     (svm, payer, usdc_mint, onyc_mint, onyc_mint, usdc_mint)
+}
+
+fn set_main_offer_for_pair(
+    svm: &mut LiteSVM,
+    payer: &Keypair,
+    boss: &Pubkey,
+    token_in_mint: &Pubkey,
+    token_out_mint: &Pubkey,
+) -> Pubkey {
+    let (main_offer, _) = find_offer_pda(token_in_mint, token_out_mint);
+    let ix = build_set_main_offer_ix(boss, &main_offer);
+    send_tx(svm, &[ix], &[payer]).unwrap();
+    advance_slot(svm);
+    main_offer
 }
 
 // ===========================================================================
@@ -526,6 +540,7 @@ fn test_fulfill_redemption_request_transfer_mode() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &read_redemption_offer(&svm, &redemption_tin, &redemption_tout).offer,
         &user.pubkey(),
         &redemption_tin,
         &redemption_tout,
@@ -582,6 +597,7 @@ fn test_fulfill_redemption_request_rejects_non_admin() {
     let ix = build_fulfill_redemption_request_ix(
         &non_admin.pubkey(),
         &boss,
+        &read_redemption_offer(&svm, &redemption_tin, &redemption_tout).offer,
         &user.pubkey(),
         &redemption_tin,
         &redemption_tout,
@@ -1084,6 +1100,7 @@ fn test_cancel_redemption_request_kill_switch_deactivated_allows() {
 struct FulfillCtx {
     svm: LiteSVM,
     payer: Keypair,
+    main_offer: Pubkey,
     usdc_mint: Pubkey,
     onyc_mint: Pubkey,
     redemption_tin: Pubkey,
@@ -1111,6 +1128,11 @@ fn setup_fulfillable_request(fee_bps: u16, amount: u64) -> FulfillCtx {
         false,
         &TOKEN_PROGRAM_ID,
     );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let (main_offer, _) = find_offer_pda(&usdc_mint, &onyc_mint);
+    let ix = build_set_main_offer_ix(&boss, &main_offer);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1175,6 +1197,7 @@ fn setup_fulfillable_request(fee_bps: u16, amount: u64) -> FulfillCtx {
     FulfillCtx {
         svm,
         payer,
+        main_offer,
         usdc_mint,
         onyc_mint,
         redemption_tin: onyc_mint,
@@ -1191,6 +1214,7 @@ fn test_fulfill_redemption_request_updates_statistics() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &ctx.main_offer,
         &ctx.user.pubkey(),
         &ctx.redemption_tin,
         &ctx.redemption_tout,
@@ -1228,8 +1252,8 @@ fn test_fulfill_redemption_request_accumulates_executed() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let (offer_pda, _) = find_offer_pda(&usdc_mint, &onyc_mint);
-    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    let (main_offer, _) = find_offer_pda(&usdc_mint, &onyc_mint);
+    let ix = build_set_main_offer_ix(&boss, &main_offer);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1289,6 +1313,7 @@ fn test_fulfill_redemption_request_accumulates_executed() {
         let ix = build_fulfill_redemption_request_ix(
             &boss,
             &boss,
+            &main_offer,
             &user.pubkey(),
             &onyc_mint,
             &usdc_mint,
@@ -1314,6 +1339,7 @@ fn test_fulfill_redemption_request_zero_fee() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &ctx.main_offer,
         &ctx.user.pubkey(),
         &ctx.redemption_tin,
         &ctx.redemption_tout,
@@ -1344,6 +1370,7 @@ fn test_fulfill_redemption_request_kill_switch() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &ctx.main_offer,
         &ctx.user.pubkey(),
         &ctx.redemption_tin,
         &ctx.redemption_tout,
@@ -1375,6 +1402,11 @@ fn test_fulfill_redemption_request_with_apr_growth() {
         false,
         &TOKEN_PROGRAM_ID,
     );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let (main_offer, _) = find_offer_pda(&usdc_mint, &onyc_mint);
+    let ix = build_set_main_offer_ix(&boss, &main_offer);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1437,6 +1469,7 @@ fn test_fulfill_redemption_request_with_apr_growth() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &main_offer,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -1479,8 +1512,8 @@ fn test_fulfill_redemption_request_burn_and_mint() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let (offer_pda, _) = find_offer_pda(&usdc_mint, &onyc_mint);
-    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    let (main_offer, _) = find_offer_pda(&usdc_mint, &onyc_mint);
+    let ix = build_set_main_offer_ix(&boss, &main_offer);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -1546,6 +1579,7 @@ fn test_fulfill_redemption_request_burn_and_mint() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &main_offer,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -1596,6 +1630,8 @@ fn test_fulfill_redemption_request_rejects_token_out_transfer_fee() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+
+    let main_offer = set_main_offer_for_pair(&mut svm, &payer, &boss, &usdc_mint, &onyc_mint);
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
@@ -1651,6 +1687,7 @@ fn test_fulfill_redemption_request_rejects_token_out_transfer_fee() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &main_offer,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -1701,6 +1738,7 @@ fn test_fulfill_redemption_request_works_without_initialized_buffer() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &read_redemption_offer(&svm, &redemption_tin, &redemption_tout).offer,
         &user.pubkey(),
         &redemption_tin,
         &redemption_tout,
@@ -1723,6 +1761,7 @@ fn test_fulfill_redemption_request_transfer_mode_fee_to_boss() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &ctx.main_offer,
         &ctx.user.pubkey(),
         &ctx.redemption_tin,
         &ctx.redemption_tout,
@@ -1760,6 +1799,8 @@ fn test_fulfill_redemption_request_different_price() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+
+    let main_offer = set_main_offer_for_pair(&mut svm, &payer, &boss, &usdc_mint, &onyc_mint);
 
     // base_price = 2.0 (2_000_000_000)
     let current_time = get_clock_time(&svm);
@@ -1816,6 +1857,7 @@ fn test_fulfill_redemption_request_different_price() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &main_offer,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -1853,6 +1895,8 @@ fn test_fulfill_redemption_request_fee_with_apr() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+
+    let main_offer = set_main_offer_for_pair(&mut svm, &payer, &boss, &usdc_mint, &onyc_mint);
 
     // APR=10%, base_price=1.0
     let current_time = get_clock_time(&svm);
@@ -1913,6 +1957,7 @@ fn test_fulfill_redemption_request_fee_with_apr() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &main_offer,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -2068,6 +2113,7 @@ fn test_fulfill_redemption_token2022_transfer_mode() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &read_redemption_offer(&svm, &onyc_mint, &usdc_mint).offer,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -2128,6 +2174,7 @@ fn test_fulfill_redemption_token2022_burn_mint_mode() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &read_redemption_offer(&svm, &onyc_mint, &usdc_mint).offer,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -2227,6 +2274,7 @@ fn test_fulfill_redemption_token2022_with_fee() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &read_redemption_offer(&svm, &onyc_mint, &usdc_mint).offer,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -2382,6 +2430,7 @@ fn test_fulfill_redemption_request_rejects_already_fulfilled() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &ctx.main_offer,
         &ctx.user.pubkey(),
         &ctx.redemption_tin,
         &ctx.redemption_tout,
@@ -2397,6 +2446,7 @@ fn test_fulfill_redemption_request_rejects_already_fulfilled() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &ctx.main_offer,
         &ctx.user.pubkey(),
         &ctx.redemption_tin,
         &ctx.redemption_tout,
@@ -2430,6 +2480,8 @@ fn test_fulfill_redemption_request_fails_no_active_vector() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+
+    let main_offer = set_main_offer_for_pair(&mut svm, &payer, &boss, &usdc_mint, &onyc_mint);
 
     // Add vector then delete it
     let current_time = get_clock_time(&svm);
@@ -2492,6 +2544,7 @@ fn test_fulfill_redemption_request_fails_no_active_vector() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &main_offer,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -2525,6 +2578,8 @@ fn test_fulfill_redemption_request_price_1_003() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+
+    let main_offer = set_main_offer_for_pair(&mut svm, &payer, &boss, &usdc_mint, &onyc_mint);
 
     // Price = 1.003
     let current_time = get_clock_time(&svm);
@@ -2581,6 +2636,7 @@ fn test_fulfill_redemption_request_price_1_003() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &main_offer,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -2617,6 +2673,8 @@ fn test_fulfill_redemption_request_price_0_5() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+
+    let main_offer = set_main_offer_for_pair(&mut svm, &payer, &boss, &usdc_mint, &onyc_mint);
 
     // Price = 0.5
     let current_time = get_clock_time(&svm);
@@ -2673,6 +2731,7 @@ fn test_fulfill_redemption_request_price_0_5() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &main_offer,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -2709,6 +2768,8 @@ fn test_fulfill_redemption_request_price_pi() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+
+    let main_offer = set_main_offer_for_pair(&mut svm, &payer, &boss, &usdc_mint, &onyc_mint);
 
     // Price = 3.141592653 (pi approximation)
     let current_time = get_clock_time(&svm);
@@ -2765,6 +2826,7 @@ fn test_fulfill_redemption_request_price_pi() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &main_offer,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -2788,6 +2850,7 @@ fn test_fulfill_redemption_request_very_small_amount() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &ctx.main_offer,
         &ctx.user.pubkey(),
         &ctx.redemption_tin,
         &ctx.redemption_tout,
@@ -2830,6 +2893,8 @@ fn test_fulfill_redemption_request_price_0_123456789() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+
+    let main_offer = set_main_offer_for_pair(&mut svm, &payer, &boss, &usdc_mint, &onyc_mint);
 
     // Price = 0.123456789
     let current_time = get_clock_time(&svm);
@@ -2886,6 +2951,7 @@ fn test_fulfill_redemption_request_price_0_123456789() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &main_offer,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -2954,6 +3020,8 @@ fn fulfill_token2022_with_params(apr: u64, fee_bps: u16, advance_days: u64) {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
+    let main_offer = read_redemption_offer(&svm, &onyc_mint, &usdc_mint).offer;
+
     let user = Keypair::new();
     svm.airdrop(&user.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
     create_token_account_2022(&mut svm, &onyc_mint, &user.pubkey(), 1_000_000_000);
@@ -2988,6 +3056,7 @@ fn fulfill_token2022_with_params(apr: u64, fee_bps: u16, advance_days: u64) {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &main_offer,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -3508,6 +3577,7 @@ fn test_fulfill_redemption_request_decrements_requested_redemptions() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &ctx.main_offer,
         &ctx.user.pubkey(),
         &ctx.redemption_tin,
         &ctx.redemption_tout,
@@ -3557,6 +3627,8 @@ fn test_fulfill_redemption_request_different_decimals() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+
+    let main_offer = set_main_offer_for_pair(&mut svm, &payer, &boss, &usdc_mint, &onyc_mint);
 
     // Add a vector with price = 1.0 (1_000_000_000 in PRICE_DECIMALS=9)
     let current_time = get_clock_time(&svm);
@@ -3621,6 +3693,7 @@ fn test_fulfill_redemption_request_different_decimals() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &main_offer,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,

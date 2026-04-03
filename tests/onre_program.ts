@@ -924,7 +924,7 @@ export class OnreProgram {
                 redemptionFeeVaultAuthority: this.pdas.redemptionFeeVaultAuthorityPda,
                 feeDestination,
                 feeDestinationTokenInAccount,
-            } as any)
+            })
             .signers([params.redemptionAdmin]);
 
         await tx.rpc();

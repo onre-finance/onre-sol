@@ -142,6 +142,7 @@ fn test_partial_fulfill_updates_fulfilled_amount() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &find_offer_pda(&usdc_mint, &onyc_mint).0,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -169,6 +170,7 @@ fn test_partial_fulfill_account_stays_open() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &find_offer_pda(&usdc_mint, &onyc_mint).0,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -195,9 +197,10 @@ fn test_partial_fulfill_account_closed_after_final_call() {
 
     for amount in [2_000_000_000u64, 3_000_000_000, 4_000_000_000] {
         let ix = build_fulfill_redemption_request_ix(
-            &boss,
-            &boss,
-            &user.pubkey(),
+        &boss,
+        &boss,
+        &find_offer_pda(&usdc_mint, &onyc_mint).0,
+        &user.pubkey(),
             &onyc_mint,
             &usdc_mint,
             0,
@@ -230,6 +233,7 @@ fn test_partial_fulfill_decrements_requested_redemptions_per_call() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &find_offer_pda(&usdc_mint, &onyc_mint).0,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -256,6 +260,7 @@ fn test_partial_fulfill_increments_executed_redemptions_per_call() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &find_offer_pda(&usdc_mint, &onyc_mint).0,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -280,9 +285,10 @@ fn test_full_3_call_redemption_correct_offer_stats() {
 
     for amount in [2_000_000_000u64, 3_000_000_000, 4_000_000_000] {
         let ix = build_fulfill_redemption_request_ix(
-            &boss,
-            &boss,
-            &user.pubkey(),
+        &boss,
+        &boss,
+        &find_offer_pda(&usdc_mint, &onyc_mint).0,
+        &user.pubkey(),
             &onyc_mint,
             &usdc_mint,
             0,
@@ -318,6 +324,7 @@ fn test_partial_fulfill_cumulative_usdc_received() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &find_offer_pda(&usdc_mint, &onyc_mint).0,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -337,6 +344,7 @@ fn test_partial_fulfill_cumulative_usdc_received() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &find_offer_pda(&usdc_mint, &onyc_mint).0,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -356,6 +364,7 @@ fn test_partial_fulfill_cumulative_usdc_received() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &find_offer_pda(&usdc_mint, &onyc_mint).0,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -390,6 +399,7 @@ fn test_cancel_after_partial_returns_remaining() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &find_offer_pda(&usdc_mint, &onyc_mint).0,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -434,6 +444,7 @@ fn test_cancel_after_partial_requested_redemptions_zero() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &find_offer_pda(&usdc_mint, &onyc_mint).0,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -474,6 +485,7 @@ fn test_partial_fulfill_rejects_zero_amount() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &find_offer_pda(&usdc_mint, &onyc_mint).0,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -494,6 +506,7 @@ fn test_partial_fulfill_rejects_amount_exceeding_remaining() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &find_offer_pda(&usdc_mint, &onyc_mint).0,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -518,6 +531,7 @@ fn test_partial_fulfill_rejects_overfill_after_first_partial() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &find_offer_pda(&usdc_mint, &onyc_mint).0,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
@@ -533,6 +547,7 @@ fn test_partial_fulfill_rejects_overfill_after_first_partial() {
     let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
+        &find_offer_pda(&usdc_mint, &onyc_mint).0,
         &user.pubkey(),
         &onyc_mint,
         &usdc_mint,
