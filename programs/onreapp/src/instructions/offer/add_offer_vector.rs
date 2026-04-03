@@ -131,7 +131,7 @@ pub fn add_offer_vector(
         base_price,
         price_fix_duration,
         current_time,
-        &offer,
+        offer,
     )?;
 
     // Create the new time vector
@@ -147,7 +147,7 @@ pub fn add_offer_vector(
     clean_old_vectors(offer, &new_vector, current_time)?;
 
     // Find an empty slot in time_vectors array
-    let empty_slot_index = find_vector_index_by_start_time(&offer, 0)
+    let empty_slot_index = find_vector_index_by_start_time(offer, 0)
         .ok_or_else(|| error!(AddOfferVectorErrorCode::TooManyVectors))?;
 
     // Add the vector to the offer

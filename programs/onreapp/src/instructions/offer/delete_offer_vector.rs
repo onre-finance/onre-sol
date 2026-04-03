@@ -98,7 +98,7 @@ pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_start_time: u
     );
 
     // Find and delete the vector by vector_start_time
-    let vector_index = find_vector_index_by_start_time(&offer, vector_start_time)
+    let vector_index = find_vector_index_by_start_time(offer, vector_start_time)
         .ok_or_else(|| error!(DeleteOfferVectorErrorCode::VectorNotFound))?;
 
     // Delete the vector by setting it to default
