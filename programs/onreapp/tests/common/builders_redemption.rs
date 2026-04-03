@@ -213,6 +213,7 @@ pub fn build_fulfill_redemption_request_ix(
             AccountMeta::new_readonly(offer_vault_authority_pda, false),
             AccountMeta::new_readonly(offer_vault_onyc_ata, false),
             AccountMeta::new(market_stats_pda, false),
+            AccountMeta::new_readonly(offer_pda, false),
         ],
         data,
     }
@@ -328,6 +329,7 @@ pub fn build_fulfill_redemption_request_with_fee_dest_ix(
             AccountMeta::new_readonly(offer_vault_authority_pda, false),
             AccountMeta::new_readonly(offer_vault_onyc_ata, false),
             AccountMeta::new(market_stats_pda, false),
+            AccountMeta::new_readonly(offer_pda, false),
         ],
         data,
     }
