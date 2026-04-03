@@ -122,6 +122,7 @@ fn create_and_fulfill(ctx: &mut FeeRoutingCtx, fee_destination: &Pubkey) {
     let ix = build_fulfill_redemption_request_with_fee_dest_ix(
         &boss,
         &boss,
+        &find_offer_pda(&ctx.usdc_mint, &ctx.onyc_mint).0,
         &ctx.user.pubkey(),
         &ctx.onyc_mint,
         &ctx.usdc_mint,
@@ -249,6 +250,7 @@ fn test_fee_routing_rejects_invalid_fee_destination() {
     let ix = build_fulfill_redemption_request_with_fee_dest_ix(
         &boss,
         &boss,
+        &find_offer_pda(&ctx.usdc_mint, &ctx.onyc_mint).0,
         &ctx.user.pubkey(),
         &ctx.onyc_mint,
         &ctx.usdc_mint,
