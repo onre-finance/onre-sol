@@ -213,7 +213,7 @@ describe("BUFFER", () => {
         ).rejects.toThrow();
     });
 
-    test("performance fee only applies after recovering the high watermark", async () => {
+    test("performance fee applies once stepped NAV returns to the high watermark", async () => {
         await setupBufferWithBalance({
             grossYield: 100_000,
             currentYieldApr: 0,
@@ -241,7 +241,7 @@ describe("BUFFER", () => {
         const performanceFeeBalance = await testHelper.getTokenAccountBalance(program.getPerformanceFeeVaultAta(onycMint));
         const state = await program.getBufferState();
 
-        expect(performanceFeeBalance).toBe(performanceFeeBalanceBefore);
+        expect(performanceFeeBalance).toBe(BigInt(28_800_000));
         expect(state.performanceFeeHighWatermark.toNumber()).toBe(NAV_1_0);
     });
 

@@ -77,7 +77,11 @@ pub fn calculate_buffer_fee_split(
         .checked_sub(management_fee_mint_amount)
         .ok_or(BufferErrorCode::MathOverflow)?;
 
-    let performance_fee_mint_amount = if current_nav > performance_fee_high_watermark {
+    // NAV is stepwise-constant over each `price_fix_duration` interval. Using `>=`
+    // ensures performance fees apply for an interval whose stepped NAV is exactly at
+    // the stored watermark, rather than skipping that entire fixed-price window and
+    // only starting once NAV jumps strictly above it in a later step.
+    let performance_fee_mint_amount = if current_nav >= performance_fee_high_watermark {
         let fee_u128 = (buffer_mint_amount_after_management as u128)
             .checked_mul(performance_fee_basis_points as u128)
             .ok_or(BufferErrorCode::MathOverflow)?
