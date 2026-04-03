@@ -1,4 +1,4 @@
-use crate::constants::{seeds, MAX_BASIS_POINTS};
+use crate::constants::{seeds, MAX_ALLOWED_FEE_BPS};
 use crate::instructions::Offer;
 use crate::state::State;
 use crate::OfferCoreError;
@@ -12,9 +12,9 @@ use anchor_spl::token_interface::Mint;
 pub struct OfferFeeUpdatedEvent {
     /// The PDA address of the offer whose fee was updated
     pub offer_pda: Pubkey,
-    /// Previous fee in basis points (10000 = 100%)
+    /// Previous fee in basis points (1000 = 10%)
     pub old_fee_basis_points: u16,
-    /// New fee in basis points (10000 = 100%)
+    /// New fee in basis points (1000 = 10%)
     pub new_fee_basis_points: u16,
     /// The boss account that authorized the fee update
     pub boss: Pubkey,
@@ -76,11 +76,11 @@ pub struct UpdateOfferFee<'info> {
 ///
 /// # Arguments
 /// * `ctx` - The instruction context containing validated accounts
-/// * `new_fee_basis_points` - New fee in basis points (10000 = 100%, 500 = 5%)
+/// * `new_fee_basis_points` - New fee in basis points (1000 = 10%, 500 = 5%)
 ///
 /// # Returns
 /// * `Ok(())` - If the fee is successfully updated
-/// * `Err(UpdateOfferFeeErrorCode::InvalidFee)` - If fee exceeds 10000 basis points
+/// * `Err(UpdateOfferFeeErrorCode::InvalidFee)` - If fee exceeds 1000 basis points
 ///
 /// # Access Control
 /// - Only the boss can call this instruction
@@ -94,9 +94,9 @@ pub struct UpdateOfferFee<'info> {
 /// # Events
 /// * `OfferFeeUpdatedEvent` - Emitted with old and new fee values
 pub fn update_offer_fee(ctx: Context<UpdateOfferFee>, new_fee_basis_points: u16) -> Result<()> {
-    // Validate fee is within valid range (0-10000 basis points = 0-100%)
+    // Validate fee is within valid range (0-1000 basis points = 0-10%)
     require!(
-        new_fee_basis_points <= MAX_BASIS_POINTS,
+        new_fee_basis_points <= MAX_ALLOWED_FEE_BPS,
         UpdateOfferFeeErrorCode::InvalidFee
     );
 
@@ -128,8 +128,8 @@ pub fn update_offer_fee(ctx: Context<UpdateOfferFee>, new_fee_basis_points: u16)
 /// Error codes for update offer fee operations
 #[error_code]
 pub enum UpdateOfferFeeErrorCode {
-    /// Fee basis points exceeds maximum allowed value of 10000 (100%)
-    #[msg("Invalid fee: fee_basis_points must be <= 10000")]
+    /// Fee basis points exceeds maximum allowed value of 1000 (10%)
+    #[msg("Invalid fee: fee_basis_points must be <= 1000 (10%)")]
     InvalidFee,
 
     /// The provided token_in mint does not match the offer's expected mint
