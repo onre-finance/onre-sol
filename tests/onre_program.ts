@@ -882,7 +882,6 @@ export class OnreProgram {
         redemptionAdmin: Keypair;
         tokenInMint: PublicKey;
         tokenOutMint: PublicKey;
-        /** Amount of token_in to fulfill. Omit to fulfill the full remaining unfulfilled balance. */
         amount?: BN;
         tokenInProgram?: PublicKey;
         tokenOutProgram?: PublicKey;
@@ -894,7 +893,6 @@ export class OnreProgram {
             const request = await this.program.account.redemptionRequest.fetch(params.redemptionRequest);
             amount = (request.amount as BN).sub(request.fulfilledAmount as BN);
         }
-
         const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
         const feeDestination = params.feeDestination ?? this.pdas.redemptionFeeVaultAuthorityPda;
         const state = await this.getState();
@@ -903,56 +901,6 @@ export class OnreProgram {
 
         const tx = this.program.methods
             .fulfillRedemptionRequest(amount)
-            .accountsPartial({
-                offer: params.offer,
-                redemptionOffer: params.redemptionOffer,
-                redemptionRequest: params.redemptionRequest,
-                tokenInMint: params.tokenInMint,
-                tokenOutMint: params.tokenOutMint,
-                tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
-                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
-                redeemer: params.redeemer,
-                redemptionAdmin: params.redemptionAdmin.publicKey,
-                offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
-                offerVaultOnycAccount: getAssociatedTokenAddressSync(params.tokenInMint, this.pdas.offerVaultAuthorityPda, true, params.tokenInProgram ?? TOKEN_PROGRAM_ID),
-                redemptionFeeVaultAuthority: this.pdas.redemptionFeeVaultAuthorityPda,
-                marketStats: this.pdas.marketStatsPda,
-                mainOffer,
-                feeDestination,
-                feeDestinationTokenInAccount,
-            })
-            .signers([params.redemptionAdmin]);
-
-        await tx.rpc();
-    }
-
-    async fulfillRedemptionRequestV2(params: {
-        offer: PublicKey;
-        redemptionOffer: PublicKey;
-        redemptionRequest: PublicKey;
-        redeemer: PublicKey;
-        redemptionAdmin: Keypair;
-        tokenInMint: PublicKey;
-        tokenOutMint: PublicKey;
-        amount?: BN;
-        tokenInProgram?: PublicKey;
-        tokenOutProgram?: PublicKey;
-        /** Fee destination owner. Defaults to redemptionFeeVaultAuthorityPda. */
-        feeDestination?: PublicKey;
-    }) {
-        let amount = params.amount;
-        if (amount === undefined) {
-            const request = await this.program.account.redemptionRequest.fetch(params.redemptionRequest);
-            amount = (request.amount as BN).sub(request.fulfilledAmount as BN);
-        }
-        const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
-        const feeDestination = params.feeDestination ?? this.pdas.redemptionFeeVaultAuthorityPda;
-        const state = await this.getState();
-        const mainOffer = state.mainOffer as PublicKey;
-        const feeDestinationTokenInAccount = getAssociatedTokenAddressSync(params.tokenInMint, feeDestination, true, tokenInProgram);
-
-        const tx = this.program.methods
-            .fulfillRedemptionRequestV2(amount)
             .accountsPartial({
                 offer: params.offer,
                 redemptionOffer: params.redemptionOffer,

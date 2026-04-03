@@ -112,7 +112,7 @@ describe("Fulfill redemption request", () => {
             expect(userOnycBalance).toBe(BigInt(10_000e9 - REDEMPTION_AMOUNT));
         });
 
-        test("Should accrue BUFFER before burning ONyc in fulfill_redemption_request_v2", async () => {
+        test("Should accrue BUFFER before burning ONyc in fulfill_redemption_request", async () => {
             await program.transferMintAuthorityToProgram({ mint: onycMint });
             await program.transferMintAuthorityToProgram({ mint: usdcMint });
 
@@ -151,7 +151,7 @@ describe("Fulfill redemption request", () => {
 
             await testHelper.advanceClockBy(31_536_000);
 
-            await program.fulfillRedemptionRequestV2({
+            await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
                 redemptionRequest: redemptionRequestPda,

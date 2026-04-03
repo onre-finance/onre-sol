@@ -803,7 +803,12 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildFulfillRedemptionRequestIx(params: { redemptionOfferPda: PublicKey; redemptionRequestPda: PublicKey; redemptionAdmin: PublicKey; amount: BN }) {
+    async buildFulfillRedemptionRequestIx(params: {
+        redemptionOfferPda: PublicKey;
+        redemptionRequestPda: PublicKey;
+        redemptionAdmin: PublicKey;
+        amount: BN;
+    }) {
         return await this.program.methods
             .fulfillRedemptionRequest(params.amount)
             .accountsPartial({
