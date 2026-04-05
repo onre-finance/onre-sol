@@ -522,12 +522,17 @@ fn execute_take_offer_permissionless<'info>(
     )?;
 
     let result = process_offer_core(&offer, token_in_amount, token_in_mint, token_out_mint)?;
+    let buffer_is_initialized = if let Some(accounts) = buffer_accounts {
+        accounts.check_is_initialized(program_id)?
+    } else {
+        false
+    };
     let should_accrue = buffer_accounts
-        .map(|accounts| {
+        .map(|_| {
             should_accrue_onyc_mint(
                 state,
                 token_out_mint,
-                accounts.is_initialized(),
+                buffer_is_initialized,
                 &mint_authority.to_account_info(),
             )
         })

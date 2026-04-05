@@ -59,11 +59,11 @@ fn test_update_fee_to_max() {
     let (mut svm, payer, token_in, token_out) = setup_offer();
     let boss = payer.pubkey();
 
-    let ix = build_update_offer_fee_ix(&boss, &token_in, &token_out, 10000);
+    let ix = build_update_offer_fee_ix(&boss, &token_in, &token_out, 1000);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let offer = read_offer(&svm, &token_in, &token_out);
-    assert_eq!(offer.fee_basis_points, 10000);
+    assert_eq!(offer.fee_basis_points, 1000);
 }
 
 #[test]
@@ -89,9 +89,9 @@ fn test_update_fee_rejects_over_max() {
     let (mut svm, payer, token_in, token_out) = setup_offer();
     let boss = payer.pubkey();
 
-    let ix = build_update_offer_fee_ix(&boss, &token_in, &token_out, 10001);
+    let ix = build_update_offer_fee_ix(&boss, &token_in, &token_out, 1001);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "fee over 10000 should fail");
+    assert!(result.is_err(), "fee over 1000 should fail");
 }
 
 #[test]
