@@ -454,10 +454,14 @@ pub fn take_offer_v2(
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
     let offer = ctx.accounts.offer.load()?;
+    let buffer_is_initialized = ctx
+        .accounts
+        .buffer_accounts
+        .check_is_initialized(ctx.program_id)?;
     let should_accrue_onyc_mint = should_accrue_onyc_mint(
         &ctx.accounts.state,
         &ctx.accounts.token_out_mint,
-        ctx.accounts.buffer_accounts.is_initialized(),
+        buffer_is_initialized,
         &ctx.accounts.mint_authority.to_account_info(),
     );
 
