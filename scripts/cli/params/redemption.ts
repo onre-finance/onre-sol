@@ -67,6 +67,18 @@ export const requestParams: ParamDefinition[] = [
     },
 ];
 
+export const fulfillRequestParams: ParamDefinition[] = [
+    ...requestParams,
+    {
+        name: "amount",
+        type: "amount",
+        description: "Amount of token_in to fulfill in this call (leave empty to fulfill all remaining)",
+        required: false,
+        flag: "--amount",
+        shortFlag: "-a",
+    },
+];
+
 export const updateRedemptionFeeParams: ParamDefinition[] = [
     ...redemptionTokenPairParams,
     {
@@ -76,6 +88,46 @@ export const updateRedemptionFeeParams: ParamDefinition[] = [
         required: true,
         flag: "--fee",
         shortFlag: "-f",
+    },
+];
+
+export const setFeeDestinationParams: ParamDefinition[] = [
+    {
+        name: "feeDestination",
+        type: "publicKey",
+        description: "Fee destination address",
+        required: true,
+        flag: "--destination",
+        shortFlag: "-d",
+    },
+];
+
+export const withdrawFeesParams: ParamDefinition[] = [
+    {
+        name: "tokenIn",
+        type: "mint",
+        description: "Token mint to withdraw fees for",
+        required: true,
+        flag: "--token-in",
+        shortFlag: "-i",
+        default: (cfg: NetworkConfig) => cfg.mints.onyc,
+    },
+    {
+        name: "destination",
+        type: "publicKey",
+        description: "Destination wallet for withdrawn fees",
+        required: true,
+        flag: "--destination",
+        shortFlag: "-d",
+    },
+    {
+        name: "amount",
+        type: "amount",
+        description: "Amount to withdraw (0 or omit for full balance)",
+        required: false,
+        flag: "--amount",
+        shortFlag: "-a",
+        default: 0,
     },
 ];
 

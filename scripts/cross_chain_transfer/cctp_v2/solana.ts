@@ -67,7 +67,7 @@ export const depositForBurnSol = async (
       minFinalityThreshold,
       destinationCaller,
     })
-    .accounts({
+    .accountsPartial({
       owner: provider.wallet.publicKey,
       eventRentPayer: provider.wallet.publicKey,
       senderAuthorityPda: pdas.authorityPda.publicKey,
@@ -120,7 +120,7 @@ export const depositForBurnSolWithHook = async (
       destinationCaller,
       hookData,
     })
-    .accounts({
+    .accountsPartial({
       owner: provider.wallet.publicKey,
       eventRentPayer: provider.wallet.publicKey,
       senderAuthorityPda: pdas.authorityPda.publicKey,
@@ -232,7 +232,7 @@ export const receiveMessageSol = async (
       message: Buffer.from(messageHex.replace("0x", ""), "hex"),
       attestation: Buffer.from(attestationHex.replace("0x", ""), "hex"),
     })
-    .accounts({
+    .accountsPartial({
       payer: provider.wallet.publicKey,
       caller: provider.wallet.publicKey,
       authorityPda: pdas.authorityPda,

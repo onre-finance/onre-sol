@@ -30,7 +30,7 @@ pub struct SetKillSwitch<'info> {
         bump = state.bump,
     )]
     pub state: Box<Account<'info, State>>,
-    
+
     /// The account attempting to modify the kill switch (boss or admin)
     pub signer: Signer<'info>,
 }

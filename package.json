@@ -6,17 +6,10 @@
   "type": "module",
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "anchor": "cd anchor && anchor",
-    "anchor-build": "cd anchor && anchor build && mkdir -p ../tests/fixtures && cp target/deploy/onreapp.so ../tests/fixtures/",
-    "anchor-localnet": "cd anchor && anchor localnet",
-    "anchor-test": "cd anchor && anchor test",
+    "anchor-build": "anchor build && mkdir -p tests/fixtures && cp target/deploy/onreapp.so tests/fixtures/",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "set-program:dev": "cp ~/.config/solana/devHfQHgiFNifkLW49RCXpyTUZMyKuBNnFSbrQ8XsbX.json target/deploy/onreapp-keypair.json && anchor keys sync && anchor build",
-    "set-program:test": "cp ~/.config/solana/J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2.json target/deploy/onreapp-keypair.json && anchor keys sync && anchor build",
-    "set-program:prod": "cp ~/.config/solana/onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe.json target/deploy/onreapp-keypair.json && anchor keys sync && anchor build",
-    "transfer-usdc-v2": "tsx scripts/cross_chain_transfer/cctp_v2/transfer-v2.ts",
     "script:mainnet-prod": "NETWORK=mainnet-prod tsx",
     "script:mainnet-test": "NETWORK=mainnet-test tsx",
     "script:mainnet-dev": "NETWORK=mainnet-dev tsx",
@@ -43,7 +36,9 @@
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
+    "@types/bn.js": "^5.2.0",
     "@types/node": "^22.10.5",
+    "@types/node-fetch": "2",
     "dotenv": "^16.5.0",
     "litesvm": "0.4.0",
     "prettier": "^3.5.2",

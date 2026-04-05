@@ -1,10 +1,16 @@
 use crate::instructions::{Offer, OfferVector};
+use crate::state::State;
 use crate::utils::approver::approver_utils;
-use crate::utils::{calculate_fees, calculate_token_out_amount, ApprovalMessage};
+use crate::utils::{
+    calculate_fees, calculate_token_out_amount, mul_div_round_u128, pow_fixed,
+    program_controls_mint, ApprovalMessage,
+};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
+use core::cmp::Ordering;
 
-const SECONDS_IN_YEAR: u128 = 31_536_000;
+const INT_SCALE: u128 = 1_000_000_000_000_000_000;
+const SECONDS_IN_DAY: u64 = 86_400;
 const APR_SCALE: u128 = 1_000_000;
 
 /// Common error codes for offer processing operations
@@ -152,6 +158,24 @@ pub fn process_offer_core(
     })
 }
 
+pub fn is_onyc_token_out_mint<'info>(
+    state: &Account<'info, State>,
+    token_out_mint: &InterfaceAccount<'info, Mint>,
+) -> bool {
+    token_out_mint.key() == state.onyc_mint
+}
+
+pub fn should_accrue_onyc_mint<'info>(
+    state: &Account<'info, State>,
+    token_out_mint: &InterfaceAccount<'info, Mint>,
+    buffer_is_initialized: bool,
+    mint_authority: &AccountInfo<'info>,
+) -> bool {
+    is_onyc_token_out_mint(state, token_out_mint)
+        && buffer_is_initialized
+        && program_controls_mint(token_out_mint, mint_authority)
+}
+
 /// Finds the currently active pricing vector at a specific time
 ///
 /// Searches through the offer's pricing vectors to find the one that should be
@@ -176,13 +200,16 @@ pub fn find_active_vector_at(offer: &Offer, time: u64) -> Result<OfferVector> {
     Ok(*active_vector)
 }
 
-/// Calculates continuous price growth using APR-based compound interest
+/// Calculates price growth using daily compounding with second-level interpolation
 ///
-/// Implements linear price growth formula for continuous pricing without discrete
-/// intervals. Uses fixed-point arithmetic to maintain precision in calculations.
+/// The annual percentage rate is compounded daily, matching the APY semantics
+/// used by market info. For elapsed times that are not an exact number of days,
+/// the remaining fractional day is applied through a fixed-point second factor
+/// derived from the daily growth factor.
 ///
-/// Formula: P(t) = P0 * (1 + apr * elapsed_time / SECONDS_IN_YEAR)
-/// where SECONDS_IN_YEAR = 31,536,000 and apr is scaled by 1,000,000.
+/// Formula:
+///   daily_factor = 1 + apr / (APR_SCALE * 365)
+///   price = base_price * daily_factor^(elapsed_seconds / 86400)
 ///
 /// # Arguments
 /// * `apr` - Annual Percentage Rate scaled by 1_000_000 (1_000_000 = 1% APR)
@@ -193,26 +220,36 @@ pub fn find_active_vector_at(offer: &Offer, time: u64) -> Result<OfferVector> {
 /// * `Ok(u64)` - Calculated price with same scale as base_price
 /// * `Err(OfferCoreError::OverflowError)` - If arithmetic overflow occurs
 pub fn calculate_vector_price(apr: u64, base_price: u64, elapsed_time: u64) -> Result<u64> {
-    // Compute: price = P0 * (1 + y * elapsed_time / SECONDS_IN_YEAR)
-    // With fixed-point:
-    //   factor_num = SCALE*SECONDS_IN_YEAR + APR*elapsed_time
-    //   factor_den = SCALE*SECONDS_IN_YEAR
-    //   price = base_price * (factor_num / factor_den)
-    let factor_den = APR_SCALE
-        .checked_mul(SECONDS_IN_YEAR)
-        .expect("SCALE*S overflow (should not happen)");
-    let y_part = (apr as u128)
-        .checked_mul(elapsed_time as u128)
-        .ok_or(OfferCoreError::OverflowError)?;
-    let factor_num = factor_den
-        .checked_add(y_part)
+    if apr == 0 || elapsed_time == 0 {
+        return Ok(base_price);
+    }
+
+    let daily_increment = INT_SCALE
+        .checked_mul(apr as u128)
+        .ok_or(OfferCoreError::OverflowError)?
+        .checked_add((APR_SCALE * 365) / 2)
+        .ok_or(OfferCoreError::OverflowError)?
+        .checked_div(APR_SCALE * 365)
         .ok_or(OfferCoreError::OverflowError)?;
 
-    // price growth applied to base_price
-    let price_u128 = (base_price as u128)
-        .checked_mul(factor_num)
-        .ok_or(OfferCoreError::OverflowError)?
-        .checked_div(factor_den)
+    let daily_factor = INT_SCALE
+        .checked_add(daily_increment)
+        .ok_or(OfferCoreError::OverflowError)?;
+
+    let full_days = elapsed_time / SECONDS_IN_DAY;
+    let remaining_seconds = elapsed_time % SECONDS_IN_DAY;
+
+    let mut factor =
+        pow_fixed(daily_factor, full_days, INT_SCALE).ok_or(OfferCoreError::OverflowError)?;
+    if remaining_seconds > 0 {
+        let second_factor = nth_root_fixed(daily_factor, SECONDS_IN_DAY, INT_SCALE)?;
+        let partial_day_factor = pow_fixed(second_factor, remaining_seconds, INT_SCALE)
+            .ok_or(OfferCoreError::OverflowError)?;
+        factor = mul_div_round_u128(factor, partial_day_factor, INT_SCALE)
+            .ok_or(OfferCoreError::OverflowError)?;
+    }
+
+    let price_u128 = mul_div_round_u128(base_price as u128, factor, INT_SCALE)
         .ok_or(OfferCoreError::OverflowError)?;
 
     if price_u128 > u64::MAX as u128 {
@@ -310,4 +347,86 @@ pub fn find_vector_index_by_start_time(offer: &Offer, start_time: u64) -> Option
         .vectors
         .iter()
         .position(|vector| vector.start_time == start_time)
+}
+
+fn nth_root_fixed(value: u128, n: u64, scale: u128) -> Result<u128> {
+    if n == 0 {
+        return Err(error!(OfferCoreError::OverflowError));
+    }
+    if value <= scale {
+        return Ok(value);
+    }
+
+    let mut low = scale;
+    let mut high = value;
+
+    while low + 1 < high {
+        let mid = low + (high - low) / 2;
+        match compare_pow_fixed(mid, n, scale, value)? {
+            Ordering::Greater => high = mid,
+            _ => low = mid,
+        }
+    }
+
+    Ok(low)
+}
+
+fn compare_pow_fixed(mut base: u128, mut exp: u64, scale: u128, target: u128) -> Result<Ordering> {
+    let mut acc = scale;
+
+    while exp > 0 {
+        if (exp & 1) == 1 {
+            acc = mul_div_round_u128(acc, base, scale).ok_or(OfferCoreError::OverflowError)?;
+            if acc > target {
+                return Ok(Ordering::Greater);
+            }
+        }
+
+        exp >>= 1;
+        if exp > 0 {
+            base = mul_div_round_u128(base, base, scale).ok_or(OfferCoreError::OverflowError)?;
+            if base > target {
+                return Ok(Ordering::Greater);
+            }
+        }
+    }
+
+    Ok(acc.cmp(&target))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn vector_price_matches_daily_compounding_on_day_boundaries() {
+        let price = calculate_vector_price(97_600, 1_000_000_000, SECONDS_IN_DAY).unwrap();
+        assert_eq!(price, 1_000_267_397);
+
+        let price = calculate_vector_price(97_600, 1_000_000_000, SECONDS_IN_DAY * 2).unwrap();
+        assert_eq!(price, 1_000_534_866);
+    }
+
+    #[test]
+    fn vector_price_grows_with_subday_elapsed_time() {
+        let one_hour = calculate_vector_price(97_600, 1_000_000_000, 3_600).unwrap();
+        let six_hours = calculate_vector_price(97_600, 1_000_000_000, 21_600).unwrap();
+        let one_day = calculate_vector_price(97_600, 1_000_000_000, SECONDS_IN_DAY).unwrap();
+
+        assert!(one_hour > 1_000_000_000);
+        assert_eq!(six_hours, 1_000_066_843);
+        assert!(one_hour < six_hours);
+        assert!(one_hour < one_day);
+    }
+
+    #[test]
+    fn vector_price_matches_multi_day_compounding() {
+        let three_days = calculate_vector_price(97_600, 1_000_000_000, SECONDS_IN_DAY * 3).unwrap();
+        let three_days_six_hours =
+            calculate_vector_price(97_600, 1_000_000_000, SECONDS_IN_DAY * 3 + 21_600).unwrap();
+
+        assert_eq!(three_days, 1_000_802_406);
+        assert_eq!(three_days_six_hours, 1_000_869_303);
+        assert!(three_days_six_hours > three_days);
+    }
 }

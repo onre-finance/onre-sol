@@ -366,7 +366,7 @@ describe("Take Offer Permissionless", () => {
             // Advance to second interval
             await testHelper.advanceClockBy(86_400); // 1 day
 
-            const expectedTokenInAmount = 1.0002e6; // 1.0002 USDC
+            const expectedTokenInAmount = 1_000_201;
 
             await program.takeOfferPermissionless({
                 tokenInAmount: expectedTokenInAmount,
@@ -378,8 +378,7 @@ describe("Take Offer Permissionless", () => {
 
             const userBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
-            // Should receive 1 token out
-            expect(userBalanceAfter).toBe(BigInt(1e9));
+            expect(userBalanceAfter).toBe(BigInt(1_000_000_989));
         });
 
         it("Should use most recent active vector", async () => {
@@ -422,6 +421,70 @@ describe("Take Offer Permissionless", () => {
 
             // Should receive 1 token out
             expect(userBalanceAfter).toBe(BigInt(1e9));
+        });
+
+        it("Should accrue BUFFER and refresh market stats through take_offer_permissionless_v2", async () => {
+            await program.transferMintAuthorityToProgram({ mint: tokenOutMint });
+            await program.mintTo({ amount: 1e9 });
+            await program.setMainOffer({
+                offer: program.getOfferPda(tokenInMint, tokenOutMint),
+            });
+
+            await program.initializeBuffer({
+                offer: program.getOfferPda(tokenInMint, tokenOutMint),
+                onycMint: tokenOutMint,
+            });
+            const currentTime = await testHelper.getCurrentClockTime();
+            await program.addOfferVector({
+                tokenInMint,
+                tokenOutMint,
+                baseTime: currentTime,
+                basePrice: 1e9,
+                apr: 0,
+                priceFixDuration: 86_400,
+            });
+            await program.mintTo({ amount: 1_000_000_000 });
+            await program.setBufferGrossYield({ grossYield: 100_000 });
+            await program.setBufferFeeConfig({
+                managementFeeBasisPoints: 100,
+                performanceFeeBasisPoints: 1_000,
+            });
+            const supplyBefore = (await testHelper.getMintInfo(tokenOutMint)).supply;
+
+            await testHelper.advanceClockBy(31_536_000);
+
+            await program.takeOfferPermissionlessV2({
+                tokenInAmount: 1e6,
+                tokenInMint,
+                tokenOutMint,
+                user: user.publicKey,
+                signer: user,
+            });
+
+            const bufferVaultBalance = await testHelper.getTokenAccountBalance(program.getBufferVaultAta(tokenOutMint));
+            const managementFeeBalance = await testHelper.getTokenAccountBalance(program.getManagementFeeVaultAta(tokenOutMint));
+            const performanceFeeBalance = await testHelper.getTokenAccountBalance(program.getPerformanceFeeVaultAta(tokenOutMint));
+            const grossAccrual = supplyBefore / 10n;
+            const expectedManagementFee = grossAccrual / 10n;
+            const remainingAfterManagement = grossAccrual - expectedManagementFee;
+            const expectedPerformanceFee = remainingAfterManagement / 10n;
+            const expectedBufferMint = remainingAfterManagement - expectedPerformanceFee;
+
+            expect(bufferVaultBalance).toBe(expectedBufferMint);
+            expect(managementFeeBalance).toBe(expectedManagementFee);
+            expect(performanceFeeBalance).toBe(expectedPerformanceFee);
+            expect(await testHelper.getTokenAccountBalance(userTokenOutAccount)).toBe(BigInt(1e9));
+
+            const bufferState = await program.getBufferState();
+            const postTradeSupply = supplyBefore + grossAccrual + BigInt(1e9);
+            expect(bufferState.previousSupply.toString()).toBe(postTradeSupply.toString());
+
+            const marketStats = await program.getMarketStats();
+            const vaultTokenOutBalance = await testHelper.getTokenAccountBalance(vaultTokenOutAccount);
+            const expectedCirculatingSupply = postTradeSupply - vaultTokenOutBalance;
+            expect(marketStats.nav.toString()).toBe("1000000000");
+            expect(marketStats.circulatingSupply.toString()).toBe(expectedCirculatingSupply.toString());
+            expect(marketStats.tvl.toString()).toBe(expectedCirculatingSupply.toString());
         });
     });
 
@@ -565,7 +628,7 @@ describe("Take Offer Permissionless", () => {
             // Advance 1 year (365 days)
             await testHelper.advanceClockBy(86400 * 365);
 
-            const expectedTokenInAmount = 1_366_000;
+            const expectedTokenInAmount = 1_441_692;
 
             await program.takeOfferPermissionless({
                 tokenInAmount: expectedTokenInAmount,
@@ -577,7 +640,7 @@ describe("Take Offer Permissionless", () => {
 
             const userBalanceAfter = await testHelper.getTokenAccountBalance(userTokenOutAccount);
 
-            expect(userBalanceAfter).toEqual(BigInt(1_000_000_000));
+            expect(userBalanceAfter).toEqual(BigInt(1_000_000_301));
         });
     });
 

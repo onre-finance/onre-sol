@@ -1,7 +1,18 @@
 use crate::constants::seeds;
-use crate::instructions::offer::offer_utils::{process_offer_core, verify_offer_approval};
+use crate::instructions::buffer::accounts::{
+    BufferAccrualAccountsBumps, __client_accounts_buffer_accrual_accounts,
+    __cpi_client_accounts_buffer_accrual_accounts,
+};
+use crate::instructions::buffer::{
+    accrue_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
+    BufferAccrualAccounts,
+};
+use crate::instructions::market_info::{load_main_offer, refresh_market_stats_typed};
+use crate::instructions::offer::offer_utils::{
+    is_onyc_token_out_mint, process_offer_core, should_accrue_onyc_mint, verify_offer_approval,
+};
 use crate::instructions::Offer;
-use crate::state::State;
+use crate::state::{MarketStats, State};
 use crate::utils::{execute_token_operations, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams};
 use crate::OfferCoreError;
 use anchor_lang::{prelude::*, solana_program::sysvar, Accounts};
@@ -210,6 +221,130 @@ pub struct TakeOffer<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct TakeOfferV2<'info> {
+    #[account(
+        mut,
+        seeds = [
+            seeds::OFFER,
+            token_in_mint.key().as_ref(),
+            token_out_mint.key().as_ref()
+        ],
+        bump = offer.load()?.bump
+    )]
+    pub offer: AccountLoader<'info, Offer>,
+
+    #[account(
+        seeds = [seeds::STATE],
+        bump = state.bump,
+        has_one = boss @ TakeOfferErrorCode::InvalidBoss,
+        constraint = state.is_killed == false @ TakeOfferErrorCode::KillSwitchActivated
+    )]
+    pub state: Box<Account<'info, State>>,
+
+    /// CHECK: Account validation is enforced through state account constraint
+    pub boss: UncheckedAccount<'info>,
+
+    /// CHECK: PDA derivation is validated by seeds constraint
+    #[account(
+        seeds = [seeds::OFFER_VAULT_AUTHORITY],
+        bump
+    )]
+    pub vault_authority: UncheckedAccount<'info>,
+
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = vault_authority,
+        associated_token::token_program = token_in_program
+    )]
+    pub vault_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        associated_token::mint = token_out_mint,
+        associated_token::authority = vault_authority,
+        associated_token::token_program = token_out_program
+    )]
+    pub vault_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        constraint =
+            token_in_mint.key() == offer.load()?.token_in_mint
+            @ OfferCoreError::InvalidTokenInMint
+    )]
+    pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
+
+    pub token_in_program: Interface<'info, TokenInterface>,
+
+    #[account(
+        mut,
+        constraint =
+            token_out_mint.key() == offer.load()?.token_out_mint
+            @ OfferCoreError::InvalidTokenOutMint
+    )]
+    pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
+
+    pub token_out_program: Interface<'info, TokenInterface>,
+
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = user,
+        associated_token::token_program = token_in_program
+    )]
+    pub user_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        init_if_needed,
+        payer = user,
+        associated_token::mint = token_out_mint,
+        associated_token::authority = user,
+        associated_token::token_program = token_out_program
+    )]
+    pub user_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = boss,
+        associated_token::token_program = token_in_program
+    )]
+    pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    /// CHECK: PDA derivation is validated through seeds constraint
+    #[account(
+        seeds = [seeds::MINT_AUTHORITY],
+        bump
+    )]
+    pub mint_authority: UncheckedAccount<'info>,
+
+    pub buffer_accounts: BufferAccrualAccounts<'info>,
+
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = 8 + MarketStats::INIT_SPACE,
+        seeds = [seeds::MARKET_STATS],
+        bump
+    )]
+    pub market_stats: Box<Account<'info, MarketStats>>,
+
+    /// CHECK: Validated through address constraint to instructions sysvar
+    #[account(address = sysvar::instructions::id())]
+    pub instructions_sysvar: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+
+    /// CHECK: Validated in instruction logic against state.main_offer.
+    pub main_offer: UncheckedAccount<'info>,
+}
+
 /// Executes an offer transaction with flexible burn/mint or transfer mechanisms
 ///
 /// This instruction allows users to accept offers by paying the current market price
@@ -249,7 +384,6 @@ pub fn take_offer(
 ) -> Result<()> {
     let offer = ctx.accounts.offer.load()?;
 
-    // Verify approval if needed
     verify_offer_approval(
         &offer,
         &approval_message,
@@ -260,7 +394,6 @@ pub fn take_offer(
         &ctx.accounts.instructions_sysvar,
     )?;
 
-    // Use shared core processing logic for main exchange amount
     let result = process_offer_core(
         &offer,
         token_in_amount,
@@ -269,7 +402,6 @@ pub fn take_offer(
     )?;
 
     execute_token_operations(ExecTokenOpsParams {
-        // Token in params
         token_in_program: &ctx.accounts.token_in_program,
         token_in_mint: &ctx.accounts.token_in_mint,
         token_in_net_amount: result.token_in_net_amount,
@@ -284,7 +416,6 @@ pub fn take_offer(
         token_in_destination_account: &ctx.accounts.boss_token_in_account,
         token_in_burn_account: &ctx.accounts.vault_token_in_account,
         token_in_burn_authority: &ctx.accounts.vault_authority.to_account_info(),
-        // Token out params
         token_out_program: &ctx.accounts.token_out_program,
         token_out_mint: &ctx.accounts.token_out_mint,
         token_out_amount: result.token_out_amount,
@@ -295,6 +426,130 @@ pub fn take_offer(
         mint_authority_bump: &[ctx.bumps.mint_authority],
         token_out_max_supply: ctx.accounts.state.max_supply,
     })?;
+
+    msg!(
+        "Offer taken - PDA: {}, token_in(+fee): {}(+{}), token_out: {}, user: {}, price: {}",
+        ctx.accounts.offer.key(),
+        result.token_in_net_amount,
+        result.token_in_fee_amount,
+        result.token_out_amount,
+        ctx.accounts.user.key,
+        u64_to_dec9(result.current_price)
+    );
+
+    emit!(OfferTakenEvent {
+        offer_pda: ctx.accounts.offer.key(),
+        token_in_amount: result.token_in_net_amount,
+        token_out_amount: result.token_out_amount,
+        fee_amount: result.token_in_fee_amount,
+        user: ctx.accounts.user.key(),
+    });
+
+    Ok(())
+}
+
+pub fn take_offer_v2(
+    ctx: Context<TakeOfferV2>,
+    token_in_amount: u64,
+    approval_message: Option<ApprovalMessage>,
+) -> Result<()> {
+    let offer = ctx.accounts.offer.load()?;
+    let buffer_is_initialized = ctx
+        .accounts
+        .buffer_accounts
+        .check_is_initialized(ctx.program_id)?;
+    let should_accrue_onyc_mint = should_accrue_onyc_mint(
+        &ctx.accounts.state,
+        &ctx.accounts.token_out_mint,
+        buffer_is_initialized,
+        &ctx.accounts.mint_authority.to_account_info(),
+    );
+
+    verify_offer_approval(
+        &offer,
+        &approval_message,
+        ctx.program_id,
+        &ctx.accounts.user.key(),
+        &ctx.accounts.state.approver1,
+        &ctx.accounts.state.approver2,
+        &ctx.accounts.instructions_sysvar,
+    )?;
+
+    let result = process_offer_core(
+        &offer,
+        token_in_amount,
+        &ctx.accounts.token_in_mint,
+        &ctx.accounts.token_out_mint,
+    )?;
+    let accrual = if should_accrue_onyc_mint {
+        Some(accrue_buffer_from_accounts(
+            ctx.program_id,
+            &ctx.accounts.state,
+            &ctx.accounts.buffer_accounts,
+            &offer,
+            &ctx.accounts.token_out_mint,
+            ctx.accounts.mint_authority.to_account_info(),
+            ctx.bumps.mint_authority,
+            &ctx.accounts.token_out_program,
+        )?)
+    } else {
+        None
+    };
+
+    execute_token_operations(ExecTokenOpsParams {
+        token_in_program: &ctx.accounts.token_in_program,
+        token_in_mint: &ctx.accounts.token_in_mint,
+        token_in_net_amount: result.token_in_net_amount,
+        token_in_fee_amount: result.token_in_fee_amount,
+        token_in_authority: &ctx.accounts.user,
+        token_in_source_signer_seeds: None,
+        vault_authority_signer_seeds: Some(&[&[
+            seeds::OFFER_VAULT_AUTHORITY,
+            &[ctx.bumps.vault_authority],
+        ]]),
+        token_in_source_account: &ctx.accounts.user_token_in_account,
+        token_in_destination_account: &ctx.accounts.boss_token_in_account,
+        token_in_burn_account: &ctx.accounts.vault_token_in_account,
+        token_in_burn_authority: &ctx.accounts.vault_authority.to_account_info(),
+        token_out_program: &ctx.accounts.token_out_program,
+        token_out_mint: &ctx.accounts.token_out_mint,
+        token_out_amount: result.token_out_amount,
+        token_out_authority: &ctx.accounts.vault_authority.to_account_info(),
+        token_out_source_account: &ctx.accounts.vault_token_out_account,
+        token_out_destination_account: &ctx.accounts.user_token_out_account,
+        mint_authority_pda: &ctx.accounts.mint_authority.to_account_info(),
+        mint_authority_bump: &[ctx.bumps.mint_authority],
+        token_out_max_supply: ctx.accounts.state.max_supply,
+    })?;
+
+    if let Some(accrual) = accrual {
+        let post_offer_supply = accrual
+            .post_accrual_supply
+            .checked_add(result.token_out_amount)
+            .ok_or(TakeOfferErrorCode::MathOverflow)?;
+        store_buffer_post_supply(
+            &ctx.accounts.buffer_accounts,
+            post_offer_supply,
+            accrual.timestamp,
+        )?;
+    }
+
+    if is_onyc_token_out_mint(&ctx.accounts.state, &ctx.accounts.token_out_mint) {
+        let main_offer = load_main_offer(
+            ctx.program_id,
+            &ctx.accounts.main_offer.to_account_info(),
+            &ctx.accounts.state,
+        )?;
+        ctx.accounts.token_out_mint.reload()?;
+        refresh_market_stats_typed(
+            &main_offer,
+            &ctx.accounts.token_out_mint,
+            &ctx.accounts.vault_token_out_account.to_account_info(),
+            &ctx.accounts.token_out_program,
+            &mut ctx.accounts.market_stats,
+            ctx.bumps.market_stats,
+        )?;
+    }
 
     msg!(
         "Offer taken - PDA: {}, token_in(+fee): {}(+{}), token_out: {}, user: {}, price: {}",

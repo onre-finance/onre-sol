@@ -81,19 +81,27 @@ pub fn verify_approval_message_generic(
     let now = Clock::get()?.unix_timestamp as u64;
     require!(now <= msg.expiry_unix, ErrorCode::Expired);
     require!(msg.program_id == *program_id, ErrorCode::WrongProgram);
-    require!(msg.user_pubkey.key() == user_pubkey.key(), ErrorCode::WrongUser);
+    require!(
+        msg.user_pubkey.key() == user_pubkey.key(),
+        ErrorCode::WrongUser
+    );
 
     // 2) Find the *previous* instruction and ensure it's Ed25519 verify
-    let cur_idx = sysvar::instructions::load_current_index_checked(&instructions_sysvar.to_account_info())
-        .map_err(|_| ErrorCode::MissingEd25519Ix)?;
+    let cur_idx =
+        sysvar::instructions::load_current_index_checked(&instructions_sysvar.to_account_info())
+            .map_err(|_| ErrorCode::MissingEd25519Ix)?;
     require!(cur_idx > 0, ErrorCode::MissingEd25519Ix);
 
     let ix = sysvar::instructions::load_instruction_at_checked(
         (cur_idx - 1) as usize,
         &instructions_sysvar.to_account_info(),
-    ).map_err(|_| ErrorCode::MissingEd25519Ix)?;
+    )
+    .map_err(|_| ErrorCode::MissingEd25519Ix)?;
 
-    require!(ix.program_id == ed25519_program::id(), ErrorCode::WrongIxProgram);
+    require!(
+        ix.program_id == ed25519_program::id(),
+        ErrorCode::WrongIxProgram
+    );
     require!(ix.accounts.is_empty(), ErrorCode::BadEd25519Accounts);
 
     let parsed = parse_ed25519_ix(&ix.data).ok_or(ErrorCode::MalformedEd25519Ix)?;
@@ -104,9 +112,12 @@ pub fn verify_approval_message_generic(
     let is_approver2 = *approver2 != Pubkey::default() && parsed.pubkey == approver2.to_bytes();
     require!(is_approver1 || is_approver2, ErrorCode::WrongAuthority);
 
-    let signed_msg = ApprovalMessage::try_from_slice(&parsed.message)
-        .map_err(|_| ErrorCode::MsgDeserialize)?;
-    require!(signed_msg.program_id == *program_id, ErrorCode::WrongProgram);
+    let signed_msg =
+        ApprovalMessage::try_from_slice(&parsed.message).map_err(|_| ErrorCode::MsgDeserialize)?;
+    require!(
+        signed_msg.program_id == *program_id,
+        ErrorCode::WrongProgram
+    );
     require!(signed_msg.user_pubkey == *user_pubkey, ErrorCode::WrongUser);
     require!(signed_msg.expiry_unix >= now, ErrorCode::Expired);
     require!(signed_msg == *msg, ErrorCode::MsgMismatch);

@@ -15,6 +15,9 @@ pub mod seeds {
     /// Seed for mint authority PDA accounts
     pub const MINT_AUTHORITY: &[u8] = b"mint_authority";
 
+    /// Seed for the global market stats PDA
+    pub const MARKET_STATS: &[u8] = b"market_stats";
+
     /// Seed for the redemption offer account
     pub const REDEMPTION_OFFER: &[u8] = b"redemption_offer";
 
@@ -26,6 +29,21 @@ pub mod seeds {
 
     /// Seed for the user nonce account
     pub const NONCE_ACCOUNT: &[u8] = b"nonce_account";
+
+    /// Seed for the BUFFER pool state account
+    pub const BUFFER_STATE: &[u8] = b"buffer_state";
+
+    /// Seed for the reserve vault authority account
+    pub const RESERVE_VAULT_AUTHORITY: &[u8] = b"reserve_vault_authority";
+
+    /// Seed for the management fee vault authority account
+    pub const MANAGEMENT_FEE_VAULT_AUTHORITY: &[u8] = b"management_fee_vault_authority";
+
+    /// Seed for the performance fee vault authority account
+    pub const PERFORMANCE_FEE_VAULT_AUTHORITY: &[u8] = b"performance_fee_vault_authority";
+
+    /// Seed for the redemption fee vault authority PDA
+    pub const REDEMPTION_FEE_VAULT_AUTHORITY: &[u8] = b"redemption_fee_vault_authority";
 }
 
 /// Maximum number of pricing vectors allowed per offer

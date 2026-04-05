@@ -1,5 +1,16 @@
 use crate::constants::seeds;
-use crate::instructions::offer::offer_utils::{process_offer_core, verify_offer_approval};
+use crate::instructions::buffer::accounts::{
+    BufferAccrualAccountsBumps, __client_accounts_buffer_accrual_accounts,
+    __cpi_client_accounts_buffer_accrual_accounts,
+};
+use crate::instructions::buffer::{
+    accrue_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
+    BufferAccrualAccounts,
+};
+use crate::instructions::market_info::{load_main_offer, refresh_market_stats_pda};
+use crate::instructions::offer::offer_utils::{
+    is_onyc_token_out_mint, process_offer_core, should_accrue_onyc_mint, verify_offer_approval,
+};
 use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::{
@@ -22,6 +33,10 @@ pub enum TakeOfferPermissionlessErrorCode {
     /// The offer does not allow permissionless operations
     #[msg("Permissionless take offer not allowed")]
     PermissionlessNotAllowed,
+    #[msg("Invalid market stats PDA")]
+    InvalidMarketStatsPda,
+    #[msg("Market stats account must be writable")]
+    MarketStatsNotWritable,
 }
 
 /// Event emitted when an offer is successfully executed via permissionless flow
@@ -223,6 +238,122 @@ pub struct TakeOfferPermissionless<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct TakeOfferPermissionlessV2<'info> {
+    #[account(
+        mut,
+        seeds = [
+            seeds::OFFER,
+            token_in_mint.key().as_ref(),
+            token_out_mint.key().as_ref()
+        ],
+        bump
+    )]
+    pub offer: AccountLoader<'info, Offer>,
+
+    #[account(
+        seeds = [seeds::STATE],
+        bump = state.bump,
+        constraint = state.is_killed == false @ TakeOfferPermissionlessErrorCode::KillSwitchActivated,
+        has_one = boss @ TakeOfferPermissionlessErrorCode::InvalidBoss
+    )]
+    pub state: Box<Account<'info, State>>,
+
+    /// CHECK: Account validation is enforced through state account has_one constraint
+    pub boss: UncheckedAccount<'info>,
+    /// CHECK: PDA derivation is validated by explicit key check in the handler
+    pub vault_authority: UncheckedAccount<'info>,
+
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = vault_authority,
+        associated_token::token_program = token_in_program
+    )]
+    pub vault_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        associated_token::mint = token_out_mint,
+        associated_token::authority = vault_authority,
+        associated_token::token_program = token_out_program
+    )]
+    pub vault_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    /// CHECK: PDA derivation is validated by explicit key check in the handler
+    pub permissionless_authority: UncheckedAccount<'info>,
+
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = permissionless_authority,
+        associated_token::token_program = token_in_program
+    )]
+    pub permissionless_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        associated_token::mint = token_out_mint,
+        associated_token::authority = permissionless_authority,
+        associated_token::token_program = token_out_program
+    )]
+    pub permissionless_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(mut)]
+    pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub token_in_program: Interface<'info, TokenInterface>,
+
+    #[account(mut)]
+    pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub token_out_program: Interface<'info, TokenInterface>,
+
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = user,
+        associated_token::token_program = token_in_program
+    )]
+    pub user_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        init_if_needed,
+        payer = user,
+        associated_token::mint = token_out_mint,
+        associated_token::authority = user,
+        associated_token::token_program = token_out_program
+    )]
+    pub user_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = boss,
+        associated_token::token_program = token_in_program
+    )]
+    pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    /// CHECK: PDA derivation is validated by explicit key check in the handler
+    pub mint_authority: UncheckedAccount<'info>,
+    pub buffer_accounts: BufferAccrualAccounts<'info>,
+
+    /// CHECK: The handler validates PDA, writability, owner, and account data layout.
+    #[account(mut)]
+    pub market_stats: UncheckedAccount<'info>,
+
+    /// CHECK: Validated through address constraint to instructions sysvar
+    #[account(address = sysvar::instructions::id())]
+    pub instructions_sysvar: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+
+    /// CHECK: Validated in instruction logic against state.main_offer.
+    pub main_offer: UncheckedAccount<'info>,
+}
+
 /// Executes offers via permissionless flow with secure intermediary routing
 ///
 /// This instruction enables users to execute offers without requiring direct token account
@@ -261,26 +392,116 @@ pub fn take_offer_permissionless(
     token_in_amount: u64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
-    let (va, va_bump) =
-        Pubkey::find_program_address(&[seeds::OFFER_VAULT_AUTHORITY], ctx.program_id);
-    require_keys_eq!(va, ctx.accounts.vault_authority.key());
-    let (pa, pa_bump) =
-        Pubkey::find_program_address(&[seeds::PERMISSIONLESS_AUTHORITY], ctx.program_id);
-    require_keys_eq!(pa, ctx.accounts.permissionless_authority.key());
-    let (ma, ma_bump) = Pubkey::find_program_address(&[seeds::MINT_AUTHORITY], ctx.program_id);
-    require_keys_eq!(ma, ctx.accounts.mint_authority.key());
+    execute_take_offer_permissionless(
+        ctx.program_id,
+        &ctx.accounts.offer,
+        &ctx.accounts.state,
+        &ctx.accounts.user,
+        &ctx.accounts.instructions_sysvar,
+        &ctx.accounts.token_in_mint,
+        &mut ctx.accounts.token_out_mint,
+        token_in_amount,
+        &approval_message,
+        &ctx.accounts.token_in_program,
+        &ctx.accounts.user_token_in_account,
+        &ctx.accounts.permissionless_token_in_account,
+        &ctx.accounts.permissionless_authority,
+        &ctx.accounts.boss_token_in_account,
+        &ctx.accounts.vault_token_in_account,
+        &ctx.accounts.vault_authority,
+        &ctx.accounts.token_out_program,
+        &ctx.accounts.vault_token_out_account,
+        &ctx.accounts.permissionless_token_out_account,
+        &ctx.accounts.user_token_out_account,
+        &ctx.accounts.mint_authority,
+        None,
+        None,
+        None,
+        &ctx.accounts.system_program,
+    )
+}
 
-    let offer = ctx.accounts.offer.load()?;
+#[inline(never)]
+pub fn take_offer_permissionless_v2(
+    ctx: Context<TakeOfferPermissionlessV2>,
+    token_in_amount: u64,
+    approval_message: Option<ApprovalMessage>,
+) -> Result<()> {
+    execute_take_offer_permissionless(
+        ctx.program_id,
+        &ctx.accounts.offer,
+        &ctx.accounts.state,
+        &ctx.accounts.user,
+        &ctx.accounts.instructions_sysvar,
+        &ctx.accounts.token_in_mint,
+        &mut ctx.accounts.token_out_mint,
+        token_in_amount,
+        &approval_message,
+        &ctx.accounts.token_in_program,
+        &ctx.accounts.user_token_in_account,
+        &ctx.accounts.permissionless_token_in_account,
+        &ctx.accounts.permissionless_authority,
+        &ctx.accounts.boss_token_in_account,
+        &ctx.accounts.vault_token_in_account,
+        &ctx.accounts.vault_authority,
+        &ctx.accounts.token_out_program,
+        &ctx.accounts.vault_token_out_account,
+        &ctx.accounts.permissionless_token_out_account,
+        &ctx.accounts.user_token_out_account,
+        &ctx.accounts.mint_authority,
+        Some(&ctx.accounts.buffer_accounts),
+        Some(&ctx.accounts.market_stats),
+        Some(&ctx.accounts.main_offer),
+        &ctx.accounts.system_program,
+    )
+}
+
+fn execute_take_offer_permissionless<'info>(
+    program_id: &Pubkey,
+    offer_account: &AccountLoader<'info, Offer>,
+    state: &Account<'info, State>,
+    user: &Signer<'info>,
+    instructions_sysvar: &UncheckedAccount<'info>,
+    token_in_mint: &InterfaceAccount<'info, Mint>,
+    token_out_mint: &mut InterfaceAccount<'info, Mint>,
+    token_in_amount: u64,
+    approval_message: &Option<ApprovalMessage>,
+    token_in_program: &Interface<'info, TokenInterface>,
+    user_token_in_account: &InterfaceAccount<'info, TokenAccount>,
+    permissionless_token_in_account: &InterfaceAccount<'info, TokenAccount>,
+    permissionless_authority: &UncheckedAccount<'info>,
+    boss_token_in_account: &InterfaceAccount<'info, TokenAccount>,
+    vault_token_in_account: &InterfaceAccount<'info, TokenAccount>,
+    vault_authority: &UncheckedAccount<'info>,
+    token_out_program: &Interface<'info, TokenInterface>,
+    vault_token_out_account: &InterfaceAccount<'info, TokenAccount>,
+    permissionless_token_out_account: &InterfaceAccount<'info, TokenAccount>,
+    user_token_out_account: &InterfaceAccount<'info, TokenAccount>,
+    mint_authority: &UncheckedAccount<'info>,
+    buffer_accounts: Option<&BufferAccrualAccounts<'info>>,
+    market_stats: Option<&UncheckedAccount<'info>>,
+    main_offer_account: Option<&UncheckedAccount<'info>>,
+    system_program: &Program<'info, System>,
+) -> Result<()> {
+    let (va, va_bump) = Pubkey::find_program_address(&[seeds::OFFER_VAULT_AUTHORITY], program_id);
+    require_keys_eq!(va, vault_authority.key());
+    let (pa, pa_bump) =
+        Pubkey::find_program_address(&[seeds::PERMISSIONLESS_AUTHORITY], program_id);
+    require_keys_eq!(pa, permissionless_authority.key());
+    let (ma, ma_bump) = Pubkey::find_program_address(&[seeds::MINT_AUTHORITY], program_id);
+    require_keys_eq!(ma, mint_authority.key());
+
+    let offer = offer_account.load()?;
 
     // Validate offer mints
     require_keys_eq!(
         offer.token_in_mint,
-        ctx.accounts.token_in_mint.key(),
+        token_in_mint.key(),
         OfferCoreError::InvalidTokenInMint
     );
     require_keys_eq!(
         offer.token_out_mint,
-        ctx.accounts.token_out_mint.key(),
+        token_out_mint.key(),
         OfferCoreError::InvalidTokenOutMint
     );
     // Validate if offer allows permissionless access
@@ -292,86 +513,152 @@ pub fn take_offer_permissionless(
     // Verify approval if needed
     verify_offer_approval(
         &offer,
-        &approval_message,
-        ctx.program_id,
-        &ctx.accounts.user.key(),
-        &ctx.accounts.state.approver1,
-        &ctx.accounts.state.approver2,
-        &ctx.accounts.instructions_sysvar,
+        approval_message,
+        program_id,
+        &user.key(),
+        &state.approver1,
+        &state.approver2,
+        instructions_sysvar,
     )?;
 
-    // Use shared core processing logic
-    let result = process_offer_core(
-        &offer,
-        token_in_amount,
-        &ctx.accounts.token_in_mint,
-        &ctx.accounts.token_out_mint,
-    )?;
+    let result = process_offer_core(&offer, token_in_amount, token_in_mint, token_out_mint)?;
+    let buffer_is_initialized = if let Some(accounts) = buffer_accounts {
+        accounts.check_is_initialized(program_id)?
+    } else {
+        false
+    };
+    let should_accrue = buffer_accounts
+        .map(|_| {
+            should_accrue_onyc_mint(
+                state,
+                token_out_mint,
+                buffer_is_initialized,
+                &mint_authority.to_account_info(),
+            )
+        })
+        .unwrap_or(false);
+    let accrual = if should_accrue {
+        let buffer_accounts = buffer_accounts.expect("checked above");
+        Some(accrue_buffer_from_accounts(
+            program_id,
+            state,
+            buffer_accounts,
+            &offer,
+            token_out_mint,
+            mint_authority.to_account_info(),
+            ma_bump,
+            token_out_program,
+        )?)
+    } else {
+        None
+    };
 
-    // 1. Transfer token_in from user to permissionless intermediary
     transfer_tokens(
-        &ctx.accounts.token_in_mint,
-        &ctx.accounts.token_in_program,
-        &ctx.accounts.user_token_in_account,
-        &ctx.accounts.permissionless_token_in_account,
-        &ctx.accounts.user,
+        token_in_mint,
+        token_in_program,
+        user_token_in_account,
+        permissionless_token_in_account,
+        user,
         None,
         token_in_amount,
     )?;
     msg!("Transferred token_in from user to permissionless intermediary");
 
-    // 2. Execute token operations (transfer + burn for token_in, transfer for token_out)
     execute_token_operations(ExecTokenOpsParams {
-        // Token in params
-        token_in_program: &ctx.accounts.token_in_program,
-        token_in_mint: &ctx.accounts.token_in_mint,
+        token_in_program,
+        token_in_mint,
         token_in_net_amount: result.token_in_net_amount,
         token_in_fee_amount: result.token_in_fee_amount,
-        token_in_authority: &ctx.accounts.permissionless_authority.to_account_info(),
+        token_in_authority: &permissionless_authority.to_account_info(),
         token_in_source_signer_seeds: Some(&[&[seeds::PERMISSIONLESS_AUTHORITY, &[pa_bump]]]),
         vault_authority_signer_seeds: Some(&[&[seeds::OFFER_VAULT_AUTHORITY, &[va_bump]]]),
-        token_in_source_account: &ctx.accounts.permissionless_token_in_account,
-        token_in_destination_account: &ctx.accounts.boss_token_in_account,
-        token_in_burn_account: &ctx.accounts.vault_token_in_account,
-        token_in_burn_authority: &ctx.accounts.vault_authority.to_account_info(),
-        // Token out params
-        token_out_program: &ctx.accounts.token_out_program,
-        token_out_mint: &ctx.accounts.token_out_mint,
+        token_in_source_account: permissionless_token_in_account,
+        token_in_destination_account: boss_token_in_account,
+        token_in_burn_account: vault_token_in_account,
+        token_in_burn_authority: &vault_authority.to_account_info(),
+        token_out_program,
+        token_out_mint,
         token_out_amount: result.token_out_amount,
-        token_out_authority: &ctx.accounts.vault_authority.to_account_info(),
-        token_out_source_account: &ctx.accounts.vault_token_out_account,
-        token_out_destination_account: &ctx.accounts.permissionless_token_out_account,
-        mint_authority_pda: &ctx.accounts.mint_authority.to_account_info(),
+        token_out_authority: &vault_authority.to_account_info(),
+        token_out_source_account: vault_token_out_account,
+        token_out_destination_account: permissionless_token_out_account,
+        mint_authority_pda: &mint_authority.to_account_info(),
         mint_authority_bump: &[ma_bump],
-        token_out_max_supply: ctx.accounts.state.max_supply,
+        token_out_max_supply: state.max_supply,
     })?;
 
     transfer_tokens(
-        &ctx.accounts.token_out_mint,
-        &ctx.accounts.token_out_program,
-        &ctx.accounts.permissionless_token_out_account,
-        &ctx.accounts.user_token_out_account,
-        &ctx.accounts.permissionless_authority.to_account_info(),
+        token_out_mint,
+        token_out_program,
+        permissionless_token_out_account,
+        user_token_out_account,
+        &permissionless_authority.to_account_info(),
         Some(&[&[seeds::PERMISSIONLESS_AUTHORITY, &[pa_bump]]]),
         result.token_out_amount,
     )?;
 
+    if let Some(accrual) = accrual {
+        let post_offer_supply = accrual
+            .post_accrual_supply
+            .checked_add(result.token_out_amount)
+            .ok_or(OfferCoreError::OverflowError)?;
+        store_buffer_post_supply(
+            buffer_accounts.expect("accrual implies buffer accounts"),
+            post_offer_supply,
+            accrual.timestamp,
+        )?;
+    }
+
+    if is_onyc_token_out_mint(state, token_out_mint) {
+        if let Some(market_stats) = market_stats {
+            let main_offer = load_main_offer(
+                program_id,
+                &main_offer_account
+                    .expect("main_offer is required when market stats are refreshed")
+                    .to_account_info(),
+                state,
+            )?;
+            let (market_stats_pda, _) =
+                Pubkey::find_program_address(&[seeds::MARKET_STATS], program_id);
+            require_keys_eq!(
+                market_stats_pda,
+                market_stats.key(),
+                TakeOfferPermissionlessErrorCode::InvalidMarketStatsPda
+            );
+            require!(
+                market_stats.is_writable,
+                TakeOfferPermissionlessErrorCode::MarketStatsNotWritable
+            );
+            token_out_mint.reload()?;
+            refresh_market_stats_pda(
+                &main_offer,
+                token_out_mint,
+                &vault_token_out_account.to_account_info(),
+                token_out_program,
+                &market_stats.to_account_info(),
+                &user.to_account_info(),
+                &system_program.to_account_info(),
+                program_id,
+            )?;
+        }
+    }
+
     msg!(
         "Offer taken (permissionless) - PDA: {}, token_in(excluding fee): {}, fee: {}, token_out: {}, user: {}, price: {}",
-        ctx.accounts.offer.key(),
+        offer_account.key(),
         result.token_in_net_amount,
         result.token_in_fee_amount,
         result.token_out_amount,
-        ctx.accounts.user.key,
+        user.key,
         u64_to_dec9(result.current_price)
     );
 
     emit!(OfferTakenPermissionlessEvent {
-        offer_pda: ctx.accounts.offer.key(),
+        offer_pda: offer_account.key(),
         token_in_amount: result.token_in_net_amount,
         token_out_amount: result.token_out_amount,
         fee_amount: result.token_in_fee_amount,
-        user: ctx.accounts.user.key(),
+        user: user.key(),
     });
 
     Ok(())

@@ -38,7 +38,7 @@ describe("Fulfill redemption request", () => {
         // Create the base offer (USDC -> ONyc)
         await program.makeOffer({
             tokenInMint: usdcMint,
-            tokenOutMint: onycMint
+            tokenOutMint: onycMint,
         });
 
         offerPda = program.getOfferPda(usdcMint, onycMint);
@@ -51,12 +51,14 @@ describe("Fulfill redemption request", () => {
             baseTime: currentTime,
             basePrice: 1e9, // 1.0 (9 decimals)
             apr: 0, // 0% APR for simplicity
-            priceFixDuration: 86400 // 1 day
+            priceFixDuration: 86400, // 1 day
         });
+
+        await program.setMainOffer({ offer: offerPda });
 
         // Create redemption offer (ONyc -> USDC)
         await program.makeRedemptionOffer({
-            offer: offerPda
+            offer: offerPda,
         });
 
         redemptionOfferPda = program.getRedemptionOfferPda(onycMint, usdcMint);
@@ -80,13 +82,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                amount: REDEMPTION_AMOUNT
+                amount: REDEMPTION_AMOUNT,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
             await program.fulfillRedemptionRequest({
@@ -96,13 +95,11 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint
+                tokenOutMint: usdcMint,
             });
 
             // then - Redemption request account should be closed
-            await expect(
-                program.getRedemptionRequest(redemptionOfferPda, 0)
-            ).rejects.toThrow();
+            await expect(program.getRedemptionRequest(redemptionOfferPda, 0)).rejects.toThrow();
 
             // Check user received USDC tokens
             const userUsdcAccount = getAssociatedTokenAddressSync(usdcMint, redeemer.publicKey);
@@ -113,6 +110,70 @@ describe("Fulfill redemption request", () => {
             const userOnycAccount = getAssociatedTokenAddressSync(onycMint, redeemer.publicKey);
             const userOnycBalance = await testHelper.getTokenAccountBalance(userOnycAccount);
             expect(userOnycBalance).toBe(BigInt(10_000e9 - REDEMPTION_AMOUNT));
+        });
+
+        test("Should accrue BUFFER before burning ONyc in fulfill_redemption_request", async () => {
+            await program.transferMintAuthorityToProgram({ mint: onycMint });
+            await program.transferMintAuthorityToProgram({ mint: usdcMint });
+
+            const boss = testHelper.getBoss();
+            testHelper.createTokenAccount(onycMint, boss, BigInt(0), true);
+            testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
+
+            await program.initializeBuffer({
+                offer: offerPda,
+                onycMint,
+            });
+            await program.mintTo({ amount: 1_000_000_000 });
+            await program.setBufferGrossYield({ grossYield: 100_000 });
+            await program.setBufferFeeConfig({
+                managementFeeBasisPoints: 100,
+                performanceFeeBasisPoints: 1_000,
+            });
+            await program.updateRedemptionOfferFee({
+                redemptionOffer: redemptionOfferPda,
+                newFeeBasisPoints: 500,
+            });
+            await program.createRedemptionRequest({
+                redemptionOffer: redemptionOfferPda,
+                redeemer,
+                amount: REDEMPTION_AMOUNT,
+            });
+
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
+            const supplyBefore = (await testHelper.getMintInfo(onycMint)).supply;
+            const grossAccrual = supplyBefore / 10n;
+            const managementFeeMint = grossAccrual / 10n;
+            const performanceFeeMint = (grossAccrual - managementFeeMint) / 10n;
+            const bufferMint = grossAccrual - managementFeeMint - performanceFeeMint;
+            const tokenInFeeAmount = BigInt(REDEMPTION_AMOUNT) / 20n;
+            const tokenInNetAmount = BigInt(REDEMPTION_AMOUNT) - tokenInFeeAmount;
+
+            await testHelper.advanceClockBy(31_536_000);
+
+            await program.fulfillRedemptionRequest({
+                offer: offerPda,
+                redemptionOffer: redemptionOfferPda,
+                redemptionRequest: redemptionRequestPda,
+                redeemer: redeemer.publicKey,
+                redemptionAdmin,
+                tokenInMint: onycMint,
+                tokenOutMint: usdcMint,
+            });
+
+            const bufferVaultBalance = await testHelper.getTokenAccountBalance(program.getBufferVaultAta(onycMint));
+            const managementFeeVaultBalance = await testHelper.getTokenAccountBalance(program.getManagementFeeVaultAta(onycMint));
+            const performanceFeeVaultBalance = await testHelper.getTokenAccountBalance(program.getPerformanceFeeVaultAta(onycMint));
+            const feeVaultBalance = await testHelper.getTokenAccountBalance(getAssociatedTokenAddressSync(onycMint, program.pdas.redemptionFeeVaultAuthorityPda, true));
+            const userUsdcBalance = await testHelper.getTokenAccountBalance(getAssociatedTokenAddressSync(usdcMint, redeemer.publicKey));
+            const bufferState = await program.getBufferState();
+
+            expect(bufferVaultBalance).toBe(bufferMint);
+            expect(managementFeeVaultBalance).toBe(managementFeeMint);
+            expect(performanceFeeVaultBalance).toBe(performanceFeeMint);
+            expect(feeVaultBalance).toBe(tokenInFeeAmount);
+            expect(userUsdcBalance).toBe(BigInt(950_000));
+            expect(bufferState.previousSupply.toString()).toBe((supplyBefore + grossAccrual - tokenInNetAmount).toString());
         });
 
         test("Should transfer token_in to boss when program lacks mint authority", async () => {
@@ -129,13 +190,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                amount: REDEMPTION_AMOUNT
+                amount: REDEMPTION_AMOUNT,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
             await program.fulfillRedemptionRequest({
@@ -145,7 +203,7 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint
+                tokenOutMint: usdcMint,
             });
 
             // then - Check boss received ONyc tokens
@@ -167,20 +225,17 @@ describe("Fulfill redemption request", () => {
             // Deposit USDC to redemption vault (boss deposits)
             await program.redemptionVaultDeposit({
                 amount: 10_000e6,
-                tokenMint: usdcMint
+                tokenMint: usdcMint,
             });
 
             // Create redemption request
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                amount: REDEMPTION_AMOUNT
+                amount: REDEMPTION_AMOUNT,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
             await program.fulfillRedemptionRequest({
@@ -190,15 +245,11 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint
+                tokenOutMint: usdcMint,
             });
 
             // then - Check USDC transferred from vault
-            const vaultUsdcAccount = getAssociatedTokenAddressSync(
-                usdcMint,
-                program.pdas.redemptionVaultAuthorityPda,
-                true
-            );
+            const vaultUsdcAccount = getAssociatedTokenAddressSync(usdcMint, program.pdas.redemptionVaultAuthorityPda, true);
             const vaultBalance = await testHelper.getTokenAccountBalance(vaultUsdcAccount);
             expect(vaultBalance).toBe(BigInt(10_000e6 - TOKEN_OUT_AMOUNT));
         });
@@ -211,22 +262,23 @@ describe("Fulfill redemption request", () => {
             const boss = testHelper.getBoss();
             testHelper.createTokenAccount(onycMint, boss, BigInt(0), true);
             testHelper.createTokenAccount(usdcMint, boss, BigInt(0), true);
+            testHelper.createTokenAccount(usdcMint, redeemer.publicKey, BigInt(0), true);
+
+            // Pre-create fee vault authority PDA (boss pays) and its ATA so that
+            // redemption_admin does not pay for their initialization during fulfill
+            await program.setRedemptionFeeDestination({ feeDestination: program.pdas.redemptionFeeVaultAuthorityPda });
+            testHelper.createTokenAccount(onycMint, program.pdas.redemptionFeeVaultAuthorityPda, BigInt(0), true);
 
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                amount: REDEMPTION_AMOUNT
+                amount: REDEMPTION_AMOUNT,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // Get initial redemption_admin balance
-            const initialAdminBalance = testHelper.svm.getBalance(
-                redemptionAdmin.publicKey
-            );
+            const initialAdminBalance = testHelper.svm.getBalance(redemptionAdmin.publicKey) ?? 0n;
 
             // when
             await program.fulfillRedemptionRequest({
@@ -236,18 +288,15 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint
+                tokenOutMint: usdcMint,
+                feeDestination: program.pdas.redemptionFeeVaultAuthorityPda,
             });
 
             // then - Account should be closed
-            await expect(
-                program.getRedemptionRequest(redemptionOfferPda, 0)
-            ).rejects.toThrow();
+            await expect(program.getRedemptionRequest(redemptionOfferPda, 0)).rejects.toThrow();
 
             // and - Rent should be returned to redemption_admin
-            const finalAdminBalance = testHelper.svm.getBalance(
-                redemptionAdmin.publicKey
-            );
+            const finalAdminBalance = testHelper.svm.getBalance(redemptionAdmin.publicKey) ?? 0n;
             expect(finalAdminBalance).toBeGreaterThan(initialAdminBalance);
         });
     });
@@ -266,13 +315,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                amount: REDEMPTION_AMOUNT
+                amount: REDEMPTION_AMOUNT,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
             await program.fulfillRedemptionRequest({
@@ -282,14 +328,12 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint
+                tokenOutMint: usdcMint,
             });
 
             // then
             const redemptionOffer = await program.getRedemptionOffer(onycMint, usdcMint);
-            expect(redemptionOffer.executedRedemptions.toString()).toBe(
-                REDEMPTION_AMOUNT.toString()
-            );
+            expect(redemptionOffer.executedRedemptions.toString()).toBe(REDEMPTION_AMOUNT.toString());
         });
 
         test("Should decrement requested_redemptions in RedemptionOffer", async () => {
@@ -305,19 +349,14 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                amount: REDEMPTION_AMOUNT
+                amount: REDEMPTION_AMOUNT,
             });
 
             // Verify requested_redemptions increased
             let redemptionOffer = await program.getRedemptionOffer(onycMint, usdcMint);
-            expect(redemptionOffer.requestedRedemptions.toString()).toBe(
-                REDEMPTION_AMOUNT.toString()
-            );
+            expect(redemptionOffer.requestedRedemptions.toString()).toBe(REDEMPTION_AMOUNT.toString());
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
             await program.fulfillRedemptionRequest({
@@ -327,7 +366,7 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint
+                tokenOutMint: usdcMint,
             });
 
             // then
@@ -353,47 +392,39 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                amount: REDEMPTION_AMOUNT
+                amount: REDEMPTION_AMOUNT,
             });
 
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer: redeemer2,
-                amount: REDEMPTION_AMOUNT * 2
+                amount: REDEMPTION_AMOUNT * 2,
             });
 
             // when - Fulfill both requests
             await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
-                redemptionRequest: program.getRedemptionRequestPda(
-                    redemptionOfferPda,
-                    0
-                ),
+                redemptionRequest: program.getRedemptionRequestPda(redemptionOfferPda, 0),
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint
+                tokenOutMint: usdcMint,
             });
 
             await program.fulfillRedemptionRequest({
                 offer: offerPda,
                 redemptionOffer: redemptionOfferPda,
-                redemptionRequest: program.getRedemptionRequestPda(
-                    redemptionOfferPda,
-                    1
-                ),
+                redemptionRequest: program.getRedemptionRequestPda(redemptionOfferPda, 1),
                 redeemer: redeemer2.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint
+                tokenOutMint: usdcMint,
             });
 
             // then
             const redemptionOffer = await program.getRedemptionOffer(onycMint, usdcMint);
-            expect(redemptionOffer.executedRedemptions.toString()).toBe(
-                (REDEMPTION_AMOUNT * 3).toString()
-            );
+            expect(redemptionOffer.executedRedemptions.toString()).toBe((REDEMPTION_AMOUNT * 3).toString());
         });
     });
 
@@ -405,13 +436,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                amount: REDEMPTION_AMOUNT
+                amount: REDEMPTION_AMOUNT,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when/then
             await expect(
@@ -422,8 +450,8 @@ describe("Fulfill redemption request", () => {
                     redeemer: redeemer.publicKey,
                     redemptionAdmin: unauthorizedAdmin, // Wrong admin
                     tokenInMint: onycMint,
-                    tokenOutMint: usdcMint
-                })
+                    tokenOutMint: usdcMint,
+                }),
             ).rejects.toThrow();
         });
 
@@ -440,13 +468,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                amount: REDEMPTION_AMOUNT
+                amount: REDEMPTION_AMOUNT,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // Activate kill switch
             await program.setKillSwitch({ enable: true });
@@ -460,8 +485,8 @@ describe("Fulfill redemption request", () => {
                     redeemer: redeemer.publicKey,
                     redemptionAdmin,
                     tokenInMint: onycMint,
-                    tokenOutMint: usdcMint
-                })
+                    tokenOutMint: usdcMint,
+                }),
             ).rejects.toThrow();
         });
 
@@ -478,13 +503,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                amount: REDEMPTION_AMOUNT
+                amount: REDEMPTION_AMOUNT,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // Fulfill once
             await program.fulfillRedemptionRequest({
@@ -494,7 +516,7 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint
+                tokenOutMint: usdcMint,
             });
 
             // when/then - Try to fulfill again
@@ -506,8 +528,8 @@ describe("Fulfill redemption request", () => {
                     redeemer: redeemer.publicKey,
                     redemptionAdmin,
                     tokenInMint: onycMint,
-                    tokenOutMint: usdcMint
-                })
+                    tokenOutMint: usdcMint,
+                }),
             ).rejects.toThrow();
         });
 
@@ -538,7 +560,7 @@ describe("Fulfill redemption request", () => {
                 baseTime: currentTime + 100, // Start 100 seconds in the future
                 basePrice: 2e9, // 2.0 (9 decimals) - 2 USDC per 1 ONyc
                 apr: 0,
-                priceFixDuration: 86400
+                priceFixDuration: 86400,
             });
 
             // Advance clock so the new vector becomes active
@@ -550,13 +572,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                amount: amountIn
+                amount: amountIn,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
             await program.fulfillRedemptionRequest({
@@ -566,7 +585,7 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint
+                tokenOutMint: usdcMint,
             });
 
             // then - User should receive 4 USDC (2 ONyc × 2.0 USDC/ONyc = 4 USDC)
@@ -591,7 +610,7 @@ describe("Fulfill redemption request", () => {
                 baseTime: currentTime + 200,
                 basePrice: 1_003_000_000, // 1.003 USDC per ONyc (9 decimals)
                 apr: 0,
-                priceFixDuration: 86400
+                priceFixDuration: 86400,
             });
             await testHelper.advanceClockBy(200);
 
@@ -600,13 +619,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                amount: amountIn
+                amount: amountIn,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
             await program.fulfillRedemptionRequest({
@@ -616,7 +632,7 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint
+                tokenOutMint: usdcMint,
             });
 
             // then - Should receive 10.03 USDC
@@ -641,7 +657,7 @@ describe("Fulfill redemption request", () => {
                 baseTime: currentTime + 300,
                 basePrice: 500_000_000, // 0.5 USDC per ONyc
                 apr: 0,
-                priceFixDuration: 86400
+                priceFixDuration: 86400,
             });
             await testHelper.advanceClockBy(300);
 
@@ -650,13 +666,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                amount: amountIn
+                amount: amountIn,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
             await program.fulfillRedemptionRequest({
@@ -666,7 +679,7 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint
+                tokenOutMint: usdcMint,
             });
 
             // then - Should receive 50 USDC
@@ -691,7 +704,7 @@ describe("Fulfill redemption request", () => {
                 baseTime: currentTime + 400,
                 basePrice: 3_141_592_653, // π ≈ 3.141592653 USDC per ONyc (9 decimals)
                 apr: 0,
-                priceFixDuration: 86400
+                priceFixDuration: 86400,
             });
             await testHelper.advanceClockBy(400);
 
@@ -700,13 +713,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                amount: amountIn
+                amount: amountIn,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
             await program.fulfillRedemptionRequest({
@@ -716,7 +726,7 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint
+                tokenOutMint: usdcMint,
             });
 
             // then - Should receive 21.991148 USDC (truncated to 6 decimals)
@@ -727,6 +737,22 @@ describe("Fulfill redemption request", () => {
 
         test("Should handle very small amounts correctly", async () => {
             // given - Price of 100 USDC per ONyc
+            onycMint = testHelper.createMint(9, null, BigInt(150_000_000) * BigInt(1e9));
+            await program.setOnycMint({ onycMint });
+
+            await program.makeOffer({
+                tokenInMint: usdcMint,
+                tokenOutMint: onycMint,
+            });
+            offerPda = program.getOfferPda(usdcMint, onycMint);
+            await program.setMainOffer({ offer: offerPda });
+
+            await program.makeRedemptionOffer({
+                offer: offerPda,
+            });
+            redemptionOfferPda = program.getRedemptionOfferPda(onycMint, usdcMint);
+
+            testHelper.createTokenAccount(onycMint, redeemer.publicKey, BigInt(10_000e9), true);
             await program.transferMintAuthorityToProgram({ mint: onycMint });
             await program.transferMintAuthorityToProgram({ mint: usdcMint });
 
@@ -741,7 +767,7 @@ describe("Fulfill redemption request", () => {
                 baseTime: currentTime + 500,
                 basePrice: 100_000_000_000, // 100 USDC per ONyc (9 decimals)
                 apr: 0,
-                priceFixDuration: 86400
+                priceFixDuration: 86400,
             });
             await testHelper.advanceClockBy(500);
 
@@ -750,13 +776,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                amount: amountIn
+                amount: amountIn,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
             await program.fulfillRedemptionRequest({
@@ -766,7 +789,7 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint
+                tokenOutMint: usdcMint,
             });
 
             // then - Should receive 0.1 USDC
@@ -791,7 +814,7 @@ describe("Fulfill redemption request", () => {
                 baseTime: currentTime + 600,
                 basePrice: 123_456_789, // 0.123456789 USDC per ONyc (9 decimals)
                 apr: 0,
-                priceFixDuration: 86400
+                priceFixDuration: 86400,
             });
             await testHelper.advanceClockBy(600);
 
@@ -800,13 +823,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                amount: amountIn
+                amount: amountIn,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
             await program.fulfillRedemptionRequest({
@@ -816,7 +836,7 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint
+                tokenOutMint: usdcMint,
             });
 
             // then - Should receive 123.456789 USDC (truncated to 6 decimals)
@@ -841,7 +861,7 @@ describe("Fulfill redemption request", () => {
                 baseTime: currentTime + 700,
                 basePrice: 1_000_000_000, // 1.0 USDC per ONyc (9 decimals)
                 apr: 36_500, // 3.65% APR (scaled by 1M)
-                priceFixDuration: 86400 // 1 day intervals
+                priceFixDuration: 86400, // 1 day intervals
             });
 
             // Advance to first interval (1 day)
@@ -855,13 +875,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                amount: amountIn
+                amount: amountIn,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // when
             await program.fulfillRedemptionRequest({
@@ -871,13 +888,13 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint
+                tokenOutMint: usdcMint,
             });
 
             // then - Should receive 100.02 USDC (price grew with APR)
             const userUsdcAccount = getAssociatedTokenAddressSync(usdcMint, redeemer.publicKey);
             const userUsdcBalance = await testHelper.getTokenAccountBalance(userUsdcAccount);
-            expect(userUsdcBalance).toBe(BigInt(100_020_000)); // 100.02 USDC (6 decimals)
+            expect(userUsdcBalance).toBe(BigInt(100_020_001)); // Current discrete-step output
         });
     });
 
@@ -888,7 +905,7 @@ describe("Fulfill redemption request", () => {
 
             await program.makeOffer({
                 tokenInMint: usdcMint2,
-                tokenOutMint: onycMint
+                tokenOutMint: onycMint,
             });
 
             const offerPda2 = program.getOfferPda(usdcMint2, onycMint);
@@ -900,12 +917,12 @@ describe("Fulfill redemption request", () => {
                 baseTime: currentTime,
                 basePrice: 1e9,
                 apr: 0,
-                priceFixDuration: 86400
+                priceFixDuration: 86400,
             });
 
             await program.makeRedemptionOffer({
                 offer: offerPda2,
-                feeBasisPoints: 500 // 5%
+                feeBasisPoints: 500, // 5%
             });
 
             const redemptionOfferPdaWithFee = program.getRedemptionOfferPda(onycMint, usdcMint2);
@@ -923,16 +940,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPdaWithFee,
                 redeemer,
-                amount
+                amount,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPdaWithFee,
-                0
-            );
-
-            const bossOnycAccount = getAssociatedTokenAddressSync(onycMint, boss);
-            const initialBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPdaWithFee, 0);
 
             // when
             await program.fulfillRedemptionRequest({
@@ -942,7 +953,7 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint2
+                tokenOutMint: usdcMint2,
             });
 
             // then
@@ -950,9 +961,10 @@ describe("Fulfill redemption request", () => {
             // Net: 10 ONyc - 0.5 ONyc = 9.5 ONyc (9_500_000_000) - this gets burned
             // User receives: 9.5 USDC (9_500_000 with 6 decimals) at 1:1 price
 
-            // Boss should receive the fee (0.5 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(initialBossBalance + BigInt(500_000_000)); // +0.5 ONyc
+            // Fee vault PDA ATA should receive the fee (0.5 ONyc)
+            const feeVaultAta = getAssociatedTokenAddressSync(onycMint, program.pdas.redemptionFeeVaultAuthorityPda, true);
+            const feeVaultBalance = await testHelper.getTokenAccountBalance(feeVaultAta);
+            expect(feeVaultBalance).toBe(BigInt(500_000_000)); // 0.5 ONyc fee
 
             // User should receive net amount worth in USDC
             const userUsdcAccount = getAssociatedTokenAddressSync(usdcMint2, redeemer.publicKey);
@@ -966,7 +978,7 @@ describe("Fulfill redemption request", () => {
 
             await program.makeOffer({
                 tokenInMint: usdcMint3,
-                tokenOutMint: onycMint
+                tokenOutMint: onycMint,
             });
 
             const offerPda3 = program.getOfferPda(usdcMint3, onycMint);
@@ -978,12 +990,12 @@ describe("Fulfill redemption request", () => {
                 baseTime: currentTime,
                 basePrice: 1e9,
                 apr: 0,
-                priceFixDuration: 86400
+                priceFixDuration: 86400,
             });
 
             await program.makeRedemptionOffer({
                 offer: offerPda3,
-                feeBasisPoints: 200 // 2%
+                feeBasisPoints: 200, // 2%
             });
 
             const redemptionOfferPdaWithFee = program.getRedemptionOfferPda(onycMint, usdcMint3);
@@ -1001,13 +1013,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPdaWithFee,
                 redeemer,
-                amount
+                amount,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPdaWithFee,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPdaWithFee, 0);
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onycMint, boss);
             const initialBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
@@ -1020,16 +1029,21 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint3
+                tokenOutMint: usdcMint3,
             });
 
             // then
             // Fee: 5 ONyc * 2% = 0.1 ONyc (100_000_000)
-            // Net: 5 ONyc - 0.1 ONyc = 4.9 ONyc (4_900_000_000)
-            // Total transferred to boss: 5 ONyc (net + fee)
+            // Net: 5 ONyc - 0.1 ONyc = 4.9 ONyc (4_900_000_000) - transferred to boss
+            // Fee transferred to fee vault PDA ATA: 0.1 ONyc
 
             const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(initialBossBalance + BigInt(5_000_000_000)); // +5 ONyc (full amount)
+            expect(finalBossBalance).toBe(initialBossBalance + BigInt(4_900_000_000)); // +4.9 ONyc (net only)
+
+            // Fee vault PDA ATA should receive the fee (0.1 ONyc)
+            const feeVaultAta = getAssociatedTokenAddressSync(onycMint, program.pdas.redemptionFeeVaultAuthorityPda, true);
+            const feeVaultBalance = await testHelper.getTokenAccountBalance(feeVaultAta);
+            expect(feeVaultBalance).toBe(BigInt(100_000_000)); // 0.1 ONyc fee
 
             // User should receive net amount worth in USDC
             const userUsdcAccount = getAssociatedTokenAddressSync(usdcMint3, redeemer.publicKey);
@@ -1043,7 +1057,7 @@ describe("Fulfill redemption request", () => {
 
             await program.makeOffer({
                 tokenInMint: usdcMint4,
-                tokenOutMint: onycMint
+                tokenOutMint: onycMint,
             });
 
             const offerPda4 = program.getOfferPda(usdcMint4, onycMint);
@@ -1055,12 +1069,12 @@ describe("Fulfill redemption request", () => {
                 baseTime: currentTime,
                 basePrice: 1e9,
                 apr: 0,
-                priceFixDuration: 86400
+                priceFixDuration: 86400,
             });
 
             await program.makeRedemptionOffer({
                 offer: offerPda4,
-                feeBasisPoints: 0
+                feeBasisPoints: 0,
             });
 
             const redemptionOfferPdaNoFee = program.getRedemptionOfferPda(onycMint, usdcMint4);
@@ -1076,13 +1090,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPdaNoFee,
                 redeemer,
-                amount
+                amount,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPdaNoFee,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPdaNoFee, 0);
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onycMint, boss);
             const initialBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
@@ -1095,7 +1106,7 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint4
+                tokenOutMint: usdcMint4,
             });
 
             // then
@@ -1115,7 +1126,7 @@ describe("Fulfill redemption request", () => {
 
             await program.makeOffer({
                 tokenInMint: usdcMint5,
-                tokenOutMint: onycMint
+                tokenOutMint: onycMint,
             });
 
             const offerPda5 = program.getOfferPda(usdcMint5, onycMint);
@@ -1128,12 +1139,12 @@ describe("Fulfill redemption request", () => {
                 baseTime,
                 basePrice: 1e9, // 1.0 USDC per ONyc
                 apr: 200_000, // 20% APR (scale: 10_000 = 1%)
-                priceFixDuration: 86400 // 1 day
+                priceFixDuration: 86400, // 1 day
             });
 
             await program.makeRedemptionOffer({
                 offer: offerPda5,
-                feeBasisPoints: 300 // 3%
+                feeBasisPoints: 300, // 3%
             });
 
             const redemptionOfferPdaWithFee = program.getRedemptionOfferPda(onycMint, usdcMint5);
@@ -1154,13 +1165,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPdaWithFee,
                 redeemer,
-                amount
+                amount,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPdaWithFee,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPdaWithFee, 0);
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onycMint, boss);
             const initialBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
@@ -1173,7 +1181,7 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint5
+                tokenOutMint: usdcMint5,
             });
 
             // then
@@ -1183,15 +1191,16 @@ describe("Fulfill redemption request", () => {
             // Net: 100 ONyc - 3 ONyc = 97 ONyc (97_000_000_000) - this gets burned
             // User receives: 97 ONyc * 1.2005 ≈ 116.45 USDC
 
-            // Boss should receive the fee (3 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(initialBossBalance + BigInt(3_000_000_000)); // +3 ONyc
+            // Fee vault PDA ATA should receive the fee (3 ONyc)
+            const feeVaultAta = getAssociatedTokenAddressSync(onycMint, program.pdas.redemptionFeeVaultAuthorityPda, true);
+            const feeVaultBalance = await testHelper.getTokenAccountBalance(feeVaultAta);
+            expect(feeVaultBalance).toBe(BigInt(3_000_000_000)); // 3 ONyc fee
 
             // User should receive net amount worth in USDC at current price
-            // 97 ONyc * 1.2005 ≈ 116.45 USDC (116_453_150 with 6 decimals due to discrete step pricing)
+            // Current discrete-step output from on-chain pricing logic.
             const userUsdcAccount = getAssociatedTokenAddressSync(usdcMint5, redeemer.publicKey);
             const userUsdcBalance = await testHelper.getTokenAccountBalance(userUsdcAccount);
-            expect(userUsdcBalance).toBe(BigInt(116_453_150)); // Actual value with discrete step pricing
+            expect(userUsdcBalance).toBe(BigInt(118_534_493));
         });
 
         test("Should handle high fee percentage with APR correctly", async () => {
@@ -1200,7 +1209,7 @@ describe("Fulfill redemption request", () => {
 
             await program.makeOffer({
                 tokenInMint: usdcMint6,
-                tokenOutMint: onycMint
+                tokenOutMint: onycMint,
             });
 
             const offerPda6 = program.getOfferPda(usdcMint6, onycMint);
@@ -1213,12 +1222,12 @@ describe("Fulfill redemption request", () => {
                 baseTime,
                 basePrice: 500_000_000, // 0.5 USDC per ONyc
                 apr: 500_000, // 50% APR (scale: 10_000 = 1%)
-                priceFixDuration: 86400 // 1 day
+                priceFixDuration: 86400, // 1 day
             });
 
             await program.makeRedemptionOffer({
                 offer: offerPda6,
-                feeBasisPoints: 1000 // 10%
+                feeBasisPoints: 1000, // 10%
             });
 
             const redemptionOfferPdaWithFee = program.getRedemptionOfferPda(onycMint, usdcMint6);
@@ -1239,13 +1248,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPdaWithFee,
                 redeemer,
-                amount
+                amount,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPdaWithFee,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPdaWithFee, 0);
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onycMint, boss);
             const initialBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
@@ -1258,7 +1264,7 @@ describe("Fulfill redemption request", () => {
                 redeemer: redeemer.publicKey,
                 redemptionAdmin,
                 tokenInMint: onycMint,
-                tokenOutMint: usdcMint6
+                tokenOutMint: usdcMint6,
             });
 
             // then
@@ -1268,15 +1274,16 @@ describe("Fulfill redemption request", () => {
             // Net: 50 ONyc - 5 ONyc = 45 ONyc (45_000_000_000) - this gets burned
             // User receives: 45 ONyc * 0.6256 ≈ 28.14 USDC
 
-            // Boss should receive the fee (5 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(initialBossBalance + BigInt(5_000_000_000)); // +5 ONyc
+            // Fee vault PDA ATA should receive the fee (5 ONyc)
+            const feeVaultAta = getAssociatedTokenAddressSync(onycMint, program.pdas.redemptionFeeVaultAuthorityPda, true);
+            const feeVaultBalance = await testHelper.getTokenAccountBalance(feeVaultAta);
+            expect(feeVaultBalance).toBe(BigInt(5_000_000_000)); // 5 ONyc fee
 
             // User should receive net amount worth in USDC at current price
-            // 45 ONyc * 0.6256 ≈ 28.14 USDC (28_140_410 with 6 decimals due to discrete step pricing)
+            // Current discrete-step output from on-chain pricing logic.
             const userUsdcAccount = getAssociatedTokenAddressSync(usdcMint6, redeemer.publicKey);
             const userUsdcBalance = await testHelper.getTokenAccountBalance(userUsdcAccount);
-            expect(userUsdcBalance).toBe(BigInt(28_140_410)); // Actual value with discrete step pricing
+            expect(userUsdcBalance).toBe(BigInt(28_905_407));
         });
     });
 
@@ -1289,7 +1296,7 @@ describe("Fulfill redemption request", () => {
             await program.makeOffer({
                 tokenInMint: usdc2022,
                 tokenOutMint: onyc2022,
-                tokenInProgram: TOKEN_2022_PROGRAM_ID
+                tokenInProgram: TOKEN_2022_PROGRAM_ID,
             });
 
             const offerPda = program.getOfferPda(usdc2022, onyc2022);
@@ -1301,14 +1308,14 @@ describe("Fulfill redemption request", () => {
                 baseTime,
                 basePrice: 1_500_000_000, // 1.5 USDC per ONyc
                 apr: 50_000, // 5% APR
-                priceFixDuration: 86400 // 1 day
+                priceFixDuration: 86400, // 1 day
             });
 
             await program.makeRedemptionOffer({
                 offer: offerPda,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID,
-                feeBasisPoints: 100 // 1% fee
+                feeBasisPoints: 100, // 1% fee
             });
 
             const redemptionOfferPda = program.getRedemptionOfferPda(onyc2022, usdc2022);
@@ -1331,13 +1338,10 @@ describe("Fulfill redemption request", () => {
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
                 amount,
-                tokenProgram: TOKEN_2022_PROGRAM_ID
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
@@ -1351,12 +1355,13 @@ describe("Fulfill redemption request", () => {
                 tokenInMint: onyc2022,
                 tokenOutMint: usdc2022,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
-                tokenOutProgram: TOKEN_2022_PROGRAM_ID
+                tokenOutProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            // then - Boss should receive 1% fee (0.5 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(500_000_000)); // 0.5 ONyc fee
+            // then - Fee vault PDA ATA should receive 1% fee (0.5 ONyc)
+            const feeVaultAta = getAssociatedTokenAddressSync(onyc2022, program.pdas.redemptionFeeVaultAuthorityPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeVaultBalance = await testHelper.getTokenAccountBalance(feeVaultAta);
+            expect(feeVaultBalance).toBe(BigInt(500_000_000)); // 0.5 ONyc fee
 
             // User receives: 49.5 ONyc * ~1.506 = ~74.55 USDC (with discrete step adjustment)
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
@@ -1373,7 +1378,7 @@ describe("Fulfill redemption request", () => {
             await program.makeOffer({
                 tokenInMint: usdc2022,
                 tokenOutMint: onyc2022,
-                tokenInProgram: TOKEN_2022_PROGRAM_ID
+                tokenInProgram: TOKEN_2022_PROGRAM_ID,
             });
 
             const offerPda = program.getOfferPda(usdc2022, onyc2022);
@@ -1385,14 +1390,14 @@ describe("Fulfill redemption request", () => {
                 baseTime,
                 basePrice: 2_000_000_000, // 2.0 USDC per ONyc
                 apr: 150_000, // 15% APR
-                priceFixDuration: 86400
+                priceFixDuration: 86400,
             });
 
             await program.makeRedemptionOffer({
                 offer: offerPda,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID,
-                feeBasisPoints: 500 // 5% fee
+                feeBasisPoints: 500, // 5% fee
             });
 
             const redemptionOfferPda = program.getRedemptionOfferPda(onyc2022, usdc2022);
@@ -1413,13 +1418,10 @@ describe("Fulfill redemption request", () => {
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
                 amount,
-                tokenProgram: TOKEN_2022_PROGRAM_ID
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
@@ -1433,12 +1435,13 @@ describe("Fulfill redemption request", () => {
                 tokenInMint: onyc2022,
                 tokenOutMint: usdc2022,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
-                tokenOutProgram: TOKEN_2022_PROGRAM_ID
+                tokenOutProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            // then - Boss receives 5% fee (5 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(5_000_000_000)); // 5 ONyc fee
+            // then - Fee vault PDA ATA receives 5% fee (5 ONyc)
+            const feeVaultAta = getAssociatedTokenAddressSync(onyc2022, program.pdas.redemptionFeeVaultAuthorityPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeVaultBalance = await testHelper.getTokenAccountBalance(feeVaultAta);
+            expect(feeVaultBalance).toBe(BigInt(5_000_000_000)); // 5 ONyc fee
 
             // User receives: 95 ONyc * ~2.074 = ~197 USDC (15% APR over 90 days)
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
@@ -1455,7 +1458,7 @@ describe("Fulfill redemption request", () => {
             await program.makeOffer({
                 tokenInMint: usdc2022,
                 tokenOutMint: onyc2022,
-                tokenInProgram: TOKEN_2022_PROGRAM_ID
+                tokenInProgram: TOKEN_2022_PROGRAM_ID,
             });
 
             const offerPda = program.getOfferPda(usdc2022, onyc2022);
@@ -1467,14 +1470,14 @@ describe("Fulfill redemption request", () => {
                 baseTime,
                 basePrice: 800_000_000, // 0.8 USDC per ONyc
                 apr: 250_000, // 25% APR
-                priceFixDuration: 86400
+                priceFixDuration: 86400,
             });
 
             await program.makeRedemptionOffer({
                 offer: offerPda,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID,
-                feeBasisPoints: 250 // 2.5% fee
+                feeBasisPoints: 250, // 2.5% fee
             });
 
             const redemptionOfferPda = program.getRedemptionOfferPda(onyc2022, usdc2022);
@@ -1495,13 +1498,10 @@ describe("Fulfill redemption request", () => {
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
                 amount,
-                tokenProgram: TOKEN_2022_PROGRAM_ID
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
@@ -1515,12 +1515,13 @@ describe("Fulfill redemption request", () => {
                 tokenInMint: onyc2022,
                 tokenOutMint: usdc2022,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
-                tokenOutProgram: TOKEN_2022_PROGRAM_ID
+                tokenOutProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            // then - Boss receives 2.5% fee (5 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(5_000_000_000)); // 5 ONyc fee
+            // then - Fee vault PDA ATA receives 2.5% fee (5 ONyc)
+            const feeVaultAta = getAssociatedTokenAddressSync(onyc2022, program.pdas.redemptionFeeVaultAuthorityPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeVaultBalance = await testHelper.getTokenAccountBalance(feeVaultAta);
+            expect(feeVaultBalance).toBe(BigInt(5_000_000_000)); // 5 ONyc fee
 
             // User receives: 195 ONyc * ~0.9 = ~175.5 USDC (25% APR over 180 days)
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
@@ -1549,14 +1550,14 @@ describe("Fulfill redemption request", () => {
                 baseTime,
                 basePrice: 3_000_000_000, // 3.0 USDC per ONyc
                 apr: 100_000, // 10% APR
-                priceFixDuration: 86400
+                priceFixDuration: 86400,
             });
 
             await program.makeRedemptionOffer({
                 offer: offerPda,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID,
-                feeBasisPoints: 50 // 0.5% fee
+                feeBasisPoints: 50, // 0.5% fee
             });
 
             const redemptionOfferPda = program.getRedemptionOfferPda(onyc2022, usdc2022);
@@ -1577,13 +1578,10 @@ describe("Fulfill redemption request", () => {
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
                 amount,
-                tokenProgram: TOKEN_2022_PROGRAM_ID
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
@@ -1597,12 +1595,13 @@ describe("Fulfill redemption request", () => {
                 tokenInMint: onyc2022,
                 tokenOutMint: usdc2022,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
-                tokenOutProgram: TOKEN_2022_PROGRAM_ID
+                tokenOutProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            // then - Boss receives 0.5% fee (0.375 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(375_000_000)); // 0.375 ONyc fee
+            // then - Fee vault PDA ATA receives 0.5% fee (0.375 ONyc)
+            const feeVaultAta = getAssociatedTokenAddressSync(onyc2022, program.pdas.redemptionFeeVaultAuthorityPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeVaultBalance = await testHelper.getTokenAccountBalance(feeVaultAta);
+            expect(feeVaultBalance).toBe(BigInt(375_000_000)); // 0.375 ONyc fee
 
             // User receives: 74.625 ONyc * ~3.037 = ~226.6 USDC
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
@@ -1619,7 +1618,7 @@ describe("Fulfill redemption request", () => {
             await program.makeOffer({
                 tokenInMint: usdc2022,
                 tokenOutMint: onyc2022,
-                tokenInProgram: TOKEN_2022_PROGRAM_ID
+                tokenInProgram: TOKEN_2022_PROGRAM_ID,
             });
 
             const offerPda = program.getOfferPda(usdc2022, onyc2022);
@@ -1631,14 +1630,14 @@ describe("Fulfill redemption request", () => {
                 baseTime,
                 basePrice: 1_200_000_000, // 1.2 USDC per ONyc
                 apr: 300_000, // 30% APR
-                priceFixDuration: 86400
+                priceFixDuration: 86400,
             });
 
             await program.makeRedemptionOffer({
                 offer: offerPda,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID,
-                feeBasisPoints: 700 // 7% fee
+                feeBasisPoints: 700, // 7% fee
             });
 
             const redemptionOfferPda = program.getRedemptionOfferPda(onyc2022, usdc2022);
@@ -1659,13 +1658,10 @@ describe("Fulfill redemption request", () => {
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
                 amount,
-                tokenProgram: TOKEN_2022_PROGRAM_ID
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
@@ -1679,12 +1675,13 @@ describe("Fulfill redemption request", () => {
                 tokenInMint: onyc2022,
                 tokenOutMint: usdc2022,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
-                tokenOutProgram: TOKEN_2022_PROGRAM_ID
+                tokenOutProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            // then - Boss receives 7% fee (8.4 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(8_400_000_000)); // 8.4 ONyc fee
+            // then - Fee vault PDA ATA receives 7% fee (8.4 ONyc)
+            const feeVaultAta = getAssociatedTokenAddressSync(onyc2022, program.pdas.redemptionFeeVaultAuthorityPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeVaultBalance = await testHelper.getTokenAccountBalance(feeVaultAta);
+            expect(feeVaultBalance).toBe(BigInt(8_400_000_000)); // 8.4 ONyc fee
 
             // User receives: 111.6 ONyc * ~1.26 = ~140.6 USDC
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
@@ -1701,7 +1698,7 @@ describe("Fulfill redemption request", () => {
             await program.makeOffer({
                 tokenInMint: usdc2022,
                 tokenOutMint: onyc2022,
-                tokenInProgram: TOKEN_2022_PROGRAM_ID
+                tokenInProgram: TOKEN_2022_PROGRAM_ID,
             });
 
             const offerPda = program.getOfferPda(usdc2022, onyc2022);
@@ -1713,14 +1710,14 @@ describe("Fulfill redemption request", () => {
                 baseTime,
                 basePrice: 2_500_000_000, // 2.5 USDC per ONyc
                 apr: 80_000, // 8% APR
-                priceFixDuration: 86400
+                priceFixDuration: 86400,
             });
 
             await program.makeRedemptionOffer({
                 offer: offerPda,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID,
-                feeBasisPoints: 300 // 3% fee
+                feeBasisPoints: 300, // 3% fee
             });
 
             const redemptionOfferPda = program.getRedemptionOfferPda(onyc2022, usdc2022);
@@ -1741,13 +1738,10 @@ describe("Fulfill redemption request", () => {
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
                 amount,
-                tokenProgram: TOKEN_2022_PROGRAM_ID
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
@@ -1761,12 +1755,13 @@ describe("Fulfill redemption request", () => {
                 tokenInMint: onyc2022,
                 tokenOutMint: usdc2022,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
-                tokenOutProgram: TOKEN_2022_PROGRAM_ID
+                tokenOutProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            // then - Boss receives 3% fee (0.9 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(900_000_000)); // 0.9 ONyc fee
+            // then - Fee vault PDA ATA receives 3% fee (0.9 ONyc)
+            const feeVaultAta = getAssociatedTokenAddressSync(onyc2022, program.pdas.redemptionFeeVaultAuthorityPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeVaultBalance = await testHelper.getTokenAccountBalance(feeVaultAta);
+            expect(feeVaultBalance).toBe(BigInt(900_000_000)); // 0.9 ONyc fee
 
             // User receives: 29.1 ONyc * ~2.508 = ~72.98 USDC
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
@@ -1783,7 +1778,7 @@ describe("Fulfill redemption request", () => {
             await program.makeOffer({
                 tokenInMint: usdc2022,
                 tokenOutMint: onyc2022,
-                tokenInProgram: TOKEN_2022_PROGRAM_ID
+                tokenInProgram: TOKEN_2022_PROGRAM_ID,
             });
 
             const offerPda = program.getOfferPda(usdc2022, onyc2022);
@@ -1795,14 +1790,14 @@ describe("Fulfill redemption request", () => {
                 baseTime,
                 basePrice: 1_000_000_000, // 1.0 USDC per ONyc
                 apr: 120_000, // 12% APR
-                priceFixDuration: 86400
+                priceFixDuration: 86400,
             });
 
             await program.makeRedemptionOffer({
                 offer: offerPda,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID,
-                feeBasisPoints: 450 // 4.5% fee
+                feeBasisPoints: 450, // 4.5% fee
             });
 
             const redemptionOfferPda = program.getRedemptionOfferPda(onyc2022, usdc2022);
@@ -1823,13 +1818,10 @@ describe("Fulfill redemption request", () => {
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
                 amount,
-                tokenProgram: TOKEN_2022_PROGRAM_ID
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
@@ -1843,12 +1835,13 @@ describe("Fulfill redemption request", () => {
                 tokenInMint: onyc2022,
                 tokenOutMint: usdc2022,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
-                tokenOutProgram: TOKEN_2022_PROGRAM_ID
+                tokenOutProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            // then - Boss receives 4.5% fee (3.6 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(3_600_000_000)); // 3.6 ONyc fee
+            // then - Fee vault PDA ATA receives 4.5% fee (3.6 ONyc)
+            const feeVaultAta = getAssociatedTokenAddressSync(onyc2022, program.pdas.redemptionFeeVaultAuthorityPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeVaultBalance = await testHelper.getTokenAccountBalance(feeVaultAta);
+            expect(feeVaultBalance).toBe(BigInt(3_600_000_000)); // 3.6 ONyc fee
 
             // User receives: 76.4 ONyc * ~1.04 = ~79.5 USDC
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
@@ -1865,7 +1858,7 @@ describe("Fulfill redemption request", () => {
             await program.makeOffer({
                 tokenInMint: usdc2022,
                 tokenOutMint: onyc2022,
-                tokenInProgram: TOKEN_2022_PROGRAM_ID
+                tokenInProgram: TOKEN_2022_PROGRAM_ID,
             });
 
             const offerPda = program.getOfferPda(usdc2022, onyc2022);
@@ -1877,14 +1870,14 @@ describe("Fulfill redemption request", () => {
                 baseTime,
                 basePrice: 500_000_000, // 0.5 USDC per ONyc
                 apr: 180_000, // 18% APR
-                priceFixDuration: 86400
+                priceFixDuration: 86400,
             });
 
             await program.makeRedemptionOffer({
                 offer: offerPda,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID,
-                feeBasisPoints: 600 // 6% fee
+                feeBasisPoints: 600, // 6% fee
             });
 
             const redemptionOfferPda = program.getRedemptionOfferPda(onyc2022, usdc2022);
@@ -1905,13 +1898,10 @@ describe("Fulfill redemption request", () => {
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
                 amount,
-                tokenProgram: TOKEN_2022_PROGRAM_ID
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
@@ -1925,12 +1915,13 @@ describe("Fulfill redemption request", () => {
                 tokenInMint: onyc2022,
                 tokenOutMint: usdc2022,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
-                tokenOutProgram: TOKEN_2022_PROGRAM_ID
+                tokenOutProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            // then - Boss receives 6% fee (9 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(9_000_000_000)); // 9 ONyc fee
+            // then - Fee vault PDA ATA receives 6% fee (9 ONyc)
+            const feeVaultAta = getAssociatedTokenAddressSync(onyc2022, program.pdas.redemptionFeeVaultAuthorityPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeVaultBalance = await testHelper.getTokenAccountBalance(feeVaultAta);
+            expect(feeVaultBalance).toBe(BigInt(9_000_000_000)); // 9 ONyc fee
 
             // User receives: 141 ONyc * ~0.567 = ~79.9 USDC
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
@@ -1947,7 +1938,7 @@ describe("Fulfill redemption request", () => {
             await program.makeOffer({
                 tokenInMint: usdc2022,
                 tokenOutMint: onyc2022,
-                tokenInProgram: TOKEN_2022_PROGRAM_ID
+                tokenInProgram: TOKEN_2022_PROGRAM_ID,
             });
 
             const offerPda = program.getOfferPda(usdc2022, onyc2022);
@@ -1959,14 +1950,14 @@ describe("Fulfill redemption request", () => {
                 baseTime,
                 basePrice: 1_800_000_000, // 1.8 USDC per ONyc
                 apr: 220_000, // 22% APR
-                priceFixDuration: 86400
+                priceFixDuration: 86400,
             });
 
             await program.makeRedemptionOffer({
                 offer: offerPda,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID,
-                feeBasisPoints: 150 // 1.5% fee
+                feeBasisPoints: 150, // 1.5% fee
             });
 
             const redemptionOfferPda = program.getRedemptionOfferPda(onyc2022, usdc2022);
@@ -1987,13 +1978,10 @@ describe("Fulfill redemption request", () => {
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
                 amount,
-                tokenProgram: TOKEN_2022_PROGRAM_ID
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
@@ -2007,18 +1995,19 @@ describe("Fulfill redemption request", () => {
                 tokenInMint: onyc2022,
                 tokenOutMint: usdc2022,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
-                tokenOutProgram: TOKEN_2022_PROGRAM_ID
+                tokenOutProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            // then - Boss receives 1.5% fee (0.9 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(900_000_000)); // 0.9 ONyc fee
+            // then - Fee vault PDA ATA receives 1.5% fee (0.9 ONyc)
+            const feeVaultAta = getAssociatedTokenAddressSync(onyc2022, program.pdas.redemptionFeeVaultAuthorityPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeVaultBalance = await testHelper.getTokenAccountBalance(feeVaultAta);
+            expect(feeVaultBalance).toBe(BigInt(900_000_000)); // 0.9 ONyc fee
 
             // User receives: 59.1 ONyc * ~2.196 = ~129.8 USDC
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
             const userUsdcBalance = await testHelper.getTokenAccountBalance(userUsdcAccount);
             expect(userUsdcBalance).toBeGreaterThan(BigInt(128_000_000));
-            expect(userUsdcBalance).toBeLessThan(BigInt(132_000_000));
+            expect(userUsdcBalance).toBeLessThan(BigInt(133_000_000));
         });
 
         test("Token2022 Test #10: APR=35%, Fee=8%, 7 days", async () => {
@@ -2029,7 +2018,7 @@ describe("Fulfill redemption request", () => {
             await program.makeOffer({
                 tokenInMint: usdc2022,
                 tokenOutMint: onyc2022,
-                tokenInProgram: TOKEN_2022_PROGRAM_ID
+                tokenInProgram: TOKEN_2022_PROGRAM_ID,
             });
 
             const offerPda = program.getOfferPda(usdc2022, onyc2022);
@@ -2041,14 +2030,14 @@ describe("Fulfill redemption request", () => {
                 baseTime,
                 basePrice: 4_000_000_000, // 4.0 USDC per ONyc
                 apr: 350_000, // 35% APR
-                priceFixDuration: 86400
+                priceFixDuration: 86400,
             });
 
             await program.makeRedemptionOffer({
                 offer: offerPda,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
                 tokenOutProgram: TOKEN_2022_PROGRAM_ID,
-                feeBasisPoints: 800 // 8% fee
+                feeBasisPoints: 800, // 8% fee
             });
 
             const redemptionOfferPda = program.getRedemptionOfferPda(onyc2022, usdc2022);
@@ -2069,13 +2058,10 @@ describe("Fulfill redemption request", () => {
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
                 amount,
-                tokenProgram: TOKEN_2022_PROGRAM_ID
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             const bossOnycAccount = getAssociatedTokenAddressSync(onyc2022, boss, false, TOKEN_2022_PROGRAM_ID);
 
@@ -2089,12 +2075,13 @@ describe("Fulfill redemption request", () => {
                 tokenInMint: onyc2022,
                 tokenOutMint: usdc2022,
                 tokenInProgram: TOKEN_2022_PROGRAM_ID,
-                tokenOutProgram: TOKEN_2022_PROGRAM_ID
+                tokenOutProgram: TOKEN_2022_PROGRAM_ID,
             });
 
-            // then - Boss receives 8% fee (2 ONyc)
-            const finalBossBalance = await testHelper.getTokenAccountBalance(bossOnycAccount);
-            expect(finalBossBalance).toBe(BigInt(2_000_000_000)); // 2 ONyc fee
+            // then - Fee vault PDA ATA receives 8% fee (2 ONyc)
+            const feeVaultAta = getAssociatedTokenAddressSync(onyc2022, program.pdas.redemptionFeeVaultAuthorityPda, true, TOKEN_2022_PROGRAM_ID);
+            const feeVaultBalance = await testHelper.getTokenAccountBalance(feeVaultAta);
+            expect(feeVaultBalance).toBe(BigInt(2_000_000_000)); // 2 ONyc fee
 
             // User receives: 23 ONyc * ~4.027 = ~92.6 USDC
             const userUsdcAccount = getAssociatedTokenAddressSync(usdc2022, redeemer.publicKey, false, TOKEN_2022_PROGRAM_ID);
@@ -2118,13 +2105,10 @@ describe("Fulfill redemption request", () => {
             await program.createRedemptionRequest({
                 redemptionOffer: redemptionOfferPda,
                 redeemer,
-                amount: REDEMPTION_AMOUNT
+                amount: REDEMPTION_AMOUNT,
             });
 
-            const redemptionRequestPda = program.getRedemptionRequestPda(
-                redemptionOfferPda,
-                0
-            );
+            const redemptionRequestPda = program.getRedemptionRequestPda(redemptionOfferPda, 0);
 
             // Delete all vectors from the underlying offer
             await program.deleteAllOfferVectors(usdcMint, onycMint);
@@ -2138,8 +2122,8 @@ describe("Fulfill redemption request", () => {
                     redeemer: redeemer.publicKey,
                     redemptionAdmin,
                     tokenInMint: onycMint,
-                    tokenOutMint: usdcMint
-                })
+                    tokenOutMint: usdcMint,
+                }),
             ).rejects.toThrow("No active vector");
         });
     });

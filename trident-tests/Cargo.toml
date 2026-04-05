@@ -6,6 +6,13 @@ version = "0.1.0"
 description = "Created with Trident"
 edition = "2021"
 
+[features]
+default = ["mainnet"]
+mainnet = []
+mainnet-test = []
+devnet-test = []
+devnet-dev = []
+
 [dependencies]
 borsh = "1.5.3"
 

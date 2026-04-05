@@ -35,6 +35,21 @@ pub struct RedemptionOffer {
     pub reserved: [u8; 109],
 }
 
+/// PDA that acts as a configurable fee collector for redemption fees
+///
+/// When `fee_destination` is `Pubkey::default()`, fees accumulate in this PDA's ATA.
+/// When set to a specific address, fees are routed there on every fulfillment.
+#[account]
+#[derive(InitSpace)]
+pub struct RedemptionFeeVaultAuthority {
+    /// Destination address for fees; Pubkey::default() means fees accumulate in this PDA's ATA
+    pub fee_destination: Pubkey,
+    /// PDA bump seed
+    pub bump: u8,
+    /// Reserved space for future fields
+    pub reserved: [u8; 31],
+}
+
 #[account]
 #[derive(InitSpace)]
 pub struct RedemptionRequest {
@@ -48,6 +63,12 @@ pub struct RedemptionRequest {
     pub amount: u64,
     /// PDA bump seed for account derivation
     pub bump: u8,
+    /// Amount of token_in tokens that have already been fulfilled (partial fulfillment tracking)
+    ///
+    /// Starts at 0. Incremented by each partial or full fulfillment call.
+    /// When fulfilled_amount == amount the request is fully settled and the account is closed.
+    /// remaining = amount - fulfilled_amount is still locked in the redemption vault.
+    pub fulfilled_amount: u64,
     /// Reserved space for future fields
-    pub reserved: [u8; 127],
+    pub reserved: [u8; 119],
 }

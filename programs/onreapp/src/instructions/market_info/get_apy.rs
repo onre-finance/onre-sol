@@ -1,6 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::offer::offer_utils::find_active_vector_at;
 use crate::instructions::Offer;
+use crate::utils::{mul_div_round_u128, pow_fixed};
 use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
@@ -163,7 +164,7 @@ pub fn get_apy(ctx: Context<GetAPY>) -> Result<u64> {
 /// fixed-point arithmetic to maintain accuracy across the full range of input values.
 ///
 /// # Mathematical Formula
-/// ```
+/// ```text
 /// APY = (1 + APR/365)^365 - 1
 /// ```
 ///
@@ -207,7 +208,8 @@ pub fn calculate_apy_from_apr(apr_scaled: u64) -> Result<u64> {
         .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
 
     // (1 + r/n)^n at 1e18 precision
-    let pow = pow_fixed(base, N as u32, INT_SCALE)?;
+    let pow =
+        pow_fixed(base, N as u64, INT_SCALE).ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
 
     // APY_int = pow - 1.0
     let apy_int = pow
@@ -215,70 +217,12 @@ pub fn calculate_apy_from_apr(apr_scaled: u64) -> Result<u64> {
         .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
 
     // Convert back to 1e6 scale with rounding: apy_scaled = round(apy_int * EXT_SCALE / INT_SCALE)
-    let apy_scaled_u128 = mul_div_round(apy_int, EXT_SCALE, INT_SCALE)?;
+    let apy_scaled_u128 = mul_div_round_u128(apy_int, EXT_SCALE, INT_SCALE)
+        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
 
     if apy_scaled_u128 > u64::MAX as u128 {
         return Err(error!(GetAPYErrorCode::Overflow));
     }
 
     Ok(apy_scaled_u128 as u64)
-}
-
-/// Performs multiplication followed by division with proper rounding
-///
-/// Calculates (a * b) / denom with half-up rounding to minimize precision loss
-/// in fixed-point arithmetic operations. All operations are overflow-protected.
-///
-/// # Arguments
-/// * `a` - First multiplicand
-/// * `b` - Second multiplicand
-/// * `denom` - Denominator for division
-///
-/// # Returns
-/// * `Ok(result)` - Rounded result of (a * b) / denom
-/// * `Err(_)` - If overflow or division by zero occurs
-#[inline]
-fn mul_div_round(a: u128, b: u128, denom: u128) -> Result<u128> {
-    // (a*b + denom/2) / denom  (round half-up)
-    let prod = a
-        .checked_mul(b)
-        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
-    let adj = prod
-        .checked_add(denom / 2)
-        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
-    Ok(adj
-        .checked_div(denom)
-        .ok_or_else(|| error!(GetAPYErrorCode::DivByZero))?)
-}
-
-/// Computes fixed-point exponentiation using the binary exponentiation algorithm
-///
-/// Calculates base^exp in fixed-point arithmetic where both input and output
-/// use the same scale factor. This implementation uses exponentiation by squaring
-/// for efficient computation with O(log n) complexity.
-///
-/// # Arguments
-/// * `base` - Base value in fixed-point format
-/// * `exp` - Integer exponent (not scaled)
-/// * `scale` - Scale factor used for fixed-point representation
-///
-/// # Returns
-/// * `Ok(result)` - base^exp in the same scale as input
-/// * `Err(_)` - If overflow occurs during calculation
-///
-/// # Algorithm
-/// Uses binary exponentiation (exponentiation by squaring) to efficiently
-/// compute large powers while maintaining precision in fixed-point arithmetic.
-fn pow_fixed(mut base: u128, mut exp: u32, scale: u128) -> Result<u128> {
-    let mut acc = scale; // 1.0
-    while exp > 0 {
-        if (exp & 1) == 1 {
-            acc = mul_div_round(acc, base, scale)?;
-        }
-        exp >>= 1;
-        if exp > 0 {
-            base = mul_div_round(base, base, scale)?;
-        }
-    }
-    Ok(acc)
 }

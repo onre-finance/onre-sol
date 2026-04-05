@@ -1,6 +1,7 @@
 use crate::constants::seeds;
+use crate::instructions::market_info::offer_valuation_utils::get_nav_adjustment_snapshot;
 use crate::instructions::offer::offer_utils::find_active_vector_at;
-use crate::instructions::{calculate_step_price_at, Offer};
+use crate::instructions::Offer;
 use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
@@ -61,31 +62,6 @@ pub struct GetNavAdjustment<'info> {
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 }
 
-/// Finds the most recent previous pricing vector before the current active vector
-///
-/// Searches through all pricing vectors to find the one with the latest start time
-/// that occurs before the current vector's start time. Used for price comparison
-/// to calculate adjustment between vector transitions.
-///
-/// # Arguments
-/// * `offer` - The offer containing pricing vectors to search
-/// * `current_vector_start_time` - Start time of the currently active vector
-///
-/// # Returns
-/// * `Some(OfferVector)` - The previous vector if one exists
-/// * `None` - If no previous vector exists (current is the first vector)
-pub fn find_previous_vector(
-    offer: &crate::instructions::Offer,
-    current_vector_start_time: u64,
-) -> Option<crate::instructions::OfferVector> {
-    offer
-        .vectors
-        .iter()
-        .filter(|vector| vector.start_time != 0 && vector.start_time < current_vector_start_time) // Only consider non-empty vectors and vectors before current
-        .max_by_key(|vector| vector.start_time) // Find latest start_time before current
-        .copied()
-}
-
 /// Calculates and returns the NAV adjustment between current and previous pricing vectors
 ///
 /// This read-only instruction computes the price difference between the current
@@ -113,39 +89,10 @@ pub fn get_nav_adjustment(ctx: Context<GetNavAdjustment>) -> Result<i64> {
     // Find the currently active pricing vector
     let active_vector = find_active_vector_at(&offer, current_time)?;
 
-    // Calculate price at the start of the active vector
-    let current_price = calculate_step_price_at(
-        active_vector.apr,
-        active_vector.base_price,
-        active_vector.base_time,
-        active_vector.price_fix_duration,
-        active_vector.start_time,
-    )?;
-
-    // Find the previous vector and calculate its price
-    let (previous_price_opt, adjustment) =
-        if let Some(previous_vector) = find_previous_vector(&offer, active_vector.start_time) {
-            // Calculate the price of the previous vector at its end time (when current vector starts)
-            let previous_price = calculate_step_price_at(
-                previous_vector.apr,
-                previous_vector.base_price,
-                previous_vector.base_time,
-                previous_vector.price_fix_duration,
-                active_vector.start_time, // End time of previous vector
-            )?;
-
-            // Calculate adjustment: current - previous
-            let adjustment = if current_price >= previous_price {
-                (current_price - previous_price) as i64
-            } else {
-                -((previous_price - current_price) as i64)
-            };
-
-            (Some(previous_price), adjustment)
-        } else {
-            // No previous vector, so adjustment is the current price (compared to 0)
-            (None, current_price as i64)
-        };
+    let snapshot = get_nav_adjustment_snapshot(&offer, &active_vector)?;
+    let current_price = snapshot.current_price;
+    let previous_price_opt = snapshot.previous_price;
+    let adjustment = snapshot.adjustment;
 
     msg!(
         "NAV Adjustment Info - Offer PDA: {}, Current Price: {}, Previous Price: {:?}, Adjustment: {}, Timestamp: {}",

@@ -132,6 +132,6 @@ describe("Update Offer Fee", () => {
         // Verify vector is still there
         const activeVector = offer.vectors.find(v => v.startTime.toNumber() !== 0);
         expect(activeVector).toBeDefined();
-        expect(activeVector.startTime.toNumber()).toBe(currentTime + 1000);
+        expect(activeVector!.startTime.toNumber()).toBe(currentTime + 1000);
     });
 });

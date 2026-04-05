@@ -1,14 +1,47 @@
+#![allow(unexpected_cfgs)]
+
 use anchor_lang::prelude::*;
 use instructions::*;
 use utils::ApprovalMessage;
-
-// Program ID declaration
-declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
 
 pub mod constants;
 pub mod instructions;
 pub mod state;
 pub mod utils;
+
+const _ENV_FEATURE_COUNT: usize = cfg!(feature = "mainnet-test") as usize
+    + cfg!(feature = "devnet-test") as usize
+    + cfg!(feature = "devnet-dev") as usize;
+
+const _: () = assert!(
+    _ENV_FEATURE_COUNT <= 1,
+    "Environment features are mutually exclusive: enable at most one of 'mainnet-test', 'devnet-test', or 'devnet-dev'. Mainnet is the default when no environment feature is set."
+);
+
+// Program ID declaration
+cfg_if::cfg_if! {
+    if #[cfg(feature = "mainnet-test")] {
+        mod program_id {
+            anchor_lang::declare_id!("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2");
+        }
+    } else if #[cfg(feature = "devnet-test")] {
+        mod program_id {
+            anchor_lang::declare_id!("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2");
+        }
+    } else if #[cfg(feature = "devnet-dev")] {
+        mod program_id {
+            anchor_lang::declare_id!("devHfQHgiFNifkLW49RCXpyTUZMyKuBNnFSbrQ8XsbX");
+        }
+    } else {
+        mod program_id {
+            anchor_lang::declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
+        }
+    }
+}
+
+pub use program_id::*;
+
+pub use instructions::mint_authority::mint_to::MintTo;
 
 /// The main program module for the Onre App.
 ///
@@ -100,7 +133,10 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `RedemptionVaultDeposit`.
     /// - `amount`: Amount of tokens to deposit.
-    pub fn redemption_vault_deposit(ctx: Context<RedemptionVaultDeposit>, amount: u64) -> Result<()> {
+    pub fn redemption_vault_deposit(
+        ctx: Context<RedemptionVaultDeposit>,
+        amount: u64,
+    ) -> Result<()> {
         vault_operations::redemption_vault_deposit(ctx, amount)
     }
 
@@ -114,7 +150,10 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `RedemptionVaultWithdraw`.
     /// - `amount`: Amount of tokens to withdraw.
-    pub fn redemption_vault_withdraw(ctx: Context<RedemptionVaultWithdraw>, amount: u64) -> Result<()> {
+    pub fn redemption_vault_withdraw(
+        ctx: Context<RedemptionVaultWithdraw>,
+        amount: u64,
+    ) -> Result<()> {
         vault_operations::redemption_vault_withdraw(ctx, amount)
     }
 
@@ -228,6 +267,14 @@ pub mod onreapp {
         offer::take_offer(ctx, token_in_amount, approval_message)
     }
 
+    pub fn take_offer_v2(
+        ctx: Context<TakeOfferV2>,
+        token_in_amount: u64,
+        approval_message: Option<ApprovalMessage>,
+    ) -> Result<()> {
+        offer::take_offer_v2(ctx, token_in_amount, approval_message)
+    }
+
     /// Takes a offer using permissionless flow with intermediary accounts.
     ///
     /// Delegates to `offer::take_offer_permissionless`.
@@ -244,6 +291,14 @@ pub mod onreapp {
         approval_message: Option<ApprovalMessage>,
     ) -> Result<()> {
         offer::take_offer_permissionless(ctx, token_in_amount, approval_message)
+    }
+
+    pub fn take_offer_permissionless_v2(
+        ctx: Context<TakeOfferPermissionlessV2>,
+        token_in_amount: u64,
+        approval_message: Option<ApprovalMessage>,
+    ) -> Result<()> {
+        offer::take_offer_permissionless_v2(ctx, token_in_amount, approval_message)
     }
 
     /// Proposes a new boss for ownership transfer.
@@ -378,6 +433,87 @@ pub mod onreapp {
         state_operations::set_redemption_admin(ctx, new_redemption_admin)
     }
 
+    /// Initializes the standalone BUFFER pool state and vault accounts.
+    ///
+    /// Creates BUFFER state as a separate PDA so existing offer/redemption state
+    /// remains unchanged. Only the boss can initialize BUFFER.
+    pub fn initialize_buffer(ctx: Context<InitializeBuffer>) -> Result<()> {
+        buffer::initialize_buffer(ctx)
+    }
+
+    /// Sets the main offer stored in program state.
+    ///
+    /// Only the boss can update this value.
+    pub fn set_main_offer(ctx: Context<SetMainOffer>) -> Result<()> {
+        state_operations::set_main_offer(ctx)
+    }
+
+    /// Sets BUFFER gross yield.
+    ///
+    /// Current yield is read from the main offer during BUFFER accrual.
+    pub fn set_buffer_gross_apr(ctx: Context<SetBufferGrossYield>, gross_yield: u64) -> Result<()> {
+        buffer::set_buffer_gross_apr(ctx, gross_yield)
+    }
+
+    /// Sets BUFFER fee split parameters.
+    ///
+    /// Both fee values are expressed in basis points and applied during accrual.
+    pub fn set_buffer_fee_config(
+        ctx: Context<SetBufferFeeConfig>,
+        management_fee_basis_points: u16,
+        management_fee_wallet: Pubkey,
+        performance_fee_basis_points: u16,
+        performance_fee_wallet: Pubkey,
+    ) -> Result<()> {
+        buffer::set_buffer_fee_config(
+            ctx,
+            management_fee_basis_points,
+            management_fee_wallet,
+            performance_fee_basis_points,
+            performance_fee_wallet,
+        )
+    }
+
+    /// Burns ONyc from BUFFER vault to increase NAV according to provided target inputs.
+    ///
+    /// Callable by boss only.
+    pub fn burn_for_nav_increase(
+        ctx: Context<BurnForNavIncrease>,
+        asset_adjustment_amount: u64,
+    ) -> Result<()> {
+        buffer::burn_for_nav_increase(ctx, asset_adjustment_amount)
+    }
+
+    /// Deposits ONyc into the BUFFER reserve vault.
+    ///
+    /// Callable by any signer.
+    pub fn deposit_reserve_vault(ctx: Context<DepositReserveVault>, amount: u64) -> Result<()> {
+        buffer::deposit_reserve_vault(ctx, amount)
+    }
+
+    /// Withdraws ONyc from the BUFFER reserve vault.
+    ///
+    /// Callable by boss only.
+    pub fn withdraw_reserve_vault(ctx: Context<WithdrawReserveVault>, amount: u64) -> Result<()> {
+        buffer::withdraw_reserve_vault(ctx, amount)
+    }
+
+    /// Transfers management fees from the management fee vault to the boss.
+    pub fn withdraw_management_fees(
+        ctx: Context<WithdrawManagementFees>,
+        amount: u64,
+    ) -> Result<()> {
+        buffer::withdraw_management_fees(ctx, amount)
+    }
+
+    /// Transfers performance fees from the performance fee vault to the boss.
+    pub fn withdraw_performance_fees(
+        ctx: Context<WithdrawPerformanceFees>,
+        amount: u64,
+    ) -> Result<()> {
+        buffer::withdraw_performance_fees(ctx, amount)
+    }
+
     /// Mints ONyc tokens to the boss's account.
     ///
     /// Delegates to `state_operations::mint_to` to mint ONyc tokens.
@@ -472,6 +608,18 @@ pub mod onreapp {
     /// - `Ok(circulating_supply)`: The calculated circulating supply for the offer in base units
     pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64> {
         market_info::get_circulating_supply(ctx)
+    }
+
+    /// Refreshes the canonical market-stats PDA using current on-chain state.
+    ///
+    /// Delegates to `market_info::refresh_market_stats`.
+    /// Any signer can call this instruction and pay for PDA creation if needed, which
+    /// allows backend automation to refresh market stats even on days without purchases.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `RefreshMarketStats`.
+    pub fn refresh_market_stats(ctx: Context<RefreshMarketStats>) -> Result<()> {
+        market_info::refresh_market_stats(ctx)
     }
 
     /// Adds a trusted authority for approval verification.
@@ -575,22 +723,14 @@ pub mod onreapp {
         redemption::create_redemption_request(ctx, amount)
     }
 
-    /// Fulfills a redemption request.
+    /// Fulfills a redemption request with ONyc buffer accrual support.
     ///
     /// Delegates to `redemption::fulfill_redemption_request`.
-    /// This instruction fulfills a pending redemption request by handling token operations:
-    /// - Burns token_in (ONyc) if program has mint authority, else sends to boss
-    /// - Mints token_out if program has mint authority, else transfers from vault
-    /// - Uses current price from the underlying offer to calculate token_out amount
-    /// Emits a `RedemptionRequestFulfilledEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `FulfillRedemptionRequest`.
-    ///
-    /// # Access Control
-    /// - Only redemption_admin can fulfill redemptions
-    pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Result<()> {
-        redemption::fulfill_redemption_request(ctx)
+    pub fn fulfill_redemption_request(
+        ctx: Context<FulfillRedemptionRequest>,
+        amount: u64,
+    ) -> Result<()> {
+        redemption::fulfill_redemption_request(ctx, amount)
     }
 
     /// Cancels a redemption request.
@@ -610,6 +750,47 @@ pub mod onreapp {
     /// - Request must be in pending state (status = 0)
     pub fn cancel_redemption_request(ctx: Context<CancelRedemptionRequest>) -> Result<()> {
         redemption::cancel_redemption_request(ctx)
+    }
+
+    /// Sets or updates the fee destination address for redemption fees.
+    ///
+    /// Delegates to `redemption::set_redemption_fee_destination`.
+    /// Only updates the stored destination address; does not move any tokens.
+    /// Use `withdraw_redemption_fees` to sweep accumulated fees.
+    /// When `fee_destination` is `Pubkey::default()`, fees accumulate in the program's
+    /// fee vault PDA ATA. When set to any other address, fees are routed there on every fulfillment.
+    /// Emits a `RedemptionFeeDestinationUpdatedEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `SetRedemptionFeeDestination`.
+    /// - `fee_destination`: Pubkey of the new fee recipient.
+    ///
+    /// # Access Control
+    /// - Boss only
+    pub fn set_redemption_fee_destination(
+        ctx: Context<SetRedemptionFeeDestination>,
+        fee_destination: Pubkey,
+    ) -> Result<()> {
+        redemption::set_redemption_fee_destination(ctx, fee_destination)
+    }
+
+    /// Withdraws accumulated redemption fees from the vault to a destination chosen by the boss.
+    ///
+    /// Delegates to `redemption::withdraw_redemption_fees`.
+    /// Pass `amount = 0` to withdraw the full vault balance.
+    /// Emits a `RedemptionFeesWithdrawnEvent` upon success.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `WithdrawRedemptionFees`.
+    /// - `amount`: Amount to withdraw; 0 means full balance.
+    ///
+    /// # Access Control
+    /// - Boss only
+    pub fn withdraw_redemption_fees(
+        ctx: Context<WithdrawRedemptionFees>,
+        amount: u64,
+    ) -> Result<()> {
+        redemption::withdraw_redemption_fees(ctx, amount)
     }
 
     /// Updates the fee configuration for a specific redemption offer.

@@ -1,4 +1,3 @@
-use crate::account;
 use crate::constants::seeds;
 use crate::state::State;
 use anchor_lang::prelude::*;
