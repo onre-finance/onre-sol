@@ -164,6 +164,10 @@ Scripts that modify state output base58-encoded transactions for signing via Squ
 
 Tests use **Vitest** with **LiteSVM** for fast local testing without a validator.
 
+For the Rust program integration suite, use `anchor test`. The LiteSVM harness in
+`programs/onreapp/tests/common/svm.rs` embeds `target/deploy/onreapp.so`, so plain
+`cargo test` can exercise a stale program binary.
+
 ```bash
 # Run all tests
 pnpm test

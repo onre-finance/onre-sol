@@ -287,6 +287,24 @@ fn test_set_main_offer_rejects_offer_with_wrong_token_out_mint() {
 }
 
 #[test]
+fn test_mint_to_rejects_noncanonical_buffer_state_account() {
+    let (mut svm, payer, _token_in_mint, onyc_mint, _caller) =
+        setup_buffer_context(100_000, 0, 0, 0);
+    let boss = payer.pubkey();
+    let main_offer = read_state(&svm).main_offer;
+
+    let mut ix =
+        build_mint_to_ix_for_offer(&boss, &onyc_mint, 1_000_000, &TOKEN_PROGRAM_ID, &main_offer);
+    ix.accounts[9].pubkey = Pubkey::new_unique();
+
+    let result = send_tx(&mut svm, &[ix], &[&payer]);
+    assert!(
+        result.is_err(),
+        "mint_to should reject a non-canonical buffer_state account instead of skipping accrual"
+    );
+}
+
+#[test]
 fn test_deposit_reserve_vault_allows_any_depositor() {
     let (mut svm, _payer, _token_in_mint, onyc_mint, caller) = setup_buffer_context(1, 0, 0, 0);
     let deposit_amount = 250_000_000;

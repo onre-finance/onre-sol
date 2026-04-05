@@ -25,8 +25,21 @@ pub struct BufferAccrualAccounts<'info> {
 }
 
 impl<'info> BufferAccrualAccounts<'info> {
-    pub fn is_initialized(&self) -> bool {
-        self.try_load_buffer_state().is_ok()
+    pub fn check_is_initialized(&self, program_id: &Pubkey) -> Result<bool> {
+        let (expected_buffer_state, _) =
+            Pubkey::find_program_address(&[seeds::BUFFER_STATE], program_id);
+        require_keys_eq!(
+            self.buffer_state.key(),
+            expected_buffer_state,
+            BufferErrorCode::InvalidBufferStateAccount
+        );
+
+        if self.buffer_state.owner != program_id || self.buffer_state.data_is_empty() {
+            return Ok(false);
+        }
+
+        self.try_load_buffer_state()?;
+        Ok(true)
     }
 
     fn try_load_buffer_state(&self) -> Result<BufferState> {
@@ -106,4 +119,90 @@ pub fn validate_buffer_onyc_vault_accounts<'info>(
     );
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anchor_lang::error::Error;
+    use solana_program::clock::Epoch;
+
+    fn unchecked_account_with_owner(
+        key: Pubkey,
+        owner: Pubkey,
+        data_len: usize,
+    ) -> UncheckedAccount<'static> {
+        let lamports = Box::leak(Box::new(0u64));
+        let data = Box::leak(vec![0u8; data_len].into_boxed_slice());
+        let key_ref = Box::leak(Box::new(key));
+        let owner_ref = Box::leak(Box::new(owner));
+        let account_info = Box::leak(Box::new(AccountInfo::new(
+            key_ref,
+            false,
+            false,
+            lamports,
+            data,
+            owner_ref,
+            false,
+            Epoch::default(),
+        )));
+
+        UncheckedAccount::try_from(account_info)
+    }
+
+    #[test]
+    fn check_is_initialized_rejects_noncanonical_buffer_state_key() {
+        let accounts = BufferAccrualAccounts {
+            buffer_state: unchecked_account_with_owner(Pubkey::new_unique(), crate::ID, 8),
+            reserve_vault_onyc_account: unchecked_account_with_owner(
+                Pubkey::new_unique(),
+                crate::ID,
+                0,
+            ),
+            management_fee_vault_onyc_account: unchecked_account_with_owner(
+                Pubkey::new_unique(),
+                crate::ID,
+                0,
+            ),
+            performance_fee_vault_onyc_account: unchecked_account_with_owner(
+                Pubkey::new_unique(),
+                crate::ID,
+                0,
+            ),
+        };
+
+        let err = accounts.check_is_initialized(&crate::ID).unwrap_err();
+        match err {
+            Error::AnchorError(anchor_err) => assert_eq!(
+                anchor_err.error_code_number,
+                u32::from(BufferErrorCode::InvalidBufferStateAccount)
+            ),
+            other => panic!("unexpected error variant: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn check_is_initialized_allows_uninitialized_canonical_buffer_state() {
+        let (buffer_state_pda, _) = Pubkey::find_program_address(&[seeds::BUFFER_STATE], &crate::ID);
+        let accounts = BufferAccrualAccounts {
+            buffer_state: unchecked_account_with_owner(buffer_state_pda, Pubkey::new_unique(), 0),
+            reserve_vault_onyc_account: unchecked_account_with_owner(
+                Pubkey::new_unique(),
+                crate::ID,
+                0,
+            ),
+            management_fee_vault_onyc_account: unchecked_account_with_owner(
+                Pubkey::new_unique(),
+                crate::ID,
+                0,
+            ),
+            performance_fee_vault_onyc_account: unchecked_account_with_owner(
+                Pubkey::new_unique(),
+                crate::ID,
+                0,
+            ),
+        };
+
+        assert!(!accounts.check_is_initialized(&crate::ID).unwrap());
+    }
 }

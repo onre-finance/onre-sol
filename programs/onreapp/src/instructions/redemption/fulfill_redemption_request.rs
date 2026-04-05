@@ -465,9 +465,14 @@ fn execute_fulfill_redemption_request(
             params.token_in_mint,
             &params.mint_authority.to_account_info(),
         );
+    let buffer_is_initialized = if let Some(accounts) = params.buffer_accounts {
+        accounts.check_is_initialized(params.program_id)?
+    } else {
+        false
+    };
     let accrual = if let Some(buffer_accounts) = params
         .buffer_accounts
-        .filter(|accounts| should_refresh_market_stats && accounts.is_initialized())
+        .filter(|_| should_refresh_market_stats && buffer_is_initialized)
     {
         Some(accrue_buffer_from_accounts(
             params.program_id,

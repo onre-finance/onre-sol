@@ -6,6 +6,8 @@ pub enum BufferErrorCode {
     KillSwitchActivated,
     #[msg("Invalid ONyc mint for BUFFER state")]
     InvalidOnycMint,
+    #[msg("Invalid BUFFER state account")]
+    InvalidBufferStateAccount,
     #[msg("Invalid main offer for BUFFER state")]
     InvalidMainOffer,
     #[msg("No change")]

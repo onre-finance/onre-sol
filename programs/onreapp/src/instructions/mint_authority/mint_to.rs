@@ -164,11 +164,15 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
         )?;
         Some(offer)
     };
+    let buffer_is_initialized = ctx
+        .accounts
+        .buffer_accounts
+        .check_is_initialized(ctx.program_id)?;
     let should_accrue = offer.is_some()
         && should_accrue_onyc_mint(
             &ctx.accounts.state,
             &ctx.accounts.onyc_mint,
-            ctx.accounts.buffer_accounts.is_initialized(),
+            buffer_is_initialized,
             &ctx.accounts.mint_authority.to_account_info(),
         );
     let accrual = if should_accrue {
