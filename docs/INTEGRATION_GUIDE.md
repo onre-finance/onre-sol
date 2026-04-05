@@ -10,7 +10,7 @@ The Onre program provides **read-only view instructions** to query market data. 
 
 For BUFFER integrations, keep in mind that BUFFER accrual does not accept a caller-provided current yield. Instead, `current_yield` is derived from the active APR on `state.main_offer`.
 
-**Program ID (Mainnet):** `[INSERT_PROGRAM_ID_HERE]`
+**Program ID (Mainnet):** `onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe`
 
 ---
 
