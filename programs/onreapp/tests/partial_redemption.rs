@@ -197,10 +197,10 @@ fn test_partial_fulfill_account_closed_after_final_call() {
 
     for amount in [2_000_000_000u64, 3_000_000_000, 4_000_000_000] {
         let ix = build_fulfill_redemption_request_ix(
-        &boss,
-        &boss,
-        &find_offer_pda(&usdc_mint, &onyc_mint).0,
-        &user.pubkey(),
+            &boss,
+            &boss,
+            &find_offer_pda(&usdc_mint, &onyc_mint).0,
+            &user.pubkey(),
             &onyc_mint,
             &usdc_mint,
             0,
@@ -285,10 +285,10 @@ fn test_full_3_call_redemption_correct_offer_stats() {
 
     for amount in [2_000_000_000u64, 3_000_000_000, 4_000_000_000] {
         let ix = build_fulfill_redemption_request_ix(
-        &boss,
-        &boss,
-        &find_offer_pda(&usdc_mint, &onyc_mint).0,
-        &user.pubkey(),
+            &boss,
+            &boss,
+            &find_offer_pda(&usdc_mint, &onyc_mint).0,
+            &user.pubkey(),
             &onyc_mint,
             &usdc_mint,
             0,
