@@ -2,7 +2,6 @@ use crate::constants::seeds;
 use crate::instructions::offer::offer_utils::find_active_vector_at;
 use crate::instructions::Offer;
 use crate::utils::{mul_div_round_u128, pow_fixed};
-use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::Mint;
@@ -19,16 +18,7 @@ const INT_SCALE: u128 = 1_000_000_000_000_000_000;
 /// Standard financial calculation uses 365 days per year
 const N: u128 = 365;
 
-/// Error codes for APY calculation operations
-#[error_code]
-pub enum GetAPYErrorCode {
-    /// Mathematical overflow during APY calculations
-    #[msg("Math overflow")]
-    Overflow,
-    /// Division by zero in fixed-point arithmetic
-    #[msg("Division by zero")]
-    DivByZero,
-}
+// Error codes for APY calculation operations
 
 /// Event emitted when APY calculation is successfully completed
 ///
@@ -76,7 +66,7 @@ pub struct GetAPY<'info> {
     #[account(
         constraint =
             token_in_mint.key() == offer.load()?.token_in_mint
-            @ OfferCoreError::InvalidTokenInMint
+            @ crate::OnreError::InvalidTokenInMint
     )]
     pub token_in_mint: InterfaceAccount<'info, Mint>,
 
@@ -88,7 +78,7 @@ pub struct GetAPY<'info> {
     #[account(
         constraint =
             token_out_mint.key() == offer.load()?.token_out_mint
-            @ OfferCoreError::InvalidTokenOutMint
+            @ crate::OnreError::InvalidTokenOutMint
     )]
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 }
@@ -123,9 +113,9 @@ pub struct GetAPY<'info> {
 ///
 /// # Returns
 /// * `Ok(apy)` - The calculated APY with scale=6 (1_000_000 = 100%)
-/// * `Err(OfferCoreError::NoActiveVector)` - If no pricing vector is currently active
-/// * `Err(GetAPYErrorCode::Overflow)` - If mathematical overflow occurs during calculation
-/// * `Err(GetAPYErrorCode::DivByZero)` - If division by zero occurs during calculation
+/// * `Err(crate::OnreError::NoActiveVector)` - If no pricing vector is currently active
+/// * `Err(crate::OnreError::Overflow)` - If mathematical overflow occurs during calculation
+/// * `Err(crate::OnreError::DivByZero)` - If division by zero occurs during calculation
 ///
 /// # Events
 /// * `GetAPYEvent` - Emitted on successful calculation containing offer PDA, APY, source APR, and timestamp
@@ -179,8 +169,8 @@ pub fn get_apy(ctx: Context<GetAPY>) -> Result<u64> {
 ///
 /// # Returns
 /// * `Ok(apy)` - Annual Percentage Yield with scale=6 (same scaling as input)
-/// * `Err(GetAPYErrorCode::Overflow)` - If mathematical overflow occurs
-/// * `Err(GetAPYErrorCode::DivByZero)` - If division by zero occurs
+/// * `Err(crate::OnreError::Overflow)` - If mathematical overflow occurs
+/// * `Err(crate::OnreError::DivByZero)` - If division by zero occurs
 ///
 /// # Scale Information
 /// Both input and output use scale=6, where 1_000_000 represents 100%:
@@ -193,35 +183,35 @@ pub fn calculate_apy_from_apr(apr_scaled: u64) -> Result<u64> {
     // incr = INT_SCALE * (apr / EXT_SCALE) / N
     let num = INT_SCALE
         .checked_mul(apr)
-        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
+        .ok_or_else(|| error!(crate::OnreError::Overflow))?;
     let den = EXT_SCALE
         .checked_mul(N as u128)
-        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
+        .ok_or_else(|| error!(crate::OnreError::Overflow))?;
     let incr = num
         .checked_add(den / 2)
-        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?
+        .ok_or_else(|| error!(crate::OnreError::Overflow))?
         .checked_div(den)
-        .ok_or_else(|| error!(GetAPYErrorCode::DivByZero))?;
+        .ok_or_else(|| error!(crate::OnreError::DivByZero))?;
 
     let base = INT_SCALE
         .checked_add(incr)
-        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
+        .ok_or_else(|| error!(crate::OnreError::Overflow))?;
 
     // (1 + r/n)^n at 1e18 precision
     let pow =
-        pow_fixed(base, N as u64, INT_SCALE).ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
+        pow_fixed(base, N as u64, INT_SCALE).ok_or_else(|| error!(crate::OnreError::Overflow))?;
 
     // APY_int = pow - 1.0
     let apy_int = pow
         .checked_sub(INT_SCALE)
-        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
+        .ok_or_else(|| error!(crate::OnreError::Overflow))?;
 
     // Convert back to 1e6 scale with rounding: apy_scaled = round(apy_int * EXT_SCALE / INT_SCALE)
     let apy_scaled_u128 = mul_div_round_u128(apy_int, EXT_SCALE, INT_SCALE)
-        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
+        .ok_or_else(|| error!(crate::OnreError::Overflow))?;
 
     if apy_scaled_u128 > u64::MAX as u128 {
-        return Err(error!(GetAPYErrorCode::Overflow));
+        return Err(error!(crate::OnreError::Overflow));
     }
 
     Ok(apy_scaled_u128 as u64)

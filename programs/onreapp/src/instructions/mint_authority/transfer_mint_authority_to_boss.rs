@@ -16,13 +16,7 @@ use anchor_spl::token_interface::{Mint, TokenInterface};
 /// - Program PDA must currently hold mint authority
 /// - Uses program-derived signatures for authorization
 
-/// Error codes for mint authority transfer to boss operations
-#[error_code]
-pub enum TransferMintAuthorityToBossErrorCode {
-    /// The program PDA is not the current mint authority for the specified token
-    #[msg("Program PDA must be the current mint authority")]
-    ProgramNotMintAuthority,
-}
+// Error codes for mint authority transfer to boss operations
 
 /// Event emitted when mint authority is successfully transferred from program PDA to boss
 ///
@@ -60,7 +54,7 @@ pub struct TransferMintAuthorityToBoss<'info> {
     /// will be updated to have the boss as the new mint authority.
     #[account(
         mut,
-        constraint = mint.mint_authority.unwrap() == mint_authority.key() @ TransferMintAuthorityToBossErrorCode::ProgramNotMintAuthority
+        constraint = mint.mint_authority.unwrap() == mint_authority.key() @ crate::OnreError::ProgramNotMintAuthority
     )]
     pub mint: InterfaceAccount<'info, Mint>,
 
@@ -93,7 +87,7 @@ pub struct TransferMintAuthorityToBoss<'info> {
 ///
 /// # Returns
 /// * `Ok(())` - If authority transfer completes successfully
-/// * `Err(TransferMintAuthorityToBossErrorCode::ProgramNotMintAuthority)` - If program PDA doesn't hold authority
+/// * `Err(crate::OnreError::ProgramNotMintAuthority)` - If program PDA doesn't hold authority
 /// * `Err(_)` - If SPL Token authority transfer fails
 ///
 /// # Access Control
@@ -111,7 +105,7 @@ pub fn transfer_mint_authority_to_boss(ctx: Context<TransferMintAuthorityToBoss>
     // Transfer mint authority from program PDA back to boss using program signature
     set_authority(
         CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.token_program.key(),
             SetAuthority {
                 current_authority: ctx.accounts.mint_authority.to_account_info(),
                 account_or_mint: ctx.accounts.mint.to_account_info(),

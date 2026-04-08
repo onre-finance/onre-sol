@@ -117,7 +117,7 @@ pub struct MakeRedemptionOffer<'info> {
     #[account(
         mut,
         constraint = signer.key() == state.boss || signer.key() == state.redemption_admin
-            @ MakeRedemptionOfferErrorCode::Unauthorized
+            @ crate::OnreError::Unauthorized
     )]
     pub signer: Signer<'info>,
 
@@ -141,8 +141,8 @@ pub struct MakeRedemptionOffer<'info> {
 ///
 /// # Returns
 /// * `Ok(())` - If the redemption offer is successfully created
-/// * `Err(MakeRedemptionOfferErrorCode::Unauthorized)` - If caller is neither boss nor redemption_admin (validated in accounts)
-/// * `Err(MakeRedemptionOfferErrorCode::InvalidFee)` - If fee_basis_points exceeds 10000
+/// * `Err(crate::OnreError::Unauthorized)` - If caller is neither boss nor redemption_admin (validated in accounts)
+/// * `Err(crate::OnreError::InvalidFee)` - If fee_basis_points exceeds 10000
 ///
 /// # Access Control
 /// - Only the boss or redemption_admin can call this instruction
@@ -161,7 +161,7 @@ pub fn make_redemption_offer(
     // Validate fee is within valid range (0-1000 basis points = 0-10%)
     require!(
         fee_basis_points <= MAX_ALLOWED_FEE_BPS,
-        MakeRedemptionOfferErrorCode::InvalidFee
+        crate::OnreError::InvalidFee
     );
 
     // Initialize the redemption offer
@@ -192,14 +192,4 @@ pub fn make_redemption_offer(
     Ok(())
 }
 
-/// Error codes for redemption offer creation operations
-#[error_code]
-pub enum MakeRedemptionOfferErrorCode {
-    /// Caller is not authorized (must be boss or redemption_admin)
-    #[msg("Unauthorized: only boss or redemption_admin can create redemption offers")]
-    Unauthorized,
-
-    /// Fee basis points exceeds maximum allowed value of 1000 (10%)
-    #[msg("Invalid fee: fee_basis_points must be <= 1000")]
-    InvalidFee,
-}
+// Error codes for redemption offer creation operations

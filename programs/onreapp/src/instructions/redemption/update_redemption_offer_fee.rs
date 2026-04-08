@@ -40,7 +40,7 @@ pub struct UpdateRedemptionOfferFee<'info> {
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
-        has_one = boss @ UpdateRedemptionOfferFeeErrorCode::Unauthorized
+        has_one = boss @ crate::OnreError::Unauthorized
     )]
     pub state: Account<'info, State>,
 
@@ -61,8 +61,8 @@ pub struct UpdateRedemptionOfferFee<'info> {
 ///
 /// # Returns
 /// * `Ok(())` - If the fee is successfully updated
-/// * `Err(UpdateRedemptionOfferFeeErrorCode::InvalidFee)` - If fee exceeds 10000 basis points
-/// * `Err(UpdateRedemptionOfferFeeErrorCode::Unauthorized)` - If caller is not the boss
+/// * `Err(crate::OnreError::InvalidFee)` - If fee exceeds 10000 basis points
+/// * `Err(crate::OnreError::Unauthorized)` - If caller is not the boss
 ///
 /// # Access Control
 /// - Only the boss can call this instruction
@@ -82,7 +82,7 @@ pub fn update_redemption_offer_fee(
     // Validate fee is within valid range (0-1000 basis points = 0-10%)
     require!(
         new_fee_basis_points <= MAX_ALLOWED_FEE_BPS,
-        UpdateRedemptionOfferFeeErrorCode::InvalidFee
+        crate::OnreError::InvalidFee
     );
 
     let redemption_offer = &mut ctx.accounts.redemption_offer;
@@ -90,7 +90,7 @@ pub fn update_redemption_offer_fee(
     // Validate this is not a no-op (setting the same fee)
     require!(
         new_fee_basis_points != redemption_offer.fee_basis_points,
-        UpdateRedemptionOfferFeeErrorCode::NoChange
+        crate::OnreError::NoChange
     );
 
     // Store old fee for event
@@ -116,18 +116,4 @@ pub fn update_redemption_offer_fee(
     Ok(())
 }
 
-/// Error codes for update redemption offer fee operations
-#[error_code]
-pub enum UpdateRedemptionOfferFeeErrorCode {
-    /// Caller is not authorized (must be boss)
-    #[msg("Unauthorized: only boss can update redemption offer fee")]
-    Unauthorized,
-
-    /// Fee basis points exceeds maximum allowed value of 1000 (10%)
-    #[msg("Invalid fee: fee_basis_points must be <= 1000")]
-    InvalidFee,
-
-    /// The new fee is the same as the current fee
-    #[msg("No change: new fee is the same as current fee")]
-    NoChange,
-}
+// Error codes for update redemption offer fee operations

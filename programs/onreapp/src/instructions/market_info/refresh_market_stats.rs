@@ -49,7 +49,7 @@ pub struct RefreshMarketStats<'info> {
                 &vault_authority.key(),
                 &onyc_mint.key(),
                 &token_program.key(),
-            ) @ crate::instructions::market_info::GetCirculatingSupplyErrorCode::InvalidVaultAccount
+            ) @ crate::OnreError::InvalidVaultAccount
     )]
     pub onyc_vault_account: UncheckedAccount<'info>,
 
@@ -84,12 +84,12 @@ pub fn refresh_market_stats(ctx: Context<RefreshMarketStats>) -> Result<()> {
     require_keys_eq!(
         ctx.accounts.token_in_mint.key(),
         main_offer.token_in_mint,
-        crate::OfferCoreError::InvalidTokenInMint
+        crate::OnreError::InvalidTokenInMint
     );
     require_keys_eq!(
         ctx.accounts.onyc_mint.key(),
         main_offer.token_out_mint,
-        crate::OfferCoreError::InvalidTokenOutMint
+        crate::OnreError::InvalidTokenOutMint
     );
     let snapshot = recompute_market_stats(
         &main_offer,

@@ -2,7 +2,6 @@ use super::offer_state::{Offer, OfferVector};
 use crate::constants::seeds;
 use crate::instructions::find_vector_index_by_start_time;
 use crate::state::State;
-use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
 
@@ -42,7 +41,7 @@ pub struct DeleteOfferVector<'info> {
     #[account(
         constraint =
             token_in_mint.key() == offer.load()?.token_in_mint
-            @ OfferCoreError::InvalidTokenInMint
+            @ crate::OnreError::InvalidTokenInMint
     )]
     pub token_in_mint: InterfaceAccount<'info, Mint>,
 
@@ -50,7 +49,7 @@ pub struct DeleteOfferVector<'info> {
     #[account(
         constraint =
             token_out_mint.key() == offer.load()?.token_out_mint
-            @ OfferCoreError::InvalidTokenOutMint
+            @ crate::OnreError::InvalidTokenOutMint
     )]
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 
@@ -74,7 +73,7 @@ pub struct DeleteOfferVector<'info> {
 ///
 /// # Returns
 /// * `Ok(())` - If the vector is successfully deleted
-/// * `Err(DeleteOfferVectorErrorCode::VectorNotFound)` - If start_time is zero or vector doesn't exist
+/// * `Err(crate::OnreError::VectorNotFound)` - If start_time is zero or vector doesn't exist
 ///
 /// # Access Control
 /// - Only the boss can call this instruction
@@ -94,12 +93,12 @@ pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_start_time: u
     // Validate inputs
     require!(
         vector_start_time > now,
-        DeleteOfferVectorErrorCode::StartTimeInPast
+        crate::OnreError::StartTimeInPast
     );
 
     // Find and delete the vector by vector_start_time
     let vector_index = find_vector_index_by_start_time(offer, vector_start_time)
-        .ok_or_else(|| error!(DeleteOfferVectorErrorCode::VectorNotFound))?;
+        .ok_or_else(|| error!(crate::OnreError::VectorNotFound))?;
 
     // Delete the vector by setting it to default
     offer.vectors[vector_index] = OfferVector::default();
@@ -118,13 +117,4 @@ pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_start_time: u
     Ok(())
 }
 
-/// Error codes for delete offer vector operations
-#[error_code]
-pub enum DeleteOfferVectorErrorCode {
-    /// The specified start_time is zero or no vector exists with that start_time
-    #[msg("Vector not found")]
-    VectorNotFound,
-    /// The specified start_time is in the past
-    #[msg("Invalid input: start_time must be in the future")]
-    StartTimeInPast,
-}
+// Error codes for delete offer vector operations

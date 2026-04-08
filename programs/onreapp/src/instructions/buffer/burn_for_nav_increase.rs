@@ -1,7 +1,7 @@
 use crate::constants::{seeds, PRICE_DECIMALS};
 use crate::instructions::buffer::{
     accrue_buffer::{accrue_buffer, set_buffer_baseline_after_supply_change},
-    BufferBurnedForNavEvent, BufferErrorCode, BufferState,
+    BufferBurnedForNavEvent, BufferState,
 };
 use crate::instructions::market_info::{
     calculate_circulating_supply, calculate_tvl,
@@ -11,7 +11,6 @@ use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::math_utils::ceil_div_u128;
 use crate::utils::token_utils::{burn_tokens, read_optional_token_account_amount};
-use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program_option::COption;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
@@ -24,7 +23,7 @@ pub struct BurnForNavIncrease<'info> {
         bump = state.bump,
         has_one = boss,
         has_one = onyc_mint,
-        constraint = !state.is_killed @ BufferErrorCode::KillSwitchActivated,
+        constraint = !state.is_killed @ crate::OnreError::KillSwitchActivated,
     )]
     pub state: Box<Account<'info, State>>,
 
@@ -38,7 +37,7 @@ pub struct BurnForNavIncrease<'info> {
     pub boss: Signer<'info>,
 
     #[account(
-        address = state.main_offer @ BufferErrorCode::InvalidMainOffer
+        address = state.main_offer @ crate::OnreError::InvalidMainOffer
     )]
     pub main_offer: AccountLoader<'info, Offer>,
 
@@ -95,7 +94,7 @@ pub struct BurnForNavIncrease<'info> {
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
-        constraint = onyc_mint.mint_authority == COption::Some(mint_authority.key()) @ BufferErrorCode::NoMintAuthority,
+        constraint = onyc_mint.mint_authority == COption::Some(mint_authority.key()) @ crate::OnreError::NoMintAuthority,
         bump
     )]
     pub mint_authority: UncheckedAccount<'info>,
@@ -117,10 +116,10 @@ pub fn burn_for_nav_increase(
     require_keys_eq!(
         ctx.accounts.onyc_mint.key(),
         main_offer.token_out_mint,
-        OfferCoreError::InvalidTokenOutMint
+        crate::OnreError::InvalidTokenOutMint
     );
     let target_nav = compute_offer_current_price(&main_offer, now as u64)?;
-    require!(target_nav > 0, BufferErrorCode::InvalidTargetNav);
+    require!(target_nav > 0, crate::OnreError::InvalidTargetNav);
     let expected_vault_token_out_account = get_associated_token_address_with_program_id(
         &ctx.accounts.offer_vault_authority.key(),
         &ctx.accounts.onyc_mint.key(),
@@ -129,7 +128,7 @@ pub fn burn_for_nav_increase(
     require_keys_eq!(
         ctx.accounts.vault_token_out_account.key(),
         expected_vault_token_out_account,
-        BufferErrorCode::InvalidOnycMint
+        crate::OnreError::InvalidOnycMint
     );
     let expected_reserve_vault_onyc_account = get_associated_token_address_with_program_id(
         &ctx.accounts.reserve_vault_authority.key(),
@@ -139,7 +138,7 @@ pub fn burn_for_nav_increase(
     require_keys_eq!(
         ctx.accounts.reserve_vault_onyc_account.key(),
         expected_reserve_vault_onyc_account,
-        BufferErrorCode::InvalidOnycMint
+        crate::OnreError::InvalidOnycMint
     );
     let reserve_vault_onyc_account = ctx.accounts.reserve_vault_onyc_account.to_account_info();
     let management_fee_vault_onyc_account = ctx
@@ -174,46 +173,46 @@ pub fn burn_for_nav_increase(
     let circulating_supply =
         calculate_circulating_supply(post_accrual_supply, vault_token_out_amount);
     let total_assets_before_burn = calculate_tvl(circulating_supply, current_nav)
-        .map_err(|_| error!(BufferErrorCode::MathOverflow))?;
+        .map_err(|_| error!(crate::OnreError::MathOverflow))?;
 
     require!(
         total_assets_before_burn >= asset_adjustment_amount,
-        BufferErrorCode::InvalidAssetAdjustmentAmount
+        crate::OnreError::InvalidAssetAdjustmentAmount
     );
 
     let nav_scale = 10u128
         .checked_pow(PRICE_DECIMALS as u32)
-        .ok_or(BufferErrorCode::MathOverflow)?;
+        .ok_or(crate::OnreError::MathOverflow)?;
     let assets_after_adjustment = (total_assets_before_burn - asset_adjustment_amount) as u128;
     let target_nav_u128 = target_nav as u128;
 
     let required_supply_after = ceil_div_u128(
         assets_after_adjustment
             .checked_mul(nav_scale)
-            .ok_or(BufferErrorCode::MathOverflow)?,
+            .ok_or(crate::OnreError::MathOverflow)?,
         target_nav_u128,
     )
-    .ok_or(BufferErrorCode::MathOverflow)?;
+    .ok_or(crate::OnreError::MathOverflow)?;
 
     let current_supply = post_accrual_supply as u128;
     require!(
         required_supply_after <= current_supply,
-        BufferErrorCode::InvalidBurnTarget
+        crate::OnreError::InvalidBurnTarget
     );
 
     let burn_amount_u128 = current_supply
         .checked_sub(required_supply_after)
-        .ok_or(BufferErrorCode::MathOverflow)?;
-    require!(burn_amount_u128 > 0, BufferErrorCode::NoBurnNeeded);
+        .ok_or(crate::OnreError::MathOverflow)?;
+    require!(burn_amount_u128 > 0, crate::OnreError::NoBurnNeeded);
     require!(
         burn_amount_u128 <= u64::MAX as u128,
-        BufferErrorCode::ResultOverflow,
+        crate::OnreError::ResultOverflow,
     );
 
     let burn_amount = burn_amount_u128 as u64;
     require!(
         burn_amount <= accrual.reserve_vault_balance_after_accrual,
-        BufferErrorCode::InsufficientCacheBalance
+        crate::OnreError::InsufficientCacheBalance
     );
 
     let reserve_vault_authority_seeds = &[
@@ -233,7 +232,7 @@ pub fn burn_for_nav_increase(
 
     let post_burn_supply = post_accrual_supply
         .checked_sub(burn_amount)
-        .ok_or(BufferErrorCode::MathOverflow)?;
+        .ok_or(crate::OnreError::MathOverflow)?;
     set_buffer_baseline_after_supply_change(&mut ctx.accounts.buffer_state, post_burn_supply, now);
 
     ctx.accounts.onyc_mint.reload()?;

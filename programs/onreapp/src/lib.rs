@@ -5,9 +5,12 @@ use instructions::*;
 use utils::ApprovalMessage;
 
 pub mod constants;
+pub mod errors;
 pub mod instructions;
 pub mod state;
 pub mod utils;
+
+pub use errors::OnreError;
 
 const _ENV_FEATURE_COUNT: usize = cfg!(feature = "mainnet-test") as usize
     + cfg!(feature = "devnet-test") as usize
@@ -267,8 +270,8 @@ pub mod onreapp {
         offer::take_offer(ctx, token_in_amount, approval_message)
     }
 
-    pub fn take_offer_v2(
-        ctx: Context<TakeOfferV2>,
+    pub fn take_offer_v2<'info>(
+        ctx: Context<'info, TakeOfferV2<'info>>,
         token_in_amount: u64,
         approval_message: Option<ApprovalMessage>,
     ) -> Result<()> {
@@ -285,16 +288,16 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `TakeOfferPermissionless`.
     /// - `token_in_amount`: Amount of token_in to provide.
-    pub fn take_offer_permissionless(
-        ctx: Context<TakeOfferPermissionless>,
+    pub fn take_offer_permissionless<'info>(
+        ctx: Context<'info, TakeOfferPermissionless<'info>>,
         token_in_amount: u64,
         approval_message: Option<ApprovalMessage>,
     ) -> Result<()> {
         offer::take_offer_permissionless(ctx, token_in_amount, approval_message)
     }
 
-    pub fn take_offer_permissionless_v2(
-        ctx: Context<TakeOfferPermissionlessV2>,
+    pub fn take_offer_permissionless_v2<'info>(
+        ctx: Context<'info, TakeOfferPermissionlessV2<'info>>,
         token_in_amount: u64,
         approval_message: Option<ApprovalMessage>,
     ) -> Result<()> {
@@ -726,8 +729,8 @@ pub mod onreapp {
     /// Fulfills a redemption request with ONyc buffer accrual support.
     ///
     /// Delegates to `redemption::fulfill_redemption_request`.
-    pub fn fulfill_redemption_request(
-        ctx: Context<FulfillRedemptionRequest>,
+    pub fn fulfill_redemption_request<'info>(
+        ctx: Context<'info, FulfillRedemptionRequest<'info>>,
         amount: u64,
     ) -> Result<()> {
         redemption::fulfill_redemption_request(ctx, amount)
@@ -748,7 +751,9 @@ pub mod onreapp {
     /// # Access Control
     /// - Signer must be one of: redeemer, redemption_admin, or boss
     /// - Request must be in pending state (status = 0)
-    pub fn cancel_redemption_request(ctx: Context<CancelRedemptionRequest>) -> Result<()> {
+    pub fn cancel_redemption_request<'info>(
+        ctx: Context<'info, CancelRedemptionRequest<'info>>,
+    ) -> Result<()> {
         redemption::cancel_redemption_request(ctx)
     }
 

@@ -34,7 +34,7 @@ pub struct CreateRedemptionRequest<'info> {
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
-        constraint = !state.is_killed @ CreateRedemptionRequestErrorCode::KillSwitchActivated
+        constraint = !state.is_killed @ crate::OnreError::KillSwitchActivated
     )]
     pub state: Box<Account<'info, State>>,
 
@@ -80,7 +80,7 @@ pub struct CreateRedemptionRequest<'info> {
     /// The token mint for token_in (input token)
     #[account(
         constraint = token_in_mint.key() == redemption_offer.token_in_mint
-            @ CreateRedemptionRequestErrorCode::InvalidMint
+            @ crate::OnreError::InvalidMint
     )]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
 
@@ -146,13 +146,13 @@ pub fn create_redemption_request(ctx: Context<CreateRedemptionRequest>, amount: 
     // Validate the redemption offer is properly initialized (offer is not default)
     require!(
         ctx.accounts.redemption_offer.offer != Pubkey::default(),
-        CreateRedemptionRequestErrorCode::InvalidRedemptionOffer
+        crate::OnreError::InvalidRedemptionOffer
     );
 
     // Validate the token_out_mint is properly set
     require!(
         ctx.accounts.redemption_offer.token_out_mint != Pubkey::default(),
-        CreateRedemptionRequestErrorCode::InvalidRedemptionOffer
+        crate::OnreError::InvalidRedemptionOffer
     );
 
     // Capture counter before incrementing (used for PDA derivation)
@@ -183,7 +183,7 @@ pub fn create_redemption_request(ctx: Context<CreateRedemptionRequest>, amount: 
         .redemption_offer
         .requested_redemptions
         .checked_add(amount as u128)
-        .ok_or(CreateRedemptionRequestErrorCode::ArithmeticOverflow)?;
+        .ok_or(crate::OnreError::ArithmeticOverflow)?;
 
     // Increment counter for next request
     ctx.accounts.redemption_offer.request_counter = ctx
@@ -191,7 +191,7 @@ pub fn create_redemption_request(ctx: Context<CreateRedemptionRequest>, amount: 
         .redemption_offer
         .request_counter
         .checked_add(1)
-        .ok_or(CreateRedemptionRequestErrorCode::ArithmeticOverflow)?;
+        .ok_or(crate::OnreError::ArithmeticOverflow)?;
 
     msg!(
         "Redemption request created at: {} for amount: {} by redeemer: {} (id: {})",
@@ -212,22 +212,4 @@ pub fn create_redemption_request(ctx: Context<CreateRedemptionRequest>, amount: 
     Ok(())
 }
 
-/// Error codes for redemption request creation operations
-#[error_code]
-pub enum CreateRedemptionRequestErrorCode {
-    /// Redemption system is paused via kill switch
-    #[msg("Redemption system is paused: kill switch activated")]
-    KillSwitchActivated,
-
-    /// Arithmetic overflow occurred
-    #[msg("Arithmetic overflow")]
-    ArithmeticOverflow,
-
-    /// Invalid mint (doesn't match redemption offer's token_in_mint)
-    #[msg("Invalid mint: provided mint doesn't match redemption offer's token_in_mint")]
-    InvalidMint,
-
-    /// Invalid redemption offer (not properly initialized)
-    #[msg("Invalid redemption offer: offer is not properly initialized")]
-    InvalidRedemptionOffer,
-}
+// Error codes for redemption request creation operations

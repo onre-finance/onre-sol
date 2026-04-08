@@ -1,5 +1,5 @@
 use crate::constants::seeds;
-use crate::instructions::buffer::{BufferErrorCode, BufferGrossYieldUpdatedEvent, BufferState};
+use crate::instructions::buffer::{BufferGrossYieldUpdatedEvent, BufferState};
 use crate::state::State;
 use anchor_lang::prelude::*;
 
@@ -27,7 +27,7 @@ pub fn set_buffer_gross_apr(ctx: Context<SetBufferGrossYield>, gross_yield: u64)
 
     require!(
         buffer_state.gross_apr != gross_yield,
-        BufferErrorCode::NoChange
+        crate::OnreError::NoChange
     );
 
     buffer_state.gross_apr = gross_yield;

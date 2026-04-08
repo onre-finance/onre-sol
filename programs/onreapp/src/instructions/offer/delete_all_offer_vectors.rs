@@ -1,7 +1,6 @@
 use super::offer_state::{Offer, OfferVector};
 use crate::constants::{seeds, MAX_VECTORS};
 use crate::state::State;
-use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
 
@@ -41,7 +40,7 @@ pub struct DeleteAllOfferVectors<'info> {
     #[account(
         constraint =
             token_in_mint.key() == offer.load()?.token_in_mint
-            @ OfferCoreError::InvalidTokenInMint
+            @ crate::OnreError::InvalidTokenInMint
     )]
     pub token_in_mint: InterfaceAccount<'info, Mint>,
 
@@ -49,7 +48,7 @@ pub struct DeleteAllOfferVectors<'info> {
     #[account(
         constraint =
             token_out_mint.key() == offer.load()?.token_out_mint
-            @ OfferCoreError::InvalidTokenOutMint
+            @ crate::OnreError::InvalidTokenOutMint
     )]
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 

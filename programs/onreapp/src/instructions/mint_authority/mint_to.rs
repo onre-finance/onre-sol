@@ -3,7 +3,7 @@ use crate::instructions::buffer::{
     __client_accounts_buffer_accrual_accounts, __cpi_client_accounts_buffer_accrual_accounts,
     accounts::BufferAccrualAccountsBumps,
     accrue_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
-    BufferAccrualAccounts, BufferErrorCode,
+    BufferAccrualAccounts,
 };
 use crate::instructions::market_info::{load_main_offer, refresh_market_stats_pda};
 use crate::instructions::offer::offer_utils::should_accrue_onyc_mint;
@@ -27,16 +27,7 @@ pub struct OnycTokensMintedEvent {
     pub amount: u64,
 }
 
-/// Error codes for mint_to instruction operations
-#[error_code]
-pub enum MintToErrorCode {
-    /// The provided mint doesn't match the ONyc mint stored in program state
-    #[msg("Provided mint does not match the ONyc mint in state")]
-    InvalidOnycMint,
-    /// The program doesn't have mint authority for the specified token
-    #[msg("Program does not have mint authority for this token")]
-    NoMintAuthority,
-}
+// Error codes for mint_to instruction operations
 
 /// Account structure for minting ONyc tokens to the boss
 ///
@@ -88,7 +79,7 @@ pub struct MintTo<'info> {
     /// CHECK: PDA derivation is validated by seeds constraint and mint authority constraint.
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
-        constraint = onyc_mint.mint_authority.unwrap() == mint_authority.key() @ MintToErrorCode::NoMintAuthority,
+        constraint = onyc_mint.mint_authority.unwrap() == mint_authority.key() @ crate::OnreError::NoMintAuthority,
         bump
     )]
     pub mint_authority: UncheckedAccount<'info>,
@@ -119,7 +110,7 @@ pub struct MintTo<'info> {
                 &offer_vault_authority.key(),
                 &onyc_mint.key(),
                 &token_program.key(),
-            ) @ crate::instructions::market_info::GetCirculatingSupplyErrorCode::InvalidVaultAccount
+            ) @ crate::OnreError::InvalidVaultAccount
     )]
     pub offer_vault_onyc_account: UncheckedAccount<'info>,
 
@@ -143,7 +134,7 @@ pub struct MintTo<'info> {
 ///
 /// # Returns
 /// * `Ok(())` - If minting completes successfully
-/// * `Err(MintToErrorCode::NoMintAuthority)` - If program lacks mint authority
+/// * `Err(crate::OnreError::NoMintAuthority)` - If program lacks mint authority
 /// * `Err(_)` - If token minting operation fails
 ///
 /// # Access Control
@@ -207,7 +198,7 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
         let post_mint_supply = accrual
             .post_accrual_supply
             .checked_add(amount)
-            .ok_or(BufferErrorCode::MathOverflow)?;
+            .ok_or(crate::OnreError::MathOverflow)?;
         store_buffer_post_supply(
             &ctx.accounts.buffer_accounts,
             post_mint_supply,

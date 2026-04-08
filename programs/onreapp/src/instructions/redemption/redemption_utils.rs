@@ -3,21 +3,12 @@ use crate::instructions::market_info::offer_valuation_utils::compute_offer_curre
 use crate::instructions::Offer;
 use crate::utils::{
     burn_tokens, calculate_fees, has_transfer_fee, mint_tokens, program_controls_mint,
-    transfer_tokens, TokenUtilsErrorCode,
+    transfer_tokens,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 /// Common error codes for redemption processing operations
-#[error_code]
-pub enum RedemptionCoreError {
-    /// No pricing vector is currently active for the given time
-    #[msg("No active vector")]
-    NoActiveVector,
-    /// Arithmetic overflow occurred during calculations
-    #[msg("Overflow error")]
-    OverflowError,
-}
 
 /// Result structure containing redemption processing calculations
 pub struct RedemptionProcessResult {
@@ -82,21 +73,21 @@ pub fn process_redemption_core(
 
     let numerator = token_in_net_amount_u128
         .checked_mul(price_u128)
-        .ok_or(RedemptionCoreError::OverflowError)?
+        .ok_or(crate::OnreError::OverflowError)?
         .checked_mul(10_u128.pow(token_out_mint.decimals as u32))
-        .ok_or(RedemptionCoreError::OverflowError)?;
+        .ok_or(crate::OnreError::OverflowError)?;
 
     let denominator = 10_u128
         .pow(token_in_mint.decimals as u32)
         .checked_mul(10_u128.pow(PRICE_DECIMALS as u32))
-        .ok_or(RedemptionCoreError::OverflowError)?;
+        .ok_or(crate::OnreError::OverflowError)?;
 
     let result = numerator / denominator;
 
     // Validate result fits in u64 before casting
     require!(
         result <= u64::MAX as u128,
-        RedemptionCoreError::OverflowError
+        crate::OnreError::OverflowError
     );
 
     let token_out_amount = result as u64;
@@ -239,11 +230,11 @@ mod tests {
 pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Result<()> {
     require!(
         !has_transfer_fee(params.token_in_mint)?,
-        TokenUtilsErrorCode::TransferFeeNotSupported
+        crate::OnreError::TransferFeeNotSupported
     );
     require!(
         !has_transfer_fee(params.token_out_mint)?,
-        TokenUtilsErrorCode::TransferFeeNotSupported
+        crate::OnreError::TransferFeeNotSupported
     );
 
     let vault_authority_signer_seeds: &[&[&[u8]]] = &[&[
