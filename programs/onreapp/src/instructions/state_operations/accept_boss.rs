@@ -2,7 +2,6 @@ use crate::constants::seeds;
 use crate::state::State;
 use anchor_lang::prelude::*;
 
-// Error codes for the accept_boss instruction
 
 /// Event emitted when the boss authority is successfully transferred
 ///

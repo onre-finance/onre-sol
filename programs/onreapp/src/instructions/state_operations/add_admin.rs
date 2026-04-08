@@ -84,4 +84,3 @@ pub fn add_admin(ctx: Context<AddAdmin>, new_admin: Pubkey) -> Result<()> {
     Err(crate::OnreError::MaxAdminsReached.into())
 }
 
-// Error codes for add admin operations

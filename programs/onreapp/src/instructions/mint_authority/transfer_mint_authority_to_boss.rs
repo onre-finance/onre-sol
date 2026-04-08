@@ -16,7 +16,6 @@ use anchor_spl::token_interface::{Mint, TokenInterface};
 /// - Program PDA must currently hold mint authority
 /// - Uses program-derived signatures for authorization
 
-// Error codes for mint authority transfer to boss operations
 
 /// Event emitted when mint authority is successfully transferred from program PDA to boss
 ///

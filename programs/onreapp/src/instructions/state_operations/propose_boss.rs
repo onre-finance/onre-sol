@@ -2,7 +2,6 @@ use crate::constants::seeds;
 use crate::state::State;
 use anchor_lang::prelude::*;
 
-// Error codes for the propose_boss instruction
 
 /// Event emitted when a new boss is proposed
 ///

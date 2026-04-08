@@ -278,4 +278,3 @@ fn clean_old_vectors(offer: &mut Offer, new_vector: &OfferVector, current_time: 
     Ok(())
 }
 
-// Error codes for add offer vector operations

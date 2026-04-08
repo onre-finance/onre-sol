@@ -3,7 +3,6 @@ use crate::state::{PermissionlessAuthority, State};
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 
-// Error codes for the initialize instruction.
 
 /// Account structure for initializing a permissionless authority.
 ///

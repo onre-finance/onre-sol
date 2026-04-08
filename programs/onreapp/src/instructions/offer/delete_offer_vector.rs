@@ -117,4 +117,3 @@ pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_start_time: u
     Ok(())
 }
 
-// Error codes for delete offer vector operations

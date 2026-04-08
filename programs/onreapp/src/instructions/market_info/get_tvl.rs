@@ -11,7 +11,6 @@ use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::{Mint, TokenInterface};
 
-// Error codes for TVL calculation operations
 
 /// Event emitted when TVL (Total Value Locked) calculation is completed
 ///
