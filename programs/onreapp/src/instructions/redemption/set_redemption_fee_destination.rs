@@ -74,4 +74,3 @@ pub fn set_redemption_fee_destination(
     Ok(())
 }
 
-// Error codes for set_redemption_fee_destination

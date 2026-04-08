@@ -137,4 +137,3 @@ pub fn close_state(ctx: Context<CloseState>) -> Result<()> {
     Ok(())
 }
 
-// Error codes for close state operations

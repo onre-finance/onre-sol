@@ -162,4 +162,3 @@ pub fn make_offer(
     Ok(())
 }
 
-// Error codes for offer creation operations

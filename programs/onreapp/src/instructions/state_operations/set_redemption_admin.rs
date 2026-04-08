@@ -81,4 +81,3 @@ pub fn set_redemption_admin(
     Ok(())
 }
 
-// Error codes for set redemption admin operations

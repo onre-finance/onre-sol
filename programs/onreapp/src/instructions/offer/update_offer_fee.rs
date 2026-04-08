@@ -124,4 +124,3 @@ pub fn update_offer_fee(ctx: Context<UpdateOfferFee>, new_fee_basis_points: u16)
     Ok(())
 }
 
-// Error codes for update offer fee operations

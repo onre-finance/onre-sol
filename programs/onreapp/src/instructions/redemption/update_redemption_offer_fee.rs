@@ -116,4 +116,3 @@ pub fn update_redemption_offer_fee(
     Ok(())
 }
 
-// Error codes for update redemption offer fee operations

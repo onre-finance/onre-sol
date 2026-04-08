@@ -117,4 +117,3 @@ pub fn withdraw_redemption_fees(ctx: Context<WithdrawRedemptionFees>, amount: u6
     Ok(())
 }
 
-// Error codes for withdraw_redemption_fees

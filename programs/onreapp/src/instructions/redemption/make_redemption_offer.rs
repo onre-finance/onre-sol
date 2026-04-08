@@ -192,4 +192,3 @@ pub fn make_redemption_offer(
     Ok(())
 }
 
-// Error codes for redemption offer creation operations

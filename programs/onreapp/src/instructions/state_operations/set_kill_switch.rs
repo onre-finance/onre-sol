@@ -81,4 +81,3 @@ pub fn set_kill_switch(ctx: Context<SetKillSwitch>, enable: bool) -> Result<()> 
     Ok(())
 }
 
-// Error codes for kill switch operations

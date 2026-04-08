@@ -4,7 +4,6 @@ use anchor_lang::prelude::*;
 use solana_instructions_sysvar::{load_current_index_checked, load_instruction_at_checked};
 use solana_program::ed25519_program;
 
-// Error codes for approval verification operations
 
 /// Verifies cryptographic approval messages signed by trusted authorities
 ///

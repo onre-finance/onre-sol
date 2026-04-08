@@ -673,4 +673,3 @@ fn execute_fulfill_redemption_request(
     Ok(())
 }
 
-// Error codes for redemption fulfillment operations

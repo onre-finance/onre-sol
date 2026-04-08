@@ -78,4 +78,3 @@ pub fn remove_admin(ctx: Context<RemoveAdmin>, admin_to_remove: Pubkey) -> Resul
     Err(crate::OnreError::AdminNotFound.into())
 }
 
-// Error codes for remove admin operations
