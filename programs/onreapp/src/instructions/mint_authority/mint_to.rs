@@ -27,7 +27,6 @@ pub struct OnycTokensMintedEvent {
     pub amount: u64,
 }
 
-// Error codes for mint_to instruction operations
 
 /// Account structure for minting ONyc tokens to the boss
 ///

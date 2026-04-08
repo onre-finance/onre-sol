@@ -212,4 +212,3 @@ pub fn create_redemption_request(ctx: Context<CreateRedemptionRequest>, amount: 
     Ok(())
 }
 
-// Error codes for redemption request creation operations

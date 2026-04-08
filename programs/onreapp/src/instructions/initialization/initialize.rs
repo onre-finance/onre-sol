@@ -7,7 +7,6 @@ use anchor_lang::solana_program::bpf_loader_upgradeable::{
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::Mint;
 
-// Error codes for the initialize instruction
 
 /// Account structure for initializing the program state
 ///
