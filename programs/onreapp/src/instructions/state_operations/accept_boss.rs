@@ -2,14 +2,7 @@ use crate::constants::seeds;
 use crate::state::State;
 use anchor_lang::prelude::*;
 
-/// Error codes for the accept_boss instruction
-#[error_code]
-pub enum AcceptBossErrorCode {
-    /// No boss transfer has been proposed
-    NoBossProposal,
-    /// The signer is not the proposed boss
-    NotProposedBoss,
-}
+// Error codes for the accept_boss instruction
 
 /// Event emitted when the boss authority is successfully transferred
 ///
@@ -53,8 +46,8 @@ pub struct AcceptBoss<'info> {
 ///
 /// # Returns
 /// * `Ok(())` - If ownership transfer completes successfully
-/// * `Err(AcceptBossErrorCode::NoBossProposal)` - If no proposal exists
-/// * `Err(AcceptBossErrorCode::NotProposedBoss)` - If signer is not the proposed boss
+/// * `Err(crate::OnreError::NoBossProposal)` - If no proposal exists
+/// * `Err(crate::OnreError::NotProposedBoss)` - If signer is not the proposed boss
 ///
 /// # Access Control
 /// - Only the proposed boss can call this instruction
@@ -74,13 +67,13 @@ pub fn accept_boss(ctx: Context<AcceptBoss>) -> Result<()> {
     // Check that a proposal exists
     require!(
         state.proposed_boss != Pubkey::default(),
-        AcceptBossErrorCode::NoBossProposal
+        crate::OnreError::NoBossProposal
     );
 
     // Check that the signer is the proposed boss
     require!(
         ctx.accounts.new_boss.key() == state.proposed_boss,
-        AcceptBossErrorCode::NotProposedBoss
+        crate::OnreError::NotProposedBoss
     );
 
     let old_boss = state.boss;

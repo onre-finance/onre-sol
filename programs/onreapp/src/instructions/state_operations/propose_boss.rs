@@ -2,12 +2,7 @@ use crate::constants::seeds;
 use crate::state::State;
 use anchor_lang::prelude::*;
 
-/// Error codes for the propose_boss instruction
-#[error_code]
-pub enum ProposeBossErrorCode {
-    /// Cannot propose boss to default (system program) address
-    InvalidBossAddress,
-}
+// Error codes for the propose_boss instruction
 
 /// Event emitted when a new boss is proposed
 ///
@@ -54,7 +49,7 @@ pub struct ProposeBoss<'info> {
 ///
 /// # Returns
 /// * `Ok(())` - If the proposal is recorded successfully
-/// * `Err(ProposeBossErrorCode::InvalidBossAddress)` - If new_boss is default address
+/// * `Err(crate::OnreError::InvalidBossAddress)` - If new_boss is default address
 ///
 /// # Access Control
 /// - Only the current boss can call this instruction
@@ -69,7 +64,7 @@ pub struct ProposeBoss<'info> {
 pub fn propose_boss(ctx: Context<ProposeBoss>, new_boss: Pubkey) -> Result<()> {
     require!(
         new_boss != Pubkey::default(),
-        ProposeBossErrorCode::InvalidBossAddress
+        crate::OnreError::InvalidBossAddress
     );
 
     let state = &mut ctx.accounts.state;

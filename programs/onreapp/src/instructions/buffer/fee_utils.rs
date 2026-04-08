@@ -1,5 +1,4 @@
 use crate::constants::seeds;
-use crate::instructions::buffer::BufferErrorCode;
 use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
@@ -31,7 +30,7 @@ pub(crate) fn withdraw_fee_tokens<'info>(
 ) -> Result<()> {
     require!(
         amount <= fee_vault_onyc_account.amount,
-        BufferErrorCode::InsufficientFeeBalance
+        crate::OnreError::InsufficientFeeBalance
     );
 
     let authority_bump_seed = [authority_bump];

@@ -1,8 +1,7 @@
 use crate::constants::seeds;
-use crate::instructions::buffer::{BufferErrorCode, BufferInitializedEvent, BufferState};
+use crate::instructions::buffer::{BufferInitializedEvent, BufferState};
 use crate::instructions::Offer;
 use crate::state::State;
-use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
@@ -61,7 +60,7 @@ pub struct InitializeBuffer<'info> {
 
     pub onyc_mint: Box<InterfaceAccount<'info, Mint>>,
 
-    #[account(address = state.main_offer @ BufferErrorCode::InvalidMainOffer)]
+    #[account(address = state.main_offer @ crate::OnreError::InvalidMainOffer)]
     pub offer: AccountLoader<'info, Offer>,
 
     #[account(
@@ -104,7 +103,7 @@ pub fn initialize_buffer(ctx: Context<InitializeBuffer>) -> Result<()> {
     require_keys_eq!(
         ctx.accounts.onyc_mint.key(),
         offer.token_out_mint,
-        OfferCoreError::InvalidTokenOutMint
+        crate::OnreError::InvalidTokenOutMint
     );
 
     buffer_state.onyc_mint = ctx.accounts.onyc_mint.key();

@@ -1024,60 +1024,7 @@
             "Receives back the tokens that were locked in the redemption request.",
             "Created if needed in case the redeemer closed their account after locking all tokens."
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "redeemer"
-              },
-              {
-                "kind": "account",
-                "path": "token_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "token_program",
@@ -2115,44 +2062,7 @@
         },
         {
           "name": "redemption_request",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  100,
-                  101,
-                  109,
-                  112,
-                  116,
-                  105,
-                  111,
-                  110,
-                  95,
-                  114,
-                  101,
-                  113,
-                  117,
-                  101,
-                  115,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "redemption_request.offer",
-                "account": "RedemptionRequest"
-              },
-              {
-                "kind": "account",
-                "path": "redemption_request.request_id",
-                "account": "RedemptionRequest"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "redemption_vault_authority",
@@ -2200,117 +2110,11 @@
         },
         {
           "name": "vault_token_in_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "redemption_vault_authority"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "vault_token_out_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "redemption_vault_authority"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "token_in_mint",
@@ -2328,117 +2132,11 @@
         },
         {
           "name": "user_token_out_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "redeemer"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "boss_token_in_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "boss"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "redemption_fee_vault_authority",
@@ -2460,60 +2158,7 @@
           "docs": [
             "ATA of `fee_destination` for token_in — receives the fee portion"
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "fee_destination"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "mint_authority",
@@ -6729,37 +6374,7 @@
             "",
             "This PDA manages token transfers and burning operations for the",
             "burn/mint architecture when program has mint authority."
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
+          ]
         },
         {
           "name": "vault_token_in_account",
@@ -7115,30 +6730,7 @@
             "",
             "Used when the program has mint authority and can mint token_out",
             "directly to users instead of transferring from vault."
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  105,
-                  110,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
+          ]
         },
         {
           "name": "instructions_sysvar",
@@ -7147,8 +6739,7 @@
             "",
             "Required for cryptographic verification of approval messages",
             "when offers require boss approval for execution."
-          ],
-          "address": "Sysvar1nstructions1111111111111111111111111"
+          ]
         },
         {
           "name": "user",
@@ -7493,60 +7084,7 @@
             "Temporary holding account that receives output tokens before forwarding",
             "to user, completing the permissionless routing mechanism."
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "permissionless_authority"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "token_in_mint",
@@ -7651,60 +7189,7 @@
             "Destination account where the user receives token_out from the exchange.",
             "Created automatically if it doesn't exist using init_if_needed."
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "boss_token_in_account",
@@ -7714,60 +7199,7 @@
             "Final destination account where the boss receives token_in payments",
             "from users taking offers via intermediary routing."
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "boss"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "mint_authority",
@@ -7785,8 +7217,7 @@
             "",
             "Required for cryptographic verification of approval messages",
             "when offers require boss approval for execution."
-          ],
-          "address": "Sysvar1nstructions1111111111111111111111111"
+          ]
         },
         {
           "name": "user",
@@ -8069,60 +7500,7 @@
         },
         {
           "name": "permissionless_token_out_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "permissionless_authority"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "token_in_mint",
@@ -8197,117 +7575,11 @@
         },
         {
           "name": "user_token_out_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "boss_token_in_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "boss"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "mint_authority"
@@ -8338,8 +7610,7 @@
           "writable": true
         },
         {
-          "name": "instructions_sysvar",
-          "address": "Sysvar1nstructions1111111111111111111111111"
+          "name": "instructions_sysvar"
         },
         {
           "name": "user",
@@ -8438,37 +7709,7 @@
           ]
         },
         {
-          "name": "vault_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
+          "name": "vault_authority"
         },
         {
           "name": "vault_token_in_account",
@@ -8657,60 +7898,7 @@
         },
         {
           "name": "user_token_out_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_out_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "boss_token_in_account",
@@ -8770,30 +7958,7 @@
           }
         },
         {
-          "name": "mint_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  105,
-                  110,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
+          "name": "mint_authority"
         },
         {
           "name": "buffer_accounts",
@@ -8818,32 +7983,10 @@
         },
         {
           "name": "market_stats",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  114,
-                  107,
-                  101,
-                  116,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  115
-                ]
-              }
-            ]
-          }
+          "writable": true
         },
         {
-          "name": "instructions_sysvar",
-          "address": "Sysvar1nstructions1111111111111111111111111"
+          "name": "instructions_sysvar"
         },
         {
           "name": "user",
@@ -11104,58 +10247,583 @@
   "errors": [
     {
       "code": 6000,
-      "name": "Expired",
-      "msg": "The approval message has expired."
+      "name": "MathOverflow",
+      "msg": "Math Overflow"
     },
     {
       "code": 6001,
-      "name": "WrongProgram",
-      "msg": "The approval message is for the wrong program."
+      "name": "MaxSupplyExceeded",
+      "msg": "Max Supply Exceeded"
     },
     {
       "code": 6002,
-      "name": "WrongUser",
-      "msg": "The approval message is for the wrong user."
+      "name": "TransferFeeNotSupported",
+      "msg": "Transfer Fee Not Supported"
     },
     {
       "code": 6003,
-      "name": "MissingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
+      "name": "ZeroPriceNotAllowed",
+      "msg": "Zero Price Not Allowed"
     },
     {
       "code": 6004,
-      "name": "WrongIxProgram",
-      "msg": "The instruction is for the wrong program."
+      "name": "DecimalsExceedMax",
+      "msg": "Decimals Exceed Max"
     },
     {
       "code": 6005,
-      "name": "BadEd25519Accounts",
-      "msg": "Ed25519 instruction has accounts."
+      "name": "ResultOverflow",
+      "msg": "Result Overflow"
     },
     {
       "code": 6006,
-      "name": "MalformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
+      "name": "Expired",
+      "msg": "Expired"
     },
     {
       "code": 6007,
-      "name": "MultipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
+      "name": "WrongProgram",
+      "msg": "Wrong Program"
     },
     {
       "code": 6008,
-      "name": "WrongAuthority",
-      "msg": "The authority public key does not match."
+      "name": "WrongUser",
+      "msg": "Wrong User"
     },
     {
       "code": 6009,
-      "name": "MsgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
+      "name": "MissingEd25519Ix",
+      "msg": "Missing Ed25519 Ix"
     },
     {
       "code": 6010,
+      "name": "WrongIxProgram",
+      "msg": "Wrong Ix Program"
+    },
+    {
+      "code": 6011,
+      "name": "BadEd25519Accounts",
+      "msg": "Bad Ed25519 Accounts"
+    },
+    {
+      "code": 6012,
+      "name": "MalformedEd25519Ix",
+      "msg": "Malformed Ed25519 Ix"
+    },
+    {
+      "code": 6013,
+      "name": "MultipleSigs",
+      "msg": "Multiple Sigs"
+    },
+    {
+      "code": 6014,
+      "name": "WrongAuthority",
+      "msg": "Wrong Authority"
+    },
+    {
+      "code": 6015,
+      "name": "MsgMismatch",
+      "msg": "Msg Mismatch"
+    },
+    {
+      "code": 6016,
       "name": "MsgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "msg": "Msg Deserialize"
+    },
+    {
+      "code": 6017,
+      "name": "InvalidFee",
+      "msg": "Invalid Fee"
+    },
+    {
+      "code": 6018,
+      "name": "InvalidTokenInMint",
+      "msg": "Invalid Token In Mint"
+    },
+    {
+      "code": 6019,
+      "name": "InvalidTokenOutMint",
+      "msg": "Invalid Token Out Mint"
+    },
+    {
+      "code": 6020,
+      "name": "VectorNotFound",
+      "msg": "Vector Not Found"
+    },
+    {
+      "code": 6021,
+      "name": "StartTimeInPast",
+      "msg": "Start Time In Past"
+    },
+    {
+      "code": 6022,
+      "name": "InvalidBoss",
+      "msg": "Invalid Boss"
+    },
+    {
+      "code": 6023,
+      "name": "KillSwitchActivated",
+      "msg": "Kill Switch Activated"
+    },
+    {
+      "code": 6024,
+      "name": "PermissionlessNotAllowed",
+      "msg": "Permissionless Not Allowed"
+    },
+    {
+      "code": 6025,
+      "name": "InvalidMarketStatsPda",
+      "msg": "Invalid Market Stats Pda"
+    },
+    {
+      "code": 6026,
+      "name": "MarketStatsNotWritable",
+      "msg": "Market Stats Not Writable"
+    },
+    {
+      "code": 6027,
+      "name": "InvalidInstructionsSysvar",
+      "msg": "Invalid Instructions Sysvar"
+    },
+    {
+      "code": 6028,
+      "name": "InvalidPermissionlessTokenOutAccount",
+      "msg": "Invalid Permissionless Token Out Account"
+    },
+    {
+      "code": 6029,
+      "name": "InvalidUserTokenOutAccount",
+      "msg": "Invalid User Token Out Account"
+    },
+    {
+      "code": 6030,
+      "name": "InvalidBossTokenInAccount",
+      "msg": "Invalid Boss Token In Account"
+    },
+    {
+      "code": 6031,
+      "name": "InvalidTimeRange",
+      "msg": "Invalid Time Range"
+    },
+    {
+      "code": 6032,
+      "name": "ZeroValue",
+      "msg": "Zero Value"
+    },
+    {
+      "code": 6033,
+      "name": "DuplicateStartTime",
+      "msg": "Duplicate Start Time"
+    },
+    {
+      "code": 6034,
+      "name": "TooManyVectors",
+      "msg": "Too Many Vectors"
+    },
+    {
+      "code": 6035,
+      "name": "InvalidAPR",
+      "msg": "Invalid A P R"
+    },
+    {
+      "code": 6036,
+      "name": "InvalidPriceFixDuration",
+      "msg": "Invalid Price Fix Duration"
+    },
+    {
+      "code": 6037,
+      "name": "InvalidVaultAuthority",
+      "msg": "Invalid Vault Authority"
+    },
+    {
+      "code": 6038,
+      "name": "InvalidMintAuthority",
+      "msg": "Invalid Mint Authority"
+    },
+    {
+      "code": 6039,
+      "name": "OfferNotFound",
+      "msg": "Offer Not Found"
+    },
+    {
+      "code": 6040,
+      "name": "NoActiveVector",
+      "msg": "No Active Vector"
+    },
+    {
+      "code": 6041,
+      "name": "OverflowError",
+      "msg": "Overflow Error"
+    },
+    {
+      "code": 6042,
+      "name": "ApprovalRequired",
+      "msg": "Approval Required"
+    },
+    {
+      "code": 6043,
+      "name": "AccountFull",
+      "msg": "Account Full"
+    },
+    {
+      "code": 6044,
+      "name": "InvalidTokenProgram",
+      "msg": "Invalid Token Program"
+    },
+    {
+      "code": 6045,
+      "name": "InvalidOnycMint",
+      "msg": "Invalid Onyc Mint"
+    },
+    {
+      "code": 6046,
+      "name": "InvalidMarketStatsOwner",
+      "msg": "Invalid Market Stats Owner"
+    },
+    {
+      "code": 6047,
+      "name": "InvalidMarketStatsData",
+      "msg": "Invalid Market Stats Data"
+    },
+    {
+      "code": 6048,
+      "name": "Overflow",
+      "msg": "Overflow"
+    },
+    {
+      "code": 6049,
+      "name": "InvalidMainOffer",
+      "msg": "Invalid Main Offer"
+    },
+    {
+      "code": 6050,
+      "name": "DivByZero",
+      "msg": "Div By Zero"
+    },
+    {
+      "code": 6051,
+      "name": "InvalidVaultAccount",
+      "msg": "Invalid Vault Account"
+    },
+    {
+      "code": 6052,
+      "name": "BossAlreadySet",
+      "msg": "Boss Already Set"
+    },
+    {
+      "code": 6053,
+      "name": "WrongBoss",
+      "msg": "Wrong Boss"
+    },
+    {
+      "code": 6054,
+      "name": "WrongOwner",
+      "msg": "Wrong Owner"
+    },
+    {
+      "code": 6055,
+      "name": "ImmutableProgram",
+      "msg": "Immutable Program"
+    },
+    {
+      "code": 6056,
+      "name": "WrongProgramData",
+      "msg": "Wrong Program Data"
+    },
+    {
+      "code": 6057,
+      "name": "MissingProgramData",
+      "msg": "Missing Program Data"
+    },
+    {
+      "code": 6058,
+      "name": "DeserializeProgramDataFailed",
+      "msg": "Deserialize Program Data Failed"
+    },
+    {
+      "code": 6059,
+      "name": "NotProgramData",
+      "msg": "Not Program Data"
+    },
+    {
+      "code": 6060,
+      "name": "InvalidPermissionlessAccountName",
+      "msg": "Invalid Permissionless Account Name"
+    },
+    {
+      "code": 6061,
+      "name": "BothApproversFilled",
+      "msg": "Both Approvers Filled"
+    },
+    {
+      "code": 6062,
+      "name": "InvalidApprover",
+      "msg": "Invalid Approver"
+    },
+    {
+      "code": 6063,
+      "name": "ApproverAlreadyExists",
+      "msg": "Approver Already Exists"
+    },
+    {
+      "code": 6064,
+      "name": "OnlyBossCanDisable",
+      "msg": "Only Boss Can Disable"
+    },
+    {
+      "code": 6065,
+      "name": "UnauthorizedToEnable",
+      "msg": "Unauthorized To Enable"
+    },
+    {
+      "code": 6066,
+      "name": "NotAnApprover",
+      "msg": "Not An Approver"
+    },
+    {
+      "code": 6067,
+      "name": "InvalidStateOwner",
+      "msg": "Invalid State Owner"
+    },
+    {
+      "code": 6068,
+      "name": "InvalidStatePda",
+      "msg": "Invalid State Pda"
+    },
+    {
+      "code": 6069,
+      "name": "InvalidStateData",
+      "msg": "Invalid State Data"
+    },
+    {
+      "code": 6070,
+      "name": "UnauthorizedSigner",
+      "msg": "Unauthorized Signer"
+    },
+    {
+      "code": 6071,
+      "name": "LamportOverflow",
+      "msg": "Lamport Overflow"
+    },
+    {
+      "code": 6072,
+      "name": "NoBossProposal",
+      "msg": "No Boss Proposal"
+    },
+    {
+      "code": 6073,
+      "name": "NotProposedBoss",
+      "msg": "Not Proposed Boss"
+    },
+    {
+      "code": 6074,
+      "name": "InvalidBossAddress",
+      "msg": "Invalid Boss Address"
+    },
+    {
+      "code": 6075,
+      "name": "NoChange",
+      "msg": "No Change"
+    },
+    {
+      "code": 6076,
+      "name": "AdminAlreadyExists",
+      "msg": "Admin Already Exists"
+    },
+    {
+      "code": 6077,
+      "name": "MaxAdminsReached",
+      "msg": "Max Admins Reached"
+    },
+    {
+      "code": 6078,
+      "name": "AdminNotFound",
+      "msg": "Admin Not Found"
+    },
+    {
+      "code": 6079,
+      "name": "ProgramNotMintAuthority",
+      "msg": "Program Not Mint Authority"
+    },
+    {
+      "code": 6080,
+      "name": "NoMintAuthority",
+      "msg": "No Mint Authority"
+    },
+    {
+      "code": 6081,
+      "name": "BossNotMintAuthority",
+      "msg": "Boss Not Mint Authority"
+    },
+    {
+      "code": 6082,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    },
+    {
+      "code": 6083,
+      "name": "ZeroBalance",
+      "msg": "Zero Balance"
+    },
+    {
+      "code": 6084,
+      "name": "InsufficientBalance",
+      "msg": "Insufficient Balance"
+    },
+    {
+      "code": 6085,
+      "name": "ArithmeticOverflow",
+      "msg": "Arithmetic Overflow"
+    },
+    {
+      "code": 6086,
+      "name": "InvalidMint",
+      "msg": "Invalid Mint"
+    },
+    {
+      "code": 6087,
+      "name": "InvalidRedemptionOffer",
+      "msg": "Invalid Redemption Offer"
+    },
+    {
+      "code": 6088,
+      "name": "ArithmeticUnderflow",
+      "msg": "Arithmetic Underflow"
+    },
+    {
+      "code": 6089,
+      "name": "InvalidRedeemer",
+      "msg": "Invalid Redeemer"
+    },
+    {
+      "code": 6090,
+      "name": "InvalidRedemptionAdmin",
+      "msg": "Invalid Redemption Admin"
+    },
+    {
+      "code": 6091,
+      "name": "InvalidRedeemerTokenAccount",
+      "msg": "Invalid Redeemer Token Account"
+    },
+    {
+      "code": 6092,
+      "name": "OfferMismatch",
+      "msg": "Offer Mismatch"
+    },
+    {
+      "code": 6093,
+      "name": "OfferMintMismatch",
+      "msg": "Offer Mint Mismatch"
+    },
+    {
+      "code": 6094,
+      "name": "InvalidRedemptionOfferOwner",
+      "msg": "Invalid Redemption Offer Owner"
+    },
+    {
+      "code": 6095,
+      "name": "InvalidRedemptionOfferData",
+      "msg": "Invalid Redemption Offer Data"
+    },
+    {
+      "code": 6096,
+      "name": "InvalidRedemptionFeeVaultAuthority",
+      "msg": "Invalid Redemption Fee Vault Authority"
+    },
+    {
+      "code": 6097,
+      "name": "InvalidRedemptionFeeVaultAuthorityOwner",
+      "msg": "Invalid Redemption Fee Vault Authority Owner"
+    },
+    {
+      "code": 6098,
+      "name": "InvalidRedemptionFeeVaultAuthorityData",
+      "msg": "Invalid Redemption Fee Vault Authority Data"
+    },
+    {
+      "code": 6099,
+      "name": "InvalidFeeDestinationTokenInAccount",
+      "msg": "Invalid Fee Destination Token In Account"
+    },
+    {
+      "code": 6100,
+      "name": "InvalidOfferVaultOnycAccount",
+      "msg": "Invalid Offer Vault Onyc Account"
+    },
+    {
+      "code": 6101,
+      "name": "InvalidVaultTokenInAccount",
+      "msg": "Invalid Vault Token In Account"
+    },
+    {
+      "code": 6102,
+      "name": "InvalidVaultTokenOutAccount",
+      "msg": "Invalid Vault Token Out Account"
+    },
+    {
+      "code": 6103,
+      "name": "InvalidAmount",
+      "msg": "Invalid Amount"
+    },
+    {
+      "code": 6104,
+      "name": "AmountExceedsRemaining",
+      "msg": "Amount Exceeds Remaining"
+    },
+    {
+      "code": 6105,
+      "name": "InvalidFeeDestination",
+      "msg": "Invalid Fee Destination"
+    },
+    {
+      "code": 6106,
+      "name": "InvalidBufferStateAccount",
+      "msg": "Invalid Buffer State Account"
+    },
+    {
+      "code": 6107,
+      "name": "InvalidTimestamp",
+      "msg": "Invalid Timestamp"
+    },
+    {
+      "code": 6108,
+      "name": "InvalidFeeWallet",
+      "msg": "Invalid Fee Wallet"
+    },
+    {
+      "code": 6109,
+      "name": "InvalidTargetNav",
+      "msg": "Invalid Target Nav"
+    },
+    {
+      "code": 6110,
+      "name": "InvalidAssetAdjustmentAmount",
+      "msg": "Invalid Asset Adjustment Amount"
+    },
+    {
+      "code": 6111,
+      "name": "NoBurnNeeded",
+      "msg": "No Burn Needed"
+    },
+    {
+      "code": 6112,
+      "name": "InsufficientCacheBalance",
+      "msg": "Insufficient Cache Balance"
+    },
+    {
+      "code": 6113,
+      "name": "InsufficientFeeBalance",
+      "msg": "Insufficient Fee Balance"
+    },
+    {
+      "code": 6114,
+      "name": "InvalidFeeRecipient",
+      "msg": "Invalid Fee Recipient"
+    },
+    {
+      "code": 6115,
+      "name": "InvalidBurnTarget",
+      "msg": "Invalid Burn Target"
     }
   ],
   "types": [
@@ -12110,6 +11778,16 @@
     {
       "name": "MintAuthorityTransferredToBossEvent",
       "docs": [
+        "Handles transferring mint authority from program PDA back to the boss account",
+        "",
+        "This instruction serves as an emergency recovery mechanism allowing the boss to regain",
+        "direct control of mint authority. Common use cases include emergency recovery, temporary",
+        "manual token operations, program maintenance, or returning to pre-program authority setup.",
+        "",
+        "# Security",
+        "- Only the current boss can initiate the transfer",
+        "- Program PDA must currently hold mint authority",
+        "- Uses program-derived signatures for authorization",
         "Event emitted when mint authority is successfully transferred from program PDA to boss",
         "",
         "Provides transparency for tracking mint authority changes and emergency recovery operations."
@@ -12144,6 +11822,16 @@
     {
       "name": "MintAuthorityTransferredToProgramEvent",
       "docs": [
+        "Handles transferring mint authority from the boss account to a program PDA",
+        "",
+        "This enables burn/mint token architecture allowing the program to mint tokens directly",
+        "instead of transferring from pre-minted vaults. Essential for controlled token supply",
+        "management and programmatic minting operations.",
+        "",
+        "# Security",
+        "- Only the current boss can transfer mint authority",
+        "- Boss must be the current mint authority for the token",
+        "- Authority can be recovered using `transfer_mint_authority_to_boss`",
         "Event emitted when mint authority is successfully transferred from boss to program PDA",
         "",
         "Provides transparency for tracking mint authority changes and enabling programmatic control."
@@ -12397,6 +12085,7 @@
     {
       "name": "OfferTakenEvent",
       "docs": [
+        "Error codes specific to the take_offer instruction",
         "Event emitted when an offer is successfully taken",
         "",
         "Provides transparency for tracking offer execution and token exchange details."
@@ -12445,6 +12134,7 @@
     {
       "name": "OfferTakenPermissionlessEvent",
       "docs": [
+        "Error codes specific to the take_offer_permissionless instruction",
         "Event emitted when an offer is successfully executed via permissionless flow",
         "",
         "Provides transparency for tracking permissionless offer execution with intermediary routing."

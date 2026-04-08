@@ -23,15 +23,6 @@ pub struct RemoveApprover<'info> {
     pub boss: Signer<'info>,
 }
 
-#[error_code]
-pub enum RemoveApproverError {
-    /// The provided address is not an approver
-    #[msg("The provided address is not an approver")]
-    NotAnApprover,
-    #[msg("Invalid approver")]
-    InvalidApprover,
-}
-
 /// Removes a trusted authority from the approval verification list
 ///
 /// This instruction allows the boss to remove an approver by their public key.
@@ -44,7 +35,7 @@ pub enum RemoveApproverError {
 ///
 /// # Returns
 /// * `Ok(())` - Successfully removed the approver
-/// * `Err(RemoveApproverError::NotAnApprover)` - The address is not currently an approver
+/// * `Err(crate::OnreError::NotAnApprover)` - The address is not currently an approver
 ///
 /// # Access Control
 /// - Only the boss can call this instruction
@@ -58,7 +49,7 @@ pub fn remove_approver(ctx: Context<RemoveApprover>, approver: Pubkey) -> Result
     let state = &mut ctx.accounts.state;
 
     if approver == Pubkey::default() {
-        return Err(error!(RemoveApproverError::InvalidApprover));
+        return Err(error!(crate::OnreError::InvalidApprover));
     }
 
     // Check if the approver matches approver1
@@ -86,5 +77,5 @@ pub fn remove_approver(ctx: Context<RemoveApprover>, approver: Pubkey) -> Result
     }
 
     // The provided address is not an approver
-    Err(error!(RemoveApproverError::NotAnApprover))
+    Err(error!(crate::OnreError::NotAnApprover))
 }

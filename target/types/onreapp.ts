@@ -1030,60 +1030,7 @@ export type Onreapp = {
             "Receives back the tokens that were locked in the redemption request.",
             "Created if needed in case the redeemer closed their account after locking all tokens."
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "redeemer"
-              },
-              {
-                "kind": "account",
-                "path": "tokenProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "tokenProgram",
@@ -2121,44 +2068,7 @@ export type Onreapp = {
         },
         {
           "name": "redemptionRequest",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  100,
-                  101,
-                  109,
-                  112,
-                  116,
-                  105,
-                  111,
-                  110,
-                  95,
-                  114,
-                  101,
-                  113,
-                  117,
-                  101,
-                  115,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "redemption_request.offer",
-                "account": "redemptionRequest"
-              },
-              {
-                "kind": "account",
-                "path": "redemption_request.request_id",
-                "account": "redemptionRequest"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "redemptionVaultAuthority",
@@ -2206,117 +2116,11 @@ export type Onreapp = {
         },
         {
           "name": "vaultTokenInAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "redemptionVaultAuthority"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "vaultTokenOutAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "redemptionVaultAuthority"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "tokenInMint",
@@ -2334,117 +2138,11 @@ export type Onreapp = {
         },
         {
           "name": "userTokenOutAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "redeemer"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "bossTokenInAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "boss"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "redemptionFeeVaultAuthority",
@@ -2466,60 +2164,7 @@ export type Onreapp = {
           "docs": [
             "ATA of `fee_destination` for token_in — receives the fee portion"
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "feeDestination"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "mintAuthority",
@@ -6735,37 +6380,7 @@ export type Onreapp = {
             "",
             "This PDA manages token transfers and burning operations for the",
             "burn/mint architecture when program has mint authority."
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
+          ]
         },
         {
           "name": "vaultTokenInAccount",
@@ -7121,30 +6736,7 @@ export type Onreapp = {
             "",
             "Used when the program has mint authority and can mint token_out",
             "directly to users instead of transferring from vault."
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  105,
-                  110,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
+          ]
         },
         {
           "name": "instructionsSysvar",
@@ -7153,8 +6745,7 @@ export type Onreapp = {
             "",
             "Required for cryptographic verification of approval messages",
             "when offers require boss approval for execution."
-          ],
-          "address": "Sysvar1nstructions1111111111111111111111111"
+          ]
         },
         {
           "name": "user",
@@ -7499,60 +7090,7 @@ export type Onreapp = {
             "Temporary holding account that receives output tokens before forwarding",
             "to user, completing the permissionless routing mechanism."
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "permissionlessAuthority"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "tokenInMint",
@@ -7657,60 +7195,7 @@ export type Onreapp = {
             "Destination account where the user receives token_out from the exchange.",
             "Created automatically if it doesn't exist using init_if_needed."
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "bossTokenInAccount",
@@ -7720,60 +7205,7 @@ export type Onreapp = {
             "Final destination account where the boss receives token_in payments",
             "from users taking offers via intermediary routing."
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "boss"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "mintAuthority",
@@ -7791,8 +7223,7 @@ export type Onreapp = {
             "",
             "Required for cryptographic verification of approval messages",
             "when offers require boss approval for execution."
-          ],
-          "address": "Sysvar1nstructions1111111111111111111111111"
+          ]
         },
         {
           "name": "user",
@@ -8075,60 +7506,7 @@ export type Onreapp = {
         },
         {
           "name": "permissionlessTokenOutAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "permissionlessAuthority"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "tokenInMint",
@@ -8203,117 +7581,11 @@ export type Onreapp = {
         },
         {
           "name": "userTokenOutAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "bossTokenInAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "boss"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "mintAuthority"
@@ -8344,8 +7616,7 @@ export type Onreapp = {
           "writable": true
         },
         {
-          "name": "instructionsSysvar",
-          "address": "Sysvar1nstructions1111111111111111111111111"
+          "name": "instructionsSysvar"
         },
         {
           "name": "user",
@@ -8444,37 +7715,7 @@ export type Onreapp = {
           ]
         },
         {
-          "name": "vaultAuthority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
+          "name": "vaultAuthority"
         },
         {
           "name": "vaultTokenInAccount",
@@ -8663,60 +7904,7 @@ export type Onreapp = {
         },
         {
           "name": "userTokenOutAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenOutMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "bossTokenInAccount",
@@ -8776,30 +7964,7 @@ export type Onreapp = {
           }
         },
         {
-          "name": "mintAuthority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  105,
-                  110,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
+          "name": "mintAuthority"
         },
         {
           "name": "bufferAccounts",
@@ -8824,32 +7989,10 @@ export type Onreapp = {
         },
         {
           "name": "marketStats",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  114,
-                  107,
-                  101,
-                  116,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  115
-                ]
-              }
-            ]
-          }
+          "writable": true
         },
         {
-          "name": "instructionsSysvar",
-          "address": "Sysvar1nstructions1111111111111111111111111"
+          "name": "instructionsSysvar"
         },
         {
           "name": "user",
@@ -11110,58 +10253,583 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "expired",
-      "msg": "The approval message has expired."
+      "name": "mathOverflow",
+      "msg": "Math Overflow"
     },
     {
       "code": 6001,
-      "name": "wrongProgram",
-      "msg": "The approval message is for the wrong program."
+      "name": "maxSupplyExceeded",
+      "msg": "Max Supply Exceeded"
     },
     {
       "code": 6002,
-      "name": "wrongUser",
-      "msg": "The approval message is for the wrong user."
+      "name": "transferFeeNotSupported",
+      "msg": "Transfer Fee Not Supported"
     },
     {
       "code": 6003,
-      "name": "missingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
+      "name": "zeroPriceNotAllowed",
+      "msg": "Zero Price Not Allowed"
     },
     {
       "code": 6004,
-      "name": "wrongIxProgram",
-      "msg": "The instruction is for the wrong program."
+      "name": "decimalsExceedMax",
+      "msg": "Decimals Exceed Max"
     },
     {
       "code": 6005,
-      "name": "badEd25519Accounts",
-      "msg": "Ed25519 instruction has accounts."
+      "name": "resultOverflow",
+      "msg": "Result Overflow"
     },
     {
       "code": 6006,
-      "name": "malformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
+      "name": "expired",
+      "msg": "expired"
     },
     {
       "code": 6007,
-      "name": "multipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
+      "name": "wrongProgram",
+      "msg": "Wrong Program"
     },
     {
       "code": 6008,
-      "name": "wrongAuthority",
-      "msg": "The authority public key does not match."
+      "name": "wrongUser",
+      "msg": "Wrong User"
     },
     {
       "code": 6009,
-      "name": "msgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
+      "name": "missingEd25519Ix",
+      "msg": "Missing Ed25519 Ix"
     },
     {
       "code": 6010,
+      "name": "wrongIxProgram",
+      "msg": "Wrong Ix Program"
+    },
+    {
+      "code": 6011,
+      "name": "badEd25519Accounts",
+      "msg": "Bad Ed25519 Accounts"
+    },
+    {
+      "code": 6012,
+      "name": "malformedEd25519Ix",
+      "msg": "Malformed Ed25519 Ix"
+    },
+    {
+      "code": 6013,
+      "name": "multipleSigs",
+      "msg": "Multiple Sigs"
+    },
+    {
+      "code": 6014,
+      "name": "wrongAuthority",
+      "msg": "Wrong Authority"
+    },
+    {
+      "code": 6015,
+      "name": "msgMismatch",
+      "msg": "Msg Mismatch"
+    },
+    {
+      "code": 6016,
       "name": "msgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "msg": "Msg Deserialize"
+    },
+    {
+      "code": 6017,
+      "name": "invalidFee",
+      "msg": "Invalid Fee"
+    },
+    {
+      "code": 6018,
+      "name": "invalidTokenInMint",
+      "msg": "Invalid Token In Mint"
+    },
+    {
+      "code": 6019,
+      "name": "invalidTokenOutMint",
+      "msg": "Invalid Token Out Mint"
+    },
+    {
+      "code": 6020,
+      "name": "vectorNotFound",
+      "msg": "Vector Not Found"
+    },
+    {
+      "code": 6021,
+      "name": "startTimeInPast",
+      "msg": "Start Time In Past"
+    },
+    {
+      "code": 6022,
+      "name": "invalidBoss",
+      "msg": "Invalid Boss"
+    },
+    {
+      "code": 6023,
+      "name": "killSwitchActivated",
+      "msg": "Kill Switch Activated"
+    },
+    {
+      "code": 6024,
+      "name": "permissionlessNotAllowed",
+      "msg": "Permissionless Not Allowed"
+    },
+    {
+      "code": 6025,
+      "name": "invalidMarketStatsPda",
+      "msg": "Invalid Market Stats Pda"
+    },
+    {
+      "code": 6026,
+      "name": "marketStatsNotWritable",
+      "msg": "Market Stats Not Writable"
+    },
+    {
+      "code": 6027,
+      "name": "invalidInstructionsSysvar",
+      "msg": "Invalid Instructions Sysvar"
+    },
+    {
+      "code": 6028,
+      "name": "invalidPermissionlessTokenOutAccount",
+      "msg": "Invalid Permissionless Token Out Account"
+    },
+    {
+      "code": 6029,
+      "name": "invalidUserTokenOutAccount",
+      "msg": "Invalid User Token Out Account"
+    },
+    {
+      "code": 6030,
+      "name": "invalidBossTokenInAccount",
+      "msg": "Invalid Boss Token In Account"
+    },
+    {
+      "code": 6031,
+      "name": "invalidTimeRange",
+      "msg": "Invalid Time Range"
+    },
+    {
+      "code": 6032,
+      "name": "zeroValue",
+      "msg": "Zero Value"
+    },
+    {
+      "code": 6033,
+      "name": "duplicateStartTime",
+      "msg": "Duplicate Start Time"
+    },
+    {
+      "code": 6034,
+      "name": "tooManyVectors",
+      "msg": "Too Many Vectors"
+    },
+    {
+      "code": 6035,
+      "name": "invalidApr",
+      "msg": "Invalid A P R"
+    },
+    {
+      "code": 6036,
+      "name": "invalidPriceFixDuration",
+      "msg": "Invalid Price Fix Duration"
+    },
+    {
+      "code": 6037,
+      "name": "invalidVaultAuthority",
+      "msg": "Invalid Vault Authority"
+    },
+    {
+      "code": 6038,
+      "name": "invalidMintAuthority",
+      "msg": "Invalid Mint Authority"
+    },
+    {
+      "code": 6039,
+      "name": "offerNotFound",
+      "msg": "Offer Not Found"
+    },
+    {
+      "code": 6040,
+      "name": "noActiveVector",
+      "msg": "No Active Vector"
+    },
+    {
+      "code": 6041,
+      "name": "overflowError",
+      "msg": "Overflow Error"
+    },
+    {
+      "code": 6042,
+      "name": "approvalRequired",
+      "msg": "Approval Required"
+    },
+    {
+      "code": 6043,
+      "name": "accountFull",
+      "msg": "Account Full"
+    },
+    {
+      "code": 6044,
+      "name": "invalidTokenProgram",
+      "msg": "Invalid Token Program"
+    },
+    {
+      "code": 6045,
+      "name": "invalidOnycMint",
+      "msg": "Invalid Onyc Mint"
+    },
+    {
+      "code": 6046,
+      "name": "invalidMarketStatsOwner",
+      "msg": "Invalid Market Stats Owner"
+    },
+    {
+      "code": 6047,
+      "name": "invalidMarketStatsData",
+      "msg": "Invalid Market Stats Data"
+    },
+    {
+      "code": 6048,
+      "name": "overflow",
+      "msg": "overflow"
+    },
+    {
+      "code": 6049,
+      "name": "invalidMainOffer",
+      "msg": "Invalid Main Offer"
+    },
+    {
+      "code": 6050,
+      "name": "divByZero",
+      "msg": "Div By Zero"
+    },
+    {
+      "code": 6051,
+      "name": "invalidVaultAccount",
+      "msg": "Invalid Vault Account"
+    },
+    {
+      "code": 6052,
+      "name": "bossAlreadySet",
+      "msg": "Boss Already Set"
+    },
+    {
+      "code": 6053,
+      "name": "wrongBoss",
+      "msg": "Wrong Boss"
+    },
+    {
+      "code": 6054,
+      "name": "wrongOwner",
+      "msg": "Wrong Owner"
+    },
+    {
+      "code": 6055,
+      "name": "immutableProgram",
+      "msg": "Immutable Program"
+    },
+    {
+      "code": 6056,
+      "name": "wrongProgramData",
+      "msg": "Wrong Program Data"
+    },
+    {
+      "code": 6057,
+      "name": "missingProgramData",
+      "msg": "Missing Program Data"
+    },
+    {
+      "code": 6058,
+      "name": "deserializeProgramDataFailed",
+      "msg": "Deserialize Program Data Failed"
+    },
+    {
+      "code": 6059,
+      "name": "notProgramData",
+      "msg": "Not Program Data"
+    },
+    {
+      "code": 6060,
+      "name": "invalidPermissionlessAccountName",
+      "msg": "Invalid Permissionless Account Name"
+    },
+    {
+      "code": 6061,
+      "name": "bothApproversFilled",
+      "msg": "Both Approvers Filled"
+    },
+    {
+      "code": 6062,
+      "name": "invalidApprover",
+      "msg": "Invalid Approver"
+    },
+    {
+      "code": 6063,
+      "name": "approverAlreadyExists",
+      "msg": "Approver Already Exists"
+    },
+    {
+      "code": 6064,
+      "name": "onlyBossCanDisable",
+      "msg": "Only Boss Can Disable"
+    },
+    {
+      "code": 6065,
+      "name": "unauthorizedToEnable",
+      "msg": "Unauthorized To Enable"
+    },
+    {
+      "code": 6066,
+      "name": "notAnApprover",
+      "msg": "Not An Approver"
+    },
+    {
+      "code": 6067,
+      "name": "invalidStateOwner",
+      "msg": "Invalid State Owner"
+    },
+    {
+      "code": 6068,
+      "name": "invalidStatePda",
+      "msg": "Invalid State Pda"
+    },
+    {
+      "code": 6069,
+      "name": "invalidStateData",
+      "msg": "Invalid State Data"
+    },
+    {
+      "code": 6070,
+      "name": "unauthorizedSigner",
+      "msg": "Unauthorized Signer"
+    },
+    {
+      "code": 6071,
+      "name": "lamportOverflow",
+      "msg": "Lamport Overflow"
+    },
+    {
+      "code": 6072,
+      "name": "noBossProposal",
+      "msg": "No Boss Proposal"
+    },
+    {
+      "code": 6073,
+      "name": "notProposedBoss",
+      "msg": "Not Proposed Boss"
+    },
+    {
+      "code": 6074,
+      "name": "invalidBossAddress",
+      "msg": "Invalid Boss Address"
+    },
+    {
+      "code": 6075,
+      "name": "noChange",
+      "msg": "No Change"
+    },
+    {
+      "code": 6076,
+      "name": "adminAlreadyExists",
+      "msg": "Admin Already Exists"
+    },
+    {
+      "code": 6077,
+      "name": "maxAdminsReached",
+      "msg": "Max Admins Reached"
+    },
+    {
+      "code": 6078,
+      "name": "adminNotFound",
+      "msg": "Admin Not Found"
+    },
+    {
+      "code": 6079,
+      "name": "programNotMintAuthority",
+      "msg": "Program Not Mint Authority"
+    },
+    {
+      "code": 6080,
+      "name": "noMintAuthority",
+      "msg": "No Mint Authority"
+    },
+    {
+      "code": 6081,
+      "name": "bossNotMintAuthority",
+      "msg": "Boss Not Mint Authority"
+    },
+    {
+      "code": 6082,
+      "name": "unauthorized",
+      "msg": "unauthorized"
+    },
+    {
+      "code": 6083,
+      "name": "zeroBalance",
+      "msg": "Zero Balance"
+    },
+    {
+      "code": 6084,
+      "name": "insufficientBalance",
+      "msg": "Insufficient Balance"
+    },
+    {
+      "code": 6085,
+      "name": "arithmeticOverflow",
+      "msg": "Arithmetic Overflow"
+    },
+    {
+      "code": 6086,
+      "name": "invalidMint",
+      "msg": "Invalid Mint"
+    },
+    {
+      "code": 6087,
+      "name": "invalidRedemptionOffer",
+      "msg": "Invalid Redemption Offer"
+    },
+    {
+      "code": 6088,
+      "name": "arithmeticUnderflow",
+      "msg": "Arithmetic Underflow"
+    },
+    {
+      "code": 6089,
+      "name": "invalidRedeemer",
+      "msg": "Invalid Redeemer"
+    },
+    {
+      "code": 6090,
+      "name": "invalidRedemptionAdmin",
+      "msg": "Invalid Redemption Admin"
+    },
+    {
+      "code": 6091,
+      "name": "invalidRedeemerTokenAccount",
+      "msg": "Invalid Redeemer Token Account"
+    },
+    {
+      "code": 6092,
+      "name": "offerMismatch",
+      "msg": "Offer Mismatch"
+    },
+    {
+      "code": 6093,
+      "name": "offerMintMismatch",
+      "msg": "Offer Mint Mismatch"
+    },
+    {
+      "code": 6094,
+      "name": "invalidRedemptionOfferOwner",
+      "msg": "Invalid Redemption Offer Owner"
+    },
+    {
+      "code": 6095,
+      "name": "invalidRedemptionOfferData",
+      "msg": "Invalid Redemption Offer Data"
+    },
+    {
+      "code": 6096,
+      "name": "invalidRedemptionFeeVaultAuthority",
+      "msg": "Invalid Redemption Fee Vault Authority"
+    },
+    {
+      "code": 6097,
+      "name": "invalidRedemptionFeeVaultAuthorityOwner",
+      "msg": "Invalid Redemption Fee Vault Authority Owner"
+    },
+    {
+      "code": 6098,
+      "name": "invalidRedemptionFeeVaultAuthorityData",
+      "msg": "Invalid Redemption Fee Vault Authority Data"
+    },
+    {
+      "code": 6099,
+      "name": "invalidFeeDestinationTokenInAccount",
+      "msg": "Invalid Fee Destination Token In Account"
+    },
+    {
+      "code": 6100,
+      "name": "invalidOfferVaultOnycAccount",
+      "msg": "Invalid Offer Vault Onyc Account"
+    },
+    {
+      "code": 6101,
+      "name": "invalidVaultTokenInAccount",
+      "msg": "Invalid Vault Token In Account"
+    },
+    {
+      "code": 6102,
+      "name": "invalidVaultTokenOutAccount",
+      "msg": "Invalid Vault Token Out Account"
+    },
+    {
+      "code": 6103,
+      "name": "invalidAmount",
+      "msg": "Invalid Amount"
+    },
+    {
+      "code": 6104,
+      "name": "amountExceedsRemaining",
+      "msg": "Amount Exceeds Remaining"
+    },
+    {
+      "code": 6105,
+      "name": "invalidFeeDestination",
+      "msg": "Invalid Fee Destination"
+    },
+    {
+      "code": 6106,
+      "name": "invalidBufferStateAccount",
+      "msg": "Invalid Buffer State Account"
+    },
+    {
+      "code": 6107,
+      "name": "invalidTimestamp",
+      "msg": "Invalid Timestamp"
+    },
+    {
+      "code": 6108,
+      "name": "invalidFeeWallet",
+      "msg": "Invalid Fee Wallet"
+    },
+    {
+      "code": 6109,
+      "name": "invalidTargetNav",
+      "msg": "Invalid Target Nav"
+    },
+    {
+      "code": 6110,
+      "name": "invalidAssetAdjustmentAmount",
+      "msg": "Invalid Asset Adjustment Amount"
+    },
+    {
+      "code": 6111,
+      "name": "noBurnNeeded",
+      "msg": "No Burn Needed"
+    },
+    {
+      "code": 6112,
+      "name": "insufficientCacheBalance",
+      "msg": "Insufficient Cache Balance"
+    },
+    {
+      "code": 6113,
+      "name": "insufficientFeeBalance",
+      "msg": "Insufficient Fee Balance"
+    },
+    {
+      "code": 6114,
+      "name": "invalidFeeRecipient",
+      "msg": "Invalid Fee Recipient"
+    },
+    {
+      "code": 6115,
+      "name": "invalidBurnTarget",
+      "msg": "Invalid Burn Target"
     }
   ],
   "types": [
@@ -12116,6 +11784,16 @@ export type Onreapp = {
     {
       "name": "mintAuthorityTransferredToBossEvent",
       "docs": [
+        "Handles transferring mint authority from program PDA back to the boss account",
+        "",
+        "This instruction serves as an emergency recovery mechanism allowing the boss to regain",
+        "direct control of mint authority. Common use cases include emergency recovery, temporary",
+        "manual token operations, program maintenance, or returning to pre-program authority setup.",
+        "",
+        "# Security",
+        "- Only the current boss can initiate the transfer",
+        "- Program PDA must currently hold mint authority",
+        "- Uses program-derived signatures for authorization",
         "Event emitted when mint authority is successfully transferred from program PDA to boss",
         "",
         "Provides transparency for tracking mint authority changes and emergency recovery operations."
@@ -12150,6 +11828,16 @@ export type Onreapp = {
     {
       "name": "mintAuthorityTransferredToProgramEvent",
       "docs": [
+        "Handles transferring mint authority from the boss account to a program PDA",
+        "",
+        "This enables burn/mint token architecture allowing the program to mint tokens directly",
+        "instead of transferring from pre-minted vaults. Essential for controlled token supply",
+        "management and programmatic minting operations.",
+        "",
+        "# Security",
+        "- Only the current boss can transfer mint authority",
+        "- Boss must be the current mint authority for the token",
+        "- Authority can be recovered using `transfer_mint_authority_to_boss`",
         "Event emitted when mint authority is successfully transferred from boss to program PDA",
         "",
         "Provides transparency for tracking mint authority changes and enabling programmatic control."
@@ -12403,6 +12091,7 @@ export type Onreapp = {
     {
       "name": "offerTakenEvent",
       "docs": [
+        "Error codes specific to the take_offer instruction",
         "Event emitted when an offer is successfully taken",
         "",
         "Provides transparency for tracking offer execution and token exchange details."
@@ -12451,6 +12140,7 @@ export type Onreapp = {
     {
       "name": "offerTakenPermissionlessEvent",
       "docs": [
+        "Error codes specific to the take_offer_permissionless instruction",
         "Event emitted when an offer is successfully executed via permissionless flow",
         "",
         "Provides transparency for tracking permissionless offer execution with intermediary routing."

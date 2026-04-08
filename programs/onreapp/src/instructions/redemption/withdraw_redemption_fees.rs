@@ -24,7 +24,7 @@ pub struct WithdrawRedemptionFees<'info> {
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
-        has_one = boss @ WithdrawRedemptionFeesErrorCode::Unauthorized,
+        has_one = boss @ crate::OnreError::Unauthorized,
     )]
     pub state: Box<Account<'info, State>>,
 
@@ -87,11 +87,11 @@ pub fn withdraw_redemption_fees(ctx: Context<WithdrawRedemptionFees>, amount: u6
 
     require!(
         effective_amount > 0,
-        WithdrawRedemptionFeesErrorCode::ZeroBalance
+        crate::OnreError::ZeroBalance
     );
     require!(
         effective_amount <= vault_balance,
-        WithdrawRedemptionFeesErrorCode::InsufficientBalance
+        crate::OnreError::InsufficientBalance
     );
 
     let bump = ctx.accounts.redemption_fee_vault_authority.bump;
@@ -117,18 +117,4 @@ pub fn withdraw_redemption_fees(ctx: Context<WithdrawRedemptionFees>, amount: u6
     Ok(())
 }
 
-/// Error codes for withdraw_redemption_fees
-#[error_code]
-pub enum WithdrawRedemptionFeesErrorCode {
-    /// Caller is not the boss
-    #[msg("Unauthorized: boss signature required")]
-    Unauthorized,
-
-    /// Vault has no balance to withdraw
-    #[msg("Zero balance: nothing to withdraw")]
-    ZeroBalance,
-
-    /// Requested amount exceeds vault balance
-    #[msg("Insufficient balance in fee vault")]
-    InsufficientBalance,
-}
+// Error codes for withdraw_redemption_fees

@@ -1,7 +1,6 @@
 use crate::constants::seeds;
 use crate::instructions::market_info::offer_valuation_utils::get_offer_valuation_snapshot;
 use crate::instructions::Offer;
-use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::Mint;
@@ -46,7 +45,7 @@ pub struct GetNAV<'info> {
     #[account(
         constraint =
             token_in_mint.key() == offer.load()?.token_in_mint
-            @ OfferCoreError::InvalidTokenInMint
+            @ crate::OnreError::InvalidTokenInMint
     )]
     pub token_in_mint: InterfaceAccount<'info, Mint>,
 
@@ -54,7 +53,7 @@ pub struct GetNAV<'info> {
     #[account(
         constraint =
             token_out_mint.key() == offer.load()?.token_out_mint
-            @ OfferCoreError::InvalidTokenOutMint
+            @ crate::OnreError::InvalidTokenOutMint
     )]
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 }
@@ -73,7 +72,7 @@ pub struct GetNAV<'info> {
 ///
 /// # Returns
 /// * `Ok(current_price)` - The calculated price with scale=9 (1_000_000_000 = 1.0)
-/// * `Err(OfferCoreError::NoActiveVector)` - If no pricing vector is currently active
+/// * `Err(crate::OnreError::NoActiveVector)` - If no pricing vector is currently active
 ///
 /// # Events
 /// * `GetNAVEvent` - Emitted with offer PDA, current price, and timestamp

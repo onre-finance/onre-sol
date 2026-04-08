@@ -1,7 +1,6 @@
 use crate::constants::seeds;
 use crate::instructions::Offer;
 use crate::state::State;
-use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 
 #[event]
@@ -33,12 +32,12 @@ pub fn set_main_offer(ctx: Context<SetMainOffer>) -> Result<()> {
     require_keys_eq!(
         offer.token_out_mint,
         state.onyc_mint,
-        OfferCoreError::InvalidTokenOutMint
+        crate::OnreError::InvalidTokenOutMint
     );
 
     require!(
         new_main_offer != state.main_offer,
-        SetMainOfferErrorCode::NoChange
+        crate::OnreError::NoChange
     );
 
     let old_main_offer = state.main_offer;
@@ -52,8 +51,3 @@ pub fn set_main_offer(ctx: Context<SetMainOffer>) -> Result<()> {
     Ok(())
 }
 
-#[error_code]
-pub enum SetMainOfferErrorCode {
-    #[msg("No change: new main offer is the same as current")]
-    NoChange,
-}

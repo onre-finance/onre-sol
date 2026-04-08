@@ -23,14 +23,14 @@ fn calculate_accrual_from_apr_delta(
     let mint_amount_u128 = (previous_supply as u128)
         .checked_mul(apr_delta as u128)
         .and_then(|v| v.checked_mul(seconds_elapsed as u128))
-        .ok_or(BufferErrorCode::MathOverflow)?
+        .ok_or(crate::OnreError::MathOverflow)?
         .checked_div(SECONDS_PER_YEAR)
         .and_then(|v| v.checked_div(YIELD_SCALE))
-        .ok_or(BufferErrorCode::MathOverflow)?;
+        .ok_or(crate::OnreError::MathOverflow)?;
 
     require!(
         mint_amount_u128 <= u64::MAX as u128,
-        BufferErrorCode::ResultOverflow
+        crate::OnreError::ResultOverflow
     );
 
     Ok(mint_amount_u128 as u64)
@@ -59,25 +59,25 @@ pub fn calculate_buffer_fee_split(
     } else {
         let management_fee_apr = (management_fee_basis_points as u64)
             .checked_mul(BASIS_POINT_TO_YIELD_SCALE as u64)
-            .ok_or(BufferErrorCode::MathOverflow)?
+            .ok_or(crate::OnreError::MathOverflow)?
             .min(apr_delta);
 
         let fee_u128 = (buffer_mint_amount as u128)
             .checked_mul(management_fee_apr as u128)
-            .ok_or(BufferErrorCode::MathOverflow)?
+            .ok_or(crate::OnreError::MathOverflow)?
             .checked_div(apr_delta as u128)
-            .ok_or(BufferErrorCode::MathOverflow)?;
+            .ok_or(crate::OnreError::MathOverflow)?;
 
         require!(
             fee_u128 <= u64::MAX as u128,
-            BufferErrorCode::ResultOverflow
+            crate::OnreError::ResultOverflow
         );
         fee_u128 as u64
     };
 
     let buffer_mint_amount_after_management = buffer_mint_amount
         .checked_sub(management_fee_mint_amount)
-        .ok_or(BufferErrorCode::MathOverflow)?;
+        .ok_or(crate::OnreError::MathOverflow)?;
 
     // NAV is stepwise-constant over each `price_fix_duration` interval. Using `>=`
     // ensures performance fees apply for an interval whose stepped NAV is exactly at
@@ -86,12 +86,12 @@ pub fn calculate_buffer_fee_split(
     let performance_fee_mint_amount = if current_nav >= performance_fee_high_watermark {
         let fee_u128 = (buffer_mint_amount_after_management as u128)
             .checked_mul(performance_fee_basis_points as u128)
-            .ok_or(BufferErrorCode::MathOverflow)?
+            .ok_or(crate::OnreError::MathOverflow)?
             .checked_div(BASIS_POINTS_SCALE)
-            .ok_or(BufferErrorCode::MathOverflow)?;
+            .ok_or(crate::OnreError::MathOverflow)?;
         require!(
             fee_u128 <= u64::MAX as u128,
-            BufferErrorCode::ResultOverflow
+            crate::OnreError::ResultOverflow
         );
         fee_u128 as u64
     } else {
@@ -100,7 +100,7 @@ pub fn calculate_buffer_fee_split(
 
     let reserve_mint_amount = buffer_mint_amount_after_management
         .checked_sub(performance_fee_mint_amount)
-        .ok_or(BufferErrorCode::MathOverflow)?;
+        .ok_or(crate::OnreError::MathOverflow)?;
 
     let new_performance_fee_high_watermark = performance_fee_high_watermark.max(current_nav);
 

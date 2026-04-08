@@ -20,7 +20,7 @@ pub struct SetRedemptionFeeDestination<'info> {
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
-        has_one = boss @ SetRedemptionFeeDestinationErrorCode::Unauthorized,
+        has_one = boss @ crate::OnreError::Unauthorized,
     )]
     pub state: Box<Account<'info, State>>,
 
@@ -59,7 +59,7 @@ pub fn set_redemption_fee_destination(
 
     require!(
         old_destination != fee_destination,
-        SetRedemptionFeeDestinationErrorCode::NoChange
+        crate::OnreError::NoChange
     );
 
     let vault_authority = &mut ctx.accounts.redemption_fee_vault_authority;
@@ -74,14 +74,4 @@ pub fn set_redemption_fee_destination(
     Ok(())
 }
 
-/// Error codes for set_redemption_fee_destination
-#[error_code]
-pub enum SetRedemptionFeeDestinationErrorCode {
-    /// Caller is not the boss
-    #[msg("Unauthorized: boss signature required")]
-    Unauthorized,
-
-    /// The new destination is identical to the current one
-    #[msg("Fee destination is already set to this value")]
-    NoChange,
-}
+// Error codes for set_redemption_fee_destination

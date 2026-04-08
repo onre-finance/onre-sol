@@ -5,7 +5,7 @@ use crate::instructions::buffer::accounts::{
 };
 use crate::instructions::buffer::{
     accrue_buffer::accrue_buffer_from_accounts, BufferAccrualAccounts, BufferErrorCode,
-    BufferFeeConfigUpdatedEvent,
+    BufferFeeConfigUpdatedEvent, BufferState
 };
 use crate::instructions::market_info::market_stats::refresh_market_stats_pda;
 use crate::instructions::Offer;
@@ -68,19 +68,19 @@ pub fn set_buffer_fee_config(
 ) -> Result<()> {
     require!(
         management_fee_basis_points <= MAX_BASIS_POINTS,
-        BufferErrorCode::InvalidFee
+        crate::OnreError::InvalidFee
     );
     require!(
         performance_fee_basis_points <= MAX_BASIS_POINTS,
-        BufferErrorCode::InvalidFee
+        crate::OnreError::InvalidFee
     );
     require!(
         management_fee_basis_points == 0 || management_fee_wallet != Pubkey::default(),
-        BufferErrorCode::InvalidFeeWallet
+        crate::OnreError::InvalidFeeWallet
     );
     require!(
         performance_fee_basis_points == 0 || performance_fee_wallet != Pubkey::default(),
-        BufferErrorCode::InvalidFeeWallet
+        crate::OnreError::InvalidFeeWallet
     );
 
     let mut buffer_state = ctx.accounts.buffer_accounts.load_buffer_state()?;
@@ -89,7 +89,7 @@ pub fn set_buffer_fee_config(
             || buffer_state.management_fee_wallet != management_fee_wallet
             || buffer_state.performance_fee_basis_points != performance_fee_basis_points
             || buffer_state.performance_fee_wallet != performance_fee_wallet,
-        BufferErrorCode::NoChange
+        crate::OnreError::NoChange
     );
 
     let old_management_fee_basis_points = buffer_state.management_fee_basis_points;

@@ -1,14 +1,13 @@
 use crate::constants::seeds;
 use crate::instructions::buffer::{
     calculate_buffer_fee_split, calculate_gross_buffer_accrual,
-    validate_buffer_onyc_vault_accounts, BufferAccrualAccounts, BufferAccruedEvent,
-    BufferErrorCode, BufferState,
+    validate_buffer_onyc_vault_accounts, BufferAccrualAccounts, BufferAccruedEvent, BufferState,
 };
 use crate::instructions::market_info::offer_valuation_utils::get_active_vector_and_current_price;
 use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::token_utils::{
-    mint_tokens, read_optional_token_account_amount, TokenUtilsErrorCode,
+    mint_tokens, read_optional_token_account_amount,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenInterface};
@@ -45,7 +44,7 @@ pub(crate) fn accrue_buffer<'info>(
 ) -> Result<BufferAccrualResult> {
     require!(
         now >= buffer_state.last_accrual_timestamp,
-        BufferErrorCode::InvalidTimestamp
+        crate::OnreError::InvalidTimestamp
     );
 
     let (active_vector, current_nav) = get_active_vector_and_current_price(offer, now as u64)?;
@@ -100,10 +99,10 @@ pub(crate) fn accrue_buffer<'info>(
         if state.max_supply > 0 {
             let new_supply = current_supply_before_mint
                 .checked_add(buffer_mint_amount)
-                .ok_or(BufferErrorCode::MathOverflow)?;
+                .ok_or(crate::OnreError::MathOverflow)?;
             require!(
                 new_supply <= state.max_supply,
-                TokenUtilsErrorCode::MaxSupplyExceeded
+                crate::OnreError::MaxSupplyExceeded
             );
         }
 
@@ -149,10 +148,10 @@ pub(crate) fn accrue_buffer<'info>(
 
     let post_accrual_supply = current_supply_before_mint
         .checked_add(buffer_mint_amount)
-        .ok_or(BufferErrorCode::MathOverflow)?;
+        .ok_or(crate::OnreError::MathOverflow)?;
     let reserve_vault_balance_after_accrual = reserve_vault_balance_before_mint
         .checked_add(fee_split.reserve_mint_amount)
-        .ok_or(BufferErrorCode::MathOverflow)?;
+        .ok_or(crate::OnreError::MathOverflow)?;
 
     buffer_state.performance_fee_high_watermark = fee_split.new_performance_fee_high_watermark;
     set_buffer_baseline_after_supply_change(buffer_state, post_accrual_supply, now);

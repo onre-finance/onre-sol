@@ -14,30 +14,15 @@ use crate::instructions::offer::offer_utils::{
 use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::{
-    execute_token_operations, transfer_tokens, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams,
+    execute_token_operations, get_associated_token_account, get_or_create_associated_token_account,
+    transfer_tokens, u64_to_dec9, ApprovalMessage, EnsureAtaParams, ExecTokenOpsParams,
 };
-use crate::OfferCoreError;
-use anchor_lang::{prelude::*, solana_program::sysvar, Accounts};
+use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
+use solana_instructions_sysvar::ID as INSTRUCTIONS_SYSVAR_ID;
 
 /// Error codes specific to the take_offer_permissionless instruction
-#[error_code]
-pub enum TakeOfferPermissionlessErrorCode {
-    /// The boss account does not match the one stored in program state
-    #[msg("Invalid boss account")]
-    InvalidBoss,
-    /// The program kill switch is activated, preventing offer operations
-    #[msg("Kill switch is activated")]
-    KillSwitchActivated,
-    /// The offer does not allow permissionless operations
-    #[msg("Permissionless take offer not allowed")]
-    PermissionlessNotAllowed,
-    #[msg("Invalid market stats PDA")]
-    InvalidMarketStatsPda,
-    #[msg("Market stats account must be writable")]
-    MarketStatsNotWritable,
-}
 
 /// Event emitted when an offer is successfully executed via permissionless flow
 ///
@@ -82,8 +67,8 @@ pub struct TakeOfferPermissionless<'info> {
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
-        constraint = state.is_killed == false @ TakeOfferPermissionlessErrorCode::KillSwitchActivated,
-        has_one = boss @ TakeOfferPermissionlessErrorCode::InvalidBoss
+        constraint = state.is_killed == false @ crate::OnreError::KillSwitchActivated,
+        has_one = boss @ crate::OnreError::InvalidBoss
     )]
     pub state: Box<Account<'info, State>>,
 
@@ -147,13 +132,9 @@ pub struct TakeOfferPermissionless<'info> {
     ///
     /// Temporary holding account that receives output tokens before forwarding
     /// to user, completing the permissionless routing mechanism.
-    #[account(
-        mut,
-        associated_token::mint = token_out_mint,
-        associated_token::authority = permissionless_authority,
-        associated_token::token_program = token_out_program
-    )]
-    pub permissionless_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// CHECK: Validated in instruction logic against the expected permissionless ATA.
+    #[account(mut)]
+    pub permissionless_token_out_account: UncheckedAccount<'info>,
 
     /// Input token mint account for the exchange
     ///
@@ -191,26 +172,17 @@ pub struct TakeOfferPermissionless<'info> {
     ///
     /// Destination account where the user receives token_out from the exchange.
     /// Created automatically if it doesn't exist using init_if_needed.
-    #[account(
-        init_if_needed,
-        payer = user,
-        associated_token::mint = token_out_mint,
-        associated_token::authority = user,
-        associated_token::token_program = token_out_program
-    )]
-    pub user_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// CHECK: Validated and optionally initialized in instruction logic.
+    #[account(mut)]
+    pub user_token_out_account: UncheckedAccount<'info>,
 
     /// Boss's input token account for receiving payments
     ///
     /// Final destination account where the boss receives token_in payments
     /// from users taking offers via intermediary routing.
-    #[account(
-        mut,
-        associated_token::mint = token_in_mint,
-        associated_token::authority = boss,
-        associated_token::token_program = token_in_program
-    )]
-    pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// CHECK: Validated in instruction logic against the expected boss ATA.
+    #[account(mut)]
+    pub boss_token_in_account: UncheckedAccount<'info>,
 
     /// Program-derived mint authority for direct token minting
     ///
@@ -224,7 +196,6 @@ pub struct TakeOfferPermissionless<'info> {
     /// Required for cryptographic verification of approval messages
     /// when offers require boss approval for execution.
     /// CHECK: Validated through address constraint to instructions sysvar
-    #[account(address = sysvar::instructions::id())]
     pub instructions_sysvar: UncheckedAccount<'info>,
 
     /// The user executing the offer and paying for account creation
@@ -254,8 +225,8 @@ pub struct TakeOfferPermissionlessV2<'info> {
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
-        constraint = state.is_killed == false @ TakeOfferPermissionlessErrorCode::KillSwitchActivated,
-        has_one = boss @ TakeOfferPermissionlessErrorCode::InvalidBoss
+        constraint = state.is_killed == false @ crate::OnreError::KillSwitchActivated,
+        has_one = boss @ crate::OnreError::InvalidBoss
     )]
     pub state: Box<Account<'info, State>>,
 
@@ -291,13 +262,9 @@ pub struct TakeOfferPermissionlessV2<'info> {
     )]
     pub permissionless_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(
-        mut,
-        associated_token::mint = token_out_mint,
-        associated_token::authority = permissionless_authority,
-        associated_token::token_program = token_out_program
-    )]
-    pub permissionless_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// CHECK: Validated in instruction logic against the expected permissionless ATA.
+    #[account(mut)]
+    pub permissionless_token_out_account: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
@@ -315,22 +282,13 @@ pub struct TakeOfferPermissionlessV2<'info> {
     )]
     pub user_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(
-        init_if_needed,
-        payer = user,
-        associated_token::mint = token_out_mint,
-        associated_token::authority = user,
-        associated_token::token_program = token_out_program
-    )]
-    pub user_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// CHECK: Validated and optionally initialized in instruction logic.
+    #[account(mut)]
+    pub user_token_out_account: UncheckedAccount<'info>,
 
-    #[account(
-        mut,
-        associated_token::mint = token_in_mint,
-        associated_token::authority = boss,
-        associated_token::token_program = token_in_program
-    )]
-    pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// CHECK: Validated in instruction logic against the expected boss ATA.
+    #[account(mut)]
+    pub boss_token_in_account: UncheckedAccount<'info>,
 
     /// CHECK: PDA derivation is validated by explicit key check in the handler
     pub mint_authority: UncheckedAccount<'info>,
@@ -341,7 +299,6 @@ pub struct TakeOfferPermissionlessV2<'info> {
     pub market_stats: UncheckedAccount<'info>,
 
     /// CHECK: Validated through address constraint to instructions sysvar
-    #[account(address = sysvar::instructions::id())]
     pub instructions_sysvar: UncheckedAccount<'info>,
 
     #[account(mut)]
@@ -387,11 +344,38 @@ pub struct TakeOfferPermissionlessV2<'info> {
 /// # Events
 /// * `TakeOfferPermissionlessEvent` - Emitted with execution details and routing information
 #[inline(never)]
-pub fn take_offer_permissionless(
-    ctx: Context<TakeOfferPermissionless>,
+pub fn take_offer_permissionless<'info>(
+    ctx: Context<'info, TakeOfferPermissionless<'info>>,
     token_in_amount: u64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
+    let boss_token_in_account = get_associated_token_account(
+        &ctx.accounts.boss_token_in_account,
+        &ctx.accounts.boss.key(),
+        &ctx.accounts.token_in_mint.key(),
+        &ctx.accounts.token_in_program.key(),
+        crate::OnreError::InvalidBossTokenInAccount,
+    )?;
+    let permissionless_token_out_account = get_associated_token_account(
+        &ctx.accounts.permissionless_token_out_account,
+        &ctx.accounts.permissionless_authority.key(),
+        &ctx.accounts.token_out_mint.key(),
+        &ctx.accounts.token_out_program.key(),
+        crate::OnreError::InvalidPermissionlessTokenOutAccount,
+    )?;
+    let user_token_out_account = get_or_create_associated_token_account(EnsureAtaParams {
+        ata_account: &ctx.accounts.user_token_out_account,
+        payer: ctx.accounts.user.to_account_info(),
+        authority_account: ctx.accounts.user.to_account_info(),
+        mint_account: ctx.accounts.token_out_mint.to_account_info(),
+        token_program: ctx.accounts.token_out_program.to_account_info(),
+        associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
+        system_program: ctx.accounts.system_program.to_account_info(),
+        authority: ctx.accounts.user.key(),
+        mint: ctx.accounts.token_out_mint.key(),
+        token_program_id: ctx.accounts.token_out_program.key(),
+        invalid_account_error: crate::OnreError::InvalidUserTokenOutAccount,
+    })?;
     execute_take_offer_permissionless(
         ctx.program_id,
         &ctx.accounts.offer,
@@ -406,13 +390,13 @@ pub fn take_offer_permissionless(
         &ctx.accounts.user_token_in_account,
         &ctx.accounts.permissionless_token_in_account,
         &ctx.accounts.permissionless_authority,
-        &ctx.accounts.boss_token_in_account,
+        &boss_token_in_account,
         &ctx.accounts.vault_token_in_account,
         &ctx.accounts.vault_authority,
         &ctx.accounts.token_out_program,
         &ctx.accounts.vault_token_out_account,
-        &ctx.accounts.permissionless_token_out_account,
-        &ctx.accounts.user_token_out_account,
+        &permissionless_token_out_account,
+        &user_token_out_account,
         &ctx.accounts.mint_authority,
         None,
         None,
@@ -422,11 +406,38 @@ pub fn take_offer_permissionless(
 }
 
 #[inline(never)]
-pub fn take_offer_permissionless_v2(
-    ctx: Context<TakeOfferPermissionlessV2>,
+pub fn take_offer_permissionless_v2<'info>(
+    ctx: Context<'info, TakeOfferPermissionlessV2<'info>>,
     token_in_amount: u64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
+    let boss_token_in_account = get_associated_token_account(
+        &ctx.accounts.boss_token_in_account,
+        &ctx.accounts.boss.key(),
+        &ctx.accounts.token_in_mint.key(),
+        &ctx.accounts.token_in_program.key(),
+        crate::OnreError::InvalidBossTokenInAccount,
+    )?;
+    let permissionless_token_out_account = get_associated_token_account(
+        &ctx.accounts.permissionless_token_out_account,
+        &ctx.accounts.permissionless_authority.key(),
+        &ctx.accounts.token_out_mint.key(),
+        &ctx.accounts.token_out_program.key(),
+        crate::OnreError::InvalidPermissionlessTokenOutAccount,
+    )?;
+    let user_token_out_account = get_or_create_associated_token_account(EnsureAtaParams {
+        ata_account: &ctx.accounts.user_token_out_account,
+        payer: ctx.accounts.user.to_account_info(),
+        authority_account: ctx.accounts.user.to_account_info(),
+        mint_account: ctx.accounts.token_out_mint.to_account_info(),
+        token_program: ctx.accounts.token_out_program.to_account_info(),
+        associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
+        system_program: ctx.accounts.system_program.to_account_info(),
+        authority: ctx.accounts.user.key(),
+        mint: ctx.accounts.token_out_mint.key(),
+        token_program_id: ctx.accounts.token_out_program.key(),
+        invalid_account_error: crate::OnreError::InvalidUserTokenOutAccount,
+    })?;
     execute_take_offer_permissionless(
         ctx.program_id,
         &ctx.accounts.offer,
@@ -441,13 +452,13 @@ pub fn take_offer_permissionless_v2(
         &ctx.accounts.user_token_in_account,
         &ctx.accounts.permissionless_token_in_account,
         &ctx.accounts.permissionless_authority,
-        &ctx.accounts.boss_token_in_account,
+        &boss_token_in_account,
         &ctx.accounts.vault_token_in_account,
         &ctx.accounts.vault_authority,
         &ctx.accounts.token_out_program,
         &ctx.accounts.vault_token_out_account,
-        &ctx.accounts.permissionless_token_out_account,
-        &ctx.accounts.user_token_out_account,
+        &permissionless_token_out_account,
+        &user_token_out_account,
         &ctx.accounts.mint_authority,
         Some(&ctx.accounts.buffer_accounts),
         Some(&ctx.accounts.market_stats),
@@ -483,6 +494,11 @@ fn execute_take_offer_permissionless<'info>(
     main_offer_account: Option<&UncheckedAccount<'info>>,
     system_program: &Program<'info, System>,
 ) -> Result<()> {
+    require_keys_eq!(
+        INSTRUCTIONS_SYSVAR_ID,
+        instructions_sysvar.key(),
+        crate::OnreError::InvalidInstructionsSysvar
+    );
     let (va, va_bump) = Pubkey::find_program_address(&[seeds::OFFER_VAULT_AUTHORITY], program_id);
     require_keys_eq!(va, vault_authority.key());
     let (pa, pa_bump) =
@@ -497,17 +513,17 @@ fn execute_take_offer_permissionless<'info>(
     require_keys_eq!(
         offer.token_in_mint,
         token_in_mint.key(),
-        OfferCoreError::InvalidTokenInMint
+        crate::OnreError::InvalidTokenInMint
     );
     require_keys_eq!(
         offer.token_out_mint,
         token_out_mint.key(),
-        OfferCoreError::InvalidTokenOutMint
+        crate::OnreError::InvalidTokenOutMint
     );
     // Validate if offer allows permissionless access
     require!(
         offer.allow_permissionless(),
-        TakeOfferPermissionlessErrorCode::PermissionlessNotAllowed
+        crate::OnreError::PermissionlessNotAllowed
     );
 
     // Verify approval if needed
@@ -605,7 +621,7 @@ fn execute_take_offer_permissionless<'info>(
         let post_offer_supply = accrual
             .post_accrual_supply
             .checked_add(result.token_out_amount)
-            .ok_or(OfferCoreError::OverflowError)?;
+            .ok_or(crate::OnreError::OverflowError)?;
         store_buffer_post_supply(
             buffer_accounts.expect("accrual implies buffer accounts"),
             post_offer_supply,
@@ -627,11 +643,11 @@ fn execute_take_offer_permissionless<'info>(
             require_keys_eq!(
                 market_stats_pda,
                 market_stats.key(),
-                TakeOfferPermissionlessErrorCode::InvalidMarketStatsPda
+                crate::OnreError::InvalidMarketStatsPda
             );
             require!(
                 market_stats.is_writable,
-                TakeOfferPermissionlessErrorCode::MarketStatsNotWritable
+                crate::OnreError::MarketStatsNotWritable
             );
             token_out_mint.reload()?;
             refresh_market_stats_pda(

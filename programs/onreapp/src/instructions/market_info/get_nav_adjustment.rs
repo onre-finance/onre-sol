@@ -2,7 +2,6 @@ use crate::constants::seeds;
 use crate::instructions::market_info::offer_valuation_utils::get_nav_adjustment_snapshot;
 use crate::instructions::offer::offer_utils::find_active_vector_at;
 use crate::instructions::Offer;
-use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::Mint;
@@ -49,7 +48,7 @@ pub struct GetNavAdjustment<'info> {
     #[account(
         constraint =
             token_in_mint.key() == offer.load()?.token_in_mint
-            @ OfferCoreError::InvalidTokenInMint
+            @ crate::OnreError::InvalidTokenInMint
     )]
     pub token_in_mint: InterfaceAccount<'info, Mint>,
 
@@ -57,7 +56,7 @@ pub struct GetNavAdjustment<'info> {
     #[account(
         constraint =
             token_out_mint.key() == offer.load()?.token_out_mint
-            @ OfferCoreError::InvalidTokenOutMint
+            @ crate::OnreError::InvalidTokenOutMint
     )]
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 }
@@ -78,7 +77,7 @@ pub struct GetNavAdjustment<'info> {
 ///
 /// # Returns
 /// * `Ok(adjustment)` - Signed price adjustment with scale=9 (positive = price increase)
-/// * `Err(OfferCoreError::NoActiveVector)` - If no pricing vector is currently active
+/// * `Err(crate::OnreError::NoActiveVector)` - If no pricing vector is currently active
 ///
 /// # Events
 /// * `GetNavAdjustmentEvent` - Emitted with prices, adjustment, and timestamp

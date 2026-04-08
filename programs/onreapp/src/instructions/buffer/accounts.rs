@@ -1,5 +1,5 @@
 use crate::constants::seeds;
-use crate::instructions::buffer::{BufferErrorCode, BufferState};
+use crate::instructions::buffer::{BufferState};
 use crate::utils::{load_pda_account, store_pda_account};
 use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
@@ -31,7 +31,7 @@ impl<'info> BufferAccrualAccounts<'info> {
         require_keys_eq!(
             self.buffer_state.key(),
             expected_buffer_state,
-            BufferErrorCode::InvalidBufferStateAccount
+            crate::OnreError::InvalidBufferStateAccount
         );
 
         if self.buffer_state.owner != program_id || self.buffer_state.data_is_empty() {
@@ -46,8 +46,8 @@ impl<'info> BufferAccrualAccounts<'info> {
         load_pda_account(
             &self.buffer_state,
             &crate::ID,
-            BufferErrorCode::InvalidOnycMint.into(),
-            BufferErrorCode::InvalidOnycMint.into(),
+            crate::OnreError::InvalidOnycMint.into(),
+            crate::OnreError::InvalidOnycMint.into(),
         )
     }
 
@@ -100,22 +100,22 @@ pub fn validate_buffer_onyc_vault_accounts<'info>(
     require_keys_eq!(
         buffer_state.onyc_mint,
         onyc_mint.key(),
-        BufferErrorCode::InvalidOnycMint
+        crate::OnreError::InvalidOnycMint
     );
     require_keys_eq!(
         reserve_vault_onyc_account.key(),
         expected_reserve_vault_onyc_account,
-        BufferErrorCode::InvalidOnycMint
+        crate::OnreError::InvalidOnycMint
     );
     require_keys_eq!(
         management_fee_vault_onyc_account.key(),
         expected_management_fee_vault_onyc_account,
-        BufferErrorCode::InvalidOnycMint
+        crate::OnreError::InvalidOnycMint
     );
     require_keys_eq!(
         performance_fee_vault_onyc_account.key(),
         expected_performance_fee_vault_onyc_account,
-        BufferErrorCode::InvalidOnycMint
+        crate::OnreError::InvalidOnycMint
     );
 
     Ok(())
@@ -125,7 +125,6 @@ pub fn validate_buffer_onyc_vault_accounts<'info>(
 mod tests {
     use super::*;
     use anchor_lang::error::Error;
-    use solana_program::clock::Epoch;
 
     fn unchecked_account_with_owner(
         key: Pubkey,
@@ -137,14 +136,7 @@ mod tests {
         let key_ref = Box::leak(Box::new(key));
         let owner_ref = Box::leak(Box::new(owner));
         let account_info = Box::leak(Box::new(AccountInfo::new(
-            key_ref,
-            false,
-            false,
-            lamports,
-            data,
-            owner_ref,
-            false,
-            Epoch::default(),
+            key_ref, false, false, lamports, data, owner_ref, false,
         )));
 
         UncheckedAccount::try_from(account_info)
@@ -175,7 +167,7 @@ mod tests {
         match err {
             Error::AnchorError(anchor_err) => assert_eq!(
                 anchor_err.error_code_number,
-                u32::from(BufferErrorCode::InvalidBufferStateAccount)
+                u32::from(crate::OnreError::InvalidBufferStateAccount)
             ),
             other => panic!("unexpected error variant: {other:?}"),
         }

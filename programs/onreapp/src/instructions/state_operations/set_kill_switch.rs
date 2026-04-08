@@ -47,8 +47,8 @@ pub struct SetKillSwitch<'info> {
 ///
 /// # Returns
 /// * `Ok(())` - If the kill switch state is successfully updated
-/// * `Err(ErrorCode::UnauthorizedToEnable)` - If non-authorized user tries to enable
-/// * `Err(ErrorCode::OnlyBossCanDisable)` - If non-boss user tries to disable
+/// * `Err(crate::OnreError::UnauthorizedToEnable)` - If non-authorized user tries to enable
+/// * `Err(crate::OnreError::OnlyBossCanDisable)` - If non-boss user tries to disable
 ///
 /// # Access Control
 /// - Enable: Boss or any admin can activate the kill switch
@@ -66,10 +66,10 @@ pub fn set_kill_switch(ctx: Context<SetKillSwitch>, enable: bool) -> Result<()> 
     let admin_signed = state.admins.contains(signer.key) && signer.is_signer;
 
     if enable {
-        require!(boss_signed || admin_signed, ErrorCode::UnauthorizedToEnable);
+        require!(boss_signed || admin_signed, crate::OnreError::UnauthorizedToEnable);
         state.is_killed = true;
     } else {
-        require!(boss_signed, ErrorCode::OnlyBossCanDisable);
+        require!(boss_signed, crate::OnreError::OnlyBossCanDisable);
         state.is_killed = false;
     }
 
@@ -81,13 +81,4 @@ pub fn set_kill_switch(ctx: Context<SetKillSwitch>, enable: bool) -> Result<()> 
     Ok(())
 }
 
-/// Error codes for kill switch operations
-#[error_code]
-pub enum ErrorCode {
-    /// Only the boss has authority to disable the kill switch
-    #[msg("Only boss can disable the kill switch")]
-    OnlyBossCanDisable,
-    /// Signer is neither boss nor admin and cannot enable the kill switch
-    #[msg("Unauthorized to enable the kill switch")]
-    UnauthorizedToEnable,
-}
+// Error codes for kill switch operations

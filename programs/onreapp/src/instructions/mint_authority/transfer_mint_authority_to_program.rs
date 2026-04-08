@@ -16,13 +16,7 @@ use anchor_spl::token_interface::{Mint, TokenInterface};
 /// - Boss must be the current mint authority for the token
 /// - Authority can be recovered using `transfer_mint_authority_to_boss`
 
-/// Error codes for mint authority transfer to program operations
-#[error_code]
-pub enum TransferMintAuthorityToProgramErrorCode {
-    /// The boss is not the current mint authority for the specified token
-    #[msg("Boss must be the current mint authority")]
-    BossNotMintAuthority,
-}
+// Error codes for mint authority transfer to program operations
 
 /// Event emitted when mint authority is successfully transferred from boss to program PDA
 ///
@@ -59,7 +53,7 @@ pub struct TransferMintAuthorityToProgram<'info> {
     /// the program PDA will be able to mint tokens programmatically.
     #[account(
         mut,
-        constraint = mint.mint_authority.unwrap() == boss.key() @ TransferMintAuthorityToProgramErrorCode::BossNotMintAuthority
+        constraint = mint.mint_authority.unwrap() == boss.key() @ crate::OnreError::BossNotMintAuthority
     )]
     pub mint: InterfaceAccount<'info, Mint>,
 
@@ -92,7 +86,7 @@ pub struct TransferMintAuthorityToProgram<'info> {
 ///
 /// # Returns
 /// * `Ok(())` - If authority transfer completes successfully
-/// * `Err(TransferMintAuthorityToProgramErrorCode::BossNotMintAuthority)` - If boss doesn't hold authority
+/// * `Err(crate::OnreError::BossNotMintAuthority)` - If boss doesn't hold authority
 /// * `Err(_)` - If SPL Token authority transfer fails
 ///
 /// # Access Control
@@ -110,7 +104,7 @@ pub fn transfer_mint_authority_to_program(
     // Transfer mint authority from boss to program PDA using SPL Token
     set_authority(
         CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.token_program.key(),
             SetAuthority {
                 current_authority: ctx.accounts.boss.to_account_info(),
                 account_or_mint: ctx.accounts.mint.to_account_info(),

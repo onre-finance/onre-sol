@@ -1,6 +1,6 @@
 use crate::constants::seeds;
 use crate::instructions::buffer::{
-    withdraw_fee_tokens, BufferErrorCode, BufferState, FeeKind, PerformanceFeesWithdrawnEvent,
+    withdraw_fee_tokens, BufferState, FeeKind, PerformanceFeesWithdrawnEvent,
 };
 use crate::state::State;
 use anchor_lang::prelude::*;
@@ -30,7 +30,7 @@ pub struct WithdrawPerformanceFees<'info> {
     pub performance_fee_vault_authority: UncheckedAccount<'info>,
 
     /// CHECK: must match configured performance fee wallet
-    #[account(address = buffer_state.performance_fee_wallet @ BufferErrorCode::InvalidFeeRecipient)]
+    #[account(address = buffer_state.performance_fee_wallet @ crate::OnreError::InvalidFeeRecipient)]
     pub performance_fee_recipient: UncheckedAccount<'info>,
 
     #[account(mut)]
@@ -65,7 +65,7 @@ pub fn withdraw_performance_fees(ctx: Context<WithdrawPerformanceFees>, amount: 
     require_keys_eq!(
         ctx.accounts.performance_fee_recipient_onyc_account.owner,
         ctx.accounts.performance_fee_recipient.key(),
-        BufferErrorCode::InvalidFeeRecipient
+        crate::OnreError::InvalidFeeRecipient
     );
 
     withdraw_fee_tokens(
