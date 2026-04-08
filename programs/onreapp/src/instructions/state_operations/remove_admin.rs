@@ -47,7 +47,7 @@ pub struct RemoveAdmin<'info> {
 ///
 /// # Returns
 /// * `Ok(())` - If the admin is successfully removed
-/// * `Err(RemoveAdminErrorCode::AdminNotFound)` - If the account is not in the admin list
+/// * `Err(crate::OnreError::AdminNotFound)` - If the account is not in the admin list
 ///
 /// # Access Control
 /// - Only the boss can call this instruction
@@ -75,13 +75,7 @@ pub fn remove_admin(ctx: Context<RemoveAdmin>, admin_to_remove: Pubkey) -> Resul
     }
 
     // If we get here, admin was not found
-    Err(RemoveAdminErrorCode::AdminNotFound.into())
+    Err(crate::OnreError::AdminNotFound.into())
 }
 
-/// Error codes for remove admin operations
-#[error_code]
-pub enum RemoveAdminErrorCode {
-    /// The specified account is not present in the admin list
-    #[msg("Admin not found in the admin list")]
-    AdminNotFound,
-}
+// Error codes for remove admin operations

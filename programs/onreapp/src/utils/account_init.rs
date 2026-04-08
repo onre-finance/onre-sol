@@ -31,7 +31,7 @@ where
         let rent_lamports = Rent::get()?.minimum_balance(T::init_space());
         system_program::create_account(
             CpiContext::new_with_signer(
-                system_program_account.clone(),
+                system_program_account.key(),
                 system_program::CreateAccount {
                     from: payer.clone(),
                     to: account.clone(),

@@ -23,17 +23,6 @@ pub struct AddApprover<'info> {
     pub boss: Signer<'info>,
 }
 
-#[error_code]
-pub enum AddApproverError {
-    /// Both approver slots are already filled
-    #[msg("Both approver slots are already filled")]
-    BothApproversFilled,
-    #[msg("Invalid approver")]
-    InvalidApprover,
-    #[msg("Approver already exists")]
-    ApproverAlreadyExists,
-}
-
 /// Adds a trusted authority for cryptographic approval verification
 ///
 /// This instruction allows the boss to add an approver to one of the two available
@@ -46,7 +35,7 @@ pub enum AddApproverError {
 ///
 /// # Returns
 /// * `Ok(())` - Successfully added approver to an empty slot
-/// * `Err(AddApproverError::BothApproversFilled)` - Both approver slots are already filled
+/// * `Err(crate::OnreError::BothApproversFilled)` - Both approver slots are already filled
 ///
 /// # Access Control
 /// - Only the boss can call this instruction
@@ -60,11 +49,11 @@ pub fn add_approver(ctx: Context<AddApprover>, approver: Pubkey) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
     if approver == Pubkey::default() {
-        return Err(error!(AddApproverError::InvalidApprover));
+        return Err(error!(crate::OnreError::InvalidApprover));
     }
 
     if state.approver1 == approver || state.approver2 == approver {
-        return Err(error!(AddApproverError::ApproverAlreadyExists));
+        return Err(error!(crate::OnreError::ApproverAlreadyExists));
     }
 
     // Check if approver1 is empty (default pubkey)
@@ -92,5 +81,5 @@ pub fn add_approver(ctx: Context<AddApprover>, approver: Pubkey) -> Result<()> {
     }
 
     // Both slots are filled
-    Err(error!(AddApproverError::BothApproversFilled))
+    Err(error!(crate::OnreError::BothApproversFilled))
 }

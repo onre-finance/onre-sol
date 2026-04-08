@@ -79,7 +79,7 @@ pub fn close_state(ctx: Context<CloseState>) -> Result<()> {
     require_keys_eq!(
         *state.owner,
         crate::ID,
-        CloseStateErrorCode::InvalidStateOwner
+        crate::OnreError::InvalidStateOwner
     );
 
     // 1) Validate PDA address from seeds
@@ -87,7 +87,7 @@ pub fn close_state(ctx: Context<CloseState>) -> Result<()> {
     require_keys_eq!(
         state.key(),
         expected_state_pda,
-        CloseStateErrorCode::InvalidStatePda
+        crate::OnreError::InvalidStatePda
     );
 
     // 2) Read the stored boss pubkey from raw bytes (no deserialize),
@@ -95,12 +95,12 @@ pub fn close_state(ctx: Context<CloseState>) -> Result<()> {
     //    Layout: [8-byte discriminator][32-byte boss][...]
     let stored_boss = {
         let data = state.try_borrow_data()?;
-        require!(data.len() >= 40, CloseStateErrorCode::InvalidStateData);
+        require!(data.len() >= 40, crate::OnreError::InvalidStateData);
 
         // bytes 8..40 -> boss pubkey
         let arr: [u8; 32] = data[8..40]
             .try_into()
-            .map_err(|_| error!(CloseStateErrorCode::InvalidStateData))?;
+            .map_err(|_| error!(crate::OnreError::InvalidStateData))?;
         Pubkey::new_from_array(arr)
     };
 
@@ -110,7 +110,7 @@ pub fn close_state(ctx: Context<CloseState>) -> Result<()> {
     require_keys_eq!(
         boss.key(),
         stored_boss,
-        CloseStateErrorCode::UnauthorizedSigner
+        crate::OnreError::UnauthorizedSigner
     );
 
     // 4) Drain lamports safely (checked math), then zero the source.
@@ -120,7 +120,7 @@ pub fn close_state(ctx: Context<CloseState>) -> Result<()> {
     let boss_lamports_before = boss.lamports();
     let boss_lamport_after = boss_lamports_before
         .checked_add(state_lamports)
-        .ok_or_else(|| error!(CloseStateErrorCode::LamportOverflow))?;
+        .ok_or_else(|| error!(crate::OnreError::LamportOverflow))?;
     **boss.try_borrow_mut_lamports()? = boss_lamport_after;
     **state.try_borrow_mut_lamports()? = 0;
 
@@ -137,22 +137,4 @@ pub fn close_state(ctx: Context<CloseState>) -> Result<()> {
     Ok(())
 }
 
-/// Error codes for close state operations
-#[error_code]
-pub enum CloseStateErrorCode {
-    /// State account is not owned by this program
-    #[msg("State account must be owned by this program")]
-    InvalidStateOwner,
-    /// State account is not the expected PDA
-    #[msg("Invalid state PDA")]
-    InvalidStatePda,
-    /// State account data is invalid or too short
-    #[msg("Invalid state account data")]
-    InvalidStateData,
-    /// Signer is not the boss stored in state
-    #[msg("Only the boss can close the state")]
-    UnauthorizedSigner,
-    /// Lamport arithmetic overflow
-    #[msg("Lamport overflow")]
-    LamportOverflow,
-}
+// Error codes for close state operations

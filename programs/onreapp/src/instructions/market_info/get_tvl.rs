@@ -4,7 +4,6 @@ use crate::instructions::market_info::market_stats::{
 };
 use crate::instructions::market_info::offer_valuation_utils::get_active_vector_and_current_price;
 use crate::instructions::Offer;
-use crate::OfferCoreError;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 
 use crate::utils::read_optional_token_account_amount;
@@ -12,16 +11,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::{Mint, TokenInterface};
 
-/// Error codes for TVL calculation operations
-#[error_code]
-pub enum GetTVLErrorCode {
-    /// Mathematical overflow during TVL calculations
-    #[msg("Math overflow")]
-    Overflow,
-    /// The vault account address doesn't match the expected ATA address
-    #[msg("Invalid token_out vault account")]
-    InvalidVaultAccount,
-}
+// Error codes for TVL calculation operations
 
 /// Event emitted when TVL (Total Value Locked) calculation is completed
 ///
@@ -65,7 +55,7 @@ pub struct GetTVL<'info> {
     #[account(
         constraint =
             token_in_mint.key() == offer.load()?.token_in_mint
-            @ OfferCoreError::InvalidTokenInMint
+            @ crate::OnreError::InvalidTokenInMint
     )]
     pub token_in_mint: InterfaceAccount<'info, Mint>,
 
@@ -73,7 +63,7 @@ pub struct GetTVL<'info> {
     #[account(
         constraint =
             token_out_mint.key() == offer.load()?.token_out_mint
-            @ OfferCoreError::InvalidTokenOutMint
+            @ crate::OnreError::InvalidTokenOutMint
     )]
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 
@@ -94,7 +84,7 @@ pub struct GetTVL<'info> {
                 &vault_authority.key(),
                 &token_out_mint.key(),
                 &token_out_program.key(),
-            ) @ GetTVLErrorCode::InvalidVaultAccount
+            ) @ crate::OnreError::InvalidVaultAccount
     )]
     pub vault_token_out_account: UncheckedAccount<'info>,
 
@@ -118,9 +108,9 @@ pub struct GetTVL<'info> {
 ///
 /// # Returns
 /// * `Ok(tvl)` - The calculated TVL in base units
-/// * `Err(OfferCoreError::NoActiveVector)` - If no pricing vector is currently active
-/// * `Err(GetTVLErrorCode::Overflow)` - If mathematical overflow occurs during calculation
-/// * `Err(GetTVLErrorCode::InvalidVaultAccount)` - If vault account validation fails
+/// * `Err(crate::OnreError::NoActiveVector)` - If no pricing vector is currently active
+/// * `Err(crate::OnreError::Overflow)` - If mathematical overflow occurs during calculation
+/// * `Err(crate::OnreError::InvalidVaultAccount)` - If vault account validation fails
 ///
 /// # Events
 /// * `GetTVLEvent` - Emitted with TVL, price, supply, and timestamp details
@@ -142,7 +132,7 @@ pub fn get_tvl(ctx: Context<GetTVL>) -> Result<u64> {
     // Calculate TVL = supply * price
     // Both supply and price should be compatible for multiplication
     let tvl = calculate_shared_tvl(token_supply, current_price)
-        .map_err(|_| error!(GetTVLErrorCode::Overflow))?;
+        .map_err(|_| error!(crate::OnreError::Overflow))?;
 
     msg!(
         "TVL Info - Offer PDA: {}, TVL: {}, Current Price: {}, Token Supply: {}, Timestamp: {}",

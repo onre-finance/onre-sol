@@ -1,6 +1,5 @@
 use crate::instructions::offer::offer_utils::{calculate_step_price_at, find_active_vector_at};
 use crate::instructions::{Offer, OfferVector};
-use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 
 pub struct OfferValuationSnapshot {
@@ -66,9 +65,9 @@ pub fn compute_signed_price_delta(current_price: u64, previous_price: u64) -> Re
     let previous = previous_price as i128;
     let delta = current
         .checked_sub(previous)
-        .ok_or(OfferCoreError::OverflowError)?;
+        .ok_or(crate::OnreError::OverflowError)?;
 
-    i64::try_from(delta).map_err(|_| error!(OfferCoreError::OverflowError))
+    i64::try_from(delta).map_err(|_| error!(crate::OnreError::OverflowError))
 }
 
 pub fn get_nav_adjustment_snapshot(
@@ -85,7 +84,7 @@ pub fn get_nav_adjustment_snapshot(
             (Some(previous_price), adjustment)
         } else {
             let adjustment =
-                i64::try_from(current_price).map_err(|_| error!(OfferCoreError::OverflowError))?;
+                i64::try_from(current_price).map_err(|_| error!(crate::OnreError::OverflowError))?;
             (None, adjustment)
         };
 
@@ -108,9 +107,9 @@ fn compute_next_price_change_timestamp(
         .checked_add(
             (current_step + 1)
                 .checked_mul(active_vector.price_fix_duration)
-                .ok_or(OfferCoreError::OverflowError)?,
+                .ok_or(crate::OnreError::OverflowError)?,
         )
-        .ok_or(OfferCoreError::OverflowError)?;
+        .ok_or(crate::OnreError::OverflowError)?;
 
     Ok(match find_next_vector_after(offer, current_time) {
         Some(vector) => next_interval_timestamp.min(vector.start_time),

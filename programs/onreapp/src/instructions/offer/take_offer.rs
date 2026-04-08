@@ -7,33 +7,24 @@ use crate::instructions::buffer::{
     accrue_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
     BufferAccrualAccounts,
 };
-use crate::instructions::market_info::{load_main_offer, refresh_market_stats_typed};
+use crate::instructions::market_info::{load_main_offer, refresh_market_stats_pda};
 use crate::instructions::offer::offer_utils::{
     is_onyc_token_out_mint, process_offer_core, should_accrue_onyc_mint, verify_offer_approval,
 };
 use crate::instructions::Offer;
-use crate::state::{MarketStats, State};
-use crate::utils::{execute_token_operations, u64_to_dec9, ApprovalMessage, ExecTokenOpsParams};
-use crate::OfferCoreError;
-use anchor_lang::{prelude::*, solana_program::sysvar, Accounts};
+use crate::state::State;
+use crate::utils::{
+    execute_token_operations, get_or_create_associated_token_account, u64_to_dec9, ApprovalMessage,
+    EnsureAtaParams, ExecTokenOpsParams,
+};
+use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::{
     associated_token::AssociatedToken,
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
+use solana_instructions_sysvar::ID as INSTRUCTIONS_SYSVAR_ID;
 
 /// Error codes specific to the take_offer instruction
-#[error_code]
-pub enum TakeOfferErrorCode {
-    /// The boss account does not match the one stored in program state
-    #[msg("Invalid boss account")]
-    InvalidBoss,
-    /// Arithmetic overflow occurred during calculations
-    #[msg("Math overflow")]
-    MathOverflow,
-    /// The program kill switch is activated, preventing offer operations
-    #[msg("Kill switch is activated")]
-    KillSwitchActivated,
-}
 
 /// Event emitted when an offer is successfully taken
 ///
@@ -78,8 +69,8 @@ pub struct TakeOffer<'info> {
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
-        has_one = boss @ TakeOfferErrorCode::InvalidBoss,
-        constraint = state.is_killed == false @ TakeOfferErrorCode::KillSwitchActivated
+        has_one = boss @ crate::OnreError::InvalidBoss,
+        constraint = state.is_killed == false @ crate::OnreError::KillSwitchActivated
     )]
     pub state: Box<Account<'info, State>>,
 
@@ -94,10 +85,6 @@ pub struct TakeOffer<'info> {
     /// This PDA manages token transfers and burning operations for the
     /// burn/mint architecture when program has mint authority.
     /// CHECK: PDA derivation is validated by seeds constraint
-    #[account(
-        seeds = [seeds::OFFER_VAULT_AUTHORITY],
-        bump
-    )]
     pub vault_authority: UncheckedAccount<'info>,
 
     /// Vault account for temporary token_in storage during burn operations
@@ -132,7 +119,7 @@ pub struct TakeOffer<'info> {
         mut,
         constraint =
             token_in_mint.key() == offer.load()?.token_in_mint
-            @ OfferCoreError::InvalidTokenInMint
+            @ crate::OnreError::InvalidTokenInMint
     )]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
 
@@ -147,7 +134,7 @@ pub struct TakeOffer<'info> {
         mut,
         constraint =
             token_out_mint.key() == offer.load()?.token_out_mint
-            @ OfferCoreError::InvalidTokenOutMint
+            @ crate::OnreError::InvalidTokenOutMint
     )]
     pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
 
@@ -196,10 +183,6 @@ pub struct TakeOffer<'info> {
     /// Used when the program has mint authority and can mint token_out
     /// directly to users instead of transferring from vault.
     /// CHECK: PDA derivation is validated through seeds constraint
-    #[account(
-        seeds = [seeds::MINT_AUTHORITY],
-        bump
-    )]
     pub mint_authority: UncheckedAccount<'info>,
 
     /// Instructions sysvar for approval signature verification
@@ -207,7 +190,6 @@ pub struct TakeOffer<'info> {
     /// Required for cryptographic verification of approval messages
     /// when offers require boss approval for execution.
     /// CHECK: Validated through address constraint to instructions sysvar
-    #[account(address = sysvar::instructions::id())]
     pub instructions_sysvar: UncheckedAccount<'info>,
 
     /// The user executing the offer and paying for account creation
@@ -237,8 +219,8 @@ pub struct TakeOfferV2<'info> {
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
-        has_one = boss @ TakeOfferErrorCode::InvalidBoss,
-        constraint = state.is_killed == false @ TakeOfferErrorCode::KillSwitchActivated
+        has_one = boss @ crate::OnreError::InvalidBoss,
+        constraint = state.is_killed == false @ crate::OnreError::KillSwitchActivated
     )]
     pub state: Box<Account<'info, State>>,
 
@@ -246,10 +228,6 @@ pub struct TakeOfferV2<'info> {
     pub boss: UncheckedAccount<'info>,
 
     /// CHECK: PDA derivation is validated by seeds constraint
-    #[account(
-        seeds = [seeds::OFFER_VAULT_AUTHORITY],
-        bump
-    )]
     pub vault_authority: UncheckedAccount<'info>,
 
     #[account(
@@ -272,7 +250,7 @@ pub struct TakeOfferV2<'info> {
         mut,
         constraint =
             token_in_mint.key() == offer.load()?.token_in_mint
-            @ OfferCoreError::InvalidTokenInMint
+            @ crate::OnreError::InvalidTokenInMint
     )]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
 
@@ -282,7 +260,7 @@ pub struct TakeOfferV2<'info> {
         mut,
         constraint =
             token_out_mint.key() == offer.load()?.token_out_mint
-            @ OfferCoreError::InvalidTokenOutMint
+            @ crate::OnreError::InvalidTokenOutMint
     )]
     pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
 
@@ -296,14 +274,9 @@ pub struct TakeOfferV2<'info> {
     )]
     pub user_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(
-        init_if_needed,
-        payer = user,
-        associated_token::mint = token_out_mint,
-        associated_token::authority = user,
-        associated_token::token_program = token_out_program
-    )]
-    pub user_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// CHECK: Validated and optionally initialized in instruction logic.
+    #[account(mut)]
+    pub user_token_out_account: UncheckedAccount<'info>,
 
     #[account(
         mut,
@@ -314,25 +287,15 @@ pub struct TakeOfferV2<'info> {
     pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// CHECK: PDA derivation is validated through seeds constraint
-    #[account(
-        seeds = [seeds::MINT_AUTHORITY],
-        bump
-    )]
     pub mint_authority: UncheckedAccount<'info>,
 
     pub buffer_accounts: BufferAccrualAccounts<'info>,
 
-    #[account(
-        init_if_needed,
-        payer = user,
-        space = 8 + MarketStats::INIT_SPACE,
-        seeds = [seeds::MARKET_STATS],
-        bump
-    )]
-    pub market_stats: Box<Account<'info, MarketStats>>,
+    /// CHECK: The handler validates PDA, writability, owner, and account data layout.
+    #[account(mut)]
+    pub market_stats: UncheckedAccount<'info>,
 
     /// CHECK: Validated through address constraint to instructions sysvar
-    #[account(address = sysvar::instructions::id())]
     pub instructions_sysvar: UncheckedAccount<'info>,
 
     #[account(mut)]
@@ -382,6 +345,12 @@ pub fn take_offer(
     token_in_amount: u64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
+    let (vault_authority_bump, mint_authority_bump) = validate_take_offer_authorities(
+        ctx.program_id,
+        &ctx.accounts.vault_authority,
+        &ctx.accounts.mint_authority,
+        &ctx.accounts.instructions_sysvar,
+    )?;
     let offer = ctx.accounts.offer.load()?;
 
     verify_offer_approval(
@@ -410,7 +379,7 @@ pub fn take_offer(
         token_in_source_signer_seeds: None,
         vault_authority_signer_seeds: Some(&[&[
             seeds::OFFER_VAULT_AUTHORITY,
-            &[ctx.bumps.vault_authority],
+            &[vault_authority_bump],
         ]]),
         token_in_source_account: &ctx.accounts.user_token_in_account,
         token_in_destination_account: &ctx.accounts.boss_token_in_account,
@@ -423,7 +392,7 @@ pub fn take_offer(
         token_out_source_account: &ctx.accounts.vault_token_out_account,
         token_out_destination_account: &ctx.accounts.user_token_out_account,
         mint_authority_pda: &ctx.accounts.mint_authority.to_account_info(),
-        mint_authority_bump: &[ctx.bumps.mint_authority],
+        mint_authority_bump: &[mint_authority_bump],
         token_out_max_supply: ctx.accounts.state.max_supply,
     })?;
 
@@ -448,11 +417,17 @@ pub fn take_offer(
     Ok(())
 }
 
-pub fn take_offer_v2(
-    ctx: Context<TakeOfferV2>,
+pub fn take_offer_v2<'info>(
+    ctx: Context<'info, TakeOfferV2<'info>>,
     token_in_amount: u64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
+    let (vault_authority_bump, mint_authority_bump) = validate_take_offer_authorities(
+        ctx.program_id,
+        &ctx.accounts.vault_authority,
+        &ctx.accounts.mint_authority,
+        &ctx.accounts.instructions_sysvar,
+    )?;
     let offer = ctx.accounts.offer.load()?;
     let buffer_is_initialized = ctx
         .accounts
@@ -481,6 +456,20 @@ pub fn take_offer_v2(
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
     )?;
+    get_or_create_associated_token_account(EnsureAtaParams {
+        ata_account: &ctx.accounts.user_token_out_account,
+        payer: ctx.accounts.user.to_account_info(),
+        authority_account: ctx.accounts.user.to_account_info(),
+        mint_account: ctx.accounts.token_out_mint.to_account_info(),
+        token_program: ctx.accounts.token_out_program.to_account_info(),
+        associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
+        system_program: ctx.accounts.system_program.to_account_info(),
+        authority: ctx.accounts.user.key(),
+        mint: ctx.accounts.token_out_mint.key(),
+        token_program_id: ctx.accounts.token_out_program.key(),
+        invalid_account_error: crate::OnreError::InvalidUserTokenOutAccount,
+    })?;
+    let user_token_out_account = InterfaceAccount::try_from(&ctx.accounts.user_token_out_account)?;
     let accrual = if should_accrue_onyc_mint {
         Some(accrue_buffer_from_accounts(
             ctx.program_id,
@@ -489,7 +478,7 @@ pub fn take_offer_v2(
             &offer,
             &ctx.accounts.token_out_mint,
             ctx.accounts.mint_authority.to_account_info(),
-            ctx.bumps.mint_authority,
+            mint_authority_bump,
             &ctx.accounts.token_out_program,
         )?)
     } else {
@@ -509,7 +498,7 @@ pub fn take_offer_v2(
         token_in_source_signer_seeds: None,
         vault_authority_signer_seeds: Some(&[&[
             seeds::OFFER_VAULT_AUTHORITY,
-            &[ctx.bumps.vault_authority],
+            &[vault_authority_bump],
         ]]),
         token_in_source_account: &ctx.accounts.user_token_in_account,
         token_in_destination_account: &ctx.accounts.boss_token_in_account,
@@ -520,9 +509,9 @@ pub fn take_offer_v2(
         token_out_amount: result.token_out_amount,
         token_out_authority: &ctx.accounts.vault_authority.to_account_info(),
         token_out_source_account: &ctx.accounts.vault_token_out_account,
-        token_out_destination_account: &ctx.accounts.user_token_out_account,
+        token_out_destination_account: &user_token_out_account,
         mint_authority_pda: &ctx.accounts.mint_authority.to_account_info(),
-        mint_authority_bump: &[ctx.bumps.mint_authority],
+        mint_authority_bump: &[mint_authority_bump],
         token_out_max_supply: ctx.accounts.state.max_supply,
     })?;
 
@@ -530,7 +519,7 @@ pub fn take_offer_v2(
         let post_offer_supply = accrual
             .post_accrual_supply
             .checked_add(result.token_out_amount)
-            .ok_or(TakeOfferErrorCode::MathOverflow)?;
+            .ok_or(crate::OnreError::MathOverflow)?;
         store_buffer_post_supply(
             &ctx.accounts.buffer_accounts,
             post_offer_supply,
@@ -545,13 +534,26 @@ pub fn take_offer_v2(
             &ctx.accounts.state,
         )?;
         ctx.accounts.token_out_mint.reload()?;
-        refresh_market_stats_typed(
+        let (market_stats_pda, _) =
+            Pubkey::find_program_address(&[seeds::MARKET_STATS], ctx.program_id);
+        require_keys_eq!(
+            market_stats_pda,
+            ctx.accounts.market_stats.key(),
+            crate::OnreError::InvalidMarketStatsPda
+        );
+        require!(
+            ctx.accounts.market_stats.is_writable,
+            crate::OnreError::MarketStatsNotWritable
+        );
+        refresh_market_stats_pda(
             &main_offer,
             &ctx.accounts.token_out_mint,
             &ctx.accounts.vault_token_out_account.to_account_info(),
             &ctx.accounts.token_out_program,
-            &mut ctx.accounts.market_stats,
-            ctx.bumps.market_stats,
+            &ctx.accounts.market_stats.to_account_info(),
+            &ctx.accounts.user.to_account_info(),
+            &ctx.accounts.system_program.to_account_info(),
+            ctx.program_id,
         )?;
     }
 
@@ -574,4 +576,35 @@ pub fn take_offer_v2(
     });
 
     Ok(())
+}
+
+fn validate_take_offer_authorities(
+    program_id: &Pubkey,
+    vault_authority: &UncheckedAccount,
+    mint_authority: &UncheckedAccount,
+    instructions_sysvar: &UncheckedAccount,
+) -> Result<(u8, u8)> {
+    let (expected_vault_authority, vault_authority_bump) =
+        Pubkey::find_program_address(&[seeds::OFFER_VAULT_AUTHORITY], program_id);
+    require_keys_eq!(
+        expected_vault_authority,
+        vault_authority.key(),
+        crate::OnreError::InvalidVaultAuthority
+    );
+
+    let (expected_mint_authority, mint_authority_bump) =
+        Pubkey::find_program_address(&[seeds::MINT_AUTHORITY], program_id);
+    require_keys_eq!(
+        expected_mint_authority,
+        mint_authority.key(),
+        crate::OnreError::InvalidMintAuthority
+    );
+
+    require_keys_eq!(
+        INSTRUCTIONS_SYSVAR_ID,
+        instructions_sysvar.key(),
+        crate::OnreError::InvalidInstructionsSysvar
+    );
+
+    Ok((vault_authority_bump, mint_authority_bump))
 }

@@ -5,7 +5,7 @@ use crate::instructions::buffer::accounts::{
 };
 use crate::instructions::buffer::{
     accrue_buffer::accrue_buffer_from_accounts, BufferAccrualAccounts, BufferErrorCode,
-    BufferGrossYieldUpdatedEvent,
+    BufferGrossYieldUpdatedEvent, BufferState
 };
 use crate::instructions::market_info::market_stats::refresh_market_stats_pda;
 use crate::instructions::Offer;
@@ -64,7 +64,7 @@ pub fn set_buffer_gross_apr(ctx: Context<SetBufferGrossYield>, gross_yield: u64)
 
     require!(
         buffer_state.gross_apr != gross_yield,
-        BufferErrorCode::NoChange
+        crate::OnreError::NoChange
     );
 
     let expected_vault_token_out_account = get_associated_token_address_with_program_id(

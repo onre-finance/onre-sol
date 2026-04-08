@@ -47,8 +47,8 @@ pub struct AddAdmin<'info> {
 ///
 /// # Returns
 /// * `Ok(())` - If the admin is successfully added
-/// * `Err(AddAdminErrorCode::AdminAlreadyExists)` - If the account is already an admin
-/// * `Err(AddAdminErrorCode::MaxAdminsReached)` - If the admin list is full
+/// * `Err(crate::OnreError::AdminAlreadyExists)` - If the account is already an admin
+/// * `Err(crate::OnreError::MaxAdminsReached)` - If the admin list is full
 ///
 /// # Access Control
 /// - Only the boss can call this instruction
@@ -63,7 +63,7 @@ pub fn add_admin(ctx: Context<AddAdmin>, new_admin: Pubkey) -> Result<()> {
     // Check if admin already exists
     require!(
         !state.admins.contains(&new_admin),
-        AddAdminErrorCode::AdminAlreadyExists
+        crate::OnreError::AdminAlreadyExists
     );
 
     // Find first empty slot
@@ -81,17 +81,7 @@ pub fn add_admin(ctx: Context<AddAdmin>, new_admin: Pubkey) -> Result<()> {
     }
 
     // If we get here, all slots are full
-    Err(AddAdminErrorCode::MaxAdminsReached.into())
+    Err(crate::OnreError::MaxAdminsReached.into())
 }
 
-/// Error codes for add admin operations
-#[error_code]
-pub enum AddAdminErrorCode {
-    /// The specified account is already present in the admin list
-    #[msg("Admin already exists in the admin list")]
-    AdminAlreadyExists,
-
-    /// The admin list has reached its maximum capacity and cannot accept more admins
-    #[msg("Maximum number of admins (20) reached")]
-    MaxAdminsReached,
-}
+// Error codes for add admin operations

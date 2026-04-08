@@ -1,7 +1,6 @@
 use crate::constants::{seeds, MAX_ALLOWED_FEE_BPS};
 use crate::instructions::Offer;
 use crate::state::State;
-use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
 
@@ -45,7 +44,7 @@ pub struct UpdateOfferFee<'info> {
     #[account(
         constraint =
             token_in_mint.key() == offer.load()?.token_in_mint
-            @ OfferCoreError::InvalidTokenInMint
+            @ crate::OnreError::InvalidTokenInMint
     )]
     pub token_in_mint: InterfaceAccount<'info, Mint>,
 
@@ -53,7 +52,7 @@ pub struct UpdateOfferFee<'info> {
     #[account(
         constraint =
             token_out_mint.key() == offer.load()?.token_out_mint
-            @ OfferCoreError::InvalidTokenOutMint
+            @ crate::OnreError::InvalidTokenOutMint
     )]
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 
@@ -80,7 +79,7 @@ pub struct UpdateOfferFee<'info> {
 ///
 /// # Returns
 /// * `Ok(())` - If the fee is successfully updated
-/// * `Err(UpdateOfferFeeErrorCode::InvalidFee)` - If fee exceeds 1000 basis points
+/// * `Err(crate::OnreError::InvalidFee)` - If fee exceeds 1000 basis points
 ///
 /// # Access Control
 /// - Only the boss can call this instruction
@@ -97,7 +96,7 @@ pub fn update_offer_fee(ctx: Context<UpdateOfferFee>, new_fee_basis_points: u16)
     // Validate fee is within valid range (0-1000 basis points = 0-10%)
     require!(
         new_fee_basis_points <= MAX_ALLOWED_FEE_BPS,
-        UpdateOfferFeeErrorCode::InvalidFee
+        crate::OnreError::InvalidFee
     );
 
     let offer = &mut ctx.accounts.offer.load_mut()?;
@@ -125,18 +124,4 @@ pub fn update_offer_fee(ctx: Context<UpdateOfferFee>, new_fee_basis_points: u16)
     Ok(())
 }
 
-/// Error codes for update offer fee operations
-#[error_code]
-pub enum UpdateOfferFeeErrorCode {
-    /// Fee basis points exceeds maximum allowed value of 1000 (10%)
-    #[msg("Invalid fee: fee_basis_points must be <= 1000 (10%)")]
-    InvalidFee,
-
-    /// The provided token_in mint does not match the offer's expected mint
-    #[msg("Invalid token in mint for offer")]
-    InvalidTokenInMint,
-
-    /// The provided token_out mint does not match the offer's expected mint
-    #[msg("Invalid token out mint for offer")]
-    InvalidTokenOutMint,
-}
+// Error codes for update offer fee operations

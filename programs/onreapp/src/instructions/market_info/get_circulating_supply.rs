@@ -8,13 +8,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::{Mint, TokenInterface};
 
-/// Error codes for circulating supply calculation operations
-#[error_code]
-pub enum GetCirculatingSupplyErrorCode {
-    /// The vault account address doesn't match the expected ATA address
-    #[msg("Invalid token_out vault account")]
-    InvalidVaultAccount,
-}
+// Error codes for circulating supply calculation operations
 
 /// Event emitted when circulating supply calculation is completed
 ///
@@ -62,7 +56,7 @@ pub struct GetCirculatingSupply<'info> {
                 &vault_authority.key(),
                 &state.onyc_mint.key(),
                 &token_program.key(),
-            ) @ GetCirculatingSupplyErrorCode::InvalidVaultAccount
+            ) @ crate::OnreError::InvalidVaultAccount
     )]
     pub onyc_vault_account: UncheckedAccount<'info>,
 
@@ -86,7 +80,7 @@ pub struct GetCirculatingSupply<'info> {
 ///
 /// # Returns
 /// * `Ok(circulating_supply)` - The calculated circulating supply in base units
-/// * `Err(GetCirculatingSupplyErrorCode::InvalidVaultAccount)` - If vault account validation fails
+/// * `Err(crate::OnreError::InvalidVaultAccount)` - If vault account validation fails
 ///
 /// # Events
 /// * `GetCirculatingSupplyEvent` - Emitted with calculation details and timestamp

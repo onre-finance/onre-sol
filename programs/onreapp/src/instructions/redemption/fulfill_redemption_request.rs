@@ -15,12 +15,13 @@ use crate::instructions::redemption::{
 use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::{
-    load_or_init_pda_account, load_pda_account, program_controls_mint, store_pda_account,
-    PdaAccountInit,
+    get_associated_token_account, get_or_create_associated_token_account, load_or_init_pda_account,
+    load_pda_account, program_controls_mint, store_pda_account, validate_associated_token_address,
+    EnsureAtaParams, PdaAccountInit,
 };
 use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::{
-    associated_token::{get_associated_token_address_with_program_id, AssociatedToken},
+    associated_token::AssociatedToken,
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
@@ -56,33 +57,24 @@ pub struct FulfillRedemptionRequest<'info> {
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
-        has_one = boss @ FulfillRedemptionRequestErrorCode::InvalidBoss,
-        constraint = !state.is_killed @ FulfillRedemptionRequestErrorCode::KillSwitchActivated
+        has_one = boss @ crate::OnreError::InvalidBoss,
+        constraint = !state.is_killed @ crate::OnreError::KillSwitchActivated
     )]
     pub state: Box<Account<'info, State>>,
 
     /// CHECK: Account validation is enforced through state account constraint
     pub boss: UncheckedAccount<'info>,
 
-    /// CHECK: offer address is validated through redemption_offer constraint
-    pub offer: AccountLoader<'info, Offer>,
+    /// CHECK: Validated in instruction logic against the loaded redemption offer.
+    pub offer: UncheckedAccount<'info>,
 
     /// CHECK: Validated and stored manually in instruction logic.
     #[account(mut)]
     pub redemption_offer: UncheckedAccount<'info>,
 
-    #[account(
-        mut,
-        seeds = [
-            seeds::REDEMPTION_REQUEST,
-            redemption_request.offer.as_ref(),
-            redemption_request.request_id.to_le_bytes().as_ref()
-        ],
-        bump = redemption_request.bump,
-        constraint = redemption_request.offer == redemption_offer.key()
-            @ FulfillRedemptionRequestErrorCode::OfferMismatch
-    )]
-    pub redemption_request: Box<Account<'info, RedemptionRequest>>,
+    /// CHECK: Validated in instruction logic for PDA, ownership, and offer linkage.
+    #[account(mut)]
+    pub redemption_request: UncheckedAccount<'info>,
 
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
@@ -91,49 +83,33 @@ pub struct FulfillRedemptionRequest<'info> {
     )]
     pub redemption_vault_authority: UncheckedAccount<'info>,
 
-    #[account(
-        mut,
-        associated_token::mint = token_in_mint,
-        associated_token::authority = redemption_vault_authority,
-        associated_token::token_program = token_in_program
-    )]
-    pub vault_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    #[account(
-        mut,
-        associated_token::mint = token_out_mint,
-        associated_token::authority = redemption_vault_authority,
-        associated_token::token_program = token_out_program
-    )]
-    pub vault_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
-
+    /// CHECK: Validated in instruction logic against the expected redemption vault ATA.
     #[account(mut)]
-    pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub vault_token_in_account: UncheckedAccount<'info>,
+
+    /// CHECK: Validated in instruction logic against the expected redemption vault ATA.
+    #[account(mut)]
+    pub vault_token_out_account: UncheckedAccount<'info>,
+
+    /// CHECK: Validated in instruction logic via InterfaceAccount deserialization and redemption offer mint checks.
+    #[account(mut)]
+    pub token_in_mint: UncheckedAccount<'info>,
 
     pub token_in_program: Interface<'info, TokenInterface>,
 
+    /// CHECK: Validated in instruction logic via InterfaceAccount deserialization and redemption offer mint checks.
     #[account(mut)]
-    pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub token_out_mint: UncheckedAccount<'info>,
 
     pub token_out_program: Interface<'info, TokenInterface>,
 
-    #[account(
-        init_if_needed,
-        payer = redemption_admin,
-        associated_token::mint = token_out_mint,
-        associated_token::authority = redeemer,
-        associated_token::token_program = token_out_program
-    )]
-    pub user_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// CHECK: Validated and optionally initialized in instruction logic.
+    #[account(mut)]
+    pub user_token_out_account: UncheckedAccount<'info>,
 
-    #[account(
-        init_if_needed,
-        payer = redemption_admin,
-        associated_token::mint = token_in_mint,
-        associated_token::authority = boss,
-        associated_token::token_program = token_in_program
-    )]
-    pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// CHECK: Validated and optionally initialized in instruction logic.
+    #[account(mut)]
+    pub boss_token_in_account: UncheckedAccount<'info>,
 
     /// Global fee vault authority PDA — created on first fulfillment if not yet initialized
     /// CHECK: PDA address is validated and the account is initialized/loaded manually.
@@ -147,14 +123,9 @@ pub struct FulfillRedemptionRequest<'info> {
     pub fee_destination: UncheckedAccount<'info>,
 
     /// ATA of `fee_destination` for token_in — receives the fee portion
-    #[account(
-        init_if_needed,
-        payer = redemption_admin,
-        associated_token::mint = token_in_mint,
-        associated_token::authority = fee_destination,
-        associated_token::token_program = token_in_program
-    )]
-    pub fee_destination_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// CHECK: Validated and optionally initialized in instruction logic.
+    #[account(mut)]
+    pub fee_destination_token_in_account: UncheckedAccount<'info>,
 
     /// CHECK: PDA derivation is validated through seeds constraint
     #[account(
@@ -163,16 +134,10 @@ pub struct FulfillRedemptionRequest<'info> {
     )]
     pub mint_authority: UncheckedAccount<'info>,
 
-    /// CHECK: Validated against redemption_request.redeemer
-    #[account(constraint = redeemer.key() == redemption_request.redeemer
-        @ FulfillRedemptionRequestErrorCode::InvalidRedeemer)]
+    /// CHECK: Validated in instruction logic against redemption_request.redeemer.
     pub redeemer: UncheckedAccount<'info>,
 
-    #[account(
-        mut,
-        constraint = redemption_admin.key() == state.redemption_admin
-            @ FulfillRedemptionRequestErrorCode::Unauthorized
-    )]
+    #[account(mut)]
     pub redemption_admin: Signer<'info>,
 
     pub buffer_accounts: BufferAccrualAccounts<'info>,
@@ -184,15 +149,7 @@ pub struct FulfillRedemptionRequest<'info> {
     #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
     pub offer_vault_authority: UncheckedAccount<'info>,
 
-    /// CHECK: Address is validated against the canonical ATA derivation.
-    #[account(
-        constraint = offer_vault_onyc_account.key()
-            == get_associated_token_address_with_program_id(
-                &offer_vault_authority.key(),
-                &token_in_mint.key(),
-                &token_in_program.key(),
-            ) @ crate::instructions::market_info::GetCirculatingSupplyErrorCode::InvalidVaultAccount
-    )]
+    /// CHECK: Validated in instruction logic against the canonical ATA derivation.
     pub offer_vault_onyc_account: UncheckedAccount<'info>,
 
     /// CHECK: Validated and optionally initialized in instruction logic.
@@ -234,16 +191,119 @@ pub struct FulfillRedemptionRequest<'info> {
 ///
 /// # Events
 /// * `RedemptionRequestFulfilledEvent` - Emitted with fulfillment details
-pub fn fulfill_redemption_request(
-    ctx: Context<FulfillRedemptionRequest>,
+pub fn fulfill_redemption_request<'info>(
+    ctx: Context<'info, FulfillRedemptionRequest<'info>>,
     amount: u64,
 ) -> Result<()> {
+    msg!("fulfill: loading offer/request/mints");
+    let offer = AccountLoader::<Offer>::try_from(&ctx.accounts.offer)?;
+    let mut redemption_request =
+        Account::<RedemptionRequest>::try_from(&ctx.accounts.redemption_request)?;
+    let mut token_in_mint = InterfaceAccount::<Mint>::try_from(&ctx.accounts.token_in_mint)?;
+    let token_out_mint = InterfaceAccount::<Mint>::try_from(&ctx.accounts.token_out_mint)?;
+    let (expected_redemption_request, _) = Pubkey::find_program_address(
+        &[
+            seeds::REDEMPTION_REQUEST,
+            redemption_request.offer.as_ref(),
+            redemption_request.request_id.to_le_bytes().as_ref(),
+        ],
+        ctx.program_id,
+    );
+    require_keys_eq!(
+        ctx.accounts.redemption_request.key(),
+        expected_redemption_request,
+        crate::OnreError::OfferMismatch
+    );
+    require_keys_eq!(
+        redemption_request.offer,
+        ctx.accounts.redemption_offer.key(),
+        crate::OnreError::OfferMismatch
+    );
+    msg!("fulfill: validating redeemer/admin");
+    require_keys_eq!(
+        ctx.accounts.redeemer.key(),
+        redemption_request.redeemer,
+        crate::OnreError::InvalidRedeemer
+    );
+    require_keys_eq!(
+        ctx.accounts.redemption_admin.key(),
+        ctx.accounts.state.redemption_admin,
+        crate::OnreError::Unauthorized
+    );
+    msg!("fulfill: validating offer vault onyc ata");
+    validate_associated_token_address(
+        &ctx.accounts.offer_vault_onyc_account,
+        &ctx.accounts.offer_vault_authority.key(),
+        &token_in_mint.key(),
+        &ctx.accounts.token_in_program.key(),
+        crate::OnreError::InvalidOfferVaultOnycAccount,
+    )?;
+    msg!("fulfill: validating redemption vault token in ata");
+    let vault_token_in_account = get_associated_token_account(
+        &ctx.accounts.vault_token_in_account,
+        &ctx.accounts.redemption_vault_authority.key(),
+        &token_in_mint.key(),
+        &ctx.accounts.token_in_program.key(),
+        crate::OnreError::InvalidVaultTokenInAccount,
+    )?;
+    msg!("fulfill: validating redemption vault token out ata");
+    let vault_token_out_account = get_associated_token_account(
+        &ctx.accounts.vault_token_out_account,
+        &ctx.accounts.redemption_vault_authority.key(),
+        &token_out_mint.key(),
+        &ctx.accounts.token_out_program.key(),
+        crate::OnreError::InvalidVaultTokenOutAccount,
+    )?;
+    msg!("fulfill: ensuring user token out ata");
+    let user_token_out_account = get_or_create_associated_token_account(EnsureAtaParams {
+        ata_account: &ctx.accounts.user_token_out_account,
+        payer: ctx.accounts.redemption_admin.to_account_info(),
+        authority_account: ctx.accounts.redeemer.to_account_info(),
+        mint_account: ctx.accounts.token_out_mint.to_account_info(),
+        token_program: ctx.accounts.token_out_program.to_account_info(),
+        associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
+        system_program: ctx.accounts.system_program.to_account_info(),
+        authority: ctx.accounts.redeemer.key(),
+        mint: token_out_mint.key(),
+        token_program_id: ctx.accounts.token_out_program.key(),
+        invalid_account_error: crate::OnreError::InvalidUserTokenOutAccount,
+    })?;
+    msg!("fulfill: ensuring boss token in ata");
+    let boss_token_in_account = get_or_create_associated_token_account(EnsureAtaParams {
+        ata_account: &ctx.accounts.boss_token_in_account,
+        payer: ctx.accounts.redemption_admin.to_account_info(),
+        authority_account: ctx.accounts.boss.to_account_info(),
+        mint_account: ctx.accounts.token_in_mint.to_account_info(),
+        token_program: ctx.accounts.token_in_program.to_account_info(),
+        associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
+        system_program: ctx.accounts.system_program.to_account_info(),
+        authority: ctx.accounts.boss.key(),
+        mint: token_in_mint.key(),
+        token_program_id: ctx.accounts.token_in_program.key(),
+        invalid_account_error: crate::OnreError::InvalidBossTokenInAccount,
+    })?;
+    msg!("fulfill: ensuring fee destination token in ata");
+    let fee_destination_token_in_account =
+        get_or_create_associated_token_account(EnsureAtaParams {
+            ata_account: &ctx.accounts.fee_destination_token_in_account,
+            payer: ctx.accounts.redemption_admin.to_account_info(),
+            authority_account: ctx.accounts.fee_destination.to_account_info(),
+            mint_account: ctx.accounts.token_in_mint.to_account_info(),
+            token_program: ctx.accounts.token_in_program.to_account_info(),
+            associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+            authority: ctx.accounts.fee_destination.key(),
+            mint: token_in_mint.key(),
+            token_program_id: ctx.accounts.token_in_program.key(),
+            invalid_account_error:
+                crate::OnreError::InvalidFeeDestinationTokenInAccount,
+        })?;
     let mut redemption_offer = load_redemption_offer(
         ctx.program_id,
-        &ctx.accounts.offer,
+        &offer,
         &ctx.accounts.redemption_offer,
-        &ctx.accounts.token_in_mint,
-        &ctx.accounts.token_out_mint,
+        &token_in_mint,
+        &token_out_mint,
     )?;
     let mut redemption_fee_vault_authority = load_redemption_fee_vault_authority(
         ctx.program_id,
@@ -255,22 +315,22 @@ pub fn fulfill_redemption_request(
         ExecuteFulfillRedemptionRequestParams {
             program_id: ctx.program_id,
             state: &ctx.accounts.state,
-            offer: &ctx.accounts.offer,
+            offer: &offer,
             redemption_offer_account: &ctx.accounts.redemption_offer,
             redemption_offer: &mut redemption_offer,
-            redemption_request: &mut ctx.accounts.redemption_request,
+            redemption_request: &mut redemption_request,
             redemption_fee_vault_authority_account: &ctx.accounts.redemption_fee_vault_authority,
             redemption_fee_vault_authority: &mut redemption_fee_vault_authority,
-            vault_token_in_account: &ctx.accounts.vault_token_in_account,
-            vault_token_out_account: &ctx.accounts.vault_token_out_account,
-            token_in_mint: &mut ctx.accounts.token_in_mint,
+            vault_token_in_account: &vault_token_in_account,
+            vault_token_out_account: &vault_token_out_account,
+            token_in_mint: &mut token_in_mint,
             token_in_program: &ctx.accounts.token_in_program,
-            token_out_mint: &ctx.accounts.token_out_mint,
+            token_out_mint: &token_out_mint,
             token_out_program: &ctx.accounts.token_out_program,
-            user_token_out_account: &ctx.accounts.user_token_out_account,
-            boss_token_in_account: &ctx.accounts.boss_token_in_account,
+            user_token_out_account: &user_token_out_account,
+            boss_token_in_account: &boss_token_in_account,
             fee_destination: &ctx.accounts.fee_destination,
-            fee_destination_token_in_account: &ctx.accounts.fee_destination_token_in_account,
+            fee_destination_token_in_account: &fee_destination_token_in_account,
             mint_authority: &ctx.accounts.mint_authority,
             offer_vault_onyc_account: &ctx.accounts.offer_vault_onyc_account,
             redemption_vault_authority: &ctx.accounts.redemption_vault_authority,
@@ -337,11 +397,11 @@ impl PdaAccountInit for RedemptionFeeVaultAuthority {
     }
 
     fn invalid_owner_error() -> Error {
-        error!(FulfillRedemptionRequestErrorCode::InvalidRedemptionFeeVaultAuthorityOwner)
+        error!(crate::OnreError::InvalidRedemptionFeeVaultAuthorityOwner)
     }
 
     fn invalid_data_error() -> Error {
-        error!(FulfillRedemptionRequestErrorCode::InvalidRedemptionFeeVaultAuthorityData)
+        error!(crate::OnreError::InvalidRedemptionFeeVaultAuthorityData)
     }
 }
 
@@ -355,8 +415,8 @@ fn load_redemption_offer<'info>(
     let redemption_offer: RedemptionOffer = load_pda_account(
         &redemption_offer_account.to_account_info(),
         program_id,
-        FulfillRedemptionRequestErrorCode::InvalidRedemptionOfferOwner.into(),
-        FulfillRedemptionRequestErrorCode::InvalidRedemptionOfferData.into(),
+        crate::OnreError::InvalidRedemptionOfferOwner.into(),
+        crate::OnreError::InvalidRedemptionOfferData.into(),
     )?;
     let (expected_redemption_offer, _) = Pubkey::find_program_address(
         &[
@@ -370,22 +430,22 @@ fn load_redemption_offer<'info>(
     require_keys_eq!(
         redemption_offer_account.key(),
         expected_redemption_offer,
-        FulfillRedemptionRequestErrorCode::OfferMismatch
+        crate::OnreError::OfferMismatch
     );
     require_keys_eq!(
         redemption_offer.offer,
         offer.key(),
-        FulfillRedemptionRequestErrorCode::OfferMismatch
+        crate::OnreError::OfferMismatch
     );
     require_keys_eq!(
         token_in_mint.key(),
         redemption_offer.token_in_mint,
-        FulfillRedemptionRequestErrorCode::InvalidTokenInMint
+        crate::OnreError::InvalidTokenInMint
     );
     require_keys_eq!(
         token_out_mint.key(),
         redemption_offer.token_out_mint,
-        FulfillRedemptionRequestErrorCode::InvalidTokenOutMint
+        crate::OnreError::InvalidTokenOutMint
     );
 
     Ok(redemption_offer)
@@ -403,7 +463,7 @@ fn load_redemption_fee_vault_authority<'info>(
     require_keys_eq!(
         redemption_fee_vault_authority_account.key(),
         expected_redemption_fee_vault_authority,
-        FulfillRedemptionRequestErrorCode::InvalidRedemptionFeeVaultAuthority
+        crate::OnreError::InvalidRedemptionFeeVaultAuthority
     );
 
     load_or_init_pda_account::<RedemptionFeeVaultAuthority>(
@@ -420,17 +480,17 @@ fn execute_fulfill_redemption_request(
     amount: u64,
 ) -> Result<()> {
     // Validate amount
-    require!(amount > 0, FulfillRedemptionRequestErrorCode::InvalidAmount);
+    require!(amount > 0, crate::OnreError::InvalidAmount);
 
     let redemption_request = &params.redemption_request;
     let remaining = redemption_request
         .amount
         .checked_sub(redemption_request.fulfilled_amount)
-        .ok_or(FulfillRedemptionRequestErrorCode::ArithmeticUnderflow)?;
+        .ok_or(crate::OnreError::ArithmeticUnderflow)?;
 
     require!(
         amount <= remaining,
-        FulfillRedemptionRequestErrorCode::AmountExceedsRemaining
+        crate::OnreError::AmountExceedsRemaining
     );
 
     // Validate fee_destination against stored value in the vault authority
@@ -444,7 +504,7 @@ fn execute_fulfill_redemption_request(
     };
     require!(
         params.fee_destination.key() == expected_fee_destination,
-        FulfillRedemptionRequestErrorCode::InvalidFeeDestination
+        crate::OnreError::InvalidFeeDestination
     );
 
     // Use shared core processing logic for redemption
@@ -512,7 +572,7 @@ fn execute_fulfill_redemption_request(
         let post_burn_supply = accrual
             .post_accrual_supply
             .checked_sub(token_in_net_amount)
-            .ok_or(crate::instructions::buffer::BufferErrorCode::MathOverflow)?;
+            .ok_or(crate::OnreError::MathOverflow)?;
         store_buffer_post_supply(
             params
                 .buffer_accounts
@@ -546,7 +606,7 @@ fn execute_fulfill_redemption_request(
         .redemption_request
         .fulfilled_amount
         .checked_add(amount)
-        .ok_or(FulfillRedemptionRequestErrorCode::ArithmeticOverflow)?;
+        .ok_or(crate::OnreError::ArithmeticOverflow)?;
     params.redemption_request.fulfilled_amount = new_fulfilled_amount;
 
     let is_fully_fulfilled = new_fulfilled_amount == params.redemption_request.amount;
@@ -556,12 +616,12 @@ fn execute_fulfill_redemption_request(
     redemption_offer.executed_redemptions = redemption_offer
         .executed_redemptions
         .checked_add(amount as u128)
-        .ok_or(FulfillRedemptionRequestErrorCode::ArithmeticOverflow)?;
+        .ok_or(crate::OnreError::ArithmeticOverflow)?;
 
     redemption_offer.requested_redemptions = redemption_offer
         .requested_redemptions
         .checked_sub(amount as u128)
-        .ok_or(FulfillRedemptionRequestErrorCode::ArithmeticUnderflow)?;
+        .ok_or(crate::OnreError::ArithmeticUnderflow)?;
 
     msg!(
         "Redemption request {}: fulfilled {} (net={}, fee={}), token_out={}, price={}, redeemer={}, total_fulfilled={}/{}, fully_fulfilled={}",
@@ -606,83 +666,11 @@ fn execute_fulfill_redemption_request(
         params
             .redemption_request
             .close(params.redemption_admin.to_account_info())?;
+    } else {
+        params.redemption_request.exit(params.program_id)?;
     }
 
     Ok(())
 }
 
-/// Error codes for redemption fulfillment operations
-#[error_code]
-pub enum FulfillRedemptionRequestErrorCode {
-    /// Caller is not authorized (redemption_admin mismatch)
-    #[msg("Unauthorized: redemption_admin signature required")]
-    Unauthorized,
-
-    /// The boss account does not match the one stored in program state
-    #[msg("Invalid boss account")]
-    InvalidBoss,
-
-    /// The program kill switch is activated
-    #[msg("Kill switch is activated")]
-    KillSwitchActivated,
-
-    /// Redemption offer mismatch
-    #[msg("Redemption offer does not match request")]
-    OfferMismatch,
-
-    /// Offer mint configuration mismatch
-    #[msg("Offer mints do not match redemption offer (inverted) mints")]
-    OfferMintMismatch,
-
-    /// Invalid token_in mint
-    #[msg("Invalid token_in mint")]
-    InvalidTokenInMint,
-
-    /// Invalid token_out mint
-    #[msg("Invalid token_out mint")]
-    InvalidTokenOutMint,
-
-    /// Redemption offer account is not owned by this program
-    #[msg("Invalid redemption offer owner")]
-    InvalidRedemptionOfferOwner,
-
-    /// Redemption offer account data is invalid
-    #[msg("Invalid redemption offer data")]
-    InvalidRedemptionOfferData,
-
-    /// Redemption fee vault authority PDA is invalid
-    #[msg("Invalid redemption fee vault authority")]
-    InvalidRedemptionFeeVaultAuthority,
-
-    /// Redemption fee vault authority account is not owned by this program
-    #[msg("Invalid redemption fee vault authority owner")]
-    InvalidRedemptionFeeVaultAuthorityOwner,
-
-    /// Redemption fee vault authority account data is invalid
-    #[msg("Invalid redemption fee vault authority data")]
-    InvalidRedemptionFeeVaultAuthorityData,
-
-    /// Invalid redeemer
-    #[msg("Redeemer does not match redemption request")]
-    InvalidRedeemer,
-
-    /// amount parameter is zero
-    #[msg("Invalid amount: must be greater than zero")]
-    InvalidAmount,
-
-    /// amount exceeds the remaining unfulfilled balance of the request
-    #[msg("Amount exceeds remaining unfulfilled balance")]
-    AmountExceedsRemaining,
-
-    /// Arithmetic overflow occurred
-    #[msg("Arithmetic overflow")]
-    ArithmeticOverflow,
-
-    /// Arithmetic underflow occurred
-    #[msg("Arithmetic underflow")]
-    ArithmeticUnderflow,
-
-    /// The provided fee_destination account does not match the expected fee destination
-    #[msg("Invalid fee destination account")]
-    InvalidFeeDestination,
-}
+// Error codes for redemption fulfillment operations

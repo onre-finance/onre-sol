@@ -1,45 +1,10 @@
 use crate::utils::approver::message::ApprovalMessage;
 use crate::utils::ed25519_parser::parse_ed25519_ix;
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::sysvar;
+use solana_instructions_sysvar::{load_current_index_checked, load_instruction_at_checked};
 use solana_program::ed25519_program;
 
-/// Error codes for approval verification operations
-#[error_code]
-pub enum ErrorCode {
-    /// The approval message timestamp has passed the current time
-    #[msg("The approval message has expired.")]
-    Expired,
-    /// The approval message was signed for a different program ID
-    #[msg("The approval message is for the wrong program.")]
-    WrongProgram,
-    /// The approval message was signed for a different user
-    #[msg("The approval message is for the wrong user.")]
-    WrongUser,
-    /// No Ed25519 instruction found before the current instruction
-    #[msg("Missing Ed25519 instruction.")]
-    MissingEd25519Ix,
-    /// The previous instruction is not an Ed25519 instruction
-    #[msg("The instruction is for the wrong program.")]
-    WrongIxProgram,
-    #[msg("Ed25519 instruction has accounts.")]
-    BadEd25519Accounts,
-    /// The Ed25519 instruction data is malformed or invalid
-    #[msg("Malformed Ed25519 instruction.")]
-    MalformedEd25519Ix,
-    /// The Ed25519 instruction contains more than one signature
-    #[msg("Multiple signatures found in Ed25519 instruction.")]
-    MultipleSigs,
-    /// The signing authority does not match the trusted authority
-    #[msg("The authority public key does not match.")]
-    WrongAuthority,
-    /// The signed message does not match the provided approval message
-    #[msg("The message in the Ed25519 instruction does not match the approval message.")]
-    MsgMismatch,
-    /// Failed to deserialize the approval message from the signature
-    #[msg("Failed to deserialize the approval message.")]
-    MsgDeserialize,
-}
+// Error codes for approval verification operations
 
 /// Verifies cryptographic approval messages signed by trusted authorities
 ///
@@ -79,48 +44,47 @@ pub fn verify_approval_message_generic(
     msg: &ApprovalMessage,
 ) -> Result<()> {
     let now = Clock::get()?.unix_timestamp as u64;
-    require!(now <= msg.expiry_unix, ErrorCode::Expired);
-    require!(msg.program_id == *program_id, ErrorCode::WrongProgram);
+    require!(now <= msg.expiry_unix, crate::OnreError::Expired);
+    require!(msg.program_id == *program_id, crate::OnreError::WrongProgram);
     require!(
         msg.user_pubkey.key() == user_pubkey.key(),
-        ErrorCode::WrongUser
+        crate::OnreError::WrongUser
     );
 
     // 2) Find the *previous* instruction and ensure it's Ed25519 verify
-    let cur_idx =
-        sysvar::instructions::load_current_index_checked(&instructions_sysvar.to_account_info())
-            .map_err(|_| ErrorCode::MissingEd25519Ix)?;
-    require!(cur_idx > 0, ErrorCode::MissingEd25519Ix);
+    let cur_idx = load_current_index_checked(&instructions_sysvar.to_account_info())
+        .map_err(|_| crate::OnreError::MissingEd25519Ix)?;
+    require!(cur_idx > 0, crate::OnreError::MissingEd25519Ix);
 
-    let ix = sysvar::instructions::load_instruction_at_checked(
+    let ix = load_instruction_at_checked(
         (cur_idx - 1) as usize,
         &instructions_sysvar.to_account_info(),
     )
-    .map_err(|_| ErrorCode::MissingEd25519Ix)?;
+    .map_err(|_| crate::OnreError::MissingEd25519Ix)?;
 
     require!(
         ix.program_id == ed25519_program::id(),
-        ErrorCode::WrongIxProgram
+        crate::OnreError::WrongIxProgram
     );
-    require!(ix.accounts.is_empty(), ErrorCode::BadEd25519Accounts);
+    require!(ix.accounts.is_empty(), crate::OnreError::BadEd25519Accounts);
 
-    let parsed = parse_ed25519_ix(&ix.data).ok_or(ErrorCode::MalformedEd25519Ix)?;
-    require!(parsed.sig_count == 1, ErrorCode::MultipleSigs);
+    let parsed = parse_ed25519_ix(&ix.data).ok_or(crate::OnreError::MalformedEd25519Ix)?;
+    require!(parsed.sig_count == 1, crate::OnreError::MultipleSigs);
 
     // Check if the signature is from either approver1 or approver2
     let is_approver1 = *approver1 != Pubkey::default() && parsed.pubkey == approver1.to_bytes();
     let is_approver2 = *approver2 != Pubkey::default() && parsed.pubkey == approver2.to_bytes();
-    require!(is_approver1 || is_approver2, ErrorCode::WrongAuthority);
+    require!(is_approver1 || is_approver2, crate::OnreError::WrongAuthority);
 
     let signed_msg =
-        ApprovalMessage::try_from_slice(&parsed.message).map_err(|_| ErrorCode::MsgDeserialize)?;
+        ApprovalMessage::try_from_slice(&parsed.message).map_err(|_| crate::OnreError::MsgDeserialize)?;
     require!(
         signed_msg.program_id == *program_id,
-        ErrorCode::WrongProgram
+        crate::OnreError::WrongProgram
     );
-    require!(signed_msg.user_pubkey == *user_pubkey, ErrorCode::WrongUser);
-    require!(signed_msg.expiry_unix >= now, ErrorCode::Expired);
-    require!(signed_msg == *msg, ErrorCode::MsgMismatch);
+    require!(signed_msg.user_pubkey == *user_pubkey, crate::OnreError::WrongUser);
+    require!(signed_msg.expiry_unix >= now, crate::OnreError::Expired);
+    require!(signed_msg == *msg, crate::OnreError::MsgMismatch);
 
     Ok(())
 }

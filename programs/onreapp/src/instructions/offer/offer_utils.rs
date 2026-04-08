@@ -13,29 +13,6 @@ const INT_SCALE: u128 = 1_000_000_000_000_000_000;
 const SECONDS_IN_DAY: u64 = 86_400;
 const APR_SCALE: u128 = 1_000_000;
 
-/// Common error codes for offer processing operations
-#[error_code]
-pub enum OfferCoreError {
-    /// The specified offer was not found or is invalid
-    #[msg("Offer not found")]
-    OfferNotFound,
-    /// No pricing vector is currently active for the given time
-    #[msg("No active vector")]
-    NoActiveVector,
-    /// Arithmetic overflow occurred during calculations
-    #[msg("Overflow error")]
-    OverflowError,
-    /// The provided token_in mint does not match the offer's expected mint
-    #[msg("Invalid token in mint")]
-    InvalidTokenInMint,
-    /// The provided token_out mint does not match the offer's expected mint
-    #[msg("Invalid token out mint")]
-    InvalidTokenOutMint,
-    /// The offer requires approval but none was provided or verification failed
-    #[msg("Approval required for this offer")]
-    ApprovalRequired,
-}
-
 /// Result structure containing offer processing calculations
 pub struct OfferProcessResult {
     /// Current price with scale=9 (1_000_000_000 = 1.0) at the time of processing
@@ -64,7 +41,7 @@ pub struct OfferProcessResult {
 ///
 /// # Returns
 /// * `Ok(())` - If approval is not needed or verification succeeds with either approver
-/// * `Err(OfferCoreError::ApprovalRequired)` - If approval is required but not provided
+/// * `Err(crate::OnreError::ApprovalRequired)` - If approval is required but not provided
 /// * `Err(_)` - If approval verification fails with both approvers
 pub fn verify_offer_approval(
     offer: &Offer,
@@ -91,7 +68,7 @@ pub fn verify_offer_approval(
                     msg,
                 )?;
             }
-            None => return Err(error!(OfferCoreError::ApprovalRequired)),
+            None => return Err(error!(crate::OnreError::ApprovalRequired)),
         }
     }
     Ok(())
@@ -122,11 +99,11 @@ pub fn process_offer_core(
 
     require!(
         offer.token_in_mint == token_in_mint.key(),
-        OfferCoreError::InvalidTokenInMint
+        crate::OnreError::InvalidTokenInMint
     );
     require!(
         offer.token_out_mint == token_out_mint.key(),
-        OfferCoreError::InvalidTokenOutMint
+        crate::OnreError::InvalidTokenOutMint
     );
 
     // Find the currently active pricing vector
@@ -188,14 +165,14 @@ pub fn should_accrue_onyc_mint<'info>(
 ///
 /// # Returns
 /// * `Ok(OfferVector)` - The active pricing vector at the specified time
-/// * `Err(OfferCoreError::NoActiveVector)` - If no vector is active at that time
+/// * `Err(crate::OnreError::NoActiveVector)` - If no vector is active at that time
 pub fn find_active_vector_at(offer: &Offer, time: u64) -> Result<OfferVector> {
     let active_vector = offer
         .vectors
         .iter()
         .filter(|vector| vector.start_time != 0 && vector.start_time <= time) // Only consider non-empty vectors
         .max_by_key(|vector| vector.start_time) // Find latest start_time in the past
-        .ok_or(OfferCoreError::NoActiveVector)?;
+        .ok_or(crate::OnreError::NoActiveVector)?;
 
     Ok(*active_vector)
 }
@@ -218,7 +195,7 @@ pub fn find_active_vector_at(offer: &Offer, time: u64) -> Result<OfferVector> {
 ///
 /// # Returns
 /// * `Ok(u64)` - Calculated price with same scale as base_price
-/// * `Err(OfferCoreError::OverflowError)` - If arithmetic overflow occurs
+/// * `Err(crate::OnreError::OverflowError)` - If arithmetic overflow occurs
 pub fn calculate_vector_price(apr: u64, base_price: u64, elapsed_time: u64) -> Result<u64> {
     if apr == 0 || elapsed_time == 0 {
         return Ok(base_price);
@@ -226,34 +203,34 @@ pub fn calculate_vector_price(apr: u64, base_price: u64, elapsed_time: u64) -> R
 
     let daily_increment = INT_SCALE
         .checked_mul(apr as u128)
-        .ok_or(OfferCoreError::OverflowError)?
+        .ok_or(crate::OnreError::OverflowError)?
         .checked_add((APR_SCALE * 365) / 2)
-        .ok_or(OfferCoreError::OverflowError)?
+        .ok_or(crate::OnreError::OverflowError)?
         .checked_div(APR_SCALE * 365)
-        .ok_or(OfferCoreError::OverflowError)?;
+        .ok_or(crate::OnreError::OverflowError)?;
 
     let daily_factor = INT_SCALE
         .checked_add(daily_increment)
-        .ok_or(OfferCoreError::OverflowError)?;
+        .ok_or(crate::OnreError::OverflowError)?;
 
     let full_days = elapsed_time / SECONDS_IN_DAY;
     let remaining_seconds = elapsed_time % SECONDS_IN_DAY;
 
     let mut factor =
-        pow_fixed(daily_factor, full_days, INT_SCALE).ok_or(OfferCoreError::OverflowError)?;
+        pow_fixed(daily_factor, full_days, INT_SCALE).ok_or(crate::OnreError::OverflowError)?;
     if remaining_seconds > 0 {
         let second_factor = nth_root_fixed(daily_factor, SECONDS_IN_DAY, INT_SCALE)?;
         let partial_day_factor = pow_fixed(second_factor, remaining_seconds, INT_SCALE)
-            .ok_or(OfferCoreError::OverflowError)?;
+            .ok_or(crate::OnreError::OverflowError)?;
         factor = mul_div_round_u128(factor, partial_day_factor, INT_SCALE)
-            .ok_or(OfferCoreError::OverflowError)?;
+            .ok_or(crate::OnreError::OverflowError)?;
     }
 
     let price_u128 = mul_div_round_u128(base_price as u128, factor, INT_SCALE)
-        .ok_or(OfferCoreError::OverflowError)?;
+        .ok_or(crate::OnreError::OverflowError)?;
 
     if price_u128 > u64::MAX as u128 {
-        return Err(error!(OfferCoreError::OverflowError));
+        return Err(error!(crate::OnreError::OverflowError));
     }
 
     Ok(price_u128 as u64)
@@ -312,7 +289,7 @@ pub fn calculate_step_price_at(
     price_fix_duration: u64,
     time: u64,
 ) -> Result<u64> {
-    require!(base_time <= time, OfferCoreError::NoActiveVector);
+    require!(base_time <= time, crate::OnreError::NoActiveVector);
 
     let elapsed_since_start = time.saturating_sub(base_time);
 
@@ -324,7 +301,7 @@ pub fn calculate_step_price_at(
         .checked_add(1)
         .unwrap()
         .checked_mul(price_fix_duration)
-        .ok_or(OfferCoreError::OverflowError)?;
+        .ok_or(crate::OnreError::OverflowError)?;
 
     // Use the vector price calculation with the effective elapsed time
     calculate_vector_price(apr, base_price, step_end_time)
@@ -351,7 +328,7 @@ pub fn find_vector_index_by_start_time(offer: &Offer, start_time: u64) -> Option
 
 fn nth_root_fixed(value: u128, n: u64, scale: u128) -> Result<u128> {
     if n == 0 {
-        return Err(error!(OfferCoreError::OverflowError));
+        return Err(error!(crate::OnreError::OverflowError));
     }
     if value <= scale {
         return Ok(value);
@@ -376,7 +353,7 @@ fn compare_pow_fixed(mut base: u128, mut exp: u64, scale: u128, target: u128) ->
 
     while exp > 0 {
         if (exp & 1) == 1 {
-            acc = mul_div_round_u128(acc, base, scale).ok_or(OfferCoreError::OverflowError)?;
+            acc = mul_div_round_u128(acc, base, scale).ok_or(crate::OnreError::OverflowError)?;
             if acc > target {
                 return Ok(Ordering::Greater);
             }
@@ -384,7 +361,7 @@ fn compare_pow_fixed(mut base: u128, mut exp: u64, scale: u128, target: u128) ->
 
         exp >>= 1;
         if exp > 0 {
-            base = mul_div_round_u128(base, base, scale).ok_or(OfferCoreError::OverflowError)?;
+            base = mul_div_round_u128(base, base, scale).ok_or(crate::OnreError::OverflowError)?;
             if base > target {
                 return Ok(Ordering::Greater);
             }

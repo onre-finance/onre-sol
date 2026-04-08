@@ -13,24 +13,7 @@ use crate::utils::{
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenInterface};
 
-/// Error codes for shared market-stats recomputation.
-#[error_code]
-pub enum MarketStatsErrorCode {
-    /// The provided ONyc mint does not match the offer's token_out mint.
-    #[msg("Invalid ONyc mint for market stats recomputation")]
-    InvalidOnycMint,
-    /// The market-stats account has an unexpected owner.
-    #[msg("Invalid market stats owner")]
-    InvalidMarketStatsOwner,
-    /// The market-stats account data could not be decoded.
-    #[msg("Invalid market stats account data")]
-    InvalidMarketStatsData,
-    /// The shared TVL computation overflowed.
-    #[msg("Math overflow")]
-    Overflow,
-    #[msg("Invalid main offer")]
-    InvalidMainOffer,
-}
+// Error codes for shared market-stats recomputation.
 
 /// Canonical in-memory representation of the derived market stats values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -66,11 +49,11 @@ impl PdaAccountInit for MarketStats {
     }
 
     fn invalid_owner_error() -> Error {
-        error!(MarketStatsErrorCode::InvalidMarketStatsOwner)
+        error!(crate::OnreError::InvalidMarketStatsOwner)
     }
 
     fn invalid_data_error() -> Error {
-        error!(MarketStatsErrorCode::InvalidMarketStatsData)
+        error!(crate::OnreError::InvalidMarketStatsData)
     }
 }
 
@@ -87,7 +70,7 @@ pub fn recompute_market_stats(
     require_keys_eq!(
         offer.token_out_mint,
         onyc_mint.key(),
-        MarketStatsErrorCode::InvalidOnycMint
+        crate::OnreError::InvalidOnycMint
     );
 
     let current_time = Clock::get()?.unix_timestamp as u64;
@@ -147,7 +130,7 @@ pub fn refresh_market_stats_pda<'info>(
     require_keys_eq!(
         market_stats_account.key(),
         market_stats_pda,
-        MarketStatsErrorCode::InvalidMarketStatsOwner
+        crate::OnreError::InvalidMarketStatsOwner
     );
 
     let mut market_stats = load_or_init_pda_account::<MarketStats>(
@@ -170,14 +153,14 @@ pub fn load_main_offer(
     require_keys_eq!(
         market_offer_account.key(),
         state.main_offer,
-        MarketStatsErrorCode::InvalidMainOffer
+        crate::OnreError::InvalidMainOffer
     );
 
     load_pda_account(
         market_offer_account,
         program_id,
-        MarketStatsErrorCode::InvalidMainOffer.into(),
-        MarketStatsErrorCode::InvalidMainOffer.into(),
+        crate::OnreError::InvalidMainOffer.into(),
+        crate::OnreError::InvalidMainOffer.into(),
     )
 }
 
@@ -215,7 +198,7 @@ pub fn calculate_nav_adjustment(
     active_vector: crate::instructions::OfferVector,
 ) -> Result<i64> {
     Ok(get_nav_adjustment_snapshot(offer, &active_vector)
-        .map_err(|_| error!(MarketStatsErrorCode::Overflow))?
+        .map_err(|_| error!(crate::OnreError::Overflow))?
         .adjustment)
 }
 
@@ -224,7 +207,7 @@ pub fn calculate_tvl(circulating_supply: u64, nav: u64) -> Result<u64> {
         .checked_mul(nav as u128)
         .and_then(|result| result.checked_div(10_u128.pow(PRICE_DECIMALS as u32)))
         .and_then(|result| u64::try_from(result).ok())
-        .ok_or_else(|| error!(MarketStatsErrorCode::Overflow))
+        .ok_or_else(|| error!(crate::OnreError::Overflow))
 }
 
 pub fn calculate_circulating_supply(total_supply: u64, vault_amount: u64) -> u64 {
@@ -414,7 +397,7 @@ mod tests {
     #[test]
     fn tvl_overflow_is_rejected() {
         let err = calculate_tvl(u64::MAX, u64::MAX).unwrap_err();
-        assert_eq!(err, error!(MarketStatsErrorCode::Overflow));
+        assert_eq!(err, error!(crate::OnreError::Overflow));
     }
 
     #[test]

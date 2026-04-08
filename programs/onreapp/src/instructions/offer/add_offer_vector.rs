@@ -2,7 +2,6 @@ use super::offer_state::{Offer, OfferVector};
 use crate::constants::seeds;
 use crate::instructions::{find_active_vector_at, find_vector_index_by_start_time};
 use crate::state::State;
-use crate::OfferCoreError;
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
 use std::cmp::max;
@@ -62,7 +61,7 @@ pub struct AddOfferVector<'info> {
     #[account(
         constraint =
             token_in_mint.key() == offer.load()?.token_in_mint
-            @ OfferCoreError::InvalidTokenInMint
+            @ crate::OnreError::InvalidTokenInMint
     )]
     pub token_in_mint: InterfaceAccount<'info, Mint>,
 
@@ -70,7 +69,7 @@ pub struct AddOfferVector<'info> {
     #[account(
         constraint =
             token_out_mint.key() == offer.load()?.token_out_mint
-            @ OfferCoreError::InvalidTokenOutMint
+            @ crate::OnreError::InvalidTokenOutMint
     )]
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 
@@ -102,10 +101,10 @@ pub struct AddOfferVector<'info> {
 ///
 /// # Returns
 /// * `Ok(())` - If the vector is successfully added
-/// * `Err(AddOfferVectorErrorCode::InvalidTimeRange)` - If start_time is before latest existing vector
-/// * `Err(AddOfferVectorErrorCode::ZeroValue)` - If any required value is zero
-/// * `Err(AddOfferVectorErrorCode::DuplicateStartTime)` - If start_time already exists
-/// * `Err(AddOfferVectorErrorCode::TooManyVectors)` - If offer has maximum vectors
+/// * `Err(crate::OnreError::InvalidTimeRange)` - If start_time is before latest existing vector
+/// * `Err(crate::OnreError::ZeroValue)` - If any required value is zero
+/// * `Err(crate::OnreError::DuplicateStartTime)` - If start_time already exists
+/// * `Err(crate::OnreError::TooManyVectors)` - If offer has maximum vectors
 ///
 /// # Access Control
 /// - Only the boss can call this instruction
@@ -148,7 +147,7 @@ pub fn add_offer_vector(
 
     // Find an empty slot in time_vectors array
     let empty_slot_index = find_vector_index_by_start_time(offer, 0)
-        .ok_or_else(|| error!(AddOfferVectorErrorCode::TooManyVectors))?;
+        .ok_or_else(|| error!(crate::OnreError::TooManyVectors))?;
 
     // Add the vector to the offer
     offer.vectors[empty_slot_index] = new_vector;
@@ -183,7 +182,7 @@ pub fn add_offer_vector(
 ///
 /// # Returns
 /// * `Ok(())` - If all parameters are valid
-/// * `Err(AddOfferVectorErrorCode::ZeroValue)` - If any parameter is zero
+/// * `Err(crate::OnreError::ZeroValue)` - If any parameter is zero
 fn validate_inputs(
     start_time: u64,
     base_time: u64,
@@ -194,11 +193,11 @@ fn validate_inputs(
 ) -> Result<()> {
     require!(
         start_time >= current_time,
-        AddOfferVectorErrorCode::StartTimeInPast
+        crate::OnreError::StartTimeInPast
     );
-    require!(base_time > 0, AddOfferVectorErrorCode::ZeroValue);
-    require!(base_price > 0, AddOfferVectorErrorCode::ZeroValue);
-    require!(price_fix_duration > 0, AddOfferVectorErrorCode::ZeroValue);
+    require!(base_time > 0, crate::OnreError::ZeroValue);
+    require!(base_price > 0, crate::OnreError::ZeroValue);
+    require!(price_fix_duration > 0, crate::OnreError::ZeroValue);
 
     // Validate start_time is not duplicated
     let existing_start_times: Vec<u64> = offer
@@ -210,14 +209,14 @@ fn validate_inputs(
 
     require!(
         !existing_start_times.contains(&start_time),
-        AddOfferVectorErrorCode::DuplicateStartTime
+        crate::OnreError::DuplicateStartTime
     );
 
     // Validate start_time is after latest existing vector
     if let Some(latest_start_time) = existing_start_times.iter().max() {
         require!(
             &start_time > latest_start_time,
-            AddOfferVectorErrorCode::InvalidTimeRange
+            crate::OnreError::InvalidTimeRange
         );
     }
 
@@ -279,32 +278,4 @@ fn clean_old_vectors(offer: &mut Offer, new_vector: &OfferVector, current_time: 
     Ok(())
 }
 
-/// Error codes for add offer vector operations
-#[error_code]
-pub enum AddOfferVectorErrorCode {
-    /// The base_time is before the latest existing vector's base_time
-    #[msg("Invalid time range: base_time must be after the latest existing vector")]
-    InvalidTimeRange,
-
-    /// One or more required parameters (base_time, base_price, price_fix_duration) is zero
-    #[msg("Invalid input: values cannot be zero")]
-    ZeroValue,
-
-    /// The start_time is in the past
-    #[msg("Invalid input: start_time cannot be in the past")]
-    StartTimeInPast,
-
-    /// A vector with the calculated start_time already exists in the offer
-    #[msg("A vector with this start_time already exists")]
-    DuplicateStartTime,
-
-    /// The offer has reached the maximum number of pricing vectors allowed
-    #[msg("Offer already has the maximum number of vectors")]
-    TooManyVectors,
-
-    #[msg("Invalid input: apr must be <= 10000000")]
-    InvalidAPR,
-
-    #[msg("Invalid input: price_fix_duration must be <= 31536000")]
-    InvalidPriceFixDuration,
-}
+// Error codes for add offer vector operations
