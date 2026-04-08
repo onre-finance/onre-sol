@@ -40,3 +40,9 @@ trident-tests/target
 scripts/ralph/
 tasks/
 .ralph-worktrees/
+
+# Local MCP and entity files
+entities
+entities.json
+mempalace
+mempalace.yaml
