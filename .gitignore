@@ -41,3 +41,9 @@ scripts/ralph/
 tasks/
 .ralph-worktrees/
 AGENTS.md
+
+# Local MCP and entity files
+entities
+entities.json
+mempalace
+mempalace.yaml
