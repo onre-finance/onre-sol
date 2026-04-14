@@ -58,17 +58,52 @@ pub fn build_set_main_offer_ix(boss: &Pubkey, offer: &Pubkey) -> Instruction {
     }
 }
 
-pub fn build_set_buffer_gross_yield_ix(boss: &Pubkey, gross_yield: u64) -> Instruction {
+pub fn build_set_buffer_gross_yield_ix(
+    boss: &Pubkey,
+    main_offer: &Pubkey,
+    onyc_mint: &Pubkey,
+    gross_yield: u64,
+) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (buffer_state_pda, _) = find_buffer_state_pda();
+    let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
+    let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
+    let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
+    let (mint_authority_pda, _) = find_mint_authority_pda();
+    let (market_stats_pda, _) = find_market_stats_pda();
+    let vault_token_out_ata = derive_ata(&offer_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
+    let reserve_vault_onyc_ata =
+        derive_ata(&reserve_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
+    let management_fee_vault_onyc_ata = derive_ata(
+        &management_fee_vault_authority_pda,
+        onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let performance_fee_vault_onyc_ata = derive_ata(
+        &performance_fee_vault_authority_pda,
+        onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
     let mut data = ix_discriminator("set_buffer_gross_apr").to_vec();
     data.extend_from_slice(&gross_yield.to_le_bytes());
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
             AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new(buffer_state_pda, false),
             AccountMeta::new_readonly(*boss, true),
+            AccountMeta::new_readonly(*main_offer, false),
+            AccountMeta::new(*onyc_mint, false),
+            AccountMeta::new_readonly(offer_vault_authority_pda, false),
+            AccountMeta::new_readonly(vault_token_out_ata, false),
+            AccountMeta::new_readonly(mint_authority_pda, false),
+            AccountMeta::new(buffer_state_pda, false),
+            AccountMeta::new(reserve_vault_onyc_ata, false),
+            AccountMeta::new(management_fee_vault_onyc_ata, false),
+            AccountMeta::new(performance_fee_vault_onyc_ata, false),
+            AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+            AccountMeta::new(market_stats_pda, false),
         ],
         data,
     }

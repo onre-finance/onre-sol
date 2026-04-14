@@ -12,6 +12,7 @@ describe("BUFFER", () => {
 
     const NAV_1_0 = 1_000_000_000;
     const ONE_YEAR_SECONDS = 31_536_000;
+    const HALF_YEAR_SECONDS = ONE_YEAR_SECONDS / 2;
 
     // Fee model reference:
     //
@@ -373,5 +374,35 @@ describe("BUFFER", () => {
                 assetAdjustmentAmount: 0,
             }),
         ).rejects.toThrow();
+    });
+
+    test("set buffer gross yield settles pending accrual before rate change", async () => {
+        await setupBufferWithBalance({ grossYield: 50_000, currentYieldApr: 0, accrualPeriods: 0 });
+
+        await testHelper.advanceSlot();
+        await testHelper.advanceClockBy(HALF_YEAR_SECONDS);
+        await program.setBufferGrossYield({ grossYield: 100_000 });
+
+        const bufferVaultAta = program.getBufferVaultAta(onycMint);
+        let reserveVaultBalance = await testHelper.getTokenAccountBalance(bufferVaultAta);
+        let mintInfo = await testHelper.getMintInfo(onycMint);
+        let bufferState = await program.getBufferState();
+
+        expect(reserveVaultBalance).toBe(BigInt(25_000_000));
+        expect(mintInfo.supply).toBe(BigInt(1_025_000_000));
+        expect(bufferState.grossApr.toNumber()).toBe(100_000);
+        expect(bufferState.previousSupply.toString()).toBe("1025000000");
+
+        await testHelper.advanceSlot();
+        await testHelper.advanceClockBy(HALF_YEAR_SECONDS);
+        await program.mintTo({ amount: 0 });
+
+        reserveVaultBalance = await testHelper.getTokenAccountBalance(bufferVaultAta);
+        mintInfo = await testHelper.getMintInfo(onycMint);
+        bufferState = await program.getBufferState();
+
+        expect(reserveVaultBalance).toBe(BigInt(76_250_000));
+        expect(mintInfo.supply).toBe(BigInt(1_076_250_000));
+        expect(bufferState.previousSupply.toString()).toBe("1076250000");
     });
 });
