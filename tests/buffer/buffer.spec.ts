@@ -291,6 +291,62 @@ describe("BUFFER", () => {
         expect(bufferState.previousSupply.toNumber()).toBe(1_160_000_000);
     });
 
+    test("burn for nav increase uses circulating supply when offer vault holds ONyc", async () => {
+        await setupBufferWithBalance({ grossYield: 1, currentYieldApr: 1 });
+
+        await program.offerVaultDeposit({
+            tokenMint: onycMint,
+            amount: 100_000_000,
+        });
+        await program.depositReserveVault({
+            onycMint,
+            amount: 300_000_000,
+        });
+        await testHelper.advanceSlot();
+
+        const quotedNav = BigInt(
+            await program.getNAV({
+                tokenInMint,
+                tokenOutMint: onycMint,
+            }),
+        );
+        const offerVaultAta = getAssociatedTokenAddressSync(onycMint, program.pdas.offerVaultAuthorityPda, true);
+        const bufferVaultAta = program.getBufferVaultAta(onycMint);
+        const bossAta = getAssociatedTokenAddressSync(onycMint, testHelper.payer.publicKey);
+        const offerVaultBalanceBefore = await testHelper.getTokenAccountBalance(offerVaultAta);
+        const reserveVaultBalanceBefore = await testHelper.getTokenAccountBalance(bufferVaultAta);
+        const mintBefore = await testHelper.getMintInfo(onycMint);
+        const circulatingSupplyBefore = BigInt(
+            (await program.getCirculatingSupply({ onycMint })).toString(),
+        );
+        const totalAssetsBefore =
+            (circulatingSupplyBefore * quotedNav) / BigInt(NAV_1_0);
+        const assetsAfter = totalAssetsBefore - BigInt(100_000_000);
+        const requiredSupplyAfter =
+            ((assetsAfter * BigInt(NAV_1_0)) + quotedNav - BigInt(1)) / quotedNav;
+        const expectedBurnAmount = circulatingSupplyBefore - requiredSupplyAfter;
+        const expectedReserveVaultAfter = reserveVaultBalanceBefore - expectedBurnAmount;
+        const oldTotalSupplyBasedBurn = mintBefore.supply - requiredSupplyAfter;
+
+        await program.burnForNavIncrease({
+            onycMint,
+            assetAdjustmentAmount: 100_000_000,
+        });
+
+        const offerVaultBalance = await testHelper.getTokenAccountBalance(offerVaultAta);
+        const reserveVaultBalance = await testHelper.getTokenAccountBalance(bufferVaultAta);
+        const bossBalance = await testHelper.getTokenAccountBalance(bossAta);
+        const mintAfter = await testHelper.getMintInfo(onycMint);
+        const bufferState = await program.getBufferState();
+
+        expect(offerVaultBalance).toBe(offerVaultBalanceBefore);
+        expect(reserveVaultBalance).toBe(expectedReserveVaultAfter);
+        expect(bossBalance).toBe(mintAfter.supply - reserveVaultBalance - offerVaultBalance);
+        expect(mintAfter.supply).toBe(mintBefore.supply - expectedBurnAmount);
+        expect(bufferState.previousSupply.toString()).toBe(mintAfter.supply.toString());
+        expect(oldTotalSupplyBasedBurn - expectedBurnAmount).toBe(offerVaultBalanceBefore);
+    });
+
     test("burn for nav increase rejects invalid parameters", async () => {
         await setupBufferWithBalance({ grossYield: 100_000, currentYieldApr: 0 });
         await testHelper.advanceSlot();
@@ -299,6 +355,22 @@ describe("BUFFER", () => {
             program.burnForNavIncrease({
                 onycMint,
                 assetAdjustmentAmount: 200_000_000,
+            }),
+        ).rejects.toThrow();
+    });
+
+    test("burn for nav increase rejects zero asset adjustment when no burn is needed", async () => {
+        await setupBufferWithBalance({ grossYield: 1, currentYieldApr: 0 });
+        await program.depositReserveVault({
+            onycMint,
+            amount: 100_000_000,
+        });
+        await testHelper.advanceSlot();
+
+        await expect(
+            program.burnForNavIncrease({
+                onycMint,
+                assetAdjustmentAmount: 0,
             }),
         ).rejects.toThrow();
     });
