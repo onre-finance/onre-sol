@@ -405,4 +405,45 @@ describe("BUFFER", () => {
         expect(mintInfo.supply).toBe(BigInt(1_076_250_000));
         expect(bufferState.previousSupply.toString()).toBe("1076250000");
     });
+
+    test("set buffer fee config settles pending accrual before fee change", async () => {
+        await setupBufferWithBalance({ grossYield: 100_000, currentYieldApr: 0, accrualPeriods: 0 });
+
+        await testHelper.advanceSlot();
+        await testHelper.advanceClockBy(HALF_YEAR_SECONDS);
+        await program.setBufferFeeConfig({
+            managementFeeBasisPoints: 100,
+            performanceFeeBasisPoints: 1_000,
+        });
+
+        let reserveVaultBalance = await testHelper.getTokenAccountBalance(program.getBufferVaultAta(onycMint));
+        let managementFeeBalance = await testHelper.getTokenAccountBalance(program.getManagementFeeVaultAta(onycMint));
+        let performanceFeeBalance = await testHelper.getTokenAccountBalance(program.getPerformanceFeeVaultAta(onycMint));
+        let mintInfo = await testHelper.getMintInfo(onycMint);
+        let bufferState = await program.getBufferState();
+
+        expect(reserveVaultBalance).toBe(BigInt(50_000_000));
+        expect(managementFeeBalance).toBe(BigInt(0));
+        expect(performanceFeeBalance).toBe(BigInt(0));
+        expect(mintInfo.supply).toBe(BigInt(1_050_000_000));
+        expect(bufferState.managementFeeBasisPoints).toBe(100);
+        expect(bufferState.performanceFeeBasisPoints).toBe(1_000);
+        expect(bufferState.previousSupply.toString()).toBe("1050000000");
+
+        await testHelper.advanceSlot();
+        await testHelper.advanceClockBy(HALF_YEAR_SECONDS);
+        await program.mintTo({ amount: 0 });
+
+        reserveVaultBalance = await testHelper.getTokenAccountBalance(program.getBufferVaultAta(onycMint));
+        managementFeeBalance = await testHelper.getTokenAccountBalance(program.getManagementFeeVaultAta(onycMint));
+        performanceFeeBalance = await testHelper.getTokenAccountBalance(program.getPerformanceFeeVaultAta(onycMint));
+        mintInfo = await testHelper.getMintInfo(onycMint);
+        bufferState = await program.getBufferState();
+
+        expect(reserveVaultBalance).toBe(BigInt(92_525_000));
+        expect(managementFeeBalance).toBe(BigInt(5_250_000));
+        expect(performanceFeeBalance).toBe(BigInt(4_725_000));
+        expect(mintInfo.supply).toBe(BigInt(1_102_500_000));
+        expect(bufferState.previousSupply.toString()).toBe("1102500000");
+    });
 });

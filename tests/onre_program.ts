@@ -432,8 +432,38 @@ export class OnreProgram {
     }
 
     async setBufferFeeConfig(params: { managementFeeBasisPoints: number; performanceFeeBasisPoints: number; signer?: Keypair }) {
+        const state = await this.getState();
+        const onycMint = state.onycMint as PublicKey;
         const feeRecipient = (params.signer ?? this.testHelper.payer).publicKey;
-        const tx = this.program.methods.setBufferFeeConfig(params.managementFeeBasisPoints, feeRecipient, params.performanceFeeBasisPoints, feeRecipient);
+        const tx = this.program.methods
+            .setBufferFeeConfig(
+                params.managementFeeBasisPoints,
+                feeRecipient,
+                params.performanceFeeBasisPoints,
+                feeRecipient,
+            )
+            .accountsPartial({
+                boss: (params.signer ?? this.testHelper.payer).publicKey,
+                mainOffer: state.mainOffer as PublicKey,
+                onycMint,
+                offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
+                vaultTokenOutAccount: getAssociatedTokenAddressSync(
+                    onycMint,
+                    this.pdas.offerVaultAuthorityPda,
+                    true,
+                    TOKEN_PROGRAM_ID,
+                ),
+                mintAuthority: this.pdas.mintAuthorityPda,
+                bufferAccounts: {
+                    bufferState: this.pdas.bufferStatePda,
+                    reserveVaultOnycAccount: this.getBufferVaultAta(onycMint),
+                    managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(onycMint),
+                    performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(onycMint),
+                },
+                marketStats: this.pdas.marketStatsPda,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                systemProgram: SystemProgram.programId,
+            });
 
         await this.rpcWithOptionalSigner(tx, params.signer);
     }
