@@ -12153,14 +12153,14 @@
           {
             "name": "old_fee_basis_points",
             "docs": [
-              "Previous fee in basis points (10000 = 100%)"
+              "Previous fee in basis points (1000 = 10%)"
             ],
             "type": "u16"
           },
           {
             "name": "new_fee_basis_points",
             "docs": [
-              "New fee in basis points (10000 = 100%)"
+              "New fee in basis points (1000 = 10%)"
             ],
             "type": "u16"
           },

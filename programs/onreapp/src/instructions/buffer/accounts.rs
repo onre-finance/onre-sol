@@ -183,7 +183,8 @@ mod tests {
 
     #[test]
     fn check_is_initialized_allows_uninitialized_canonical_buffer_state() {
-        let (buffer_state_pda, _) = Pubkey::find_program_address(&[seeds::BUFFER_STATE], &crate::ID);
+        let (buffer_state_pda, _) =
+            Pubkey::find_program_address(&[seeds::BUFFER_STATE], &crate::ID);
         let accounts = BufferAccrualAccounts {
             buffer_state: unchecked_account_with_owner(buffer_state_pda, Pubkey::new_unique(), 0),
             reserve_vault_onyc_account: unchecked_account_with_owner(
