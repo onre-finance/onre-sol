@@ -119,8 +119,8 @@ pub fn burn_for_nav_increase(
         main_offer.token_out_mint,
         OfferCoreError::InvalidTokenOutMint
     );
-    let target_nav = compute_offer_current_price(&main_offer, now as u64)?;
-    require!(target_nav > 0, BufferErrorCode::InvalidTargetNav);
+    let quoted_nav = compute_offer_current_price(&main_offer, now as u64)?;
+    require!(quoted_nav > 0, BufferErrorCode::InvalidTargetNav);
     let expected_vault_token_out_account = get_associated_token_address_with_program_id(
         &ctx.accounts.offer_vault_authority.key(),
         &ctx.accounts.onyc_mint.key(),
@@ -173,44 +173,16 @@ pub fn burn_for_nav_increase(
     )?;
     let circulating_supply =
         calculate_circulating_supply(post_accrual_supply, vault_token_out_amount);
+    // This path burns supply to preserve the current quoted NAV after reducing the
+    // effective asset base by `asset_adjustment_amount`.
     let total_assets_before_burn = calculate_tvl(circulating_supply, current_nav)
         .map_err(|_| error!(BufferErrorCode::MathOverflow))?;
-
-    require!(
-        total_assets_before_burn >= asset_adjustment_amount,
-        BufferErrorCode::InvalidAssetAdjustmentAmount
-    );
-
-    let nav_scale = 10u128
-        .checked_pow(PRICE_DECIMALS as u32)
-        .ok_or(BufferErrorCode::MathOverflow)?;
-    let assets_after_adjustment = (total_assets_before_burn - asset_adjustment_amount) as u128;
-    let target_nav_u128 = target_nav as u128;
-
-    let required_supply_after = ceil_div_u128(
-        assets_after_adjustment
-            .checked_mul(nav_scale)
-            .ok_or(BufferErrorCode::MathOverflow)?,
-        target_nav_u128,
-    )
-    .ok_or(BufferErrorCode::MathOverflow)?;
-
-    let current_supply = post_accrual_supply as u128;
-    require!(
-        required_supply_after <= current_supply,
-        BufferErrorCode::InvalidBurnTarget
-    );
-
-    let burn_amount_u128 = current_supply
-        .checked_sub(required_supply_after)
-        .ok_or(BufferErrorCode::MathOverflow)?;
-    require!(burn_amount_u128 > 0, BufferErrorCode::NoBurnNeeded);
-    require!(
-        burn_amount_u128 <= u64::MAX as u128,
-        BufferErrorCode::ResultOverflow,
-    );
-
-    let burn_amount = burn_amount_u128 as u64;
+    let burn_amount = calculate_burn_amount(
+        circulating_supply,
+        asset_adjustment_amount,
+        current_nav,
+        quoted_nav,
+    )?;
     require!(
         burn_amount <= accrual.reserve_vault_balance_after_accrual,
         BufferErrorCode::InsufficientCacheBalance
@@ -252,8 +224,79 @@ pub fn burn_for_nav_increase(
         burn_amount,
         asset_adjustment_amount,
         total_assets: total_assets_before_burn,
-        target_nav,
+        target_nav: quoted_nav,
     });
 
     Ok(())
+}
+
+fn calculate_burn_amount(
+    circulating_supply: u64,
+    asset_adjustment_amount: u64,
+    nav_before_adjustment: u64,
+    nav_after_adjustment: u64,
+) -> Result<u64> {
+    let total_assets_before_burn = calculate_tvl(circulating_supply, nav_before_adjustment)
+        .map_err(|_| error!(BufferErrorCode::MathOverflow))?;
+
+    require!(
+        total_assets_before_burn >= asset_adjustment_amount,
+        BufferErrorCode::InvalidAssetAdjustmentAmount
+    );
+
+    let nav_scale = 10u128
+        .checked_pow(PRICE_DECIMALS as u32)
+        .ok_or(BufferErrorCode::MathOverflow)?;
+    let assets_after_adjustment = (total_assets_before_burn - asset_adjustment_amount) as u128;
+    let required_supply_after = ceil_div_u128(
+        assets_after_adjustment
+            .checked_mul(nav_scale)
+            .ok_or(BufferErrorCode::MathOverflow)?,
+        nav_after_adjustment as u128,
+    )
+    .ok_or(BufferErrorCode::MathOverflow)?;
+
+    let current_supply = circulating_supply as u128;
+    require!(
+        required_supply_after <= current_supply,
+        BufferErrorCode::InvalidBurnTarget
+    );
+
+    let burn_amount_u128 = current_supply
+        .checked_sub(required_supply_after)
+        .ok_or(BufferErrorCode::MathOverflow)?;
+    require!(burn_amount_u128 > 0, BufferErrorCode::NoBurnNeeded);
+    require!(
+        burn_amount_u128 <= u64::MAX as u128,
+        BufferErrorCode::ResultOverflow,
+    );
+
+    Ok(burn_amount_u128 as u64)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const NAV_1_0: u64 = 1_000_000_000;
+    const NAV_1_1: u64 = 1_100_000_000;
+
+    #[test]
+    fn burn_amount_uses_circulating_supply_basis() {
+        let total_supply = 1_100;
+        let vault_supply = 100;
+        let circulating_supply = calculate_circulating_supply(total_supply, vault_supply);
+
+        let burn_amount = calculate_burn_amount(circulating_supply, 100, NAV_1_0, NAV_1_1).unwrap();
+        let total_supply_based_burn = (total_supply as u128).checked_sub(819).unwrap() as u64;
+
+        assert_eq!(burn_amount, 181);
+        assert_eq!(total_supply_based_burn - burn_amount, vault_supply);
+    }
+
+    #[test]
+    fn burn_amount_is_zero_when_assets_already_match_target_nav() {
+        let err = calculate_burn_amount(1_000, 0, NAV_1_0, NAV_1_0).unwrap_err();
+        assert_eq!(err, error!(BufferErrorCode::NoBurnNeeded));
+    }
 }

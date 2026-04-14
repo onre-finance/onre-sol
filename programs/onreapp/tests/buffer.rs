@@ -31,11 +31,11 @@ const NAV_1_0: u64 = 1_000_000_000;
 // Burn for NAV support:
 //   total_assets      = circulating_supply * current_nav / 1e9
 //   assets_after      = total_assets - asset_adjustment_amount
-//   required_supply   = ceil(assets_after * 1e9 / target_nav)
-//   burn_amount       = current_supply - required_supply
+//   required_supply   = ceil(assets_after * 1e9 / quoted_nav)
+//   burn_amount       = circulating_supply - required_supply
 //
 // Units:
-// - target_nav/current_nav: 1e9 scale
+// - quoted_nav/current_nav: 1e9 scale
 // - asset_adjustment_amount/total_assets: token-in mint base units
 //   (e.g. USDC offer => micro-USDC)
 // - supply and burn amount: ONyc base units
@@ -419,4 +419,75 @@ fn test_set_buffer_fee_config_rejects_no_change() {
     let ix = build_set_buffer_fee_config_ix(&boss, 100, 1_000);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(result.is_err(), "setting same fee config should fail");
+}
+
+#[test]
+fn test_burn_for_nav_increase_uses_circulating_supply_basis() {
+    let (mut svm, payer, _token_in_mint, onyc_mint, _caller) = setup_buffer_context(1, 0, 0, 0);
+    let boss = payer.pubkey();
+    let state = read_state(&svm);
+    let main_offer = state.main_offer;
+    assert_ne!(main_offer, Pubkey::default());
+
+    let boss_onyc_ata = derive_ata(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let offer_vault_onyc_ata = derive_ata(
+        &find_offer_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let reserve_vault_onyc_ata = derive_ata(
+        &find_reserve_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+
+    let ix = build_offer_vault_deposit_ix(&boss, &onyc_mint, 100_000_000, &TOKEN_PROGRAM_ID);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_deposit_reserve_vault_ix(&boss, &onyc_mint, 300_000_000);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    assert_eq!(get_token_balance(&svm, &offer_vault_onyc_ata), 100_000_000);
+    assert_eq!(get_token_balance(&svm, &reserve_vault_onyc_ata), 300_000_000);
+    assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_000_000_000);
+
+    let ix = build_burn_for_nav_increase_ix(&boss, &main_offer, &onyc_mint, 100_000_000);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    assert_eq!(get_token_balance(&svm, &offer_vault_onyc_ata), 100_000_000);
+    assert_eq!(get_token_balance(&svm, &reserve_vault_onyc_ata), 200_000_000);
+    assert_eq!(get_token_balance(&svm, &boss_onyc_ata), 600_000_000);
+    assert_eq!(get_mint_supply(&svm, &onyc_mint), 900_000_000);
+
+    let buffer_state = read_buffer_state(&svm);
+    assert_eq!(buffer_state.previous_supply, 900_000_000);
+
+    let circulating_supply =
+        get_mint_supply(&svm, &onyc_mint) - get_token_balance(&svm, &offer_vault_onyc_ata);
+    assert_eq!(circulating_supply, 800_000_000);
+}
+
+#[test]
+fn test_burn_for_nav_increase_rejects_when_no_burn_is_needed() {
+    let (mut svm, payer, _token_in_mint, onyc_mint, _caller) = setup_buffer_context(1, 0, 0, 0);
+    let boss = payer.pubkey();
+    let main_offer = read_state(&svm).main_offer;
+
+    let ix = build_deposit_reserve_vault_ix(&boss, &onyc_mint, 100_000_000);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_burn_for_nav_increase_ix(&boss, &main_offer, &onyc_mint, 0);
+    let result = send_tx(&mut svm, &[ix], &[&payer]);
+    assert!(result.is_err(), "zero asset adjustment should require no burn");
+
+    let reserve_vault_onyc_ata = derive_ata(
+        &find_reserve_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    assert_eq!(get_token_balance(&svm, &reserve_vault_onyc_ata), 100_000_000);
+    assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_000_000_000);
 }
