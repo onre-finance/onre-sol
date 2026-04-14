@@ -6068,36 +6068,115 @@
           }
         },
         {
-          "name": "buffer_state",
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "main_offer"
+        },
+        {
+          "name": "onyc_mint",
           "writable": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offer_vault_authority",
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  98,
-                  117,
+                  111,
                   102,
                   102,
                   101,
                   114,
                   95,
-                  115,
-                  116,
+                  118,
                   97,
+                  117,
+                  108,
                   116,
-                  101
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
                 ]
               }
             ]
           }
         },
         {
-          "name": "boss",
-          "signer": true,
-          "relations": [
-            "state"
+          "name": "vault_token_out_account"
+        },
+        {
+          "name": "mint_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "buffer_accounts",
+          "accounts": [
+            {
+              "name": "buffer_state",
+              "writable": true
+            },
+            {
+              "name": "reserve_vault_onyc_account",
+              "writable": true
+            },
+            {
+              "name": "management_fee_vault_onyc_account",
+              "writable": true
+            },
+            {
+              "name": "performance_fee_vault_onyc_account",
+              "writable": true
+            }
           ]
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "market_stats",
+          "writable": true
         }
       ],
       "args": [
@@ -10946,58 +11025,33 @@
   "errors": [
     {
       "code": 6000,
-      "name": "Expired",
-      "msg": "The approval message has expired."
+      "name": "MathOverflow",
+      "msg": "Math overflow"
     },
     {
       "code": 6001,
-      "name": "WrongProgram",
-      "msg": "The approval message is for the wrong program."
+      "name": "MaxSupplyExceeded",
+      "msg": "Minting would exceed maximum supply cap"
     },
     {
       "code": 6002,
-      "name": "WrongUser",
-      "msg": "The approval message is for the wrong user."
+      "name": "TransferFeeNotSupported",
+      "msg": "Token-2022 with transfer fees not supported"
     },
     {
       "code": 6003,
-      "name": "MissingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
+      "name": "ZeroPriceNotAllowed",
+      "msg": "Price cannot be zero"
     },
     {
       "code": 6004,
-      "name": "WrongIxProgram",
-      "msg": "The instruction is for the wrong program."
+      "name": "DecimalsExceedMax",
+      "msg": "Token decimals exceed maximum allowed (18)"
     },
     {
       "code": 6005,
-      "name": "BadEd25519Accounts",
-      "msg": "Ed25519 instruction has accounts."
-    },
-    {
-      "code": 6006,
-      "name": "MalformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
-    },
-    {
-      "code": 6007,
-      "name": "MultipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
-    },
-    {
-      "code": 6008,
-      "name": "WrongAuthority",
-      "msg": "The authority public key does not match."
-    },
-    {
-      "code": 6009,
-      "name": "MsgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
-    },
-    {
-      "code": 6010,
-      "name": "MsgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "name": "ResultOverflow",
+      "msg": "Result exceeds u64 maximum value"
     }
   ],
   "types": [

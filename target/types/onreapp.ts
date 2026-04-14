@@ -6074,36 +6074,115 @@ export type Onreapp = {
           }
         },
         {
-          "name": "bufferState",
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "mainOffer"
+        },
+        {
+          "name": "onycMint",
           "writable": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offerVaultAuthority",
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  98,
-                  117,
+                  111,
                   102,
                   102,
                   101,
                   114,
                   95,
-                  115,
-                  116,
+                  118,
                   97,
+                  117,
+                  108,
                   116,
-                  101
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
                 ]
               }
             ]
           }
         },
         {
-          "name": "boss",
-          "signer": true,
-          "relations": [
-            "state"
+          "name": "vaultTokenOutAccount"
+        },
+        {
+          "name": "mintAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferAccounts",
+          "accounts": [
+            {
+              "name": "bufferState",
+              "writable": true
+            },
+            {
+              "name": "reserveVaultOnycAccount",
+              "writable": true
+            },
+            {
+              "name": "managementFeeVaultOnycAccount",
+              "writable": true
+            },
+            {
+              "name": "performanceFeeVaultOnycAccount",
+              "writable": true
+            }
           ]
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "marketStats",
+          "writable": true
         }
       ],
       "args": [
@@ -10952,58 +11031,33 @@ export type Onreapp = {
   "errors": [
     {
       "code": 6000,
-      "name": "expired",
-      "msg": "The approval message has expired."
+      "name": "mathOverflow",
+      "msg": "Math overflow"
     },
     {
       "code": 6001,
-      "name": "wrongProgram",
-      "msg": "The approval message is for the wrong program."
+      "name": "maxSupplyExceeded",
+      "msg": "Minting would exceed maximum supply cap"
     },
     {
       "code": 6002,
-      "name": "wrongUser",
-      "msg": "The approval message is for the wrong user."
+      "name": "transferFeeNotSupported",
+      "msg": "Token-2022 with transfer fees not supported"
     },
     {
       "code": 6003,
-      "name": "missingEd25519Ix",
-      "msg": "Missing Ed25519 instruction."
+      "name": "zeroPriceNotAllowed",
+      "msg": "Price cannot be zero"
     },
     {
       "code": 6004,
-      "name": "wrongIxProgram",
-      "msg": "The instruction is for the wrong program."
+      "name": "decimalsExceedMax",
+      "msg": "Token decimals exceed maximum allowed (18)"
     },
     {
       "code": 6005,
-      "name": "badEd25519Accounts",
-      "msg": "Ed25519 instruction has accounts."
-    },
-    {
-      "code": 6006,
-      "name": "malformedEd25519Ix",
-      "msg": "Malformed Ed25519 instruction."
-    },
-    {
-      "code": 6007,
-      "name": "multipleSigs",
-      "msg": "Multiple signatures found in Ed25519 instruction."
-    },
-    {
-      "code": 6008,
-      "name": "wrongAuthority",
-      "msg": "The authority public key does not match."
-    },
-    {
-      "code": 6009,
-      "name": "msgMismatch",
-      "msg": "The message in the Ed25519 instruction does not match the approval message."
-    },
-    {
-      "code": 6010,
-      "name": "msgDeserialize",
-      "msg": "Failed to deserialize the approval message."
+      "name": "resultOverflow",
+      "msg": "Result exceeds u64 maximum value"
     }
   ],
   "types": [

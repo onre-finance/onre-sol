@@ -7,6 +7,7 @@ use solana_sdk::signer::Signer;
 
 // NAV/price scale is 1e9: 1.0 NAV = 1_000_000_000.
 const NAV_1_0: u64 = 1_000_000_000;
+const HALF_YEAR_SECONDS: u64 = 15_768_000;
 
 // BUFFER math reference used by tests:
 //
@@ -121,7 +122,7 @@ fn setup_buffer_context(
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_set_buffer_gross_yield_ix(&boss, gross_yield);
+    let ix = build_set_buffer_gross_yield_ix(&boss, &offer_pda, &onyc_mint, gross_yield);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
@@ -404,8 +405,10 @@ fn test_set_buffer_gross_yield_rejects_no_change() {
     let (mut svm, payer, _token_in_mint, _onyc_mint, _caller) =
         setup_buffer_context(150_000, 50_000, 0, 0);
     let boss = payer.pubkey();
+    let state = read_state(&svm);
+    let onyc_mint = state.onyc_mint;
 
-    let ix = build_set_buffer_gross_yield_ix(&boss, 150_000);
+    let ix = build_set_buffer_gross_yield_ix(&boss, &state.main_offer, &onyc_mint, 150_000);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(result.is_err(), "setting same gross yield should fail");
 }
@@ -450,14 +453,20 @@ fn test_burn_for_nav_increase_uses_circulating_supply_basis() {
     advance_slot(&mut svm);
 
     assert_eq!(get_token_balance(&svm, &offer_vault_onyc_ata), 100_000_000);
-    assert_eq!(get_token_balance(&svm, &reserve_vault_onyc_ata), 300_000_000);
+    assert_eq!(
+        get_token_balance(&svm, &reserve_vault_onyc_ata),
+        300_000_000
+    );
     assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_000_000_000);
 
     let ix = build_burn_for_nav_increase_ix(&boss, &main_offer, &onyc_mint, 100_000_000);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     assert_eq!(get_token_balance(&svm, &offer_vault_onyc_ata), 100_000_000);
-    assert_eq!(get_token_balance(&svm, &reserve_vault_onyc_ata), 200_000_000);
+    assert_eq!(
+        get_token_balance(&svm, &reserve_vault_onyc_ata),
+        200_000_000
+    );
     assert_eq!(get_token_balance(&svm, &boss_onyc_ata), 600_000_000);
     assert_eq!(get_mint_supply(&svm, &onyc_mint), 900_000_000);
 
@@ -481,13 +490,60 @@ fn test_burn_for_nav_increase_rejects_when_no_burn_is_needed() {
 
     let ix = build_burn_for_nav_increase_ix(&boss, &main_offer, &onyc_mint, 0);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "zero asset adjustment should require no burn");
+    assert!(
+        result.is_err(),
+        "zero asset adjustment should require no burn"
+    );
 
     let reserve_vault_onyc_ata = derive_ata(
         &find_reserve_vault_authority_pda().0,
         &onyc_mint,
         &TOKEN_PROGRAM_ID,
     );
-    assert_eq!(get_token_balance(&svm, &reserve_vault_onyc_ata), 100_000_000);
+    assert_eq!(
+        get_token_balance(&svm, &reserve_vault_onyc_ata),
+        100_000_000
+    );
     assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_000_000_000);
+}
+
+#[test]
+fn test_set_buffer_gross_yield_settles_pending_accrual_before_rate_change() {
+    let (mut svm, payer, _token_in_mint, onyc_mint, _caller) =
+        setup_buffer_context(50_000, 0, 0, 0);
+    let boss = payer.pubkey();
+    let state = read_state(&svm);
+    let initial_buffer_state = read_buffer_state(&svm);
+    let reserve_vault_onyc_ata = derive_ata(
+        &find_reserve_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+
+    assert_eq!(initial_buffer_state.previous_supply, 1_000_000_000);
+
+    advance_slot(&mut svm);
+    advance_clock_by(&mut svm, HALF_YEAR_SECONDS);
+
+    let ix = build_set_buffer_gross_yield_ix(&boss, &state.main_offer, &onyc_mint, 100_000);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let buffer_state_after_update = read_buffer_state(&svm);
+    assert_eq!(buffer_state_after_update.gross_yield, 100_000);
+    assert_eq!(get_token_balance(&svm, &reserve_vault_onyc_ata), 25_000_000);
+    assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_025_000_000);
+    assert_eq!(buffer_state_after_update.previous_supply, 1_025_000_000);
+
+    advance_slot(&mut svm);
+    advance_clock_by(&mut svm, HALF_YEAR_SECONDS);
+    let ix = build_mint_to_ix_for_offer(&boss, &onyc_mint, 0, &TOKEN_PROGRAM_ID, &state.main_offer);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let buffer_state_after_second_accrual = read_buffer_state(&svm);
+    assert_eq!(get_token_balance(&svm, &reserve_vault_onyc_ata), 76_250_000);
+    assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_076_250_000);
+    assert_eq!(
+        buffer_state_after_second_accrual.previous_supply,
+        1_076_250_000
+    );
 }
