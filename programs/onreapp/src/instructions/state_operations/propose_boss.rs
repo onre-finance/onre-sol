@@ -2,7 +2,6 @@ use crate::constants::seeds;
 use crate::state::State;
 use anchor_lang::prelude::*;
 
-
 /// Event emitted when a new boss is proposed
 ///
 /// Provides transparency for tracking ownership transfer proposals.

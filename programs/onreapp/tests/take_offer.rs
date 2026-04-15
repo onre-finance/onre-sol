@@ -1,10 +1,13 @@
 mod common;
 
 use common::*;
+use solana_compute_budget_interface::ComputeBudgetInstruction;
 use solana_sdk::clock::Clock;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
+
+const ONE_YEAR_SECONDS: u64 = 31_536_000;
 
 /// Standard take-offer test setup:
 ///   - Initialized state
@@ -103,7 +106,8 @@ fn test_price_first_interval() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
+    let cu_ix = ComputeBudgetInstruction::set_compute_unit_limit(300_000);
+    send_tx(&mut ctx.svm, &[cu_ix, ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -153,6 +157,186 @@ fn test_take_offer_failure_does_not_create_market_stats() {
     assert!(
         ctx.svm.get_account(&market_stats_pda).is_none(),
         "market stats PDA creation should roll back when take_offer fails"
+    );
+}
+
+#[test]
+fn test_take_offer_v2_accrues_buffer_and_splits_fees() {
+    let mut ctx = setup_take_offer();
+    let boss = ctx.payer.pubkey();
+    let current_time = get_clock_time(&ctx.svm);
+
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.onyc_mint, &TOKEN_PROGRAM_ID);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let (offer_pda, _) = find_offer_pda(&ctx.usdc_mint, &ctx.onyc_mint);
+    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &ctx.onyc_mint);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let ix = build_add_offer_vector_ix(
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        50_000,
+        86_400,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let ix = build_mint_to_ix_for_offer(&boss, &ctx.onyc_mint, 1_000_000_000, &TOKEN_PROGRAM_ID, &offer_pda);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let ix = build_set_buffer_gross_yield_ix(&boss, 150_000);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let ix = build_set_buffer_fee_config_ix(&boss, 100, 1_000);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    advance_slot(&mut ctx.svm);
+    advance_clock_by(&mut ctx.svm, ONE_YEAR_SECONDS);
+
+    let buffer_state_before = read_buffer_state(&ctx.svm);
+    let buffer_vault_before = get_token_balance(
+        &ctx.svm,
+        &derive_ata(
+            &find_reserve_vault_authority_pda().0,
+            &ctx.onyc_mint,
+            &TOKEN_PROGRAM_ID,
+        ),
+    );
+    let management_before = get_token_balance(
+        &ctx.svm,
+        &derive_ata(
+            &find_management_fee_vault_authority_pda().0,
+            &ctx.onyc_mint,
+            &TOKEN_PROGRAM_ID,
+        ),
+    );
+    let performance_before = get_token_balance(
+        &ctx.svm,
+        &derive_ata(
+            &find_performance_fee_vault_authority_pda().0,
+            &ctx.onyc_mint,
+            &TOKEN_PROGRAM_ID,
+        ),
+    );
+    let mint_supply_before = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
+    create_token_account(&mut ctx.svm, &ctx.onyc_mint, &ctx.user.pubkey(), 0);
+
+    let ix = build_take_offer_v2_ix(
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_000,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
+
+    let buffer_state_after = read_buffer_state(&ctx.svm);
+    let buffer_vault_after = get_token_balance(
+        &ctx.svm,
+        &derive_ata(
+            &find_reserve_vault_authority_pda().0,
+            &ctx.onyc_mint,
+            &TOKEN_PROGRAM_ID,
+        ),
+    );
+    let management_after = get_token_balance(
+        &ctx.svm,
+        &derive_ata(
+            &find_management_fee_vault_authority_pda().0,
+            &ctx.onyc_mint,
+            &TOKEN_PROGRAM_ID,
+        ),
+    );
+    let performance_after = get_token_balance(
+        &ctx.svm,
+        &derive_ata(
+            &find_performance_fee_vault_authority_pda().0,
+            &ctx.onyc_mint,
+            &TOKEN_PROGRAM_ID,
+        ),
+    );
+    let user_token_out_after = get_token_balance(
+        &ctx.svm,
+        &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
+    );
+    let mint_supply_after = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
+
+    let expected_gross_accrual = mint_supply_before / 10;
+    let expected_management_fee = expected_gross_accrual / 10;
+    let expected_performance_fee = (expected_gross_accrual - expected_management_fee) / 10;
+    let expected_buffer_accrual =
+        expected_gross_accrual - expected_management_fee - expected_performance_fee;
+    let user_minted_amount = mint_supply_after - mint_supply_before - expected_gross_accrual;
+
+    assert_eq!(buffer_state_before.previous_supply, mint_supply_before);
+    assert_eq!(buffer_vault_after - buffer_vault_before, expected_buffer_accrual);
+    assert_eq!(management_after - management_before, expected_management_fee);
+    assert_eq!(performance_after - performance_before, expected_performance_fee);
+    assert_eq!(user_token_out_after, user_minted_amount);
+    assert_eq!(
+        mint_supply_after - mint_supply_before,
+        expected_gross_accrual + user_minted_amount
+    );
+    assert_eq!(buffer_state_after.previous_supply, mint_supply_after);
+}
+
+#[test]
+fn test_take_offer_v2_rejects_invalid_buffer_vault_account_on_accrual_path() {
+    let mut ctx = setup_take_offer();
+    let boss = ctx.payer.pubkey();
+    let current_time = get_clock_time(&ctx.svm);
+
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.onyc_mint, &TOKEN_PROGRAM_ID);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let (offer_pda, _) = find_offer_pda(&ctx.usdc_mint, &ctx.onyc_mint);
+    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &ctx.onyc_mint);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let ix = build_add_offer_vector_ix(
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        50_000,
+        86_400,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let ix = build_mint_to_ix_for_offer(&boss, &ctx.onyc_mint, 1_000_000_000, &TOKEN_PROGRAM_ID, &offer_pda);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let ix = build_set_buffer_gross_yield_ix(&boss, 150_000);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    advance_slot(&mut ctx.svm);
+    advance_clock_by(&mut ctx.svm, ONE_YEAR_SECONDS);
+
+    let mut ix = build_take_offer_v2_ix(
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_000,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+    );
+    ix.accounts[15].pubkey = get_associated_token_address(&boss, &ctx.onyc_mint);
+
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
+    assert!(
+        result.is_err(),
+        "take_offer_v2 should reject invalid buffer vault accounts on accrual path"
     );
 }
 

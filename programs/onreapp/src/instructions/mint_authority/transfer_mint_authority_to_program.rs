@@ -16,7 +16,6 @@ use anchor_spl::token_interface::{Mint, TokenInterface};
 /// - Boss must be the current mint authority for the token
 /// - Authority can be recovered using `transfer_mint_authority_to_boss`
 
-
 /// Event emitted when mint authority is successfully transferred from boss to program PDA
 ///
 /// Provides transparency for tracking mint authority changes and enabling programmatic control.

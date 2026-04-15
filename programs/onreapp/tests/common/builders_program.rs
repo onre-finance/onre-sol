@@ -23,6 +23,25 @@ pub fn build_initialize_ix(boss: &Pubkey, onyc_mint: &Pubkey) -> Instruction {
     }
 }
 
+pub fn build_initialize_permissionless_authority_ix(boss: &Pubkey, name: &str) -> Instruction {
+    let (permissionless_authority_pda, _) = find_permissionless_authority_pda();
+    let (state_pda, _) = find_state_pda();
+    let mut data = ix_discriminator("initialize_permissionless_authority").to_vec();
+    data.extend_from_slice(&(name.len() as u32).to_le_bytes());
+    data.extend_from_slice(name.as_bytes());
+
+    Instruction {
+        program_id: PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new(permissionless_authority_pda, false),
+            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new(*boss, true),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+        ],
+        data,
+    }
+}
+
 pub fn build_add_admin_ix(boss: &Pubkey, new_admin: &Pubkey) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let mut data = ix_discriminator("add_admin").to_vec();

@@ -27,7 +27,6 @@ pub struct OnycTokensMintedEvent {
     pub amount: u64,
 }
 
-
 /// Account structure for minting ONyc tokens to the boss
 ///
 /// This struct defines the accounts required for the boss to mint new ONyc tokens

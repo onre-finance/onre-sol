@@ -191,4 +191,3 @@ pub fn make_redemption_offer(
 
     Ok(())
 }
-

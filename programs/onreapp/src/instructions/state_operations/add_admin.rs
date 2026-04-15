@@ -83,4 +83,3 @@ pub fn add_admin(ctx: Context<AddAdmin>, new_admin: Pubkey) -> Result<()> {
     // If we get here, all slots are full
     Err(crate::OnreError::MaxAdminsReached.into())
 }
-

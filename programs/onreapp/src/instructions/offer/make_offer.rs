@@ -161,4 +161,3 @@ pub fn make_offer(
 
     Ok(())
 }
-

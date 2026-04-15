@@ -91,10 +91,7 @@ pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_start_time: u
     let now = Clock::get()?.unix_timestamp as u64;
 
     // Validate inputs
-    require!(
-        vector_start_time > now,
-        crate::OnreError::StartTimeInPast
-    );
+    require!(vector_start_time > now, crate::OnreError::StartTimeInPast);
 
     // Find and delete the vector by vector_start_time
     let vector_index = find_vector_index_by_start_time(offer, vector_start_time)
@@ -116,4 +113,3 @@ pub fn delete_offer_vector(ctx: Context<DeleteOfferVector>, vector_start_time: u
 
     Ok(())
 }
-

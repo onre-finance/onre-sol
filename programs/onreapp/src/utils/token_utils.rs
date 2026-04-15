@@ -12,7 +12,6 @@ use anchor_spl::token_interface::{
 use spl_token_2022::extension::transfer_fee::TransferFeeConfig;
 use spl_token_2022::extension::{BaseStateWithExtensions, StateWithExtensions};
 
-
 pub fn validate_associated_token_address(
     ata_account: &UncheckedAccount<'_>,
     authority: &Pubkey,
@@ -176,10 +175,7 @@ pub fn calculate_token_out_amount(
     let result = numerator / denominator;
 
     // Validate result fits in u64 before casting
-    require!(
-        result <= u64::MAX as u128,
-        crate::OnreError::ResultOverflow
-    );
+    require!(result <= u64::MAX as u128, crate::OnreError::ResultOverflow);
 
     Ok(result as u64)
 }

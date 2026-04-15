@@ -299,3 +299,132 @@ fn test_fee_routing_fee_math_correctness() {
         EXPECTED_TOKEN_OUT
     );
 }
+
+#[test]
+fn test_withdraw_redemption_fees_withdraws_full_balance_when_amount_is_zero() {
+    let mut ctx = setup_fee_routing();
+    let boss = ctx.payer.pubkey();
+    let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
+    create_and_fulfill(&mut ctx, &fee_vault_pda);
+
+    let fee_vault_ata = get_associated_token_address(&fee_vault_pda, &ctx.onyc_mint);
+    assert_eq!(get_token_balance(&ctx.svm, &fee_vault_ata), EXPECTED_FEE);
+
+    let destination = Keypair::new();
+    ctx.svm
+        .airdrop(&destination.pubkey(), INITIAL_LAMPORTS)
+        .unwrap();
+
+    let ix = build_withdraw_redemption_fees_ix(
+        &boss,
+        &destination.pubkey(),
+        &ctx.onyc_mint,
+        0,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let destination_ata = get_associated_token_address(&destination.pubkey(), &ctx.onyc_mint);
+    assert_eq!(get_token_balance(&ctx.svm, &destination_ata), EXPECTED_FEE);
+    assert_eq!(get_token_balance(&ctx.svm, &fee_vault_ata), 0);
+}
+
+#[test]
+fn test_withdraw_redemption_fees_supports_partial_withdrawal() {
+    let mut ctx = setup_fee_routing();
+    let boss = ctx.payer.pubkey();
+    let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
+    create_and_fulfill(&mut ctx, &fee_vault_pda);
+
+    let destination = Keypair::new();
+    ctx.svm
+        .airdrop(&destination.pubkey(), INITIAL_LAMPORTS)
+        .unwrap();
+    let withdraw_amount = EXPECTED_FEE / 2;
+
+    let ix = build_withdraw_redemption_fees_ix(
+        &boss,
+        &destination.pubkey(),
+        &ctx.onyc_mint,
+        withdraw_amount,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let fee_vault_ata = get_associated_token_address(&fee_vault_pda, &ctx.onyc_mint);
+    let destination_ata = get_associated_token_address(&destination.pubkey(), &ctx.onyc_mint);
+    assert_eq!(get_token_balance(&ctx.svm, &destination_ata), withdraw_amount);
+    assert_eq!(
+        get_token_balance(&ctx.svm, &fee_vault_ata),
+        EXPECTED_FEE - withdraw_amount
+    );
+}
+
+#[test]
+fn test_withdraw_redemption_fees_rejects_zero_balance() {
+    let mut ctx = setup_fee_routing();
+    let boss = ctx.payer.pubkey();
+    let destination = Keypair::new();
+    ctx.svm
+        .airdrop(&destination.pubkey(), INITIAL_LAMPORTS)
+        .unwrap();
+
+    let ix = build_withdraw_redemption_fees_ix(
+        &boss,
+        &destination.pubkey(),
+        &ctx.onyc_mint,
+        0,
+        &TOKEN_PROGRAM_ID,
+    );
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]);
+    assert!(result.is_err(), "empty fee vault should reject full-balance withdrawal");
+}
+
+#[test]
+fn test_withdraw_redemption_fees_rejects_amount_above_balance() {
+    let mut ctx = setup_fee_routing();
+    let boss = ctx.payer.pubkey();
+    let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
+    create_and_fulfill(&mut ctx, &fee_vault_pda);
+
+    let destination = Keypair::new();
+    ctx.svm
+        .airdrop(&destination.pubkey(), INITIAL_LAMPORTS)
+        .unwrap();
+
+    let ix = build_withdraw_redemption_fees_ix(
+        &boss,
+        &destination.pubkey(),
+        &ctx.onyc_mint,
+        EXPECTED_FEE + 1,
+        &TOKEN_PROGRAM_ID,
+    );
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]);
+    assert!(result.is_err(), "withdrawal above vault balance should fail");
+}
+
+#[test]
+fn test_withdraw_redemption_fees_rejects_non_boss() {
+    let mut ctx = setup_fee_routing();
+    let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
+    create_and_fulfill(&mut ctx, &fee_vault_pda);
+
+    let unauthorized = Keypair::new();
+    let destination = Keypair::new();
+    ctx.svm
+        .airdrop(&unauthorized.pubkey(), INITIAL_LAMPORTS)
+        .unwrap();
+    ctx.svm
+        .airdrop(&destination.pubkey(), INITIAL_LAMPORTS)
+        .unwrap();
+
+    let ix = build_withdraw_redemption_fees_ix(
+        &unauthorized.pubkey(),
+        &destination.pubkey(),
+        &ctx.onyc_mint,
+        EXPECTED_FEE,
+        &TOKEN_PROGRAM_ID,
+    );
+    let result = send_tx(&mut ctx.svm, &[ix], &[&unauthorized]);
+    assert!(result.is_err(), "non-boss should not withdraw redemption fees");
+}

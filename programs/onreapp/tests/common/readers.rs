@@ -143,6 +143,18 @@ pub fn read_state(svm: &LiteSVM) -> StateData {
     }
 }
 
+pub fn read_permissionless_authority_name(svm: &LiteSVM) -> String {
+    let (permissionless_authority_pda, _) = find_permissionless_authority_pda();
+    let account = svm
+        .get_account(&permissionless_authority_pda)
+        .expect("permissionless authority account not found");
+    let mut data_slice = account.data.as_slice();
+    let permissionless_authority =
+        onreapp::state::PermissionlessAuthority::try_deserialize(&mut data_slice)
+            .expect("failed to deserialize PermissionlessAuthority account");
+    permissionless_authority.name
+}
+
 pub struct BufferStateData {
     pub onyc_mint: Pubkey,
     pub gross_yield: u64,

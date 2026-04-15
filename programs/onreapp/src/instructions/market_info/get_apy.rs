@@ -18,7 +18,6 @@ const INT_SCALE: u128 = 1_000_000_000_000_000_000;
 /// Standard financial calculation uses 365 days per year
 const N: u128 = 365;
 
-
 /// Event emitted when APY calculation is successfully completed
 ///
 /// This event provides transparency for off-chain applications to track

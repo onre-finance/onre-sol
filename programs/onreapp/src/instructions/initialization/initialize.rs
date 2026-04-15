@@ -7,7 +7,6 @@ use anchor_lang::solana_program::bpf_loader_upgradeable::{
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::Mint;
 
-
 /// Account structure for initializing the program state
 ///
 /// This struct defines the accounts required to set up the program's global state,

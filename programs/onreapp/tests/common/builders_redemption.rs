@@ -239,6 +239,42 @@ pub fn build_set_redemption_fee_destination_ix(
     }
 }
 
+pub fn build_withdraw_redemption_fees_ix(
+    boss: &Pubkey,
+    destination: &Pubkey,
+    token_in_mint: &Pubkey,
+    amount: u64,
+    token_program: &Pubkey,
+) -> Instruction {
+    let (state_pda, _) = find_state_pda();
+    let (redemption_fee_vault_authority_pda, _) = find_redemption_fee_vault_authority_pda();
+    let fee_vault_token_in_account = derive_ata(
+        &redemption_fee_vault_authority_pda,
+        token_in_mint,
+        token_program,
+    );
+    let destination_token_in_account = derive_ata(destination, token_in_mint, token_program);
+    let mut data = ix_discriminator("withdraw_redemption_fees").to_vec();
+    data.extend_from_slice(&amount.to_le_bytes());
+
+    Instruction {
+        program_id: PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new(*boss, true),
+            AccountMeta::new_readonly(redemption_fee_vault_authority_pda, false),
+            AccountMeta::new(fee_vault_token_in_account, false),
+            AccountMeta::new(destination_token_in_account, false),
+            AccountMeta::new_readonly(*destination, false),
+            AccountMeta::new_readonly(*token_in_mint, false),
+            AccountMeta::new_readonly(*token_program, false),
+            AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+        ],
+        data,
+    }
+}
+
 pub fn build_fulfill_redemption_request_with_fee_dest_ix(
     redemption_admin: &Pubkey,
     boss: &Pubkey,

@@ -8,7 +8,6 @@ use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::{Mint, TokenInterface};
 
-
 /// Event emitted when circulating supply calculation is completed
 ///
 /// Provides transparency for tracking token supply distribution and vault holdings.

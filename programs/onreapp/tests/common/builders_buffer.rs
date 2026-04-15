@@ -116,6 +116,22 @@ pub fn build_set_buffer_fee_config_ix(
     management_fee_basis_points: u16,
     performance_fee_basis_points: u16,
 ) -> Instruction {
+    build_set_buffer_fee_config_with_wallets_ix(
+        boss,
+        management_fee_basis_points,
+        *boss,
+        performance_fee_basis_points,
+        *boss,
+    )
+}
+
+pub fn build_set_buffer_fee_config_with_wallets_ix(
+    boss: &Pubkey,
+    management_fee_basis_points: u16,
+    management_fee_wallet: Pubkey,
+    performance_fee_basis_points: u16,
+    performance_fee_wallet: Pubkey,
+) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (buffer_state_pda, _) = find_buffer_state_pda();
     let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
@@ -139,9 +155,9 @@ pub fn build_set_buffer_fee_config_ix(
     );
     let mut data = ix_discriminator("set_buffer_fee_config").to_vec();
     data.extend_from_slice(&management_fee_basis_points.to_le_bytes());
-    data.extend_from_slice(boss.as_ref());
+    data.extend_from_slice(management_fee_wallet.as_ref());
     data.extend_from_slice(&performance_fee_basis_points.to_le_bytes());
-    data.extend_from_slice(boss.as_ref());
+    data.extend_from_slice(performance_fee_wallet.as_ref());
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![

@@ -66,7 +66,10 @@ pub fn set_kill_switch(ctx: Context<SetKillSwitch>, enable: bool) -> Result<()> 
     let admin_signed = state.admins.contains(signer.key) && signer.is_signer;
 
     if enable {
-        require!(boss_signed || admin_signed, crate::OnreError::UnauthorizedToEnable);
+        require!(
+            boss_signed || admin_signed,
+            crate::OnreError::UnauthorizedToEnable
+        );
         state.is_killed = true;
     } else {
         require!(boss_signed, crate::OnreError::OnlyBossCanDisable);
@@ -80,4 +83,3 @@ pub fn set_kill_switch(ctx: Context<SetKillSwitch>, enable: bool) -> Result<()> 
 
     Ok(())
 }
-

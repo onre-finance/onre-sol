@@ -80,4 +80,3 @@ pub fn set_redemption_admin(
 
     Ok(())
 }
-
