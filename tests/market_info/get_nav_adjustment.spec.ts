@@ -301,25 +301,14 @@ describe("Get NAV Adjustment", () => {
         it("Should provide consistent results for same state", async () => {
             const currentTime = await testHelper.getCurrentClockTime();
 
-            // Add two vectors to have a transition
+            // One active vector is enough to verify that repeated read-only calls
+            // return the same value for unchanged state.
             await program.addOfferVector({
                 tokenInMint,
                 tokenOutMint,
                 baseTime: currentTime,
                 basePrice: 1e9,
                 apr: 50_000,
-                priceFixDuration: 3600
-            });
-
-            await testHelper.advanceClockBy(3600);
-            const newCurrentTime = await testHelper.getCurrentClockTime();
-
-            await program.addOfferVector({
-                tokenInMint,
-                tokenOutMint,
-                baseTime: newCurrentTime,
-                basePrice: 1.5e9,
-                apr: 30_000,
                 priceFixDuration: 3600
             });
 
