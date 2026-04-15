@@ -83,8 +83,8 @@ pub fn get_nav_adjustment_snapshot(
             let adjustment = compute_signed_price_delta(current_price, previous_price)?;
             (Some(previous_price), adjustment)
         } else {
-            let adjustment =
-                i64::try_from(current_price).map_err(|_| error!(crate::OnreError::OverflowError))?;
+            let adjustment = i64::try_from(current_price)
+                .map_err(|_| error!(crate::OnreError::OverflowError))?;
             (None, adjustment)
         };
 

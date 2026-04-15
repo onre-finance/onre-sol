@@ -5,6 +5,8 @@ use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
 
+const ONE_YEAR_SECONDS: u64 = 31_536_000;
+
 /// Full setup for a permissionless take-offer test scenario:
 ///   - Initialized state with boss as upgrade authority
 ///   - USDC (token_in, 6 decimals) and ONyc (token_out, 9 decimals)
@@ -483,6 +485,126 @@ fn test_permissionless_basic_success() {
         &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
     );
     assert_eq!(user_usdc, 10_000_000_000 - 1_000_100);
+}
+
+#[test]
+fn test_take_offer_permissionless_v2_accrues_buffer_and_refreshes_market_stats() {
+    let mut ctx = setup_permissionless_no_approval();
+    let boss = ctx.payer.pubkey();
+    let current_time = get_clock_time(&ctx.svm);
+
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.onyc_mint, &TOKEN_PROGRAM_ID);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let (offer_pda, _) = find_offer_pda(&ctx.usdc_mint, &ctx.onyc_mint);
+    let ix = build_add_offer_vector_ix(
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86_400,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let ix = build_mint_to_ix_for_offer(
+        &boss,
+        &ctx.onyc_mint,
+        1_000_000_000,
+        &TOKEN_PROGRAM_ID,
+        &offer_pda,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+    advance_slot(&mut ctx.svm);
+
+    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &ctx.onyc_mint);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let ix = build_mint_to_ix_for_offer(&boss, &ctx.onyc_mint, 1_000_000_000, &TOKEN_PROGRAM_ID, &offer_pda);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let ix = build_set_buffer_gross_yield_ix(&boss, 100_000);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let ix = build_set_buffer_fee_config_ix(&boss, 100, 1_000);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let supply_before = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
+
+    advance_clock_by(&mut ctx.svm, ONE_YEAR_SECONDS);
+
+    let ix = build_take_offer_permissionless_v2_ix(
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_000,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
+
+    let buffer_vault_balance = get_token_balance(
+        &ctx.svm,
+        &derive_ata(
+            &find_reserve_vault_authority_pda().0,
+            &ctx.onyc_mint,
+            &TOKEN_PROGRAM_ID,
+        ),
+    );
+    let management_fee_balance = get_token_balance(
+        &ctx.svm,
+        &derive_ata(
+            &find_management_fee_vault_authority_pda().0,
+            &ctx.onyc_mint,
+            &TOKEN_PROGRAM_ID,
+        ),
+    );
+    let performance_fee_balance = get_token_balance(
+        &ctx.svm,
+        &derive_ata(
+            &find_performance_fee_vault_authority_pda().0,
+            &ctx.onyc_mint,
+            &TOKEN_PROGRAM_ID,
+        ),
+    );
+    let gross_accrual = supply_before / 10;
+    let expected_management_fee = gross_accrual / 10;
+    let remaining_after_management = gross_accrual - expected_management_fee;
+    let expected_performance_fee = remaining_after_management / 10;
+    let expected_buffer_mint = remaining_after_management - expected_performance_fee;
+
+    assert_eq!(buffer_vault_balance, expected_buffer_mint);
+    assert_eq!(management_fee_balance, expected_management_fee);
+    assert_eq!(performance_fee_balance, expected_performance_fee);
+    assert_eq!(
+        get_token_balance(
+            &ctx.svm,
+            &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
+        ),
+        1_000_000_000
+    );
+
+    let buffer_state = read_buffer_state(&ctx.svm);
+    let post_trade_supply = supply_before + gross_accrual + 1_000_000_000;
+    assert_eq!(buffer_state.previous_supply, post_trade_supply);
+
+    let market_stats = read_market_stats(&ctx.svm);
+    let vault_token_out_balance = get_token_balance(
+        &ctx.svm,
+        &derive_ata(
+            &find_offer_vault_authority_pda().0,
+            &ctx.onyc_mint,
+            &TOKEN_PROGRAM_ID,
+        ),
+    );
+    let expected_circulating_supply = post_trade_supply - vault_token_out_balance;
+    assert_eq!(market_stats.nav, 1_000_000_000);
+    assert_eq!(market_stats.circulating_supply, expected_circulating_supply);
+    assert_eq!(market_stats.tvl, expected_circulating_supply);
 }
 
 // ===========================================================================

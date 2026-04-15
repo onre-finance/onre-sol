@@ -13,7 +13,6 @@ use crate::utils::{
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenInterface};
 
-
 /// Canonical in-memory representation of the derived market stats values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MarketStatsSnapshot {

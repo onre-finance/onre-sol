@@ -115,4 +115,3 @@ pub fn update_redemption_offer_fee(
 
     Ok(())
 }
-

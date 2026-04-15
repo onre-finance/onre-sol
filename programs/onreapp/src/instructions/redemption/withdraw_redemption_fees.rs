@@ -85,10 +85,7 @@ pub fn withdraw_redemption_fees(ctx: Context<WithdrawRedemptionFees>, amount: u6
 
     let effective_amount = if amount == 0 { vault_balance } else { amount };
 
-    require!(
-        effective_amount > 0,
-        crate::OnreError::ZeroBalance
-    );
+    require!(effective_amount > 0, crate::OnreError::ZeroBalance);
     require!(
         effective_amount <= vault_balance,
         crate::OnreError::InsufficientBalance
@@ -116,4 +113,3 @@ pub fn withdraw_redemption_fees(ctx: Context<WithdrawRedemptionFees>, amount: u6
 
     Ok(())
 }
-

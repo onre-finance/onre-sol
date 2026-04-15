@@ -211,4 +211,3 @@ pub fn create_redemption_request(ctx: Context<CreateRedemptionRequest>, amount: 
 
     Ok(())
 }
-

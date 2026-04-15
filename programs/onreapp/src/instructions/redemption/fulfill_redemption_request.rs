@@ -295,8 +295,7 @@ pub fn fulfill_redemption_request<'info>(
             authority: ctx.accounts.fee_destination.key(),
             mint: token_in_mint.key(),
             token_program_id: ctx.accounts.token_in_program.key(),
-            invalid_account_error:
-                crate::OnreError::InvalidFeeDestinationTokenInAccount,
+            invalid_account_error: crate::OnreError::InvalidFeeDestinationTokenInAccount,
         })?;
     let mut redemption_offer = load_redemption_offer(
         ctx.program_id,
@@ -672,4 +671,3 @@ fn execute_fulfill_redemption_request(
 
     Ok(())
 }
-

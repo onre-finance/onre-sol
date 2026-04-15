@@ -41,6 +41,9 @@ const HALF_YEAR_SECONDS: u64 = 15_768_000;
 //   (e.g. USDC offer => micro-USDC)
 // - supply and burn amount: ONyc base units
 
+const ONE_YEAR_SECONDS: u64 = 31_536_000;
+const NAV_AFTER_ONE_YEAR_AT_5_PERCENT_APR: u64 = 1_051_411_506;
+
 fn setup_buffer_context(
     gross_yield: u64,
     current_yield: u64,
@@ -139,6 +142,13 @@ fn setup_buffer_context(
     }
 
     (svm, payer, token_in_mint, onyc_mint, caller)
+}
+
+fn trigger_buffer_accrual(svm: &mut litesvm::LiteSVM, payer: &Keypair, onyc_mint: &Pubkey) {
+    let boss = payer.pubkey();
+    let main_offer = read_state(svm).main_offer;
+    let ix = build_mint_to_ix_for_offer(&boss, onyc_mint, 0, &TOKEN_PROGRAM_ID, &main_offer);
+    send_tx(svm, &[ix], &[payer]).unwrap();
 }
 
 #[test]
@@ -611,4 +621,222 @@ fn test_set_buffer_fee_config_settles_pending_accrual_before_fee_change() {
         buffer_state_after_second_accrual.previous_supply,
         1_102_500_000
     );
+}
+
+#[test]
+fn test_set_buffer_fee_config_rejects_fee_above_max() {
+    let (mut svm, payer, _token_in_mint, _onyc_mint, _caller) =
+        setup_buffer_context(150_000, 50_000, 0, 0);
+    let boss = payer.pubkey();
+
+    let ix = build_set_buffer_fee_config_ix(&boss, 10_001, 0);
+    let result = send_tx(&mut svm, &[ix], &[&payer]);
+    assert!(result.is_err(), "management fee above max bps should fail");
+
+    let ix = build_set_buffer_fee_config_ix(&boss, 0, 10_001);
+    let result = send_tx(&mut svm, &[ix], &[&payer]);
+    assert!(result.is_err(), "performance fee above max bps should fail");
+}
+
+#[test]
+fn test_set_buffer_fee_config_rejects_missing_fee_wallets_when_bps_nonzero() {
+    let (mut svm, payer, _token_in_mint, _onyc_mint, _caller) =
+        setup_buffer_context(150_000, 50_000, 0, 0);
+    let boss = payer.pubkey();
+
+    let ix = build_set_buffer_fee_config_with_wallets_ix(
+        &boss,
+        100,
+        Pubkey::default(),
+        0,
+        boss,
+    );
+    let result = send_tx(&mut svm, &[ix], &[&payer]);
+    assert!(
+        result.is_err(),
+        "management fee wallet should be required when management bps is nonzero"
+    );
+
+    let ix = build_set_buffer_fee_config_with_wallets_ix(
+        &boss,
+        0,
+        boss,
+        1_000,
+        Pubkey::default(),
+    );
+    let result = send_tx(&mut svm, &[ix], &[&payer]);
+    assert!(
+        result.is_err(),
+        "performance fee wallet should be required when performance bps is nonzero"
+    );
+}
+
+#[test]
+fn test_accrue_buffer_splits_gross_mint_across_reserve_and_fee_vaults() {
+    let (mut svm, payer, _token_in_mint, onyc_mint, _caller) =
+        setup_buffer_context(150_000, 50_000, 100, 1_000);
+    trigger_buffer_accrual(&mut svm, &payer, &onyc_mint);
+    advance_clock_by(&mut svm, ONE_YEAR_SECONDS);
+    trigger_buffer_accrual(&mut svm, &payer, &onyc_mint);
+
+    let reserve_vault_onyc_ata = derive_ata(
+        &find_reserve_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let management_fee_vault_onyc_ata = derive_ata(
+        &find_management_fee_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let performance_fee_vault_onyc_ata = derive_ata(
+        &find_performance_fee_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let buffer_state = read_buffer_state(&svm);
+
+    assert_eq!(get_token_balance(&svm, &reserve_vault_onyc_ata), 81_000_000);
+    assert_eq!(
+        get_token_balance(&svm, &management_fee_vault_onyc_ata),
+        10_000_000
+    );
+    assert_eq!(
+        get_token_balance(&svm, &performance_fee_vault_onyc_ata),
+        9_000_000
+    );
+    assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_100_000_000);
+    assert_eq!(buffer_state.previous_supply, 1_100_000_000);
+    assert_eq!(
+        buffer_state.performance_fee_high_watermark,
+        NAV_AFTER_ONE_YEAR_AT_5_PERCENT_APR
+    );
+}
+
+#[test]
+fn test_accrue_buffer_mints_nothing_when_spread_is_zero() {
+    let (mut svm, payer, _token_in_mint, onyc_mint, _caller) =
+        setup_buffer_context(50_000, 50_000, 0, 0);
+    trigger_buffer_accrual(&mut svm, &payer, &onyc_mint);
+    advance_clock_by(&mut svm, ONE_YEAR_SECONDS);
+    trigger_buffer_accrual(&mut svm, &payer, &onyc_mint);
+
+    let reserve_vault_onyc_ata = derive_ata(
+        &find_reserve_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let buffer_state = read_buffer_state(&svm);
+
+    assert_eq!(get_token_balance(&svm, &reserve_vault_onyc_ata), 0);
+    assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_000_000_000);
+    assert_eq!(buffer_state.previous_supply, 1_000_000_000);
+    assert_eq!(
+        buffer_state.performance_fee_high_watermark,
+        NAV_AFTER_ONE_YEAR_AT_5_PERCENT_APR
+    );
+}
+
+#[test]
+fn test_withdraw_management_and_performance_fees_transfers_out_of_fee_vaults() {
+    let (mut svm, payer, _token_in_mint, onyc_mint, _caller) =
+        setup_buffer_context(150_000, 50_000, 100, 1_000);
+    let boss = payer.pubkey();
+    trigger_buffer_accrual(&mut svm, &payer, &onyc_mint);
+    advance_clock_by(&mut svm, ONE_YEAR_SECONDS);
+    trigger_buffer_accrual(&mut svm, &payer, &onyc_mint);
+
+    let boss_onyc_ata = derive_ata(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let management_fee_vault_onyc_ata = derive_ata(
+        &find_management_fee_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let performance_fee_vault_onyc_ata = derive_ata(
+        &find_performance_fee_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+
+    let withdraw_management_ix = build_withdraw_management_fees_ix(&boss, &onyc_mint, 10_000_000);
+    send_tx(&mut svm, &[withdraw_management_ix], &[&payer]).unwrap();
+
+    let withdraw_performance_ix =
+        build_withdraw_performance_fees_ix(&boss, &onyc_mint, 9_000_000);
+    send_tx(&mut svm, &[withdraw_performance_ix], &[&payer]).unwrap();
+
+    assert_eq!(get_token_balance(&svm, &management_fee_vault_onyc_ata), 0);
+    assert_eq!(get_token_balance(&svm, &performance_fee_vault_onyc_ata), 0);
+    assert_eq!(get_token_balance(&svm, &boss_onyc_ata), 1_019_000_000);
+}
+
+#[test]
+fn test_burn_for_nav_increase_works_and_non_boss_fails() {
+    let (mut svm, payer, _token_in_mint, onyc_mint, _caller) =
+        setup_buffer_context(100_000, 0, 0, 0);
+    let boss = payer.pubkey();
+    let main_offer = read_state(&svm).main_offer;
+
+    trigger_buffer_accrual(&mut svm, &payer, &onyc_mint);
+    advance_clock_by(&mut svm, ONE_YEAR_SECONDS);
+    trigger_buffer_accrual(&mut svm, &payer, &onyc_mint);
+
+    let ix = build_burn_for_nav_increase_ix(&boss, &main_offer, &onyc_mint, 50_000_000);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let reserve_vault_onyc_ata = derive_ata(
+        &find_reserve_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    assert_eq!(get_token_balance(&svm, &reserve_vault_onyc_ata), 50_000_000);
+    assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_050_000_000);
+    assert_eq!(read_buffer_state(&svm).previous_supply, 1_050_000_000);
+
+    let non_boss = Keypair::new();
+    svm.airdrop(&non_boss.pubkey(), INITIAL_LAMPORTS).unwrap();
+    let ix = build_burn_for_nav_increase_ix(&non_boss.pubkey(), &main_offer, &onyc_mint, 10_000_000);
+    let result = send_tx(&mut svm, &[ix], &[&non_boss]);
+    assert!(result.is_err(), "non-boss burn should fail");
+}
+
+#[test]
+fn test_burn_for_nav_increase_settles_pending_accrual_before_burning() {
+    let (mut svm, payer, _token_in_mint, onyc_mint, _caller) =
+        setup_buffer_context(100_000, 0, 0, 0);
+    let boss = payer.pubkey();
+    let main_offer = read_state(&svm).main_offer;
+
+    trigger_buffer_accrual(&mut svm, &payer, &onyc_mint);
+    advance_clock_by(&mut svm, ONE_YEAR_SECONDS);
+    trigger_buffer_accrual(&mut svm, &payer, &onyc_mint);
+    advance_clock_by(&mut svm, ONE_YEAR_SECONDS);
+
+    let ix = build_burn_for_nav_increase_ix(&boss, &main_offer, &onyc_mint, 50_000_000);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let reserve_vault_onyc_ata = derive_ata(
+        &find_reserve_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let buffer_state = read_buffer_state(&svm);
+
+    assert_eq!(get_token_balance(&svm, &reserve_vault_onyc_ata), 160_000_000);
+    assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_160_000_000);
+    assert_eq!(buffer_state.previous_supply, 1_160_000_000);
+}
+
+#[test]
+fn test_burn_for_nav_increase_rejects_invalid_parameters() {
+    let (mut svm, payer, _token_in_mint, onyc_mint, _caller) =
+        setup_buffer_context(100_000, 0, 0, 0);
+    let boss = payer.pubkey();
+    let main_offer = read_state(&svm).main_offer;
+
+    advance_slot(&mut svm);
+
+    let ix = build_burn_for_nav_increase_ix(&boss, &main_offer, &onyc_mint, 200_000_000);
+    let result = send_tx(&mut svm, &[ix], &[&payer]);
+    assert!(result.is_err(), "invalid burn parameters should fail");
 }

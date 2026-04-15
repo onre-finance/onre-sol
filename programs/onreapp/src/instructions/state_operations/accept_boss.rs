@@ -2,7 +2,6 @@ use crate::constants::seeds;
 use crate::state::State;
 use anchor_lang::prelude::*;
 
-
 /// Event emitted when the boss authority is successfully transferred
 ///
 /// Provides transparency for tracking ownership transfers and authority changes.

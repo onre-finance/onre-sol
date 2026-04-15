@@ -1,5 +1,5 @@
 use crate::constants::seeds;
-use crate::instructions::buffer::{BufferState};
+use crate::instructions::buffer::BufferState;
 use crate::utils::{load_pda_account, store_pda_account};
 use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;

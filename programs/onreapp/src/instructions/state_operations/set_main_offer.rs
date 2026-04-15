@@ -50,4 +50,3 @@ pub fn set_main_offer(ctx: Context<SetMainOffer>) -> Result<()> {
 
     Ok(())
 }
-

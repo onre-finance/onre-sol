@@ -76,11 +76,7 @@ pub fn close_state(ctx: Context<CloseState>) -> Result<()> {
     let state = &ctx.accounts.state;
 
     // 0) Sanity: we must own the account to mutate lamports/metadata directly
-    require_keys_eq!(
-        *state.owner,
-        crate::ID,
-        crate::OnreError::InvalidStateOwner
-    );
+    require_keys_eq!(*state.owner, crate::ID, crate::OnreError::InvalidStateOwner);
 
     // 1) Validate PDA address from seeds
     let (expected_state_pda, _bump) = Pubkey::find_program_address(&[seeds::STATE], &crate::ID);
@@ -136,4 +132,3 @@ pub fn close_state(ctx: Context<CloseState>) -> Result<()> {
 
     Ok(())
 }
-

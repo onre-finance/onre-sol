@@ -235,4 +235,3 @@ pub fn cancel_redemption_request<'info>(
 
     Ok(())
 }
-

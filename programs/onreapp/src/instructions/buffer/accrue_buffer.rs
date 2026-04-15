@@ -6,9 +6,7 @@ use crate::instructions::buffer::{
 use crate::instructions::market_info::offer_valuation_utils::get_active_vector_and_current_price;
 use crate::instructions::Offer;
 use crate::state::State;
-use crate::utils::token_utils::{
-    mint_tokens, read_optional_token_account_amount,
-};
+use crate::utils::token_utils::{mint_tokens, read_optional_token_account_amount};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenInterface};
 

@@ -6,6 +6,7 @@ target/deploy
 target/release
 target/sbf-solana-solana
 target/sbpf-solana-solana
+target/sbpfv1-solana-solana
 target/test-ledger
 target/.rustc_info.json
 target/flycheck*
@@ -27,6 +28,8 @@ pnpm-debug.log*
 
 test-ledger
 tests/fixtures/
+coverage/
+sbf_trace_dir/
 
 .idea
 onre-sol.iml

@@ -4,7 +4,6 @@ use anchor_lang::prelude::*;
 use solana_instructions_sysvar::{load_current_index_checked, load_instruction_at_checked};
 use solana_program::ed25519_program;
 
-
 /// Verifies cryptographic approval messages signed by trusted authorities
 ///
 /// This function performs comprehensive validation of approval messages using Ed25519
@@ -44,7 +43,10 @@ pub fn verify_approval_message_generic(
 ) -> Result<()> {
     let now = Clock::get()?.unix_timestamp as u64;
     require!(now <= msg.expiry_unix, crate::OnreError::Expired);
-    require!(msg.program_id == *program_id, crate::OnreError::WrongProgram);
+    require!(
+        msg.program_id == *program_id,
+        crate::OnreError::WrongProgram
+    );
     require!(
         msg.user_pubkey.key() == user_pubkey.key(),
         crate::OnreError::WrongUser
@@ -73,15 +75,21 @@ pub fn verify_approval_message_generic(
     // Check if the signature is from either approver1 or approver2
     let is_approver1 = *approver1 != Pubkey::default() && parsed.pubkey == approver1.to_bytes();
     let is_approver2 = *approver2 != Pubkey::default() && parsed.pubkey == approver2.to_bytes();
-    require!(is_approver1 || is_approver2, crate::OnreError::WrongAuthority);
+    require!(
+        is_approver1 || is_approver2,
+        crate::OnreError::WrongAuthority
+    );
 
-    let signed_msg =
-        ApprovalMessage::try_from_slice(&parsed.message).map_err(|_| crate::OnreError::MsgDeserialize)?;
+    let signed_msg = ApprovalMessage::try_from_slice(&parsed.message)
+        .map_err(|_| crate::OnreError::MsgDeserialize)?;
     require!(
         signed_msg.program_id == *program_id,
         crate::OnreError::WrongProgram
     );
-    require!(signed_msg.user_pubkey == *user_pubkey, crate::OnreError::WrongUser);
+    require!(
+        signed_msg.user_pubkey == *user_pubkey,
+        crate::OnreError::WrongUser
+    );
     require!(signed_msg.expiry_unix >= now, crate::OnreError::Expired);
     require!(signed_msg == *msg, crate::OnreError::MsgMismatch);
 

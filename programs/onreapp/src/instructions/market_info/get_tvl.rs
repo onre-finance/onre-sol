@@ -11,7 +11,6 @@ use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::{Mint, TokenInterface};
 
-
 /// Event emitted when TVL (Total Value Locked) calculation is completed
 ///
 /// Provides transparency for tracking total value metrics for offers.

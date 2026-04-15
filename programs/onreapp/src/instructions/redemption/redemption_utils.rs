@@ -85,10 +85,7 @@ pub fn process_redemption_core(
     let result = numerator / denominator;
 
     // Validate result fits in u64 before casting
-    require!(
-        result <= u64::MAX as u128,
-        crate::OnreError::OverflowError
-    );
+    require!(result <= u64::MAX as u128, crate::OnreError::OverflowError);
 
     let token_out_amount = result as u64;
 

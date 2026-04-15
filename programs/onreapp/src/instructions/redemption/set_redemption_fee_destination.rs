@@ -73,4 +73,3 @@ pub fn set_redemption_fee_destination(
 
     Ok(())
 }
-

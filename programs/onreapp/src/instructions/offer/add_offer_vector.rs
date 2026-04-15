@@ -277,4 +277,3 @@ fn clean_old_vectors(offer: &mut Offer, new_vector: &OfferVector, current_time: 
 
     Ok(())
 }
-
