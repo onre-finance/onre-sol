@@ -1,8 +1,106 @@
 mod common;
 
 use common::*;
+use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
+
+const HALF_YEAR_SECONDS: u64 = 15_768_000;
+
+struct BufferedCapCtx {
+    svm: litesvm::LiteSVM,
+    payer: Keypair,
+    usdc_mint: Pubkey,
+    onyc_mint: Pubkey,
+    offer_pda: Pubkey,
+    user: Keypair,
+}
+
+fn setup_buffered_cap_context(max_supply: u64, allow_permissionless: bool) -> BufferedCapCtx {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
+    let boss = payer.pubkey();
+    let usdc_mint = create_mint(&mut svm, &payer, 6, &boss);
+
+    let ix = build_configure_max_supply_ix(&boss, max_supply);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_mint_to_ix(&boss, &onyc_mint, 1_000_000_000, &TOKEN_PROGRAM_ID);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_make_offer_ix(
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        0,
+        false,
+        allow_permissionless,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let (offer_pda, _) = find_offer_pda(&usdc_mint, &onyc_mint);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let current_time = get_clock_time(&svm);
+    let ix = build_add_offer_vector_ix(
+        &boss,
+        &usdc_mint,
+        &onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &onyc_mint);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_set_buffer_gross_yield_ix(&boss, &offer_pda, &onyc_mint, 100_000);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let ix = build_mint_to_ix_for_offer(&boss, &onyc_mint, 0, &TOKEN_PROGRAM_ID, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    advance_slot(&mut svm);
+
+    let (vault_authority, _) = find_offer_vault_authority_pda();
+    create_token_account(&mut svm, &usdc_mint, &vault_authority, 0);
+    create_token_account(&mut svm, &onyc_mint, &vault_authority, 0);
+    create_token_account(&mut svm, &usdc_mint, &boss, 0);
+
+    if allow_permissionless {
+        let (permissionless_authority, _) = find_permissionless_authority_pda();
+        create_token_account(&mut svm, &usdc_mint, &permissionless_authority, 0);
+        create_token_account(&mut svm, &onyc_mint, &permissionless_authority, 0);
+    }
+
+    let user = Keypair::new();
+    svm.airdrop(&user.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
+    create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 10_000_000_000);
+    create_token_account(&mut svm, &onyc_mint, &user.pubkey(), 0);
+
+    BufferedCapCtx {
+        svm,
+        payer,
+        usdc_mint,
+        onyc_mint,
+        offer_pda,
+        user,
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Configure Max Supply Instruction
@@ -160,6 +258,31 @@ fn test_mint_to_no_limit_when_zero() {
 
     let boss_ata = get_associated_token_address(&boss, &onyc_mint);
     assert_eq!(get_token_balance(&svm, &boss_ata), 1_000_000_000_000);
+}
+
+#[test]
+fn test_mint_to_after_buffer_accrual_still_respects_max_supply() {
+    let mut ctx = setup_buffered_cap_context(1_055_000_000, false);
+    let boss = ctx.payer.pubkey();
+    let max_supply = read_state(&ctx.svm).max_supply;
+
+    advance_slot(&mut ctx.svm);
+    advance_clock_by(&mut ctx.svm, HALF_YEAR_SECONDS);
+
+    let ix = build_mint_to_ix_for_offer(
+        &boss,
+        &ctx.onyc_mint,
+        10_000_000,
+        &TOKEN_PROGRAM_ID,
+        &ctx.offer_pda,
+    );
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]);
+    let supply = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
+    assert!(
+        result.is_err(),
+        "mint_to should fail when accrual plus mint exceeds max supply, supply={supply}, max_supply={max_supply}"
+    );
+    assert_eq!(supply, 1_000_000_000);
 }
 
 // ---------------------------------------------------------------------------
@@ -409,6 +532,33 @@ fn test_take_offer_multiple_users_until_cap() {
     assert!(result.is_err(), "third user should hit max supply cap");
 }
 
+#[test]
+fn test_take_offer_v2_after_buffer_accrual_respects_max_supply() {
+    let mut ctx = setup_buffered_cap_context(1_055_000_000, false);
+    let boss = ctx.payer.pubkey();
+
+    advance_slot(&mut ctx.svm);
+    advance_clock_by(&mut ctx.svm, HALF_YEAR_SECONDS);
+
+    let ix = build_take_offer_v2_ix(
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        10_000,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+    );
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
+    let supply = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
+    assert!(
+        result.is_err(),
+        "take_offer_v2 should fail when accrual plus mint exceeds max supply, supply={supply}"
+    );
+    assert_eq!(supply, 1_000_000_000);
+}
+
 // ---------------------------------------------------------------------------
 // Take Offer Permissionless Enforcement
 // ---------------------------------------------------------------------------
@@ -577,4 +727,31 @@ fn test_take_offer_permissionless_respects_cumulative_supply() {
     );
     let result = send_tx(&mut svm, &[ix], &[&user2]);
     assert!(result.is_err(), "cumulative supply should not exceed max");
+}
+
+#[test]
+fn test_take_offer_permissionless_v2_after_buffer_accrual_respects_max_supply() {
+    let mut ctx = setup_buffered_cap_context(1_055_000_000, true);
+    let boss = ctx.payer.pubkey();
+
+    advance_slot(&mut ctx.svm);
+    advance_clock_by(&mut ctx.svm, HALF_YEAR_SECONDS);
+
+    let ix = build_take_offer_permissionless_v2_ix(
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        10_000,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+    );
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.user]);
+    let supply = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
+    assert!(
+        result.is_err(),
+        "take_offer_permissionless_v2 should fail when accrual plus mint exceeds max supply, supply={supply}"
+    );
+    assert_eq!(supply, 1_000_000_000);
 }
