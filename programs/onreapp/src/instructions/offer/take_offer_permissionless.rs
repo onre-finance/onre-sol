@@ -553,6 +553,10 @@ fn execute_take_offer_permissionless<'info>(
         None
     };
 
+    if accrual.is_some() {
+        token_out_mint.reload()?;
+    }
+
     transfer_tokens(
         token_in_mint,
         token_in_program,

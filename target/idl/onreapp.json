@@ -5981,36 +5981,115 @@
           }
         },
         {
-          "name": "buffer_state",
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "main_offer"
+        },
+        {
+          "name": "onyc_mint",
           "writable": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offer_vault_authority",
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  98,
-                  117,
+                  111,
                   102,
                   102,
                   101,
                   114,
                   95,
-                  115,
-                  116,
+                  118,
                   97,
+                  117,
+                  108,
                   116,
-                  101
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
                 ]
               }
             ]
           }
         },
         {
-          "name": "boss",
-          "signer": true,
-          "relations": [
-            "state"
+          "name": "vault_token_out_account"
+        },
+        {
+          "name": "mint_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "buffer_accounts",
+          "accounts": [
+            {
+              "name": "buffer_state",
+              "writable": true
+            },
+            {
+              "name": "reserve_vault_onyc_account",
+              "writable": true
+            },
+            {
+              "name": "management_fee_vault_onyc_account",
+              "writable": true
+            },
+            {
+              "name": "performance_fee_vault_onyc_account",
+              "writable": true
+            }
           ]
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "market_stats",
+          "writable": true
         }
       ],
       "args": [
@@ -6068,36 +6147,115 @@
           }
         },
         {
-          "name": "buffer_state",
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "main_offer"
+        },
+        {
+          "name": "onyc_mint",
           "writable": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offer_vault_authority",
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  98,
-                  117,
+                  111,
                   102,
                   102,
                   101,
                   114,
                   95,
-                  115,
-                  116,
+                  118,
                   97,
+                  117,
+                  108,
                   116,
-                  101
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
                 ]
               }
             ]
           }
         },
         {
-          "name": "boss",
-          "signer": true,
-          "relations": [
-            "state"
+          "name": "vault_token_out_account"
+        },
+        {
+          "name": "mint_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "buffer_accounts",
+          "accounts": [
+            {
+              "name": "buffer_state",
+              "writable": true
+            },
+            {
+              "name": "reserve_vault_onyc_account",
+              "writable": true
+            },
+            {
+              "name": "management_fee_vault_onyc_account",
+              "writable": true
+            },
+            {
+              "name": "performance_fee_vault_onyc_account",
+              "writable": true
+            }
           ]
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "market_stats",
+          "writable": true
         }
       ],
       "args": [
@@ -12153,14 +12311,14 @@
           {
             "name": "old_fee_basis_points",
             "docs": [
-              "Previous fee in basis points (10000 = 100%)"
+              "Previous fee in basis points (1000 = 10%)"
             ],
             "type": "u16"
           },
           {
             "name": "new_fee_basis_points",
             "docs": [
-              "New fee in basis points (10000 = 100%)"
+              "New fee in basis points (1000 = 10%)"
             ],
             "type": "u16"
           },

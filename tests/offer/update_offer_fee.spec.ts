@@ -51,15 +51,15 @@ describe("Update Offer Fee", () => {
         expect(offer.feeBasisPoints.toString()).toBe("0");
     });
 
-    it("Should update fee to maximum (10000 basis points = 100%)", async () => {
-        const newFee = 10000; // Maximum fee (100%)
+    it("Should update fee to maximum allowed value (1000 basis points = 10%)", async () => {
+        const newFee = 1000; // Maximum allowed fee (10%)
 
         await program.updateOfferFee({ tokenInMint, tokenOutMint, newFee });
 
         // Verify the fee was updated to maximum
         const offer = await program.getOffer(tokenInMint, tokenOutMint);
 
-        expect(offer.feeBasisPoints.toString()).toBe("10000");
+        expect(offer.feeBasisPoints.toString()).toBe("1000");
     });
 
     it("Should reject update for non-existent offer", async () => {
@@ -74,12 +74,12 @@ describe("Update Offer Fee", () => {
         ).rejects.toThrow("The given account is owned by a different program than expected");
     });
 
-    it("Should reject fee greater than 10000 basis points", async () => {
-        const invalidFee = 10001; // Too high (>100%)
+    it("Should reject fee greater than 1000 basis points", async () => {
+        const invalidFee = 1001; // Too high (>10%)
 
         await expect(
             program.updateOfferFee({ tokenInMint, tokenOutMint, newFee: invalidFee })
-        ).rejects.toThrow("Invalid fee: fee_basis_points must be <= 10000");
+        ).rejects.toThrow("Invalid fee: fee_basis_points must be <= 1000 (10%)");
     });
 
     it("Should reject when called by non-boss", async () => {

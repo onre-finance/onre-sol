@@ -5987,36 +5987,115 @@ export type Onreapp = {
           }
         },
         {
-          "name": "bufferState",
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "mainOffer"
+        },
+        {
+          "name": "onycMint",
           "writable": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offerVaultAuthority",
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  98,
-                  117,
+                  111,
                   102,
                   102,
                   101,
                   114,
                   95,
-                  115,
-                  116,
+                  118,
                   97,
+                  117,
+                  108,
                   116,
-                  101
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
                 ]
               }
             ]
           }
         },
         {
-          "name": "boss",
-          "signer": true,
-          "relations": [
-            "state"
+          "name": "vaultTokenOutAccount"
+        },
+        {
+          "name": "mintAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferAccounts",
+          "accounts": [
+            {
+              "name": "bufferState",
+              "writable": true
+            },
+            {
+              "name": "reserveVaultOnycAccount",
+              "writable": true
+            },
+            {
+              "name": "managementFeeVaultOnycAccount",
+              "writable": true
+            },
+            {
+              "name": "performanceFeeVaultOnycAccount",
+              "writable": true
+            }
           ]
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "marketStats",
+          "writable": true
         }
       ],
       "args": [
@@ -6074,36 +6153,115 @@ export type Onreapp = {
           }
         },
         {
-          "name": "bufferState",
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "mainOffer"
+        },
+        {
+          "name": "onycMint",
           "writable": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offerVaultAuthority",
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  98,
-                  117,
+                  111,
                   102,
                   102,
                   101,
                   114,
                   95,
-                  115,
-                  116,
+                  118,
                   97,
+                  117,
+                  108,
                   116,
-                  101
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
                 ]
               }
             ]
           }
         },
         {
-          "name": "boss",
-          "signer": true,
-          "relations": [
-            "state"
+          "name": "vaultTokenOutAccount"
+        },
+        {
+          "name": "mintAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferAccounts",
+          "accounts": [
+            {
+              "name": "bufferState",
+              "writable": true
+            },
+            {
+              "name": "reserveVaultOnycAccount",
+              "writable": true
+            },
+            {
+              "name": "managementFeeVaultOnycAccount",
+              "writable": true
+            },
+            {
+              "name": "performanceFeeVaultOnycAccount",
+              "writable": true
+            }
           ]
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "marketStats",
+          "writable": true
         }
       ],
       "args": [
@@ -12159,14 +12317,14 @@ export type Onreapp = {
           {
             "name": "oldFeeBasisPoints",
             "docs": [
-              "Previous fee in basis points (10000 = 100%)"
+              "Previous fee in basis points (1000 = 10%)"
             ],
             "type": "u16"
           },
           {
             "name": "newFeeBasisPoints",
             "docs": [
-              "New fee in basis points (10000 = 100%)"
+              "New fee in basis points (1000 = 10%)"
             ],
             "type": "u16"
           },

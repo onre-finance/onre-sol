@@ -12,6 +12,7 @@ describe("BUFFER", () => {
 
     const NAV_1_0 = 1_000_000_000;
     const ONE_YEAR_SECONDS = 31_536_000;
+    const HALF_YEAR_SECONDS = ONE_YEAR_SECONDS / 2;
 
     // Fee model reference:
     //
@@ -291,6 +292,62 @@ describe("BUFFER", () => {
         expect(bufferState.previousSupply.toNumber()).toBe(1_160_000_000);
     });
 
+    test("burn for nav increase uses circulating supply when offer vault holds ONyc", async () => {
+        await setupBufferWithBalance({ grossYield: 1, currentYieldApr: 1 });
+
+        await program.offerVaultDeposit({
+            tokenMint: onycMint,
+            amount: 100_000_000,
+        });
+        await program.depositReserveVault({
+            onycMint,
+            amount: 300_000_000,
+        });
+        await testHelper.advanceSlot();
+
+        const quotedNav = BigInt(
+            await program.getNAV({
+                tokenInMint,
+                tokenOutMint: onycMint,
+            }),
+        );
+        const offerVaultAta = getAssociatedTokenAddressSync(onycMint, program.pdas.offerVaultAuthorityPda, true);
+        const bufferVaultAta = program.getBufferVaultAta(onycMint);
+        const bossAta = getAssociatedTokenAddressSync(onycMint, testHelper.payer.publicKey);
+        const offerVaultBalanceBefore = await testHelper.getTokenAccountBalance(offerVaultAta);
+        const reserveVaultBalanceBefore = await testHelper.getTokenAccountBalance(bufferVaultAta);
+        const mintBefore = await testHelper.getMintInfo(onycMint);
+        const circulatingSupplyBefore = BigInt(
+            (await program.getCirculatingSupply({ onycMint })).toString(),
+        );
+        const totalAssetsBefore =
+            (circulatingSupplyBefore * quotedNav) / BigInt(NAV_1_0);
+        const assetsAfter = totalAssetsBefore - BigInt(100_000_000);
+        const requiredSupplyAfter =
+            ((assetsAfter * BigInt(NAV_1_0)) + quotedNav - BigInt(1)) / quotedNav;
+        const expectedBurnAmount = circulatingSupplyBefore - requiredSupplyAfter;
+        const expectedReserveVaultAfter = reserveVaultBalanceBefore - expectedBurnAmount;
+        const oldTotalSupplyBasedBurn = mintBefore.supply - requiredSupplyAfter;
+
+        await program.burnForNavIncrease({
+            onycMint,
+            assetAdjustmentAmount: 100_000_000,
+        });
+
+        const offerVaultBalance = await testHelper.getTokenAccountBalance(offerVaultAta);
+        const reserveVaultBalance = await testHelper.getTokenAccountBalance(bufferVaultAta);
+        const bossBalance = await testHelper.getTokenAccountBalance(bossAta);
+        const mintAfter = await testHelper.getMintInfo(onycMint);
+        const bufferState = await program.getBufferState();
+
+        expect(offerVaultBalance).toBe(offerVaultBalanceBefore);
+        expect(reserveVaultBalance).toBe(expectedReserveVaultAfter);
+        expect(bossBalance).toBe(mintAfter.supply - reserveVaultBalance - offerVaultBalance);
+        expect(mintAfter.supply).toBe(mintBefore.supply - expectedBurnAmount);
+        expect(bufferState.previousSupply.toString()).toBe(mintAfter.supply.toString());
+        expect(oldTotalSupplyBasedBurn - expectedBurnAmount).toBe(offerVaultBalanceBefore);
+    });
+
     test("burn for nav increase rejects invalid parameters", async () => {
         await setupBufferWithBalance({ grossYield: 100_000, currentYieldApr: 0 });
         await testHelper.advanceSlot();
@@ -301,5 +358,92 @@ describe("BUFFER", () => {
                 assetAdjustmentAmount: 200_000_000,
             }),
         ).rejects.toThrow();
+    });
+
+    test("burn for nav increase rejects zero asset adjustment when no burn is needed", async () => {
+        await setupBufferWithBalance({ grossYield: 1, currentYieldApr: 0 });
+        await program.depositReserveVault({
+            onycMint,
+            amount: 100_000_000,
+        });
+        await testHelper.advanceSlot();
+
+        await expect(
+            program.burnForNavIncrease({
+                onycMint,
+                assetAdjustmentAmount: 0,
+            }),
+        ).rejects.toThrow();
+    });
+
+    test("set buffer gross yield settles pending accrual before rate change", async () => {
+        await setupBufferWithBalance({ grossYield: 50_000, currentYieldApr: 0, accrualPeriods: 0 });
+
+        await testHelper.advanceSlot();
+        await testHelper.advanceClockBy(HALF_YEAR_SECONDS);
+        await program.setBufferGrossYield({ grossYield: 100_000 });
+
+        const bufferVaultAta = program.getBufferVaultAta(onycMint);
+        let reserveVaultBalance = await testHelper.getTokenAccountBalance(bufferVaultAta);
+        let mintInfo = await testHelper.getMintInfo(onycMint);
+        let bufferState = await program.getBufferState();
+
+        expect(reserveVaultBalance).toBe(BigInt(25_000_000));
+        expect(mintInfo.supply).toBe(BigInt(1_025_000_000));
+        expect(bufferState.grossApr.toNumber()).toBe(100_000);
+        expect(bufferState.previousSupply.toString()).toBe("1025000000");
+
+        await testHelper.advanceSlot();
+        await testHelper.advanceClockBy(HALF_YEAR_SECONDS);
+        await program.mintTo({ amount: 0 });
+
+        reserveVaultBalance = await testHelper.getTokenAccountBalance(bufferVaultAta);
+        mintInfo = await testHelper.getMintInfo(onycMint);
+        bufferState = await program.getBufferState();
+
+        expect(reserveVaultBalance).toBe(BigInt(76_250_000));
+        expect(mintInfo.supply).toBe(BigInt(1_076_250_000));
+        expect(bufferState.previousSupply.toString()).toBe("1076250000");
+    });
+
+    test("set buffer fee config settles pending accrual before fee change", async () => {
+        await setupBufferWithBalance({ grossYield: 100_000, currentYieldApr: 0, accrualPeriods: 0 });
+
+        await testHelper.advanceSlot();
+        await testHelper.advanceClockBy(HALF_YEAR_SECONDS);
+        await program.setBufferFeeConfig({
+            managementFeeBasisPoints: 100,
+            performanceFeeBasisPoints: 1_000,
+        });
+
+        let reserveVaultBalance = await testHelper.getTokenAccountBalance(program.getBufferVaultAta(onycMint));
+        let managementFeeBalance = await testHelper.getTokenAccountBalance(program.getManagementFeeVaultAta(onycMint));
+        let performanceFeeBalance = await testHelper.getTokenAccountBalance(program.getPerformanceFeeVaultAta(onycMint));
+        let mintInfo = await testHelper.getMintInfo(onycMint);
+        let bufferState = await program.getBufferState();
+
+        expect(reserveVaultBalance).toBe(BigInt(50_000_000));
+        expect(managementFeeBalance).toBe(BigInt(0));
+        expect(performanceFeeBalance).toBe(BigInt(0));
+        expect(mintInfo.supply).toBe(BigInt(1_050_000_000));
+        expect(bufferState.managementFeeBasisPoints).toBe(100);
+        expect(bufferState.performanceFeeBasisPoints).toBe(1_000);
+        expect(bufferState.previousSupply.toString()).toBe("1050000000");
+
+        await testHelper.advanceSlot();
+        await testHelper.advanceClockBy(HALF_YEAR_SECONDS);
+        await program.mintTo({ amount: 0 });
+
+        reserveVaultBalance = await testHelper.getTokenAccountBalance(program.getBufferVaultAta(onycMint));
+        managementFeeBalance = await testHelper.getTokenAccountBalance(program.getManagementFeeVaultAta(onycMint));
+        performanceFeeBalance = await testHelper.getTokenAccountBalance(program.getPerformanceFeeVaultAta(onycMint));
+        mintInfo = await testHelper.getMintInfo(onycMint);
+        bufferState = await program.getBufferState();
+
+        expect(reserveVaultBalance).toBe(BigInt(92_525_000));
+        expect(managementFeeBalance).toBe(BigInt(5_250_000));
+        expect(performanceFeeBalance).toBe(BigInt(4_725_000));
+        expect(mintInfo.supply).toBe(BigInt(1_102_500_000));
+        expect(bufferState.previousSupply.toString()).toBe("1102500000");
     });
 });

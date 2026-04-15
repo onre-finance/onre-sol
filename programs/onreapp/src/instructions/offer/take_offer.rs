@@ -496,6 +496,10 @@ pub fn take_offer_v2(
         None
     };
 
+    if accrual.is_some() {
+        ctx.accounts.token_out_mint.reload()?;
+    }
+
     execute_token_operations(ExecTokenOpsParams {
         token_in_program: &ctx.accounts.token_in_program,
         token_in_mint: &ctx.accounts.token_in_mint,

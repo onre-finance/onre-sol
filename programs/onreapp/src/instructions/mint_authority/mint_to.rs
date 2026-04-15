@@ -191,6 +191,10 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
         None
     };
 
+    if accrual.is_some() {
+        ctx.accounts.onyc_mint.reload()?;
+    }
+
     let mint_authority_seeds = &[seeds::MINT_AUTHORITY, &[ctx.bumps.mint_authority]];
     let mint_authority_signer_seeds = &[mint_authority_seeds.as_slice()];
     mint_tokens(
