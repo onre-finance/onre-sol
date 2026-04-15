@@ -40,3 +40,4 @@ trident-tests/target
 scripts/ralph/
 tasks/
 .ralph-worktrees/
+AGENTS.md
