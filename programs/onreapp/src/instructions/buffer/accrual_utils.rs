@@ -1,4 +1,6 @@
-use crate::instructions::buffer::{BufferErrorCode, SECONDS_PER_YEAR, YIELD_SCALE};
+use crate::instructions::buffer::{
+    BufferErrorCode, BASIS_POINTS_SCALE, BASIS_POINT_TO_YIELD_SCALE, SECONDS_PER_YEAR, YIELD_SCALE,
+};
 use anchor_lang::prelude::*;
 
 pub struct BufferAccrualBreakdown {
@@ -56,7 +58,7 @@ pub fn calculate_buffer_fee_split(
         0
     } else {
         let management_fee_apr = (management_fee_basis_points as u64)
-            .checked_mul(100)
+            .checked_mul(BASIS_POINT_TO_YIELD_SCALE as u64)
             .ok_or(BufferErrorCode::MathOverflow)?
             .min(apr_delta);
 
@@ -85,7 +87,7 @@ pub fn calculate_buffer_fee_split(
         let fee_u128 = (buffer_mint_amount_after_management as u128)
             .checked_mul(performance_fee_basis_points as u128)
             .ok_or(BufferErrorCode::MathOverflow)?
-            .checked_div(10_000)
+            .checked_div(BASIS_POINTS_SCALE)
             .ok_or(BufferErrorCode::MathOverflow)?;
         require!(
             fee_u128 <= u64::MAX as u128,
