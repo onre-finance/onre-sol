@@ -188,10 +188,10 @@ fn test_take_offer_v2_accrues_buffer_and_splits_fees() {
     let ix = build_mint_to_ix_for_offer(&boss, &ctx.onyc_mint, 1_000_000_000, &TOKEN_PROGRAM_ID, &offer_pda);
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
-    let ix = build_set_buffer_gross_yield_ix(&boss, 150_000);
+    let ix = build_set_buffer_gross_yield_ix(&boss, &offer_pda, &ctx.onyc_mint, 150_000);
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
-    let ix = build_set_buffer_fee_config_ix(&boss, 100, 1_000);
+    let ix = build_set_buffer_fee_config_ix(&boss, &offer_pda, &ctx.onyc_mint, 100, 1_000);
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     advance_slot(&mut ctx.svm);
@@ -315,7 +315,7 @@ fn test_take_offer_v2_rejects_invalid_buffer_vault_account_on_accrual_path() {
     let ix = build_mint_to_ix_for_offer(&boss, &ctx.onyc_mint, 1_000_000_000, &TOKEN_PROGRAM_ID, &offer_pda);
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
-    let ix = build_set_buffer_gross_yield_ix(&boss, 150_000);
+    let ix = build_set_buffer_gross_yield_ix(&boss, &offer_pda, &ctx.onyc_mint, 150_000);
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     advance_slot(&mut ctx.svm);

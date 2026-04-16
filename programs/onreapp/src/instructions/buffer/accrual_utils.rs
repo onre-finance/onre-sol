@@ -1,5 +1,5 @@
 use crate::instructions::buffer::{
-    BufferErrorCode, BASIS_POINTS_SCALE, BASIS_POINT_TO_YIELD_SCALE, SECONDS_PER_YEAR, YIELD_SCALE,
+    BASIS_POINTS_SCALE, BASIS_POINT_TO_YIELD_SCALE, SECONDS_PER_YEAR, YIELD_SCALE,
 };
 use anchor_lang::prelude::*;
 

@@ -1,4 +1,4 @@
-import { Keypair, PublicKey, SystemProgram, TransactionInstruction, Transaction } from "@solana/web3.js";
+import { Keypair, PublicKey, SystemProgram, SYSVAR_INSTRUCTIONS_PUBKEY, TransactionInstruction, Transaction } from "@solana/web3.js";
 import { AnchorProvider, BN, Program, Wallet } from "@coral-xyz/anchor";
 import { Onreapp } from "../target/types/onreapp";
 import { BPF_UPGRADEABLE_LOADER_PROGRAM_ID, ONREAPP_PROGRAM_ID, TestHelper } from "./test_helper.ts";
@@ -160,12 +160,22 @@ export class OnreProgram {
         tokenInProgram?: PublicKey;
         tokenOutProgram?: PublicKey;
     }) {
-        const tx = this.program.methods.takeOffer(new BN(params.tokenInAmount), null).accounts({
+        const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
+        const tokenOutProgram = params.tokenOutProgram ?? TOKEN_PROGRAM_ID;
+        const tx = this.program.methods.takeOffer(new BN(params.tokenInAmount), null).accountsPartial({
             tokenInMint: params.tokenInMint,
             tokenOutMint: params.tokenOutMint,
             user: params.user,
-            tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
-            tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
+            tokenInProgram,
+            tokenOutProgram,
+            boss: this.testHelper.payer.publicKey,
+            vaultAuthority: this.pdas.offerVaultAuthorityPda,
+            vaultTokenInAccount: this.getOfferVaultAta(params.tokenInMint, tokenInProgram),
+            vaultTokenOutAccount: this.getOfferVaultAta(params.tokenOutMint, tokenOutProgram),
+            userTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, params.user, false, tokenOutProgram),
+            bossTokenInAccount: getAssociatedTokenAddressSync(params.tokenInMint, this.testHelper.payer.publicKey, false, tokenInProgram),
+            mintAuthority: this.pdas.mintAuthorityPda,
+            instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
         });
 
         await this.rpcWithOptionalSigner(tx, params.signer);
@@ -182,12 +192,22 @@ export class OnreProgram {
     }) {
         const state = await this.getState();
         const mainOffer = state.mainOffer as PublicKey;
+        const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
+        const tokenOutProgram = params.tokenOutProgram ?? TOKEN_PROGRAM_ID;
         const tx = this.program.methods.takeOfferV2(new BN(params.tokenInAmount), null).accountsPartial({
             tokenInMint: params.tokenInMint,
             tokenOutMint: params.tokenOutMint,
             user: params.user,
-            tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
-            tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
+            tokenInProgram,
+            tokenOutProgram,
+            boss: this.testHelper.payer.publicKey,
+            vaultAuthority: this.pdas.offerVaultAuthorityPda,
+            vaultTokenInAccount: this.getOfferVaultAta(params.tokenInMint, tokenInProgram),
+            vaultTokenOutAccount: this.getOfferVaultAta(params.tokenOutMint, tokenOutProgram),
+            userTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, params.user, false, tokenOutProgram),
+            bossTokenInAccount: getAssociatedTokenAddressSync(params.tokenInMint, this.testHelper.payer.publicKey, false, tokenInProgram),
+            mintAuthority: this.pdas.mintAuthorityPda,
+            instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
             marketStats: this.pdas.marketStatsPda,
             mainOffer,
             bufferAccounts: {
@@ -210,16 +230,25 @@ export class OnreProgram {
         tokenInProgram?: PublicKey;
         tokenOutProgram?: PublicKey;
     }) {
+        const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
+        const tokenOutProgram = params.tokenOutProgram ?? TOKEN_PROGRAM_ID;
         const tx = this.program.methods.takeOfferPermissionless(new BN(params.tokenInAmount), null).accountsPartial({
             tokenInMint: params.tokenInMint,
             tokenOutMint: params.tokenOutMint,
             user: params.user,
-            tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
-            tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
+            tokenInProgram,
+            tokenOutProgram,
             boss: this.testHelper.payer.publicKey,
             vaultAuthority: this.pdas.offerVaultAuthorityPda,
+            vaultTokenInAccount: this.getOfferVaultAta(params.tokenInMint, tokenInProgram),
+            vaultTokenOutAccount: this.getOfferVaultAta(params.tokenOutMint, tokenOutProgram),
             permissionlessAuthority: this.pdas.permissionlessAuthorityPda,
+            permissionlessTokenInAccount: this.getPermissionlessAta(params.tokenInMint, tokenInProgram),
+            permissionlessTokenOutAccount: this.getPermissionlessAta(params.tokenOutMint, tokenOutProgram),
+            userTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, params.user, false, tokenOutProgram),
+            bossTokenInAccount: getAssociatedTokenAddressSync(params.tokenInMint, this.testHelper.payer.publicKey, false, tokenInProgram),
             mintAuthority: this.pdas.mintAuthorityPda,
+            instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
         });
 
         await this.rpcWithOptionalSigner(tx, params.signer);
@@ -236,16 +265,25 @@ export class OnreProgram {
     }) {
         const state = await this.getState();
         const mainOffer = state.mainOffer as PublicKey;
+        const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
+        const tokenOutProgram = params.tokenOutProgram ?? TOKEN_PROGRAM_ID;
         const tx = this.program.methods.takeOfferPermissionlessV2(new BN(params.tokenInAmount), null).accountsPartial({
             tokenInMint: params.tokenInMint,
             tokenOutMint: params.tokenOutMint,
             user: params.user,
-            tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
-            tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
+            tokenInProgram,
+            tokenOutProgram,
             boss: this.testHelper.payer.publicKey,
             vaultAuthority: this.pdas.offerVaultAuthorityPda,
+            vaultTokenInAccount: this.getOfferVaultAta(params.tokenInMint, tokenInProgram),
+            vaultTokenOutAccount: this.getOfferVaultAta(params.tokenOutMint, tokenOutProgram),
             permissionlessAuthority: this.pdas.permissionlessAuthorityPda,
+            permissionlessTokenInAccount: this.getPermissionlessAta(params.tokenInMint, tokenInProgram),
+            permissionlessTokenOutAccount: this.getPermissionlessAta(params.tokenOutMint, tokenOutProgram),
+            userTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, params.user, false, tokenOutProgram),
+            bossTokenInAccount: getAssociatedTokenAddressSync(params.tokenInMint, this.testHelper.payer.publicKey, false, tokenInProgram),
             mintAuthority: this.pdas.mintAuthorityPda,
+            instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
             marketStats: this.pdas.marketStatsPda,
             mainOffer,
             bufferAccounts: {
@@ -850,6 +888,18 @@ export class OnreProgram {
         return getAssociatedTokenAddressSync(onycMint, this.pdas.reserveVaultAuthorityPda, true, TOKEN_PROGRAM_ID);
     }
 
+    getOfferVaultAta(mint: PublicKey, tokenProgram: PublicKey = TOKEN_PROGRAM_ID) {
+        return getAssociatedTokenAddressSync(mint, this.pdas.offerVaultAuthorityPda, true, tokenProgram);
+    }
+
+    getPermissionlessAta(mint: PublicKey, tokenProgram: PublicKey = TOKEN_PROGRAM_ID) {
+        return getAssociatedTokenAddressSync(mint, this.pdas.permissionlessAuthorityPda, true, tokenProgram);
+    }
+
+    getRedemptionVaultAta(mint: PublicKey, tokenProgram: PublicKey = TOKEN_PROGRAM_ID) {
+        return getAssociatedTokenAddressSync(mint, this.pdas.redemptionVaultAuthorityPda, true, tokenProgram);
+    }
+
     getManagementFeeVaultAta(onycMint: PublicKey) {
         return getAssociatedTokenAddressSync(onycMint, this.pdas.managementFeeVaultAuthorityPda, true, TOKEN_PROGRAM_ID);
     }
@@ -942,6 +992,7 @@ export class OnreProgram {
             amount = (request.amount as BN).sub(request.fulfilledAmount as BN);
         }
         const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
+        const tokenOutProgram = params.tokenOutProgram ?? TOKEN_PROGRAM_ID;
         const feeDestination = params.feeDestination ?? this.pdas.redemptionFeeVaultAuthorityPda;
         const state = await this.getState();
         const mainOffer = state.mainOffer as PublicKey;
@@ -956,11 +1007,17 @@ export class OnreProgram {
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
                 tokenInProgram,
-                tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
+                tokenOutProgram,
+                boss: this.testHelper.payer.publicKey,
+                vaultTokenInAccount: this.getRedemptionVaultAta(params.tokenInMint, tokenInProgram),
+                vaultTokenOutAccount: this.getRedemptionVaultAta(params.tokenOutMint, tokenOutProgram),
+                userTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, params.redeemer, false, tokenOutProgram),
+                bossTokenInAccount: getAssociatedTokenAddressSync(params.tokenInMint, this.testHelper.payer.publicKey, false, tokenInProgram),
+                mintAuthority: this.pdas.mintAuthorityPda,
                 redeemer: params.redeemer,
                 redemptionAdmin: params.redemptionAdmin.publicKey,
                 offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
-                offerVaultOnycAccount: getAssociatedTokenAddressSync(params.tokenInMint, this.pdas.offerVaultAuthorityPda, true, params.tokenInProgram ?? TOKEN_PROGRAM_ID),
+                offerVaultOnycAccount: this.getOfferVaultAta(params.tokenInMint, tokenInProgram),
                 marketStats: this.pdas.marketStatsPda,
                 mainOffer,
                 bufferAccounts: {
