@@ -4,13 +4,12 @@ use crate::instructions::buffer::accounts::{
     __cpi_client_accounts_buffer_accrual_accounts,
 };
 use crate::instructions::buffer::{
-    accrue_buffer::accrue_buffer_from_accounts, BufferAccrualAccounts, BufferErrorCode,
-    BufferGrossYieldUpdatedEvent, BufferState
+    accrue_buffer::accrue_buffer_from_accounts, BufferAccrualAccounts,
+    BufferGrossYieldUpdatedEvent,
 };
 use crate::instructions::market_info::market_stats::refresh_market_stats_pda;
 use crate::instructions::Offer;
 use crate::state::State;
-use crate::OfferCoreError;
 use anchor_lang::solana_program::program_option::COption;
 use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
@@ -28,7 +27,7 @@ pub struct SetBufferGrossYield<'info> {
 
     pub boss: Signer<'info>,
 
-    #[account(address = state.main_offer @ BufferErrorCode::InvalidMainOffer)]
+    #[account(address = state.main_offer @ crate::OnreError::InvalidMainOffer)]
     pub main_offer: AccountLoader<'info, Offer>,
 
     #[account(mut)]
@@ -44,7 +43,7 @@ pub struct SetBufferGrossYield<'info> {
     /// CHECK: PDA derivation is validated by seeds constraint.
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
-        constraint = onyc_mint.mint_authority == COption::Some(mint_authority.key()) @ BufferErrorCode::NoMintAuthority,
+        constraint = onyc_mint.mint_authority == COption::Some(mint_authority.key()) @ crate::OnreError::NoMintAuthority,
         bump
     )]
     pub mint_authority: UncheckedAccount<'info>,
@@ -75,14 +74,14 @@ pub fn set_buffer_gross_apr(ctx: Context<SetBufferGrossYield>, gross_yield: u64)
     require_keys_eq!(
         ctx.accounts.vault_token_out_account.key(),
         expected_vault_token_out_account,
-        BufferErrorCode::InvalidOnycMint
+        crate::OnreError::InvalidOnycMint
     );
 
     let offer = ctx.accounts.main_offer.load()?;
     require_keys_eq!(
         ctx.accounts.onyc_mint.key(),
         offer.token_out_mint,
-        OfferCoreError::InvalidTokenOutMint
+        crate::OnreError::InvalidTokenOutMint
     );
     accrue_buffer_from_accounts(
         ctx.program_id,

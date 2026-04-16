@@ -625,27 +625,31 @@ fn test_set_buffer_fee_config_settles_pending_accrual_before_fee_change() {
 
 #[test]
 fn test_set_buffer_fee_config_rejects_fee_above_max() {
-    let (mut svm, payer, _token_in_mint, _onyc_mint, _caller) =
+    let (mut svm, payer, _token_in_mint, onyc_mint, _caller) =
         setup_buffer_context(150_000, 50_000, 0, 0);
     let boss = payer.pubkey();
+    let state = read_state(&svm);
 
-    let ix = build_set_buffer_fee_config_ix(&boss, 10_001, 0);
+    let ix = build_set_buffer_fee_config_ix(&boss, &state.main_offer, &onyc_mint, 10_001, 0);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(result.is_err(), "management fee above max bps should fail");
 
-    let ix = build_set_buffer_fee_config_ix(&boss, 0, 10_001);
+    let ix = build_set_buffer_fee_config_ix(&boss, &state.main_offer, &onyc_mint, 0, 10_001);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(result.is_err(), "performance fee above max bps should fail");
 }
 
 #[test]
 fn test_set_buffer_fee_config_rejects_missing_fee_wallets_when_bps_nonzero() {
-    let (mut svm, payer, _token_in_mint, _onyc_mint, _caller) =
+    let (mut svm, payer, _token_in_mint, onyc_mint, _caller) =
         setup_buffer_context(150_000, 50_000, 0, 0);
     let boss = payer.pubkey();
+    let state = read_state(&svm);
 
     let ix = build_set_buffer_fee_config_with_wallets_ix(
         &boss,
+        &state.main_offer,
+        &onyc_mint,
         100,
         Pubkey::default(),
         0,
@@ -659,6 +663,8 @@ fn test_set_buffer_fee_config_rejects_missing_fee_wallets_when_bps_nonzero() {
 
     let ix = build_set_buffer_fee_config_with_wallets_ix(
         &boss,
+        &state.main_offer,
+        &onyc_mint,
         0,
         boss,
         1_000,

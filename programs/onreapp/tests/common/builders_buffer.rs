@@ -118,6 +118,8 @@ pub fn build_set_buffer_fee_config_ix(
 ) -> Instruction {
     build_set_buffer_fee_config_with_wallets_ix(
         boss,
+        main_offer,
+        onyc_mint,
         management_fee_basis_points,
         *boss,
         performance_fee_basis_points,
@@ -127,6 +129,8 @@ pub fn build_set_buffer_fee_config_ix(
 
 pub fn build_set_buffer_fee_config_with_wallets_ix(
     boss: &Pubkey,
+    main_offer: &Pubkey,
+    onyc_mint: &Pubkey,
     management_fee_basis_points: u16,
     management_fee_wallet: Pubkey,
     performance_fee_basis_points: u16,
