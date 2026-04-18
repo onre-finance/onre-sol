@@ -96,6 +96,7 @@ pub fn process_offer_core(
     token_out_mint: &InterfaceAccount<Mint>,
 ) -> Result<OfferProcessResult> {
     let current_time = Clock::get()?.unix_timestamp as u64;
+    require!(token_in_amount > 0, crate::OnreError::InvalidAmount);
 
     require!(
         offer.token_in_mint == token_in_mint.key(),

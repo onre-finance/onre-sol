@@ -211,6 +211,10 @@ pub fn get_return_i64(metadata: &litesvm::types::TransactionMetadata) -> i64 {
     i64::from_le_bytes(metadata.return_data.data[..8].try_into().unwrap())
 }
 
+pub fn get_return_data(metadata: &litesvm::types::TransactionMetadata) -> &[u8] {
+    &metadata.return_data.data
+}
+
 pub struct RedemptionOfferData {
     pub offer: Pubkey,
     pub token_in_mint: Pubkey,

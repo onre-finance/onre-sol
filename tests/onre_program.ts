@@ -21,6 +21,73 @@ function instructionDiscriminator(name: string): Buffer {
     return createHash("sha256").update(`global:${name}`).digest().subarray(0, 8);
 }
 
+export type SwapQuote = {
+    offer: PublicKey;
+    tokenInMint: PublicKey;
+    tokenOutMint: PublicKey;
+    tokenInAmount: BN;
+    tokenInNetAmount: BN;
+    tokenInFeeAmount: BN;
+    tokenOutAmount: BN;
+    minimumOut: BN;
+    currentPrice: BN;
+    quotedAt: BN;
+    quoteExpiry: BN;
+};
+
+function readU64(data: Buffer, offset: number): BN {
+    return new BN(data.subarray(offset, offset + 8), "le");
+}
+
+function readI64(data: Buffer, offset: number): BN {
+    const slice = data.subarray(offset, offset + 8);
+    const negative = (slice[7] & 0x80) !== 0;
+    if (!negative) {
+        return new BN(slice, "le");
+    }
+    const inverted = Buffer.from(slice.map((byte) => 0xff ^ byte));
+    return new BN(inverted, "le").addn(1).neg();
+}
+
+function decodeSwapQuote(data: Buffer): SwapQuote {
+    let offset = 0;
+    const offer = new PublicKey(data.subarray(offset, offset + 32));
+    offset += 32;
+    const tokenInMint = new PublicKey(data.subarray(offset, offset + 32));
+    offset += 32;
+    const tokenOutMint = new PublicKey(data.subarray(offset, offset + 32));
+    offset += 32;
+    const tokenInAmount = readU64(data, offset);
+    offset += 8;
+    const tokenInNetAmount = readU64(data, offset);
+    offset += 8;
+    const tokenInFeeAmount = readU64(data, offset);
+    offset += 8;
+    const tokenOutAmount = readU64(data, offset);
+    offset += 8;
+    const minimumOut = readU64(data, offset);
+    offset += 8;
+    const currentPrice = readU64(data, offset);
+    offset += 8;
+    const quotedAt = readI64(data, offset);
+    offset += 8;
+    const quoteExpiry = readI64(data, offset);
+
+    return {
+        offer,
+        tokenInMint,
+        tokenOutMint,
+        tokenInAmount,
+        tokenInNetAmount,
+        tokenInFeeAmount,
+        tokenOutAmount,
+        minimumOut,
+        currentPrice,
+        quotedAt,
+        quoteExpiry,
+    };
+}
+
 export class OnreProgram {
     program: Program<Onreapp>;
     testHelper: TestHelper;
@@ -217,6 +284,100 @@ export class OnreProgram {
                 performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.tokenOutMint),
             },
         });
+
+        await this.rpcWithOptionalSigner(tx, params.signer);
+    }
+
+    async quoteSwap(params: {
+        tokenInAmount: number;
+        tokenInMint: PublicKey;
+        tokenOutMint: PublicKey;
+        quoteExpiry: number;
+    }): Promise<SwapQuote> {
+        const state = await this.getState();
+        const onycMint = state.onycMint as PublicKey;
+        const assetMint = params.tokenInMint.equals(onycMint) ? params.tokenOutMint : params.tokenInMint;
+        const tx = await this.program.methods
+            .quoteSwap(new BN(params.tokenInAmount), new BN(params.quoteExpiry))
+            .accounts({
+                offer: this.getOfferPda(assetMint, onycMint),
+                state: this.pdas.statePda,
+                tokenInMint: params.tokenInMint,
+                tokenOutMint: params.tokenOutMint,
+            })
+            .transaction();
+
+        tx.recentBlockhash = this.testHelper.svm.latestBlockhash();
+        tx.feePayer = this.testHelper.payer.publicKey;
+        tx.sign(this.testHelper.payer);
+
+        const result = this.testHelper.svm.simulateTransaction(tx);
+        parseViewError(result);
+
+        const meta = result.meta();
+        const returnData = meta.returnData();
+
+        if (!returnData || returnData.data().length === 0) {
+            throw new Error("No return data from quoteSwap");
+        }
+
+        return decodeSwapQuote(Buffer.from(returnData.data()));
+    }
+
+    async openSwap(params: {
+        tokenInAmount: number;
+        minimumOut: BN | number;
+        quoteExpiry: BN | number;
+        tokenInMint: PublicKey;
+        tokenOutMint: PublicKey;
+        user: PublicKey;
+        signer?: Keypair;
+        tokenInProgram?: PublicKey;
+        tokenOutProgram?: PublicKey;
+    }) {
+        const state = await this.getState();
+        const mainOffer = state.mainOffer as PublicKey;
+        const onycMint = state.onycMint as PublicKey;
+        const assetMint = params.tokenInMint.equals(onycMint) ? params.tokenOutMint : params.tokenInMint;
+        const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
+        const tokenOutProgram = params.tokenOutProgram ?? TOKEN_PROGRAM_ID;
+        const onycTokenProgram = params.tokenInMint.equals(onycMint) ? tokenInProgram : tokenOutProgram;
+        const tx = this.program.methods
+            .openSwap(
+                new BN(params.tokenInAmount),
+                BN.isBN(params.minimumOut) ? params.minimumOut : new BN(params.minimumOut),
+                BN.isBN(params.quoteExpiry) ? params.quoteExpiry : new BN(params.quoteExpiry),
+                null,
+            )
+            .accountsPartial({
+                offer: this.getOfferPda(assetMint, onycMint),
+                tokenInMint: params.tokenInMint,
+                tokenOutMint: params.tokenOutMint,
+                user: params.user,
+                tokenInProgram,
+                tokenOutProgram,
+                boss: this.testHelper.payer.publicKey,
+                offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
+                offerVaultTokenInAccount: this.getOfferVaultAta(params.tokenInMint, tokenInProgram),
+                offerVaultTokenOutAccount: this.getOfferVaultAta(params.tokenOutMint, tokenOutProgram),
+                redemptionVaultAuthority: this.pdas.redemptionVaultAuthorityPda,
+                redemptionVaultTokenInAccount: this.getRedemptionVaultAta(params.tokenInMint, tokenInProgram),
+                redemptionVaultTokenOutAccount: this.getRedemptionVaultAta(params.tokenOutMint, tokenOutProgram),
+                userTokenInAccount: getAssociatedTokenAddressSync(params.tokenInMint, params.user, false, tokenInProgram),
+                userTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, params.user, false, tokenOutProgram),
+                bossTokenInAccount: getAssociatedTokenAddressSync(params.tokenInMint, this.testHelper.payer.publicKey, false, tokenInProgram),
+                mintAuthority: this.pdas.mintAuthorityPda,
+                instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
+                marketStats: this.pdas.marketStatsPda,
+                mainOffer,
+                bufferAccounts: {
+                    bufferState: this.pdas.bufferStatePda,
+                    reserveVaultOnycAccount: this.getBufferVaultAta(params.tokenOutMint),
+                    managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.tokenOutMint),
+                    performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.tokenOutMint),
+                },
+                offerVaultOnycAccount: this.getOfferVaultAta(onycMint, onycTokenProgram),
+            });
 
         await this.rpcWithOptionalSigner(tx, params.signer);
     }
