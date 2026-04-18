@@ -4,8 +4,7 @@ use crate::instructions::buffer::accounts::{
     __cpi_client_accounts_buffer_accrual_accounts,
 };
 use crate::instructions::buffer::{
-    accrue_buffer::accrue_buffer_from_accounts, BufferAccrualAccounts,
-    BufferGrossYieldUpdatedEvent,
+    accrue_buffer::accrue_buffer_from_accounts, BufferAccrualAccounts, BufferGrossYieldUpdatedEvent,
 };
 use crate::instructions::market_info::market_stats::refresh_market_stats_pda;
 use crate::instructions::Offer;

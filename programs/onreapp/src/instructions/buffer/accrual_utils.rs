@@ -119,7 +119,10 @@ mod tests {
 
     #[test]
     fn calculate_gross_buffer_accrual_returns_zero_for_zero_inputs() {
-        assert_eq!(calculate_gross_buffer_accrual(0, 100_000, 0, 31_536_000).unwrap(), 0);
+        assert_eq!(
+            calculate_gross_buffer_accrual(0, 100_000, 0, 31_536_000).unwrap(),
+            0
+        );
         assert_eq!(
             calculate_gross_buffer_accrual(1_000_000_000, 100_000, 100_000, 31_536_000).unwrap(),
             0

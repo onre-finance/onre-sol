@@ -767,8 +767,7 @@ fn test_withdraw_management_and_performance_fees_transfers_out_of_fee_vaults() {
     let withdraw_management_ix = build_withdraw_management_fees_ix(&boss, &onyc_mint, 10_000_000);
     send_tx(&mut svm, &[withdraw_management_ix], &[&payer]).unwrap();
 
-    let withdraw_performance_ix =
-        build_withdraw_performance_fees_ix(&boss, &onyc_mint, 9_000_000);
+    let withdraw_performance_ix = build_withdraw_performance_fees_ix(&boss, &onyc_mint, 9_000_000);
     send_tx(&mut svm, &[withdraw_performance_ix], &[&payer]).unwrap();
 
     assert_eq!(get_token_balance(&svm, &management_fee_vault_onyc_ata), 0);
@@ -801,7 +800,8 @@ fn test_burn_for_nav_increase_works_and_non_boss_fails() {
 
     let non_boss = Keypair::new();
     svm.airdrop(&non_boss.pubkey(), INITIAL_LAMPORTS).unwrap();
-    let ix = build_burn_for_nav_increase_ix(&non_boss.pubkey(), &main_offer, &onyc_mint, 10_000_000);
+    let ix =
+        build_burn_for_nav_increase_ix(&non_boss.pubkey(), &main_offer, &onyc_mint, 10_000_000);
     let result = send_tx(&mut svm, &[ix], &[&non_boss]);
     assert!(result.is_err(), "non-boss burn should fail");
 }
@@ -828,7 +828,10 @@ fn test_burn_for_nav_increase_settles_pending_accrual_before_burning() {
     );
     let buffer_state = read_buffer_state(&svm);
 
-    assert_eq!(get_token_balance(&svm, &reserve_vault_onyc_ata), 160_000_000);
+    assert_eq!(
+        get_token_balance(&svm, &reserve_vault_onyc_ata),
+        160_000_000
+    );
     assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_160_000_000);
     assert_eq!(buffer_state.previous_supply, 1_160_000_000);
 }

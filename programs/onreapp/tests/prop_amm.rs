@@ -220,7 +220,12 @@ fn test_quote_and_open_swap_support_sell_side() {
         &redemption_vault_authority,
         10_000_000_000,
     );
-    create_token_account(&mut ctx.svm, &ctx.onyc_mint, &ctx.user.pubkey(), 2_000_000_000);
+    create_token_account(
+        &mut ctx.svm,
+        &ctx.onyc_mint,
+        &ctx.user.pubkey(),
+        2_000_000_000,
+    );
 
     let quote_expiry = current_time as i64 + 60;
     let quote_ix = build_quote_swap_ix(
