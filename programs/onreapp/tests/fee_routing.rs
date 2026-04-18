@@ -353,7 +353,10 @@ fn test_withdraw_redemption_fees_supports_partial_withdrawal() {
 
     let fee_vault_ata = get_associated_token_address(&fee_vault_pda, &ctx.onyc_mint);
     let destination_ata = get_associated_token_address(&destination.pubkey(), &ctx.onyc_mint);
-    assert_eq!(get_token_balance(&ctx.svm, &destination_ata), withdraw_amount);
+    assert_eq!(
+        get_token_balance(&ctx.svm, &destination_ata),
+        withdraw_amount
+    );
     assert_eq!(
         get_token_balance(&ctx.svm, &fee_vault_ata),
         EXPECTED_FEE - withdraw_amount
@@ -377,7 +380,10 @@ fn test_withdraw_redemption_fees_rejects_zero_balance() {
         &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]);
-    assert!(result.is_err(), "empty fee vault should reject full-balance withdrawal");
+    assert!(
+        result.is_err(),
+        "empty fee vault should reject full-balance withdrawal"
+    );
 }
 
 #[test]
@@ -400,7 +406,10 @@ fn test_withdraw_redemption_fees_rejects_amount_above_balance() {
         &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]);
-    assert!(result.is_err(), "withdrawal above vault balance should fail");
+    assert!(
+        result.is_err(),
+        "withdrawal above vault balance should fail"
+    );
 }
 
 #[test]
@@ -426,5 +435,8 @@ fn test_withdraw_redemption_fees_rejects_non_boss() {
         &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&unauthorized]);
-    assert!(result.is_err(), "non-boss should not withdraw redemption fees");
+    assert!(
+        result.is_err(),
+        "non-boss should not withdraw redemption fees"
+    );
 }

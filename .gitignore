@@ -32,7 +32,7 @@ coverage/
 sbf_trace_dir/
 
 .idea
-onre-sol.iml
+*.iml
 
 **/.env*
 !**/.env_example

@@ -96,11 +96,15 @@ fn test_initialize_permissionless_authority_rejects_non_boss() {
     let (mut svm, _payer, _onyc_mint) = setup_initialized();
 
     let unauthorized = Keypair::new();
-    svm.airdrop(&unauthorized.pubkey(), INITIAL_LAMPORTS).unwrap();
+    svm.airdrop(&unauthorized.pubkey(), INITIAL_LAMPORTS)
+        .unwrap();
 
     let ix = build_initialize_permissionless_authority_ix(&unauthorized.pubkey(), "router");
     let result = send_tx(&mut svm, &[ix], &[&unauthorized]);
-    assert!(result.is_err(), "non-boss should not initialize permissionless authority");
+    assert!(
+        result.is_err(),
+        "non-boss should not initialize permissionless authority"
+    );
 }
 
 #[test]
@@ -110,7 +114,10 @@ fn test_initialize_permissionless_authority_rejects_blank_name() {
 
     let ix = build_initialize_permissionless_authority_ix(&boss, "   ");
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "blank permissionless authority name should fail");
+    assert!(
+        result.is_err(),
+        "blank permissionless authority name should fail"
+    );
 }
 
 #[test]
@@ -124,5 +131,8 @@ fn test_initialize_permissionless_authority_cannot_run_twice() {
 
     let ix = build_initialize_permissionless_authority_ix(&boss, "router-2");
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "permissionless authority PDA should only initialize once");
+    assert!(
+        result.is_err(),
+        "permissionless authority PDA should only initialize once"
+    );
 }
