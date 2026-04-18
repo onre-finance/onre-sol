@@ -185,7 +185,13 @@ fn test_take_offer_v2_accrues_buffer_and_splits_fees() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
-    let ix = build_mint_to_ix_for_offer(&boss, &ctx.onyc_mint, 1_000_000_000, &TOKEN_PROGRAM_ID, &offer_pda);
+    let ix = build_mint_to_ix_for_offer(
+        &boss,
+        &ctx.onyc_mint,
+        1_000_000_000,
+        &TOKEN_PROGRAM_ID,
+        &offer_pda,
+    );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let ix = build_set_buffer_gross_yield_ix(&boss, &offer_pda, &ctx.onyc_mint, 150_000);
@@ -276,9 +282,18 @@ fn test_take_offer_v2_accrues_buffer_and_splits_fees() {
     let user_minted_amount = mint_supply_after - mint_supply_before - expected_gross_accrual;
 
     assert_eq!(buffer_state_before.previous_supply, mint_supply_before);
-    assert_eq!(buffer_vault_after - buffer_vault_before, expected_buffer_accrual);
-    assert_eq!(management_after - management_before, expected_management_fee);
-    assert_eq!(performance_after - performance_before, expected_performance_fee);
+    assert_eq!(
+        buffer_vault_after - buffer_vault_before,
+        expected_buffer_accrual
+    );
+    assert_eq!(
+        management_after - management_before,
+        expected_management_fee
+    );
+    assert_eq!(
+        performance_after - performance_before,
+        expected_performance_fee
+    );
     assert_eq!(user_token_out_after, user_minted_amount);
     assert_eq!(
         mint_supply_after - mint_supply_before,
@@ -312,7 +327,13 @@ fn test_take_offer_v2_rejects_invalid_buffer_vault_account_on_accrual_path() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
-    let ix = build_mint_to_ix_for_offer(&boss, &ctx.onyc_mint, 1_000_000_000, &TOKEN_PROGRAM_ID, &offer_pda);
+    let ix = build_mint_to_ix_for_offer(
+        &boss,
+        &ctx.onyc_mint,
+        1_000_000_000,
+        &TOKEN_PROGRAM_ID,
+        &offer_pda,
+    );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let ix = build_set_buffer_gross_yield_ix(&boss, &offer_pda, &ctx.onyc_mint, 150_000);

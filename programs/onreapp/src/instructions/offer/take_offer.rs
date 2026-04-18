@@ -11,6 +11,7 @@ use crate::instructions::market_info::{load_main_offer, refresh_market_stats_pda
 use crate::instructions::offer::offer_utils::{
     is_onyc_token_out_mint, process_offer_core, should_accrue_onyc_mint, verify_offer_approval,
 };
+use crate::instructions::prop_amm::validate_quote_expiry;
 use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::{
@@ -422,6 +423,15 @@ pub fn take_offer_v2<'info>(
     token_in_amount: u64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
+    execute_take_offer_v2(ctx, token_in_amount, None, None, approval_message)
+}
+pub fn execute_take_offer_v2<'info>(
+    ctx: Context<'info, TakeOfferV2<'info>>,
+    token_in_amount: u64,
+    minimum_out: Option<u64>,
+    quote_expiry: Option<i64>,
+    approval_message: Option<ApprovalMessage>,
+) -> Result<()> {
     let (vault_authority_bump, mint_authority_bump) = validate_take_offer_authorities(
         ctx.program_id,
         &ctx.accounts.vault_authority,
@@ -456,6 +466,16 @@ pub fn take_offer_v2<'info>(
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
     )?;
+
+    if let Some(quote_expiry) = quote_expiry {
+        validate_quote_expiry(Clock::get()?.unix_timestamp, quote_expiry)?;
+    }
+    if let Some(minimum_out) = minimum_out {
+        require!(
+            result.token_out_amount >= minimum_out,
+            crate::OnreError::MinimumOutNotMet
+        );
+    }
     get_or_create_associated_token_account(EnsureAtaParams {
         ata_account: &ctx.accounts.user_token_out_account,
         payer: ctx.accounts.user.to_account_info(),
@@ -578,7 +598,7 @@ pub fn take_offer_v2<'info>(
     Ok(())
 }
 
-fn validate_take_offer_authorities(
+pub fn validate_take_offer_authorities(
     program_id: &Pubkey,
     vault_authority: &UncheckedAccount,
     mint_authority: &UncheckedAccount,

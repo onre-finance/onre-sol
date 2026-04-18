@@ -278,6 +278,30 @@ pub mod onreapp {
         offer::take_offer_v2(ctx, token_in_amount, approval_message)
     }
 
+    pub fn quote_swap(
+        ctx: Context<QuoteSwap>,
+        token_in_amount: u64,
+        quote_expiry: i64,
+    ) -> Result<()> {
+        prop_amm::quote_swap(ctx, token_in_amount, quote_expiry)
+    }
+
+    pub fn open_swap<'info>(
+        ctx: Context<'info, OpenSwap<'info>>,
+        token_in_amount: u64,
+        minimum_out: u64,
+        quote_expiry: i64,
+        approval_message: Option<ApprovalMessage>,
+    ) -> Result<()> {
+        prop_amm::open_swap(
+            ctx,
+            token_in_amount,
+            minimum_out,
+            quote_expiry,
+            approval_message,
+        )
+    }
+
     /// Takes a offer using permissionless flow with intermediary accounts.
     ///
     /// Delegates to `offer::take_offer_permissionless`.

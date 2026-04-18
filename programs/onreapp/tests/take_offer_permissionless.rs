@@ -522,7 +522,13 @@ fn test_take_offer_permissionless_v2_accrues_buffer_and_refreshes_market_stats()
     let ix = build_initialize_buffer_ix(&boss, &offer_pda, &ctx.onyc_mint);
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
-    let ix = build_mint_to_ix_for_offer(&boss, &ctx.onyc_mint, 1_000_000_000, &TOKEN_PROGRAM_ID, &offer_pda);
+    let ix = build_mint_to_ix_for_offer(
+        &boss,
+        &ctx.onyc_mint,
+        1_000_000_000,
+        &TOKEN_PROGRAM_ID,
+        &offer_pda,
+    );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let ix = build_set_buffer_gross_yield_ix(&boss, &offer_pda, &ctx.onyc_mint, 100_000);

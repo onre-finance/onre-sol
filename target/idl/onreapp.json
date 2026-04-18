@@ -4739,6 +4739,210 @@
       ]
     },
     {
+      "name": "open_swap",
+      "discriminator": [
+        109,
+        109,
+        21,
+        132,
+        201,
+        76,
+        67,
+        113
+      ],
+      "accounts": [
+        {
+          "name": "offer"
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offer_vault_authority"
+        },
+        {
+          "name": "offer_vault_token_in_account",
+          "writable": true
+        },
+        {
+          "name": "offer_vault_token_out_account",
+          "writable": true
+        },
+        {
+          "name": "redemption_vault_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemption_vault_token_in_account",
+          "writable": true
+        },
+        {
+          "name": "redemption_vault_token_out_account",
+          "writable": true
+        },
+        {
+          "name": "token_in_mint",
+          "writable": true
+        },
+        {
+          "name": "token_in_program"
+        },
+        {
+          "name": "token_out_mint",
+          "writable": true
+        },
+        {
+          "name": "token_out_program"
+        },
+        {
+          "name": "user_token_in_account",
+          "writable": true
+        },
+        {
+          "name": "user_token_out_account",
+          "writable": true
+        },
+        {
+          "name": "boss_token_in_account",
+          "writable": true
+        },
+        {
+          "name": "mint_authority"
+        },
+        {
+          "name": "buffer_accounts",
+          "accounts": [
+            {
+              "name": "buffer_state",
+              "writable": true
+            },
+            {
+              "name": "reserve_vault_onyc_account",
+              "writable": true
+            },
+            {
+              "name": "management_fee_vault_onyc_account",
+              "writable": true
+            },
+            {
+              "name": "performance_fee_vault_onyc_account",
+              "writable": true
+            }
+          ]
+        },
+        {
+          "name": "market_stats",
+          "writable": true
+        },
+        {
+          "name": "instructions_sysvar"
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "main_offer"
+        },
+        {
+          "name": "offer_vault_onyc_account"
+        }
+      ],
+      "args": [
+        {
+          "name": "token_in_amount",
+          "type": "u64"
+        },
+        {
+          "name": "minimum_out",
+          "type": "u64"
+        },
+        {
+          "name": "quote_expiry",
+          "type": "i64"
+        },
+        {
+          "name": "approval_message",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "ApprovalMessage"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "propose_boss",
       "docs": [
         "Proposes a new boss for ownership transfer.",
@@ -4802,6 +5006,57 @@
         {
           "name": "new_boss",
           "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "quote_swap",
+      "discriminator": [
+        20,
+        139,
+        100,
+        190,
+        67,
+        4,
+        13,
+        141
+      ],
+      "accounts": [
+        {
+          "name": "offer"
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_in_mint"
+        },
+        {
+          "name": "token_out_mint"
+        }
+      ],
+      "args": [
+        {
+          "name": "token_in_amount",
+          "type": "u64"
+        },
+        {
+          "name": "quote_expiry",
+          "type": "i64"
         }
       ]
     },
@@ -10787,41 +11042,61 @@
     },
     {
       "code": 6108,
+      "name": "QuoteExpired",
+      "msg": "Quote Expired"
+    },
+    {
+      "code": 6109,
+      "name": "QuoteExpiryTooLarge",
+      "msg": "Quote Expiry Too Large"
+    },
+    {
+      "code": 6110,
+      "name": "MinimumOutNotMet",
+      "msg": "Minimum Out Not Met"
+    },
+    {
+      "code": 6111,
+      "name": "InvalidSwapPair",
+      "msg": "Invalid Swap Pair"
+    },
+    {
+      "code": 6112,
       "name": "InvalidFeeWallet",
       "msg": "Invalid Fee Wallet"
     },
     {
-      "code": 6109,
+      "code": 6113,
       "name": "InvalidTargetNav",
       "msg": "Invalid Target Nav"
     },
     {
-      "code": 6110,
+      "code": 6114,
       "name": "InvalidAssetAdjustmentAmount",
       "msg": "Invalid Asset Adjustment Amount"
     },
     {
-      "code": 6111,
+      "code": 6115,
       "name": "NoBurnNeeded",
       "msg": "No Burn Needed"
     },
     {
-      "code": 6112,
+      "code": 6116,
       "name": "InsufficientCacheBalance",
       "msg": "Insufficient Cache Balance"
     },
     {
-      "code": 6113,
+      "code": 6117,
       "name": "InsufficientFeeBalance",
       "msg": "Insufficient Fee Balance"
     },
     {
-      "code": 6114,
+      "code": 6118,
       "name": "InvalidFeeRecipient",
       "msg": "Invalid Fee Recipient"
     },
     {
-      "code": 6115,
+      "code": 6119,
       "name": "InvalidBurnTarget",
       "msg": "Invalid Burn Target"
     }

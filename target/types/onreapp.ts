@@ -4745,6 +4745,210 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "openSwap",
+      "discriminator": [
+        109,
+        109,
+        21,
+        132,
+        201,
+        76,
+        67,
+        113
+      ],
+      "accounts": [
+        {
+          "name": "offer"
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offerVaultAuthority"
+        },
+        {
+          "name": "offerVaultTokenInAccount",
+          "writable": true
+        },
+        {
+          "name": "offerVaultTokenOutAccount",
+          "writable": true
+        },
+        {
+          "name": "redemptionVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemptionVaultTokenInAccount",
+          "writable": true
+        },
+        {
+          "name": "redemptionVaultTokenOutAccount",
+          "writable": true
+        },
+        {
+          "name": "tokenInMint",
+          "writable": true
+        },
+        {
+          "name": "tokenInProgram"
+        },
+        {
+          "name": "tokenOutMint",
+          "writable": true
+        },
+        {
+          "name": "tokenOutProgram"
+        },
+        {
+          "name": "userTokenInAccount",
+          "writable": true
+        },
+        {
+          "name": "userTokenOutAccount",
+          "writable": true
+        },
+        {
+          "name": "bossTokenInAccount",
+          "writable": true
+        },
+        {
+          "name": "mintAuthority"
+        },
+        {
+          "name": "bufferAccounts",
+          "accounts": [
+            {
+              "name": "bufferState",
+              "writable": true
+            },
+            {
+              "name": "reserveVaultOnycAccount",
+              "writable": true
+            },
+            {
+              "name": "managementFeeVaultOnycAccount",
+              "writable": true
+            },
+            {
+              "name": "performanceFeeVaultOnycAccount",
+              "writable": true
+            }
+          ]
+        },
+        {
+          "name": "marketStats",
+          "writable": true
+        },
+        {
+          "name": "instructionsSysvar"
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "mainOffer"
+        },
+        {
+          "name": "offerVaultOnycAccount"
+        }
+      ],
+      "args": [
+        {
+          "name": "tokenInAmount",
+          "type": "u64"
+        },
+        {
+          "name": "minimumOut",
+          "type": "u64"
+        },
+        {
+          "name": "quoteExpiry",
+          "type": "i64"
+        },
+        {
+          "name": "approvalMessage",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "approvalMessage"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "proposeBoss",
       "docs": [
         "Proposes a new boss for ownership transfer.",
@@ -4808,6 +5012,57 @@ export type Onreapp = {
         {
           "name": "newBoss",
           "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "quoteSwap",
+      "discriminator": [
+        20,
+        139,
+        100,
+        190,
+        67,
+        4,
+        13,
+        141
+      ],
+      "accounts": [
+        {
+          "name": "offer"
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint"
+        },
+        {
+          "name": "tokenOutMint"
+        }
+      ],
+      "args": [
+        {
+          "name": "tokenInAmount",
+          "type": "u64"
+        },
+        {
+          "name": "quoteExpiry",
+          "type": "i64"
         }
       ]
     },
@@ -10793,41 +11048,61 @@ export type Onreapp = {
     },
     {
       "code": 6108,
+      "name": "quoteExpired",
+      "msg": "Quote Expired"
+    },
+    {
+      "code": 6109,
+      "name": "quoteExpiryTooLarge",
+      "msg": "Quote Expiry Too Large"
+    },
+    {
+      "code": 6110,
+      "name": "minimumOutNotMet",
+      "msg": "Minimum Out Not Met"
+    },
+    {
+      "code": 6111,
+      "name": "invalidSwapPair",
+      "msg": "Invalid Swap Pair"
+    },
+    {
+      "code": 6112,
       "name": "invalidFeeWallet",
       "msg": "Invalid Fee Wallet"
     },
     {
-      "code": 6109,
+      "code": 6113,
       "name": "invalidTargetNav",
       "msg": "Invalid Target Nav"
     },
     {
-      "code": 6110,
+      "code": 6114,
       "name": "invalidAssetAdjustmentAmount",
       "msg": "Invalid Asset Adjustment Amount"
     },
     {
-      "code": 6111,
+      "code": 6115,
       "name": "noBurnNeeded",
       "msg": "No Burn Needed"
     },
     {
-      "code": 6112,
+      "code": 6116,
       "name": "insufficientCacheBalance",
       "msg": "Insufficient Cache Balance"
     },
     {
-      "code": 6113,
+      "code": 6117,
       "name": "insufficientFeeBalance",
       "msg": "Insufficient Fee Balance"
     },
     {
-      "code": 6114,
+      "code": 6118,
       "name": "invalidFeeRecipient",
       "msg": "Invalid Fee Recipient"
     },
     {
-      "code": 6115,
+      "code": 6119,
       "name": "invalidBurnTarget",
       "msg": "Invalid Burn Target"
     }

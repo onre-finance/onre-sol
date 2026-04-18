@@ -39,6 +39,9 @@ describe("Take Offer", () => {
             tokenInMint,
             tokenOutMint,
         });
+        await program.setMainOffer({
+            offer: program.getOfferPda(tokenInMint, tokenOutMint),
+        });
 
         // Create token accounts
         user = testHelper.createUserAccount();

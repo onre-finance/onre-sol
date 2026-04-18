@@ -60,3 +60,6 @@ pub const MAX_BASIS_POINTS: u16 = 10000;
 
 /// Maximum allowed fee in basis points (10% = 1000 basis points)
 pub const MAX_ALLOWED_FEE_BPS: u16 = 1000;
+
+/// Maximum lifetime allowed for swap quotes.
+pub const MAX_QUOTE_LIFETIME_SECONDS: i64 = 60;
