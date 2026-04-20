@@ -19,6 +19,7 @@ anchor keys sync && anchor build
 ```
 
 **Note**: Do NOT use `anchor test -- --testNamePattern=...` - it doesn't work.
+**Important**: In this repo, never run LiteSVM `cargo test` in parallel with `anchor build`, and never start the test before `anchor build` has fully finished. `programs/onreapp/tests/common/svm.rs` embeds `target/deploy/onreapp.so`, so tests can run against a stale binary if build/test overlap.
 
 ## Project Overview
 

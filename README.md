@@ -166,7 +166,8 @@ Tests use **Vitest** with **LiteSVM** for fast local testing without a validator
 
 For the Rust program integration suite, use `anchor test`. The LiteSVM harness in
 `programs/onreapp/tests/common/svm.rs` embeds `target/deploy/onreapp.so`, so plain
-`cargo test` can exercise a stale program binary.
+`cargo test` can exercise a stale program binary. If you do run a targeted Rust test
+directly, wait for `anchor build` to finish first and do not run build and test in parallel.
 
 ```bash
 # Run all tests
