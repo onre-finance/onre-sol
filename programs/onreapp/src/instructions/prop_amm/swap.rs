@@ -3,14 +3,11 @@ use crate::instructions::buffer::accounts::{
     BufferAccrualAccountsBumps, __client_accounts_buffer_accrual_accounts,
     __cpi_client_accounts_buffer_accrual_accounts,
 };
-use crate::instructions::buffer::{
-    accrue_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
-    BufferAccrualAccounts,
-};
+use crate::instructions::buffer::BufferAccrualAccounts;
 use crate::instructions::market_info::{load_main_offer, refresh_market_stats_pda};
 use crate::instructions::offer::{
-    is_onyc_token_out_mint, process_offer_core, should_accrue_onyc_mint,
-    validate_take_offer_authorities, verify_offer_approval, OfferTakenEvent,
+    execute_take_offer_permissionless, process_offer_core, validate_take_offer_authorities,
+    verify_offer_approval, OfferTakenEvent,
 };
 use crate::instructions::redemption::{
     execute_redemption_operations, process_redemption_core, ExecuteRedemptionOpsParams,
@@ -18,8 +15,8 @@ use crate::instructions::redemption::{
 use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::{
-    execute_token_operations, get_associated_token_account, get_or_create_associated_token_account,
-    transfer_tokens, u64_to_dec9, ApprovalMessage, EnsureAtaParams, ExecTokenOpsParams,
+    get_associated_token_account, get_or_create_associated_token_account, transfer_tokens,
+    u64_to_dec9, ApprovalMessage, EnsureAtaParams,
 };
 use anchor_lang::solana_program::program::set_return_data;
 use anchor_lang::{prelude::*, Accounts, AnchorDeserialize, AnchorSerialize};
@@ -123,6 +120,17 @@ pub struct OpenSwap<'info> {
     /// CHECK: validated as canonical ATA in instruction logic
     #[account(mut)]
     pub boss_token_in_account: UncheckedAccount<'info>,
+
+    /// CHECK: PDA derivation validated in instruction logic
+    pub permissionless_authority: UncheckedAccount<'info>,
+
+    /// CHECK: validated and optionally initialized in instruction logic
+    #[account(mut)]
+    pub permissionless_token_in_account: UncheckedAccount<'info>,
+
+    /// CHECK: validated and optionally initialized in instruction logic
+    #[account(mut)]
+    pub permissionless_token_out_account: UncheckedAccount<'info>,
 
     /// CHECK: PDA derivation validated in instruction logic
     pub mint_authority: UncheckedAccount<'info>,
@@ -328,33 +336,20 @@ fn execute_open_swap_buy<'info>(
     quote_expiry: i64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
-    let (vault_authority_bump, mint_authority_bump) = validate_take_offer_authorities(
-        ctx.program_id,
-        &ctx.accounts.offer_vault_authority,
-        &ctx.accounts.mint_authority,
-        &ctx.accounts.instructions_sysvar,
-    )?;
     let offer = ctx.accounts.offer.load()?;
-    let buffer_is_initialized = ctx
-        .accounts
-        .buffer_accounts
-        .check_is_initialized(ctx.program_id)?;
-    let should_accrue_onyc_mint = should_accrue_onyc_mint(
-        &ctx.accounts.state,
+    let result = process_offer_core(
+        &offer,
+        token_in_amount,
+        &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
-        buffer_is_initialized,
-        &ctx.accounts.mint_authority.to_account_info(),
+    )?;
+    validate_quote_expiry(Clock::get()?.unix_timestamp, quote_expiry)?;
+    require!(
+        result.token_out_amount >= minimum_out,
+        crate::OnreError::MinimumOutNotMet
     );
 
-    verify_offer_approval(
-        &offer,
-        &approval_message,
-        ctx.program_id,
-        &ctx.accounts.user.key(),
-        &ctx.accounts.state.approver1,
-        &ctx.accounts.state.approver2,
-        &ctx.accounts.instructions_sysvar,
-    )?;
+    drop(offer);
 
     let user_token_in_account = get_associated_token_account(
         &ctx.accounts.user_token_in_account,
@@ -397,107 +392,48 @@ fn execute_open_swap_buy<'info>(
         &ctx.accounts.token_out_program.key(),
         crate::OnreError::InvalidVaultTokenOutAccount,
     )?;
-
-    let result = process_offer_core(
-        &offer,
-        token_in_amount,
-        &ctx.accounts.token_in_mint,
-        &ctx.accounts.token_out_mint,
+    let permissionless_token_in_account = get_associated_token_account(
+        &ctx.accounts.permissionless_token_in_account,
+        &ctx.accounts.permissionless_authority.key(),
+        &ctx.accounts.token_in_mint.key(),
+        &ctx.accounts.token_in_program.key(),
+        crate::OnreError::InvalidAmount,
     )?;
-    validate_quote_expiry(Clock::get()?.unix_timestamp, quote_expiry)?;
-    require!(
-        result.token_out_amount >= minimum_out,
-        crate::OnreError::MinimumOutNotMet
-    );
+    let permissionless_token_out_account = get_associated_token_account(
+        &ctx.accounts.permissionless_token_out_account,
+        &ctx.accounts.permissionless_authority.key(),
+        &ctx.accounts.token_out_mint.key(),
+        &ctx.accounts.token_out_program.key(),
+        crate::OnreError::InvalidPermissionlessTokenOutAccount,
+    )?;
 
-    let accrual = if should_accrue_onyc_mint {
-        Some(accrue_buffer_from_accounts(
-            ctx.program_id,
-            &ctx.accounts.state,
-            &ctx.accounts.buffer_accounts,
-            &offer,
-            &ctx.accounts.token_out_mint,
-            ctx.accounts.mint_authority.to_account_info(),
-            mint_authority_bump,
-            &ctx.accounts.token_out_program,
-        )?)
-    } else {
-        None
-    };
-
-    if accrual.is_some() {
-        ctx.accounts.token_out_mint.reload()?;
-    }
-
-    execute_token_operations(ExecTokenOpsParams {
-        token_in_program: &ctx.accounts.token_in_program,
-        token_in_mint: &ctx.accounts.token_in_mint,
-        token_in_net_amount: result.token_in_net_amount,
-        token_in_fee_amount: result.token_in_fee_amount,
-        token_in_authority: &ctx.accounts.user.to_account_info(),
-        token_in_source_signer_seeds: None,
-        vault_authority_signer_seeds: Some(&[&[
-            seeds::OFFER_VAULT_AUTHORITY,
-            &[vault_authority_bump],
-        ]]),
-        token_in_source_account: &user_token_in_account,
-        token_in_destination_account: &boss_token_in_account,
-        token_in_burn_account: &offer_vault_token_in_account,
-        token_in_burn_authority: &ctx.accounts.offer_vault_authority.to_account_info(),
-        token_out_program: &ctx.accounts.token_out_program,
-        token_out_mint: &ctx.accounts.token_out_mint,
-        token_out_amount: result.token_out_amount,
-        token_out_authority: &ctx.accounts.offer_vault_authority.to_account_info(),
-        token_out_source_account: &offer_vault_token_out_account,
-        token_out_destination_account: &user_token_out_account,
-        mint_authority_pda: &ctx.accounts.mint_authority.to_account_info(),
-        mint_authority_bump: &[mint_authority_bump],
-        token_out_max_supply: ctx.accounts.state.max_supply,
-    })?;
-
-    if let Some(accrual) = accrual {
-        let post_offer_supply = accrual
-            .post_accrual_supply
-            .checked_add(result.token_out_amount)
-            .ok_or(crate::OnreError::MathOverflow)?;
-        store_buffer_post_supply(
-            &ctx.accounts.buffer_accounts,
-            post_offer_supply,
-            accrual.timestamp,
-        )?;
-    }
-
-    refresh_market_stats_for_swap(
+    execute_take_offer_permissionless(
         ctx.program_id,
+        &ctx.accounts.offer,
         &ctx.accounts.state,
-        &ctx.accounts.main_offer,
-        &ctx.accounts.token_out_mint,
-        &offer_vault_token_out_account.to_account_info(),
+        &ctx.accounts.user,
+        &ctx.accounts.instructions_sysvar,
+        &ctx.accounts.token_in_mint,
+        &mut ctx.accounts.token_out_mint,
+        token_in_amount,
+        &approval_message,
+        &ctx.accounts.token_in_program,
+        &user_token_in_account,
+        &permissionless_token_in_account,
+        &ctx.accounts.permissionless_authority,
+        &boss_token_in_account,
+        &offer_vault_token_in_account,
+        &ctx.accounts.offer_vault_authority,
         &ctx.accounts.token_out_program,
-        &ctx.accounts.market_stats,
-        &ctx.accounts.user.to_account_info(),
-        &ctx.accounts.system_program.to_account_info(),
-    )?;
-
-    msg!(
-        "Open swap buy - offer: {}, token_in(+fee): {}(+{}), token_out: {}, user: {}, price: {}",
-        ctx.accounts.offer.key(),
-        result.token_in_net_amount,
-        result.token_in_fee_amount,
-        result.token_out_amount,
-        ctx.accounts.user.key(),
-        u64_to_dec9(result.current_price)
-    );
-
-    emit!(OfferTakenEvent {
-        offer_pda: ctx.accounts.offer.key(),
-        token_in_amount: result.token_in_net_amount,
-        token_out_amount: result.token_out_amount,
-        fee_amount: result.token_in_fee_amount,
-        user: ctx.accounts.user.key(),
-    });
-
-    Ok(())
+        &offer_vault_token_out_account,
+        &permissionless_token_out_account,
+        &user_token_out_account,
+        &ctx.accounts.mint_authority,
+        Some(&ctx.accounts.buffer_accounts),
+        Some(&ctx.accounts.market_stats),
+        Some(&ctx.accounts.main_offer),
+        &ctx.accounts.system_program,
+    )
 }
 
 fn execute_open_swap_sell<'info>(
@@ -663,34 +599,6 @@ fn execute_open_swap_sell<'info>(
         fee_amount: result.token_in_fee_amount,
         user: ctx.accounts.user.key(),
     });
-
-    Ok(())
-}
-
-fn refresh_market_stats_for_swap<'info>(
-    program_id: &Pubkey,
-    state: &Account<'info, State>,
-    main_offer_account: &UncheckedAccount<'info>,
-    onyc_mint: &InterfaceAccount<'info, Mint>,
-    onyc_vault_account: &AccountInfo<'info>,
-    token_program: &Interface<'info, TokenInterface>,
-    market_stats: &UncheckedAccount<'info>,
-    payer: &AccountInfo<'info>,
-    system_program: &AccountInfo<'info>,
-) -> Result<()> {
-    if is_onyc_token_out_mint(state, onyc_mint) {
-        let main_offer = load_main_offer(program_id, &main_offer_account.to_account_info(), state)?;
-        refresh_market_stats_pda(
-            &main_offer,
-            onyc_mint,
-            onyc_vault_account,
-            token_program,
-            &market_stats.to_account_info(),
-            payer,
-            system_program,
-            program_id,
-        )?;
-    }
 
     Ok(())
 }

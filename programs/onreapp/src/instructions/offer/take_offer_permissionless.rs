@@ -467,7 +467,7 @@ pub fn take_offer_permissionless_v2<'info>(
     )
 }
 
-fn execute_take_offer_permissionless<'info>(
+pub(crate) fn execute_take_offer_permissionless<'info>(
     program_id: &Pubkey,
     offer_account: &AccountLoader<'info, Offer>,
     state: &Account<'info, State>,

@@ -467,6 +467,7 @@ pub fn build_open_swap_ix(
     let (offer_pda, _) = find_offer_pda(canonical_token_in, canonical_token_out);
     let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
+    let (permissionless_authority_pda, _) = find_permissionless_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let (buffer_state_pda, _) = find_buffer_state_pda();
     let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
@@ -494,6 +495,16 @@ pub fn build_open_swap_ix(
     let user_token_in_ata = derive_ata(user, token_in_mint, token_in_program);
     let user_token_out_ata = derive_ata(user, token_out_mint, token_out_program);
     let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
+    let permissionless_token_in_ata = derive_ata(
+        &permissionless_authority_pda,
+        token_in_mint,
+        token_in_program,
+    );
+    let permissionless_token_out_ata = derive_ata(
+        &permissionless_authority_pda,
+        token_out_mint,
+        token_out_program,
+    );
     let buffer_vault_onyc_ata = derive_ata(
         &reserve_vault_authority_pda,
         token_out_mint,
@@ -544,6 +555,9 @@ pub fn build_open_swap_ix(
             AccountMeta::new(user_token_in_ata, false),
             AccountMeta::new(user_token_out_ata, false),
             AccountMeta::new(boss_token_in_ata, false),
+            AccountMeta::new_readonly(permissionless_authority_pda, false),
+            AccountMeta::new(permissionless_token_in_ata, false),
+            AccountMeta::new(permissionless_token_out_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),
             AccountMeta::new(buffer_state_pda, false),
             AccountMeta::new(buffer_vault_onyc_ata, false),
