@@ -218,10 +218,6 @@ pub enum OnreError {
     InvalidBufferStateAccount,
     #[msg("Invalid Timestamp")]
     InvalidTimestamp,
-    #[msg("Quote Expired")]
-    QuoteExpired,
-    #[msg("Quote Expiry Too Large")]
-    QuoteExpiryTooLarge,
     #[msg("Minimum Out Not Met")]
     MinimumOutNotMet,
     #[msg("Invalid Swap Pair")]

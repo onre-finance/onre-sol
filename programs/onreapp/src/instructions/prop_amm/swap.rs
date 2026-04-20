@@ -43,7 +43,6 @@ pub struct SwapQuote {
     pub minimum_out: u64,
     pub current_price: u64,
     pub quoted_at: i64,
-    pub quote_expiry: i64,
 }
 
 #[derive(Accounts)]
@@ -62,7 +61,7 @@ pub struct QuoteSwap<'info> {
 }
 
 #[derive(Accounts)]
-pub struct OpenSwap<'info> {
+pub struct OpenSwapBuy<'info> {
     pub offer: AccountLoader<'info, Offer>,
 
     #[account(
@@ -86,18 +85,6 @@ pub struct OpenSwap<'info> {
     /// CHECK: validated as canonical ATA in instruction logic
     #[account(mut)]
     pub offer_vault_token_out_account: UncheckedAccount<'info>,
-
-    /// CHECK: PDA derivation validated by seeds constraint
-    #[account(seeds = [seeds::REDEMPTION_OFFER_VAULT_AUTHORITY], bump)]
-    pub redemption_vault_authority: UncheckedAccount<'info>,
-
-    /// CHECK: validated as canonical ATA in instruction logic
-    #[account(mut)]
-    pub redemption_vault_token_in_account: UncheckedAccount<'info>,
-
-    /// CHECK: validated as canonical ATA in instruction logic
-    #[account(mut)]
-    pub redemption_vault_token_out_account: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
@@ -152,24 +139,81 @@ pub struct OpenSwap<'info> {
 
     /// CHECK: validated against state.main_offer in instruction logic
     pub main_offer: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct OpenSwapSell<'info> {
+    pub offer: AccountLoader<'info, Offer>,
+
+    #[account(
+        seeds = [seeds::STATE],
+        bump = state.bump,
+        has_one = boss @ crate::OnreError::InvalidBoss,
+        constraint = state.is_killed == false @ crate::OnreError::KillSwitchActivated
+    )]
+    pub state: Box<Account<'info, State>>,
+
+    /// CHECK: validated through state.has_one
+    pub boss: UncheckedAccount<'info>,
+
+    /// CHECK: PDA derivation validated in instruction logic
+    pub offer_vault_authority: UncheckedAccount<'info>,
+
+    /// CHECK: PDA derivation validated by seeds constraint
+    #[account(seeds = [seeds::REDEMPTION_OFFER_VAULT_AUTHORITY], bump)]
+    pub redemption_vault_authority: UncheckedAccount<'info>,
+
+    /// CHECK: validated as canonical ATA in instruction logic
+    #[account(mut)]
+    pub redemption_vault_token_in_account: UncheckedAccount<'info>,
+
+    /// CHECK: validated as canonical ATA in instruction logic
+    #[account(mut)]
+    pub redemption_vault_token_out_account: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
+
+    pub token_in_program: Interface<'info, TokenInterface>,
+
+    #[account(mut)]
+    pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
+
+    pub token_out_program: Interface<'info, TokenInterface>,
+
+    /// CHECK: validated as canonical ATA in instruction logic
+    #[account(mut)]
+    pub user_token_in_account: UncheckedAccount<'info>,
+
+    /// CHECK: validated and optionally initialized in instruction logic
+    #[account(mut)]
+    pub user_token_out_account: UncheckedAccount<'info>,
+
+    /// CHECK: validated as canonical ATA in instruction logic
+    #[account(mut)]
+    pub boss_token_in_account: UncheckedAccount<'info>,
+
+    /// CHECK: PDA derivation validated in instruction logic
+    pub mint_authority: UncheckedAccount<'info>,
+
+    /// CHECK: validated in instruction logic
+    #[account(mut)]
+    pub market_stats: UncheckedAccount<'info>,
+
+    /// CHECK: validated in instruction logic
+    pub instructions_sysvar: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+
+    /// CHECK: validated against state.main_offer in instruction logic
+    pub main_offer: UncheckedAccount<'info>,
 
     /// CHECK: validated as canonical ONYC offer-vault ATA in instruction logic
     pub offer_vault_onyc_account: UncheckedAccount<'info>,
-}
-
-pub fn validate_quote_expiry(current_time: i64, quote_expiry: i64) -> Result<()> {
-    require!(quote_expiry >= current_time, crate::OnreError::QuoteExpired);
-
-    let max_expiry = current_time
-        .checked_add(crate::constants::MAX_QUOTE_LIFETIME_SECONDS)
-        .ok_or(crate::OnreError::MathOverflow)?;
-
-    require!(
-        quote_expiry <= max_expiry,
-        crate::OnreError::QuoteExpiryTooLarge
-    );
-
-    Ok(())
 }
 
 fn resolve_swap_side(
@@ -217,10 +261,8 @@ pub fn build_swap_quote(
     token_in_amount: u64,
     token_in_mint: &InterfaceAccount<Mint>,
     token_out_mint: &InterfaceAccount<Mint>,
-    quote_expiry: i64,
 ) -> Result<SwapQuote> {
     let quoted_at = Clock::get()?.unix_timestamp;
-    validate_quote_expiry(quoted_at, quote_expiry)?;
 
     let side = validate_canonical_offer(
         program_id,
@@ -265,11 +307,10 @@ pub fn build_swap_quote(
         minimum_out: result.3,
         current_price: result.0,
         quoted_at,
-        quote_expiry,
     })
 }
 
-pub fn quote_swap(ctx: Context<QuoteSwap>, token_in_amount: u64, quote_expiry: i64) -> Result<()> {
+pub fn quote_swap(ctx: Context<QuoteSwap>, token_in_amount: u64) -> Result<()> {
     let offer = ctx.accounts.offer.load()?;
     let quote = build_swap_quote(
         ctx.program_id,
@@ -279,28 +320,25 @@ pub fn quote_swap(ctx: Context<QuoteSwap>, token_in_amount: u64, quote_expiry: i
         token_in_amount,
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
-        quote_expiry,
     )?;
     let mut serialized_quote = Vec::new();
     quote.serialize(&mut serialized_quote)?;
     set_return_data(&serialized_quote);
 
     msg!(
-        "Swap quote - offer: {}, token_in: {}, minimum_out: {}, expiry: {}",
+        "Swap quote - offer: {}, token_in: {}, minimum_out: {}",
         quote.offer,
         quote.token_in_amount,
-        quote.minimum_out,
-        quote.quote_expiry
+        quote.minimum_out
     );
 
     Ok(())
 }
 
-pub fn open_swap<'info>(
-    ctx: Context<'info, OpenSwap<'info>>,
+pub fn open_swap_buy<'info>(
+    ctx: Context<'info, OpenSwapBuy<'info>>,
     token_in_amount: u64,
     minimum_out: u64,
-    quote_expiry: i64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
     let side = validate_canonical_offer(
@@ -310,30 +348,43 @@ pub fn open_swap<'info>(
         ctx.accounts.token_in_mint.key(),
         ctx.accounts.token_out_mint.key(),
     )?;
+    require!(side == SwapSide::Buy, crate::OnreError::InvalidSwapPair);
 
-    match side {
-        SwapSide::Buy => execute_open_swap_buy(
-            ctx,
-            token_in_amount,
-            minimum_out,
-            quote_expiry,
-            approval_message,
-        ),
-        SwapSide::Sell => execute_open_swap_sell(
-            ctx,
-            token_in_amount,
-            minimum_out,
-            quote_expiry,
-            approval_message,
-        ),
-    }
+    execute_open_swap_buy(
+        ctx,
+        token_in_amount,
+        minimum_out,
+        approval_message,
+    )
+}
+
+pub fn open_swap_sell<'info>(
+    ctx: Context<'info, OpenSwapSell<'info>>,
+    token_in_amount: u64,
+    minimum_out: u64,
+    approval_message: Option<ApprovalMessage>,
+) -> Result<()> {
+    let side = validate_canonical_offer(
+        ctx.program_id,
+        &ctx.accounts.state,
+        ctx.accounts.offer.key(),
+        ctx.accounts.token_in_mint.key(),
+        ctx.accounts.token_out_mint.key(),
+    )?;
+    require!(side == SwapSide::Sell, crate::OnreError::InvalidSwapPair);
+
+    execute_open_swap_sell(
+        ctx,
+        token_in_amount,
+        minimum_out,
+        approval_message,
+    )
 }
 
 fn execute_open_swap_buy<'info>(
-    ctx: Context<'info, OpenSwap<'info>>,
+    ctx: Context<'info, OpenSwapBuy<'info>>,
     token_in_amount: u64,
     minimum_out: u64,
-    quote_expiry: i64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
     let offer = ctx.accounts.offer.load()?;
@@ -343,7 +394,6 @@ fn execute_open_swap_buy<'info>(
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
     )?;
-    validate_quote_expiry(Clock::get()?.unix_timestamp, quote_expiry)?;
     require!(
         result.token_out_amount >= minimum_out,
         crate::OnreError::MinimumOutNotMet
@@ -437,10 +487,9 @@ fn execute_open_swap_buy<'info>(
 }
 
 fn execute_open_swap_sell<'info>(
-    ctx: Context<'info, OpenSwap<'info>>,
+    ctx: Context<'info, OpenSwapSell<'info>>,
     token_in_amount: u64,
     minimum_out: u64,
-    quote_expiry: i64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
     let (_, mint_authority_bump) = validate_take_offer_authorities(
@@ -530,7 +579,6 @@ fn execute_open_swap_sell<'info>(
         &ctx.accounts.token_out_mint,
         0,
     )?;
-    validate_quote_expiry(Clock::get()?.unix_timestamp, quote_expiry)?;
     require!(
         result.token_out_amount >= minimum_out,
         crate::OnreError::MinimumOutNotMet

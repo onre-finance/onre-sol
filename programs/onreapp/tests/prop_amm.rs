@@ -75,13 +75,11 @@ fn test_quote_swap_returns_expected_quote_data() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
-    let quote_expiry = current_time as i64 + 60;
     let ix = build_quote_swap_ix(
         &ctx.onyc_mint,
         &ctx.usdc_mint,
         &ctx.onyc_mint,
         1_000_000,
-        quote_expiry,
     );
     let metadata = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     let quote = SwapQuote::try_from_slice(get_return_data(&metadata)).unwrap();
@@ -95,11 +93,10 @@ fn test_quote_swap_returns_expected_quote_data() {
     assert_eq!(quote.token_in_fee_amount, 0);
     assert_eq!(quote.token_out_amount, 1_000_000_000);
     assert_eq!(quote.minimum_out, quote.token_out_amount);
-    assert_eq!(quote.quote_expiry, quote_expiry);
 }
 
 #[test]
-fn test_open_swap_enforces_minimum_out_and_expiry() {
+fn test_open_swap_enforces_minimum_out() {
     let mut ctx = setup_prop_amm();
     let boss = ctx.payer.pubkey();
     let current_time = get_clock_time(&ctx.svm);
@@ -116,18 +113,16 @@ fn test_open_swap_enforces_minimum_out_and_expiry() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
-    let quote_expiry = current_time as i64 + 60;
     let quote_ix = build_quote_swap_ix(
         &ctx.onyc_mint,
         &ctx.usdc_mint,
         &ctx.onyc_mint,
         1_000_000,
-        quote_expiry,
     );
     let quote_metadata = send_tx(&mut ctx.svm, &[quote_ix], &[&ctx.payer]).unwrap();
     let quote = SwapQuote::try_from_slice(get_return_data(&quote_metadata)).unwrap();
 
-    let ix = build_open_swap_ix(
+    let ix = build_open_swap_buy_ix(
         &ctx.onyc_mint,
         &ctx.user.pubkey(),
         &boss,
@@ -135,7 +130,6 @@ fn test_open_swap_enforces_minimum_out_and_expiry() {
         &ctx.onyc_mint,
         1_000_000,
         quote.minimum_out + 1,
-        quote.quote_expiry,
         None,
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
@@ -143,7 +137,7 @@ fn test_open_swap_enforces_minimum_out_and_expiry() {
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
     assert!(result.is_err());
 
-    let ix = build_open_swap_ix(
+    let ix = build_open_swap_buy_ix(
         &ctx.onyc_mint,
         &ctx.user.pubkey(),
         &boss,
@@ -151,7 +145,6 @@ fn test_open_swap_enforces_minimum_out_and_expiry() {
         &ctx.onyc_mint,
         1_000_000,
         quote.minimum_out,
-        quote.quote_expiry,
         None,
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
@@ -163,35 +156,6 @@ fn test_open_swap_enforces_minimum_out_and_expiry() {
         &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
     );
     assert_eq!(user_onyc, quote.token_out_amount);
-
-    let late_expiry = get_clock_time(&ctx.svm) as i64 + 1;
-    let quote_ix = build_quote_swap_ix(
-        &ctx.onyc_mint,
-        &ctx.usdc_mint,
-        &ctx.onyc_mint,
-        1_000_000,
-        late_expiry,
-    );
-    let quote_metadata = send_tx(&mut ctx.svm, &[quote_ix], &[&ctx.payer]).unwrap();
-    let quote = SwapQuote::try_from_slice(get_return_data(&quote_metadata)).unwrap();
-
-    advance_clock_by(&mut ctx.svm, 2);
-
-    let ix = build_open_swap_ix(
-        &ctx.onyc_mint,
-        &ctx.user.pubkey(),
-        &boss,
-        &ctx.usdc_mint,
-        &ctx.onyc_mint,
-        1_000_000,
-        quote.minimum_out,
-        quote.quote_expiry,
-        None,
-        &TOKEN_PROGRAM_ID,
-        &TOKEN_PROGRAM_ID,
-    );
-    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
-    assert!(result.is_err());
 }
 
 #[test]
@@ -230,13 +194,11 @@ fn test_quote_and_open_swap_support_sell_side() {
         2_000_000_000,
     );
 
-    let quote_expiry = current_time as i64 + 60;
     let quote_ix = build_quote_swap_ix(
         &ctx.onyc_mint,
         &ctx.onyc_mint,
         &ctx.usdc_mint,
         1_000_000_000,
-        quote_expiry,
     );
     let quote_metadata = send_tx(&mut ctx.svm, &[quote_ix], &[&ctx.payer]).unwrap();
     let quote = SwapQuote::try_from_slice(get_return_data(&quote_metadata)).unwrap();
@@ -257,7 +219,7 @@ fn test_quote_and_open_swap_support_sell_side() {
         ),
     );
 
-    let ix = build_open_swap_ix(
+    let ix = build_open_swap_sell_ix(
         &ctx.onyc_mint,
         &ctx.user.pubkey(),
         &boss,
@@ -265,7 +227,6 @@ fn test_quote_and_open_swap_support_sell_side() {
         &ctx.usdc_mint,
         1_000_000_000,
         quote.minimum_out,
-        quote.quote_expiry,
         None,
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,

@@ -4745,16 +4745,16 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "openSwap",
+      "name": "openSwapBuy",
       "discriminator": [
-        109,
-        109,
-        21,
-        132,
-        201,
-        76,
-        67,
-        113
+        143,
+        202,
+        194,
+        184,
+        129,
+        189,
+        219,
+        139
       ],
       "accounts": [
         {
@@ -4792,58 +4792,6 @@ export type Onreapp = {
         },
         {
           "name": "offerVaultTokenOutAccount",
-          "writable": true
-        },
-        {
-          "name": "redemptionVaultAuthority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  100,
-                  101,
-                  109,
-                  112,
-                  116,
-                  105,
-                  111,
-                  110,
-                  95,
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "redemptionVaultTokenInAccount",
-          "writable": true
-        },
-        {
-          "name": "redemptionVaultTokenOutAccount",
           "writable": true
         },
         {
@@ -4929,6 +4877,174 @@ export type Onreapp = {
         },
         {
           "name": "mainOffer"
+        }
+      ],
+      "args": [
+        {
+          "name": "tokenInAmount",
+          "type": "u64"
+        },
+        {
+          "name": "minimumOut",
+          "type": "u64"
+        },
+        {
+          "name": "approvalMessage",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "approvalMessage"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "openSwapSell",
+      "discriminator": [
+        93,
+        206,
+        188,
+        72,
+        45,
+        138,
+        181,
+        71
+      ],
+      "accounts": [
+        {
+          "name": "offer"
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "offerVaultAuthority"
+        },
+        {
+          "name": "redemptionVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemptionVaultTokenInAccount",
+          "writable": true
+        },
+        {
+          "name": "redemptionVaultTokenOutAccount",
+          "writable": true
+        },
+        {
+          "name": "tokenInMint",
+          "writable": true
+        },
+        {
+          "name": "tokenInProgram"
+        },
+        {
+          "name": "tokenOutMint",
+          "writable": true
+        },
+        {
+          "name": "tokenOutProgram"
+        },
+        {
+          "name": "userTokenInAccount",
+          "writable": true
+        },
+        {
+          "name": "userTokenOutAccount",
+          "writable": true
+        },
+        {
+          "name": "bossTokenInAccount",
+          "writable": true
+        },
+        {
+          "name": "mintAuthority"
+        },
+        {
+          "name": "marketStats",
+          "writable": true
+        },
+        {
+          "name": "instructionsSysvar"
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "mainOffer"
         },
         {
           "name": "offerVaultOnycAccount"
@@ -4942,10 +5058,6 @@ export type Onreapp = {
         {
           "name": "minimumOut",
           "type": "u64"
-        },
-        {
-          "name": "quoteExpiry",
-          "type": "i64"
         },
         {
           "name": "approvalMessage",
@@ -5070,10 +5182,6 @@ export type Onreapp = {
         {
           "name": "tokenInAmount",
           "type": "u64"
-        },
-        {
-          "name": "quoteExpiry",
-          "type": "i64"
         }
       ]
     },
@@ -11059,61 +11167,51 @@ export type Onreapp = {
     },
     {
       "code": 6108,
-      "name": "quoteExpired",
-      "msg": "Quote Expired"
-    },
-    {
-      "code": 6109,
-      "name": "quoteExpiryTooLarge",
-      "msg": "Quote Expiry Too Large"
-    },
-    {
-      "code": 6110,
       "name": "minimumOutNotMet",
       "msg": "Minimum Out Not Met"
     },
     {
-      "code": 6111,
+      "code": 6109,
       "name": "invalidSwapPair",
       "msg": "Invalid Swap Pair"
     },
     {
-      "code": 6112,
+      "code": 6110,
       "name": "invalidFeeWallet",
       "msg": "Invalid Fee Wallet"
     },
     {
-      "code": 6113,
+      "code": 6111,
       "name": "invalidTargetNav",
       "msg": "Invalid Target Nav"
     },
     {
-      "code": 6114,
+      "code": 6112,
       "name": "invalidAssetAdjustmentAmount",
       "msg": "Invalid Asset Adjustment Amount"
     },
     {
-      "code": 6115,
+      "code": 6113,
       "name": "noBurnNeeded",
       "msg": "No Burn Needed"
     },
     {
-      "code": 6116,
+      "code": 6114,
       "name": "insufficientCacheBalance",
       "msg": "Insufficient Cache Balance"
     },
     {
-      "code": 6117,
+      "code": 6115,
       "name": "insufficientFeeBalance",
       "msg": "Insufficient Fee Balance"
     },
     {
-      "code": 6118,
+      "code": 6116,
       "name": "invalidFeeRecipient",
       "msg": "Invalid Fee Recipient"
     },
     {
-      "code": 6119,
+      "code": 6117,
       "name": "invalidBurnTarget",
       "msg": "Invalid Burn Target"
     }
