@@ -4873,6 +4873,17 @@ export type Onreapp = {
           "writable": true
         },
         {
+          "name": "permissionlessAuthority"
+        },
+        {
+          "name": "permissionlessTokenInAccount",
+          "writable": true
+        },
+        {
+          "name": "permissionlessTokenOutAccount",
+          "writable": true
+        },
+        {
           "name": "mintAuthority"
         },
         {

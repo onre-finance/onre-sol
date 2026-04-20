@@ -27,7 +27,7 @@ fn setup_prop_amm() -> PropAmmCtx {
         &onyc_mint,
         0,
         false,
-        false,
+        true,
         &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
@@ -37,8 +37,11 @@ fn setup_prop_amm() -> PropAmmCtx {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let (vault_authority, _) = find_offer_vault_authority_pda();
+    let (permissionless_authority, _) = find_permissionless_authority_pda();
     create_token_account(&mut svm, &usdc_mint, &vault_authority, 0);
     create_token_account(&mut svm, &onyc_mint, &vault_authority, 10_000_000_000_000);
+    create_token_account(&mut svm, &usdc_mint, &permissionless_authority, 0);
+    create_token_account(&mut svm, &onyc_mint, &permissionless_authority, 0);
 
     let user = Keypair::new();
     svm.airdrop(&user.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();

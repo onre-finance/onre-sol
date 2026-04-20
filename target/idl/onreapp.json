@@ -4867,6 +4867,17 @@
           "writable": true
         },
         {
+          "name": "permissionless_authority"
+        },
+        {
+          "name": "permissionless_token_in_account",
+          "writable": true
+        },
+        {
+          "name": "permissionless_token_out_account",
+          "writable": true
+        },
+        {
           "name": "mint_authority"
         },
         {
