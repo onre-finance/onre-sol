@@ -26,6 +26,7 @@ export interface NetworkConfig {
         usdc: PublicKey;
         onyc: PublicKey;
         usdg: PublicKey;
+        usdt: PublicKey;
     };
 }
 
@@ -47,6 +48,7 @@ const DEV_PROGRAM_ID = new PublicKey("devHfQHgiFNifkLW49RCXpyTUZMyKuBNnFSbrQ8Xsb
 const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 const ONYC_MINT = new PublicKey("5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5");
 const USDG_MINT = new PublicKey("2u1tszSeqZ3qBWF3uNGPFc8TzMk2tdiwknnRMWGWjGWH");
+const USDT_MINT = new PublicKey("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB");
 
 const USDC_TEST_MAINNET = new PublicKey("6ioCVbecopp6AfrPvzgZdtoaftMq4hXouDun2ekkkVvt");
 const ONYC_TEST_MAINNET = new PublicKey("5Uzafw84V9rCTmYULqdJA115K6zHP16vR15zrcqa6r6C");
@@ -56,6 +58,7 @@ const USDG_TEST_MAINNET = new PublicKey("Fuisp2hZfWdqZJoRjbfoTR47DnvB8gVJFJp2ANs
 const MOCK_USDC_DEVNET = new PublicKey("2eW3HJzbgrCnV1fd7dUbyPj5T95D35oBPcJyfXtoGNrw");
 const MOCK_ONYC_DEVNET = new PublicKey("6WLYBF2o3RSkZ9SoNhhFYxUPYzLaa83xSTZ3o46cg4CN");
 const MOCK_USDG_DEVNET = new PublicKey("HyVoVvMHRr6p1FfGSWrWDPk6bn4FAmCjajzv6SY3DHk");
+const MOCK_USDT_DEVNET = new PublicKey("GDzG4Q7hxyqF4owhApZemQbw8gs9nPMtUfQ3e7q4kWJG");
 
 const DEV_ONYC_DEVNET = new PublicKey("HQmHPQLhuXTj8dbsLUoFsJeCZWBkK75Zwczxork8Byzh");
 
@@ -71,8 +74,9 @@ export const NETWORK_CONFIGS: Record<NetworkName, NetworkConfig> = {
         mints: {
             usdc: USDC_MINT,
             onyc: ONYC_MINT,
-            usdg: USDG_MINT
-        }
+            usdg: USDG_MINT,
+            usdt: USDT_MINT,
+        },
     },
 
     "mainnet-test": {
@@ -83,8 +87,9 @@ export const NETWORK_CONFIGS: Record<NetworkName, NetworkConfig> = {
         mints: {
             usdc: USDC_TEST_MAINNET,
             onyc: ONYC_TEST_MAINNET,
-            usdg: USDG_TEST_MAINNET
-        }
+            usdg: USDG_TEST_MAINNET,
+            usdt: USDT_MINT,
+        },
     },
 
     "mainnet-dev": {
@@ -95,8 +100,9 @@ export const NETWORK_CONFIGS: Record<NetworkName, NetworkConfig> = {
         mints: {
             usdc: USDC_TEST_MAINNET,
             onyc: ONYC_TEST_MAINNET,
-            usdg: USDG_TEST_MAINNET
-        }
+            usdg: USDG_TEST_MAINNET,
+            usdt: USDT_MINT,
+        },
     },
 
     "devnet-test": {
@@ -107,8 +113,9 @@ export const NETWORK_CONFIGS: Record<NetworkName, NetworkConfig> = {
         mints: {
             usdc: MOCK_USDC_DEVNET,
             onyc: MOCK_ONYC_DEVNET,
-            usdg: MOCK_USDG_DEVNET
-        }
+            usdg: MOCK_USDG_DEVNET,
+            usdt: MOCK_USDT_DEVNET,
+        },
     },
 
     "devnet-dev": {
@@ -119,9 +126,10 @@ export const NETWORK_CONFIGS: Record<NetworkName, NetworkConfig> = {
         mints: {
             usdc: MOCK_USDC_DEVNET,
             onyc: MOCK_ONYC_DEVNET,
-            usdg: MOCK_USDG_DEVNET
-        }
-    }
+            usdg: MOCK_USDG_DEVNET,
+            usdt: MOCK_USDT_DEVNET,
+        },
+    },
 };
 
 /**
@@ -141,10 +149,7 @@ export function getNetworkConfig(): NetworkConfig {
     const config = NETWORK_CONFIGS[networkEnv];
     if (!config) {
         const validNetworks = Object.keys(NETWORK_CONFIGS).join(", ");
-        throw new Error(
-            `Invalid NETWORK environment variable: "${networkEnv}". ` +
-            `Valid values are: ${validNetworks}`
-        );
+        throw new Error(`Invalid NETWORK environment variable: "${networkEnv}". ` + `Valid values are: ${validNetworks}`);
     }
 
     return config;
@@ -164,5 +169,6 @@ export function printConfigSummary(config: NetworkConfig): void {
     console.log(`  USDC:    ${config.mints.usdc.toBase58()}`);
     console.log(`  ONyc:    ${config.mints.onyc.toBase58()}`);
     console.log(`  USDG:    ${config.mints.usdg.toBase58()}`);
+    console.log(`  USDT:    ${config.mints.usdt.toBase58()}`);
     console.log("═══════════════════════════════════════════════════════════════\n");
 }

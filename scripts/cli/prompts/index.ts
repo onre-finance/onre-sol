@@ -115,6 +115,7 @@ async function promptMint(message: string, config: NetworkConfig, defaultValue?:
         if (defaultValue.equals(config.mints.usdc)) defaultChoice = "usdc";
         else if (defaultValue.equals(config.mints.onyc)) defaultChoice = "onyc";
         else if (defaultValue.equals(config.mints.usdg)) defaultChoice = "usdg";
+        else if (defaultValue.equals(config.mints.usdt)) defaultChoice = "usdt";
     }
 
     const choices = [
@@ -129,6 +130,10 @@ async function promptMint(message: string, config: NetworkConfig, defaultValue?:
         {
             name: `USDG  ${chalk.gray(config.mints.usdg.toBase58().slice(0, 8) + "...")}`,
             value: "usdg",
+        },
+        {
+            name: `USDT  ${chalk.gray(config.mints.usdt.toBase58().slice(0, 8) + "...")}`,
+            value: "usdt",
         },
         {
             name: "Custom address",
@@ -249,6 +254,7 @@ function transformValue(value: any, param: ParamDefinition, config: NetworkConfi
                 if (lower === "usdc") return config.mints.usdc;
                 if (lower === "onyc") return config.mints.onyc;
                 if (lower === "usdg") return config.mints.usdg;
+                if (lower === "usdt") return config.mints.usdt;
                 return new PublicKey(value);
             }
             return value;
