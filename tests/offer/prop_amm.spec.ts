@@ -25,9 +25,14 @@ describe("Prop AMM", () => {
         await program.makeOffer({
             tokenInMint,
             tokenOutMint,
+            allowPermissionless: true,
         });
         await program.setMainOffer({
             offer: program.getOfferPda(tokenInMint, tokenOutMint),
+        });
+        await program.initializeBuffer({
+            offer: program.getOfferPda(tokenInMint, tokenOutMint),
+            onycMint: tokenOutMint,
         });
 
         user = testHelper.createUserAccount();
@@ -38,6 +43,8 @@ describe("Prop AMM", () => {
         testHelper.createTokenAccount(tokenOutMint, testHelper.getBoss(), BigInt(10_000e9));
         testHelper.createTokenAccount(tokenInMint, program.pdas.offerVaultAuthorityPda, BigInt(0), true);
         testHelper.createTokenAccount(tokenOutMint, program.pdas.offerVaultAuthorityPda, BigInt(0), true);
+        testHelper.createTokenAccount(tokenInMint, program.pdas.permissionlessAuthorityPda, BigInt(0), true);
+        testHelper.createTokenAccount(tokenOutMint, program.pdas.permissionlessAuthorityPda, BigInt(0), true);
 
         await program.offerVaultDeposit({
             amount: 10_000e9,
@@ -82,7 +89,7 @@ describe("Prop AMM", () => {
         expect(userTokenOutBalanceAfter).toBe(BigInt(1e9));
     });
 
-    it("Should reject open_swap when minimum_out is not met or quote is expired", async () => {
+    it("Should reject open_swap when minimum_out is not met", async () => {
         const currentTime = await testHelper.getCurrentClockTime();
 
         await program.addOfferVector({
@@ -111,24 +118,6 @@ describe("Prop AMM", () => {
             signer: user,
         })).rejects.toThrow();
 
-        const shortQuote = await program.quoteSwap({
-            tokenInAmount: 1_000_000,
-            tokenInMint,
-            tokenOutMint,
-            quoteExpiry: currentTime + 1,
-        });
-
-        await testHelper.advanceClockBy(2);
-
-        await expect(program.openSwap({
-            tokenInAmount: 1_000_000,
-            minimumOut: shortQuote.minimumOut,
-            quoteExpiry: shortQuote.quoteExpiry,
-            tokenInMint,
-            tokenOutMint,
-            user: user.publicKey,
-            signer: user,
-        })).rejects.toThrow();
     });
 
     it("Should support sell-side open_swap using the canonical offer", async () => {
@@ -147,6 +136,11 @@ describe("Prop AMM", () => {
             priceFixDuration: 86400,
         });
 
+        await program.makeRedemptionOffer({
+            offer: program.getOfferPda(tokenInMint, tokenOutMint),
+            feeBasisPoints: 500,
+        });
+
         testHelper.createTokenAccount(tokenOutMint, user.publicKey, BigInt(2e9), true);
         testHelper.createTokenAccount(tokenInMint, program.pdas.redemptionVaultAuthorityPda, BigInt(10_000e6), true);
         testHelper.createTokenAccount(tokenOutMint, program.pdas.redemptionVaultAuthorityPda, BigInt(0), true);
@@ -159,7 +153,9 @@ describe("Prop AMM", () => {
         });
 
         expect(quote.offer.toString()).toBe(program.getOfferPda(tokenInMint, tokenOutMint).toString());
-        expect(quote.tokenOutAmount.toString()).toBe("1000000");
+        expect(quote.tokenInNetAmount.toString()).toBe("950000000");
+        expect(quote.tokenInFeeAmount.toString()).toBe("50000000");
+        expect(quote.tokenOutAmount.toString()).toBe("950000");
 
         const vaultBefore = await testHelper.getTokenAccountBalance(program.getRedemptionVaultAta(tokenInMint));
 
@@ -174,9 +170,9 @@ describe("Prop AMM", () => {
         });
 
         const userUsdcAfter = await testHelper.getTokenAccountBalance(userTokenInAccount);
-        expect(userUsdcAfter).toBe(BigInt(10_001e6));
+        expect(userUsdcAfter).toBe(BigInt(10_000_950_000));
 
         const vaultAfter = await testHelper.getTokenAccountBalance(program.getRedemptionVaultAta(tokenInMint));
-        expect(vaultAfter).toBe(vaultBefore - BigInt(1e6));
+        expect(vaultAfter).toBe(vaultBefore - BigInt(950_000));
     });
 });

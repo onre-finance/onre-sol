@@ -278,8 +278,12 @@ pub mod onreapp {
         offer::take_offer_v2(ctx, token_in_amount, approval_message)
     }
 
-    pub fn quote_swap(ctx: Context<QuoteSwap>, token_in_amount: u64) -> Result<()> {
-        prop_amm::quote_swap(ctx, token_in_amount)
+    pub fn quote_swap_buy(ctx: Context<QuoteSwapBuy>, token_in_amount: u64) -> Result<()> {
+        prop_amm::quote_swap_buy(ctx, token_in_amount)
+    }
+
+    pub fn quote_swap_sell(ctx: Context<QuoteSwapSell>, token_in_amount: u64) -> Result<()> {
+        prop_amm::quote_swap_sell(ctx, token_in_amount)
     }
 
     pub fn open_swap_buy<'info>(
@@ -288,12 +292,7 @@ pub mod onreapp {
         minimum_out: u64,
         approval_message: Option<ApprovalMessage>,
     ) -> Result<()> {
-        prop_amm::open_swap_buy(
-            ctx,
-            token_in_amount,
-            minimum_out,
-            approval_message,
-        )
+        prop_amm::open_swap_buy(ctx, token_in_amount, minimum_out, approval_message)
     }
 
     pub fn open_swap_sell<'info>(
@@ -302,12 +301,7 @@ pub mod onreapp {
         minimum_out: u64,
         approval_message: Option<ApprovalMessage>,
     ) -> Result<()> {
-        prop_amm::open_swap_sell(
-            ctx,
-            token_in_amount,
-            minimum_out,
-            approval_message,
-        )
+        prop_amm::open_swap_sell(ctx, token_in_amount, minimum_out, approval_message)
     }
 
     /// Takes a offer using permissionless flow with intermediary accounts.

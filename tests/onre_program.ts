@@ -70,8 +70,6 @@ function decodeSwapQuote(data: Buffer): SwapQuote {
     const currentPrice = readU64(data, offset);
     offset += 8;
     const quotedAt = readI64(data, offset);
-    offset += 8;
-    const quoteExpiry = readI64(data, offset);
 
     return {
         offer,
@@ -84,7 +82,7 @@ function decodeSwapQuote(data: Buffer): SwapQuote {
         minimumOut,
         currentPrice,
         quotedAt,
-        quoteExpiry,
+        quoteExpiry: quotedAt,
     };
 }
 
@@ -296,16 +294,26 @@ export class OnreProgram {
     }): Promise<SwapQuote> {
         const state = await this.getState();
         const onycMint = state.onycMint as PublicKey;
+        const isSell = params.tokenInMint.equals(onycMint);
         const assetMint = params.tokenInMint.equals(onycMint) ? params.tokenOutMint : params.tokenInMint;
-        const tx = await this.program.methods
-            .quoteSwap(new BN(params.tokenInAmount), new BN(params.quoteExpiry))
-            .accounts({
-                offer: this.getOfferPda(assetMint, onycMint),
-                state: this.pdas.statePda,
-                tokenInMint: params.tokenInMint,
-                tokenOutMint: params.tokenOutMint,
-            })
-            .transaction();
+        const quoteAccounts = {
+            offer: this.getOfferPda(assetMint, onycMint),
+            state: this.pdas.statePda,
+            tokenInMint: params.tokenInMint,
+            tokenOutMint: params.tokenOutMint,
+        };
+        const tx = isSell
+            ? await this.program.methods
+                .quoteSwapSell(new BN(params.tokenInAmount))
+                .accountsPartial({
+                    ...quoteAccounts,
+                    redemptionOffer: this.getRedemptionOfferPda(params.tokenInMint, params.tokenOutMint),
+                })
+                .transaction()
+            : await this.program.methods
+                .quoteSwapBuy(new BN(params.tokenInAmount))
+                .accountsPartial(quoteAccounts)
+                .transaction();
 
         tx.recentBlockhash = this.testHelper.svm.latestBlockhash();
         tx.feePayer = this.testHelper.payer.publicKey;
@@ -338,18 +346,12 @@ export class OnreProgram {
         const state = await this.getState();
         const mainOffer = state.mainOffer as PublicKey;
         const onycMint = state.onycMint as PublicKey;
+        const isSell = params.tokenInMint.equals(onycMint);
         const assetMint = params.tokenInMint.equals(onycMint) ? params.tokenOutMint : params.tokenInMint;
         const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
         const tokenOutProgram = params.tokenOutProgram ?? TOKEN_PROGRAM_ID;
         const onycTokenProgram = params.tokenInMint.equals(onycMint) ? tokenInProgram : tokenOutProgram;
-        const tx = this.program.methods
-            .openSwap(
-                new BN(params.tokenInAmount),
-                BN.isBN(params.minimumOut) ? params.minimumOut : new BN(params.minimumOut),
-                BN.isBN(params.quoteExpiry) ? params.quoteExpiry : new BN(params.quoteExpiry),
-                null,
-            )
-            .accountsPartial({
+        const baseAccounts = {
                 offer: this.getOfferPda(assetMint, onycMint),
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
@@ -370,14 +372,42 @@ export class OnreProgram {
                 instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
                 marketStats: this.pdas.marketStatsPda,
                 mainOffer,
+        };
+        const tx = isSell
+            ? this.program.methods
+                .openSwapSell(
+                    new BN(params.tokenInAmount),
+                    BN.isBN(params.minimumOut) ? params.minimumOut : new BN(params.minimumOut),
+                    null,
+                )
+                .accountsPartial({
+                    ...baseAccounts,
+                    redemptionOffer: this.getRedemptionOfferPda(params.tokenInMint, params.tokenOutMint),
+                    redemptionVaultAuthority: this.pdas.redemptionVaultAuthorityPda,
+                    redemptionVaultTokenInAccount: this.getRedemptionVaultAta(params.tokenInMint, tokenInProgram),
+                    redemptionVaultTokenOutAccount: this.getRedemptionVaultAta(params.tokenOutMint, tokenOutProgram),
+                    offerVaultOnycAccount: this.getOfferVaultAta(onycMint, onycTokenProgram),
+                })
+            : this.program.methods
+                .openSwapBuy(
+                    new BN(params.tokenInAmount),
+                    BN.isBN(params.minimumOut) ? params.minimumOut : new BN(params.minimumOut),
+                    null,
+                )
+                .accountsPartial({
+                    ...baseAccounts,
+                    offerVaultTokenInAccount: this.getOfferVaultAta(params.tokenInMint, tokenInProgram),
+                    offerVaultTokenOutAccount: this.getOfferVaultAta(params.tokenOutMint, tokenOutProgram),
+                    permissionlessAuthority: this.pdas.permissionlessAuthorityPda,
+                    permissionlessTokenInAccount: this.getPermissionlessAta(params.tokenInMint, tokenInProgram),
+                    permissionlessTokenOutAccount: this.getPermissionlessAta(params.tokenOutMint, tokenOutProgram),
                 bufferAccounts: {
                     bufferState: this.pdas.bufferStatePda,
                     reserveVaultOnycAccount: this.getBufferVaultAta(params.tokenOutMint),
                     managementFeeVaultOnycAccount: this.getManagementFeeVaultAta(params.tokenOutMint),
                     performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.tokenOutMint),
                 },
-                offerVaultOnycAccount: this.getOfferVaultAta(onycMint, onycTokenProgram),
-            });
+                });
 
         await this.rpcWithOptionalSigner(tx, params.signer);
     }

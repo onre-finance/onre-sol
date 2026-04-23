@@ -75,12 +75,7 @@ fn test_quote_swap_returns_expected_quote_data() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
-    let ix = build_quote_swap_ix(
-        &ctx.onyc_mint,
-        &ctx.usdc_mint,
-        &ctx.onyc_mint,
-        1_000_000,
-    );
+    let ix = build_quote_swap_ix(&ctx.onyc_mint, &ctx.usdc_mint, &ctx.onyc_mint, 1_000_000);
     let metadata = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     let quote = SwapQuote::try_from_slice(get_return_data(&metadata)).unwrap();
 
@@ -113,12 +108,7 @@ fn test_open_swap_enforces_minimum_out() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
-    let quote_ix = build_quote_swap_ix(
-        &ctx.onyc_mint,
-        &ctx.usdc_mint,
-        &ctx.onyc_mint,
-        1_000_000,
-    );
+    let quote_ix = build_quote_swap_ix(&ctx.onyc_mint, &ctx.usdc_mint, &ctx.onyc_mint, 1_000_000);
     let quote_metadata = send_tx(&mut ctx.svm, &[quote_ix], &[&ctx.payer]).unwrap();
     let quote = SwapQuote::try_from_slice(get_return_data(&quote_metadata)).unwrap();
 
@@ -179,8 +169,17 @@ fn test_quote_and_open_swap_support_sell_side() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
+    let ix = build_make_redemption_offer_ix(
+        &boss,
+        &ctx.onyc_mint,
+        &ctx.usdc_mint,
+        500,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
     let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
-    create_token_account(&mut ctx.svm, &ctx.onyc_mint, &redemption_vault_authority, 0);
     create_token_account(
         &mut ctx.svm,
         &ctx.usdc_mint,
@@ -207,6 +206,102 @@ fn test_quote_and_open_swap_support_sell_side() {
         quote.offer,
         find_offer_pda(&ctx.usdc_mint, &ctx.onyc_mint).0
     );
+    assert_eq!(quote.token_in_net_amount, 950_000_000);
+    assert_eq!(quote.token_in_fee_amount, 50_000_000);
+    assert_eq!(quote.token_out_amount, 950_000);
+
+    let supply_before = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
+    let vault_before = get_token_balance(
+        &ctx.svm,
+        &derive_ata(
+            &redemption_vault_authority,
+            &ctx.usdc_mint,
+            &TOKEN_PROGRAM_ID,
+        ),
+    );
+
+    let ix = build_open_swap_sell_ix(
+        &ctx.onyc_mint,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.onyc_mint,
+        &ctx.usdc_mint,
+        1_000_000_000,
+        quote.minimum_out,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
+
+    let user_usdc = get_token_balance(
+        &ctx.svm,
+        &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
+    );
+    assert_eq!(user_usdc, 10_000_950_000);
+    assert_eq!(
+        get_mint_supply(&ctx.svm, &ctx.onyc_mint),
+        supply_before - 950_000_000
+    );
+    assert_eq!(
+        get_token_balance(
+            &ctx.svm,
+            &derive_ata(
+                &redemption_vault_authority,
+                &ctx.usdc_mint,
+                &TOKEN_PROGRAM_ID
+            ),
+        ),
+        vault_before - 950_000
+    );
+}
+
+#[test]
+fn test_sell_side_uses_zero_fee_when_redemption_offer_is_uninitialized() {
+    let mut ctx = setup_prop_amm();
+    let boss = ctx.payer.pubkey();
+    let current_time = get_clock_time(&ctx.svm);
+
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.onyc_mint, &TOKEN_PROGRAM_ID);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let ix = build_add_offer_vector_ix(
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86_400,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
+    create_token_account(
+        &mut ctx.svm,
+        &ctx.usdc_mint,
+        &redemption_vault_authority,
+        10_000_000_000,
+    );
+    create_token_account(
+        &mut ctx.svm,
+        &ctx.onyc_mint,
+        &ctx.user.pubkey(),
+        2_000_000_000,
+    );
+
+    let quote_ix = build_quote_swap_ix(
+        &ctx.onyc_mint,
+        &ctx.onyc_mint,
+        &ctx.usdc_mint,
+        1_000_000_000,
+    );
+    let quote_metadata = send_tx(&mut ctx.svm, &[quote_ix], &[&ctx.payer]).unwrap();
+    let quote = SwapQuote::try_from_slice(get_return_data(&quote_metadata)).unwrap();
+
+    assert_eq!(quote.token_in_net_amount, 1_000_000_000);
+    assert_eq!(quote.token_in_fee_amount, 0);
     assert_eq!(quote.token_out_amount, 1_000_000);
 
     let supply_before = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
