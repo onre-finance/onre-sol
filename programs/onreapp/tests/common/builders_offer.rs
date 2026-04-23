@@ -413,6 +413,7 @@ pub fn build_quote_swap_ix(
     token_in_amount: u64,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
+    let is_sell = token_in_mint == onyc_mint;
     let canonical_token_in = if token_in_mint == onyc_mint {
         token_out_mint
     } else {
@@ -424,16 +425,26 @@ pub fn build_quote_swap_ix(
         token_in_mint
     };
     let (offer_pda, _) = find_offer_pda(canonical_token_in, canonical_token_out);
-    let mut data = ix_discriminator("quote_swap").to_vec();
+    let mut data = ix_discriminator(if is_sell {
+        "quote_swap_sell"
+    } else {
+        "quote_swap_buy"
+    })
+    .to_vec();
     data.extend_from_slice(&token_in_amount.to_le_bytes());
+    let mut accounts = vec![AccountMeta::new_readonly(offer_pda, false)];
+    if is_sell {
+        let (redemption_offer_pda, _) = find_redemption_offer_pda(token_in_mint, token_out_mint);
+        accounts.push(AccountMeta::new_readonly(redemption_offer_pda, false));
+    }
+    accounts.extend([
+        AccountMeta::new_readonly(state_pda, false),
+        AccountMeta::new_readonly(*token_in_mint, false),
+        AccountMeta::new_readonly(*token_out_mint, false),
+    ]);
     Instruction {
         program_id: PROGRAM_ID,
-        accounts: vec![
-            AccountMeta::new_readonly(offer_pda, false),
-            AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new_readonly(*token_in_mint, false),
-            AccountMeta::new_readonly(*token_out_mint, false),
-        ],
+        accounts,
         data,
     }
 }
@@ -575,6 +586,7 @@ pub fn build_open_swap_sell_ix(
         token_in_mint
     };
     let (offer_pda, _) = find_offer_pda(canonical_token_in, canonical_token_out);
+    let (redemption_offer_pda, _) = find_redemption_offer_pda(token_in_mint, token_out_mint);
     let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
@@ -612,6 +624,7 @@ pub fn build_open_swap_sell_ix(
         program_id: PROGRAM_ID,
         accounts: vec![
             AccountMeta::new(offer_pda, false),
+            AccountMeta::new_readonly(redemption_offer_pda, false),
             AccountMeta::new_readonly(state_pda, false),
             AccountMeta::new_readonly(*boss, false),
             AccountMeta::new_readonly(offer_vault_authority_pda, false),

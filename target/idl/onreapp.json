@@ -4911,6 +4911,42 @@
           "name": "offer"
         },
         {
+          "name": "redemption_offer",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
+              }
+            ]
+          }
+        },
+        {
           "name": "state",
           "pda": {
             "seeds": [
@@ -5133,20 +5169,103 @@
       ]
     },
     {
-      "name": "quote_swap",
+      "name": "quote_swap_buy",
       "discriminator": [
-        20,
-        139,
-        100,
-        190,
-        67,
-        4,
-        13,
-        141
+        229,
+        148,
+        9,
+        48,
+        34,
+        165,
+        115,
+        166
       ],
       "accounts": [
         {
           "name": "offer"
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_in_mint"
+        },
+        {
+          "name": "token_out_mint"
+        }
+      ],
+      "args": [
+        {
+          "name": "token_in_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "quote_swap_sell",
+      "discriminator": [
+        198,
+        1,
+        48,
+        226,
+        172,
+        136,
+        51,
+        251
+      ],
+      "accounts": [
+        {
+          "name": "offer"
+        },
+        {
+          "name": "redemption_offer",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
+              }
+            ]
+          }
         },
         {
           "name": "state",

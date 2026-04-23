@@ -4917,6 +4917,42 @@ export type Onreapp = {
           "name": "offer"
         },
         {
+          "name": "redemptionOffer",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ]
+          }
+        },
+        {
           "name": "state",
           "pda": {
             "seeds": [
@@ -5139,20 +5175,103 @@ export type Onreapp = {
       ]
     },
     {
-      "name": "quoteSwap",
+      "name": "quoteSwapBuy",
       "discriminator": [
-        20,
-        139,
-        100,
-        190,
-        67,
-        4,
-        13,
-        141
+        229,
+        148,
+        9,
+        48,
+        34,
+        165,
+        115,
+        166
       ],
       "accounts": [
         {
           "name": "offer"
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenInMint"
+        },
+        {
+          "name": "tokenOutMint"
+        }
+      ],
+      "args": [
+        {
+          "name": "tokenInAmount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "quoteSwapSell",
+      "discriminator": [
+        198,
+        1,
+        48,
+        226,
+        172,
+        136,
+        51,
+        251
+      ],
+      "accounts": [
+        {
+          "name": "offer"
+        },
+        {
+          "name": "redemptionOffer",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ]
+          }
         },
         {
           "name": "state",

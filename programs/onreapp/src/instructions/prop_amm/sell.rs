@@ -1,5 +1,7 @@
 use crate::instructions::market_info::{load_main_offer, refresh_market_stats_pda};
-use crate::instructions::offer::{validate_take_offer_authorities, verify_offer_approval, OfferTakenEvent};
+use crate::instructions::offer::{
+    validate_take_offer_authorities, verify_offer_approval, OfferTakenEvent,
+};
 use crate::instructions::redemption::{
     execute_redemption_operations, process_redemption_core, ExecuteRedemptionOpsParams,
 };
@@ -15,11 +17,23 @@ use anchor_spl::{
     token_interface::{Mint, TokenInterface},
 };
 
+use super::quote::redemption_offer_fee_basis_points;
 use super::quote::{validate_canonical_offer, SwapSide};
 
 #[derive(Accounts)]
 pub struct OpenSwapSell<'info> {
     pub offer: AccountLoader<'info, Offer>,
+
+    #[account(
+        seeds = [
+            crate::constants::seeds::REDEMPTION_OFFER,
+            token_in_mint.key().as_ref(),
+            token_out_mint.key().as_ref()
+        ],
+        bump
+    )]
+    /// CHECK: PDA address is validated by seeds; data is optional and loaded in instruction logic.
+    pub redemption_offer: UncheckedAccount<'info>,
 
     #[account(
         seeds = [crate::constants::seeds::STATE],
@@ -123,6 +137,13 @@ fn execute_open_swap_sell<'info>(
         &ctx.accounts.instructions_sysvar,
     )?;
     let offer = ctx.accounts.offer.load()?;
+    let redemption_fee_basis_points = redemption_offer_fee_basis_points(
+        ctx.program_id,
+        &ctx.accounts.redemption_offer,
+        ctx.accounts.offer.key(),
+        ctx.accounts.token_in_mint.key(),
+        ctx.accounts.token_out_mint.key(),
+    )?;
 
     verify_offer_approval(
         &offer,
@@ -201,7 +222,7 @@ fn execute_open_swap_sell<'info>(
         token_in_amount,
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
-        0,
+        redemption_fee_basis_points,
     )?;
     require!(
         result.token_out_amount >= minimum_out,
