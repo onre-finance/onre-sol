@@ -1235,6 +1235,91 @@
       ]
     },
     {
+      "name": "configure_prop_amm",
+      "discriminator": [
+        235,
+        104,
+        216,
+        250,
+        252,
+        160,
+        107,
+        181
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "prop_amm_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  95,
+                  97,
+                  109,
+                  109,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "pool_target_bps",
+          "type": "u16"
+        },
+        {
+          "name": "linear_weight_bps",
+          "type": "u16"
+        },
+        {
+          "name": "base_exponent",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "create_redemption_request",
       "docs": [
         "Creates a redemption request.",
@@ -4755,6 +4840,32 @@
           "name": "offer"
         },
         {
+          "name": "prop_amm_state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  95,
+                  97,
+                  109,
+                  109,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "state",
           "pda": {
             "seeds": [
@@ -4781,11 +4892,59 @@
           "name": "offer_vault_authority"
         },
         {
+          "name": "redemption_vault_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "offer_vault_token_in_account",
           "writable": true
         },
         {
           "name": "offer_vault_token_out_account",
+          "writable": true
+        },
+        {
+          "name": "redemption_vault_token_in_account",
           "writable": true
         },
         {
@@ -4909,6 +5068,32 @@
       "accounts": [
         {
           "name": "offer"
+        },
+        {
+          "name": "prop_amm_state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  95,
+                  97,
+                  109,
+                  109,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "redemption_offer",
@@ -5232,6 +5417,32 @@
           "name": "offer"
         },
         {
+          "name": "prop_amm_state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  95,
+                  97,
+                  109,
+                  109,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "redemption_offer",
           "pda": {
             "seeds": [
@@ -5285,10 +5496,116 @@
           }
         },
         {
+          "name": "redemption_vault_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemption_vault_token_out_account",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemption_vault_authority"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_program"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
           "name": "token_in_mint"
         },
         {
           "name": "token_out_mint"
+        },
+        {
+          "name": "token_out_program"
+        },
+        {
+          "name": "market_stats"
         }
       ],
       "args": [
@@ -10007,6 +10324,19 @@
       ]
     },
     {
+      "name": "PropAmmState",
+      "discriminator": [
+        199,
+        83,
+        38,
+        74,
+        186,
+        240,
+        58,
+        139
+      ]
+    },
+    {
       "name": "RedemptionFeeVaultAuthority",
       "discriminator": [
         207,
@@ -10565,6 +10895,19 @@
         143,
         128,
         156
+      ]
+    },
+    {
+      "name": "PropAmmConfiguredEvent",
+      "discriminator": [
+        104,
+        110,
+        198,
+        241,
+        226,
+        200,
+        237,
+        41
       ]
     },
     {
@@ -12989,6 +13332,71 @@
               "Optional name identifier for the authority (max 50 characters)"
             ],
             "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PropAmmConfiguredEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_pool_target_bps",
+            "type": "u16"
+          },
+          {
+            "name": "new_pool_target_bps",
+            "type": "u16"
+          },
+          {
+            "name": "old_linear_weight_bps",
+            "type": "u16"
+          },
+          {
+            "name": "new_linear_weight_bps",
+            "type": "u16"
+          },
+          {
+            "name": "old_base_exponent",
+            "type": "u8"
+          },
+          {
+            "name": "new_base_exponent",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PropAmmState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_target_bps",
+            "type": "u16"
+          },
+          {
+            "name": "linear_weight_bps",
+            "type": "u16"
+          },
+          {
+            "name": "base_exponent",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                61
+              ]
+            }
           }
         ]
       }

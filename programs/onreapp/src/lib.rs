@@ -477,6 +477,15 @@ pub mod onreapp {
         state_operations::set_main_offer(ctx)
     }
 
+    pub fn configure_prop_amm(
+        ctx: Context<ConfigurePropAmm>,
+        pool_target_bps: u16,
+        linear_weight_bps: u16,
+        base_exponent: u8,
+    ) -> Result<()> {
+        prop_amm::configure_prop_amm(ctx, pool_target_bps, linear_weight_bps, base_exponent)
+    }
+
     /// Sets BUFFER gross yield.
     ///
     /// Current yield is read from the main offer during BUFFER accrual.

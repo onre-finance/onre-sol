@@ -164,6 +164,30 @@ pub fn build_configure_max_supply_ix(boss: &Pubkey, max_supply: u64) -> Instruct
     }
 }
 
+pub fn build_configure_prop_amm_ix(
+    boss: &Pubkey,
+    pool_target_bps: u16,
+    linear_weight_bps: u16,
+    base_exponent: u8,
+) -> Instruction {
+    let (state_pda, _) = find_state_pda();
+    let (prop_amm_state_pda, _) = find_prop_amm_state_pda();
+    let mut data = ix_discriminator("configure_prop_amm").to_vec();
+    data.extend_from_slice(&pool_target_bps.to_le_bytes());
+    data.extend_from_slice(&linear_weight_bps.to_le_bytes());
+    data.push(base_exponent);
+    Instruction {
+        program_id: PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new(prop_amm_state_pda, false),
+            AccountMeta::new(*boss, true),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+        ],
+        data,
+    }
+}
+
 pub fn build_set_redemption_admin_ix(boss: &Pubkey, redemption_admin: &Pubkey) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let mut data = ix_discriminator("set_redemption_admin").to_vec();

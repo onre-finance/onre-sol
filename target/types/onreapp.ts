@@ -1241,6 +1241,91 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "configurePropAmm",
+      "discriminator": [
+        235,
+        104,
+        216,
+        250,
+        252,
+        160,
+        107,
+        181
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "propAmmState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  95,
+                  97,
+                  109,
+                  109,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "poolTargetBps",
+          "type": "u16"
+        },
+        {
+          "name": "linearWeightBps",
+          "type": "u16"
+        },
+        {
+          "name": "baseExponent",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "createRedemptionRequest",
       "docs": [
         "Creates a redemption request.",
@@ -4761,6 +4846,32 @@ export type Onreapp = {
           "name": "offer"
         },
         {
+          "name": "propAmmState",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  95,
+                  97,
+                  109,
+                  109,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "state",
           "pda": {
             "seeds": [
@@ -4787,11 +4898,59 @@ export type Onreapp = {
           "name": "offerVaultAuthority"
         },
         {
+          "name": "redemptionVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "offerVaultTokenInAccount",
           "writable": true
         },
         {
           "name": "offerVaultTokenOutAccount",
+          "writable": true
+        },
+        {
+          "name": "redemptionVaultTokenInAccount",
           "writable": true
         },
         {
@@ -4915,6 +5074,32 @@ export type Onreapp = {
       "accounts": [
         {
           "name": "offer"
+        },
+        {
+          "name": "propAmmState",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  95,
+                  97,
+                  109,
+                  109,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "redemptionOffer",
@@ -5238,6 +5423,32 @@ export type Onreapp = {
           "name": "offer"
         },
         {
+          "name": "propAmmState",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  95,
+                  97,
+                  109,
+                  109,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "redemptionOffer",
           "pda": {
             "seeds": [
@@ -5291,10 +5502,116 @@ export type Onreapp = {
           }
         },
         {
+          "name": "redemptionVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemptionVaultTokenOutAccount",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "redemptionVaultAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
           "name": "tokenInMint"
         },
         {
           "name": "tokenOutMint"
+        },
+        {
+          "name": "tokenOutProgram"
+        },
+        {
+          "name": "marketStats"
         }
       ],
       "args": [
@@ -10013,6 +10330,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "propAmmState",
+      "discriminator": [
+        199,
+        83,
+        38,
+        74,
+        186,
+        240,
+        58,
+        139
+      ]
+    },
+    {
       "name": "redemptionFeeVaultAuthority",
       "discriminator": [
         207,
@@ -10571,6 +10901,19 @@ export type Onreapp = {
         143,
         128,
         156
+      ]
+    },
+    {
+      "name": "propAmmConfiguredEvent",
+      "discriminator": [
+        104,
+        110,
+        198,
+        241,
+        226,
+        200,
+        237,
+        41
       ]
     },
     {
@@ -12995,6 +13338,71 @@ export type Onreapp = {
               "Optional name identifier for the authority (max 50 characters)"
             ],
             "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "propAmmConfiguredEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldPoolTargetBps",
+            "type": "u16"
+          },
+          {
+            "name": "newPoolTargetBps",
+            "type": "u16"
+          },
+          {
+            "name": "oldLinearWeightBps",
+            "type": "u16"
+          },
+          {
+            "name": "newLinearWeightBps",
+            "type": "u16"
+          },
+          {
+            "name": "oldBaseExponent",
+            "type": "u8"
+          },
+          {
+            "name": "newBaseExponent",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "propAmmState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "poolTargetBps",
+            "type": "u16"
+          },
+          {
+            "name": "linearWeightBps",
+            "type": "u16"
+          },
+          {
+            "name": "baseExponent",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                61
+              ]
+            }
           }
         ]
       }
