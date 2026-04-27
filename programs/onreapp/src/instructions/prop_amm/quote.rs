@@ -1,11 +1,16 @@
 use crate::constants::seeds;
+use crate::instructions::market_info::read_market_stats_account;
 use crate::instructions::offer::process_offer_core;
 use crate::instructions::redemption::{process_redemption_core, RedemptionOffer};
 use crate::instructions::Offer;
 use crate::state::State;
 use anchor_lang::solana_program::program::set_return_data;
 use anchor_lang::{prelude::*, system_program, Accounts, AnchorDeserialize, AnchorSerialize};
-use anchor_spl::token_interface::Mint;
+use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
+
+use super::config::PropAmmState;
+
+pub const HARD_WALL_SCALE: u128 = 1_000_000_000_000;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SwapSide {
@@ -54,6 +59,12 @@ pub struct QuoteSwapSell<'info> {
     pub offer: AccountLoader<'info, Offer>,
 
     #[account(
+        seeds = [seeds::PROP_AMM_STATE],
+        bump = prop_amm_state.bump
+    )]
+    pub prop_amm_state: Account<'info, PropAmmState>,
+
+    #[account(
         seeds = [
             seeds::REDEMPTION_OFFER,
             token_in_mint.key().as_ref(),
@@ -71,8 +82,23 @@ pub struct QuoteSwapSell<'info> {
     )]
     pub state: Box<Account<'info, State>>,
 
+    /// CHECK: PDA derivation validated by seeds constraint
+    #[account(seeds = [seeds::REDEMPTION_OFFER_VAULT_AUTHORITY], bump)]
+    pub redemption_vault_authority: UncheckedAccount<'info>,
+
+    #[account(
+        associated_token::mint = token_out_mint,
+        associated_token::authority = redemption_vault_authority,
+        associated_token::token_program = token_out_program
+    )]
+    pub redemption_vault_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
     pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub token_out_program: Interface<'info, TokenInterface>,
+
+    /// CHECK: PDA address is validated in instruction logic; data is loaded only if initialized.
+    pub market_stats: UncheckedAccount<'info>,
 }
 
 pub(crate) fn resolve_swap_side(
@@ -158,6 +184,122 @@ pub(crate) fn redemption_offer_fee_basis_points(
     Ok(redemption_offer.fee_basis_points)
 }
 
+pub(crate) fn apply_hard_wall_liquidity_factor(
+    token_out_amount: u64,
+    actual_liquidity: u64,
+    hard_wall_reserve: u64,
+    prop_amm_state: &PropAmmState,
+) -> Result<u64> {
+    require!(actual_liquidity > 0, crate::OnreError::InsufficientBalance);
+    require!(hard_wall_reserve > 0, crate::OnreError::InsufficientBalance);
+    let effective_liquidity = actual_liquidity.min(hard_wall_reserve);
+    require!(
+        token_out_amount < effective_liquidity,
+        crate::OnreError::InsufficientBalance
+    );
+
+    let utilization_scaled = (token_out_amount as u128)
+        .checked_mul(HARD_WALL_SCALE)
+        .ok_or(crate::OnreError::MathOverflow)?
+        .checked_div(effective_liquidity as u128)
+        .ok_or(crate::OnreError::DivByZero)?;
+    let penalty = hard_wall_penalty_scaled(
+        utilization_scaled,
+        prop_amm_state.linear_weight_bps,
+        prop_amm_state.base_exponent,
+    )?;
+    let liquidity_factor = HARD_WALL_SCALE.saturating_sub(penalty);
+    let dampened_amount = (token_out_amount as u128)
+        .checked_mul(liquidity_factor)
+        .ok_or(crate::OnreError::MathOverflow)?
+        .checked_div(HARD_WALL_SCALE)
+        .ok_or(crate::OnreError::DivByZero)?;
+
+    require!(dampened_amount > 0, crate::OnreError::MinimumOutNotMet);
+    require!(
+        dampened_amount <= u64::MAX as u128,
+        crate::OnreError::MathOverflow
+    );
+    Ok(dampened_amount as u64)
+}
+
+pub fn apply_hard_wall_reserve_curve_with_params(
+    token_out_amount: u64,
+    actual_liquidity: u64,
+    hard_wall_reserve: u64,
+    linear_weight_bps: u16,
+    base_exponent: u8,
+) -> Result<u64> {
+    let prop_amm_state = PropAmmState {
+        pool_target_bps: 0,
+        linear_weight_bps,
+        base_exponent,
+        bump: 0,
+        reserved: [0; 61],
+    };
+    apply_hard_wall_liquidity_factor(
+        token_out_amount,
+        actual_liquidity,
+        hard_wall_reserve,
+        &prop_amm_state,
+    )
+}
+
+pub fn hard_wall_reserve_from_tvl(
+    tvl: u64,
+    pool_target_bps: u16,
+    token_out_decimals: u8,
+    onyc_decimals: u8,
+) -> Result<u64> {
+    let target_in_onyc_decimals = (tvl as u128)
+        .checked_mul(pool_target_bps as u128)
+        .ok_or(crate::OnreError::MathOverflow)?
+        .checked_div(crate::constants::MAX_BASIS_POINTS as u128)
+        .ok_or(crate::OnreError::DivByZero)?;
+    let token_out_scale = 10_u128
+        .checked_pow(token_out_decimals as u32)
+        .ok_or(crate::OnreError::MathOverflow)?;
+    let onyc_scale = 10_u128
+        .checked_pow(onyc_decimals as u32)
+        .ok_or(crate::OnreError::MathOverflow)?;
+    let target = target_in_onyc_decimals
+        .checked_mul(token_out_scale)
+        .ok_or(crate::OnreError::MathOverflow)?
+        .checked_div(onyc_scale)
+        .ok_or(crate::OnreError::DivByZero)?;
+    require!(target > 0, crate::OnreError::InsufficientBalance);
+    require!(target <= u64::MAX as u128, crate::OnreError::MathOverflow);
+    Ok(target as u64)
+}
+fn hard_wall_penalty_scaled(u: u128, linear_weight_bps: u16, base_exponent: u8) -> Result<u128> {
+    let linear_weight = linear_weight_bps as u128;
+    let nonlinear_weight = (crate::constants::MAX_BASIS_POINTS as u128)
+        .checked_sub(linear_weight)
+        .ok_or(crate::OnreError::ArithmeticUnderflow)?;
+    let linear_penalty = u
+        .checked_mul(linear_weight)
+        .ok_or(crate::OnreError::MathOverflow)?
+        .checked_div(crate::constants::MAX_BASIS_POINTS as u128)
+        .ok_or(crate::OnreError::DivByZero)?;
+    let mut u_power = HARD_WALL_SCALE;
+    for _ in 0..base_exponent {
+        u_power = u_power
+            .checked_mul(u)
+            .ok_or(crate::OnreError::MathOverflow)?
+            .checked_div(HARD_WALL_SCALE)
+            .ok_or(crate::OnreError::DivByZero)?;
+    }
+    let nonlinear_penalty = u_power
+        .checked_mul(nonlinear_weight)
+        .ok_or(crate::OnreError::MathOverflow)?
+        .checked_div(crate::constants::MAX_BASIS_POINTS as u128)
+        .ok_or(crate::OnreError::DivByZero)?;
+    Ok(linear_penalty
+        .checked_add(nonlinear_penalty)
+        .ok_or(crate::OnreError::MathOverflow)?)
+}
+
+
 pub fn build_swap_buy_quote(
     program_id: &Pubkey,
     state: &State,
@@ -206,6 +348,9 @@ pub fn build_swap_sell_quote(
     state: &State,
     offer_key: Pubkey,
     offer: &Offer,
+    prop_amm_state: &PropAmmState,
+    actual_liquidity: u64,
+    hard_wall_reserve: u64,
     redemption_fee_basis_points: u16,
     token_in_amount: u64,
     token_in_mint: &InterfaceAccount<Mint>,
@@ -222,7 +367,7 @@ pub fn build_swap_sell_quote(
     )?;
     require!(side == SwapSide::Sell, crate::OnreError::InvalidSwapPair);
 
-    let result = process_redemption_core(
+    let mut result = process_redemption_core(
         offer,
         token_in_amount,
         token_in_mint,
@@ -235,6 +380,12 @@ pub fn build_swap_sell_quote(
         token_in_fee_amount: result.token_in_fee_amount,
         token_out_amount: result.token_out_amount,
     })?;
+    result.token_out_amount = apply_hard_wall_liquidity_factor(
+        result.token_out_amount,
+        actual_liquidity,
+        hard_wall_reserve,
+        prop_amm_state,
+    )?;
 
     Ok(SwapQuote {
         offer: offer_key,
@@ -277,6 +428,20 @@ pub fn quote_swap_buy(ctx: Context<QuoteSwapBuy>, token_in_amount: u64) -> Resul
 
 pub fn quote_swap_sell(ctx: Context<QuoteSwapSell>, token_in_amount: u64) -> Result<()> {
     let offer = ctx.accounts.offer.load()?;
+    let (market_stats_pda, _) =
+        Pubkey::find_program_address(&[seeds::MARKET_STATS], ctx.program_id);
+    require_keys_eq!(
+        market_stats_pda,
+        ctx.accounts.market_stats.key(),
+        crate::OnreError::InvalidMarketStatsPda
+    );
+    let market_stats = read_market_stats_account(&ctx.accounts.market_stats.to_account_info())?;
+    let hard_wall_reserve = hard_wall_reserve_from_tvl(
+        market_stats.tvl,
+        ctx.accounts.prop_amm_state.pool_target_bps,
+        ctx.accounts.token_out_mint.decimals,
+        ctx.accounts.token_in_mint.decimals,
+    )?;
     let redemption_fee_basis_points = redemption_offer_fee_basis_points(
         ctx.program_id,
         &ctx.accounts.redemption_offer,
@@ -289,6 +454,9 @@ pub fn quote_swap_sell(ctx: Context<QuoteSwapSell>, token_in_amount: u64) -> Res
         &ctx.accounts.state,
         ctx.accounts.offer.key(),
         &offer,
+        &ctx.accounts.prop_amm_state,
+        ctx.accounts.redemption_vault_token_out_account.amount,
+        hard_wall_reserve,
         redemption_fee_basis_points,
         token_in_amount,
         &ctx.accounts.token_in_mint,

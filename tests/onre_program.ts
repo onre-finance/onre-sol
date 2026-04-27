@@ -1,4 +1,4 @@
-import { Keypair, PublicKey, SystemProgram, SYSVAR_INSTRUCTIONS_PUBKEY, TransactionInstruction, Transaction } from "@solana/web3.js";
+import { ComputeBudgetProgram, Keypair, PublicKey, SystemProgram, SYSVAR_INSTRUCTIONS_PUBKEY, TransactionInstruction, Transaction } from "@solana/web3.js";
 import { AnchorProvider, BN, Program, Wallet } from "@coral-xyz/anchor";
 import { Onreapp } from "../target/types/onreapp";
 import { BPF_UPGRADEABLE_LOADER_PROGRAM_ID, ONREAPP_PROGRAM_ID, TestHelper } from "./test_helper.ts";
@@ -92,6 +92,8 @@ export class OnreProgram {
 
     pdas: {
         statePda: PublicKey;
+        propAmmStatePda: PublicKey;
+        propAmmCurveTablePda: PublicKey;
         offerVaultAuthorityPda: PublicKey;
         redemptionVaultAuthorityPda: PublicKey;
         permissionlessAuthorityPda: PublicKey;
@@ -104,6 +106,8 @@ export class OnreProgram {
         redemptionFeeVaultAuthorityPda: PublicKey;
     } = {
         statePda: PublicKey.findProgramAddressSync([Buffer.from("state")], ONREAPP_PROGRAM_ID)[0],
+        propAmmStatePda: PublicKey.findProgramAddressSync([Buffer.from("prop_amm_state")], ONREAPP_PROGRAM_ID)[0],
+        propAmmCurveTablePda: PublicKey.findProgramAddressSync([Buffer.from("prop_amm_curve_table")], ONREAPP_PROGRAM_ID)[0],
         offerVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("offer_vault_authority")], ONREAPP_PROGRAM_ID)[0],
         redemptionVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("redemption_offer_vault_authority")], ONREAPP_PROGRAM_ID)[0],
         permissionlessAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("permissionless-1")], ONREAPP_PROGRAM_ID)[0],
@@ -307,7 +311,13 @@ export class OnreProgram {
                 .quoteSwapSell(new BN(params.tokenInAmount))
                 .accountsPartial({
                     ...quoteAccounts,
+                    propAmmState: this.pdas.propAmmStatePda,
+                    propAmmCurveTable: this.pdas.propAmmCurveTablePda,
                     redemptionOffer: this.getRedemptionOfferPda(params.tokenInMint, params.tokenOutMint),
+                    redemptionVaultAuthority: this.pdas.redemptionVaultAuthorityPda,
+                    redemptionVaultTokenOutAccount: this.getRedemptionVaultAta(params.tokenOutMint),
+                    marketStats: this.pdas.marketStatsPda,
+                    tokenOutProgram: TOKEN_PROGRAM_ID,
                 })
                 .transaction()
             : await this.program.methods
@@ -353,6 +363,7 @@ export class OnreProgram {
         const onycTokenProgram = params.tokenInMint.equals(onycMint) ? tokenInProgram : tokenOutProgram;
         const baseAccounts = {
                 offer: this.getOfferPda(assetMint, onycMint),
+                propAmmState: this.pdas.propAmmStatePda,
                 tokenInMint: params.tokenInMint,
                 tokenOutMint: params.tokenOutMint,
                 user: params.user,
@@ -382,6 +393,7 @@ export class OnreProgram {
                 )
                 .accountsPartial({
                     ...baseAccounts,
+                    propAmmCurveTable: this.pdas.propAmmCurveTablePda,
                     redemptionOffer: this.getRedemptionOfferPda(params.tokenInMint, params.tokenOutMint),
                     redemptionVaultAuthority: this.pdas.redemptionVaultAuthorityPda,
                     redemptionVaultTokenInAccount: this.getRedemptionVaultAta(params.tokenInMint, tokenInProgram),
@@ -396,6 +408,8 @@ export class OnreProgram {
                 )
                 .accountsPartial({
                     ...baseAccounts,
+                    redemptionVaultAuthority: this.pdas.redemptionVaultAuthorityPda,
+                    redemptionVaultTokenInAccount: this.getRedemptionVaultAta(params.tokenInMint, tokenInProgram),
                     offerVaultTokenInAccount: this.getOfferVaultAta(params.tokenInMint, tokenInProgram),
                     offerVaultTokenOutAccount: this.getOfferVaultAta(params.tokenOutMint, tokenOutProgram),
                     permissionlessAuthority: this.pdas.permissionlessAuthorityPda,
@@ -634,6 +648,28 @@ export class OnreProgram {
 
         const tx = new Transaction().add(instruction);
         await this.testHelper.sendAndConfirmTransaction(tx, [signer]);
+    }
+
+    async configurePropAmm(params: {
+        poolTargetBps?: number;
+        linearWeightBps?: number;
+        baseExponent?: number;
+        signer?: Keypair;
+    } = {}) {
+        const tx = this.program.methods
+            .configurePropAmm(
+                params.poolTargetBps ?? 1500,
+                params.linearWeightBps ?? 2000,
+                params.baseExponent ?? 3,
+            )
+            .preInstructions([ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 })])
+            .accountsPartial({
+                propAmmState: this.pdas.propAmmStatePda,
+                propAmmCurveTable: this.pdas.propAmmCurveTablePda,
+                boss: params.signer ? params.signer.publicKey : this.testHelper.payer.publicKey,
+            });
+
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async setBufferGrossYield(params: { grossYield: number; signer?: Keypair }) {
@@ -1109,6 +1145,22 @@ export class OnreProgram {
 
     async getMarketStats() {
         return await this.program.account.marketStats.fetch(this.pdas.marketStatsPda);
+    }
+
+    async refreshMarketStats(params: { tokenInMint: PublicKey; onycMint: PublicKey; signer?: Keypair }) {
+        const tx = this.program.methods.refreshMarketStats().accountsPartial({
+            mainOffer: this.getOfferPda(params.tokenInMint, params.onycMint),
+            tokenInMint: params.tokenInMint,
+            state: this.pdas.statePda,
+            onycMint: params.onycMint,
+            vaultAuthority: this.pdas.offerVaultAuthorityPda,
+            onycVaultAccount: this.getOfferVaultAta(params.onycMint),
+            tokenProgram: TOKEN_PROGRAM_ID,
+            marketStats: this.pdas.marketStatsPda,
+            signer: params.signer?.publicKey ?? this.testHelper.payer.publicKey,
+            systemProgram: SystemProgram.programId,
+        });
+        await this.rpcWithOptionalSigner(tx, params.signer);
     }
 
     async addApprover(params: { trusted: PublicKey; signer?: Keypair }) {

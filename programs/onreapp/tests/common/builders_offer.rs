@@ -413,6 +413,7 @@ pub fn build_quote_swap_ix(
     token_in_amount: u64,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
+    let (prop_amm_state_pda, _) = find_prop_amm_state_pda();
     let is_sell = token_in_mint == onyc_mint;
     let canonical_token_in = if token_in_mint == onyc_mint {
         token_out_mint
@@ -435,13 +436,35 @@ pub fn build_quote_swap_ix(
     let mut accounts = vec![AccountMeta::new_readonly(offer_pda, false)];
     if is_sell {
         let (redemption_offer_pda, _) = find_redemption_offer_pda(token_in_mint, token_out_mint);
+        let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
+        let (market_stats_pda, _) = find_market_stats_pda();
+        let redemption_vault_token_out_ata = derive_ata(
+            &redemption_vault_authority_pda,
+            token_out_mint,
+            &TOKEN_PROGRAM_ID,
+        );
+        accounts.push(AccountMeta::new_readonly(prop_amm_state_pda, false));
         accounts.push(AccountMeta::new_readonly(redemption_offer_pda, false));
+        accounts.push(AccountMeta::new_readonly(state_pda, false));
+        accounts.push(AccountMeta::new_readonly(
+            redemption_vault_authority_pda,
+            false,
+        ));
+        accounts.push(AccountMeta::new_readonly(
+            redemption_vault_token_out_ata,
+            false,
+        ));
+        accounts.push(AccountMeta::new_readonly(*token_in_mint, false));
+        accounts.push(AccountMeta::new_readonly(*token_out_mint, false));
+        accounts.push(AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false));
+        accounts.push(AccountMeta::new_readonly(market_stats_pda, false));
+    } else {
+        accounts.extend([
+            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new_readonly(*token_in_mint, false),
+            AccountMeta::new_readonly(*token_out_mint, false),
+        ]);
     }
-    accounts.extend([
-        AccountMeta::new_readonly(state_pda, false),
-        AccountMeta::new_readonly(*token_in_mint, false),
-        AccountMeta::new_readonly(*token_out_mint, false),
-    ]);
     Instruction {
         program_id: PROGRAM_ID,
         accounts,
@@ -462,6 +485,7 @@ pub fn build_open_swap_buy_ix(
     token_out_program: &Pubkey,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
+    let (prop_amm_state_pda, _) = find_prop_amm_state_pda();
     let canonical_token_in = if token_in_mint == onyc_mint {
         token_out_mint
     } else {
@@ -474,6 +498,7 @@ pub fn build_open_swap_buy_ix(
     };
     let (offer_pda, _) = find_offer_pda(canonical_token_in, canonical_token_out);
     let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
+    let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
     let (permissionless_authority_pda, _) = find_permissionless_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let (buffer_state_pda, _) = find_buffer_state_pda();
@@ -488,6 +513,11 @@ pub fn build_open_swap_buy_ix(
         &offer_vault_authority_pda,
         token_out_mint,
         token_out_program,
+    );
+    let redemption_vault_token_in_ata = derive_ata(
+        &redemption_vault_authority_pda,
+        token_in_mint,
+        token_in_program,
     );
     let user_token_in_ata = derive_ata(user, token_in_mint, token_in_program);
     let user_token_out_ata = derive_ata(user, token_out_mint, token_out_program);
@@ -531,11 +561,14 @@ pub fn build_open_swap_buy_ix(
         program_id: PROGRAM_ID,
         accounts: vec![
             AccountMeta::new(offer_pda, false),
+            AccountMeta::new_readonly(prop_amm_state_pda, false),
             AccountMeta::new_readonly(state_pda, false),
             AccountMeta::new_readonly(*boss, false),
             AccountMeta::new_readonly(offer_vault_authority_pda, false),
+            AccountMeta::new_readonly(redemption_vault_authority_pda, false),
             AccountMeta::new(offer_vault_token_in_ata, false),
             AccountMeta::new(offer_vault_token_out_ata, false),
+            AccountMeta::new(redemption_vault_token_in_ata, false),
             AccountMeta::new(*token_in_mint, false),
             AccountMeta::new_readonly(*token_in_program, false),
             AccountMeta::new(*token_out_mint, false),
@@ -575,6 +608,7 @@ pub fn build_open_swap_sell_ix(
     token_out_program: &Pubkey,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
+    let (prop_amm_state_pda, _) = find_prop_amm_state_pda();
     let canonical_token_in = if token_in_mint == onyc_mint {
         token_out_mint
     } else {
@@ -624,6 +658,7 @@ pub fn build_open_swap_sell_ix(
         program_id: PROGRAM_ID,
         accounts: vec![
             AccountMeta::new(offer_pda, false),
+            AccountMeta::new_readonly(prop_amm_state_pda, false),
             AccountMeta::new_readonly(redemption_offer_pda, false),
             AccountMeta::new_readonly(state_pda, false),
             AccountMeta::new_readonly(*boss, false),

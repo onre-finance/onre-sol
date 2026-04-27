@@ -1,4 +1,7 @@
-use crate::instructions::market_info::{load_main_offer, refresh_market_stats_pda};
+use crate::constants::seeds;
+use crate::instructions::market_info::{
+    load_main_offer, read_market_stats_account, refresh_market_stats_pda,
+};
 use crate::instructions::offer::{
     validate_take_offer_authorities, verify_offer_approval, OfferTakenEvent,
 };
@@ -17,12 +20,21 @@ use anchor_spl::{
     token_interface::{Mint, TokenInterface},
 };
 
-use super::quote::redemption_offer_fee_basis_points;
+use super::config::PropAmmState;
+use super::quote::{
+    apply_hard_wall_liquidity_factor, hard_wall_reserve_from_tvl, redemption_offer_fee_basis_points,
+};
 use super::quote::{validate_canonical_offer, SwapSide};
 
 #[derive(Accounts)]
 pub struct OpenSwapSell<'info> {
     pub offer: AccountLoader<'info, Offer>,
+
+    #[account(
+        seeds = [crate::constants::seeds::PROP_AMM_STATE],
+        bump = prop_amm_state.bump
+    )]
+    pub prop_amm_state: Account<'info, PropAmmState>,
 
     #[account(
         seeds = [
@@ -137,6 +149,20 @@ fn execute_open_swap_sell<'info>(
         &ctx.accounts.instructions_sysvar,
     )?;
     let offer = ctx.accounts.offer.load()?;
+    let (market_stats_pda, _) =
+        Pubkey::find_program_address(&[seeds::MARKET_STATS], ctx.program_id);
+    require_keys_eq!(
+        market_stats_pda,
+        ctx.accounts.market_stats.key(),
+        crate::OnreError::InvalidMarketStatsPda
+    );
+    let market_stats = read_market_stats_account(&ctx.accounts.market_stats.to_account_info())?;
+    let hard_wall_reserve = hard_wall_reserve_from_tvl(
+        market_stats.tvl,
+        ctx.accounts.prop_amm_state.pool_target_bps,
+        ctx.accounts.token_out_mint.decimals,
+        ctx.accounts.token_in_mint.decimals,
+    )?;
     let redemption_fee_basis_points = redemption_offer_fee_basis_points(
         ctx.program_id,
         &ctx.accounts.redemption_offer,
@@ -217,12 +243,18 @@ fn execute_open_swap_sell<'info>(
         crate::OnreError::InvalidOfferVaultOnycAccount,
     )?;
 
-    let result = process_redemption_core(
+    let mut result = process_redemption_core(
         &offer,
         token_in_amount,
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
         redemption_fee_basis_points,
+    )?;
+    result.token_out_amount = apply_hard_wall_liquidity_factor(
+        result.token_out_amount,
+        redemption_vault_token_out_account.amount,
+        hard_wall_reserve,
+        &ctx.accounts.prop_amm_state,
     )?;
     require!(
         result.token_out_amount >= minimum_out,

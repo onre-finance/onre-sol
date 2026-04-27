@@ -44,6 +44,10 @@ pub mod seeds {
 
     /// Seed for the redemption fee vault authority PDA
     pub const REDEMPTION_FEE_VAULT_AUTHORITY: &[u8] = b"redemption_fee_vault_authority";
+
+    /// Seed for the Prop AMM configuration state PDA
+    pub const PROP_AMM_STATE: &[u8] = b"prop_amm_state";
+
 }
 
 /// Maximum number of pricing vectors allowed per offer

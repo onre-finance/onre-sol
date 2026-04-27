@@ -303,6 +303,23 @@ export class TestHelper {
         };
     }
 
+    setMintSupply(mint: PublicKey, supply: bigint) {
+        const account = this.svm.getAccount(mint);
+        if (!account) {
+            throw new Error("Mint account not found");
+        }
+        const mintData = MintLayout.decode(account.data);
+        mintData.supply = supply;
+        const encoded = Buffer.alloc(MINT_SIZE);
+        MintLayout.encode(mintData, encoded);
+        this.svm.setAccount(mint, {
+            executable: false,
+            data: encoded,
+            lamports: account.lamports,
+            owner: account.owner
+        });
+    }
+
     async expectTokenAccountAmountToBe(tokenAccount: PublicKey, amount: bigint) {
         const account = this.svm.getAccount(tokenAccount);
         const tokenAccountData = AccountLayout.decode(account!.data);

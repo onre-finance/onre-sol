@@ -30,6 +30,7 @@ describe("Prop AMM", () => {
         await program.setMainOffer({
             offer: program.getOfferPda(tokenInMint, tokenOutMint),
         });
+        await program.configurePropAmm();
         await program.initializeBuffer({
             offer: program.getOfferPda(tokenInMint, tokenOutMint),
             onycMint: tokenOutMint,
@@ -144,6 +145,10 @@ describe("Prop AMM", () => {
         testHelper.createTokenAccount(tokenOutMint, user.publicKey, BigInt(2e9), true);
         testHelper.createTokenAccount(tokenInMint, program.pdas.redemptionVaultAuthorityPda, BigInt(10_000e6), true);
         testHelper.createTokenAccount(tokenOutMint, program.pdas.redemptionVaultAuthorityPda, BigInt(0), true);
+        await program.refreshMarketStats({
+            tokenInMint,
+            onycMint: tokenOutMint,
+        });
 
         const quote = await program.quoteSwap({
             tokenInAmount: 1e9,
@@ -155,7 +160,7 @@ describe("Prop AMM", () => {
         expect(quote.offer.toString()).toBe(program.getOfferPda(tokenInMint, tokenOutMint).toString());
         expect(quote.tokenInNetAmount.toString()).toBe("950000000");
         expect(quote.tokenInFeeAmount.toString()).toBe("50000000");
-        expect(quote.tokenOutAmount.toString()).toBe("950000");
+        expect(quote.tokenOutAmount.lt(new BN(950000))).toBe(true);
 
         const vaultBefore = await testHelper.getTokenAccountBalance(program.getRedemptionVaultAta(tokenInMint));
 
@@ -170,9 +175,9 @@ describe("Prop AMM", () => {
         });
 
         const userUsdcAfter = await testHelper.getTokenAccountBalance(userTokenInAccount);
-        expect(userUsdcAfter).toBe(BigInt(10_000_950_000));
+        expect(userUsdcAfter).toBe(BigInt(10_000e6) + BigInt(quote.tokenOutAmount.toString()));
 
         const vaultAfter = await testHelper.getTokenAccountBalance(program.getRedemptionVaultAta(tokenInMint));
-        expect(vaultAfter).toBe(vaultBefore - BigInt(950_000));
+        expect(vaultAfter).toBe(vaultBefore - BigInt(quote.tokenOutAmount.toString()));
     });
 });
