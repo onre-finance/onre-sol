@@ -2,7 +2,10 @@ mod common;
 
 use anchor_lang::AnchorDeserialize;
 use common::*;
-use onreapp::instructions::prop_amm::{apply_hard_wall_reserve_curve_with_params, SwapQuote};
+use onreapp::instructions::prop_amm::{
+    apply_hard_wall_liquidity_factor_at_time, apply_hard_wall_reserve_curve_with_params,
+    dynamic_wall_position, preview_effective_sell_volume, PropAmmState, SwapQuote,
+};
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
@@ -35,7 +38,7 @@ fn setup_prop_amm() -> PropAmmCtx {
     let (offer_pda, _) = find_offer_pda(&usdc_mint, &onyc_mint);
     let ix = build_set_main_offer_ix(&boss, &offer_pda);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let ix = build_configure_prop_amm_ix(&boss, 1_500, 2_000, 3);
+    let ix = build_configure_prop_amm_ix(&boss, 1_500, 50, 700, 25_000);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let (vault_authority, _) = find_offer_vault_authority_pda();
@@ -66,8 +69,9 @@ fn test_hard_wall_curve_is_vulnerable_to_order_splitting() {
         5_000_000,
         10_000_000,
         hard_wall_reserve,
-        2_000,
-        3,
+        50,
+        700,
+        25_000,
     )
     .unwrap();
 
@@ -78,8 +82,9 @@ fn test_hard_wall_curve_is_vulnerable_to_order_splitting() {
             1_000_000,
             current_liquidity,
             hard_wall_reserve,
-            2_000,
-            3,
+            50,
+            700,
+            25_000,
         )
         .unwrap();
         split_total += output;
@@ -92,25 +97,96 @@ fn test_hard_wall_curve_is_vulnerable_to_order_splitting() {
 #[test]
 fn test_hard_wall_curve_ignores_surplus_above_target_reserve() {
     let hard_wall_reserve = 5_000_000;
-    let raw_sell_value = 1_000_000;
+    let raw_sell_value_stable = 1_000_000;
     let at_target = apply_hard_wall_reserve_curve_with_params(
-        raw_sell_value,
+        raw_sell_value_stable,
         hard_wall_reserve,
         hard_wall_reserve,
-        2_000,
-        3,
+        50,
+        700,
+        25_000,
     )
     .unwrap();
     let above_target = apply_hard_wall_reserve_curve_with_params(
-        raw_sell_value,
+        raw_sell_value_stable,
         10_000_000,
         hard_wall_reserve,
-        2_000,
-        3,
+        50,
+        700,
+        25_000,
     )
     .unwrap();
 
     assert_eq!(above_target, at_target);
+}
+
+#[test]
+fn test_hard_wall_curve_allows_zero_output_at_actual_vault_limit() {
+    let state = PropAmmState {
+        pool_target_bps: 1_500,
+        min_liquidation_haircut_bps: 50,
+        curve_peg_haircut_bps: 700,
+        curve_exponent_scaled: 25_000,
+        epoch_duration_seconds: 86_400,
+        wall_sensitivity_scaled: 20_000,
+        curr_sell_value_stable: 0,
+        curr_buy_value_stable: 0,
+        prev_net_sell_value_stable: 0,
+        epoch_start: 1,
+        bump: 0,
+        reserved: [0; 64],
+    };
+    let output =
+        apply_hard_wall_liquidity_factor_at_time(10_000_000, 10_000_000, 10_000_000, &state, 1)
+            .unwrap();
+
+    assert_eq!(output, 0);
+}
+
+#[test]
+fn test_hard_wall_curve_rejects_raw_value_above_actual_vault() {
+    let result = apply_hard_wall_reserve_curve_with_params(
+        10_000_001, 10_000_000, 10_000_000, 50, 700, 25_000,
+    );
+
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_dynamic_wall_preview_includes_current_sell_and_buy_relief() {
+    let state = PropAmmState {
+        pool_target_bps: 1_500,
+        min_liquidation_haircut_bps: 50,
+        curve_peg_haircut_bps: 700,
+        curve_exponent_scaled: 25_000,
+        epoch_duration_seconds: 86_400,
+        wall_sensitivity_scaled: 20_000,
+        curr_sell_value_stable: 500,
+        curr_buy_value_stable: 100,
+        prev_net_sell_value_stable: 1_000,
+        epoch_start: 1_000,
+        bump: 0,
+        reserved: [0; 64],
+    };
+
+    let effective = preview_effective_sell_volume(&state, 200, 44_200).unwrap();
+    assert_eq!(effective, 1_100);
+}
+
+#[test]
+fn test_dynamic_wall_position_uses_effective_sell_pressure() {
+    assert_eq!(
+        dynamic_wall_position(15_000_000, 0, 20_000).unwrap(),
+        15_000_000
+    );
+    assert_eq!(
+        dynamic_wall_position(15_000_000, 15_000_000, 20_000).unwrap(),
+        5_000_000
+    );
+    assert_eq!(
+        dynamic_wall_position(15_000_000, 30_000_000, 20_000).unwrap(),
+        3_000_000
+    );
 }
 
 #[test]
@@ -144,6 +220,97 @@ fn test_quote_swap_returns_expected_quote_data() {
     assert_eq!(quote.token_in_fee_amount, 0);
     assert_eq!(quote.token_out_amount, 1_000_000_000);
     assert_eq!(quote.minimum_out, quote.token_out_amount);
+}
+
+#[test]
+fn test_dynamic_wall_accumulates_sell_pressure_and_buys_relieve_it() {
+    let mut ctx = setup_prop_amm();
+    let boss = ctx.payer.pubkey();
+    let current_time = get_clock_time(&ctx.svm);
+
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.onyc_mint, &TOKEN_PROGRAM_ID);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let ix = build_add_offer_vector_ix(
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86_400,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
+    create_token_account(
+        &mut ctx.svm,
+        &ctx.usdc_mint,
+        &redemption_vault_authority,
+        10_000_000_000,
+    );
+    create_token_account(
+        &mut ctx.svm,
+        &ctx.onyc_mint,
+        &ctx.user.pubkey(),
+        2_000_000_000_000,
+    );
+    let ix = build_refresh_market_stats_ix(&boss, &ctx.usdc_mint, &ctx.onyc_mint);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let sell_amount = 1_000_000_000_000;
+    let quote_ix = build_quote_swap_ix(&ctx.onyc_mint, &ctx.onyc_mint, &ctx.usdc_mint, sell_amount);
+    let quote_metadata = send_tx(&mut ctx.svm, &[quote_ix], &[&ctx.payer]).unwrap();
+    let first_quote = SwapQuote::try_from_slice(get_return_data(&quote_metadata)).unwrap();
+
+    let sell_ix = build_open_swap_sell_ix(
+        &ctx.onyc_mint,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.onyc_mint,
+        &ctx.usdc_mint,
+        sell_amount,
+        first_quote.minimum_out,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut ctx.svm, &[sell_ix], &[&ctx.payer, &ctx.user]).unwrap();
+
+    advance_slot(&mut ctx.svm);
+    let quote_ix = build_quote_swap_ix(&ctx.onyc_mint, &ctx.onyc_mint, &ctx.usdc_mint, sell_amount);
+    let quote_metadata = send_tx(&mut ctx.svm, &[quote_ix], &[&ctx.payer]).unwrap();
+    let pressured_quote = SwapQuote::try_from_slice(get_return_data(&quote_metadata)).unwrap();
+    assert!(pressured_quote.token_out_amount < first_quote.token_out_amount);
+
+    let buy_quote_ix = build_quote_swap_ix(
+        &ctx.onyc_mint,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_000_000,
+    );
+    let buy_quote_metadata = send_tx(&mut ctx.svm, &[buy_quote_ix], &[&ctx.payer]).unwrap();
+    let buy_quote = SwapQuote::try_from_slice(get_return_data(&buy_quote_metadata)).unwrap();
+    let buy_ix = build_open_swap_buy_ix(
+        &ctx.onyc_mint,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_000_000,
+        buy_quote.minimum_out,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut ctx.svm, &[buy_ix], &[&ctx.payer, &ctx.user]).unwrap();
+
+    advance_slot(&mut ctx.svm);
+    let quote_ix = build_quote_swap_ix(&ctx.onyc_mint, &ctx.onyc_mint, &ctx.usdc_mint, sell_amount);
+    let quote_metadata = send_tx(&mut ctx.svm, &[quote_ix], &[&ctx.payer]).unwrap();
+    let relieved_quote = SwapQuote::try_from_slice(get_return_data(&quote_metadata)).unwrap();
+    assert!(relieved_quote.token_out_amount > pressured_quote.token_out_amount);
 }
 
 #[test]

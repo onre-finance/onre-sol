@@ -1,0 +1,115 @@
+[config]
+# Stable amounts are human-readable dollars. The simulator converts them to
+# stablecoin base units using 6 decimals, matching the Prop AMM stable side.
+out_dir = "target/prop_amm_business_scenarios"
+initial_vault = "100000000"
+hard_wall_reserve = "100000000"
+
+# Current Prop AMM defaults.
+pool_target_bps = 1500
+wall_sensitivity_scaled = 40000
+min_liquidation_haircut_bps = 50
+curve_peg_haircut_bps = 700
+curve_exponent_scaled = 15000
+epoch_duration_seconds = 86400
+
+# i want to dump x under some conditions, how long would it take me, to get the same haircut..
+# n swaps vs 1 big
+
+
+# Time automatically added after each buy/sell action.
+seconds_between_actions = 1
+
+[[scenarios]]
+name = "one_30000_sell"
+actions = [
+  "sell:30000",
+]
+
+[[scenarios]]
+name = "three_1000_sells"
+actions = [
+  "sell:1000",
+  "sell:1000",
+  "sell:1000",
+]
+
+[[scenarios]]
+name = "twelve_2500_sells"
+actions = [
+  "sell:2500",
+  "sell:2500",
+  "sell:2500",
+  "sell:2500",
+  "sell:2500",
+  "sell:2500",
+  "sell:2500",
+  "sell:2500",
+  "sell:2500",
+  "sell:2500",
+  "sell:2500",
+  "sell:2500",
+]
+
+[[scenarios]]
+name = "four_250_then_one_3000_sell"
+actions = [
+  "sell:250",
+  "sell:250",
+  "sell:250",
+  "sell:250",
+  "sell:3000",
+]
+
+[[scenarios]]
+name = "buy_relief_after_1000_sell"
+actions = [
+  "sell:1000",
+  "buy:1000",
+  "sell:1000",
+  "sell:1000",
+]
+
+[[scenarios]]
+name = "buy_relief_after_3000_sell"
+actions = [
+  "sell:3000",
+  "buy:3000",
+  "sell:3000",
+]
+
+[[scenarios]]
+name = "one_full_vault_sell"
+actions = [
+  "sell:10000",
+]
+
+[[scenarios]]
+name = "epoch_decay_after_3000_sell"
+actions = [
+  "sell:3000",
+  "wait:43200",
+  "sell:1000",
+  "wait:86400",
+  "sell:1000",
+]
+
+[[comparisons]]
+name = "dump_500k_once_vs_50x_10k"
+total_sell = "500000"
+chunk_count = 50
+wait_seconds = [
+  0,
+  1,
+  60,
+  3600,
+  43200,
+  86400,
+  172800,
+]
+
+[[split_sweeps]]
+name = "dump_500k_split_sweep"
+total_sell = "500000"
+max_chunks = 50
+wait_seconds = 0

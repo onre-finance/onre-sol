@@ -25,13 +25,14 @@ use anchor_spl::{
 };
 
 use super::config::PropAmmState;
-use super::quote::{validate_canonical_offer, SwapSide};
+use super::quote::{record_prop_amm_buy, validate_canonical_offer, SwapSide};
 
 #[derive(Accounts)]
 pub struct OpenSwapBuy<'info> {
     pub offer: AccountLoader<'info, Offer>,
 
     #[account(
+        mut,
         seeds = [crate::constants::seeds::PROP_AMM_STATE],
         bump = prop_amm_state.bump
     )]
@@ -346,6 +347,12 @@ fn execute_open_swap_buy<'info>(
             boss_total_amount,
         )?;
     }
+
+    record_prop_amm_buy(
+        &mut ctx.accounts.prop_amm_state,
+        result.token_in_net_amount,
+        Clock::get()?.unix_timestamp,
+    )?;
 
     if program_controls_mint(
         &ctx.accounts.token_out_mint,

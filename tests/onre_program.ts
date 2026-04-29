@@ -312,7 +312,6 @@ export class OnreProgram {
                 .accountsPartial({
                     ...quoteAccounts,
                     propAmmState: this.pdas.propAmmStatePda,
-                    propAmmCurveTable: this.pdas.propAmmCurveTablePda,
                     redemptionOffer: this.getRedemptionOfferPda(params.tokenInMint, params.tokenOutMint),
                     redemptionVaultAuthority: this.pdas.redemptionVaultAuthorityPda,
                     redemptionVaultTokenOutAccount: this.getRedemptionVaultAta(params.tokenOutMint),
@@ -393,7 +392,6 @@ export class OnreProgram {
                 )
                 .accountsPartial({
                     ...baseAccounts,
-                    propAmmCurveTable: this.pdas.propAmmCurveTablePda,
                     redemptionOffer: this.getRedemptionOfferPda(params.tokenInMint, params.tokenOutMint),
                     redemptionVaultAuthority: this.pdas.redemptionVaultAuthorityPda,
                     redemptionVaultTokenInAccount: this.getRedemptionVaultAta(params.tokenInMint, tokenInProgram),
@@ -652,20 +650,25 @@ export class OnreProgram {
 
     async configurePropAmm(params: {
         poolTargetBps?: number;
-        linearWeightBps?: number;
-        baseExponent?: number;
+        minLiquidationHaircutBps?: number;
+        curvePegHaircutBps?: number;
+        curveExponentScaled?: number;
+        epochDurationSeconds?: number;
+        wallSensitivityScaled?: number;
         signer?: Keypair;
     } = {}) {
         const tx = this.program.methods
             .configurePropAmm(
                 params.poolTargetBps ?? 1500,
-                params.linearWeightBps ?? 2000,
-                params.baseExponent ?? 3,
+                params.minLiquidationHaircutBps ?? 50,
+                params.curvePegHaircutBps ?? 700,
+                params.curveExponentScaled ?? 25_000,
+                new BN(params.epochDurationSeconds ?? 86_400),
+                params.wallSensitivityScaled ?? 20_000,
             )
             .preInstructions([ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 })])
             .accountsPartial({
                 propAmmState: this.pdas.propAmmStatePda,
-                propAmmCurveTable: this.pdas.propAmmCurveTablePda,
                 boss: params.signer ? params.signer.publicKey : this.testHelper.payer.publicKey,
             });
 

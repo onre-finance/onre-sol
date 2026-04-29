@@ -22,7 +22,8 @@ use anchor_spl::{
 
 use super::config::PropAmmState;
 use super::quote::{
-    apply_hard_wall_liquidity_factor, hard_wall_reserve_from_tvl, redemption_offer_fee_basis_points,
+    apply_hard_wall_liquidity_factor, hard_wall_reserve_from_tvl, record_prop_amm_sell,
+    redemption_offer_fee_basis_points,
 };
 use super::quote::{validate_canonical_offer, SwapSide};
 
@@ -31,6 +32,7 @@ pub struct OpenSwapSell<'info> {
     pub offer: AccountLoader<'info, Offer>,
 
     #[account(
+        mut,
         seeds = [crate::constants::seeds::PROP_AMM_STATE],
         bump = prop_amm_state.bump
     )]
@@ -250,6 +252,7 @@ fn execute_open_swap_sell<'info>(
         &ctx.accounts.token_out_mint,
         redemption_fee_basis_points,
     )?;
+    let raw_sell_value_stable = result.token_out_amount;
     result.token_out_amount = apply_hard_wall_liquidity_factor(
         result.token_out_amount,
         redemption_vault_token_out_account.amount,
@@ -260,6 +263,11 @@ fn execute_open_swap_sell<'info>(
         result.token_out_amount >= minimum_out,
         crate::OnreError::MinimumOutNotMet
     );
+    record_prop_amm_sell(
+        &mut ctx.accounts.prop_amm_state,
+        raw_sell_value_stable,
+        Clock::get()?.unix_timestamp,
+    )?;
 
     transfer_tokens(
         &ctx.accounts.token_in_mint,

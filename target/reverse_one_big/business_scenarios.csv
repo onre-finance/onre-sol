@@ -1,0 +1,2 @@
+scenario,step,now,action,amount_stable,amount_onyc_equivalent,vault_before_stable,pressure_before_stable,effective_volume_stable,wall_stable,output_stable,output_pct,vault_after_stable,pressure_after_stable
+custom,1,1,sell_onyc,500000000000,500000000000000,100000000000000,0,500000000000,98039215686274,497499934988,99.499987,99502500065012,500000000000

@@ -14,7 +14,7 @@ $$
 price\_buy = NAV \times \left(1 + \frac{buy\_fee\_bps}{10,000}\right)
 $$
 
-**Raw Sell Value (`raw_sell_value`):**
+**Raw Sell Value (`raw_sell_value_stable`):**
 
 Before hard-wall dampening, the sell path applies the redemption offer fee:
 
@@ -28,11 +28,21 @@ $$
 
 If the redemption offer PDA is valid but uninitialized, `redemption_fee_bps = 0`.
 
+ONYC has 9 decimals. Stablecoins have 6 decimals. Volume tracking is normalized to stablecoin base units:
+
+```text
+1 ONYC at NAV = 1.00 stable
+ONYC base amount = 1_000_000_000
+stable base value = 1_000_000
+```
+
+So `curr_sell_value_stable`, `curr_buy_value_stable`, `prev_net_sell_value_stable`, and `raw_sell_value_stable` are all stablecoin-denominated values. This keeps the wall formula compatible with the redemption vault balance, which is also in stablecoin base units.
+
 ---
 
 ### 2.2 TVL-Anchored Hard-Wall Reserve
 
-The sell output is anchored to a target redemption reserve derived from TVL, not only the current vault balance.
+The sell output is anchored to the actual redemption vault balance and current net sell pressure. The TVL reserve target still exists for buy-side refill policy and for disabled-sensitivity fallback behavior.
 
 **Step 1: Calculate Hard-Wall Reserve (`R`)**
 
@@ -56,7 +66,20 @@ $$
 
 ---
 
-### 2.3 Effective Liquidity
+### 2.3 Net Sell Pressure
+
+Prop AMM tracks sell pressure over the current and previous epoch.
+
+```text
+curr_net = max(0, curr_sell_value_stable - curr_buy_value_stable)
+effective_volume = decayed_prev_net + curr_net + raw_sell_value_stable
+```
+
+The current ONYC sell's own raw stable value is included in `effective_volume`, so the sell pays against the pressure it creates. ONYC buys add their net stablecoin input to `curr_buy_value_stable`, which can reduce current-epoch pressure but cannot create negative pressure.
+
+---
+
+### 2.4 Dynamic Wall
 
 Let:
 
@@ -66,17 +89,17 @@ $$
 
 Where `actual_liquidity` is the current redemption vault balance for the output stablecoin.
 
-The current implementation clips liquidity to the TVL-derived hard-wall reserve:
+The wall is:
 
 $$
-effective\_liquidity = \min(L, R)
+wall = \frac{L}{1 + wall\_sensitivity \times \frac{effective\_volume}{L}}
 $$
 
-The program rejects sells when `L = 0`, `R = 0`, or `raw_sell_value >= effective_liquidity`. That keeps every accepted sell below the effective reserve.
+The program uses this wall as effective liquidity while dynamic wall sensitivity is enabled.
 
 ---
 
-### 2.4 Order Utilization
+### 2.5 Order Utilization
 
 The current curve is an endpoint dampening curve. It calculates utilization from the current order's raw sell value:
 
@@ -92,54 +115,58 @@ $$
 
 means this order consumes 10% of effective liquidity before dampening, and:
 
-$$
-u \rightarrow 1
-$$
-
-means the order is close to the maximum size accepted by the current curve.
+When `u >= 1`, the curve can dampen the sell to zero output. This is allowed as long as the raw stable value is not greater than the actual vault balance and the caller's `minimum_out` permits the final output.
 
 ---
 
-### 2.5 Penalty Function
+### 2.6 Haircut Function
 
-The penalty function combines a linear term and a nonlinear cliff term.
-
-$$
-w = \frac{linear\_weight\_bps}{10,000}
-$$
+The haircut function combines a flat minimum haircut with a utilization-based curve.
 
 $$
-penalty(u) = w \times u + (1 - w) \times u^{base\_exponent}
+h_{min} = \frac{min\_liquidation\_haircut\_bps}{10,000}
+$$
+
+$$
+h_{peg} = \frac{curve\_peg\_haircut\_bps}{10,000}
+$$
+
+$$
+e = \frac{curve\_exponent\_scaled}{10,000}
+$$
+
+$$
+haircut(u) = h_{min} + h_{peg} \times u^e
 $$
 
 Default parameters:
 
 $$
-linear\_weight\_bps = 2,000
+min\_liquidation\_haircut\_bps = 50
 $$
 
 $$
-w = 0.20
+curve\_peg\_haircut\_bps = 700
 $$
 
 $$
-base\_exponent = 3
+curve\_exponent\_scaled = 25,000
 $$
 
-So the default penalty curve is:
+So the default haircut curve is:
 
 $$
-penalty(u) = 0.20u + 0.80u^3
+haircut(u) = 0.005 + 0.07u^{2.5}
 $$
 
 ---
 
-### 2.6 Final Sell Output
+### 2.7 Final Sell Output
 
-The program converts the penalty into a liquidity factor:
+The program converts the haircut into a liquidity factor:
 
 $$
-liquidity\_factor = 1 - penalty(u)
+liquidity\_factor = max(0, 1 - haircut(u))
 $$
 
 Then it applies that factor directly to the raw sell value:
@@ -152,17 +179,27 @@ So, in code terms:
 
 ```text
 effective_liquidity = min(actual_liquidity, hard_wall_reserve)
-u = raw_sell_value / effective_liquidity
-penalty = linear_weight * u + nonlinear_weight * u^base_exponent
-final_output = raw_sell_value * (1 - penalty)
+if dynamic wall sensitivity is enabled:
+  effective_liquidity = dynamic_wall_position
+u = raw_sell_value_stable / effective_liquidity
+haircut = min_liquidation_haircut + curve_peg_haircut * u^curve_exponent
+final_output = raw_sell_value_stable * max(0, 1 - haircut)
 ```
+
+The actual redemption vault balance is the hard solvency guard:
+
+```text
+reject if raw_sell_value_stable > actual_liquidity
+```
+
+The dynamic wall is a pricing input, not a rejection threshold. If pressure pushes `effective_liquidity` far below the order's raw value, the final output can saturate at zero.
 
 This is intentionally simple and cheap to compute.
 
 ---
 
-### 2.7 Order Splitting
+### 2.8 Order Splitting
 
-The current endpoint dampening curve does not prevent order splitting. A single large sell receives a higher utilization and a larger penalty than several smaller sells with the same total raw sell value.
+The current endpoint dampening curve is not mathematically split-proof. A single large sell still receives a higher utilization than smaller chunks.
 
-That behavior is known and accepted for the current implementation. A separate anti-splitting mechanism is expected to address this later.
+The dynamic wall reduces the advantage because split orders accumulate global sell pressure. Later chunks see a smaller wall, and the current chunk is priced against the pressure it creates.

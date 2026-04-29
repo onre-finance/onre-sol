@@ -7,7 +7,16 @@ pub fn send_tx(
 ) -> Result<litesvm::types::TransactionMetadata, litesvm::types::FailedTransactionMetadata> {
     let payer = signers[0].pubkey();
     let blockhash = svm.latest_blockhash();
-    let msg = Message::new(ixs, Some(&payer));
+    let mut all_ixs = if ixs
+        .iter()
+        .any(|ix| solana_compute_budget_interface::check_id(&ix.program_id))
+    {
+        Vec::new()
+    } else {
+        vec![ComputeBudgetInstruction::set_compute_unit_limit(1_400_000)]
+    };
+    all_ixs.extend_from_slice(ixs);
+    let msg = Message::new(&all_ixs, Some(&payer));
     let tx = Transaction::new(signers, msg, blockhash);
     svm.send_transaction(tx)
 }
