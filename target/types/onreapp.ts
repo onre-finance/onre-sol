@@ -1316,12 +1316,24 @@ export type Onreapp = {
           "type": "u16"
         },
         {
-          "name": "linearWeightBps",
+          "name": "minLiquidationHaircutBps",
           "type": "u16"
         },
         {
-          "name": "baseExponent",
-          "type": "u8"
+          "name": "curvePegHaircutBps",
+          "type": "u16"
+        },
+        {
+          "name": "curveExponentScaled",
+          "type": "u32"
+        },
+        {
+          "name": "epochDurationSeconds",
+          "type": "i64"
+        },
+        {
+          "name": "wallSensitivityScaled",
+          "type": "u32"
         }
       ]
     },
@@ -4847,6 +4859,7 @@ export type Onreapp = {
         },
         {
           "name": "propAmmState",
+          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -5077,6 +5090,7 @@ export type Onreapp = {
         },
         {
           "name": "propAmmState",
+          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -13356,20 +13370,44 @@ export type Onreapp = {
             "type": "u16"
           },
           {
-            "name": "oldLinearWeightBps",
+            "name": "oldMinLiquidationHaircutBps",
             "type": "u16"
           },
           {
-            "name": "newLinearWeightBps",
+            "name": "newMinLiquidationHaircutBps",
             "type": "u16"
           },
           {
-            "name": "oldBaseExponent",
-            "type": "u8"
+            "name": "oldCurvePegHaircutBps",
+            "type": "u16"
           },
           {
-            "name": "newBaseExponent",
-            "type": "u8"
+            "name": "newCurvePegHaircutBps",
+            "type": "u16"
+          },
+          {
+            "name": "oldCurveExponentScaled",
+            "type": "u32"
+          },
+          {
+            "name": "newCurveExponentScaled",
+            "type": "u32"
+          },
+          {
+            "name": "oldEpochDurationSeconds",
+            "type": "i64"
+          },
+          {
+            "name": "newEpochDurationSeconds",
+            "type": "i64"
+          },
+          {
+            "name": "oldWallSensitivityScaled",
+            "type": "u32"
+          },
+          {
+            "name": "newWallSensitivityScaled",
+            "type": "u32"
           }
         ]
       }
@@ -13384,12 +13422,40 @@ export type Onreapp = {
             "type": "u16"
           },
           {
-            "name": "linearWeightBps",
+            "name": "minLiquidationHaircutBps",
             "type": "u16"
           },
           {
-            "name": "baseExponent",
-            "type": "u8"
+            "name": "curvePegHaircutBps",
+            "type": "u16"
+          },
+          {
+            "name": "curveExponentScaled",
+            "type": "u32"
+          },
+          {
+            "name": "epochDurationSeconds",
+            "type": "i64"
+          },
+          {
+            "name": "wallSensitivityScaled",
+            "type": "u32"
+          },
+          {
+            "name": "currSellValueStable",
+            "type": "u64"
+          },
+          {
+            "name": "currBuyValueStable",
+            "type": "u64"
+          },
+          {
+            "name": "prevNetSellValueStable",
+            "type": "u64"
+          },
+          {
+            "name": "epochStart",
+            "type": "i64"
           },
           {
             "name": "bump",
@@ -13400,7 +13466,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                61
+                64
               ]
             }
           }

@@ -47,7 +47,6 @@ pub mod seeds {
 
     /// Seed for the Prop AMM configuration state PDA
     pub const PROP_AMM_STATE: &[u8] = b"prop_amm_state";
-
 }
 
 /// Maximum number of pricing vectors allowed per offer

@@ -561,7 +561,7 @@ pub fn build_open_swap_buy_ix(
         program_id: PROGRAM_ID,
         accounts: vec![
             AccountMeta::new(offer_pda, false),
-            AccountMeta::new_readonly(prop_amm_state_pda, false),
+            AccountMeta::new(prop_amm_state_pda, false),
             AccountMeta::new_readonly(state_pda, false),
             AccountMeta::new_readonly(*boss, false),
             AccountMeta::new_readonly(offer_vault_authority_pda, false),
@@ -658,7 +658,7 @@ pub fn build_open_swap_sell_ix(
         program_id: PROGRAM_ID,
         accounts: vec![
             AccountMeta::new(offer_pda, false),
-            AccountMeta::new_readonly(prop_amm_state_pda, false),
+            AccountMeta::new(prop_amm_state_pda, false),
             AccountMeta::new_readonly(redemption_offer_pda, false),
             AccountMeta::new_readonly(state_pda, false),
             AccountMeta::new_readonly(*boss, false),

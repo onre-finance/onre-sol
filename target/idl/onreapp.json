@@ -1310,12 +1310,24 @@
           "type": "u16"
         },
         {
-          "name": "linear_weight_bps",
+          "name": "min_liquidation_haircut_bps",
           "type": "u16"
         },
         {
-          "name": "base_exponent",
-          "type": "u8"
+          "name": "curve_peg_haircut_bps",
+          "type": "u16"
+        },
+        {
+          "name": "curve_exponent_scaled",
+          "type": "u32"
+        },
+        {
+          "name": "epoch_duration_seconds",
+          "type": "i64"
+        },
+        {
+          "name": "wall_sensitivity_scaled",
+          "type": "u32"
         }
       ]
     },
@@ -4841,6 +4853,7 @@
         },
         {
           "name": "prop_amm_state",
+          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -5071,6 +5084,7 @@
         },
         {
           "name": "prop_amm_state",
+          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -13350,20 +13364,44 @@
             "type": "u16"
           },
           {
-            "name": "old_linear_weight_bps",
+            "name": "old_min_liquidation_haircut_bps",
             "type": "u16"
           },
           {
-            "name": "new_linear_weight_bps",
+            "name": "new_min_liquidation_haircut_bps",
             "type": "u16"
           },
           {
-            "name": "old_base_exponent",
-            "type": "u8"
+            "name": "old_curve_peg_haircut_bps",
+            "type": "u16"
           },
           {
-            "name": "new_base_exponent",
-            "type": "u8"
+            "name": "new_curve_peg_haircut_bps",
+            "type": "u16"
+          },
+          {
+            "name": "old_curve_exponent_scaled",
+            "type": "u32"
+          },
+          {
+            "name": "new_curve_exponent_scaled",
+            "type": "u32"
+          },
+          {
+            "name": "old_epoch_duration_seconds",
+            "type": "i64"
+          },
+          {
+            "name": "new_epoch_duration_seconds",
+            "type": "i64"
+          },
+          {
+            "name": "old_wall_sensitivity_scaled",
+            "type": "u32"
+          },
+          {
+            "name": "new_wall_sensitivity_scaled",
+            "type": "u32"
           }
         ]
       }
@@ -13378,12 +13416,40 @@
             "type": "u16"
           },
           {
-            "name": "linear_weight_bps",
+            "name": "min_liquidation_haircut_bps",
             "type": "u16"
           },
           {
-            "name": "base_exponent",
-            "type": "u8"
+            "name": "curve_peg_haircut_bps",
+            "type": "u16"
+          },
+          {
+            "name": "curve_exponent_scaled",
+            "type": "u32"
+          },
+          {
+            "name": "epoch_duration_seconds",
+            "type": "i64"
+          },
+          {
+            "name": "wall_sensitivity_scaled",
+            "type": "u32"
+          },
+          {
+            "name": "curr_sell_value_stable",
+            "type": "u64"
+          },
+          {
+            "name": "curr_buy_value_stable",
+            "type": "u64"
+          },
+          {
+            "name": "prev_net_sell_value_stable",
+            "type": "u64"
+          },
+          {
+            "name": "epoch_start",
+            "type": "i64"
           },
           {
             "name": "bump",
@@ -13394,7 +13460,7 @@
             "type": {
               "array": [
                 "u8",
-                61
+                64
               ]
             }
           }

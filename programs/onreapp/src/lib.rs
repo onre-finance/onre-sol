@@ -480,10 +480,21 @@ pub mod onreapp {
     pub fn configure_prop_amm(
         ctx: Context<ConfigurePropAmm>,
         pool_target_bps: u16,
-        linear_weight_bps: u16,
-        base_exponent: u8,
+        min_liquidation_haircut_bps: u16,
+        curve_peg_haircut_bps: u16,
+        curve_exponent_scaled: u32,
+        epoch_duration_seconds: i64,
+        wall_sensitivity_scaled: u32,
     ) -> Result<()> {
-        prop_amm::configure_prop_amm(ctx, pool_target_bps, linear_weight_bps, base_exponent)
+        prop_amm::configure_prop_amm(
+            ctx,
+            pool_target_bps,
+            min_liquidation_haircut_bps,
+            curve_peg_haircut_bps,
+            curve_exponent_scaled,
+            epoch_duration_seconds,
+            wall_sensitivity_scaled,
+        )
     }
 
     /// Sets BUFFER gross yield.

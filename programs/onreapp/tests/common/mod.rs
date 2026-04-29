@@ -5,6 +5,7 @@ use anchor_lang::AccountDeserialize;
 use litesvm::LiteSVM;
 use onreapp::instructions::RedemptionRequest;
 use onreapp::state::MarketStats;
+use solana_compute_budget_interface::ComputeBudgetInstruction;
 use solana_sdk::{
     account::Account,
     clock::Clock,

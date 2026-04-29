@@ -8,7 +8,7 @@ use anchor_lang::solana_program::program::set_return_data;
 use anchor_lang::{prelude::*, system_program, Accounts, AnchorDeserialize, AnchorSerialize};
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
-use super::config::PropAmmState;
+use super::config::{PropAmmState, CURVE_EXPONENT_SCALE, WALL_SENSITIVITY_SCALE};
 
 pub const HARD_WALL_SCALE: u128 = 1_000_000_000_000;
 
@@ -190,32 +190,55 @@ pub(crate) fn apply_hard_wall_liquidity_factor(
     hard_wall_reserve: u64,
     prop_amm_state: &PropAmmState,
 ) -> Result<u64> {
+    let now = Clock::get()?.unix_timestamp;
+    apply_hard_wall_liquidity_factor_at_time(
+        token_out_amount,
+        actual_liquidity,
+        hard_wall_reserve,
+        prop_amm_state,
+        now,
+    )
+}
+
+pub fn apply_hard_wall_liquidity_factor_at_time(
+    token_out_amount: u64,
+    actual_liquidity: u64,
+    hard_wall_reserve: u64,
+    prop_amm_state: &PropAmmState,
+    now: i64,
+) -> Result<u64> {
     require!(actual_liquidity > 0, crate::OnreError::InsufficientBalance);
     require!(hard_wall_reserve > 0, crate::OnreError::InsufficientBalance);
-    let effective_liquidity = actual_liquidity.min(hard_wall_reserve);
     require!(
-        token_out_amount < effective_liquidity,
+        token_out_amount <= actual_liquidity,
         crate::OnreError::InsufficientBalance
     );
+    let effective_liquidity = dynamic_wall_liquidity_at_time(
+        token_out_amount,
+        actual_liquidity,
+        hard_wall_reserve,
+        prop_amm_state,
+        now,
+    )?;
 
     let utilization_scaled = (token_out_amount as u128)
         .checked_mul(HARD_WALL_SCALE)
         .ok_or(crate::OnreError::MathOverflow)?
         .checked_div(effective_liquidity as u128)
         .ok_or(crate::OnreError::DivByZero)?;
-    let penalty = hard_wall_penalty_scaled(
+    let haircut = redemption_haircut_scaled(
         utilization_scaled,
-        prop_amm_state.linear_weight_bps,
-        prop_amm_state.base_exponent,
+        prop_amm_state.min_liquidation_haircut_bps,
+        prop_amm_state.curve_peg_haircut_bps,
+        prop_amm_state.curve_exponent_scaled,
     )?;
-    let liquidity_factor = HARD_WALL_SCALE.saturating_sub(penalty);
+    let liquidity_factor = HARD_WALL_SCALE.saturating_sub(haircut);
     let dampened_amount = (token_out_amount as u128)
         .checked_mul(liquidity_factor)
         .ok_or(crate::OnreError::MathOverflow)?
         .checked_div(HARD_WALL_SCALE)
         .ok_or(crate::OnreError::DivByZero)?;
 
-    require!(dampened_amount > 0, crate::OnreError::MinimumOutNotMet);
     require!(
         dampened_amount <= u64::MAX as u128,
         crate::OnreError::MathOverflow
@@ -223,25 +246,206 @@ pub(crate) fn apply_hard_wall_liquidity_factor(
     Ok(dampened_amount as u64)
 }
 
+pub fn roll_prop_amm_volume_tracker(prop_amm_state: &mut PropAmmState, now: i64) -> Result<()> {
+    let epoch_duration = prop_amm_state.epoch_duration_seconds;
+    require!(epoch_duration > 0, crate::OnreError::InvalidAmount);
+
+    if prop_amm_state.epoch_start == 0 || now < prop_amm_state.epoch_start {
+        prop_amm_state.epoch_start = now;
+        prop_amm_state.prev_net_sell_value_stable = 0;
+        prop_amm_state.curr_sell_value_stable = 0;
+        prop_amm_state.curr_buy_value_stable = 0;
+        return Ok(());
+    }
+
+    let elapsed = now
+        .checked_sub(prop_amm_state.epoch_start)
+        .ok_or(crate::OnreError::ArithmeticUnderflow)?;
+    if elapsed >= epoch_duration.saturating_mul(2) {
+        prop_amm_state.prev_net_sell_value_stable = 0;
+        prop_amm_state.curr_sell_value_stable = 0;
+        prop_amm_state.curr_buy_value_stable = 0;
+        prop_amm_state.epoch_start = now;
+    } else if elapsed >= epoch_duration {
+        prop_amm_state.prev_net_sell_value_stable = prop_amm_state
+            .curr_sell_value_stable
+            .saturating_sub(prop_amm_state.curr_buy_value_stable);
+        prop_amm_state.curr_sell_value_stable = 0;
+        prop_amm_state.curr_buy_value_stable = 0;
+        prop_amm_state.epoch_start = now;
+    }
+
+    Ok(())
+}
+
+pub fn record_prop_amm_sell(
+    prop_amm_state: &mut PropAmmState,
+    sell_value_stable: u64,
+    now: i64,
+) -> Result<()> {
+    roll_prop_amm_volume_tracker(prop_amm_state, now)?;
+    prop_amm_state.curr_sell_value_stable = prop_amm_state
+        .curr_sell_value_stable
+        .checked_add(sell_value_stable)
+        .ok_or(crate::OnreError::MathOverflow)?;
+    Ok(())
+}
+
+pub fn record_prop_amm_buy(
+    prop_amm_state: &mut PropAmmState,
+    buy_value_stable: u64,
+    now: i64,
+) -> Result<()> {
+    roll_prop_amm_volume_tracker(prop_amm_state, now)?;
+    prop_amm_state.curr_buy_value_stable = prop_amm_state
+        .curr_buy_value_stable
+        .checked_add(buy_value_stable)
+        .ok_or(crate::OnreError::MathOverflow)?;
+    Ok(())
+}
+
+pub fn preview_effective_sell_volume(
+    prop_amm_state: &PropAmmState,
+    current_sell_value_stable: u64,
+    now: i64,
+) -> Result<u64> {
+    let epoch_duration = prop_amm_state.epoch_duration_seconds;
+    require!(epoch_duration > 0, crate::OnreError::InvalidAmount);
+
+    let current_net = prop_amm_state
+        .curr_sell_value_stable
+        .saturating_sub(prop_amm_state.curr_buy_value_stable);
+    let (prev_net, curr_net, elapsed) =
+        if prop_amm_state.epoch_start == 0 || now < prop_amm_state.epoch_start {
+            (0_u64, 0_u64, 0_i64)
+        } else {
+            let elapsed = now
+                .checked_sub(prop_amm_state.epoch_start)
+                .ok_or(crate::OnreError::ArithmeticUnderflow)?;
+            if elapsed >= epoch_duration.saturating_mul(2) {
+                (0, 0, 0)
+            } else if elapsed >= epoch_duration {
+                (current_net, 0, 0)
+            } else {
+                (
+                    prop_amm_state.prev_net_sell_value_stable,
+                    current_net,
+                    elapsed,
+                )
+            }
+        };
+
+    let remaining = epoch_duration
+        .checked_sub(elapsed)
+        .ok_or(crate::OnreError::ArithmeticUnderflow)?;
+    let decayed_prev = (prev_net as u128)
+        .checked_mul(remaining as u128)
+        .ok_or(crate::OnreError::MathOverflow)?
+        .checked_div(epoch_duration as u128)
+        .ok_or(crate::OnreError::DivByZero)?;
+    let effective = decayed_prev
+        .checked_add(curr_net as u128)
+        .and_then(|value| value.checked_add(current_sell_value_stable as u128))
+        .ok_or(crate::OnreError::MathOverflow)?;
+    require!(
+        effective <= u64::MAX as u128,
+        crate::OnreError::MathOverflow
+    );
+    Ok(effective as u64)
+}
+
+pub fn dynamic_wall_position(
+    actual_liquidity: u64,
+    effective_sell_volume: u64,
+    wall_sensitivity_scaled: u32,
+) -> Result<u64> {
+    require!(actual_liquidity > 0, crate::OnreError::InsufficientBalance);
+    if effective_sell_volume == 0 {
+        return Ok(actual_liquidity);
+    }
+
+    let sensitivity_component = (wall_sensitivity_scaled as u128)
+        .checked_mul(effective_sell_volume as u128)
+        .ok_or(crate::OnreError::MathOverflow)?
+        .checked_div(actual_liquidity as u128)
+        .ok_or(crate::OnreError::DivByZero)?;
+    let denominator = WALL_SENSITIVITY_SCALE
+        .checked_add(sensitivity_component)
+        .ok_or(crate::OnreError::MathOverflow)?;
+    let wall = (actual_liquidity as u128)
+        .checked_mul(WALL_SENSITIVITY_SCALE)
+        .ok_or(crate::OnreError::MathOverflow)?
+        .checked_div(denominator)
+        .ok_or(crate::OnreError::DivByZero)?;
+    require!(wall <= u64::MAX as u128, crate::OnreError::MathOverflow);
+    Ok((wall as u64).max(1))
+}
+
+pub fn dynamic_wall_liquidity(
+    current_sell_value_stable: u64,
+    actual_liquidity: u64,
+    hard_wall_reserve: u64,
+    prop_amm_state: &PropAmmState,
+) -> Result<u64> {
+    let now = Clock::get()?.unix_timestamp;
+    dynamic_wall_liquidity_at_time(
+        current_sell_value_stable,
+        actual_liquidity,
+        hard_wall_reserve,
+        prop_amm_state,
+        now,
+    )
+}
+
+pub fn dynamic_wall_liquidity_at_time(
+    current_sell_value_stable: u64,
+    actual_liquidity: u64,
+    hard_wall_reserve: u64,
+    prop_amm_state: &PropAmmState,
+    now: i64,
+) -> Result<u64> {
+    if prop_amm_state.wall_sensitivity_scaled == 0 {
+        return Ok(actual_liquidity.min(hard_wall_reserve));
+    }
+
+    let effective_sell_volume =
+        preview_effective_sell_volume(prop_amm_state, current_sell_value_stable, now)?;
+    let wall_position = dynamic_wall_position(
+        actual_liquidity,
+        effective_sell_volume,
+        prop_amm_state.wall_sensitivity_scaled,
+    )?;
+    Ok(wall_position)
+}
+
 pub fn apply_hard_wall_reserve_curve_with_params(
     token_out_amount: u64,
     actual_liquidity: u64,
     hard_wall_reserve: u64,
-    linear_weight_bps: u16,
-    base_exponent: u8,
+    min_liquidation_haircut_bps: u16,
+    curve_peg_haircut_bps: u16,
+    curve_exponent_scaled: u32,
 ) -> Result<u64> {
     let prop_amm_state = PropAmmState {
         pool_target_bps: 0,
-        linear_weight_bps,
-        base_exponent,
+        min_liquidation_haircut_bps,
+        curve_peg_haircut_bps,
+        curve_exponent_scaled,
+        epoch_duration_seconds: super::config::DEFAULT_EPOCH_DURATION_SECONDS,
+        wall_sensitivity_scaled: 0,
+        curr_sell_value_stable: 0,
+        curr_buy_value_stable: 0,
+        prev_net_sell_value_stable: 0,
+        epoch_start: Clock::get().map(|clock| clock.unix_timestamp).unwrap_or(0),
         bump: 0,
-        reserved: [0; 61],
+        reserved: [0; 64],
     };
-    apply_hard_wall_liquidity_factor(
+    apply_hard_wall_liquidity_factor_at_time(
         token_out_amount,
         actual_liquidity,
         hard_wall_reserve,
         &prop_amm_state,
+        prop_amm_state.epoch_start,
     )
 }
 
@@ -271,34 +475,77 @@ pub fn hard_wall_reserve_from_tvl(
     require!(target <= u64::MAX as u128, crate::OnreError::MathOverflow);
     Ok(target as u64)
 }
-fn hard_wall_penalty_scaled(u: u128, linear_weight_bps: u16, base_exponent: u8) -> Result<u128> {
-    let linear_weight = linear_weight_bps as u128;
-    let nonlinear_weight = (crate::constants::MAX_BASIS_POINTS as u128)
-        .checked_sub(linear_weight)
-        .ok_or(crate::OnreError::ArithmeticUnderflow)?;
-    let linear_penalty = u
-        .checked_mul(linear_weight)
-        .ok_or(crate::OnreError::MathOverflow)?
-        .checked_div(crate::constants::MAX_BASIS_POINTS as u128)
+fn redemption_haircut_scaled(
+    u: u128,
+    min_liquidation_haircut_bps: u16,
+    curve_peg_haircut_bps: u16,
+    curve_exponent_scaled: u32,
+) -> Result<u128> {
+    let min_haircut = bps_to_hard_wall_scale(min_liquidation_haircut_bps)?;
+    let peg_haircut = bps_to_hard_wall_scale(curve_peg_haircut_bps)?;
+    let utilization_power = utilization_power_scaled(u, curve_exponent_scaled)?;
+    let curve_haircut = peg_haircut
+        .saturating_mul(utilization_power)
+        .checked_div(HARD_WALL_SCALE)
         .ok_or(crate::OnreError::DivByZero)?;
-    let mut u_power = HARD_WALL_SCALE;
-    for _ in 0..base_exponent {
-        u_power = u_power
-            .checked_mul(u)
-            .ok_or(crate::OnreError::MathOverflow)?
-            .checked_div(HARD_WALL_SCALE)
-            .ok_or(crate::OnreError::DivByZero)?;
-    }
-    let nonlinear_penalty = u_power
-        .checked_mul(nonlinear_weight)
-        .ok_or(crate::OnreError::MathOverflow)?
-        .checked_div(crate::constants::MAX_BASIS_POINTS as u128)
-        .ok_or(crate::OnreError::DivByZero)?;
-    Ok(linear_penalty
-        .checked_add(nonlinear_penalty)
-        .ok_or(crate::OnreError::MathOverflow)?)
+    Ok(min_haircut.saturating_add(curve_haircut))
 }
 
+fn bps_to_hard_wall_scale(bps: u16) -> Result<u128> {
+    Ok(HARD_WALL_SCALE
+        .checked_mul(bps as u128)
+        .ok_or(crate::OnreError::MathOverflow)?
+        .checked_div(crate::constants::MAX_BASIS_POINTS as u128)
+        .ok_or(crate::OnreError::DivByZero)?)
+}
+
+fn utilization_power_scaled(u: u128, exponent_scaled: u32) -> Result<u128> {
+    require!(
+        exponent_scaled % (CURVE_EXPONENT_SCALE / 2) == 0,
+        crate::OnreError::InvalidAmount
+    );
+
+    let whole_exponent = exponent_scaled / CURVE_EXPONENT_SCALE;
+    let has_half_exponent = exponent_scaled % CURVE_EXPONENT_SCALE == CURVE_EXPONENT_SCALE / 2;
+    let mut value = HARD_WALL_SCALE;
+    for _ in 0..whole_exponent {
+        value = mul_scaled_saturating(value, u);
+    }
+    if has_half_exponent {
+        value = mul_scaled_saturating(value, sqrt_scaled(u));
+    }
+    Ok(value)
+}
+
+fn mul_scaled_saturating(lhs: u128, rhs: u128) -> u128 {
+    lhs.saturating_mul(rhs)
+        .checked_div(HARD_WALL_SCALE)
+        .unwrap_or(u128::MAX)
+}
+
+fn sqrt_scaled(value: u128) -> u128 {
+    integer_sqrt(value).saturating_mul(1_000_000)
+}
+
+fn integer_sqrt(value: u128) -> u128 {
+    if value < 2 {
+        return value;
+    }
+
+    let mut left = 1_u128;
+    let mut right = value.min(u64::MAX as u128);
+    let mut answer = 1_u128;
+    while left <= right {
+        let mid = left + (right - left) / 2;
+        if mid <= value / mid {
+            answer = mid;
+            left = mid + 1;
+        } else {
+            right = mid - 1;
+        }
+    }
+    answer
+}
 
 pub fn build_swap_buy_quote(
     program_id: &Pubkey,
