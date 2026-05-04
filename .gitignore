@@ -51,3 +51,6 @@ entities
 entities.json
 mempalace
 mempalace.yaml
+
+# Standalone Prop AMM explorer repository
+tools/prop-amm-graphs/
