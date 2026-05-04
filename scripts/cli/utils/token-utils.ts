@@ -27,6 +27,9 @@ export function getTokenDecimals(tokenMint: PublicKey): number {
         case config.mints.onyc.toBase58():
             return 9;
 
+        case config.mints.usdt.toBase58():
+            return 6;
+
         default:
             throw new Error(`Unknown token mint: ${mintAddress}. ` + `Please add explicit decimal configuration for this token.`);
     }
@@ -55,6 +58,9 @@ export function getTokenProgramId(tokenMint: PublicKey): PublicKey {
             return TOKEN_2022_PROGRAM_ID;
 
         case config.mints.onyc.toBase58():
+            return TOKEN_PROGRAM_ID;
+
+        case config.mints.usdt.toBase58():
             return TOKEN_PROGRAM_ID;
 
         default:
