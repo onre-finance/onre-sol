@@ -14,18 +14,23 @@ pub struct BufferAccrualBreakdown {
 fn calculate_accrual_from_apr_delta(
     previous_supply: u64,
     apr_delta: u64,
+    current_yield: u64,
     seconds_elapsed: u64,
 ) -> Result<u64> {
     if apr_delta == 0 || previous_supply == 0 || seconds_elapsed == 0 {
         return Ok(0);
     }
 
+    let target_nav_growth_denominator = SECONDS_PER_YEAR
+        .checked_mul(YIELD_SCALE)
+        .and_then(|v| v.checked_add((current_yield as u128).checked_mul(seconds_elapsed as u128)?))
+        .ok_or(BufferErrorCode::MathOverflow)?;
+
     let mint_amount_u128 = (previous_supply as u128)
         .checked_mul(apr_delta as u128)
         .and_then(|v| v.checked_mul(seconds_elapsed as u128))
         .ok_or(BufferErrorCode::MathOverflow)?
-        .checked_div(SECONDS_PER_YEAR)
-        .and_then(|v| v.checked_div(YIELD_SCALE))
+        .checked_div(target_nav_growth_denominator)
         .ok_or(BufferErrorCode::MathOverflow)?;
 
     require!(
@@ -43,7 +48,7 @@ pub fn calculate_gross_buffer_accrual(
     seconds_elapsed: u64,
 ) -> Result<u64> {
     let apr_delta = gross_yield.saturating_sub(current_yield);
-    calculate_accrual_from_apr_delta(previous_supply, apr_delta, seconds_elapsed)
+    calculate_accrual_from_apr_delta(previous_supply, apr_delta, current_yield, seconds_elapsed)
 }
 
 pub fn calculate_buffer_fee_split(
@@ -111,4 +116,125 @@ pub fn calculate_buffer_fee_split(
         performance_fee_mint_amount,
         new_performance_fee_high_watermark,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const HALF_YEAR_SECONDS: u64 = SECONDS_PER_YEAR as u64 / 2;
+
+    #[test]
+    fn calculate_gross_buffer_accrual_returns_zero_for_zero_inputs() {
+        assert_eq!(
+            calculate_gross_buffer_accrual(0, 150_000, 50_000, HALF_YEAR_SECONDS).unwrap(),
+            0
+        );
+        assert_eq!(
+            calculate_gross_buffer_accrual(1_000_000_000, 50_000, 50_000, HALF_YEAR_SECONDS)
+                .unwrap(),
+            0
+        );
+        assert_eq!(
+            calculate_gross_buffer_accrual(1_000_000_000, 150_000, 50_000, 0).unwrap(),
+            0
+        );
+    }
+
+    #[test]
+    fn calculate_gross_buffer_accrual_preserves_zero_current_yield_behavior() {
+        assert_eq!(
+            calculate_gross_buffer_accrual(1_000_000_000, 100_000, 0, HALF_YEAR_SECONDS).unwrap(),
+            50_000_000
+        );
+    }
+
+    #[test]
+    fn calculate_gross_buffer_accrual_discounts_by_target_nav_growth() {
+        let cases = [
+            (
+                1_000_000_000,
+                150_000,
+                50_000,
+                HALF_YEAR_SECONDS,
+                50_000_000,
+                48_780_487,
+                1_219_513,
+            ),
+            (
+                1_000_000_000,
+                120_000,
+                20_000,
+                SECONDS_PER_YEAR as u64,
+                100_000_000,
+                98_039_215,
+                1_960_785,
+            ),
+            (
+                2_500_000_000,
+                300_000,
+                100_000,
+                SECONDS_PER_YEAR as u64 / 4,
+                125_000_000,
+                121_951_219,
+                3_048_781,
+            ),
+            (
+                1_000_000_000,
+                80_000,
+                60_000,
+                2_592_000,
+                1_643_835,
+                1_635_768,
+                8_067,
+            ),
+        ];
+
+        for (
+            previous_supply,
+            gross_yield,
+            current_yield,
+            seconds_elapsed,
+            old_flat_mint_amount,
+            expected_discounted_mint_amount,
+            expected_overmint_amount,
+        ) in cases
+        {
+            let actual = calculate_gross_buffer_accrual(
+                previous_supply,
+                gross_yield,
+                current_yield,
+                seconds_elapsed,
+            )
+            .unwrap();
+
+            assert_eq!(actual, expected_discounted_mint_amount);
+            assert_eq!(
+                old_flat_mint_amount - actual,
+                expected_overmint_amount,
+                "old flat formula overmint should match the precise dilution amount"
+            );
+        }
+    }
+
+    #[test]
+    fn calculate_buffer_fee_split_charges_performance_fee_at_high_watermark_boundary() {
+        let split =
+            calculate_buffer_fee_split(10_000, 100_000, 1_000, 2_000, 1_000, 1_000).unwrap();
+
+        assert_eq!(split.buffer_mint_amount, 10_000);
+        assert_eq!(split.management_fee_mint_amount, 10_000);
+        assert_eq!(split.performance_fee_mint_amount, 0);
+        assert_eq!(split.reserve_mint_amount, 0);
+        assert_eq!(split.new_performance_fee_high_watermark, 1_000);
+    }
+
+    #[test]
+    fn calculate_buffer_fee_split_skips_performance_fee_below_high_watermark() {
+        let split = calculate_buffer_fee_split(10_000, 100_000, 0, 2_000, 999, 1_000).unwrap();
+
+        assert_eq!(split.performance_fee_mint_amount, 0);
+        assert_eq!(split.reserve_mint_amount, 10_000);
+        assert_eq!(split.new_performance_fee_high_watermark, 1_000);
+    }
 }

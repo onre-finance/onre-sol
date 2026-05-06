@@ -49,7 +49,7 @@ Steps:
 1. Load `previous_lowest_supply`
 2. Load `current_supply_before_mint`
 3. Compute `seconds_elapsed = now - last_accrual_timestamp`
-4. Compute `gross_mint_amount`
+4. Compute `gross_mint_amount`, discounting by the target NAV growth already earned over the interval
 5. Split `gross_mint_amount` into:
    - buffer mint
    - management fee mint
