@@ -8,7 +8,6 @@ hard_wall_reserve = "100000000"
 # Current Prop AMM defaults.
 pool_target_bps = 1500
 wall_sensitivity_scaled = 40000
-min_liquidation_haircut_bps = 50
 curve_peg_haircut_bps = 700
 curve_exponent_scaled = 15000
 epoch_duration_seconds = 86400

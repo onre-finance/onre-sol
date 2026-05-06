@@ -182,7 +182,7 @@ effective_liquidity = min(actual_liquidity, hard_wall_reserve)
 if dynamic wall sensitivity is enabled:
   effective_liquidity = dynamic_wall_position
 u = raw_sell_value_stable / effective_liquidity
-haircut = min_liquidation_haircut + curve_peg_haircut * u^curve_exponent
+haircut = curve_peg_haircut * u^curve_exponent
 final_output = raw_sell_value_stable * max(0, 1 - haircut)
 ```
 

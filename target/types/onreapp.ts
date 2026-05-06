@@ -1316,10 +1316,6 @@ export type Onreapp = {
           "type": "u16"
         },
         {
-          "name": "minLiquidationHaircutBps",
-          "type": "u16"
-        },
-        {
           "name": "curvePegHaircutBps",
           "type": "u16"
         },
@@ -13382,14 +13378,6 @@ export type Onreapp = {
             "type": "u16"
           },
           {
-            "name": "oldMinLiquidationHaircutBps",
-            "type": "u16"
-          },
-          {
-            "name": "newMinLiquidationHaircutBps",
-            "type": "u16"
-          },
-          {
             "name": "oldCurvePegHaircutBps",
             "type": "u16"
           },
@@ -13455,10 +13443,6 @@ export type Onreapp = {
         "fields": [
           {
             "name": "poolTargetBps",
-            "type": "u16"
-          },
-          {
-            "name": "minLiquidationHaircutBps",
             "type": "u16"
           },
           {

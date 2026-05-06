@@ -480,7 +480,6 @@ pub mod onreapp {
     pub fn configure_prop_amm(
         ctx: Context<ConfigurePropAmm>,
         pool_target_bps: u16,
-        min_liquidation_haircut_bps: u16,
         curve_peg_haircut_bps: u16,
         curve_exponent_scaled: u32,
         min_cadence_exponent_scaled: u32,
@@ -492,7 +491,6 @@ pub mod onreapp {
         prop_amm::configure_prop_amm(
             ctx,
             pool_target_bps,
-            min_liquidation_haircut_bps,
             curve_peg_haircut_bps,
             curve_exponent_scaled,
             min_cadence_exponent_scaled,

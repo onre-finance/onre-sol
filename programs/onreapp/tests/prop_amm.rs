@@ -39,7 +39,7 @@ fn setup_prop_amm() -> PropAmmCtx {
     let (offer_pda, _) = find_offer_pda(&usdc_mint, &onyc_mint);
     let ix = build_set_main_offer_ix(&boss, &offer_pda);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let ix = build_configure_prop_amm_ix(&boss, 1_500, 50, 700, 25_000);
+    let ix = build_configure_prop_amm_ix(&boss, 1_500, 700, 25_000);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let (vault_authority, _) = find_offer_vault_authority_pda();
@@ -70,7 +70,6 @@ fn test_hard_wall_curve_is_vulnerable_to_order_splitting() {
         5_000_000,
         10_000_000,
         hard_wall_reserve,
-        50,
         700,
         25_000,
     )
@@ -83,7 +82,6 @@ fn test_hard_wall_curve_is_vulnerable_to_order_splitting() {
             1_000_000,
             current_liquidity,
             hard_wall_reserve,
-            50,
             700,
             25_000,
         )
@@ -103,7 +101,6 @@ fn test_hard_wall_curve_ignores_surplus_above_target_reserve() {
         raw_sell_value_stable,
         hard_wall_reserve,
         hard_wall_reserve,
-        50,
         700,
         25_000,
     )
@@ -112,7 +109,6 @@ fn test_hard_wall_curve_ignores_surplus_above_target_reserve() {
         raw_sell_value_stable,
         10_000_000,
         hard_wall_reserve,
-        50,
         700,
         25_000,
     )
@@ -125,7 +121,6 @@ fn test_hard_wall_curve_ignores_surplus_above_target_reserve() {
 fn test_hard_wall_curve_allows_zero_output_at_actual_vault_limit() {
     let state = PropAmmState {
         pool_target_bps: 1_500,
-        min_liquidation_haircut_bps: 50,
         curve_peg_haircut_bps: 700,
         curve_exponent_scaled: 25_000,
         min_cadence_exponent_scaled: 1_000,
@@ -149,9 +144,8 @@ fn test_hard_wall_curve_allows_zero_output_at_actual_vault_limit() {
 
 #[test]
 fn test_hard_wall_curve_rejects_raw_value_above_actual_vault() {
-    let result = apply_hard_wall_reserve_curve_with_params(
-        10_000_001, 10_000_000, 10_000_000, 50, 700, 25_000,
-    );
+    let result =
+        apply_hard_wall_reserve_curve_with_params(10_000_001, 10_000_000, 10_000_000, 700, 25_000);
 
     assert!(result.is_err());
 }
@@ -160,7 +154,6 @@ fn test_hard_wall_curve_rejects_raw_value_above_actual_vault() {
 fn test_dynamic_wall_preview_includes_current_sell_and_buy_relief() {
     let state = PropAmmState {
         pool_target_bps: 1_500,
-        min_liquidation_haircut_bps: 50,
         curve_peg_haircut_bps: 700,
         curve_exponent_scaled: 25_000,
         min_cadence_exponent_scaled: 1_000,
@@ -200,7 +193,6 @@ fn test_dynamic_wall_position_uses_effective_sell_pressure() {
 fn test_cadence_lowers_effective_curve_exponent() {
     let state = PropAmmState {
         pool_target_bps: 1_500,
-        min_liquidation_haircut_bps: 50,
         curve_peg_haircut_bps: 7_000,
         curve_exponent_scaled: 25_000,
         min_cadence_exponent_scaled: 1_000,
@@ -235,7 +227,6 @@ fn test_cadence_lowers_effective_curve_exponent() {
 fn test_cadence_penalizes_small_split_sells() {
     let state = PropAmmState {
         pool_target_bps: 1_500,
-        min_liquidation_haircut_bps: 50,
         curve_peg_haircut_bps: 7_000,
         curve_exponent_scaled: 25_000,
         min_cadence_exponent_scaled: 1_000,
@@ -573,7 +564,7 @@ fn test_quote_and_open_swap_support_sell_side() {
     );
     assert_eq!(quote.token_in_net_amount, 95_000_000);
     assert_eq!(quote.token_in_fee_amount, 5_000_000);
-    assert!(quote.token_out_amount < 95_000);
+    assert_eq!(quote.token_out_amount, 95_000);
 
     let supply_before = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
     let vault_before = get_token_balance(
@@ -665,7 +656,7 @@ fn test_sell_side_uses_zero_fee_when_redemption_offer_is_uninitialized() {
 
     assert_eq!(quote.token_in_net_amount, 100_000_000);
     assert_eq!(quote.token_in_fee_amount, 0);
-    assert!(quote.token_out_amount < 100_000);
+    assert_eq!(quote.token_out_amount, 100_000);
 
     let supply_before = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
     let vault_before = get_token_balance(

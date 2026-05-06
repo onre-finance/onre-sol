@@ -23,7 +23,6 @@ The important distinction is that buys and sells use different mechanics:
 | `W` | dynamic wall position | Vault-based effective pool size after applying net sell pressure. |
 | `raw` | `result.token_out_amount` before hard wall | Stablecoin output from normal redemption pricing after redemption fee. |
 | `out` | final `result.token_out_amount` | Actual stablecoin output transferred to the seller. |
-| `h_min` | `min_liquidation_haircut_bps / 10_000` | Flat sell-side haircut. Default is `50`, or 0.5%. |
 | `h_peg` | `curve_peg_haircut_bps / 10_000` | Additional haircut when utilization is exactly 1. Default is `700`, or 7%. |
 | `e` | `curve_exponent_scaled / 10_000` | Haircut curve exponent. Default is `25_000`, or 2.5. |
 | `S` | `HARD_WALL_SCALE` | Fixed-point scale, currently `1_000_000_000_000`. |
@@ -201,7 +200,7 @@ This is the core hard-wall logic:
 ```text
 effective_liquidity = W
 u = raw / effective_liquidity
-haircut = h_min + h_peg * u^e
+haircut = h_peg * u^e
 liquidity_factor = 1 - haircut
 out = raw * liquidity_factor
 ```
@@ -265,13 +264,12 @@ large u means the order can be dampened to zero output
 The sell-side haircut is:
 
 ```text
-haircut(u) = h_min + h_peg * u^e
+haircut(u) = h_peg * u^e
 ```
 
 Where:
 
 ```text
-h_min = min_liquidation_haircut_bps / 10_000
 h_peg = curve_peg_haircut_bps / 10_000
 e = curve_exponent_scaled / 10_000
 ```
@@ -279,7 +277,6 @@ e = curve_exponent_scaled / 10_000
 With current defaults:
 
 ```text
-h_min = 50 / 10,000 = 0.005
 h_peg = 700 / 10,000 = 0.07
 e = 25,000 / 10,000 = 2.5
 ```
@@ -287,26 +284,25 @@ e = 25,000 / 10,000 = 2.5
 So:
 
 ```text
-haircut(u) = 0.005 + 0.07u^2.5
+haircut(u) = 0.07u^2.5
 ```
 
 Examples:
 
 ```text
 u = 0.10
-haircut = 0.005 + 0.07 * 0.10^2.5
-        ~= 0.00522
-        ~= 0.52%
+haircut = 0.07 * 0.10^2.5
+        ~= 0.00022
+        ~= 0.02%
 
 u = 0.50
-haircut = 0.005 + 0.07 * 0.50^2.5
-        ~= 0.01737
-        ~= 1.74%
+haircut = 0.07 * 0.50^2.5
+        ~= 0.01237
+        ~= 1.24%
 
 u = 1.00
-haircut = 0.005 + 0.07
-        = 0.075
-        = 7.5%
+haircut = 0.07
+        = 7.0%
 ```
 
 The haircut grows slowly at first, then faster as the order consumes more of the wall. The final liquidity factor is:
@@ -354,25 +350,25 @@ u = 4,750 / 10,000
 With the default curve:
 
 ```text
-haircut = 0.005 + 0.07 * 0.475^2.5
-        ~= 0.0159
+haircut = 0.07 * 0.475^2.5
+        ~= 0.0109
 
-liquidity_factor = 1 - 0.0159
-                 = 0.9841
+liquidity_factor = 1 - 0.0109
+                 = 0.9891
 
-out = 4,750 * 0.9841
-    ~= 4,674 USDC
+out = 4,750 * 0.9891
+    ~= 4,698 USDC
 ```
 
-So the user expected about `5,000 USDC` before fee, has `4,750 USDC` raw value after fee, and actually receives about `4,674 USDC` after hard-wall dampening.
+So the user expected about `5,000 USDC` before fee, has `4,750 USDC` raw value after fee, and actually receives about `4,698 USDC` after hard-wall dampening.
 
 ### 3. Vault State Updates
 
 The vault loses the actual output:
 
 ```text
-vault_after = 10,000 - 4,674
-            = 5,326 USDC
+vault_after = 10,000 - 4,698
+            = 5,302 USDC
 ```
 
 The next seller starts from the new lower vault balance.

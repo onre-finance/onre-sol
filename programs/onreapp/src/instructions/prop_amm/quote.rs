@@ -231,7 +231,6 @@ pub fn apply_hard_wall_liquidity_factor_at_time(
         .ok_or(crate::OnreError::DivByZero)?;
     let haircut = redemption_haircut_scaled(
         utilization_scaled,
-        prop_amm_state.min_liquidation_haircut_bps,
         prop_amm_state.curve_peg_haircut_bps,
         effective_curve_exponent_scaled(prop_amm_state, now)?,
     )?;
@@ -432,13 +431,11 @@ pub fn apply_hard_wall_reserve_curve_with_params(
     token_out_amount: u64,
     actual_liquidity: u64,
     hard_wall_reserve: u64,
-    min_liquidation_haircut_bps: u16,
     curve_peg_haircut_bps: u16,
     curve_exponent_scaled: u32,
 ) -> Result<u64> {
     let prop_amm_state = PropAmmState {
         pool_target_bps: 0,
-        min_liquidation_haircut_bps,
         curve_peg_haircut_bps,
         curve_exponent_scaled,
         min_cadence_exponent_scaled: DEFAULT_MIN_CADENCE_EXPONENT_SCALED,
@@ -490,18 +487,16 @@ pub fn hard_wall_reserve_from_tvl(
 }
 fn redemption_haircut_scaled(
     u: u128,
-    min_liquidation_haircut_bps: u16,
     curve_peg_haircut_bps: u16,
     curve_exponent_scaled: u32,
 ) -> Result<u128> {
-    let min_haircut = bps_to_hard_wall_scale(min_liquidation_haircut_bps)?;
     let peg_haircut = bps_to_hard_wall_scale(curve_peg_haircut_bps)?;
     let utilization_power = utilization_power_scaled(u, curve_exponent_scaled)?;
     let curve_haircut = peg_haircut
         .saturating_mul(utilization_power)
         .checked_div(HARD_WALL_SCALE)
         .ok_or(crate::OnreError::DivByZero)?;
-    Ok(min_haircut.saturating_add(curve_haircut))
+    Ok(curve_haircut)
 }
 
 fn bps_to_hard_wall_scale(bps: u16) -> Result<u128> {

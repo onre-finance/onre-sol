@@ -1310,10 +1310,6 @@
           "type": "u16"
         },
         {
-          "name": "min_liquidation_haircut_bps",
-          "type": "u16"
-        },
-        {
           "name": "curve_peg_haircut_bps",
           "type": "u16"
         },
@@ -13376,14 +13372,6 @@
             "type": "u16"
           },
           {
-            "name": "old_min_liquidation_haircut_bps",
-            "type": "u16"
-          },
-          {
-            "name": "new_min_liquidation_haircut_bps",
-            "type": "u16"
-          },
-          {
             "name": "old_curve_peg_haircut_bps",
             "type": "u16"
           },
@@ -13449,10 +13437,6 @@
         "fields": [
           {
             "name": "pool_target_bps",
-            "type": "u16"
-          },
-          {
-            "name": "min_liquidation_haircut_bps",
             "type": "u16"
           },
           {

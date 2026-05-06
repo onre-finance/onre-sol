@@ -167,7 +167,6 @@ pub fn build_configure_max_supply_ix(boss: &Pubkey, max_supply: u64) -> Instruct
 pub fn build_configure_prop_amm_ix(
     boss: &Pubkey,
     pool_target_bps: u16,
-    min_liquidation_haircut_bps: u16,
     curve_peg_haircut_bps: u16,
     curve_exponent_scaled: u32,
 ) -> Instruction {
@@ -175,7 +174,6 @@ pub fn build_configure_prop_amm_ix(
     let (prop_amm_state_pda, _) = find_prop_amm_state_pda();
     let mut data = ix_discriminator("configure_prop_amm").to_vec();
     data.extend_from_slice(&pool_target_bps.to_le_bytes());
-    data.extend_from_slice(&min_liquidation_haircut_bps.to_le_bytes());
     data.extend_from_slice(&curve_peg_haircut_bps.to_le_bytes());
     data.extend_from_slice(&curve_exponent_scaled.to_le_bytes());
     data.extend_from_slice(&1_000_u32.to_le_bytes());

@@ -3,7 +3,6 @@ use crate::state::State;
 use anchor_lang::prelude::*;
 
 pub const DEFAULT_POOL_TARGET_BPS: u16 = 1_500;
-pub const DEFAULT_MIN_LIQUIDATION_HAIRCUT_BPS: u16 = 50;
 pub const DEFAULT_CURVE_PEG_HAIRCUT_BPS: u16 = 700;
 pub const CURVE_EXPONENT_SCALE: u32 = 10_000;
 pub const CURVE_EXPONENT_STEP: u32 = 1_000;
@@ -19,7 +18,6 @@ pub const DEFAULT_WALL_SENSITIVITY_SCALED: u32 = 20_000;
 #[derive(InitSpace)]
 pub struct PropAmmState {
     pub pool_target_bps: u16,
-    pub min_liquidation_haircut_bps: u16,
     pub curve_peg_haircut_bps: u16,
     pub curve_exponent_scaled: u32,
     pub min_cadence_exponent_scaled: u32,
@@ -39,8 +37,6 @@ pub struct PropAmmState {
 pub struct PropAmmConfiguredEvent {
     pub old_pool_target_bps: u16,
     pub new_pool_target_bps: u16,
-    pub old_min_liquidation_haircut_bps: u16,
-    pub new_min_liquidation_haircut_bps: u16,
     pub old_curve_peg_haircut_bps: u16,
     pub new_curve_peg_haircut_bps: u16,
     pub old_curve_exponent_scaled: u32,
@@ -84,7 +80,6 @@ pub struct ConfigurePropAmm<'info> {
 pub fn configure_prop_amm(
     ctx: Context<ConfigurePropAmm>,
     pool_target_bps: u16,
-    min_liquidation_haircut_bps: u16,
     curve_peg_haircut_bps: u16,
     curve_exponent_scaled: u32,
     min_cadence_exponent_scaled: u32,
@@ -95,10 +90,6 @@ pub fn configure_prop_amm(
 ) -> Result<()> {
     require!(
         pool_target_bps <= MAX_BASIS_POINTS,
-        crate::OnreError::InvalidAmount
-    );
-    require!(
-        min_liquidation_haircut_bps <= MAX_BASIS_POINTS,
         crate::OnreError::InvalidAmount
     );
     require!(
@@ -132,7 +123,6 @@ pub fn configure_prop_amm(
 
     let prop_amm_state = &mut ctx.accounts.prop_amm_state;
     let old_pool_target_bps = prop_amm_state.pool_target_bps;
-    let old_min_liquidation_haircut_bps = prop_amm_state.min_liquidation_haircut_bps;
     let old_curve_peg_haircut_bps = prop_amm_state.curve_peg_haircut_bps;
     let old_curve_exponent_scaled = prop_amm_state.curve_exponent_scaled;
     let old_min_cadence_exponent_scaled = prop_amm_state.min_cadence_exponent_scaled;
@@ -142,7 +132,6 @@ pub fn configure_prop_amm(
     let old_wall_sensitivity_scaled = prop_amm_state.wall_sensitivity_scaled;
 
     prop_amm_state.pool_target_bps = pool_target_bps;
-    prop_amm_state.min_liquidation_haircut_bps = min_liquidation_haircut_bps;
     prop_amm_state.curve_peg_haircut_bps = curve_peg_haircut_bps;
     prop_amm_state.curve_exponent_scaled = curve_exponent_scaled;
     prop_amm_state.min_cadence_exponent_scaled = min_cadence_exponent_scaled;
@@ -158,8 +147,6 @@ pub fn configure_prop_amm(
     emit!(PropAmmConfiguredEvent {
         old_pool_target_bps,
         new_pool_target_bps: pool_target_bps,
-        old_min_liquidation_haircut_bps,
-        new_min_liquidation_haircut_bps: min_liquidation_haircut_bps,
         old_curve_peg_haircut_bps,
         new_curve_peg_haircut_bps: curve_peg_haircut_bps,
         old_curve_exponent_scaled,
@@ -183,7 +170,6 @@ impl Default for PropAmmState {
     fn default() -> Self {
         Self {
             pool_target_bps: DEFAULT_POOL_TARGET_BPS,
-            min_liquidation_haircut_bps: DEFAULT_MIN_LIQUIDATION_HAIRCUT_BPS,
             curve_peg_haircut_bps: DEFAULT_CURVE_PEG_HAIRCUT_BPS,
             curve_exponent_scaled: DEFAULT_CURVE_EXPONENT_SCALED,
             min_cadence_exponent_scaled: DEFAULT_MIN_CADENCE_EXPONENT_SCALED,
