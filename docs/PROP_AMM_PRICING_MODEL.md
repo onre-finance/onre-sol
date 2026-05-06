@@ -396,25 +396,3 @@ out = raw * f(raw / min(current_vault, hard_wall_reserve))
 That means each smaller order receives a smaller utilization and therefore a smaller haircut. However, each sell also increases global net sell pressure, so later split orders see a smaller wall.
 
 The test `test_dynamic_wall_accumulates_sell_pressure_and_buys_relieve_it` documents that sell pressure worsens later sell quotes and ONyc buys relieve current-epoch pressure.
-
-## Reading The Business Scenarios
-
-The generated Markdown/CSV comes from the Rust simulator:
-
-```text
-programs/onreapp/examples/prop_amm_business_scenarios.rs
-```
-
-It calls the same Rust Prop AMM quote/tracker methods as the program code. Current example command:
-
-```bash
-rtk cargo run -p onreapp --example prop_amm_business_scenarios -- \
-  --config configs/prop_amm_business_scenarios.toml
-```
-
-Report interpretation:
-
-- Each scenario is a sequence of `sell`, `buy`, and `wait` actions.
-- `Wall` is the effective liquidity denominator for that row.
-- `Output %` is the seller's stable output divided by raw stable value.
-- `Pressure After` is the effective sell pressure recorded after the action.
