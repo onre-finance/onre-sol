@@ -8,11 +8,8 @@ A Solana smart contract built with [Anchor](https://www.anchor-lang.com/) that m
 # Build the program
 anchor build
 
-# Run tests (builds program and copies .so to fixtures)
-anchor test
-
-# Run a single test file
-npx vitest run tests/path/to/test.spec.ts
+# Run Rust tests
+cargo test -p onreapp
 
 # Update program ID after changing keypair
 anchor keys sync && anchor build
@@ -162,7 +159,7 @@ Scripts that modify state output base58-encoded transactions for signing via Squ
 
 ## Tests
 
-Tests use **Vitest** with **LiteSVM** for fast local testing without a validator.
+Tests use Rust integration tests with **LiteSVM** for fast local testing without a validator.
 
 For the Rust program integration suite, use `anchor test`. The LiteSVM harness in
 `programs/onreapp/tests/common/svm.rs` embeds `target/deploy/onreapp.so`, so plain
@@ -171,27 +168,23 @@ directly, wait for `anchor build` to finish first and do not run build and test 
 
 ```bash
 # Run all tests
-pnpm test
-
-# Run with watch mode
-pnpm test:watch
+cargo test -p onreapp
 
 # Run a single test file
-npx vitest run tests/offer/take_offer.spec.ts
+cargo test -p onreapp --test redemption
 ```
 
 Test structure mirrors the instruction layout:
 
 ```
-tests/
-├── test_helper.ts              # TestHelper class (LiteSVM utilities)
-├── onre_program.ts             # Shared program setup
-├── offer/                      # Offer instruction tests
-├── redemption/                 # Redemption instruction tests
-├── state_operations/           # State management tests
-├── vault_operations/           # Vault operation tests
-├── mint_authority/             # Mint authority tests
-└── market_info/                # Market info query tests
+programs/onreapp/tests/
+├── common/                     # LiteSVM setup, builders, readers, token helpers
+├── offer instruction tests
+├── redemption instruction tests
+├── state operation tests
+├── vault operation tests
+├── mint authority tests
+└── market info query tests
 ```
 
 ## Cross-Chain Transfers

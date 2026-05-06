@@ -13,12 +13,11 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "isolatedModules": true,
-    "types": ["vitest/globals"],
     "paths": {
       "@project/anchor": ["./anchor/src"],
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "tests", "scripts", "vite.config.ts"],
+  "include": ["src", "scripts"],
   "exclude": ["node_modules", "dist", "build"]
 }

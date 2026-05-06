@@ -6,10 +6,8 @@
   "type": "module",
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "anchor-build": "anchor build && mkdir -p tests/fixtures && cp target/deploy/onreapp.so tests/fixtures/",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:ui": "vitest --ui",
+    "anchor-build": "anchor build",
+    "test": "cargo test -p onreapp",
     "script:mainnet-prod": "NETWORK=mainnet-prod tsx",
     "script:mainnet-test": "NETWORK=mainnet-test tsx",
     "script:mainnet-dev": "NETWORK=mainnet-dev tsx",
@@ -40,13 +38,9 @@
     "@types/node": "^22.10.5",
     "@types/node-fetch": "2",
     "dotenv": "^16.5.0",
-    "litesvm": "0.4.0",
     "prettier": "^3.5.2",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
-    "vite": "^6.2.0",
-    "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^3.0.0",
     "zx": "^8.6.0"
   }
 }

@@ -8,11 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Build the Anchor program
 anchor build
 
-# Run all tests (builds program and copies to fixtures)
-anchor test
-
-# Run a single test file
-npx jest --runInBand tests/path/to/test.spec.ts
+# Run Rust tests
+cargo test -p onreapp
 
 # Update program ID after changing keypair
 anchor keys sync && anchor build
@@ -55,13 +52,13 @@ This is a Solana smart contract built with Anchor that manages tokenized (re)ins
 
 **PDAs**: Seeds defined in `constants::seeds` - STATE, OFFER, OFFER_VAULT_AUTHORITY, PERMISSIONLESS_AUTHORITY, MINT_AUTHORITY, REDEMPTION_OFFER, etc.
 
-### Test Infrastructure (tests/)
+### Test Infrastructure (programs/onreapp/tests/)
 
-Uses **solana-bankrun** + **anchor-bankrun** for fast local testing without a validator.
+Uses Rust **LiteSVM** tests for fast local testing without a validator.
 
-- `test_helper.ts`: `TestHelper` class provides utilities for creating mints, token accounts, advancing clock time
-- Tests mirror the instruction structure (offer/, redemption/, state_operations/, etc.)
-- `onre_program.ts`: Shared program setup
+- `common/`: shared setup, instruction builders, readers, token helpers
+- Tests mirror the instruction structure (`offer.rs`, `redemption.rs`, `state_operations.rs`, etc.)
+- `programs/onreapp/tests/common/svm.rs` embeds `target/deploy/onreapp.so`; run `anchor build` first when you need tests against a freshly built SBF program
 
 ## Client Scripts (scripts/)
 
