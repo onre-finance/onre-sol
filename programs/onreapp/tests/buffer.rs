@@ -7,13 +7,15 @@ use solana_sdk::signer::Signer;
 
 // NAV/price scale is 1e9: 1.0 NAV = 1_000_000_000.
 const NAV_1_0: u64 = 1_000_000_000;
+const YEAR_SECONDS: u64 = 31_536_000;
 const HALF_YEAR_SECONDS: u64 = 15_768_000;
+const THIRTY_DAYS_SECONDS: u64 = 2_592_000;
 
 // BUFFER math reference used by tests:
 //
 // Accrue:
 //   spread = max(0, gross_yield - current_yield)        // APR scale 1e6
-//   gross_mint = lowest_supply * spread * dt / YEAR / 1e6
+//   gross_mint = lowest_supply * spread * dt / (YEAR * 1e6 + current_yield * dt)
 //
 // Fee split on accrual:
 //   management_slice_apr = min(spread, management_fee_apr)
@@ -139,6 +141,49 @@ fn setup_buffer_context(
     }
 
     (svm, payer, token_in_mint, onyc_mint, caller)
+}
+
+fn assert_discounted_buffer_accrual(
+    gross_yield: u64,
+    current_yield: u64,
+    seconds_elapsed: u64,
+    old_flat_mint_amount: u64,
+    expected_discounted_mint_amount: u64,
+    expected_overmint_amount: u64,
+) {
+    let (mut svm, payer, _token_in_mint, onyc_mint, _caller) =
+        setup_buffer_context(gross_yield, current_yield, 0, 0);
+    let boss = payer.pubkey();
+    let state = read_state(&svm);
+    let reserve_vault_onyc_ata = derive_ata(
+        &find_reserve_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+
+    advance_slot(&mut svm);
+    advance_clock_by(&mut svm, seconds_elapsed);
+
+    let ix = build_mint_to_ix_for_offer(&boss, &onyc_mint, 0, &TOKEN_PROGRAM_ID, &state.main_offer);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let buffer_state_after_accrual = read_buffer_state(&svm);
+    assert_eq!(
+        old_flat_mint_amount - expected_discounted_mint_amount,
+        expected_overmint_amount
+    );
+    assert_eq!(
+        get_token_balance(&svm, &reserve_vault_onyc_ata),
+        expected_discounted_mint_amount
+    );
+    assert_eq!(
+        get_mint_supply(&svm, &onyc_mint),
+        1_000_000_000 + expected_discounted_mint_amount
+    );
+    assert_eq!(
+        buffer_state_after_accrual.previous_supply,
+        1_000_000_000 + expected_discounted_mint_amount
+    );
 }
 
 #[test]
@@ -548,6 +593,34 @@ fn test_set_buffer_gross_yield_settles_pending_accrual_before_rate_change() {
     assert_eq!(
         buffer_state_after_second_accrual.previous_supply,
         1_076_250_000
+    );
+}
+
+#[test]
+fn test_buffer_accrual_discounts_mint_by_current_yield_growth() {
+    assert_discounted_buffer_accrual(
+        150_000,
+        50_000,
+        HALF_YEAR_SECONDS,
+        50_000_000,
+        48_780_487,
+        1_219_513,
+    );
+    assert_discounted_buffer_accrual(
+        120_000,
+        20_000,
+        YEAR_SECONDS,
+        100_000_000,
+        98_039_215,
+        1_960_785,
+    );
+    assert_discounted_buffer_accrual(
+        80_000,
+        60_000,
+        THIRTY_DAYS_SECONDS,
+        1_643_835,
+        1_635_768,
+        8_067,
     );
 }
 
