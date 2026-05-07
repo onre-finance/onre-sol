@@ -7,6 +7,7 @@ use solana_sdk::signer::Signer;
 
 // NAV/price scale is 1e9: 1.0 NAV = 1_000_000_000.
 const NAV_1_0: u64 = 1_000_000_000;
+const NAV_AFTER_ONE_DAY_AT_5_PERCENT_APR: u64 = 1_000_136_986;
 const YEAR_SECONDS: u64 = 31_536_000;
 const HALF_YEAR_SECONDS: u64 = 15_768_000;
 const THIRTY_DAYS_SECONDS: u64 = 2_592_000;
@@ -21,7 +22,7 @@ const THIRTY_DAYS_SECONDS: u64 = 2_592_000;
 //   management_slice_apr = min(spread, management_fee_apr)
 //   management_fee = floor(gross_mint * management_slice_apr / spread)
 //   remaining = gross_mint - management_fee
-//   if current_nav > performance_hwm_nav:
+//   if performance_hwm_nav is initialized and current_nav >= performance_hwm_nav:
 //     performance_fee = floor(remaining * performance_fee_bps / 10000)
 //   else:
 //     performance_fee = 0
@@ -29,7 +30,8 @@ const THIRTY_DAYS_SECONDS: u64 = 2_592_000;
 //
 // High-water mark:
 // - HWM is tracked in NAV/price units, not vault balance.
-// - Performance fees are charged only while NAV is above the stored HWM.
+// - The first baseline accrual seeds HWM without charging performance fees.
+// - Performance fees are charged only after HWM has been initialized.
 //
 // Burn for NAV support:
 //   total_assets      = circulating_supply * current_nav / 1e9
@@ -622,6 +624,37 @@ fn test_buffer_accrual_discounts_mint_by_current_yield_growth() {
         1_635_768,
         8_067,
     );
+}
+
+#[test]
+fn test_buffer_baseline_accrual_seeds_performance_fee_high_watermark() {
+    let (svm, _payer, _token_in_mint, onyc_mint, _caller) =
+        setup_buffer_context(150_000, 50_000, 100, 1_000);
+    let reserve_vault_onyc_ata = derive_ata(
+        &find_reserve_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let management_fee_vault_onyc_ata = derive_ata(
+        &find_management_fee_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let performance_fee_vault_onyc_ata = derive_ata(
+        &find_performance_fee_vault_authority_pda().0,
+        &onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+
+    let buffer_state = read_buffer_state(&svm);
+    assert_eq!(buffer_state.previous_supply, 1_000_000_000);
+    assert_eq!(
+        buffer_state.performance_fee_high_watermark,
+        NAV_AFTER_ONE_DAY_AT_5_PERCENT_APR
+    );
+    assert_eq!(get_token_balance(&svm, &reserve_vault_onyc_ata), 0);
+    assert_eq!(get_token_balance(&svm, &management_fee_vault_onyc_ata), 0);
+    assert_eq!(get_token_balance(&svm, &performance_fee_vault_onyc_ata), 0);
 }
 
 #[test]

@@ -64,8 +64,9 @@ If `lowest_supply == 0`, the accrual path initializes the baseline:
 
 - `lowest_supply = current_supply_before_mint`
 - `last_accrual_timestamp = now`
+- `performance_fee_high_watermark = current_nav`
 
-and performs no accrual mint.
+and performs no accrual mint or performance fee mint.
 
 ## Any Other ONyc Supply Change
 
@@ -114,11 +115,13 @@ Steps:
 3. Set:
    - `lowest_supply = 1,000`
    - `last_accrual_timestamp = T1`
+   - `performance_fee_high_watermark = current_nav_at_T1`
 
 Result:
 
 - current unpaid interval starts at `T1`
 - baseline supply for that interval is `1,000`
+- performance fees are gated against a real recorded NAV peak instead of the uninitialized zero value
 
 ## Example 2: One BUFFER Accrual Cycle
 

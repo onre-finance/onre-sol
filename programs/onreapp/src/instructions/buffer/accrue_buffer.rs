@@ -58,6 +58,7 @@ pub(crate) fn accrue_buffer<'info>(
     let old_previous_performance_fee_high_watermark = buffer_state.performance_fee_high_watermark;
 
     if old_previous_supply == 0 {
+        buffer_state.performance_fee_high_watermark = current_nav;
         set_buffer_baseline_after_supply_change(buffer_state, current_supply_before_mint, now);
 
         let result = BufferAccrualResult {
