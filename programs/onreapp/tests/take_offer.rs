@@ -274,7 +274,8 @@ fn test_take_offer_v2_accrues_buffer_and_splits_fees() {
     );
     let mint_supply_after = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
 
-    let expected_gross_accrual = mint_supply_before / 10;
+    let expected_gross_accrual =
+        ((mint_supply_before as u128) * 100_000 / (1_000_000 + 50_000)) as u64;
     let expected_management_fee = expected_gross_accrual / 10;
     let expected_performance_fee = (expected_gross_accrual - expected_management_fee) / 10;
     let expected_buffer_accrual =

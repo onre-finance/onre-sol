@@ -808,17 +808,17 @@ fn test_accrue_buffer_splits_gross_mint_across_reserve_and_fee_vaults() {
     );
     let buffer_state = read_buffer_state(&svm);
 
-    assert_eq!(get_token_balance(&svm, &reserve_vault_onyc_ata), 81_000_000);
+    assert_eq!(get_token_balance(&svm, &reserve_vault_onyc_ata), 77_142_858);
     assert_eq!(
         get_token_balance(&svm, &management_fee_vault_onyc_ata),
-        10_000_000
+        9_523_809
     );
     assert_eq!(
         get_token_balance(&svm, &performance_fee_vault_onyc_ata),
-        9_000_000
+        8_571_428
     );
-    assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_100_000_000);
-    assert_eq!(buffer_state.previous_supply, 1_100_000_000);
+    assert_eq!(get_mint_supply(&svm, &onyc_mint), 1_095_238_095);
+    assert_eq!(buffer_state.previous_supply, 1_095_238_095);
     assert_eq!(
         buffer_state.performance_fee_high_watermark,
         NAV_AFTER_ONE_YEAR_AT_5_PERCENT_APR
@@ -870,15 +870,15 @@ fn test_withdraw_management_and_performance_fees_transfers_out_of_fee_vaults() {
         &TOKEN_PROGRAM_ID,
     );
 
-    let withdraw_management_ix = build_withdraw_management_fees_ix(&boss, &onyc_mint, 10_000_000);
+    let withdraw_management_ix = build_withdraw_management_fees_ix(&boss, &onyc_mint, 9_523_809);
     send_tx(&mut svm, &[withdraw_management_ix], &[&payer]).unwrap();
 
-    let withdraw_performance_ix = build_withdraw_performance_fees_ix(&boss, &onyc_mint, 9_000_000);
+    let withdraw_performance_ix = build_withdraw_performance_fees_ix(&boss, &onyc_mint, 8_571_428);
     send_tx(&mut svm, &[withdraw_performance_ix], &[&payer]).unwrap();
 
     assert_eq!(get_token_balance(&svm, &management_fee_vault_onyc_ata), 0);
     assert_eq!(get_token_balance(&svm, &performance_fee_vault_onyc_ata), 0);
-    assert_eq!(get_token_balance(&svm, &boss_onyc_ata), 1_019_000_000);
+    assert_eq!(get_token_balance(&svm, &boss_onyc_ata), 1_018_095_237);
 }
 
 #[test]

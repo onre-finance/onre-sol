@@ -277,32 +277,32 @@ mod tests {
             100_000,
             100,
             1_000,
+            1_000_000_000,
+            1_000_000_000,
+        )
+        .unwrap();
+
+        assert_eq!(split.management_fee_mint_amount, 10_000_000);
+        assert_eq!(split.performance_fee_mint_amount, 9_000_000);
+        assert_eq!(split.reserve_mint_amount, 81_000_000);
+        assert_eq!(split.new_performance_fee_high_watermark, 1_000_000_000);
+    }
+
+    #[test]
+    fn calculate_buffer_fee_split_skips_performance_fee_below_high_watermark() {
+        let split = calculate_buffer_fee_split(
+            100_000_000,
+            100_000,
+            100,
+            1_000,
             900_000_000,
             1_000_000_000,
         )
         .unwrap();
 
-        assert_eq!(breakdown.management_fee_mint_amount, 10_000_000);
-        assert_eq!(breakdown.performance_fee_mint_amount, 0);
-        assert_eq!(breakdown.reserve_mint_amount, 90_000_000);
-        assert_eq!(breakdown.new_performance_fee_high_watermark, 1_000_000_000);
-    }
-
-    #[test]
-    fn calculate_buffer_fee_split_charges_performance_fee_at_high_watermark_boundary() {
-        let breakdown = calculate_buffer_fee_split(
-            100_000_000,
-            100_000,
-            100,
-            1_000,
-            1_000_000_000,
-            1_000_000_000,
-        )
-        .unwrap();
-
-        assert_eq!(breakdown.management_fee_mint_amount, 10_000_000);
-        assert_eq!(breakdown.performance_fee_mint_amount, 9_000_000);
-        assert_eq!(breakdown.reserve_mint_amount, 81_000_000);
-        assert_eq!(breakdown.new_performance_fee_high_watermark, 1_000_000_000);
+        assert_eq!(split.management_fee_mint_amount, 10_000_000);
+        assert_eq!(split.performance_fee_mint_amount, 0);
+        assert_eq!(split.reserve_mint_amount, 90_000_000);
+        assert_eq!(split.new_performance_fee_high_watermark, 1_000_000_000);
     }
 }
