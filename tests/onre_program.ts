@@ -653,6 +653,9 @@ export class OnreProgram {
         minLiquidationHaircutBps?: number;
         curvePegHaircutBps?: number;
         curveExponentScaled?: number;
+        minCadenceExponentScaled?: number;
+        cadenceThreshold?: number;
+        cadenceSensitivityScaled?: number;
         epochDurationSeconds?: number;
         wallSensitivityScaled?: number;
         signer?: Keypair;
@@ -663,6 +666,9 @@ export class OnreProgram {
                 params.minLiquidationHaircutBps ?? 50,
                 params.curvePegHaircutBps ?? 700,
                 params.curveExponentScaled ?? 25_000,
+                params.minCadenceExponentScaled ?? 1_000,
+                params.cadenceThreshold ?? 20,
+                params.cadenceSensitivityScaled ?? 10_000,
                 new BN(params.epochDurationSeconds ?? 86_400),
                 params.wallSensitivityScaled ?? 20_000,
             )

@@ -483,6 +483,9 @@ pub mod onreapp {
         min_liquidation_haircut_bps: u16,
         curve_peg_haircut_bps: u16,
         curve_exponent_scaled: u32,
+        min_cadence_exponent_scaled: u32,
+        cadence_threshold: u32,
+        cadence_sensitivity_scaled: u32,
         epoch_duration_seconds: i64,
         wall_sensitivity_scaled: u32,
     ) -> Result<()> {
@@ -492,6 +495,9 @@ pub mod onreapp {
             min_liquidation_haircut_bps,
             curve_peg_haircut_bps,
             curve_exponent_scaled,
+            min_cadence_exponent_scaled,
+            cadence_threshold,
+            cadence_sensitivity_scaled,
             epoch_duration_seconds,
             wall_sensitivity_scaled,
         )

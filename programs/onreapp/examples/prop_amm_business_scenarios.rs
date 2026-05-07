@@ -1,8 +1,10 @@
 use onreapp::instructions::prop_amm::{
     apply_hard_wall_liquidity_factor_at_time, dynamic_wall_liquidity_at_time,
     preview_effective_sell_volume, record_prop_amm_buy, record_prop_amm_sell, PropAmmState,
-    DEFAULT_CURVE_EXPONENT_SCALED, DEFAULT_CURVE_PEG_HAIRCUT_BPS, DEFAULT_EPOCH_DURATION_SECONDS,
-    DEFAULT_MIN_LIQUIDATION_HAIRCUT_BPS, DEFAULT_WALL_SENSITIVITY_SCALED,
+    DEFAULT_CADENCE_SENSITIVITY_SCALED, DEFAULT_CADENCE_THRESHOLD, DEFAULT_CURVE_EXPONENT_SCALED,
+    DEFAULT_CURVE_PEG_HAIRCUT_BPS, DEFAULT_EPOCH_DURATION_SECONDS,
+    DEFAULT_MIN_CADENCE_EXPONENT_SCALED, DEFAULT_MIN_LIQUIDATION_HAIRCUT_BPS,
+    DEFAULT_WALL_SENSITIVITY_SCALED,
 };
 use serde::Deserialize;
 use std::env;
@@ -270,14 +272,17 @@ fn run_scenario(config: &Config, scenario: &Scenario) -> Vec<Row> {
         min_liquidation_haircut_bps: config.min_liquidation_haircut_bps,
         curve_peg_haircut_bps: config.curve_peg_haircut_bps,
         curve_exponent_scaled: config.curve_exponent_scaled,
+        min_cadence_exponent_scaled: DEFAULT_MIN_CADENCE_EXPONENT_SCALED,
+        cadence_threshold: DEFAULT_CADENCE_THRESHOLD,
+        cadence_sensitivity_scaled: DEFAULT_CADENCE_SENSITIVITY_SCALED,
         epoch_duration_seconds: config.epoch_duration_seconds,
         wall_sensitivity_scaled: config.wall_sensitivity_scaled,
         curr_sell_value_stable: 0,
         curr_buy_value_stable: 0,
         prev_net_sell_value_stable: 0,
+        curr_sell_trade_count: 0,
         epoch_start: 0,
         bump: 0,
-        reserved: [0; 64],
     };
     let mut vault = config.initial_vault;
     let mut now = 1_i64;
