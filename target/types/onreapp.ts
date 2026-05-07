@@ -1328,6 +1328,18 @@ export type Onreapp = {
           "type": "u32"
         },
         {
+          "name": "minCadenceExponentScaled",
+          "type": "u32"
+        },
+        {
+          "name": "cadenceThreshold",
+          "type": "u32"
+        },
+        {
+          "name": "cadenceSensitivityScaled",
+          "type": "u32"
+        },
+        {
           "name": "epochDurationSeconds",
           "type": "i64"
         },
@@ -13394,6 +13406,30 @@ export type Onreapp = {
             "type": "u32"
           },
           {
+            "name": "oldMinCadenceExponentScaled",
+            "type": "u32"
+          },
+          {
+            "name": "newMinCadenceExponentScaled",
+            "type": "u32"
+          },
+          {
+            "name": "oldCadenceThreshold",
+            "type": "u32"
+          },
+          {
+            "name": "newCadenceThreshold",
+            "type": "u32"
+          },
+          {
+            "name": "oldCadenceSensitivityScaled",
+            "type": "u32"
+          },
+          {
+            "name": "newCadenceSensitivityScaled",
+            "type": "u32"
+          },
+          {
             "name": "oldEpochDurationSeconds",
             "type": "i64"
           },
@@ -13434,6 +13470,18 @@ export type Onreapp = {
             "type": "u32"
           },
           {
+            "name": "minCadenceExponentScaled",
+            "type": "u32"
+          },
+          {
+            "name": "cadenceThreshold",
+            "type": "u32"
+          },
+          {
+            "name": "cadenceSensitivityScaled",
+            "type": "u32"
+          },
+          {
             "name": "epochDurationSeconds",
             "type": "i64"
           },
@@ -13454,21 +13502,16 @@ export type Onreapp = {
             "type": "u64"
           },
           {
+            "name": "currSellTradeCount",
+            "type": "u32"
+          },
+          {
             "name": "epochStart",
             "type": "i64"
           },
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "reserved",
-            "type": {
-              "array": [
-                "u8",
-                64
-              ]
-            }
           }
         ]
       }

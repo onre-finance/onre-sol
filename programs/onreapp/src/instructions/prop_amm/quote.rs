@@ -8,7 +8,10 @@ use anchor_lang::solana_program::program::set_return_data;
 use anchor_lang::{prelude::*, system_program, Accounts, AnchorDeserialize, AnchorSerialize};
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
-use super::config::{PropAmmState, CURVE_EXPONENT_SCALE, WALL_SENSITIVITY_SCALE};
+use super::config::{
+    PropAmmState, CURVE_EXPONENT_SCALE, CURVE_EXPONENT_STEP, DEFAULT_CADENCE_THRESHOLD,
+    DEFAULT_MIN_CADENCE_EXPONENT_SCALED, WALL_SENSITIVITY_SCALE,
+};
 
 pub const HARD_WALL_SCALE: u128 = 1_000_000_000_000;
 
@@ -230,7 +233,7 @@ pub fn apply_hard_wall_liquidity_factor_at_time(
         utilization_scaled,
         prop_amm_state.min_liquidation_haircut_bps,
         prop_amm_state.curve_peg_haircut_bps,
-        prop_amm_state.curve_exponent_scaled,
+        effective_curve_exponent_scaled(prop_amm_state, now)?,
     )?;
     let liquidity_factor = HARD_WALL_SCALE.saturating_sub(haircut);
     let dampened_amount = (token_out_amount as u128)
@@ -255,6 +258,7 @@ pub fn roll_prop_amm_volume_tracker(prop_amm_state: &mut PropAmmState, now: i64)
         prop_amm_state.prev_net_sell_value_stable = 0;
         prop_amm_state.curr_sell_value_stable = 0;
         prop_amm_state.curr_buy_value_stable = 0;
+        prop_amm_state.curr_sell_trade_count = 0;
         return Ok(());
     }
 
@@ -265,6 +269,7 @@ pub fn roll_prop_amm_volume_tracker(prop_amm_state: &mut PropAmmState, now: i64)
         prop_amm_state.prev_net_sell_value_stable = 0;
         prop_amm_state.curr_sell_value_stable = 0;
         prop_amm_state.curr_buy_value_stable = 0;
+        prop_amm_state.curr_sell_trade_count = 0;
         prop_amm_state.epoch_start = now;
     } else if elapsed >= epoch_duration {
         prop_amm_state.prev_net_sell_value_stable = prop_amm_state
@@ -272,6 +277,7 @@ pub fn roll_prop_amm_volume_tracker(prop_amm_state: &mut PropAmmState, now: i64)
             .saturating_sub(prop_amm_state.curr_buy_value_stable);
         prop_amm_state.curr_sell_value_stable = 0;
         prop_amm_state.curr_buy_value_stable = 0;
+        prop_amm_state.curr_sell_trade_count = 0;
         prop_amm_state.epoch_start = now;
     }
 
@@ -287,6 +293,10 @@ pub fn record_prop_amm_sell(
     prop_amm_state.curr_sell_value_stable = prop_amm_state
         .curr_sell_value_stable
         .checked_add(sell_value_stable)
+        .ok_or(crate::OnreError::MathOverflow)?;
+    prop_amm_state.curr_sell_trade_count = prop_amm_state
+        .curr_sell_trade_count
+        .checked_add(1)
         .ok_or(crate::OnreError::MathOverflow)?;
     Ok(())
 }
@@ -431,14 +441,17 @@ pub fn apply_hard_wall_reserve_curve_with_params(
         min_liquidation_haircut_bps,
         curve_peg_haircut_bps,
         curve_exponent_scaled,
+        min_cadence_exponent_scaled: DEFAULT_MIN_CADENCE_EXPONENT_SCALED,
+        cadence_threshold: DEFAULT_CADENCE_THRESHOLD,
+        cadence_sensitivity_scaled: 0,
         epoch_duration_seconds: super::config::DEFAULT_EPOCH_DURATION_SECONDS,
         wall_sensitivity_scaled: 0,
         curr_sell_value_stable: 0,
         curr_buy_value_stable: 0,
         prev_net_sell_value_stable: 0,
+        curr_sell_trade_count: 0,
         epoch_start: Clock::get().map(|clock| clock.unix_timestamp).unwrap_or(0),
         bump: 0,
-        reserved: [0; 64],
     };
     apply_hard_wall_liquidity_factor_at_time(
         token_out_amount,
@@ -501,43 +514,75 @@ fn bps_to_hard_wall_scale(bps: u16) -> Result<u128> {
 
 fn utilization_power_scaled(u: u128, exponent_scaled: u32) -> Result<u128> {
     require!(
-        exponent_scaled % (CURVE_EXPONENT_SCALE / 2) == 0,
+        exponent_scaled <= CURVE_EXPONENT_SCALE.saturating_mul(10),
         crate::OnreError::InvalidAmount
     );
-
-    let whole_exponent = exponent_scaled / CURVE_EXPONENT_SCALE;
-    let has_half_exponent = exponent_scaled % CURVE_EXPONENT_SCALE == CURVE_EXPONENT_SCALE / 2;
-    let mut value = HARD_WALL_SCALE;
-    for _ in 0..whole_exponent {
-        value = mul_scaled_saturating(value, u);
+    require!(
+        exponent_scaled % CURVE_EXPONENT_STEP == 0,
+        crate::OnreError::InvalidAmount
+    );
+    if exponent_scaled == 0 {
+        return Ok(HARD_WALL_SCALE);
     }
-    if has_half_exponent {
-        value = mul_scaled_saturating(value, sqrt_scaled(u));
+
+    let tenths = exponent_scaled / CURVE_EXPONENT_STEP;
+    let tenth_root = tenth_root_scaled(u);
+    let mut value = HARD_WALL_SCALE;
+    for _ in 0..tenths {
+        value = mul_scaled_saturating(value, tenth_root);
     }
     Ok(value)
 }
 
-fn mul_scaled_saturating(lhs: u128, rhs: u128) -> u128 {
-    lhs.saturating_mul(rhs)
-        .checked_div(HARD_WALL_SCALE)
-        .unwrap_or(u128::MAX)
+pub fn effective_curve_exponent_scaled(prop_amm_state: &PropAmmState, now: i64) -> Result<u32> {
+    let threshold = prop_amm_state.cadence_threshold;
+    require!(threshold > 0, crate::OnreError::InvalidAmount);
+
+    let quote_trade_count = preview_current_sell_trade_count(prop_amm_state, now)?;
+    let raw_reduction = (prop_amm_state.cadence_sensitivity_scaled as u128)
+        .checked_mul(quote_trade_count as u128)
+        .ok_or(crate::OnreError::MathOverflow)?
+        .checked_div(threshold as u128)
+        .ok_or(crate::OnreError::DivByZero)?;
+    let reduction =
+        raw_reduction.saturating_div(CURVE_EXPONENT_STEP as u128) * CURVE_EXPONENT_STEP as u128;
+    require!(
+        reduction <= u32::MAX as u128,
+        crate::OnreError::MathOverflow
+    );
+    Ok(prop_amm_state
+        .curve_exponent_scaled
+        .saturating_sub(reduction as u32)
+        .max(prop_amm_state.min_cadence_exponent_scaled))
 }
 
-fn sqrt_scaled(value: u128) -> u128 {
-    integer_sqrt(value).saturating_mul(1_000_000)
+fn preview_current_sell_trade_count(prop_amm_state: &PropAmmState, now: i64) -> Result<u32> {
+    let epoch_duration = prop_amm_state.epoch_duration_seconds;
+    require!(epoch_duration > 0, crate::OnreError::InvalidAmount);
+
+    if prop_amm_state.epoch_start == 0 || now < prop_amm_state.epoch_start {
+        return Ok(0);
+    }
+    let elapsed = now
+        .checked_sub(prop_amm_state.epoch_start)
+        .ok_or(crate::OnreError::ArithmeticUnderflow)?;
+    if elapsed >= epoch_duration {
+        return Ok(0);
+    }
+    Ok(prop_amm_state.curr_sell_trade_count)
 }
 
-fn integer_sqrt(value: u128) -> u128 {
-    if value < 2 {
+fn tenth_root_scaled(value: u128) -> u128 {
+    if value <= 1 {
         return value;
     }
 
     let mut left = 1_u128;
-    let mut right = value.min(u64::MAX as u128);
+    let mut right = value.max(HARD_WALL_SCALE);
     let mut answer = 1_u128;
     while left <= right {
         let mid = left + (right - left) / 2;
-        if mid <= value / mid {
+        if pow_scaled_lte(mid, 10, value) {
             answer = mid;
             left = mid + 1;
         } else {
@@ -545,6 +590,20 @@ fn integer_sqrt(value: u128) -> u128 {
         }
     }
     answer
+}
+
+fn pow_scaled_lte(base: u128, exponent: u32, limit: u128) -> bool {
+    let mut value = HARD_WALL_SCALE;
+    for _ in 0..exponent {
+        value = mul_scaled_saturating(value, base);
+    }
+    value <= limit
+}
+
+fn mul_scaled_saturating(lhs: u128, rhs: u128) -> u128 {
+    lhs.saturating_mul(rhs)
+        .checked_div(HARD_WALL_SCALE)
+        .unwrap_or(u128::MAX)
 }
 
 pub fn build_swap_buy_quote(

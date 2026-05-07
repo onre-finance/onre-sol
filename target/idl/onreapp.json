@@ -1322,6 +1322,18 @@
           "type": "u32"
         },
         {
+          "name": "min_cadence_exponent_scaled",
+          "type": "u32"
+        },
+        {
+          "name": "cadence_threshold",
+          "type": "u32"
+        },
+        {
+          "name": "cadence_sensitivity_scaled",
+          "type": "u32"
+        },
+        {
           "name": "epoch_duration_seconds",
           "type": "i64"
         },
@@ -13388,6 +13400,30 @@
             "type": "u32"
           },
           {
+            "name": "old_min_cadence_exponent_scaled",
+            "type": "u32"
+          },
+          {
+            "name": "new_min_cadence_exponent_scaled",
+            "type": "u32"
+          },
+          {
+            "name": "old_cadence_threshold",
+            "type": "u32"
+          },
+          {
+            "name": "new_cadence_threshold",
+            "type": "u32"
+          },
+          {
+            "name": "old_cadence_sensitivity_scaled",
+            "type": "u32"
+          },
+          {
+            "name": "new_cadence_sensitivity_scaled",
+            "type": "u32"
+          },
+          {
             "name": "old_epoch_duration_seconds",
             "type": "i64"
           },
@@ -13428,6 +13464,18 @@
             "type": "u32"
           },
           {
+            "name": "min_cadence_exponent_scaled",
+            "type": "u32"
+          },
+          {
+            "name": "cadence_threshold",
+            "type": "u32"
+          },
+          {
+            "name": "cadence_sensitivity_scaled",
+            "type": "u32"
+          },
+          {
             "name": "epoch_duration_seconds",
             "type": "i64"
           },
@@ -13448,21 +13496,16 @@
             "type": "u64"
           },
           {
+            "name": "curr_sell_trade_count",
+            "type": "u32"
+          },
+          {
             "name": "epoch_start",
             "type": "i64"
           },
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "reserved",
-            "type": {
-              "array": [
-                "u8",
-                64
-              ]
-            }
           }
         ]
       }

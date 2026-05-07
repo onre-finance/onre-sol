@@ -4,7 +4,8 @@ use anchor_lang::AnchorDeserialize;
 use common::*;
 use onreapp::instructions::prop_amm::{
     apply_hard_wall_liquidity_factor_at_time, apply_hard_wall_reserve_curve_with_params,
-    dynamic_wall_position, preview_effective_sell_volume, PropAmmState, SwapQuote,
+    dynamic_wall_position, effective_curve_exponent_scaled, preview_effective_sell_volume,
+    PropAmmState, SwapQuote,
 };
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
@@ -127,14 +128,17 @@ fn test_hard_wall_curve_allows_zero_output_at_actual_vault_limit() {
         min_liquidation_haircut_bps: 50,
         curve_peg_haircut_bps: 700,
         curve_exponent_scaled: 25_000,
+        min_cadence_exponent_scaled: 1_000,
+        cadence_threshold: 20,
+        cadence_sensitivity_scaled: 10_000,
         epoch_duration_seconds: 86_400,
         wall_sensitivity_scaled: 20_000,
         curr_sell_value_stable: 0,
         curr_buy_value_stable: 0,
         prev_net_sell_value_stable: 0,
+        curr_sell_trade_count: 0,
         epoch_start: 1,
         bump: 0,
-        reserved: [0; 64],
     };
     let output =
         apply_hard_wall_liquidity_factor_at_time(10_000_000, 10_000_000, 10_000_000, &state, 1)
@@ -159,14 +163,17 @@ fn test_dynamic_wall_preview_includes_current_sell_and_buy_relief() {
         min_liquidation_haircut_bps: 50,
         curve_peg_haircut_bps: 700,
         curve_exponent_scaled: 25_000,
+        min_cadence_exponent_scaled: 1_000,
+        cadence_threshold: 20,
+        cadence_sensitivity_scaled: 10_000,
         epoch_duration_seconds: 86_400,
         wall_sensitivity_scaled: 20_000,
         curr_sell_value_stable: 500,
         curr_buy_value_stable: 100,
         prev_net_sell_value_stable: 1_000,
+        curr_sell_trade_count: 0,
         epoch_start: 1_000,
         bump: 0,
-        reserved: [0; 64],
     };
 
     let effective = preview_effective_sell_volume(&state, 200, 44_200).unwrap();
@@ -187,6 +194,73 @@ fn test_dynamic_wall_position_uses_effective_sell_pressure() {
         dynamic_wall_position(15_000_000, 30_000_000, 20_000).unwrap(),
         3_000_000
     );
+}
+
+#[test]
+fn test_cadence_lowers_effective_curve_exponent() {
+    let state = PropAmmState {
+        pool_target_bps: 1_500,
+        min_liquidation_haircut_bps: 50,
+        curve_peg_haircut_bps: 7_000,
+        curve_exponent_scaled: 25_000,
+        min_cadence_exponent_scaled: 1_000,
+        cadence_threshold: 20,
+        cadence_sensitivity_scaled: 10_000,
+        epoch_duration_seconds: 86_400,
+        wall_sensitivity_scaled: 20_000,
+        curr_sell_value_stable: 0,
+        curr_buy_value_stable: 0,
+        prev_net_sell_value_stable: 0,
+        curr_sell_trade_count: 0,
+        epoch_start: 1,
+        bump: 0,
+    };
+    let mut high_cadence = state.clone();
+    high_cadence.curr_sell_trade_count = 49;
+    let mut threshold_cadence = state.clone();
+    threshold_cadence.curr_sell_trade_count = 20;
+
+    assert_eq!(effective_curve_exponent_scaled(&state, 1).unwrap(), 25_000);
+    assert_eq!(
+        effective_curve_exponent_scaled(&threshold_cadence, 1).unwrap(),
+        15_000
+    );
+    assert_eq!(
+        effective_curve_exponent_scaled(&high_cadence, 1).unwrap(),
+        1_000
+    );
+}
+
+#[test]
+fn test_cadence_penalizes_small_split_sells() {
+    let state = PropAmmState {
+        pool_target_bps: 1_500,
+        min_liquidation_haircut_bps: 50,
+        curve_peg_haircut_bps: 7_000,
+        curve_exponent_scaled: 25_000,
+        min_cadence_exponent_scaled: 1_000,
+        cadence_threshold: 20,
+        cadence_sensitivity_scaled: 10_000,
+        epoch_duration_seconds: 86_400,
+        wall_sensitivity_scaled: 0,
+        curr_sell_value_stable: 0,
+        curr_buy_value_stable: 0,
+        prev_net_sell_value_stable: 0,
+        curr_sell_trade_count: 0,
+        epoch_start: 1,
+        bump: 0,
+    };
+    let mut high_cadence = state.clone();
+    high_cadence.curr_sell_trade_count = 49;
+
+    let low_cadence_output =
+        apply_hard_wall_liquidity_factor_at_time(100_000, 10_000_000, 10_000_000, &state, 1)
+            .unwrap();
+    let high_cadence_output =
+        apply_hard_wall_liquidity_factor_at_time(100_000, 10_000_000, 10_000_000, &high_cadence, 1)
+            .unwrap();
+
+    assert!(high_cadence_output < low_cadence_output);
 }
 
 #[test]
@@ -259,7 +333,7 @@ fn test_dynamic_wall_accumulates_sell_pressure_and_buys_relieve_it() {
     let ix = build_refresh_market_stats_ix(&boss, &ctx.usdc_mint, &ctx.onyc_mint);
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
-    let sell_amount = 1_000_000_000_000;
+    let sell_amount = 2_000_000_000_000;
     let quote_ix = build_quote_swap_ix(&ctx.onyc_mint, &ctx.onyc_mint, &ctx.usdc_mint, sell_amount);
     let quote_metadata = send_tx(&mut ctx.svm, &[quote_ix], &[&ctx.payer]).unwrap();
     let first_quote = SwapQuote::try_from_slice(get_return_data(&quote_metadata)).unwrap();
