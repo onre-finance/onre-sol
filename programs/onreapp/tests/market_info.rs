@@ -308,12 +308,13 @@ fn test_get_apy_fails_no_active_vector() {
 
 #[test]
 fn test_refresh_market_stats_permissionless_creates_and_updates_pda() {
-    let (mut svm, _payer, token_in, onyc_mint) =
+    let (mut svm, payer, token_in, onyc_mint) =
         setup_onyc_offer_with_supply(36_500, 1_000_000_000, 86_400, 5_000_000_000, 2_000_000_000);
     let caller = Keypair::new();
     svm.airdrop(&caller.pubkey(), INITIAL_LAMPORTS).unwrap();
 
-    let ix = build_refresh_market_stats_ix(&caller.pubkey(), &token_in, &onyc_mint);
+    let ix =
+        build_refresh_market_stats_ix(&caller.pubkey(), &payer.pubkey(), &token_in, &onyc_mint);
     send_tx(&mut svm, &[ix], &[&caller]).unwrap();
 
     let market_stats = read_market_stats(&svm);
@@ -332,7 +333,7 @@ fn test_refresh_market_stats_succeeds_without_recent_purchases() {
     let (mut svm, payer, token_in, onyc_mint) =
         setup_onyc_offer_with_supply(0, 1_000_000_000, 86_400, 7_000_000_000, 1_500_000_000);
 
-    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &onyc_mint);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &payer.pubkey(), &token_in, &onyc_mint);
     send_tx(&mut svm, &[ix.clone()], &[&payer]).unwrap();
     let initial = read_market_stats(&svm);
 
@@ -465,7 +466,7 @@ fn test_get_tvl_success() {
     mint_data.data[36..44].copy_from_slice(&1_000_000_000_000u64.to_le_bytes()); // 1000 tokens
     svm.set_account(token_out, mint_data).unwrap();
 
-    let ix = build_get_tvl_ix(&token_in, &token_out);
+    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let tvl = get_return_u64(&result);
 
@@ -493,7 +494,7 @@ fn test_get_tvl_fails_no_active_vector() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_get_tvl_ix(&token_in, &token_out);
+    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(result.is_err(), "should fail with no active vector");
 }
@@ -511,7 +512,7 @@ fn test_get_circulating_supply_no_vault() {
     mint_data.data[36..44].copy_from_slice(&500_000_000_000u64.to_le_bytes()); // 500 tokens
     svm.set_account(onyc_mint, mint_data).unwrap();
 
-    let ix = build_get_circulating_supply_ix(&onyc_mint);
+    let ix = build_get_circulating_supply_ix(&payer.pubkey(), &onyc_mint);
     let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let supply = get_return_u64(&result);
 
@@ -533,12 +534,12 @@ fn test_get_circulating_supply_with_vault() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_get_circulating_supply_ix(&onyc_mint);
+    let ix = build_get_circulating_supply_ix(&payer.pubkey(), &onyc_mint);
     let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let supply = get_return_u64(&result);
 
-    // circulating = total - vault = 1000e9 - 200e9 = 800e9
-    assert_eq!(supply, 800_000_000_000);
+    // circulating = total - (vault + boss ONyc) = 1000e9 - (200e9 + 300e9) = 500e9
+    assert_eq!(supply, 500_000_000_000);
 }
 
 // ---------------------------------------------------------------------------
@@ -799,7 +800,7 @@ fn test_get_tvl_different_price() {
     mint_data.data[36..44].copy_from_slice(&1_000_000_000_000u64.to_le_bytes());
     svm.set_account(token_out, mint_data).unwrap();
 
-    let ix = build_get_tvl_ix(&token_in, &token_out);
+    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let tvl = get_return_u64(&result);
 
@@ -846,14 +847,14 @@ fn test_get_tvl_after_time_advancement() {
     mint_data.data[36..44].copy_from_slice(&1_000_000_000_000u64.to_le_bytes());
     svm.set_account(token_out, mint_data).unwrap();
 
-    let ix = build_get_tvl_ix(&token_in, &token_out);
+    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
     let result1 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let tvl1 = get_return_u64(&result1);
 
     // Advance 1 day
     advance_clock_by(&mut svm, 86400);
 
-    let ix = build_get_tvl_ix(&token_in, &token_out);
+    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
     let result2 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let tvl2 = get_return_u64(&result2);
 
@@ -1039,8 +1040,11 @@ fn test_get_circulating_supply_token2022() {
     mint_data.data[36..44].copy_from_slice(&500_000_000_000u64.to_le_bytes());
     svm.set_account(token2022_mint, mint_data).unwrap();
 
-    let ix =
-        build_get_circulating_supply_ix_with_token_program(&token2022_mint, &TOKEN_2022_PROGRAM_ID);
+    let ix = build_get_circulating_supply_ix_with_token_program(
+        &payer.pubkey(),
+        &token2022_mint,
+        &TOKEN_2022_PROGRAM_ID,
+    );
     let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let supply = get_return_u64(&result);
 
@@ -1398,7 +1402,7 @@ fn test_get_tvl_zero_apr() {
     mint_data.data[36..44].copy_from_slice(&1_000_000_000_000u64.to_le_bytes()); // 1000 tokens
     svm.set_account(token_out, mint_data).unwrap();
 
-    let ix = build_get_tvl_ix(&token_in, &token_out);
+    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let tvl = get_return_u64(&result);
 
@@ -1427,14 +1431,14 @@ fn test_get_tvl_fails_nonexistent_offer() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_get_tvl_ix(&wrong_mint, &token_out);
+    let ix = build_get_tvl_ix(&payer.pubkey(), &wrong_mint, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(
         result.is_err(),
         "should fail with non-existent offer (wrong token_in)"
     );
 
-    let ix = build_get_tvl_ix(&token_in, &wrong_mint);
+    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &wrong_mint);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(
         result.is_err(),
@@ -1476,7 +1480,7 @@ fn test_get_tvl_fails_all_vectors_future() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_get_tvl_ix(&token_in, &token_out);
+    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(
         result.is_err(),
@@ -1491,7 +1495,7 @@ fn test_get_tvl_wrong_token_out_mint() {
 
     let wrong_mint = create_mint(&mut svm, &payer, 9, &boss);
 
-    let ix = build_get_tvl_ix(&token_in, &wrong_mint);
+    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &wrong_mint);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(result.is_err(), "should fail with wrong token_out_mint");
 }
@@ -1553,7 +1557,7 @@ fn test_get_tvl_multiple_vectors_uses_most_recent() {
     mint_data.data[36..44].copy_from_slice(&1_000_000_000_000u64.to_le_bytes());
     svm.set_account(token_out, mint_data).unwrap();
 
-    let ix = build_get_tvl_ix(&token_in, &token_out);
+    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let tvl = get_return_u64(&result);
 
@@ -1600,7 +1604,12 @@ fn test_get_tvl_token2022() {
     mint_data.data[36..44].copy_from_slice(&1_000_000_000_000u64.to_le_bytes());
     svm.set_account(token_out, mint_data).unwrap();
 
-    let ix = build_get_tvl_ix_with_token_program(&token_in, &token_out, &TOKEN_2022_PROGRAM_ID);
+    let ix = build_get_tvl_ix_with_token_program(
+        &payer.pubkey(),
+        &token_in,
+        &token_out,
+        &TOKEN_2022_PROGRAM_ID,
+    );
     let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let tvl = get_return_u64(&result);
 
@@ -1839,7 +1848,7 @@ fn test_get_tvl_large_supply() {
     mint_data.data[36..44].copy_from_slice(&large_supply.to_le_bytes());
     svm.set_account(token_out, mint_data).unwrap();
 
-    let ix = build_get_tvl_ix(&token_in, &token_out);
+    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let tvl = get_return_u64(&result);
 
@@ -1860,13 +1869,13 @@ fn test_get_tvl_consistent_results() {
     mint_data.data[36..44].copy_from_slice(&1_000_000_000_000u64.to_le_bytes());
     svm.set_account(token_out, mint_data).unwrap();
 
-    let ix = build_get_tvl_ix(&token_in, &token_out);
+    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
     let result1 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let tvl1 = get_return_u64(&result1);
 
     advance_slot(&mut svm);
 
-    let ix = build_get_tvl_ix(&token_in, &token_out);
+    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
     let result2 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let tvl2 = get_return_u64(&result2);
 
@@ -1890,7 +1899,7 @@ fn test_get_circulating_supply_zero_vault_balance() {
     let (vault_authority_pda, _) = find_offer_vault_authority_pda();
     create_token_account(&mut svm, &onyc_mint, &vault_authority_pda, 0);
 
-    let ix = build_get_circulating_supply_ix(&onyc_mint);
+    let ix = build_get_circulating_supply_ix(&payer.pubkey(), &onyc_mint);
     let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let supply = get_return_u64(&result);
 
@@ -1910,13 +1919,13 @@ fn test_get_circulating_supply_consistent_results() {
     mint_data.data[36..44].copy_from_slice(&500_000_000_000u64.to_le_bytes());
     svm.set_account(onyc_mint, mint_data).unwrap();
 
-    let ix = build_get_circulating_supply_ix(&onyc_mint);
+    let ix = build_get_circulating_supply_ix(&payer.pubkey(), &onyc_mint);
     let result1 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let supply1 = get_return_u64(&result1);
 
     advance_slot(&mut svm);
 
-    let ix = build_get_circulating_supply_ix(&onyc_mint);
+    let ix = build_get_circulating_supply_ix(&payer.pubkey(), &onyc_mint);
     let result2 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let supply2 = get_return_u64(&result2);
 

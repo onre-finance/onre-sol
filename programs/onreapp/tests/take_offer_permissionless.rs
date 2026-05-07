@@ -607,7 +607,12 @@ fn test_take_offer_permissionless_v2_accrues_buffer_and_refreshes_market_stats()
             &TOKEN_PROGRAM_ID,
         ),
     );
-    let expected_circulating_supply = post_trade_supply - vault_token_out_balance;
+    let boss_onyc_balance = get_token_balance(
+        &ctx.svm,
+        &get_associated_token_address(&ctx.payer.pubkey(), &ctx.onyc_mint),
+    );
+    let expected_circulating_supply =
+        post_trade_supply - (vault_token_out_balance + boss_onyc_balance);
     assert_eq!(market_stats.nav, 1_000_000_000);
     assert_eq!(market_stats.circulating_supply, expected_circulating_supply);
     assert_eq!(market_stats.tvl, expected_circulating_supply);

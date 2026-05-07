@@ -53,6 +53,18 @@ pub struct RefreshMarketStats<'info> {
     )]
     pub onyc_vault_account: UncheckedAccount<'info>,
 
+    /// Boss ONyc ATA included in circulating supply.
+    /// CHECK: Address is validated against the boss ONyc ATA and may be uninitialized.
+    #[account(
+        constraint = boss_onyc_account.key()
+            == get_associated_token_address_with_program_id(
+                &state.boss,
+                &onyc_mint.key(),
+                &token_program.key(),
+            ) @ crate::OnreError::InvalidBossTokenInAccount
+    )]
+    pub boss_onyc_account: UncheckedAccount<'info>,
+
     /// Token program that owns the ONyc mint and vault ATA.
     pub token_program: Interface<'info, TokenInterface>,
 
@@ -95,6 +107,7 @@ pub fn refresh_market_stats(ctx: Context<RefreshMarketStats>) -> Result<()> {
         &main_offer,
         &ctx.accounts.onyc_mint,
         &ctx.accounts.onyc_vault_account.to_account_info(),
+        &ctx.accounts.boss_onyc_account.to_account_info(),
         &ctx.accounts.token_program,
     )?;
 

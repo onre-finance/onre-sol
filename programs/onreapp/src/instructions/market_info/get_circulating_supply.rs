@@ -19,6 +19,8 @@ pub struct GetCirculatingSupplyEvent {
     pub total_supply: u64,
     /// Vault token amount excluded from circulation in base units
     pub vault_amount: u64,
+    /// Boss ONyc token amount included in circulation in base units
+    pub boss_onyc_amount: u64,
     /// Unix timestamp when the calculation was performed
     pub timestamp: u64,
 }
@@ -58,6 +60,18 @@ pub struct GetCirculatingSupply<'info> {
     )]
     pub onyc_vault_account: UncheckedAccount<'info>,
 
+    /// Boss ONyc account to include in circulating supply.
+    /// CHECK: Address is validated against the boss ONyc ATA and may be uninitialized.
+    #[account(
+        constraint = boss_onyc_account.key()
+            == get_associated_token_address_with_program_id(
+                &state.boss,
+                &state.onyc_mint.key(),
+                &token_program.key(),
+            ) @ crate::OnreError::InvalidBossTokenInAccount
+    )]
+    pub boss_onyc_account: UncheckedAccount<'info>,
+
     /// SPL Token program for account validation
     pub token_program: Interface<'info, TokenInterface>,
 }
@@ -89,18 +103,24 @@ pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64>
         &ctx.accounts.onyc_vault_account,
         &ctx.accounts.token_program,
     )?;
+    let boss_onyc_amount = read_optional_token_account_amount(
+        &ctx.accounts.boss_onyc_account,
+        &ctx.accounts.token_program,
+    )?;
 
     // Get total supply
     let total_supply = ctx.accounts.onyc_mint.supply;
 
     // Calculate circulating supply = total supply - vault amount
-    let circulating_supply = calculate_circulating_supply(total_supply, vault_token_out_amount);
+    let circulating_supply =
+        calculate_circulating_supply(total_supply, vault_token_out_amount, boss_onyc_amount);
 
     msg!(
-        "Circulating Supply Info - Circulating Supply: {}, Total Supply: {}, Vault Amount: {}, Timestamp: {}",
+        "Circulating Supply Info - Circulating Supply: {}, Total Supply: {}, Vault Amount: {}, Boss ONyc Amount: {}, Timestamp: {}",
         circulating_supply,
         total_supply,
         vault_token_out_amount,
+        boss_onyc_amount,
         current_time
     );
 
@@ -108,6 +128,7 @@ pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64>
         circulating_supply,
         total_supply,
         vault_amount: vault_token_out_amount,
+        boss_onyc_amount,
         timestamp: current_time,
     });
 

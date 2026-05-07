@@ -592,6 +592,7 @@ fn execute_fulfill_redemption_request(
             &main_offer,
             params.token_in_mint,
             &params.offer_vault_onyc_account.to_account_info(),
+            &params.boss_token_in_account.to_account_info(),
             params.token_in_program,
             &params.market_stats.to_account_info(),
             &params.redemption_admin.to_account_info(),

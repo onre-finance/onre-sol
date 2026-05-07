@@ -308,6 +308,7 @@ fn execute_open_swap_sell<'info>(
         &main_offer,
         &ctx.accounts.token_in_mint,
         &offer_vault_onyc_account.to_account_info(),
+        &boss_token_in_account.to_account_info(),
         &ctx.accounts.token_in_program,
         &ctx.accounts.market_stats.to_account_info(),
         &ctx.accounts.user.to_account_info(),

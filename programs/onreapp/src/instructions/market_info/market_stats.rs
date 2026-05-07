@@ -63,6 +63,7 @@ pub fn recompute_market_stats(
     offer: &Offer,
     onyc_mint: &InterfaceAccount<Mint>,
     onyc_vault_account: &AccountInfo,
+    boss_onyc_account: &AccountInfo,
     token_program: &Interface<TokenInterface>,
 ) -> Result<MarketStatsSnapshot> {
     require_keys_eq!(
@@ -77,7 +78,9 @@ pub fn recompute_market_stats(
     let nav_adjustment = calculate_nav_adjustment(offer, active_vector)?;
 
     let vault_amount = read_optional_token_account_amount(onyc_vault_account, token_program)?;
-    let circulating_supply = calculate_circulating_supply(onyc_mint.supply, vault_amount);
+    let boss_onyc_amount = read_optional_token_account_amount(boss_onyc_account, token_program)?;
+    let circulating_supply =
+        calculate_circulating_supply(onyc_mint.supply, vault_amount, boss_onyc_amount);
     let tvl = calculate_tvl(circulating_supply, nav)?;
 
     Ok(MarketStatsSnapshot {
@@ -103,11 +106,18 @@ pub fn refresh_market_stats_typed(
     offer: &Offer,
     onyc_mint: &InterfaceAccount<Mint>,
     onyc_vault_account: &AccountInfo,
+    boss_onyc_account: &AccountInfo,
     token_program: &Interface<TokenInterface>,
     market_stats: &mut MarketStats,
     bump: u8,
 ) -> Result<()> {
-    let snapshot = recompute_market_stats(offer, onyc_mint, onyc_vault_account, token_program)?;
+    let snapshot = recompute_market_stats(
+        offer,
+        onyc_mint,
+        onyc_vault_account,
+        boss_onyc_account,
+        token_program,
+    )?;
     market_stats.bump = bump;
     update_market_stats_account(market_stats, snapshot)
 }
@@ -116,13 +126,20 @@ pub fn refresh_market_stats_pda<'info>(
     offer: &Offer,
     onyc_mint: &InterfaceAccount<'info, Mint>,
     onyc_vault_account: &AccountInfo<'info>,
+    boss_onyc_account: &AccountInfo<'info>,
     token_program: &Interface<'info, TokenInterface>,
     market_stats_account: &AccountInfo<'info>,
     payer: &AccountInfo<'info>,
     system_program: &AccountInfo<'info>,
     program_id: &Pubkey,
 ) -> Result<()> {
-    let snapshot = recompute_market_stats(offer, onyc_mint, onyc_vault_account, token_program)?;
+    let snapshot = recompute_market_stats(
+        offer,
+        onyc_mint,
+        onyc_vault_account,
+        boss_onyc_account,
+        token_program,
+    )?;
     let (market_stats_pda, market_stats_bump) =
         Pubkey::find_program_address(&[seeds::MARKET_STATS], program_id);
     require_keys_eq!(
@@ -208,10 +225,18 @@ pub fn calculate_tvl(circulating_supply: u64, nav: u64) -> Result<u64> {
         .ok_or_else(|| error!(crate::OnreError::Overflow))
 }
 
-pub fn calculate_circulating_supply(total_supply: u64, vault_amount: u64) -> u64 {
+pub fn calculate_circulating_supply(
+    total_supply: u64,
+    vault_amount: u64,
+    boss_onyc_amount: u64,
+) -> u64 {
     total_supply
-        .checked_sub(vault_amount)
-        .expect("circulating supply underflow: vault exceeds total supply")
+        .checked_sub(
+            vault_amount
+                .checked_add(boss_onyc_amount)
+                .expect("circulating supply overflow: excluded balances exceed u64"),
+        )
+        .expect("circulating supply underflow: excluded balances exceed total supply")
 }
 
 #[cfg(test)]
@@ -400,14 +425,36 @@ mod tests {
 
     #[test]
     fn circulating_supply_matches_programv4_subtraction() {
-        let circulating_supply = calculate_circulating_supply(1_000_000_000, 250_000_000);
+        let circulating_supply = calculate_circulating_supply(1_000_000_000, 250_000_000, 0);
         assert_eq!(circulating_supply, 750_000_000);
+    }
+
+    #[test]
+    fn circulating_supply_subtracts_boss_onyc_account() {
+        let circulating_supply =
+            calculate_circulating_supply(1_000_000_000, 250_000_000, 100_000_000);
+        assert_eq!(circulating_supply, 650_000_000);
+    }
+
+    #[test]
+    fn circulating_supply_subtracts_boss_onyc_account_for_varied_values() {
+        for (total_supply, vault_amount, boss_onyc_amount, expected) in [
+            (10_000, 0, 0, 10_000),
+            (10_000, 1_000, 250, 8_750),
+            (5_000_000_000, 2_000_000_000, 1, 2_999_999_999),
+            (u64::MAX, 5, 15, u64::MAX - 20),
+        ] {
+            assert_eq!(
+                calculate_circulating_supply(total_supply, vault_amount, boss_onyc_amount),
+                expected
+            );
+        }
     }
 
     #[test]
     #[should_panic]
     fn circulating_supply_does_not_saturate_underflow() {
-        let _ = calculate_circulating_supply(1, 2);
+        let _ = calculate_circulating_supply(1, 2, 0);
     }
 
     #[test]

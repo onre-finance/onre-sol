@@ -502,6 +502,9 @@ export type Onreapp = {
           "writable": true
         },
         {
+          "name": "bossOnycAccount"
+        },
+        {
           "name": "managementFeeVaultAuthority",
           "pda": {
             "seeds": [
@@ -2570,6 +2573,12 @@ export type Onreapp = {
           ]
         },
         {
+          "name": "bossOnycAccount",
+          "docs": [
+            "Boss ONyc account to include in circulating supply."
+          ]
+        },
+        {
           "name": "tokenProgram",
           "docs": [
             "SPL Token program for account validation"
@@ -2801,6 +2810,26 @@ export type Onreapp = {
           ]
         },
         {
+          "name": "state",
+          "docs": [
+            "Program state holding the canonical boss and ONyc mint."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "vaultAuthority",
           "docs": [
             "The vault authority PDA that controls vault token accounts"
@@ -2844,6 +2873,12 @@ export type Onreapp = {
             "This account holds tokens that should not be included in TVL calculations.",
             "The account address is validated to match the expected ATA address",
             "and can be uninitialized (treated as zero balance)."
+          ]
+        },
+        {
+          "name": "bossOnycAccount",
+          "docs": [
+            "Boss ONyc account to include in circulating supply."
           ]
         },
         {
@@ -5001,6 +5036,9 @@ export type Onreapp = {
           "writable": true
         },
         {
+          "name": "bossOnycAccount"
+        },
+        {
           "name": "permissionlessAuthority"
         },
         {
@@ -6256,6 +6294,12 @@ export type Onreapp = {
           ]
         },
         {
+          "name": "bossOnycAccount",
+          "docs": [
+            "Boss ONyc ATA included in circulating supply."
+          ]
+        },
+        {
           "name": "tokenProgram",
           "docs": [
             "Token program that owns the ONyc mint and vault ATA."
@@ -6517,6 +6561,9 @@ export type Onreapp = {
           "name": "vaultTokenOutAccount"
         },
         {
+          "name": "bossOnycAccount"
+        },
+        {
           "name": "mintAuthority",
           "pda": {
             "seeds": [
@@ -6681,6 +6728,9 @@ export type Onreapp = {
         },
         {
           "name": "vaultTokenOutAccount"
+        },
+        {
+          "name": "bossOnycAccount"
         },
         {
           "name": "mintAuthority",
@@ -8420,6 +8470,9 @@ export type Onreapp = {
           "writable": true
         },
         {
+          "name": "bossOnycAccount"
+        },
+        {
           "name": "mintAuthority"
         },
         {
@@ -8794,6 +8847,9 @@ export type Onreapp = {
               ]
             }
           }
+        },
+        {
+          "name": "bossOnycAccount"
         },
         {
           "name": "mintAuthority"
@@ -12290,6 +12346,13 @@ export type Onreapp = {
             "name": "vaultAmount",
             "docs": [
               "Vault token amount excluded from circulation in base units"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bossOnycAmount",
+            "docs": [
+              "Boss ONyc token amount included in circulation in base units"
             ],
             "type": "u64"
           },

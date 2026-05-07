@@ -61,6 +61,17 @@ pub struct BurnForNavIncrease<'info> {
     #[account(mut)]
     pub reserve_vault_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
+    /// CHECK: Address is validated against the boss ONyc ATA and may be uninitialized.
+    #[account(
+        constraint = boss_onyc_account.key()
+            == get_associated_token_address_with_program_id(
+                &boss.key(),
+                &onyc_mint.key(),
+                &token_program.key(),
+            ) @ crate::OnreError::InvalidBossTokenInAccount
+    )]
+    pub boss_onyc_account: UncheckedAccount<'info>,
+
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
         seeds = [seeds::MANAGEMENT_FEE_VAULT_AUTHORITY],
@@ -170,8 +181,14 @@ pub fn burn_for_nav_increase(
         &ctx.accounts.vault_token_out_account,
         &ctx.accounts.token_program,
     )?;
-    let circulating_supply =
-        calculate_circulating_supply(post_accrual_supply, vault_token_out_amount);
+    let circulating_supply = calculate_circulating_supply(
+        post_accrual_supply,
+        vault_token_out_amount,
+        read_optional_token_account_amount(
+            &ctx.accounts.boss_onyc_account,
+            &ctx.accounts.token_program,
+        )?,
+    );
     // This path burns supply to preserve the current quoted NAV after reducing the
     // effective asset base by `asset_adjustment_amount`.
     let total_assets_before_burn = calculate_tvl(circulating_supply, current_nav)
@@ -212,6 +229,7 @@ pub fn burn_for_nav_increase(
         &main_offer,
         &ctx.accounts.onyc_mint,
         &ctx.accounts.vault_token_out_account.to_account_info(),
+        &ctx.accounts.boss_onyc_account.to_account_info(),
         &ctx.accounts.token_program,
         &ctx.accounts.market_stats.to_account_info(),
         &ctx.accounts.boss.to_account_info(),
@@ -284,7 +302,7 @@ mod tests {
     fn burn_amount_uses_circulating_supply_basis() {
         let total_supply = 1_100;
         let vault_supply = 100;
-        let circulating_supply = calculate_circulating_supply(total_supply, vault_supply);
+        let circulating_supply = calculate_circulating_supply(total_supply, vault_supply, 0);
 
         let burn_amount = calculate_burn_amount(circulating_supply, 100, NAV_1_0, NAV_1_1).unwrap();
         let total_supply_based_burn = (total_supply as u128).checked_sub(819).unwrap() as u64;

@@ -4,6 +4,7 @@ use crate::instructions::market_info::market_stats::{
 };
 use crate::instructions::market_info::offer_valuation_utils::get_active_vector_and_current_price;
 use crate::instructions::Offer;
+use crate::state::State;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 
 use crate::utils::read_optional_token_account_amount;
@@ -65,6 +66,10 @@ pub struct GetTVL<'info> {
     )]
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 
+    /// Program state holding the canonical boss and ONyc mint.
+    #[account(seeds = [seeds::STATE], bump = state.bump)]
+    pub state: Box<Account<'info, State>>,
+
     /// The vault authority PDA that controls vault token accounts
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
@@ -85,6 +90,18 @@ pub struct GetTVL<'info> {
             ) @ crate::OnreError::InvalidVaultAccount
     )]
     pub vault_token_out_account: UncheckedAccount<'info>,
+
+    /// Boss ONyc account to include in circulating supply.
+    /// CHECK: Address is validated against the boss token_out ATA and may be uninitialized.
+    #[account(
+        constraint = boss_onyc_account.key()
+            == get_associated_token_address_with_program_id(
+                &state.boss,
+                &token_out_mint.key(),
+                &token_out_program.key(),
+            ) @ crate::OnreError::InvalidBossTokenInAccount
+    )]
+    pub boss_onyc_account: UncheckedAccount<'info>,
 
     /// SPL Token program for vault account validation
     pub token_out_program: Interface<'info, TokenInterface>,
@@ -122,10 +139,17 @@ pub fn get_tvl(ctx: Context<GetTVL>) -> Result<u64> {
         &ctx.accounts.vault_token_out_account,
         &ctx.accounts.token_out_program,
     )?;
+    let boss_onyc_amount = read_optional_token_account_amount(
+        &ctx.accounts.boss_onyc_account,
+        &ctx.accounts.token_out_program,
+    )?;
 
     // Get token supply
-    let token_supply =
-        calculate_circulating_supply(ctx.accounts.token_out_mint.supply, vault_token_out_amount);
+    let token_supply = calculate_circulating_supply(
+        ctx.accounts.token_out_mint.supply,
+        vault_token_out_amount,
+        boss_onyc_amount,
+    );
 
     // Calculate TVL = supply * price
     // Both supply and price should be compatible for multiplication

@@ -496,6 +496,9 @@
           "writable": true
         },
         {
+          "name": "boss_onyc_account"
+        },
+        {
           "name": "management_fee_vault_authority",
           "pda": {
             "seeds": [
@@ -2564,6 +2567,12 @@
           ]
         },
         {
+          "name": "boss_onyc_account",
+          "docs": [
+            "Boss ONyc account to include in circulating supply."
+          ]
+        },
+        {
           "name": "token_program",
           "docs": [
             "SPL Token program for account validation"
@@ -2795,6 +2804,26 @@
           ]
         },
         {
+          "name": "state",
+          "docs": [
+            "Program state holding the canonical boss and ONyc mint."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "vault_authority",
           "docs": [
             "The vault authority PDA that controls vault token accounts"
@@ -2838,6 +2867,12 @@
             "This account holds tokens that should not be included in TVL calculations.",
             "The account address is validated to match the expected ATA address",
             "and can be uninitialized (treated as zero balance)."
+          ]
+        },
+        {
+          "name": "boss_onyc_account",
+          "docs": [
+            "Boss ONyc account to include in circulating supply."
           ]
         },
         {
@@ -4995,6 +5030,9 @@
           "writable": true
         },
         {
+          "name": "boss_onyc_account"
+        },
+        {
           "name": "permissionless_authority"
         },
         {
@@ -6250,6 +6288,12 @@
           ]
         },
         {
+          "name": "boss_onyc_account",
+          "docs": [
+            "Boss ONyc ATA included in circulating supply."
+          ]
+        },
+        {
           "name": "token_program",
           "docs": [
             "Token program that owns the ONyc mint and vault ATA."
@@ -6511,6 +6555,9 @@
           "name": "vault_token_out_account"
         },
         {
+          "name": "boss_onyc_account"
+        },
+        {
           "name": "mint_authority",
           "pda": {
             "seeds": [
@@ -6675,6 +6722,9 @@
         },
         {
           "name": "vault_token_out_account"
+        },
+        {
+          "name": "boss_onyc_account"
         },
         {
           "name": "mint_authority",
@@ -8414,6 +8464,9 @@
           "writable": true
         },
         {
+          "name": "boss_onyc_account"
+        },
+        {
           "name": "mint_authority"
         },
         {
@@ -8788,6 +8841,9 @@
               ]
             }
           }
+        },
+        {
+          "name": "boss_onyc_account"
         },
         {
           "name": "mint_authority"
@@ -12284,6 +12340,13 @@
             "name": "vault_amount",
             "docs": [
               "Vault token amount excluded from circulation in base units"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "boss_onyc_amount",
+            "docs": [
+              "Boss ONyc token amount included in circulation in base units"
             ],
             "type": "u64"
           },

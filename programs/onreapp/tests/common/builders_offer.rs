@@ -176,6 +176,7 @@ pub fn build_take_offer_permissionless_v2_ix(
         token_out_mint,
         token_out_program,
     );
+    let boss_onyc_ata = derive_ata(boss, token_out_mint, token_out_program);
     let performance_fee_vault_onyc_ata = derive_ata(
         &performance_fee_vault_authority_pda,
         token_out_mint,
@@ -191,15 +192,17 @@ pub fn build_take_offer_permissionless_v2_ix(
         None => ix.data.push(0),
     }
     ix.accounts
-        .insert(17, AccountMeta::new(buffer_state_pda, false));
+        .insert(16, AccountMeta::new_readonly(boss_onyc_ata, false));
     ix.accounts
-        .insert(18, AccountMeta::new(buffer_vault_onyc_ata, false));
+        .insert(18, AccountMeta::new(buffer_state_pda, false));
     ix.accounts
-        .insert(19, AccountMeta::new(management_fee_vault_onyc_ata, false));
+        .insert(19, AccountMeta::new(buffer_vault_onyc_ata, false));
     ix.accounts
-        .insert(20, AccountMeta::new(performance_fee_vault_onyc_ata, false));
+        .insert(20, AccountMeta::new(management_fee_vault_onyc_ata, false));
     ix.accounts
-        .insert(21, AccountMeta::new(market_stats_pda, false));
+        .insert(21, AccountMeta::new(performance_fee_vault_onyc_ata, false));
+    ix.accounts
+        .insert(22, AccountMeta::new(market_stats_pda, false));
     ix.accounts
         .push(AccountMeta::new_readonly(main_offer_pda, false));
     ix
@@ -350,6 +353,7 @@ pub fn build_take_offer_v2_ix(
     let user_token_in_ata = derive_ata(user, token_in_mint, token_in_program);
     let user_token_out_ata = derive_ata(user, token_out_mint, token_out_program);
     let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
+    let boss_onyc_ata = derive_ata(boss, token_out_mint, token_out_program);
     let buffer_vault_onyc_ata = derive_ata(
         &reserve_vault_authority_pda,
         token_out_mint,
@@ -390,6 +394,7 @@ pub fn build_take_offer_v2_ix(
             AccountMeta::new(user_token_in_ata, false),
             AccountMeta::new(user_token_out_ata, false),
             AccountMeta::new(boss_token_in_ata, false),
+            AccountMeta::new_readonly(boss_onyc_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),
             AccountMeta::new(buffer_state_pda, false),
             AccountMeta::new(buffer_vault_onyc_ata, false),
@@ -522,6 +527,7 @@ pub fn build_open_swap_buy_ix(
     let user_token_in_ata = derive_ata(user, token_in_mint, token_in_program);
     let user_token_out_ata = derive_ata(user, token_out_mint, token_out_program);
     let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
+    let boss_onyc_ata = derive_ata(boss, token_out_mint, token_out_program);
     let permissionless_token_in_ata = derive_ata(
         &permissionless_authority_pda,
         token_in_mint,
@@ -576,6 +582,7 @@ pub fn build_open_swap_buy_ix(
             AccountMeta::new(user_token_in_ata, false),
             AccountMeta::new(user_token_out_ata, false),
             AccountMeta::new(boss_token_in_ata, false),
+            AccountMeta::new_readonly(boss_onyc_ata, false),
             AccountMeta::new_readonly(permissionless_authority_pda, false),
             AccountMeta::new(permissionless_token_in_ata, false),
             AccountMeta::new(permissionless_token_out_ata, false),

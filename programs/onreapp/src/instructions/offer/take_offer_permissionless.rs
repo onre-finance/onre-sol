@@ -18,7 +18,7 @@ use crate::utils::{
     transfer_tokens, u64_to_dec9, ApprovalMessage, EnsureAtaParams, ExecTokenOpsParams,
 };
 use anchor_lang::{prelude::*, Accounts};
-use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::associated_token::{get_associated_token_address_with_program_id, AssociatedToken};
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 use solana_instructions_sysvar::ID as INSTRUCTIONS_SYSVAR_ID;
 
@@ -290,6 +290,9 @@ pub struct TakeOfferPermissionlessV2<'info> {
     #[account(mut)]
     pub boss_token_in_account: UncheckedAccount<'info>,
 
+    /// CHECK: Address is validated before market stats refresh and may be uninitialized.
+    pub boss_onyc_account: UncheckedAccount<'info>,
+
     /// CHECK: PDA derivation is validated by explicit key check in the handler
     pub mint_authority: UncheckedAccount<'info>,
     pub buffer_accounts: BufferAccrualAccounts<'info>,
@@ -391,6 +394,7 @@ pub fn take_offer_permissionless<'info>(
         &ctx.accounts.permissionless_token_in_account,
         &ctx.accounts.permissionless_authority,
         &boss_token_in_account,
+        None,
         &ctx.accounts.vault_token_in_account,
         &ctx.accounts.vault_authority,
         &ctx.accounts.token_out_program,
@@ -453,6 +457,7 @@ pub fn take_offer_permissionless_v2<'info>(
         &ctx.accounts.permissionless_token_in_account,
         &ctx.accounts.permissionless_authority,
         &boss_token_in_account,
+        Some(ctx.accounts.boss_onyc_account.to_account_info()),
         &ctx.accounts.vault_token_in_account,
         &ctx.accounts.vault_authority,
         &ctx.accounts.token_out_program,
@@ -482,6 +487,7 @@ pub(crate) fn execute_take_offer_permissionless<'info>(
     permissionless_token_in_account: &InterfaceAccount<'info, TokenAccount>,
     permissionless_authority: &UncheckedAccount<'info>,
     boss_token_in_account: &InterfaceAccount<'info, TokenAccount>,
+    boss_onyc_account: Option<AccountInfo<'info>>,
     vault_token_in_account: &InterfaceAccount<'info, TokenAccount>,
     vault_authority: &UncheckedAccount<'info>,
     token_out_program: &Interface<'info, TokenInterface>,
@@ -631,6 +637,17 @@ pub(crate) fn execute_take_offer_permissionless<'info>(
 
     if is_onyc_token_out_mint(state, token_out_mint) {
         if let Some(market_stats) = market_stats {
+            let boss_onyc_account = boss_onyc_account
+                .expect("boss_onyc_account is required when market stats are refreshed");
+            require_keys_eq!(
+                boss_onyc_account.key(),
+                get_associated_token_address_with_program_id(
+                    &state.boss,
+                    &token_out_mint.key(),
+                    &token_out_program.key(),
+                ),
+                crate::OnreError::InvalidBossTokenInAccount
+            );
             let main_offer = load_main_offer(
                 program_id,
                 &main_offer_account
@@ -654,6 +671,7 @@ pub(crate) fn execute_take_offer_permissionless<'info>(
                 &main_offer,
                 token_out_mint,
                 &vault_token_out_account.to_account_info(),
+                &boss_onyc_account,
                 token_out_program,
                 &market_stats.to_account_info(),
                 &user.to_account_info(),

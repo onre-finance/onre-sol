@@ -362,9 +362,9 @@ fn test_mint_to_works_with_main_offer_before_buffer_initialization() {
     let market_stats = read_market_stats(&svm);
     let (_, market_stats_bump) = find_market_stats_pda();
     assert_eq!(market_stats.bump, market_stats_bump);
-    assert_eq!(market_stats.circulating_supply, 1_000_000_000);
+    assert_eq!(market_stats.circulating_supply, 0);
     assert_eq!(market_stats.nav, 1_000_000_000);
-    assert_eq!(market_stats.tvl, 1_000_000_000);
+    assert_eq!(market_stats.tvl, 0);
 }
 
 // ===========================================================================

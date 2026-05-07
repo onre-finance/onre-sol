@@ -19,7 +19,7 @@ use crate::utils::{
 };
 use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::{
-    associated_token::AssociatedToken,
+    associated_token::{get_associated_token_address_with_program_id, AssociatedToken},
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
 use solana_instructions_sysvar::ID as INSTRUCTIONS_SYSVAR_ID;
@@ -286,6 +286,9 @@ pub struct TakeOfferV2<'info> {
     )]
     pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
+    /// CHECK: Address is validated before market stats refresh and may be uninitialized.
+    pub boss_onyc_account: UncheckedAccount<'info>,
+
     /// CHECK: PDA derivation is validated through seeds constraint
     pub mint_authority: UncheckedAccount<'info>,
 
@@ -536,6 +539,15 @@ pub fn execute_take_offer_v2<'info>(
     }
 
     if is_onyc_token_out_mint(&ctx.accounts.state, &ctx.accounts.token_out_mint) {
+        require_keys_eq!(
+            ctx.accounts.boss_onyc_account.key(),
+            get_associated_token_address_with_program_id(
+                &ctx.accounts.boss.key(),
+                &ctx.accounts.token_out_mint.key(),
+                &ctx.accounts.token_out_program.key(),
+            ),
+            crate::OnreError::InvalidBossTokenInAccount
+        );
         let main_offer = load_main_offer(
             ctx.program_id,
             &ctx.accounts.main_offer.to_account_info(),
@@ -557,6 +569,7 @@ pub fn execute_take_offer_v2<'info>(
             &main_offer,
             &ctx.accounts.token_out_mint,
             &ctx.accounts.vault_token_out_account.to_account_info(),
+            &ctx.accounts.boss_onyc_account.to_account_info(),
             &ctx.accounts.token_out_program,
             &ctx.accounts.market_stats.to_account_info(),
             &ctx.accounts.user.to_account_info(),

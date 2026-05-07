@@ -461,28 +461,37 @@ pub fn build_get_nav_adjustment_ix(token_in_mint: &Pubkey, token_out_mint: &Pubk
     }
 }
 
-pub fn build_get_tvl_ix(token_in_mint: &Pubkey, token_out_mint: &Pubkey) -> Instruction {
+pub fn build_get_tvl_ix(
+    boss: &Pubkey,
+    token_in_mint: &Pubkey,
+    token_out_mint: &Pubkey,
+) -> Instruction {
     let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
+    let (state_pda, _) = find_state_pda();
     let (vault_authority_pda, _) = find_offer_vault_authority_pda();
     let vault_token_out_ata = get_associated_token_address(&vault_authority_pda, token_out_mint);
+    let boss_onyc_ata = get_associated_token_address(boss, token_out_mint);
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
             AccountMeta::new_readonly(offer_pda, false),
             AccountMeta::new_readonly(*token_in_mint, false),
             AccountMeta::new_readonly(*token_out_mint, false),
+            AccountMeta::new_readonly(state_pda, false),
             AccountMeta::new_readonly(vault_authority_pda, false),
             AccountMeta::new_readonly(vault_token_out_ata, false),
+            AccountMeta::new_readonly(boss_onyc_ata, false),
             AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
         ],
         data: ix_discriminator("get_tvl").to_vec(),
     }
 }
 
-pub fn build_get_circulating_supply_ix(onyc_mint: &Pubkey) -> Instruction {
+pub fn build_get_circulating_supply_ix(boss: &Pubkey, onyc_mint: &Pubkey) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (vault_authority_pda, _) = find_offer_vault_authority_pda();
     let onyc_vault_ata = get_associated_token_address(&vault_authority_pda, onyc_mint);
+    let boss_onyc_ata = get_associated_token_address(boss, onyc_mint);
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
@@ -490,6 +499,7 @@ pub fn build_get_circulating_supply_ix(onyc_mint: &Pubkey) -> Instruction {
             AccountMeta::new_readonly(state_pda, false),
             AccountMeta::new_readonly(vault_authority_pda, false),
             AccountMeta::new_readonly(onyc_vault_ata, false),
+            AccountMeta::new_readonly(boss_onyc_ata, false),
             AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
         ],
         data: ix_discriminator("get_circulating_supply").to_vec(),
@@ -497,21 +507,26 @@ pub fn build_get_circulating_supply_ix(onyc_mint: &Pubkey) -> Instruction {
 }
 
 pub fn build_get_tvl_ix_with_token_program(
+    boss: &Pubkey,
     token_in_mint: &Pubkey,
     token_out_mint: &Pubkey,
     token_out_program: &Pubkey,
 ) -> Instruction {
     let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
+    let (state_pda, _) = find_state_pda();
     let (vault_authority_pda, _) = find_offer_vault_authority_pda();
     let vault_token_out_ata = derive_ata(&vault_authority_pda, token_out_mint, token_out_program);
+    let boss_onyc_ata = derive_ata(boss, token_out_mint, token_out_program);
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
             AccountMeta::new_readonly(offer_pda, false),
             AccountMeta::new_readonly(*token_in_mint, false),
             AccountMeta::new_readonly(*token_out_mint, false),
+            AccountMeta::new_readonly(state_pda, false),
             AccountMeta::new_readonly(vault_authority_pda, false),
             AccountMeta::new_readonly(vault_token_out_ata, false),
+            AccountMeta::new_readonly(boss_onyc_ata, false),
             AccountMeta::new_readonly(*token_out_program, false),
         ],
         data: ix_discriminator("get_tvl").to_vec(),
@@ -519,12 +534,14 @@ pub fn build_get_tvl_ix_with_token_program(
 }
 
 pub fn build_get_circulating_supply_ix_with_token_program(
+    boss: &Pubkey,
     onyc_mint: &Pubkey,
     token_program: &Pubkey,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (vault_authority_pda, _) = find_offer_vault_authority_pda();
     let onyc_vault_ata = derive_ata(&vault_authority_pda, onyc_mint, token_program);
+    let boss_onyc_ata = derive_ata(boss, onyc_mint, token_program);
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
@@ -532,6 +549,7 @@ pub fn build_get_circulating_supply_ix_with_token_program(
             AccountMeta::new_readonly(state_pda, false),
             AccountMeta::new_readonly(vault_authority_pda, false),
             AccountMeta::new_readonly(onyc_vault_ata, false),
+            AccountMeta::new_readonly(boss_onyc_ata, false),
             AccountMeta::new_readonly(*token_program, false),
         ],
         data: ix_discriminator("get_circulating_supply").to_vec(),
@@ -540,6 +558,7 @@ pub fn build_get_circulating_supply_ix_with_token_program(
 
 pub fn build_refresh_market_stats_ix(
     signer: &Pubkey,
+    boss: &Pubkey,
     token_in_mint: &Pubkey,
     onyc_mint: &Pubkey,
 ) -> Instruction {
@@ -548,6 +567,7 @@ pub fn build_refresh_market_stats_ix(
     let (vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
     let onyc_vault_ata = get_associated_token_address(&vault_authority_pda, onyc_mint);
+    let boss_onyc_ata = get_associated_token_address(boss, onyc_mint);
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
@@ -557,6 +577,7 @@ pub fn build_refresh_market_stats_ix(
             AccountMeta::new_readonly(*onyc_mint, false),
             AccountMeta::new_readonly(vault_authority_pda, false),
             AccountMeta::new_readonly(onyc_vault_ata, false),
+            AccountMeta::new_readonly(boss_onyc_ata, false),
             AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
             AccountMeta::new(market_stats_pda, false),
             AccountMeta::new(*signer, true),

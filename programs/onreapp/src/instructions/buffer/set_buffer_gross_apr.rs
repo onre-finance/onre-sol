@@ -39,6 +39,17 @@ pub struct SetBufferGrossYield<'info> {
     /// CHECK: Account is validated in instruction logic to allow uninitialized vault account.
     pub vault_token_out_account: UncheckedAccount<'info>,
 
+    /// CHECK: Address is validated against the boss ONyc ATA and may be uninitialized.
+    #[account(
+        constraint = boss_onyc_account.key()
+            == get_associated_token_address_with_program_id(
+                &state.boss,
+                &onyc_mint.key(),
+                &token_program.key(),
+            ) @ crate::OnreError::InvalidBossTokenInAccount
+    )]
+    pub boss_onyc_account: UncheckedAccount<'info>,
+
     /// CHECK: PDA derivation is validated by seeds constraint.
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
@@ -98,6 +109,7 @@ pub fn set_buffer_gross_apr(ctx: Context<SetBufferGrossYield>, gross_yield: u64)
         &offer,
         &ctx.accounts.onyc_mint,
         &ctx.accounts.vault_token_out_account.to_account_info(),
+        &ctx.accounts.boss_onyc_account.to_account_info(),
         &ctx.accounts.token_program,
         &ctx.accounts.market_stats.to_account_info(),
         &ctx.accounts.boss.to_account_info(),

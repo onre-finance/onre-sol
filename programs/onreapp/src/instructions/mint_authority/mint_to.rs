@@ -214,6 +214,7 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
             offer,
             &ctx.accounts.onyc_mint,
             &ctx.accounts.offer_vault_onyc_account.to_account_info(),
+            &ctx.accounts.boss_onyc_account.to_account_info(),
             &ctx.accounts.token_program,
             &ctx.accounts.market_stats.to_account_info(),
             &ctx.accounts.boss.to_account_info(),
