@@ -286,7 +286,8 @@ pub struct TakeOfferV2<'info> {
     )]
     pub boss_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// CHECK: Address is validated before market stats refresh and may be uninitialized.
+    /// CHECK: Validated in the handler to keep the generated account parser under the BPF stack limit.
+    /// The account may be uninitialized and is treated as a zero balance by market stats.
     pub boss_onyc_account: UncheckedAccount<'info>,
 
     /// CHECK: PDA derivation is validated through seeds constraint

@@ -188,7 +188,7 @@ pub fn burn_for_nav_increase(
             &ctx.accounts.boss_onyc_account,
             &ctx.accounts.token_program,
         )?,
-    );
+    )?;
     // This path burns supply to preserve the current quoted NAV after reducing the
     // effective asset base by `asset_adjustment_amount`.
     let total_assets_before_burn = calculate_tvl(circulating_supply, current_nav)
@@ -302,7 +302,8 @@ mod tests {
     fn burn_amount_uses_circulating_supply_basis() {
         let total_supply = 1_100;
         let vault_supply = 100;
-        let circulating_supply = calculate_circulating_supply(total_supply, vault_supply, 0);
+        let circulating_supply =
+            calculate_circulating_supply(total_supply, vault_supply, 0).unwrap();
 
         let burn_amount = calculate_burn_amount(circulating_supply, 100, NAV_1_0, NAV_1_1).unwrap();
         let total_supply_based_burn = (total_supply as u128).checked_sub(819).unwrap() as u64;

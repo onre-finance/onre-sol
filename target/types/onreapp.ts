@@ -2575,7 +2575,7 @@ export type Onreapp = {
         {
           "name": "bossOnycAccount",
           "docs": [
-            "Boss ONyc account to include in circulating supply."
+            "Boss ONyc account to exclude from circulating supply."
           ]
         },
         {
@@ -2878,7 +2878,7 @@ export type Onreapp = {
         {
           "name": "bossOnycAccount",
           "docs": [
-            "Boss ONyc account to include in circulating supply."
+            "Boss ONyc account to exclude from circulating supply."
           ]
         },
         {
@@ -8470,7 +8470,10 @@ export type Onreapp = {
           "writable": true
         },
         {
-          "name": "bossOnycAccount"
+          "name": "bossOnycAccount",
+          "docs": [
+            "The account may be uninitialized and is treated as a zero balance by market stats."
+          ]
         },
         {
           "name": "mintAuthority"
@@ -8849,7 +8852,10 @@ export type Onreapp = {
           }
         },
         {
-          "name": "bossOnycAccount"
+          "name": "bossOnycAccount",
+          "docs": [
+            "The account may be uninitialized and is treated as a zero balance by market stats."
+          ]
         },
         {
           "name": "mintAuthority"
@@ -12331,7 +12337,7 @@ export type Onreapp = {
           {
             "name": "circulatingSupply",
             "docs": [
-              "Calculated circulating supply (total_supply - vault_amount) in base units"
+              "Calculated circulating supply (total_supply - excluded balances) in base units"
             ],
             "type": "u64"
           },
@@ -12352,7 +12358,7 @@ export type Onreapp = {
           {
             "name": "bossOnycAmount",
             "docs": [
-              "Boss ONyc token amount included in circulation in base units"
+              "Boss ONyc token amount excluded from circulation in base units"
             ],
             "type": "u64"
           },
@@ -12491,7 +12497,7 @@ export type Onreapp = {
           {
             "name": "tokenSupply",
             "docs": [
-              "Circulating token supply (total_supply - vault_amount) in base units"
+              "Circulating token supply (total_supply - excluded balances) in base units"
             ],
             "type": "u64"
           },

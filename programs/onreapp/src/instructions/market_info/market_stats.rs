@@ -80,7 +80,7 @@ pub fn recompute_market_stats(
     let vault_amount = read_optional_token_account_amount(onyc_vault_account, token_program)?;
     let boss_onyc_amount = read_optional_token_account_amount(boss_onyc_account, token_program)?;
     let circulating_supply =
-        calculate_circulating_supply(onyc_mint.supply, vault_amount, boss_onyc_amount);
+        calculate_circulating_supply(onyc_mint.supply, vault_amount, boss_onyc_amount)?;
     let tvl = calculate_tvl(circulating_supply, nav)?;
 
     Ok(MarketStatsSnapshot {
@@ -229,14 +229,14 @@ pub fn calculate_circulating_supply(
     total_supply: u64,
     vault_amount: u64,
     boss_onyc_amount: u64,
-) -> u64 {
+) -> Result<u64> {
+    let excluded_supply = vault_amount
+        .checked_add(boss_onyc_amount)
+        .ok_or(crate::OnreError::MathOverflow)?;
+
     total_supply
-        .checked_sub(
-            vault_amount
-                .checked_add(boss_onyc_amount)
-                .expect("circulating supply overflow: excluded balances exceed u64"),
-        )
-        .expect("circulating supply underflow: excluded balances exceed total supply")
+        .checked_sub(excluded_supply)
+        .ok_or_else(|| error!(crate::OnreError::ArithmeticUnderflow))
 }
 
 #[cfg(test)]
@@ -425,14 +425,15 @@ mod tests {
 
     #[test]
     fn circulating_supply_matches_programv4_subtraction() {
-        let circulating_supply = calculate_circulating_supply(1_000_000_000, 250_000_000, 0);
+        let circulating_supply =
+            calculate_circulating_supply(1_000_000_000, 250_000_000, 0).unwrap();
         assert_eq!(circulating_supply, 750_000_000);
     }
 
     #[test]
     fn circulating_supply_subtracts_boss_onyc_account() {
         let circulating_supply =
-            calculate_circulating_supply(1_000_000_000, 250_000_000, 100_000_000);
+            calculate_circulating_supply(1_000_000_000, 250_000_000, 100_000_000).unwrap();
         assert_eq!(circulating_supply, 650_000_000);
     }
 
@@ -445,16 +446,22 @@ mod tests {
             (u64::MAX, 5, 15, u64::MAX - 20),
         ] {
             assert_eq!(
-                calculate_circulating_supply(total_supply, vault_amount, boss_onyc_amount),
+                calculate_circulating_supply(total_supply, vault_amount, boss_onyc_amount).unwrap(),
                 expected
             );
         }
     }
 
     #[test]
-    #[should_panic]
-    fn circulating_supply_does_not_saturate_underflow() {
-        let _ = calculate_circulating_supply(1, 2, 0);
+    fn circulating_supply_rejects_excluded_supply_underflow() {
+        let err = calculate_circulating_supply(1, 2, 0).unwrap_err();
+        assert_eq!(err, error!(crate::OnreError::ArithmeticUnderflow));
+    }
+
+    #[test]
+    fn circulating_supply_rejects_excluded_supply_overflow() {
+        let err = calculate_circulating_supply(u64::MAX, u64::MAX, 1).unwrap_err();
+        assert_eq!(err, error!(crate::OnreError::MathOverflow));
     }
 
     #[test]

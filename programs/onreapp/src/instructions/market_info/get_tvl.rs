@@ -23,7 +23,7 @@ pub struct GetTVLEvent {
     pub tvl: u64,
     /// Current price with scale=9 used for TVL calculation
     pub current_price: u64,
-    /// Circulating token supply (total_supply - vault_amount) in base units
+    /// Circulating token supply (total_supply - excluded balances) in base units
     pub token_supply: u64,
     /// Unix timestamp when the TVL calculation was performed
     pub timestamp: u64,
@@ -91,7 +91,7 @@ pub struct GetTVL<'info> {
     )]
     pub vault_token_out_account: UncheckedAccount<'info>,
 
-    /// Boss ONyc account to include in circulating supply.
+    /// Boss ONyc account to exclude from circulating supply.
     /// CHECK: Address is validated against the boss token_out ATA and may be uninitialized.
     #[account(
         constraint = boss_onyc_account.key()
@@ -110,13 +110,13 @@ pub struct GetTVL<'info> {
 /// Calculates and returns the current TVL (Total Value Locked) for a specific offer
 ///
 /// This read-only instruction calculates the TVL by combining the current NAV price
-/// with the circulating token supply. The calculation excludes vault holdings from
-/// the total supply to represent only tokens in circulation.
+/// with the circulating token supply. The calculation excludes vault and boss
+/// token_out holdings from the total supply to represent only tokens in circulation.
 ///
 /// Formula: `TVL = circulating_supply * current_price / 10^9`
 ///
 /// The calculation uses the current active pricing vector to determine NAV and
-/// subtracts vault holdings from total supply to get circulating supply.
+/// subtracts excluded balances from total supply to get circulating supply.
 ///
 /// # Arguments
 /// * `ctx` - The instruction context containing validated accounts
@@ -144,15 +144,12 @@ pub fn get_tvl(ctx: Context<GetTVL>) -> Result<u64> {
         &ctx.accounts.token_out_program,
     )?;
 
-    // Get token supply
     let token_supply = calculate_circulating_supply(
         ctx.accounts.token_out_mint.supply,
         vault_token_out_amount,
         boss_onyc_amount,
-    );
+    )?;
 
-    // Calculate TVL = supply * price
-    // Both supply and price should be compatible for multiplication
     let tvl = calculate_shared_tvl(token_supply, current_price)
         .map_err(|_| error!(crate::OnreError::Overflow))?;
 

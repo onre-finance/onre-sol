@@ -2569,7 +2569,7 @@
         {
           "name": "boss_onyc_account",
           "docs": [
-            "Boss ONyc account to include in circulating supply."
+            "Boss ONyc account to exclude from circulating supply."
           ]
         },
         {
@@ -2872,7 +2872,7 @@
         {
           "name": "boss_onyc_account",
           "docs": [
-            "Boss ONyc account to include in circulating supply."
+            "Boss ONyc account to exclude from circulating supply."
           ]
         },
         {
@@ -8464,7 +8464,10 @@
           "writable": true
         },
         {
-          "name": "boss_onyc_account"
+          "name": "boss_onyc_account",
+          "docs": [
+            "The account may be uninitialized and is treated as a zero balance by market stats."
+          ]
         },
         {
           "name": "mint_authority"
@@ -8843,7 +8846,10 @@
           }
         },
         {
-          "name": "boss_onyc_account"
+          "name": "boss_onyc_account",
+          "docs": [
+            "The account may be uninitialized and is treated as a zero balance by market stats."
+          ]
         },
         {
           "name": "mint_authority"
@@ -12325,7 +12331,7 @@
           {
             "name": "circulating_supply",
             "docs": [
-              "Calculated circulating supply (total_supply - vault_amount) in base units"
+              "Calculated circulating supply (total_supply - excluded balances) in base units"
             ],
             "type": "u64"
           },
@@ -12346,7 +12352,7 @@
           {
             "name": "boss_onyc_amount",
             "docs": [
-              "Boss ONyc token amount included in circulation in base units"
+              "Boss ONyc token amount excluded from circulation in base units"
             ],
             "type": "u64"
           },
@@ -12485,7 +12491,7 @@
           {
             "name": "token_supply",
             "docs": [
-              "Circulating token supply (total_supply - vault_amount) in base units"
+              "Circulating token supply (total_supply - excluded balances) in base units"
             ],
             "type": "u64"
           },

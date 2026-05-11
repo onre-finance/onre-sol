@@ -13,13 +13,13 @@ use anchor_spl::token_interface::{Mint, TokenInterface};
 /// Provides transparency for tracking token supply distribution and vault holdings.
 #[event]
 pub struct GetCirculatingSupplyEvent {
-    /// Calculated circulating supply (total_supply - vault_amount) in base units
+    /// Calculated circulating supply (total_supply - excluded balances) in base units
     pub circulating_supply: u64,
     /// Total token supply from the mint account in base units
     pub total_supply: u64,
     /// Vault token amount excluded from circulation in base units
     pub vault_amount: u64,
-    /// Boss ONyc token amount included in circulation in base units
+    /// Boss ONyc token amount excluded from circulation in base units
     pub boss_onyc_amount: u64,
     /// Unix timestamp when the calculation was performed
     pub timestamp: u64,
@@ -28,8 +28,8 @@ pub struct GetCirculatingSupplyEvent {
 /// Account structure for querying circulating supply information
 ///
 /// This struct defines the accounts required to calculate the circulating supply
-/// of ONyc tokens by subtracting vault holdings from total supply. All accounts
-/// are validated to ensure accurate calculation.
+/// of ONyc tokens by subtracting vault and boss ONyc holdings from total supply.
+/// All accounts are validated to ensure accurate calculation.
 #[derive(Accounts)]
 pub struct GetCirculatingSupply<'info> {
     /// The ONyc token mint containing total supply information
@@ -60,7 +60,7 @@ pub struct GetCirculatingSupply<'info> {
     )]
     pub onyc_vault_account: UncheckedAccount<'info>,
 
-    /// Boss ONyc account to include in circulating supply.
+    /// Boss ONyc account to exclude from circulating supply.
     /// CHECK: Address is validated against the boss ONyc ATA and may be uninitialized.
     #[account(
         constraint = boss_onyc_account.key()
@@ -79,13 +79,13 @@ pub struct GetCirculatingSupply<'info> {
 /// Calculates and returns the current circulating supply of ONyc tokens
 ///
 /// This read-only instruction calculates the circulating supply by subtracting
-/// vault holdings from the total token supply. The vault amount represents tokens
-/// held by the program that are not considered in active circulation.
+/// excluded balances from the total token supply. The excluded balances are vault
+/// holdings and the boss ONyc account.
 ///
-/// Formula: `circulating_supply = total_supply - vault_amount`
+/// Formula: `circulating_supply = total_supply - (vault_amount + boss_onyc_amount)`
 ///
-/// The vault account can be uninitialized (treated as zero balance) or contain
-/// tokens that should be excluded from circulation calculations.
+/// The vault and boss ONyc accounts can be uninitialized (treated as zero balance)
+/// or contain tokens that should be excluded from circulation calculations.
 ///
 /// # Arguments
 /// * `ctx` - The instruction context containing validated accounts
@@ -108,12 +108,10 @@ pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64>
         &ctx.accounts.token_program,
     )?;
 
-    // Get total supply
     let total_supply = ctx.accounts.onyc_mint.supply;
 
-    // Calculate circulating supply = total supply - vault amount
     let circulating_supply =
-        calculate_circulating_supply(total_supply, vault_token_out_amount, boss_onyc_amount);
+        calculate_circulating_supply(total_supply, vault_token_out_amount, boss_onyc_amount)?;
 
     msg!(
         "Circulating Supply Info - Circulating Supply: {}, Total Supply: {}, Vault Amount: {}, Boss ONyc Amount: {}, Timestamp: {}",

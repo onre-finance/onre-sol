@@ -1,5 +1,12 @@
 use super::*;
 
+const TAKE_OFFER_PERMISSIONLESS_V2_BOSS_ONYC_INDEX: usize = 16;
+const TAKE_OFFER_PERMISSIONLESS_V2_BUFFER_STATE_INDEX: usize = 18;
+const TAKE_OFFER_PERMISSIONLESS_V2_BUFFER_VAULT_INDEX: usize = 19;
+const TAKE_OFFER_PERMISSIONLESS_V2_MANAGEMENT_FEE_VAULT_INDEX: usize = 20;
+const TAKE_OFFER_PERMISSIONLESS_V2_PERFORMANCE_FEE_VAULT_INDEX: usize = 21;
+const TAKE_OFFER_PERMISSIONLESS_V2_MARKET_STATS_INDEX: usize = 22;
+
 pub fn build_make_offer_ix(
     boss: &Pubkey,
     token_in_mint: &Pubkey,
@@ -191,18 +198,30 @@ pub fn build_take_offer_permissionless_v2_ix(
         }
         None => ix.data.push(0),
     }
-    ix.accounts
-        .insert(16, AccountMeta::new_readonly(boss_onyc_ata, false));
-    ix.accounts
-        .insert(18, AccountMeta::new(buffer_state_pda, false));
-    ix.accounts
-        .insert(19, AccountMeta::new(buffer_vault_onyc_ata, false));
-    ix.accounts
-        .insert(20, AccountMeta::new(management_fee_vault_onyc_ata, false));
-    ix.accounts
-        .insert(21, AccountMeta::new(performance_fee_vault_onyc_ata, false));
-    ix.accounts
-        .insert(22, AccountMeta::new(market_stats_pda, false));
+    ix.accounts.insert(
+        TAKE_OFFER_PERMISSIONLESS_V2_BOSS_ONYC_INDEX,
+        AccountMeta::new_readonly(boss_onyc_ata, false),
+    );
+    ix.accounts.insert(
+        TAKE_OFFER_PERMISSIONLESS_V2_BUFFER_STATE_INDEX,
+        AccountMeta::new(buffer_state_pda, false),
+    );
+    ix.accounts.insert(
+        TAKE_OFFER_PERMISSIONLESS_V2_BUFFER_VAULT_INDEX,
+        AccountMeta::new(buffer_vault_onyc_ata, false),
+    );
+    ix.accounts.insert(
+        TAKE_OFFER_PERMISSIONLESS_V2_MANAGEMENT_FEE_VAULT_INDEX,
+        AccountMeta::new(management_fee_vault_onyc_ata, false),
+    );
+    ix.accounts.insert(
+        TAKE_OFFER_PERMISSIONLESS_V2_PERFORMANCE_FEE_VAULT_INDEX,
+        AccountMeta::new(performance_fee_vault_onyc_ata, false),
+    );
+    ix.accounts.insert(
+        TAKE_OFFER_PERMISSIONLESS_V2_MARKET_STATS_INDEX,
+        AccountMeta::new(market_stats_pda, false),
+    );
     ix.accounts
         .push(AccountMeta::new_readonly(main_offer_pda, false));
     ix
