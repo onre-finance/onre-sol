@@ -54,3 +54,4 @@ mempalace.yaml
 
 # Standalone Prop AMM explorer repository
 tools/prop-amm-graphs/
+tools/offer-pricing/
