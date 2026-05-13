@@ -1,11 +1,13 @@
 use super::*;
 
-const TAKE_OFFER_PERMISSIONLESS_V2_BUFFER_STATE_INDEX: usize = 17;
-const TAKE_OFFER_PERMISSIONLESS_V2_BUFFER_VAULT_INDEX: usize = 18;
-const TAKE_OFFER_PERMISSIONLESS_V2_MANAGEMENT_FEE_VAULT_INDEX: usize = 19;
-const TAKE_OFFER_PERMISSIONLESS_V2_PERFORMANCE_FEE_VAULT_INDEX: usize = 20;
-const TAKE_OFFER_PERMISSIONLESS_V2_MARKET_STATS_INDEX: usize = 21;
-const TAKE_OFFER_PERMISSIONLESS_V2_EXCLUDED_BALANCE_INDEX: usize = 22;
+const TAKE_OFFER_PERMISSIONLESS_V2_FEE_VAULT_INDEX: usize = 16;
+const TAKE_OFFER_PERMISSIONLESS_V2_FEE_TOKEN_ACCOUNT_INDEX: usize = 17;
+const TAKE_OFFER_PERMISSIONLESS_V2_BUFFER_STATE_INDEX: usize = 19;
+const TAKE_OFFER_PERMISSIONLESS_V2_BUFFER_VAULT_INDEX: usize = 20;
+const TAKE_OFFER_PERMISSIONLESS_V2_MANAGEMENT_FEE_VAULT_INDEX: usize = 21;
+const TAKE_OFFER_PERMISSIONLESS_V2_PERFORMANCE_FEE_VAULT_INDEX: usize = 22;
+const TAKE_OFFER_PERMISSIONLESS_V2_MARKET_STATS_INDEX: usize = 23;
+const TAKE_OFFER_PERMISSIONLESS_V2_EXCLUDED_BALANCE_INDEX: usize = 24;
 
 pub fn build_make_offer_ix(
     boss: &Pubkey,
@@ -195,6 +197,9 @@ pub fn build_take_offer_permissionless_v2_ix(
     let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
     let (excluded_balance_pda, _) = find_circulating_supply_excluded_balance_pda();
+    let (take_offer_fee_vault_pda, _) = find_take_offer_fee_vault_pda();
+    let take_offer_fee_token_in_ata =
+        derive_ata(&take_offer_fee_vault_pda, token_in_mint, token_in_program);
     let buffer_vault_onyc_ata = derive_ata(
         &reserve_vault_authority_pda,
         token_out_mint,
@@ -219,6 +224,14 @@ pub fn build_take_offer_permissionless_v2_ix(
         }
         None => ix.data.push(0),
     }
+    ix.accounts.insert(
+        TAKE_OFFER_PERMISSIONLESS_V2_FEE_VAULT_INDEX,
+        AccountMeta::new(take_offer_fee_vault_pda, false),
+    );
+    ix.accounts.insert(
+        TAKE_OFFER_PERMISSIONLESS_V2_FEE_TOKEN_ACCOUNT_INDEX,
+        AccountMeta::new(take_offer_fee_token_in_ata, false),
+    );
     ix.accounts.insert(
         TAKE_OFFER_PERMISSIONLESS_V2_BUFFER_STATE_INDEX,
         AccountMeta::new(buffer_state_pda, false),
@@ -394,6 +407,9 @@ pub fn build_take_offer_v2_ix(
     let user_token_in_ata = derive_ata(user, token_in_mint, token_in_program);
     let user_token_out_ata = derive_ata(user, token_out_mint, token_out_program);
     let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
+    let (take_offer_fee_vault_pda, _) = find_take_offer_fee_vault_pda();
+    let take_offer_fee_token_in_ata =
+        derive_ata(&take_offer_fee_vault_pda, token_in_mint, token_in_program);
     let buffer_vault_onyc_ata = derive_ata(
         &reserve_vault_authority_pda,
         token_out_mint,
@@ -434,6 +450,8 @@ pub fn build_take_offer_v2_ix(
             AccountMeta::new(user_token_in_ata, false),
             AccountMeta::new(user_token_out_ata, false),
             AccountMeta::new(boss_token_in_ata, false),
+            AccountMeta::new(take_offer_fee_vault_pda, false),
+            AccountMeta::new(take_offer_fee_token_in_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),
             AccountMeta::new(buffer_state_pda, false),
             AccountMeta::new(buffer_vault_onyc_ata, false),

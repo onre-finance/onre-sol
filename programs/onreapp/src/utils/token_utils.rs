@@ -370,6 +370,8 @@ pub struct ExecTokenOpsParams<'a, 'info> {
     pub token_in_source_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Destination account for token_in (boss's account)
     pub token_in_destination_account: &'a InterfaceAccount<'info, TokenAccount>,
+    /// Destination account for token_in fees
+    pub token_in_fee_destination_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Vault account for burning token_in when program has mint authority
     pub token_in_burn_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Authority for burning tokens from the vault
@@ -428,11 +430,11 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
     // Validate that neither token has Token-2022 transfer fees
     require!(
         !has_transfer_fee(params.token_in_mint)?,
-        crate::OnreError::TransferFeeNotSupported
+        OnreError::TransferFeeNotSupported
     );
     require!(
         !has_transfer_fee(params.token_out_mint)?,
-        crate::OnreError::TransferFeeNotSupported
+        OnreError::TransferFeeNotSupported
     );
 
     // Step 1: User pays token_in
@@ -461,27 +463,21 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
             params.token_in_net_amount,
         )?;
 
-        // Transfer fee amount directly to boss account
+        // Transfer fee amount to the configured fee vault
         if params.token_in_fee_amount > 0 {
-            msg!("Transferring fee amount to boss account");
+            msg!("Transferring fee amount to fee vault");
             transfer_tokens(
                 params.token_in_mint,
                 params.token_in_program,
                 params.token_in_source_account,
-                params.token_in_destination_account,
+                params.token_in_fee_destination_account,
                 params.token_in_authority,
                 params.token_in_source_signer_seeds,
                 params.token_in_fee_amount,
             )?;
         }
     } else {
-        // When program lacks mint authority: transfer full amount to boss
-        // Use checked_add to prevent overflow
-        let total_amount = params
-            .token_in_net_amount
-            .checked_add(params.token_in_fee_amount)
-            .ok_or(crate::OnreError::MathOverflow)?;
-
+        // When program lacks mint authority: transfer net to boss and fee to the fee vault.
         transfer_tokens(
             params.token_in_mint,
             params.token_in_program,
@@ -489,8 +485,20 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
             params.token_in_destination_account,
             params.token_in_authority,
             params.token_in_source_signer_seeds,
-            total_amount,
+            params.token_in_net_amount,
         )?;
+
+        if params.token_in_fee_amount > 0 {
+            transfer_tokens(
+                params.token_in_mint,
+                params.token_in_program,
+                params.token_in_source_account,
+                params.token_in_fee_destination_account,
+                params.token_in_authority,
+                params.token_in_source_signer_seeds,
+                params.token_in_fee_amount,
+            )?;
+        }
     }
 
     // Step 2: Program distributes token_out

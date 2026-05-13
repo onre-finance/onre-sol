@@ -240,6 +240,18 @@ pub enum OnreError {
     AmountExceedsRemaining,
     #[msg("Invalid Fee Destination")]
     InvalidFeeDestination,
+    #[msg("Invalid Configurable Vault")]
+    InvalidConfigurableVault,
+    #[msg("Invalid Configurable Vault Owner")]
+    InvalidConfigurableVaultOwner,
+    #[msg("Invalid Configurable Vault Data")]
+    InvalidConfigurableVaultData,
+    #[msg("Invalid Configurable Vault Kind")]
+    InvalidConfigurableVaultKind,
+    #[msg("Missing Configurable Vault Destination")]
+    MissingConfigurableVaultDestination,
+    #[msg("Invalid Configurable Vault Token Account")]
+    InvalidConfigurableVaultTokenAccount,
     #[msg("Invalid Buffer State Account")]
     InvalidBufferStateAccount,
     #[msg("Invalid Timestamp")]

@@ -7,6 +7,7 @@ use crate::instructions::buffer::{
     accrue_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
     BufferAccrualAccounts,
 };
+use crate::instructions::configurable_vault::ConfigurableVaultInit;
 use crate::instructions::market_info::{load_main_offer, refresh_market_stats_pda};
 use crate::instructions::offer::offer_utils::{
     is_onyc_token_out_mint, process_offer_core, should_accrue_onyc_mint, verify_offer_approval,
@@ -15,7 +16,8 @@ use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::{
     execute_token_operations, get_associated_token_account, get_or_create_associated_token_account,
-    transfer_tokens, u64_to_dec9, ApprovalMessage, EnsureAtaParams, ExecTokenOpsParams,
+    load_or_init_pda_account, store_pda_account, transfer_tokens, u64_to_dec9, ApprovalMessage,
+    EnsureAtaParams, ExecTokenOpsParams,
 };
 use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::associated_token::AssociatedToken;
@@ -254,13 +256,9 @@ pub struct TakeOfferPermissionlessV2<'info> {
     /// CHECK: PDA derivation is validated by explicit key check in the handler
     pub permissionless_authority: UncheckedAccount<'info>,
 
-    #[account(
-        mut,
-        associated_token::mint = token_in_mint,
-        associated_token::authority = permissionless_authority,
-        associated_token::token_program = token_in_program
-    )]
-    pub permissionless_token_in_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// CHECK: Validated in instruction logic against the expected permissionless ATA.
+    #[account(mut)]
+    pub permissionless_token_in_account: UncheckedAccount<'info>,
 
     /// CHECK: Validated in instruction logic against the expected permissionless ATA.
     #[account(mut)]
@@ -289,6 +287,14 @@ pub struct TakeOfferPermissionlessV2<'info> {
     /// CHECK: Validated in instruction logic against the expected boss ATA.
     #[account(mut)]
     pub boss_token_in_account: UncheckedAccount<'info>,
+
+    /// CHECK: PDA and data are validated/initialized in instruction logic.
+    #[account(mut)]
+    pub take_offer_fee_vault: UncheckedAccount<'info>,
+
+    /// CHECK: Validated and optionally initialized in instruction logic.
+    #[account(mut)]
+    pub take_offer_fee_token_in_account: UncheckedAccount<'info>,
 
     /// CHECK: PDA derivation is validated by explicit key check in the handler
     pub mint_authority: UncheckedAccount<'info>,
@@ -400,6 +406,7 @@ pub fn take_offer_permissionless<'info>(
         &ctx.accounts.permissionless_token_in_account,
         &ctx.accounts.permissionless_authority,
         &boss_token_in_account,
+        &boss_token_in_account,
         &ctx.accounts.vault_token_in_account,
         &ctx.accounts.vault_authority,
         &ctx.accounts.token_out_program,
@@ -433,6 +440,13 @@ pub fn take_offer_permissionless_v2<'info>(
         &ctx.accounts.token_out_program.key(),
         crate::OnreError::InvalidPermissionlessTokenOutAccount,
     )?;
+    let permissionless_token_in_account = get_associated_token_account(
+        &ctx.accounts.permissionless_token_in_account,
+        &ctx.accounts.permissionless_authority.key(),
+        &ctx.accounts.token_in_mint.key(),
+        &ctx.accounts.token_in_program.key(),
+        crate::OnreError::InvalidVaultTokenInAccount,
+    )?;
     let user_token_out_account = get_or_create_associated_token_account(EnsureAtaParams {
         ata_account: &ctx.accounts.user_token_out_account,
         payer: ctx.accounts.user.to_account_info(),
@@ -446,6 +460,46 @@ pub fn take_offer_permissionless_v2<'info>(
         token_program_id: ctx.accounts.token_out_program.key(),
         invalid_account_error: crate::OnreError::InvalidUserTokenOutAccount,
     })?;
+    let take_offer_fee_vault_info = ctx.accounts.take_offer_fee_vault.to_account_info();
+    let (expected_take_offer_fee_vault, take_offer_fee_vault_bump) = Pubkey::find_program_address(
+        &[seeds::CONFIGURABLE_VAULT, seeds::TAKE_OFFER_FEE_VAULT],
+        ctx.program_id,
+    );
+    require_keys_eq!(
+        expected_take_offer_fee_vault,
+        ctx.accounts.take_offer_fee_vault.key(),
+        crate::OnreError::InvalidConfigurableVault
+    );
+    let should_store_take_offer_fee_vault = take_offer_fee_vault_info.owner
+        == &anchor_lang::system_program::ID
+        || take_offer_fee_vault_info
+            .try_borrow_data()?
+            .iter()
+            .all(|byte| *byte == 0);
+    let take_offer_fee_vault = load_or_init_pda_account::<ConfigurableVaultInit<0>>(
+        &take_offer_fee_vault_info,
+        &ctx.accounts.user.to_account_info(),
+        &ctx.accounts.system_program.to_account_info(),
+        ctx.program_id,
+        take_offer_fee_vault_bump,
+    )?;
+    if should_store_take_offer_fee_vault {
+        store_pda_account(&take_offer_fee_vault_info, &take_offer_fee_vault)?;
+    }
+    let take_offer_fee_token_in_account =
+        get_or_create_associated_token_account(EnsureAtaParams {
+            ata_account: &ctx.accounts.take_offer_fee_token_in_account,
+            payer: ctx.accounts.user.to_account_info(),
+            authority_account: take_offer_fee_vault_info,
+            mint_account: ctx.accounts.token_in_mint.to_account_info(),
+            token_program: ctx.accounts.token_in_program.to_account_info(),
+            associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+            authority: ctx.accounts.take_offer_fee_vault.key(),
+            mint: ctx.accounts.token_in_mint.key(),
+            token_program_id: ctx.accounts.token_in_program.key(),
+            invalid_account_error: crate::OnreError::InvalidConfigurableVaultTokenAccount,
+        })?;
     execute_take_offer_permissionless(
         ctx.program_id,
         &ctx.accounts.offer,
@@ -458,9 +512,10 @@ pub fn take_offer_permissionless_v2<'info>(
         &approval_message,
         &ctx.accounts.token_in_program,
         &ctx.accounts.user_token_in_account,
-        &ctx.accounts.permissionless_token_in_account,
+        &permissionless_token_in_account,
         &ctx.accounts.permissionless_authority,
         &boss_token_in_account,
+        &take_offer_fee_token_in_account,
         &ctx.accounts.vault_token_in_account,
         &ctx.accounts.vault_authority,
         &ctx.accounts.token_out_program,
@@ -493,6 +548,7 @@ pub(crate) fn execute_take_offer_permissionless<'info>(
     permissionless_token_in_account: &InterfaceAccount<'info, TokenAccount>,
     permissionless_authority: &UncheckedAccount<'info>,
     boss_token_in_account: &InterfaceAccount<'info, TokenAccount>,
+    take_offer_fee_token_in_account: &InterfaceAccount<'info, TokenAccount>,
     vault_token_in_account: &InterfaceAccount<'info, TokenAccount>,
     vault_authority: &UncheckedAccount<'info>,
     token_out_program: &Interface<'info, TokenInterface>,
@@ -605,6 +661,7 @@ pub(crate) fn execute_take_offer_permissionless<'info>(
         vault_authority_signer_seeds: Some(&[&[seeds::OFFER_VAULT_AUTHORITY, &[va_bump]]]),
         token_in_source_account: permissionless_token_in_account,
         token_in_destination_account: boss_token_in_account,
+        token_in_fee_destination_account: take_offer_fee_token_in_account,
         token_in_burn_account: vault_token_in_account,
         token_in_burn_authority: &vault_authority.to_account_info(),
         token_out_program,

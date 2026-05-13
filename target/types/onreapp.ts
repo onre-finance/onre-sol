@@ -2256,25 +2256,11 @@ export type Onreapp = {
           "writable": true
         },
         {
-          "name": "redemptionFeeVaultAuthority",
-          "docs": [
-            "Global fee vault authority PDA — created on first fulfillment if not yet initialized"
-          ],
+          "name": "redemptionFeeVault",
           "writable": true
         },
         {
-          "name": "feeDestination",
-          "docs": [
-            "The account that should receive fees.",
-            "Must equal `redemption_fee_vault_authority.fee_destination` when set,",
-            "or the vault authority PDA itself when `fee_destination` is default."
-          ]
-        },
-        {
-          "name": "feeDestinationTokenInAccount",
-          "docs": [
-            "ATA of `fee_destination` for token_in — receives the fee portion"
-          ],
+          "name": "redemptionFeeTokenInAccount",
           "writable": true
         },
         {
@@ -7040,6 +7026,99 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "setConfigurableVaultDestination",
+      "discriminator": [
+        133,
+        244,
+        254,
+        4,
+        120,
+        3,
+        31,
+        123
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "configurableVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103,
+                  117,
+                  114,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "kind"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "kind",
+          "type": {
+            "defined": {
+              "name": "configurableVaultKind"
+            }
+          }
+        },
+        {
+          "name": "withdrawalDestination",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "setKillSwitch",
       "docs": [
         "Enables or disables the kill switch.",
@@ -8623,60 +8702,7 @@ export type Onreapp = {
         },
         {
           "name": "permissionlessTokenInAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "permissionlessAuthority"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "permissionlessTokenOutAccount",
@@ -8759,6 +8785,14 @@ export type Onreapp = {
         },
         {
           "name": "bossTokenInAccount",
+          "writable": true
+        },
+        {
+          "name": "takeOfferFeeVault",
+          "writable": true
+        },
+        {
+          "name": "takeOfferFeeTokenInAccount",
           "writable": true
         },
         {
@@ -9085,60 +9119,15 @@ export type Onreapp = {
         },
         {
           "name": "bossTokenInAccount",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "boss"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInProgram"
-              },
-              {
-                "kind": "account",
-                "path": "tokenInMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
+        },
+        {
+          "name": "takeOfferFeeVault",
+          "writable": true
+        },
+        {
+          "name": "takeOfferFeeTokenInAccount",
+          "writable": true
         },
         {
           "name": "mintAuthority"
@@ -9761,6 +9750,225 @@ export type Onreapp = {
         {
           "name": "newFeeBasisPoints",
           "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "withdrawConfigurableVault",
+      "discriminator": [
+        255,
+        81,
+        28,
+        61,
+        192,
+        180,
+        29,
+        13
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "configurableVault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103,
+                  117,
+                  114,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "kind"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vaultTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "configurableVault"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "destination"
+        },
+        {
+          "name": "destinationTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "destination"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "kind",
+          "type": {
+            "defined": {
+              "name": "configurableVaultKind"
+            }
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
         }
       ]
     },
@@ -10815,6 +11023,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "configurableVault",
+      "discriminator": [
+        208,
+        230,
+        235,
+        106,
+        163,
+        86,
+        250,
+        199
+      ]
+    },
+    {
       "name": "marketStats",
       "discriminator": [
         240,
@@ -11139,6 +11360,32 @@ export type Onreapp = {
         92,
         134,
         92
+      ]
+    },
+    {
+      "name": "configurableVaultDestinationUpdatedEvent",
+      "discriminator": [
+        175,
+        21,
+        184,
+        75,
+        241,
+        98,
+        227,
+        202
+      ]
+    },
+    {
+      "name": "configurableVaultWithdrawnEvent",
+      "discriminator": [
+        248,
+        90,
+        16,
+        109,
+        90,
+        155,
+        34,
+        132
       ]
     },
     {
@@ -12260,61 +12507,91 @@ export type Onreapp = {
     },
     {
       "code": 6119,
+      "name": "invalidConfigurableVault",
+      "msg": "Invalid Configurable Vault"
+    },
+    {
+      "code": 6120,
+      "name": "invalidConfigurableVaultOwner",
+      "msg": "Invalid Configurable Vault Owner"
+    },
+    {
+      "code": 6121,
+      "name": "invalidConfigurableVaultData",
+      "msg": "Invalid Configurable Vault Data"
+    },
+    {
+      "code": 6122,
+      "name": "invalidConfigurableVaultKind",
+      "msg": "Invalid Configurable Vault Kind"
+    },
+    {
+      "code": 6123,
+      "name": "missingConfigurableVaultDestination",
+      "msg": "Missing Configurable Vault Destination"
+    },
+    {
+      "code": 6124,
+      "name": "invalidConfigurableVaultTokenAccount",
+      "msg": "Invalid Configurable Vault Token Account"
+    },
+    {
+      "code": 6125,
       "name": "invalidBufferStateAccount",
       "msg": "Invalid Buffer State Account"
     },
     {
-      "code": 6120,
+      "code": 6126,
       "name": "invalidTimestamp",
       "msg": "Invalid Timestamp"
     },
     {
-      "code": 6121,
+      "code": 6127,
       "name": "minimumOutNotMet",
       "msg": "Minimum Out Not Met"
     },
     {
-      "code": 6122,
+      "code": 6128,
       "name": "invalidSwapPair",
       "msg": "Invalid Swap Pair"
     },
     {
-      "code": 6123,
+      "code": 6129,
       "name": "invalidFeeWallet",
       "msg": "Invalid Fee Wallet"
     },
     {
-      "code": 6124,
+      "code": 6130,
       "name": "invalidTargetNav",
       "msg": "Invalid Target Nav"
     },
     {
-      "code": 6125,
+      "code": 6131,
       "name": "invalidAssetAdjustmentAmount",
       "msg": "Invalid Asset Adjustment Amount"
     },
     {
-      "code": 6126,
+      "code": 6132,
       "name": "noBurnNeeded",
       "msg": "No Burn Needed"
     },
     {
-      "code": 6127,
+      "code": 6133,
       "name": "insufficientCacheBalance",
       "msg": "Insufficient Cache Balance"
     },
     {
-      "code": 6128,
+      "code": 6134,
       "name": "insufficientFeeBalance",
       "msg": "Insufficient Fee Balance"
     },
     {
-      "code": 6129,
+      "code": 6135,
       "name": "invalidFeeRecipient",
       "msg": "Invalid Fee Recipient"
     },
     {
-      "code": 6130,
+      "code": 6136,
       "name": "invalidBurnTarget",
       "msg": "Invalid Burn Target"
     }
@@ -12972,6 +13249,117 @@ export type Onreapp = {
           },
           {
             "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "configurableVault",
+      "docs": [
+        "Program-owned configurable fee vault authority."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "docs": [
+              "Vault kind as `ConfigurableVaultKind::as_u8()`."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "withdrawalDestination",
+            "docs": [
+              "Boss-configured withdrawal destination. Default means unset."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "docs": [
+              "Reserved space for future fields."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                31
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "configurableVaultDestinationUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "oldDestination",
+            "type": "pubkey"
+          },
+          {
+            "name": "newDestination",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "configurableVaultKind",
+      "docs": [
+        "Fee vault selector used for deriving shared configurable vault PDAs."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "takeOfferFee"
+          },
+          {
+            "name": "redemptionFee"
+          },
+          {
+            "name": "managementFee"
+          },
+          {
+            "name": "performanceFee"
+          }
+        ]
+      }
+    },
+    {
+      "name": "configurableVaultWithdrawnEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "destination",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
             "type": "u64"
           }
         ]

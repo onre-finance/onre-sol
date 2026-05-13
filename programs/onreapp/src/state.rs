@@ -100,3 +100,46 @@ pub struct CirculatingSupplyExcludedBalance {
     /// Reserved bytes for forward-compatible layout expansion.
     pub reserved: [u8; 31],
 }
+
+/// Fee vault selector used for deriving shared configurable vault PDAs.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
+pub enum ConfigurableVaultKind {
+    TakeOfferFee,
+    RedemptionFee,
+    ManagementFee,
+    PerformanceFee,
+}
+
+impl ConfigurableVaultKind {
+    pub fn seed(self) -> &'static [u8] {
+        match self {
+            Self::TakeOfferFee => crate::constants::seeds::TAKE_OFFER_FEE_VAULT,
+            Self::RedemptionFee => crate::constants::seeds::REDEMPTION_FEE_VAULT,
+            Self::ManagementFee => crate::constants::seeds::MANAGEMENT_FEE_VAULT,
+            Self::PerformanceFee => crate::constants::seeds::PERFORMANCE_FEE_VAULT,
+        }
+    }
+
+    pub fn as_u8(self) -> u8 {
+        match self {
+            Self::TakeOfferFee => 0,
+            Self::RedemptionFee => 1,
+            Self::ManagementFee => 2,
+            Self::PerformanceFee => 3,
+        }
+    }
+}
+
+/// Program-owned configurable fee vault authority.
+#[account]
+#[derive(InitSpace)]
+pub struct ConfigurableVault {
+    /// Vault kind as `ConfigurableVaultKind::as_u8()`.
+    pub kind: u8,
+    /// Boss-configured withdrawal destination. Default means unset.
+    pub withdrawal_destination: Pubkey,
+    /// PDA bump seed.
+    pub bump: u8,
+    /// Reserved space for future fields.
+    pub reserved: [u8; 31],
+}

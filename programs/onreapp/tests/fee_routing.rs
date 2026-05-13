@@ -1,6 +1,7 @@
 mod common;
 
 use common::*;
+use onreapp::state::ConfigurableVaultKind;
 use solana_compute_budget_interface::ComputeBudgetInstruction;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
@@ -102,7 +103,7 @@ fn setup_fee_routing() -> FeeRoutingCtx {
     }
 }
 
-fn create_and_fulfill(ctx: &mut FeeRoutingCtx, fee_destination: &Pubkey) {
+fn create_and_fulfill(ctx: &mut FeeRoutingCtx) {
     let boss = ctx.payer.pubkey();
 
     let offer_data = read_redemption_offer(&ctx.svm, &ctx.onyc_mint, &ctx.usdc_mint);
@@ -119,7 +120,7 @@ fn create_and_fulfill(ctx: &mut FeeRoutingCtx, fee_destination: &Pubkey) {
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
     advance_slot(&mut ctx.svm);
 
-    let ix = build_fulfill_redemption_request_with_fee_dest_ix(
+    let ix = build_fulfill_redemption_request_ix(
         &boss,
         &boss,
         &find_offer_pda(&ctx.usdc_mint, &ctx.onyc_mint).0,
@@ -130,11 +131,41 @@ fn create_and_fulfill(ctx: &mut FeeRoutingCtx, fee_destination: &Pubkey) {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
         REDEMPTION_AMOUNT,
-        fee_destination,
     );
     let cu_ix = ComputeBudgetInstruction::set_compute_unit_limit(300_000);
     send_tx(&mut ctx.svm, &[cu_ix, ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
+}
+
+fn set_redemption_fee_destination(ctx: &mut FeeRoutingCtx, destination: &Pubkey) {
+    let boss = ctx.payer.pubkey();
+    let (fee_vault_pda, _) = find_redemption_fee_vault_pda();
+    let ix = build_set_configurable_vault_destination_ix(
+        &boss,
+        &fee_vault_pda,
+        ConfigurableVaultKind::RedemptionFee.as_u8(),
+        destination,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+    advance_slot(&mut ctx.svm);
+}
+
+fn build_withdraw_redemption_configurable_vault_ix(
+    boss: &Pubkey,
+    destination: &Pubkey,
+    token_in_mint: &Pubkey,
+    amount: u64,
+) -> solana_sdk::instruction::Instruction {
+    let (fee_vault_pda, _) = find_redemption_fee_vault_pda();
+    build_withdraw_configurable_vault_ix(
+        boss,
+        &fee_vault_pda,
+        destination,
+        token_in_mint,
+        ConfigurableVaultKind::RedemptionFee.as_u8(),
+        amount,
+        &TOKEN_PROGRAM_ID,
+    )
 }
 
 fn get_balance_or_zero(svm: &litesvm::LiteSVM, ata: &Pubkey) -> u64 {
@@ -152,9 +183,9 @@ fn get_balance_or_zero(svm: &litesvm::LiteSVM, ata: &Pubkey) -> u64 {
 #[test]
 fn test_fee_routing_fees_accumulate_in_vault_when_default() {
     let mut ctx = setup_fee_routing();
-    let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
+    let (fee_vault_pda, _) = find_redemption_fee_vault_pda();
 
-    create_and_fulfill(&mut ctx, &fee_vault_pda);
+    create_and_fulfill(&mut ctx);
 
     let fee_vault_ata = get_associated_token_address(&fee_vault_pda, &ctx.onyc_mint);
     assert_eq!(get_token_balance(&ctx.svm, &fee_vault_ata), EXPECTED_FEE);
@@ -170,19 +201,25 @@ fn test_fee_routing_fees_go_to_custom_wallet_when_set() {
         .airdrop(&custom_wallet.pubkey(), INITIAL_LAMPORTS)
         .unwrap();
 
-    let ix = build_set_redemption_fee_destination_ix(&boss, &custom_wallet.pubkey());
+    set_redemption_fee_destination(&mut ctx, &custom_wallet.pubkey());
+
+    create_and_fulfill(&mut ctx);
+
+    // Fees always accrue in the configurable vault first.
+    let (fee_vault_pda, _) = find_redemption_fee_vault_pda();
+    let fee_vault_ata = get_associated_token_address(&fee_vault_pda, &ctx.onyc_mint);
+    assert_eq!(get_token_balance(&ctx.svm, &fee_vault_ata), EXPECTED_FEE);
+
+    let ix = build_withdraw_redemption_configurable_vault_ix(
+        &boss,
+        &custom_wallet.pubkey(),
+        &ctx.onyc_mint,
+        0,
+    );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
-    advance_slot(&mut ctx.svm);
 
-    create_and_fulfill(&mut ctx, &custom_wallet.pubkey());
-
-    // Custom wallet ATA should have the fee
     let custom_ata = get_associated_token_address(&custom_wallet.pubkey(), &ctx.onyc_mint);
     assert_eq!(get_token_balance(&ctx.svm, &custom_ata), EXPECTED_FEE);
-
-    // Fee vault PDA ATA should be empty or non-existent (no fees routed there)
-    let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
-    let fee_vault_ata = get_associated_token_address(&fee_vault_pda, &ctx.onyc_mint);
     assert_eq!(get_balance_or_zero(&ctx.svm, &fee_vault_ata), 0);
 }
 
@@ -190,11 +227,11 @@ fn test_fee_routing_fees_go_to_custom_wallet_when_set() {
 fn test_fee_routing_change_mid_stream() {
     let mut ctx = setup_fee_routing();
     let boss = ctx.payer.pubkey();
-    let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
+    let (fee_vault_pda, _) = find_redemption_fee_vault_pda();
     let fee_vault_ata = get_associated_token_address(&fee_vault_pda, &ctx.onyc_mint);
 
     // First fulfillment with default destination
-    create_and_fulfill(&mut ctx, &fee_vault_pda);
+    create_and_fulfill(&mut ctx);
     assert_eq!(get_token_balance(&ctx.svm, &fee_vault_ata), EXPECTED_FEE);
 
     // Change fee destination to a new wallet
@@ -202,19 +239,26 @@ fn test_fee_routing_change_mid_stream() {
     ctx.svm
         .airdrop(&custom_wallet.pubkey(), INITIAL_LAMPORTS)
         .unwrap();
-    let ix = build_set_redemption_fee_destination_ix(&boss, &custom_wallet.pubkey());
+    set_redemption_fee_destination(&mut ctx, &custom_wallet.pubkey());
+
+    // Second fulfillment still accrues into the vault.
+    create_and_fulfill(&mut ctx);
+
+    assert_eq!(
+        get_token_balance(&ctx.svm, &fee_vault_ata),
+        2 * EXPECTED_FEE
+    );
+
+    let ix = build_withdraw_redemption_configurable_vault_ix(
+        &boss,
+        &custom_wallet.pubkey(),
+        &ctx.onyc_mint,
+        0,
+    );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
-    advance_slot(&mut ctx.svm);
-
-    // Second fulfillment with custom destination
-    create_and_fulfill(&mut ctx, &custom_wallet.pubkey());
-
-    // Vault PDA still has only the first fee
-    assert_eq!(get_token_balance(&ctx.svm, &fee_vault_ata), EXPECTED_FEE);
-
-    // Custom wallet has the second fee
     let custom_ata = get_associated_token_address(&custom_wallet.pubkey(), &ctx.onyc_mint);
-    assert_eq!(get_token_balance(&ctx.svm, &custom_ata), EXPECTED_FEE);
+    assert_eq!(get_token_balance(&ctx.svm, &custom_ata), 2 * EXPECTED_FEE);
+    assert_eq!(get_token_balance(&ctx.svm, &fee_vault_ata), 0);
 }
 
 #[test]
@@ -227,38 +271,19 @@ fn test_fee_routing_rejects_invalid_fee_destination() {
         .airdrop(&custom_wallet.pubkey(), INITIAL_LAMPORTS)
         .unwrap();
 
-    let ix = build_set_redemption_fee_destination_ix(&boss, &custom_wallet.pubkey());
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
-    advance_slot(&mut ctx.svm);
+    set_redemption_fee_destination(&mut ctx, &custom_wallet.pubkey());
+    create_and_fulfill(&mut ctx);
 
-    let offer_data = read_redemption_offer(&ctx.svm, &ctx.onyc_mint, &ctx.usdc_mint);
-    let counter = offer_data.request_counter;
-
-    let ix = build_create_redemption_request_ix(
-        &ctx.user.pubkey(),
-        &ctx.onyc_mint,
-        &ctx.usdc_mint,
-        REDEMPTION_AMOUNT,
-        counter,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
-    advance_slot(&mut ctx.svm);
-
-    // Pass a different wallet as fee destination — should be rejected
+    // Withdraw to a different wallet than the configured destination.
     let wrong_wallet = Keypair::new();
-    let ix = build_fulfill_redemption_request_with_fee_dest_ix(
+    ctx.svm
+        .airdrop(&wrong_wallet.pubkey(), INITIAL_LAMPORTS)
+        .unwrap();
+    let ix = build_withdraw_redemption_configurable_vault_ix(
         &boss,
-        &boss,
-        &find_offer_pda(&ctx.usdc_mint, &ctx.onyc_mint).0,
-        &ctx.user.pubkey(),
-        &ctx.onyc_mint,
-        &ctx.usdc_mint,
-        counter,
-        &TOKEN_PROGRAM_ID,
-        &TOKEN_PROGRAM_ID,
-        REDEMPTION_AMOUNT,
         &wrong_wallet.pubkey(),
+        &ctx.onyc_mint,
+        0,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]);
     assert!(result.is_err(), "wrong fee destination should be rejected");
@@ -274,8 +299,8 @@ fn test_fee_routing_no_fee_transfer_when_zero_bps() {
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_slot(&mut ctx.svm);
 
-    let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
-    create_and_fulfill(&mut ctx, &fee_vault_pda);
+    let (fee_vault_pda, _) = find_redemption_fee_vault_pda();
+    create_and_fulfill(&mut ctx);
 
     let fee_vault_ata = get_associated_token_address(&fee_vault_pda, &ctx.onyc_mint);
     assert_eq!(get_balance_or_zero(&ctx.svm, &fee_vault_ata), 0);
@@ -284,9 +309,9 @@ fn test_fee_routing_no_fee_transfer_when_zero_bps() {
 #[test]
 fn test_fee_routing_fee_math_correctness() {
     let mut ctx = setup_fee_routing();
-    let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
+    let (fee_vault_pda, _) = find_redemption_fee_vault_pda();
 
-    create_and_fulfill(&mut ctx, &fee_vault_pda);
+    create_and_fulfill(&mut ctx);
 
     // Fee vault PDA ATA should have exactly EXPECTED_FEE
     let fee_vault_ata = get_associated_token_address(&fee_vault_pda, &ctx.onyc_mint);
@@ -304,8 +329,8 @@ fn test_fee_routing_fee_math_correctness() {
 fn test_withdraw_redemption_fees_withdraws_full_balance_when_amount_is_zero() {
     let mut ctx = setup_fee_routing();
     let boss = ctx.payer.pubkey();
-    let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
-    create_and_fulfill(&mut ctx, &fee_vault_pda);
+    let (fee_vault_pda, _) = find_redemption_fee_vault_pda();
+    create_and_fulfill(&mut ctx);
 
     let fee_vault_ata = get_associated_token_address(&fee_vault_pda, &ctx.onyc_mint);
     assert_eq!(get_token_balance(&ctx.svm, &fee_vault_ata), EXPECTED_FEE);
@@ -314,13 +339,13 @@ fn test_withdraw_redemption_fees_withdraws_full_balance_when_amount_is_zero() {
     ctx.svm
         .airdrop(&destination.pubkey(), INITIAL_LAMPORTS)
         .unwrap();
+    set_redemption_fee_destination(&mut ctx, &destination.pubkey());
 
-    let ix = build_withdraw_redemption_fees_ix(
+    let ix = build_withdraw_redemption_configurable_vault_ix(
         &boss,
         &destination.pubkey(),
         &ctx.onyc_mint,
         0,
-        &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
@@ -333,21 +358,21 @@ fn test_withdraw_redemption_fees_withdraws_full_balance_when_amount_is_zero() {
 fn test_withdraw_redemption_fees_supports_partial_withdrawal() {
     let mut ctx = setup_fee_routing();
     let boss = ctx.payer.pubkey();
-    let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
-    create_and_fulfill(&mut ctx, &fee_vault_pda);
+    let (fee_vault_pda, _) = find_redemption_fee_vault_pda();
+    create_and_fulfill(&mut ctx);
 
     let destination = Keypair::new();
     ctx.svm
         .airdrop(&destination.pubkey(), INITIAL_LAMPORTS)
         .unwrap();
+    set_redemption_fee_destination(&mut ctx, &destination.pubkey());
     let withdraw_amount = EXPECTED_FEE / 2;
 
-    let ix = build_withdraw_redemption_fees_ix(
+    let ix = build_withdraw_redemption_configurable_vault_ix(
         &boss,
         &destination.pubkey(),
         &ctx.onyc_mint,
         withdraw_amount,
-        &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
@@ -371,13 +396,13 @@ fn test_withdraw_redemption_fees_rejects_zero_balance() {
     ctx.svm
         .airdrop(&destination.pubkey(), INITIAL_LAMPORTS)
         .unwrap();
+    set_redemption_fee_destination(&mut ctx, &destination.pubkey());
 
-    let ix = build_withdraw_redemption_fees_ix(
+    let ix = build_withdraw_redemption_configurable_vault_ix(
         &boss,
         &destination.pubkey(),
         &ctx.onyc_mint,
         0,
-        &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]);
     assert!(
@@ -390,20 +415,19 @@ fn test_withdraw_redemption_fees_rejects_zero_balance() {
 fn test_withdraw_redemption_fees_rejects_amount_above_balance() {
     let mut ctx = setup_fee_routing();
     let boss = ctx.payer.pubkey();
-    let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
-    create_and_fulfill(&mut ctx, &fee_vault_pda);
+    create_and_fulfill(&mut ctx);
 
     let destination = Keypair::new();
     ctx.svm
         .airdrop(&destination.pubkey(), INITIAL_LAMPORTS)
         .unwrap();
+    set_redemption_fee_destination(&mut ctx, &destination.pubkey());
 
-    let ix = build_withdraw_redemption_fees_ix(
+    let ix = build_withdraw_redemption_configurable_vault_ix(
         &boss,
         &destination.pubkey(),
         &ctx.onyc_mint,
         EXPECTED_FEE + 1,
-        &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]);
     assert!(
@@ -415,8 +439,7 @@ fn test_withdraw_redemption_fees_rejects_amount_above_balance() {
 #[test]
 fn test_withdraw_redemption_fees_rejects_non_boss() {
     let mut ctx = setup_fee_routing();
-    let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
-    create_and_fulfill(&mut ctx, &fee_vault_pda);
+    create_and_fulfill(&mut ctx);
 
     let unauthorized = Keypair::new();
     let destination = Keypair::new();
@@ -426,13 +449,13 @@ fn test_withdraw_redemption_fees_rejects_non_boss() {
     ctx.svm
         .airdrop(&destination.pubkey(), INITIAL_LAMPORTS)
         .unwrap();
+    set_redemption_fee_destination(&mut ctx, &destination.pubkey());
 
-    let ix = build_withdraw_redemption_fees_ix(
+    let ix = build_withdraw_redemption_configurable_vault_ix(
         &unauthorized.pubkey(),
         &destination.pubkey(),
         &ctx.onyc_mint,
         EXPECTED_FEE,
-        &TOKEN_PROGRAM_ID,
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&unauthorized]);
     assert!(

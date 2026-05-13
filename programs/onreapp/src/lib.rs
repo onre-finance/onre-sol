@@ -2,6 +2,7 @@
 
 use anchor_lang::prelude::*;
 use instructions::*;
+use state::ConfigurableVaultKind;
 use utils::ApprovalMessage;
 
 pub mod constants;
@@ -158,6 +159,22 @@ pub mod onreapp {
         amount: u64,
     ) -> Result<()> {
         vault_operations::redemption_vault_withdraw(ctx, amount)
+    }
+
+    pub fn set_configurable_vault_destination(
+        ctx: Context<SetConfigurableVaultDestination>,
+        kind: ConfigurableVaultKind,
+        withdrawal_destination: Pubkey,
+    ) -> Result<()> {
+        configurable_vault::set_configurable_vault_destination(ctx, kind, withdrawal_destination)
+    }
+
+    pub fn withdraw_configurable_vault(
+        ctx: Context<WithdrawConfigurableVault>,
+        kind: ConfigurableVaultKind,
+        amount: u64,
+    ) -> Result<()> {
+        configurable_vault::withdraw_configurable_vault(ctx, kind, amount)
     }
 
     /// Creates an offer.

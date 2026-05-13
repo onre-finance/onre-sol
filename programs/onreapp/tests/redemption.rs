@@ -1599,7 +1599,7 @@ fn test_fulfill_redemption_request_burn_and_mint() {
     assert_eq!(get_token_balance(&svm, &user_usdc_ata), 950_000);
 
     // Fee vault PDA ATA receives fee in onyc: 50_000_000
-    let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
+    let (fee_vault_pda, _) = find_redemption_fee_vault_pda();
     let fee_vault_onyc_ata = get_associated_token_address(&fee_vault_pda, &onyc_mint);
     assert_eq!(get_token_balance(&svm, &fee_vault_onyc_ata), 50_000_000);
 
@@ -2190,7 +2190,7 @@ fn test_fulfill_redemption_token2022_burn_mint_mode() {
     let user_usdc_ata = get_associated_token_address_2022(&user.pubkey(), &usdc_mint);
     assert_eq!(get_token_balance(&svm, &user_usdc_ata), 950_000);
 
-    let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
+    let (fee_vault_pda, _) = find_redemption_fee_vault_pda();
     let fee_vault_onyc_ata = get_associated_token_address_2022(&fee_vault_pda, &onyc_mint);
     assert_eq!(get_token_balance(&svm, &fee_vault_onyc_ata), 50_000_000);
 }
@@ -2816,7 +2816,7 @@ fn fulfill_token2022_with_params(apr: u64, fee_bps: u16, advance_days: u64) {
         let boss_onyc_ata = get_associated_token_address_2022(&boss, &onyc_mint);
         let boss_onyc = get_token_balance(&svm, &boss_onyc_ata);
         assert_eq!(boss_onyc, net, "boss receives net onyc in transfer mode");
-        let (fee_vault_pda, _) = find_redemption_fee_vault_authority_pda();
+        let (fee_vault_pda, _) = find_redemption_fee_vault_pda();
         let fee_vault_ata = get_associated_token_address_2022(&fee_vault_pda, &onyc_mint);
         assert_eq!(
             get_token_balance(&svm, &fee_vault_ata),
