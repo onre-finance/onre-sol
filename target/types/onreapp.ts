@@ -34,7 +34,7 @@ export type Onreapp = {
     "The price for offers is determined by time-based vectors with APR (Annual Percentage Rate) growth:",
     "- `base_time`: The timestamp when the vector becomes active.",
     "- `base_price`: The initial price at the base_time with 9 decimal precision.",
-    "- `apr`: Annual percentage rate scaled by 1,000,000 (e.g., 1_000_000 = 1% APR).",
+    "- `apr`: Annual percentage rate with scale=6 (e.g., 10_000 = 1%, 1_000_000 = 100%).",
     "- `price_fix_duration`: Duration in seconds for each discrete pricing step.",
     "The price increases over time based on the APR, calculated in discrete intervals.",
     "",
@@ -13390,7 +13390,7 @@ export type Onreapp = {
               "Annual Percentage Rate scaled by 1_000_000 (1_000_000 = 100% APR; 10_000 = 1%)",
               "",
               "Determines compound interest rate for price growth over time.",
-              "Scale=6 where 1_000_000 = 1% annual rate."
+              "Scale=6 where 10_000 = 1% annual rate and 1_000_000 = 100%."
             ],
             "type": "u64"
           },
@@ -13445,7 +13445,7 @@ export type Onreapp = {
           {
             "name": "apr",
             "docs": [
-              "Annual Percentage Rate scaled by 1,000,000 (1_000_000 = 1% APR)"
+              "Annual Percentage Rate with scale=6 (10_000 = 1%, 1_000_000 = 100%)"
             ],
             "type": "u64"
           },

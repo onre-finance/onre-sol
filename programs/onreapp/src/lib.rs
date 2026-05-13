@@ -68,7 +68,7 @@ pub use instructions::mint_authority::mint_to::MintTo;
 /// The price for offers is determined by time-based vectors with APR (Annual Percentage Rate) growth:
 /// - `base_time`: The timestamp when the vector becomes active.
 /// - `base_price`: The initial price at the base_time with 9 decimal precision.
-/// - `apr`: Annual percentage rate scaled by 1,000,000 (e.g., 1_000_000 = 1% APR).
+/// - `apr`: Annual percentage rate with scale=6 (e.g., 10_000 = 1%, 1_000_000 = 100%).
 /// - `price_fix_duration`: Duration in seconds for each discrete pricing step.
 /// The price increases over time based on the APR, calculated in discrete intervals.
 ///

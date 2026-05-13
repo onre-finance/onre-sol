@@ -38,7 +38,7 @@ programs/onreapp/src/
 
 ### Dynamic Pricing
 
-Offers use up to 10 `OfferVector` entries with APR-based compound interest. Price grows over time using `base_price`, `apr` (scale = 6, where 1,000,000 = 1%), and `price_fix_duration`.
+Offers use up to 10 `OfferVector` entries with APR-based compound interest. Price grows over time using `base_price`, `apr` (scale = 6, where 10,000 = 1% and 1,000,000 = 100%), and `price_fix_duration`.
 
 ### Authority Structure
 

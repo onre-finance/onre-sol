@@ -86,7 +86,7 @@ pub struct OfferVector {
     /// Annual Percentage Rate scaled by 1_000_000 (1_000_000 = 100% APR; 10_000 = 1%)
     ///
     /// Determines compound interest rate for price growth over time.
-    /// Scale=6 where 1_000_000 = 1% annual rate.
+    /// Scale=6 where 10_000 = 1% annual rate and 1_000_000 = 100%.
     pub apr: u64,
     /// Duration in seconds for each discrete pricing step
     pub price_fix_duration: u64,

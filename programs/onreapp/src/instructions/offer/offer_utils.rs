@@ -7,7 +7,6 @@ use crate::utils::{
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
-use core::cmp::Ordering;
 
 const INT_SCALE: u128 = 1_000_000_000_000_000_000;
 const SECONDS_IN_DAY: u64 = 86_400;
@@ -199,19 +198,20 @@ pub fn find_active_vector_at(offer: &Offer, time: u64) -> Result<OfferVector> {
     Ok(*active_vector)
 }
 
-/// Calculates price growth using daily compounding with second-level interpolation
+/// Calculates price growth using daily compounding with linear intra-day interpolation
 ///
 /// The annual percentage rate is compounded daily, matching the APY semantics
 /// used by market info. For elapsed times that are not an exact number of days,
-/// the remaining fractional day is applied through a fixed-point second factor
-/// derived from the daily growth factor.
+/// the remaining fractional day is linearly interpolated between the current
+/// daily-compounded price and the next daily-compounded price.
 ///
 /// Formula:
 ///   daily_factor = 1 + apr / (APR_SCALE * 365)
-///   price = base_price * daily_factor^(elapsed_seconds / 86400)
+///   full_day_price = base_price * daily_factor^(elapsed_seconds / 86400)
+///   price = full_day_price + daily_delta * (elapsed_seconds % 86400) / 86400
 ///
 /// # Arguments
-/// * `apr` - Annual Percentage Rate scaled by 1_000_000 (1_000_000 = 1% APR)
+/// * `apr` - Annual Percentage Rate with scale=6 (10_000 = 1%, 1_000_000 = 100%)
 /// * `base_price` - Starting price with scale=9
 /// * `elapsed_time` - Time elapsed since base_time in seconds
 ///
@@ -238,24 +238,39 @@ pub fn calculate_vector_price(apr: u64, base_price: u64, elapsed_time: u64) -> R
     let full_days = elapsed_time / SECONDS_IN_DAY;
     let remaining_seconds = elapsed_time % SECONDS_IN_DAY;
 
-    let mut factor =
+    let full_day_factor =
         pow_fixed(daily_factor, full_days, INT_SCALE).ok_or(crate::OnreError::OverflowError)?;
-    if remaining_seconds > 0 {
-        let second_factor = nth_root_fixed(daily_factor, SECONDS_IN_DAY, INT_SCALE)?;
-        let partial_day_factor = pow_fixed(second_factor, remaining_seconds, INT_SCALE)
-            .ok_or(crate::OnreError::OverflowError)?;
-        factor = mul_div_round_u128(factor, partial_day_factor, INT_SCALE)
-            .ok_or(crate::OnreError::OverflowError)?;
-    }
-
-    let price_u128 = mul_div_round_u128(base_price as u128, factor, INT_SCALE)
+    let full_day_price = mul_div_round_u128(base_price as u128, full_day_factor, INT_SCALE)
         .ok_or(crate::OnreError::OverflowError)?;
 
-    if price_u128 > u64::MAX as u128 {
+    if remaining_seconds == 0 {
+        if full_day_price > u64::MAX as u128 {
+            return Err(error!(crate::OnreError::OverflowError));
+        }
+
+        return Ok(full_day_price as u64);
+    }
+
+    let next_day_price = mul_div_round_u128(full_day_price, daily_factor, INT_SCALE)
+        .ok_or(crate::OnreError::OverflowError)?;
+    let daily_delta = next_day_price
+        .checked_sub(full_day_price)
+        .ok_or(crate::OnreError::OverflowError)?;
+    let partial_day_delta = mul_div_round_u128(
+        daily_delta,
+        remaining_seconds as u128,
+        SECONDS_IN_DAY as u128,
+    )
+    .ok_or(crate::OnreError::OverflowError)?;
+    let price = full_day_price
+        .checked_add(partial_day_delta)
+        .ok_or(crate::OnreError::OverflowError)?;
+
+    if price > u64::MAX as u128 {
         return Err(error!(crate::OnreError::OverflowError));
     }
 
-    Ok(price_u128 as u64)
+    Ok(price as u64)
 }
 
 /// Calculates discrete interval pricing with fixed price windows
@@ -346,51 +361,6 @@ pub fn find_vector_index_by_start_time(offer: &Offer, start_time: u64) -> Option
         .vectors
         .iter()
         .position(|vector| vector.start_time == start_time)
-}
-
-fn nth_root_fixed(value: u128, n: u64, scale: u128) -> Result<u128> {
-    if n == 0 {
-        return Err(error!(crate::OnreError::OverflowError));
-    }
-    if value <= scale {
-        return Ok(value);
-    }
-
-    let mut low = scale;
-    let mut high = value;
-
-    while low + 1 < high {
-        let mid = low + (high - low) / 2;
-        match compare_pow_fixed(mid, n, scale, value)? {
-            Ordering::Greater => high = mid,
-            _ => low = mid,
-        }
-    }
-
-    Ok(low)
-}
-
-fn compare_pow_fixed(mut base: u128, mut exp: u64, scale: u128, target: u128) -> Result<Ordering> {
-    let mut acc = scale;
-
-    while exp > 0 {
-        if (exp & 1) == 1 {
-            acc = mul_div_round_u128(acc, base, scale).ok_or(crate::OnreError::OverflowError)?;
-            if acc > target {
-                return Ok(Ordering::Greater);
-            }
-        }
-
-        exp >>= 1;
-        if exp > 0 {
-            base = mul_div_round_u128(base, base, scale).ok_or(crate::OnreError::OverflowError)?;
-            if base > target {
-                return Ok(Ordering::Greater);
-            }
-        }
-    }
-
-    Ok(acc.cmp(&target))
 }
 
 #[cfg(test)]
@@ -512,10 +482,9 @@ mod tests {
         let six_hours = calculate_vector_price(97_600, 1_000_000_000, 21_600).unwrap();
         let one_day = calculate_vector_price(97_600, 1_000_000_000, SECONDS_IN_DAY).unwrap();
 
-        assert!(one_hour > 1_000_000_000);
-        assert_eq!(six_hours, 1_000_066_843);
-        assert!(one_hour < six_hours);
-        assert!(one_hour < one_day);
+        assert_eq!(one_hour, 1_000_011_142);
+        assert_eq!(six_hours, 1_000_066_849);
+        assert_eq!(one_day, 1_000_267_397);
     }
 
     #[test]
@@ -525,8 +494,7 @@ mod tests {
             calculate_vector_price(97_600, 1_000_000_000, SECONDS_IN_DAY * 3 + 21_600).unwrap();
 
         assert_eq!(three_days, 1_000_802_406);
-        assert_eq!(three_days_six_hours, 1_000_869_303);
-        assert!(three_days_six_hours > three_days);
+        assert_eq!(three_days_six_hours, 1_000_869_309);
     }
 
     #[test]

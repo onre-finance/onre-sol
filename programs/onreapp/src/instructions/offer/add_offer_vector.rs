@@ -19,7 +19,7 @@ pub struct OfferVectorAddedEvent {
     pub base_time: u64,
     /// Base price with 9 decimal precision at the vector start
     pub base_price: u64,
-    /// Annual Percentage Rate scaled by 1,000,000 (1_000_000 = 1% APR)
+    /// Annual Percentage Rate with scale=6 (10_000 = 1%, 1_000_000 = 100%)
     pub apr: u64,
     /// Duration in seconds for each discrete pricing step
     pub price_fix_duration: u64,

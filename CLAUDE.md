@@ -42,7 +42,7 @@ This is a Solana smart contract built with Anchor that manages tokenized (re)ins
 
 ### Key Concepts
 
-**Dynamic Pricing**: Offers use `OfferVector` arrays with APR-based compound interest. Price grows over time using `base_price`, `apr` (scale=6, 1_000_000 = 1%), and `price_fix_duration`.
+**Dynamic Pricing**: Offers use `OfferVector` arrays with APR-based compound interest. Price grows over time using `base_price`, `apr` (scale=6, 10_000 = 1%, 1_000_000 = 100%), and `price_fix_duration`.
 
 **Authority Structure**:
 - `boss`: Primary authority with full control
