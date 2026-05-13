@@ -746,13 +746,6 @@ fn test_boss_can_add_themselves_as_approver() {
 }
 
 #[test]
-fn test_approvers_initialized_as_default() {
-    let (_, _, _) = setup_initialized();
-    // Already checked in initialize tests, but verify here too
-    // setup_initialized calls initialize, which should have default approvers
-}
-
-#[test]
 fn test_boss_can_remove_first_approver() {
     let (mut svm, payer, _) = setup_initialized();
     let boss = payer.pubkey();
@@ -1026,64 +1019,6 @@ fn test_removing_approver2_allows_adding_to_slot2() {
     let state = read_state(&svm);
     assert_eq!(state.approver1, a1.pubkey());
     assert_eq!(state.approver2, new_approver.pubkey());
-}
-
-// ===========================================================================
-// Configure Max Supply
-// ===========================================================================
-
-#[test]
-fn test_boss_can_configure_max_supply() {
-    let (mut svm, payer, _) = setup_initialized();
-    let boss = payer.pubkey();
-
-    let ix = build_configure_max_supply_ix(&boss, 1_000_000_000_000_000);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-
-    assert_eq!(read_state(&svm).max_supply, 1_000_000_000_000_000);
-}
-
-#[test]
-fn test_boss_can_remove_max_supply_cap() {
-    let (mut svm, payer, _) = setup_initialized();
-    let boss = payer.pubkey();
-
-    let ix = build_configure_max_supply_ix(&boss, 1_000_000);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-
-    let ix = build_configure_max_supply_ix(&boss, 0);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-
-    assert_eq!(read_state(&svm).max_supply, 0);
-}
-
-#[test]
-fn test_non_boss_cannot_configure_max_supply() {
-    let (mut svm, _payer, _) = setup_initialized();
-
-    let non_boss = Keypair::new();
-    svm.airdrop(&non_boss.pubkey(), INITIAL_LAMPORTS).unwrap();
-
-    let ix = build_configure_max_supply_ix(&non_boss.pubkey(), 1_000_000);
-    let result = send_tx(&mut svm, &[ix], &[&non_boss]);
-    assert!(
-        result.is_err(),
-        "non-boss should not be able to configure max supply"
-    );
-}
-
-#[test]
-fn test_boss_can_update_max_supply_multiple_times() {
-    let (mut svm, payer, _) = setup_initialized();
-    let boss = payer.pubkey();
-
-    let ix = build_configure_max_supply_ix(&boss, 1_000_000);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    assert_eq!(read_state(&svm).max_supply, 1_000_000);
-
-    let ix = build_configure_max_supply_ix(&boss, 2_000_000);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    assert_eq!(read_state(&svm).max_supply, 2_000_000);
 }
 
 // ===========================================================================

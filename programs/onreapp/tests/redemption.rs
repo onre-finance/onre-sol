@@ -2557,8 +2557,7 @@ fn test_fulfill_redemption_request_fails_no_active_vector() {
     assert!(result.is_err(), "should fail when no active vector exists");
 }
 
-#[test]
-fn test_fulfill_redemption_request_price_1_003() {
+fn fulfill_redemption_request_with_price(price: u64) -> u64 {
     let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
     let usdc_mint = create_mint(&mut svm, &payer, 6, &boss);
@@ -2581,7 +2580,6 @@ fn test_fulfill_redemption_request_price_1_003() {
 
     let main_offer = set_main_offer_for_pair(&mut svm, &payer, &boss, &usdc_mint, &onyc_mint);
 
-    // Price = 1.003
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
         &boss,
@@ -2589,7 +2587,7 @@ fn test_fulfill_redemption_request_price_1_003() {
         &onyc_mint,
         None,
         current_time,
-        1_003_000_000,
+        price,
         0,
         86400,
     );
@@ -2647,199 +2645,26 @@ fn test_fulfill_redemption_request_price_1_003() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    // token_out = 1_000_000_000 * 1_003_000_000 * 1_000_000 / (1_000_000_000 * 1_000_000_000) = 1_003_000
     let user_usdc_ata = get_associated_token_address(&user.pubkey(), &usdc_mint);
-    assert_eq!(get_token_balance(&svm, &user_usdc_ata), 1_003_000);
+    get_token_balance(&svm, &user_usdc_ata)
 }
 
 #[test]
-fn test_fulfill_redemption_request_price_0_5() {
-    let (mut svm, payer, onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-    let usdc_mint = create_mint(&mut svm, &payer, 6, &boss);
+fn test_fulfill_redemption_request_price_points() {
+    let cases = [
+        (1_003_000_000, 1_003_000),
+        (500_000_000, 500_000),
+        (3_141_592_653, 3_141_592),
+        (123_456_789, 123_456),
+    ];
 
-    let ix = build_set_redemption_admin_ix(&boss, &boss);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_make_offer_ix(
-        &boss,
-        &usdc_mint,
-        &onyc_mint,
-        0,
-        false,
-        false,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let main_offer = set_main_offer_for_pair(&mut svm, &payer, &boss, &usdc_mint, &onyc_mint);
-
-    // Price = 0.5
-    let current_time = get_clock_time(&svm);
-    let ix = build_add_offer_vector_ix(
-        &boss,
-        &usdc_mint,
-        &onyc_mint,
-        None,
-        current_time,
-        500_000_000,
-        0,
-        86400,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_clock_by(&mut svm, 1);
-
-    let ix = build_make_redemption_offer_ix(
-        &boss,
-        &onyc_mint,
-        &usdc_mint,
-        0,
-        &TOKEN_PROGRAM_ID,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let user = Keypair::new();
-    svm.airdrop(&user.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
-    create_token_account(&mut svm, &onyc_mint, &user.pubkey(), 1_000_000_000);
-
-    let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
-    create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
-    create_token_account(
-        &mut svm,
-        &usdc_mint,
-        &redemption_vault_authority,
-        10_000_000_000,
-    );
-    create_token_account(&mut svm, &onyc_mint, &boss, 0);
-    create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
-
-    let ix = build_create_redemption_request_ix(
-        &user.pubkey(),
-        &onyc_mint,
-        &usdc_mint,
-        1_000_000_000,
-        0,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&user]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_fulfill_redemption_request_ix(
-        &boss,
-        &boss,
-        &main_offer,
-        &user.pubkey(),
-        &onyc_mint,
-        &usdc_mint,
-        0,
-        &TOKEN_PROGRAM_ID,
-        &TOKEN_PROGRAM_ID,
-        1_000_000_000,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-
-    // token_out = 1_000_000_000 * 500_000_000 * 1_000_000 / (1_000_000_000 * 1_000_000_000) = 500_000
-    let user_usdc_ata = get_associated_token_address(&user.pubkey(), &usdc_mint);
-    assert_eq!(get_token_balance(&svm, &user_usdc_ata), 500_000);
-}
-
-#[test]
-fn test_fulfill_redemption_request_price_pi() {
-    let (mut svm, payer, onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-    let usdc_mint = create_mint(&mut svm, &payer, 6, &boss);
-
-    let ix = build_set_redemption_admin_ix(&boss, &boss);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_make_offer_ix(
-        &boss,
-        &usdc_mint,
-        &onyc_mint,
-        0,
-        false,
-        false,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let main_offer = set_main_offer_for_pair(&mut svm, &payer, &boss, &usdc_mint, &onyc_mint);
-
-    // Price = 3.141592653 (pi approximation)
-    let current_time = get_clock_time(&svm);
-    let ix = build_add_offer_vector_ix(
-        &boss,
-        &usdc_mint,
-        &onyc_mint,
-        None,
-        current_time,
-        3_141_592_653,
-        0,
-        86400,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_clock_by(&mut svm, 1);
-
-    let ix = build_make_redemption_offer_ix(
-        &boss,
-        &onyc_mint,
-        &usdc_mint,
-        0,
-        &TOKEN_PROGRAM_ID,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let user = Keypair::new();
-    svm.airdrop(&user.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
-    create_token_account(&mut svm, &onyc_mint, &user.pubkey(), 1_000_000_000);
-
-    let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
-    create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
-    create_token_account(
-        &mut svm,
-        &usdc_mint,
-        &redemption_vault_authority,
-        10_000_000_000,
-    );
-    create_token_account(&mut svm, &onyc_mint, &boss, 0);
-    create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
-
-    let ix = build_create_redemption_request_ix(
-        &user.pubkey(),
-        &onyc_mint,
-        &usdc_mint,
-        1_000_000_000,
-        0,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&user]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_fulfill_redemption_request_ix(
-        &boss,
-        &boss,
-        &main_offer,
-        &user.pubkey(),
-        &onyc_mint,
-        &usdc_mint,
-        0,
-        &TOKEN_PROGRAM_ID,
-        &TOKEN_PROGRAM_ID,
-        1_000_000_000,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-
-    // token_out = 1_000_000_000 * 3_141_592_653 * 1_000_000 / (1_000_000_000 * 1_000_000_000) = 3_141_592
-    let user_usdc_ata = get_associated_token_address(&user.pubkey(), &usdc_mint);
-    assert_eq!(get_token_balance(&svm, &user_usdc_ata), 3_141_592);
+    for (price, expected_usdc) in cases {
+        assert_eq!(
+            fulfill_redemption_request_with_price(price),
+            expected_usdc,
+            "unexpected token_out for price {price}"
+        );
+    }
 }
 
 #[test]
@@ -2870,101 +2695,6 @@ fn test_fulfill_redemption_request_very_small_amount() {
         usdc_received, 1,
         "very small amount rounds to 1 usdc lamport"
     );
-}
-
-#[test]
-fn test_fulfill_redemption_request_price_0_123456789() {
-    let (mut svm, payer, onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-    let usdc_mint = create_mint(&mut svm, &payer, 6, &boss);
-
-    let ix = build_set_redemption_admin_ix(&boss, &boss);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_make_offer_ix(
-        &boss,
-        &usdc_mint,
-        &onyc_mint,
-        0,
-        false,
-        false,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let main_offer = set_main_offer_for_pair(&mut svm, &payer, &boss, &usdc_mint, &onyc_mint);
-
-    // Price = 0.123456789
-    let current_time = get_clock_time(&svm);
-    let ix = build_add_offer_vector_ix(
-        &boss,
-        &usdc_mint,
-        &onyc_mint,
-        None,
-        current_time,
-        123_456_789,
-        0,
-        86400,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_clock_by(&mut svm, 1);
-
-    let ix = build_make_redemption_offer_ix(
-        &boss,
-        &onyc_mint,
-        &usdc_mint,
-        0,
-        &TOKEN_PROGRAM_ID,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let user = Keypair::new();
-    svm.airdrop(&user.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
-    create_token_account(&mut svm, &onyc_mint, &user.pubkey(), 1_000_000_000);
-
-    let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
-    create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
-    create_token_account(
-        &mut svm,
-        &usdc_mint,
-        &redemption_vault_authority,
-        10_000_000_000,
-    );
-    create_token_account(&mut svm, &onyc_mint, &boss, 0);
-    create_token_account(&mut svm, &usdc_mint, &user.pubkey(), 0);
-
-    let ix = build_create_redemption_request_ix(
-        &user.pubkey(),
-        &onyc_mint,
-        &usdc_mint,
-        1_000_000_000,
-        0,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&user]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_fulfill_redemption_request_ix(
-        &boss,
-        &boss,
-        &main_offer,
-        &user.pubkey(),
-        &onyc_mint,
-        &usdc_mint,
-        0,
-        &TOKEN_PROGRAM_ID,
-        &TOKEN_PROGRAM_ID,
-        1_000_000_000,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-
-    // token_out = 1_000_000_000 * 123_456_789 * 1_000_000 / (1_000_000_000 * 1_000_000_000) = 123_456
-    let user_usdc_ata = get_associated_token_address(&user.pubkey(), &usdc_mint);
-    assert_eq!(get_token_balance(&svm, &user_usdc_ata), 123_456);
 }
 
 // ===========================================================================
@@ -3097,93 +2827,23 @@ fn fulfill_token2022_with_params(apr: u64, fee_bps: u16, advance_days: u64) {
 }
 
 #[test]
-fn test_fulfill_redemption_token2022_apr_5_fee_1_30days() {
-    fulfill_token2022_with_params(
-        50_000, // 5% APR
-        100,    // 1% fee
-        30,     // 30 days
-    );
-}
+fn test_fulfill_redemption_token2022_apr_fee_day_matrix() {
+    let cases = [
+        (50_000, 100, 30),
+        (150_000, 500, 90),
+        (250_000, 250, 180),
+        (100_000, 50, 45),
+        (300_000, 700, 60),
+        (80_000, 300, 15),
+        (120_000, 450, 120),
+        (180_000, 600, 270),
+        (220_000, 150, 365),
+        (350_000, 800, 7),
+    ];
 
-#[test]
-fn test_fulfill_redemption_token2022_apr_15_fee_5_90days() {
-    fulfill_token2022_with_params(
-        150_000, // 15% APR
-        500,     // 5% fee
-        90,      // 90 days
-    );
-}
-
-#[test]
-fn test_fulfill_redemption_token2022_apr_25_fee_2_5_180days() {
-    fulfill_token2022_with_params(
-        250_000, // 25% APR
-        250,     // 2.5% fee
-        180,     // 180 days
-    );
-}
-
-#[test]
-fn test_fulfill_redemption_token2022_apr_10_fee_0_5_45days() {
-    fulfill_token2022_with_params(
-        100_000, // 10% APR
-        50,      // 0.5% fee
-        45,      // 45 days
-    );
-}
-
-#[test]
-fn test_fulfill_redemption_token2022_apr_30_fee_7_60days() {
-    fulfill_token2022_with_params(
-        300_000, // 30% APR
-        700,     // 7% fee
-        60,      // 60 days
-    );
-}
-
-#[test]
-fn test_fulfill_redemption_token2022_apr_8_fee_3_15days() {
-    fulfill_token2022_with_params(
-        80_000, // 8% APR
-        300,    // 3% fee
-        15,     // 15 days
-    );
-}
-
-#[test]
-fn test_fulfill_redemption_token2022_apr_12_fee_4_5_120days() {
-    fulfill_token2022_with_params(
-        120_000, // 12% APR
-        450,     // 4.5% fee
-        120,     // 120 days
-    );
-}
-
-#[test]
-fn test_fulfill_redemption_token2022_apr_18_fee_6_270days() {
-    fulfill_token2022_with_params(
-        180_000, // 18% APR
-        600,     // 6% fee
-        270,     // 270 days
-    );
-}
-
-#[test]
-fn test_fulfill_redemption_token2022_apr_22_fee_1_5_365days() {
-    fulfill_token2022_with_params(
-        220_000, // 22% APR
-        150,     // 1.5% fee
-        365,     // 365 days
-    );
-}
-
-#[test]
-fn test_fulfill_redemption_token2022_apr_35_fee_8_7days() {
-    fulfill_token2022_with_params(
-        350_000, // 35% APR
-        800,     // 8% fee
-        7,       // 7 days
-    );
+    for (apr, fee_bps, advance_days) in cases {
+        fulfill_token2022_with_params(apr, fee_bps, advance_days);
+    }
 }
 
 // ===========================================================================
