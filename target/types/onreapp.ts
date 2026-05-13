@@ -9698,12 +9698,9 @@ export type Onreapp = {
           }
         },
         {
-          "name": "boss",
+          "name": "caller",
           "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
+          "signer": true
         },
         {
           "name": "configurableVault",

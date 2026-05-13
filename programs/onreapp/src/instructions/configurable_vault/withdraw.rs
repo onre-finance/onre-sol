@@ -21,12 +21,11 @@ pub struct WithdrawConfigurableVault<'info> {
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
-        has_one = boss @ crate::OnreError::Unauthorized,
     )]
     pub state: Box<Account<'info, State>>,
 
     #[account(mut)]
-    pub boss: Signer<'info>,
+    pub caller: Signer<'info>,
 
     #[account(
         seeds = [seeds::CONFIGURABLE_VAULT, kind.seed()],
@@ -49,7 +48,7 @@ pub struct WithdrawConfigurableVault<'info> {
 
     #[account(
         init_if_needed,
-        payer = boss,
+        payer = caller,
         associated_token::mint = mint,
         associated_token::authority = destination,
         associated_token::token_program = token_program,

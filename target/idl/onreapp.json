@@ -9692,12 +9692,9 @@
           }
         },
         {
-          "name": "boss",
+          "name": "caller",
           "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
+          "signer": true
         },
         {
           "name": "configurable_vault",

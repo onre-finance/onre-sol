@@ -24,7 +24,7 @@ pub fn build_set_configurable_vault_destination_ix(
 }
 
 pub fn build_withdraw_configurable_vault_ix(
-    boss: &Pubkey,
+    caller: &Pubkey,
     configurable_vault: &Pubkey,
     destination: &Pubkey,
     mint: &Pubkey,
@@ -43,7 +43,7 @@ pub fn build_withdraw_configurable_vault_ix(
         program_id: PROGRAM_ID,
         accounts: vec![
             AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new(*boss, true),
+            AccountMeta::new(*caller, true),
             AccountMeta::new_readonly(*configurable_vault, false),
             AccountMeta::new(vault_token_account, false),
             AccountMeta::new_readonly(*destination, false),
