@@ -11,7 +11,7 @@ Granular fees are applied to both directions to capture protocol revenue and man
 **Buy Price (`price_buy`):**
 
 $$
-price\_buy = NAV \times \left(1 + \frac{buy\_fee\_bps}{10,000}\right)
+price\\_buy = NAV \times \left(1 + \frac{buy\\_fee\\_bps}{10,000}\right)
 $$
 
 **Raw Sell Value (`raw_sell_value_stable`):**
@@ -19,11 +19,11 @@ $$
 Before hard-wall dampening, the sell path applies the redemption offer fee:
 
 $$
-net\_margin = 1 - \frac{redemption\_fee\_bps}{10,000}
+net\\_margin = 1 - \frac{redemption\\_fee\\_bps}{10,000}
 $$
 
 $$
-raw\_sell\_value = NAV \times amount\_{ONyc} \times net\_margin
+raw\\_sell\\_value = NAV \times amount\\_{ONyc} \times net\\_margin
 $$
 
 If the redemption offer PDA is valid but uninitialized, `redemption_fee_bps = 0`.
@@ -47,13 +47,13 @@ The sell output is anchored to the actual redemption vault balance and current n
 **Step 1: Calculate Hard-Wall Reserve (`R`)**
 
 $$
-R = TVL \times \frac{pool\_target\_bps}{10,000}
+R = TVL \times \frac{pool\\_target\\_bps}{10,000}
 $$
 
 Where:
 
 $$
-pool\_target\_bps = 1,500
+pool\\_target\\_bps = 1,500
 $$
 
 So by default:
@@ -84,7 +84,7 @@ The current ONYC sell's own raw stable value is included in `effective_volume`, 
 Let:
 
 $$
-L = actual\_liquidity
+L = actual\\_liquidity
 $$
 
 Where `actual_liquidity` is the current redemption vault balance for the output stablecoin.
@@ -92,7 +92,7 @@ Where `actual_liquidity` is the current redemption vault balance for the output 
 The wall is:
 
 $$
-wall = \frac{L}{1 + wall\_sensitivity \times \frac{effective\_volume}{L}}
+wall = \frac{L}{1 + wall\\_sensitivity \times \frac{effective\\_volume}{L}}
 $$
 
 The program uses this wall as effective liquidity while dynamic wall sensitivity is enabled.
@@ -104,7 +104,7 @@ The program uses this wall as effective liquidity while dynamic wall sensitivity
 The current curve is an endpoint dampening curve. It calculates utilization from the current order's raw sell value:
 
 $$
-u = \frac{raw\_sell\_value}{effective\_liquidity}
+u = \frac{raw\\_sell\\_value}{effective\\_liquidity}
 $$
 
 Where:
@@ -124,15 +124,15 @@ When `u >= 1`, the curve can dampen the sell to zero output. This is allowed as 
 The haircut function combines a flat minimum haircut with a utilization-based curve.
 
 $$
-h_{min} = \frac{min\_liquidation\_haircut\_bps}{10,000}
+h_{min} = \frac{min\\_liquidation\\_haircut\\_bps}{10,000}
 $$
 
 $$
-h_{peg} = \frac{curve\_peg\_haircut\_bps}{10,000}
+h_{peg} = \frac{curve\\_peg\\_haircut\\_bps}{10,000}
 $$
 
 $$
-e = \frac{curve\_exponent\_scaled}{10,000}
+e = \frac{curve\\_exponent\\_scaled}{10,000}
 $$
 
 $$
@@ -142,15 +142,15 @@ $$
 Default parameters:
 
 $$
-min\_liquidation\_haircut\_bps = 50
+min\\_liquidation\\_haircut\\_bps = 50
 $$
 
 $$
-curve\_peg\_haircut\_bps = 700
+curve\\_peg\\_haircut\\_bps = 700
 $$
 
 $$
-curve\_exponent\_scaled = 25,000
+curve\\_exponent\\_scaled = 25,000
 $$
 
 So the default haircut curve is:
@@ -166,13 +166,13 @@ $$
 The program converts the haircut into a liquidity factor:
 
 $$
-liquidity\_factor = max(0, 1 - haircut(u))
+liquidity\\_factor = max(0, 1 - haircut(u))
 $$
 
 Then it applies that factor directly to the raw sell value:
 
 $$
-final\_output = raw\_sell\_value \times liquidity\_factor
+final\\_output = raw\\_sell\\_value \times liquidity\\_factor
 $$
 
 So, in code terms:
