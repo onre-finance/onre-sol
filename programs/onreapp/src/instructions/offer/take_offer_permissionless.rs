@@ -519,6 +519,7 @@ pub(crate) fn execute_take_offer_permissionless<'info>(
     require_keys_eq!(ma, mint_authority.key());
 
     let offer = offer_account.load()?;
+    offer.require_enabled()?;
 
     // Validate offer mints
     require_keys_eq!(

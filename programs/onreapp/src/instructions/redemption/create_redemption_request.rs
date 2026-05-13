@@ -1,5 +1,6 @@
 use crate::constants::seeds;
 use crate::instructions::redemption::{RedemptionOffer, RedemptionRequest};
+use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::transfer_tokens;
 use anchor_lang::prelude::*;
@@ -49,6 +50,9 @@ pub struct CreateRedemptionRequest<'info> {
         bump = redemption_offer.bump
     )]
     pub redemption_offer: Account<'info, RedemptionOffer>,
+
+    /// The original offer associated with the redemption offer.
+    pub offer: AccountLoader<'info, Offer>,
 
     /// The redemption request account
     /// PDA derived from redemption_offer and its counter value
@@ -154,6 +158,12 @@ pub fn create_redemption_request(ctx: Context<CreateRedemptionRequest>, amount: 
         ctx.accounts.redemption_offer.token_out_mint != Pubkey::default(),
         crate::OnreError::InvalidRedemptionOffer
     );
+    require_keys_eq!(
+        ctx.accounts.redemption_offer.offer,
+        ctx.accounts.offer.key(),
+        crate::OnreError::OfferMismatch
+    );
+    ctx.accounts.offer.load()?.require_enabled()?;
 
     // Capture counter before incrementing (used for PDA derivation)
     let request_id = ctx.accounts.redemption_offer.request_counter;

@@ -79,6 +79,27 @@ pub fn build_add_offer_vector_ix(
     }
 }
 
+pub fn build_set_offer_disabled_ix(
+    signer: &Pubkey,
+    token_in_mint: &Pubkey,
+    token_out_mint: &Pubkey,
+    disabled: bool,
+) -> Instruction {
+    let (state_pda, _) = find_state_pda();
+    let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
+    let mut data = ix_discriminator("set_offer_disabled").to_vec();
+    data.push(if disabled { 1 } else { 0 });
+    Instruction {
+        program_id: PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new(offer_pda, false),
+            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new_readonly(*signer, true),
+        ],
+        data,
+    }
+}
+
 pub fn build_take_offer_permissionless_ix(
     user: &Pubkey,
     boss: &Pubkey,

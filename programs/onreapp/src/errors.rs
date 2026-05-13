@@ -210,6 +210,12 @@ pub enum OnreError {
     InvalidVaultTokenOutAccount,
     #[msg("Invalid Amount")]
     InvalidAmount,
+    #[msg("Offer Disabled")]
+    OfferDisabled,
+    #[msg("Unauthorized To Disable Offer")]
+    UnauthorizedToDisableOffer,
+    #[msg("Only Boss Can Enable Offer")]
+    OnlyBossCanEnableOffer,
     #[msg("Amount Exceeds Remaining")]
     AmountExceedsRemaining,
     #[msg("Invalid Fee Destination")]

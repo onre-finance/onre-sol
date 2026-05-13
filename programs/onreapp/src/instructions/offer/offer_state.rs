@@ -24,8 +24,10 @@ pub struct Offer {
     needs_approval: u8,
     /// Whether the offer allows permissionless operations (0 = false, 1 = true)
     allow_permissionless: u8,
+    /// Whether the offer is disabled by emergency controls (0 = false, 1 = true)
+    disabled: u8,
     /// Reserved space for future fields
-    reserved: [u8; 131],
+    reserved: [u8; 130],
 }
 
 impl Offer {
@@ -47,6 +49,22 @@ impl Offer {
     /// Sets whether the offer allows permissionless operations
     pub fn set_permissionless(&mut self, allow_permissionless: bool) {
         self.allow_permissionless = if allow_permissionless { 1 } else { 0 };
+    }
+
+    /// Returns whether the offer is currently disabled.
+    fn is_disabled(&self) -> bool {
+        self.disabled != 0
+    }
+
+    /// Sets the disabled state for the offer.
+    pub fn set_disabled(&mut self, disabled: bool) {
+        self.disabled = if disabled { 1 } else { 0 };
+    }
+
+    /// Ensures the offer is currently enabled.
+    pub fn require_enabled(&self) -> Result<()> {
+        require!(!self.is_disabled(), crate::OnreError::OfferDisabled);
+        Ok(())
     }
 }
 

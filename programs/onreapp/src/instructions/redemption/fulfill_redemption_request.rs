@@ -508,6 +508,7 @@ fn execute_fulfill_redemption_request(
 
     // Use shared core processing logic for redemption
     let offer = params.offer.load()?;
+    offer.require_enabled()?;
     let result = process_redemption_core(
         &offer,
         amount,

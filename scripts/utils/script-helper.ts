@@ -796,9 +796,20 @@ export class ScriptHelper {
             .createRedemptionRequest(new BN(params.amount))
             .accountsPartial({
                 redemptionOffer: params.redemptionOfferPda,
+                offer: redemptionOffer.offer,
                 tokenInMint: params.tokenInMint,
                 redeemer: params.redeemer,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,
+            })
+            .instruction();
+    }
+
+    async buildSetOfferDisabledIx(params: { offerPda: PublicKey; disabled: boolean; signer: PublicKey }) {
+        return await this.program.methods
+            .setOfferDisabled(params.disabled)
+            .accountsPartial({
+                offer: params.offerPda,
+                signer: params.signer,
             })
             .instruction();
     }

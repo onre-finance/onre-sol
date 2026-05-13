@@ -356,6 +356,7 @@ pub fn take_offer(
         &ctx.accounts.instructions_sysvar,
     )?;
     let offer = ctx.accounts.offer.load()?;
+    offer.require_enabled()?;
 
     verify_offer_approval(
         &offer,
@@ -440,6 +441,7 @@ pub fn execute_take_offer_v2<'info>(
         &ctx.accounts.instructions_sysvar,
     )?;
     let offer = ctx.accounts.offer.load()?;
+    offer.require_enabled()?;
     let buffer_is_initialized = ctx
         .accounts
         .buffer_accounts

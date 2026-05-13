@@ -55,6 +55,7 @@ pub fn build_create_redemption_request_ix(
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (redemption_offer_pda, _) = find_redemption_offer_pda(token_in_mint, token_out_mint);
+    let (offer_pda, _) = find_offer_pda(token_out_mint, token_in_mint);
     let (redemption_request_pda, _) = find_redemption_request_pda(&redemption_offer_pda, counter);
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
     let redeemer_token_ata = derive_ata(redeemer, token_in_mint, token_program);
@@ -70,6 +71,7 @@ pub fn build_create_redemption_request_ix(
         accounts: vec![
             AccountMeta::new_readonly(state_pda, false),
             AccountMeta::new(redemption_offer_pda, false),
+            AccountMeta::new_readonly(offer_pda, false),
             AccountMeta::new(redemption_request_pda, false),
             AccountMeta::new(*redeemer, true),
             AccountMeta::new_readonly(redemption_vault_authority_pda, false),

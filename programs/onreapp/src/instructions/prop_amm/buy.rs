@@ -151,6 +151,7 @@ fn execute_open_swap_buy<'info>(
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
     let offer = ctx.accounts.offer.load()?;
+    offer.require_enabled()?;
     require!(
         offer.allow_permissionless(),
         crate::OnreError::PermissionlessNotAllowed

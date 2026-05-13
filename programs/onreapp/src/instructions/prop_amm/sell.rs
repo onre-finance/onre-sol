@@ -151,6 +151,7 @@ fn execute_open_swap_sell<'info>(
         &ctx.accounts.instructions_sysvar,
     )?;
     let offer = ctx.accounts.offer.load()?;
+    offer.require_enabled()?;
     let (market_stats_pda, _) =
         Pubkey::find_program_address(&[seeds::MARKET_STATS], ctx.program_id);
     require_keys_eq!(

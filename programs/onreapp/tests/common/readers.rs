@@ -26,6 +26,7 @@ pub struct OfferData {
     pub bump: u8,
     pub needs_approval: u8,
     pub allow_permissionless: u8,
+    pub disabled: u8,
 }
 
 impl OfferData {
@@ -78,6 +79,8 @@ pub fn read_offer(svm: &LiteSVM, token_in_mint: &Pubkey, token_out_mint: &Pubkey
     let needs_approval = data[offset];
     offset += 1;
     let allow_permissionless = data[offset];
+    offset += 1;
+    let disabled = data[offset];
 
     OfferData {
         token_in_mint: tin,
@@ -87,6 +90,7 @@ pub fn read_offer(svm: &LiteSVM, token_in_mint: &Pubkey, token_out_mint: &Pubkey
         bump,
         needs_approval,
         allow_permissionless,
+        disabled,
     }
 }
 

@@ -1437,6 +1437,12 @@ export type Onreapp = {
           }
         },
         {
+          "name": "offer",
+          "docs": [
+            "The original offer associated with the redemption offer."
+          ]
+        },
+        {
           "name": "redemptionRequest",
           "docs": [
             "The redemption request account",
@@ -6915,6 +6921,57 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "setOfferDisabled",
+      "docs": [
+        "Enables or disables one offer.",
+        "",
+        "Boss or admins can disable an offer. Only boss can re-enable it."
+      ],
+      "discriminator": [
+        250,
+        160,
+        113,
+        13,
+        46,
+        252,
+        4,
+        86
+      ],
+      "accounts": [
+        {
+          "name": "offer",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "signer",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "disabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "setOnycMint",
       "docs": [
         "Sets the Onyc mint in the state.",
@@ -10845,6 +10902,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "offerDisabledSetEvent",
+      "discriminator": [
+        241,
+        236,
+        239,
+        13,
+        242,
+        26,
+        158,
+        158
+      ]
+    },
+    {
       "name": "offerFeeUpdatedEvent",
       "discriminator": [
         65,
@@ -11693,71 +11763,86 @@ export type Onreapp = {
     },
     {
       "code": 6104,
+      "name": "offerDisabled",
+      "msg": "Offer Disabled"
+    },
+    {
+      "code": 6105,
+      "name": "unauthorizedToDisableOffer",
+      "msg": "Unauthorized To Disable Offer"
+    },
+    {
+      "code": 6106,
+      "name": "onlyBossCanEnableOffer",
+      "msg": "Only Boss Can Enable Offer"
+    },
+    {
+      "code": 6107,
       "name": "amountExceedsRemaining",
       "msg": "Amount Exceeds Remaining"
     },
     {
-      "code": 6105,
+      "code": 6108,
       "name": "invalidFeeDestination",
       "msg": "Invalid Fee Destination"
     },
     {
-      "code": 6106,
+      "code": 6109,
       "name": "invalidBufferStateAccount",
       "msg": "Invalid Buffer State Account"
     },
     {
-      "code": 6107,
+      "code": 6110,
       "name": "invalidTimestamp",
       "msg": "Invalid Timestamp"
     },
     {
-      "code": 6108,
+      "code": 6111,
       "name": "minimumOutNotMet",
       "msg": "Minimum Out Not Met"
     },
     {
-      "code": 6109,
+      "code": 6112,
       "name": "invalidSwapPair",
       "msg": "Invalid Swap Pair"
     },
     {
-      "code": 6110,
+      "code": 6113,
       "name": "invalidFeeWallet",
       "msg": "Invalid Fee Wallet"
     },
     {
-      "code": 6111,
+      "code": 6114,
       "name": "invalidTargetNav",
       "msg": "Invalid Target Nav"
     },
     {
-      "code": 6112,
+      "code": 6115,
       "name": "invalidAssetAdjustmentAmount",
       "msg": "Invalid Asset Adjustment Amount"
     },
     {
-      "code": 6113,
+      "code": 6116,
       "name": "noBurnNeeded",
       "msg": "No Burn Needed"
     },
     {
-      "code": 6114,
+      "code": 6117,
       "name": "insufficientCacheBalance",
       "msg": "Insufficient Cache Balance"
     },
     {
-      "code": 6115,
+      "code": 6118,
       "name": "insufficientFeeBalance",
       "msg": "Insufficient Fee Balance"
     },
     {
-      "code": 6116,
+      "code": 6119,
       "name": "invalidFeeRecipient",
       "msg": "Invalid Fee Recipient"
     },
     {
-      "code": 6117,
+      "code": 6120,
       "name": "invalidBurnTarget",
       "msg": "Invalid Burn Target"
     }
@@ -12908,6 +12993,13 @@ export type Onreapp = {
             "type": "u8"
           },
           {
+            "name": "disabled",
+            "docs": [
+              "Whether the offer is disabled by emergency controls (0 = false, 1 = true)"
+            ],
+            "type": "u8"
+          },
+          {
             "name": "reserved",
             "docs": [
               "Reserved space for future fields"
@@ -12915,9 +13007,29 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                131
+                130
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "offerDisabledSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerPda",
+            "type": "pubkey"
+          },
+          {
+            "name": "disabled",
+            "type": "bool"
+          },
+          {
+            "name": "signer",
+            "type": "pubkey"
           }
         ]
       }

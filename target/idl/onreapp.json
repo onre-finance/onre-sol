@@ -1431,6 +1431,12 @@
           }
         },
         {
+          "name": "offer",
+          "docs": [
+            "The original offer associated with the redemption offer."
+          ]
+        },
+        {
           "name": "redemption_request",
           "docs": [
             "The redemption request account",
@@ -6909,6 +6915,57 @@
       "args": []
     },
     {
+      "name": "set_offer_disabled",
+      "docs": [
+        "Enables or disables one offer.",
+        "",
+        "Boss or admins can disable an offer. Only boss can re-enable it."
+      ],
+      "discriminator": [
+        250,
+        160,
+        113,
+        13,
+        46,
+        252,
+        4,
+        86
+      ],
+      "accounts": [
+        {
+          "name": "offer",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "signer",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "disabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "set_onyc_mint",
       "docs": [
         "Sets the Onyc mint in the state.",
@@ -10839,6 +10896,19 @@
       ]
     },
     {
+      "name": "OfferDisabledSetEvent",
+      "discriminator": [
+        241,
+        236,
+        239,
+        13,
+        242,
+        26,
+        158,
+        158
+      ]
+    },
+    {
       "name": "OfferFeeUpdatedEvent",
       "discriminator": [
         65,
@@ -11687,71 +11757,86 @@
     },
     {
       "code": 6104,
+      "name": "OfferDisabled",
+      "msg": "Offer Disabled"
+    },
+    {
+      "code": 6105,
+      "name": "UnauthorizedToDisableOffer",
+      "msg": "Unauthorized To Disable Offer"
+    },
+    {
+      "code": 6106,
+      "name": "OnlyBossCanEnableOffer",
+      "msg": "Only Boss Can Enable Offer"
+    },
+    {
+      "code": 6107,
       "name": "AmountExceedsRemaining",
       "msg": "Amount Exceeds Remaining"
     },
     {
-      "code": 6105,
+      "code": 6108,
       "name": "InvalidFeeDestination",
       "msg": "Invalid Fee Destination"
     },
     {
-      "code": 6106,
+      "code": 6109,
       "name": "InvalidBufferStateAccount",
       "msg": "Invalid Buffer State Account"
     },
     {
-      "code": 6107,
+      "code": 6110,
       "name": "InvalidTimestamp",
       "msg": "Invalid Timestamp"
     },
     {
-      "code": 6108,
+      "code": 6111,
       "name": "MinimumOutNotMet",
       "msg": "Minimum Out Not Met"
     },
     {
-      "code": 6109,
+      "code": 6112,
       "name": "InvalidSwapPair",
       "msg": "Invalid Swap Pair"
     },
     {
-      "code": 6110,
+      "code": 6113,
       "name": "InvalidFeeWallet",
       "msg": "Invalid Fee Wallet"
     },
     {
-      "code": 6111,
+      "code": 6114,
       "name": "InvalidTargetNav",
       "msg": "Invalid Target Nav"
     },
     {
-      "code": 6112,
+      "code": 6115,
       "name": "InvalidAssetAdjustmentAmount",
       "msg": "Invalid Asset Adjustment Amount"
     },
     {
-      "code": 6113,
+      "code": 6116,
       "name": "NoBurnNeeded",
       "msg": "No Burn Needed"
     },
     {
-      "code": 6114,
+      "code": 6117,
       "name": "InsufficientCacheBalance",
       "msg": "Insufficient Cache Balance"
     },
     {
-      "code": 6115,
+      "code": 6118,
       "name": "InsufficientFeeBalance",
       "msg": "Insufficient Fee Balance"
     },
     {
-      "code": 6116,
+      "code": 6119,
       "name": "InvalidFeeRecipient",
       "msg": "Invalid Fee Recipient"
     },
     {
-      "code": 6117,
+      "code": 6120,
       "name": "InvalidBurnTarget",
       "msg": "Invalid Burn Target"
     }
@@ -12902,6 +12987,13 @@
             "type": "u8"
           },
           {
+            "name": "disabled",
+            "docs": [
+              "Whether the offer is disabled by emergency controls (0 = false, 1 = true)"
+            ],
+            "type": "u8"
+          },
+          {
             "name": "reserved",
             "docs": [
               "Reserved space for future fields"
@@ -12909,9 +13001,29 @@
             "type": {
               "array": [
                 "u8",
-                131
+                130
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "OfferDisabledSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offer_pda",
+            "type": "pubkey"
+          },
+          {
+            "name": "disabled",
+            "type": "bool"
+          },
+          {
+            "name": "signer",
+            "type": "pubkey"
           }
         ]
       }

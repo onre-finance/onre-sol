@@ -611,6 +611,7 @@ pub fn build_swap_buy_quote(
     token_out_mint: &InterfaceAccount<Mint>,
 ) -> Result<SwapQuote> {
     let quoted_at = Clock::get()?.unix_timestamp;
+    offer.require_enabled()?;
 
     let side = validate_canonical_offer(
         program_id,
@@ -658,6 +659,7 @@ pub fn build_swap_sell_quote(
     token_out_mint: &InterfaceAccount<Mint>,
 ) -> Result<SwapQuote> {
     let quoted_at = Clock::get()?.unix_timestamp;
+    offer.require_enabled()?;
 
     let side = validate_canonical_offer(
         program_id,

@@ -27,6 +27,46 @@ fn test_make_offer_succeeds() {
     assert_eq!(offer.token_in_mint, token_in);
     assert_eq!(offer.token_out_mint, token_out);
     assert_eq!(offer.fee_basis_points, 500);
+    assert_eq!(offer.disabled, 0);
+}
+
+#[test]
+fn test_set_offer_disabled_admin_can_disable_boss_only_can_enable() {
+    let (mut svm, payer, _) = setup_initialized();
+    let boss = payer.pubkey();
+    let admin = Keypair::new();
+    svm.airdrop(&admin.pubkey(), INITIAL_LAMPORTS).unwrap();
+
+    let ix = build_add_admin_ix(&boss, &admin.pubkey());
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let token_in = create_mint(&mut svm, &payer, 9, &boss);
+    let token_out = create_mint(&mut svm, &payer, 9, &boss);
+    let ix = build_make_offer_ix(
+        &boss,
+        &token_in,
+        &token_out,
+        0,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let ix = build_set_offer_disabled_ix(&admin.pubkey(), &token_in, &token_out, true);
+    send_tx(&mut svm, &[ix], &[&admin]).unwrap();
+    assert_eq!(read_offer(&svm, &token_in, &token_out).disabled, 1);
+
+    let ix = build_set_offer_disabled_ix(&admin.pubkey(), &token_in, &token_out, false);
+    let result = send_tx(&mut svm, &[ix], &[&admin]);
+    assert!(
+        result.is_err(),
+        "admin should not be able to re-enable offer"
+    );
+
+    let ix = build_set_offer_disabled_ix(&boss, &token_in, &token_out, false);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    assert_eq!(read_offer(&svm, &token_in, &token_out).disabled, 0);
 }
 
 #[test]

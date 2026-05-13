@@ -253,6 +253,13 @@ pub mod onreapp {
         offer::update_offer_fee(ctx, new_fee_basis_points)
     }
 
+    /// Enables or disables one offer.
+    ///
+    /// Boss or admins can disable an offer. Only boss can re-enable it.
+    pub fn set_offer_disabled(ctx: Context<SetOfferDisabled>, disabled: bool) -> Result<()> {
+        offer::set_offer_disabled(ctx, disabled)
+    }
+
     /// Takes a offer.
     ///
     /// Delegates to `offer::take_offer`.
