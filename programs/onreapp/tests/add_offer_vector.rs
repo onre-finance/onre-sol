@@ -570,7 +570,7 @@ fn test_minimum_valid_values() {
     let offer = read_offer(&svm, &token_in, &token_out);
     let v = &offer.vectors[0];
     assert_eq!(v.base_time, 1);
-    assert!(v.start_time >= current_time);
+    assert_eq!(v.start_time, current_time);
     assert_eq!(v.base_price, 1);
     assert_eq!(v.apr, 0);
     assert_eq!(v.price_fix_duration, 1);

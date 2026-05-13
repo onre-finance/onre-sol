@@ -156,7 +156,7 @@ fn test_take_offer_permissionless_with_valid_approval() {
         &ctx.svm,
         &get_associated_token_address(&user.pubkey(), &ctx.onyc_mint),
     );
-    assert!(user_onyc > 0, "user should have received ONyc tokens");
+    assert_eq!(user_onyc, 1_000_000_000_000);
 
     let boss_usdc = get_token_balance(
         &ctx.svm,

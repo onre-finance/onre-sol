@@ -192,14 +192,14 @@ fn test_take_offer_with_fractional_day_price_window() {
 
     create_token_account(&mut ctx.svm, &ctx.onyc_mint, &ctx.user.pubkey(), 0);
     let ix = build_default_take_offer_ix(&ctx, 2_000_000);
-    let cu_ix = ComputeBudgetInstruction::set_compute_unit_limit(680_000);
+    let cu_ix = ComputeBudgetInstruction::set_compute_unit_limit(320_000);
     send_tx(&mut ctx.svm, &[cu_ix, ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     let user_onyc = get_token_balance(
         &ctx.svm,
         &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
     );
-    assert!(user_onyc > 0);
+    assert_eq!(user_onyc, 1_999_991_666);
 }
 
 #[test]

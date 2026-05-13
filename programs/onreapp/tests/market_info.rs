@@ -178,8 +178,8 @@ fn test_get_nav_price_growth() {
     // price = 1_000_000_000 * (1 + 36500 * 172800 / (1_000_000 * 31_536_000))
     // = 1_000_000_000 * (1 + 6307200000 / 31536000000000)
     // = 1_000_000_000 * (1 + 0.0002)
-    // = 1_000_200_000
-    assert!(nav > 1_000_000_000, "price should have grown");
+    // = 1_000_200_010 after daily compounding
+    assert_eq!(nav, 1_000_200_010);
 }
 
 #[test]
@@ -284,13 +284,8 @@ fn test_get_apy_success() {
     let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let apy = get_return_u64(&result);
 
-    // 10% APR -> ~10.52% APY with daily compounding
-    // APY = (1 + 0.10/365)^365 - 1 ≈ 0.10516 = 105_160 in scale=6
-    assert!(
-        apy > 100_000,
-        "APY should be greater than APR (compounding)"
-    );
-    assert!(apy < 110_000, "APY should be reasonable for 10% APR");
+    // 10% APR -> ~10.52% APY with daily compounding.
+    assert_eq!(apy, 105_156);
 }
 
 #[test]
@@ -351,8 +346,8 @@ fn test_refresh_market_stats_permissionless_creates_and_updates_pda() {
     assert_eq!(market_stats.nav_adjustment, 1_000_100_000);
     assert_eq!(market_stats.circulating_supply, 3_000_000_000);
     assert_eq!(market_stats.tvl, 3_000_300_000);
-    assert!(market_stats.last_updated_at > 0);
-    assert!(market_stats.last_updated_slot > 0);
+    assert_eq!(market_stats.last_updated_at, 1_704_067_201);
+    assert_eq!(market_stats.last_updated_slot, 3);
 }
 
 #[test]
@@ -373,8 +368,10 @@ fn test_refresh_market_stats_succeeds_without_recent_purchases() {
     assert_eq!(initial.nav, 1_000_000_000);
     assert_eq!(refreshed.circulating_supply, initial.circulating_supply);
     assert_eq!(refreshed.nav, initial.nav);
-    assert!(refreshed.last_updated_at > initial.last_updated_at);
-    assert!(refreshed.last_updated_slot > initial.last_updated_slot);
+    assert_eq!(initial.last_updated_at, 1_704_067_201);
+    assert_eq!(initial.last_updated_slot, 3);
+    assert_eq!(refreshed.last_updated_at, 1_704_153_601);
+    assert_eq!(refreshed.last_updated_slot, 4);
 }
 
 // ---------------------------------------------------------------------------
@@ -640,7 +637,7 @@ fn test_update_circulating_supply_excluded_balance_sums_configured_atas() {
 
     let excluded_balance = read_circulating_supply_excluded_balance(&svm);
     assert_eq!(excluded_balance.amount, 1_000_000_000);
-    assert!(excluded_balance.last_updated_at > 0);
+    assert_eq!(excluded_balance.last_updated_at, 1_704_067_200);
 }
 
 #[test]
@@ -828,9 +825,8 @@ fn test_get_apy_10_percent() {
     let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let apy = get_return_u64(&result);
 
-    // 10% APR → ~10.52% APY with daily compounding
-    assert!(apy > 100_000, "APY should be greater than APR");
-    assert!(apy < 110_000, "APY should be reasonable for 10% APR");
+    // 10% APR -> ~10.52% APY with daily compounding.
+    assert_eq!(apy, 105_156);
 }
 
 #[test]
@@ -871,9 +867,8 @@ fn test_get_apy_25_percent() {
     let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let apy = get_return_u64(&result);
 
-    // 25% APR → ~28.4% APY with daily compounding
-    assert!(apy > 250_000, "APY should be greater than 25% APR");
-    assert!(apy < 300_000, "APY should be less than 30%");
+    // 25% APR -> ~28.4% APY with daily compounding.
+    assert_eq!(apy, 283_916);
 }
 
 #[test]
@@ -931,8 +926,8 @@ fn test_get_apy_multiple_vectors_uses_most_recent() {
     let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let apy = get_return_u64(&result);
 
-    // Should use vector 2 (10% APR → ~10.52% APY)
-    assert!(apy > 100_000, "should use 10% APR from second vector");
+    // Should use vector 2 (10% APR -> ~10.52% APY).
+    assert_eq!(apy, 105_156);
 }
 
 // ---------------------------------------------------------------------------
@@ -1036,7 +1031,8 @@ fn test_get_tvl_after_time_advancement() {
     let result2 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let tvl2 = get_return_u64(&result2);
 
-    assert!(tvl2 > tvl1, "TVL should increase with price growth");
+    assert_eq!(tvl1, 1_000_100_000_000);
+    assert_eq!(tvl2, 1_000_200_010_000);
 }
 
 // ---------------------------------------------------------------------------
@@ -1791,8 +1787,8 @@ fn test_get_tvl_token2022() {
     let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let tvl = get_return_u64(&result);
 
-    // TVL > 0 and based on price ~2.0002
-    assert!(tvl > 2_000_000_000_000, "TVL should be > 2000e9: {}", tvl);
+    // TVL is based on the first stepped price for base price 2.0 and 3.65% APR.
+    assert_eq!(tvl, 2_000_200_000_000);
 }
 
 // ---------------------------------------------------------------------------

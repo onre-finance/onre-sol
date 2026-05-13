@@ -1410,7 +1410,7 @@ fn test_fulfill_redemption_request_with_apr_growth() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    // APR = 10% (10_000_000 in scale=6 where 1_000_000=1%), base_price=1.0
+    // APR = 1000% (10_000_000 in scale=6 where 1_000_000=100%), base_price=1.0
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
         &boss,
@@ -1480,14 +1480,10 @@ fn test_fulfill_redemption_request_with_apr_growth() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    // Price should be > 1.0 due to APR growth, so user gets more usdc
+    // Price uses the step ending at day 2 for 1000% APR.
     let user_usdc_ata = get_associated_token_address(&user.pubkey(), &usdc_mint);
     let usdc_received = get_token_balance(&svm, &user_usdc_ata);
-    assert!(
-        usdc_received > 1_000_000,
-        "should receive more than base price: {}",
-        usdc_received
-    );
+    assert_eq!(usdc_received, 1_055_545);
 }
 
 #[test]
@@ -1968,16 +1964,10 @@ fn test_fulfill_redemption_request_fee_with_apr() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    // Price > 1.0 due to APR, fee deducted from net
-    // User should get more than base but less than without fee
+    // Price uses the step ending at day 2 for 1000% APR, after a 5% redemption fee.
     let user_usdc_ata = get_associated_token_address(&user.pubkey(), &usdc_mint);
     let usdc_received = get_token_balance(&svm, &user_usdc_ata);
-    // With APR growth, price > 1.0, so user receives > 950_000 (base * 0.95)
-    assert!(
-        usdc_received > 950_000,
-        "with APR growth: {}",
-        usdc_received
-    );
+    assert_eq!(usdc_received, 1_002_767);
 }
 
 // ===========================================================================
@@ -2702,7 +2692,12 @@ fn test_fulfill_redemption_request_very_small_amount() {
 // ===========================================================================
 
 /// Helper for Token-2022 fulfill tests with specific APR, fee, and time period
-fn fulfill_token2022_with_params(apr: u64, fee_bps: u16, advance_days: u64) {
+fn fulfill_token2022_with_params(
+    apr: u64,
+    fee_bps: u16,
+    advance_days: u64,
+    expected_usdc_received: u64,
+) {
     let (mut svm, payer, _original_onyc) = setup_initialized();
     let boss = payer.pubkey();
 
@@ -2802,10 +2797,9 @@ fn fulfill_token2022_with_params(apr: u64, fee_bps: u16, advance_days: u64) {
     assert_eq!(offer_data.executed_redemptions, 1_000_000_000);
     assert_eq!(offer_data.requested_redemptions, 0);
 
-    // User should have received some USDC
     let user_usdc_ata = get_associated_token_address_2022(&user.pubkey(), &usdc_mint);
     let usdc_received = get_token_balance(&svm, &user_usdc_ata);
-    assert!(usdc_received > 0, "user should receive some USDC");
+    assert_eq!(usdc_received, expected_usdc_received);
 
     // With fee, user receives less than full price
     if fee_bps > 0 {
@@ -2829,20 +2823,20 @@ fn fulfill_token2022_with_params(apr: u64, fee_bps: u16, advance_days: u64) {
 #[test]
 fn test_fulfill_redemption_token2022_apr_fee_day_matrix() {
     let cases = [
-        (50_000, 100, 30),
-        (150_000, 500, 90),
-        (250_000, 250, 180),
-        (100_000, 50, 45),
-        (300_000, 700, 60),
-        (80_000, 300, 15),
-        (120_000, 450, 120),
-        (180_000, 600, 270),
-        (220_000, 150, 365),
-        (350_000, 800, 7),
+        (50_000, 100, 30, 994_212),
+        (150_000, 500, 90, 986_192),
+        (250_000, 250, 180, 1_103_638),
+        (100_000, 50, 45, 1_007_617),
+        (300_000, 700, 60, 977_795),
+        (80_000, 300, 15, 973_407),
+        (120_000, 450, 120, 993_749),
+        (180_000, 600, 270, 1_074_371),
+        (220_000, 150, 365, 1_228_043),
+        (350_000, 800, 7, 927_081),
     ];
 
-    for (apr, fee_bps, advance_days) in cases {
-        fulfill_token2022_with_params(apr, fee_bps, advance_days);
+    for (apr, fee_bps, advance_days, expected_usdc_received) in cases {
+        fulfill_token2022_with_params(apr, fee_bps, advance_days, expected_usdc_received);
     }
 }
 

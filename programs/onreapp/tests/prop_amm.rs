@@ -90,7 +90,8 @@ fn test_hard_wall_curve_is_vulnerable_to_order_splitting() {
         current_liquidity -= output;
     }
 
-    assert!(split_total > one_shot);
+    assert_eq!(one_shot, 4_938_128);
+    assert_eq!(split_total, 4_997_768);
 }
 
 #[test]
@@ -251,7 +252,8 @@ fn test_cadence_penalizes_small_split_sells() {
         apply_hard_wall_liquidity_factor_at_time(100_000, 10_000_000, 10_000_000, &high_cadence, 1)
             .unwrap();
 
-    assert!(high_cadence_output < low_cadence_output);
+    assert_eq!(low_cadence_output, 99_999);
+    assert_eq!(high_cadence_output, 55_832);
 }
 
 #[test]
@@ -347,7 +349,8 @@ fn test_dynamic_wall_accumulates_sell_pressure_and_buys_relieve_it() {
     let quote_ix = build_quote_swap_ix(&ctx.onyc_mint, &ctx.onyc_mint, &ctx.usdc_mint, sell_amount);
     let quote_metadata = send_tx(&mut ctx.svm, &[quote_ix], &[&ctx.payer]).unwrap();
     let pressured_quote = SwapQuote::try_from_slice(get_return_data(&quote_metadata)).unwrap();
-    assert!(pressured_quote.token_out_amount < first_quote.token_out_amount);
+    assert_eq!(first_quote.token_out_amount, 1_994_192_046);
+    assert_eq!(pressured_quote.token_out_amount, 1_975_320_820);
 
     let buy_quote_ix = build_quote_swap_ix(
         &ctx.onyc_mint,
@@ -375,7 +378,7 @@ fn test_dynamic_wall_accumulates_sell_pressure_and_buys_relieve_it() {
     let quote_ix = build_quote_swap_ix(&ctx.onyc_mint, &ctx.onyc_mint, &ctx.usdc_mint, sell_amount);
     let quote_metadata = send_tx(&mut ctx.svm, &[quote_ix], &[&ctx.payer]).unwrap();
     let relieved_quote = SwapQuote::try_from_slice(get_return_data(&quote_metadata)).unwrap();
-    assert!(relieved_quote.token_out_amount > pressured_quote.token_out_amount);
+    assert_eq!(relieved_quote.token_out_amount, 1_982_322_822);
 }
 
 #[test]
