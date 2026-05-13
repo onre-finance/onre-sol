@@ -96,14 +96,35 @@ pub fn process_offer_core(
     token_out_mint: &InterfaceAccount<Mint>,
 ) -> Result<OfferProcessResult> {
     let current_time = Clock::get()?.unix_timestamp as u64;
+
+    process_offer_core_at(
+        offer,
+        token_in_amount,
+        token_in_mint.key(),
+        token_in_mint.decimals,
+        token_out_mint.key(),
+        token_out_mint.decimals,
+        current_time,
+    )
+}
+
+fn process_offer_core_at(
+    offer: &Offer,
+    token_in_amount: u64,
+    token_in_mint_key: Pubkey,
+    token_in_decimals: u8,
+    token_out_mint_key: Pubkey,
+    token_out_decimals: u8,
+    current_time: u64,
+) -> Result<OfferProcessResult> {
     require!(token_in_amount > 0, crate::OnreError::InvalidAmount);
 
     require!(
-        offer.token_in_mint == token_in_mint.key(),
+        offer.token_in_mint == token_in_mint_key,
         crate::OnreError::InvalidTokenInMint
     );
     require!(
-        offer.token_out_mint == token_out_mint.key(),
+        offer.token_out_mint == token_out_mint_key,
         crate::OnreError::InvalidTokenOutMint
     );
 
@@ -124,8 +145,8 @@ pub fn process_offer_core(
     let token_out_amount = calculate_token_out_amount(
         fee_amounts.token_in_net_amount,
         current_price,
-        token_in_mint.decimals,
-        token_out_mint.decimals,
+        token_in_decimals,
+        token_out_decimals,
     )?;
 
     Ok(OfferProcessResult {
@@ -300,7 +321,7 @@ pub fn calculate_step_price_at(
     // elapsed_effective = (k + 1) * D  (end-of-current-interval snap)
     let step_end_time = current_step
         .checked_add(1)
-        .unwrap()
+        .ok_or(crate::OnreError::OverflowError)?
         .checked_mul(price_fix_duration)
         .ok_or(crate::OnreError::OverflowError)?;
 
@@ -375,6 +396,106 @@ fn compare_pow_fixed(mut base: u128, mut exp: u64, scale: u128, target: u128) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::MAX_BASIS_POINTS;
+
+    fn offer_for_test(
+        token_in_mint: Pubkey,
+        token_out_mint: Pubkey,
+        fee_basis_points: u16,
+        vector: OfferVector,
+    ) -> Offer {
+        let mut offer: Offer = unsafe { std::mem::zeroed() };
+        offer.token_in_mint = token_in_mint;
+        offer.token_out_mint = token_out_mint;
+        offer.fee_basis_points = fee_basis_points;
+        offer.vectors[0] = vector;
+        offer
+    }
+
+    fn active_vector_for_test() -> OfferVector {
+        OfferVector {
+            start_time: 1,
+            base_time: 1,
+            base_price: 1_000_000_000,
+            apr: 0,
+            price_fix_duration: SECONDS_IN_DAY,
+        }
+    }
+
+    #[test]
+    fn process_offer_core_rejects_invalid_token_in_mint() {
+        let token_in_mint = Pubkey::new_unique();
+        let token_out_mint = Pubkey::new_unique();
+        let offer = offer_for_test(token_in_mint, token_out_mint, 0, active_vector_for_test());
+
+        let result = process_offer_core_at(
+            &offer,
+            1_000_000,
+            Pubkey::new_unique(),
+            6,
+            token_out_mint,
+            6,
+            1,
+        );
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn process_offer_core_rejects_invalid_token_out_mint() {
+        let token_in_mint = Pubkey::new_unique();
+        let token_out_mint = Pubkey::new_unique();
+        let offer = offer_for_test(token_in_mint, token_out_mint, 0, active_vector_for_test());
+
+        let result = process_offer_core_at(
+            &offer,
+            1_000_000,
+            token_in_mint,
+            6,
+            Pubkey::new_unique(),
+            6,
+            1,
+        );
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn process_offer_core_rejects_invalid_fee_basis_points() {
+        let token_in_mint = Pubkey::new_unique();
+        let token_out_mint = Pubkey::new_unique();
+        let offer = offer_for_test(
+            token_in_mint,
+            token_out_mint,
+            MAX_BASIS_POINTS + 1,
+            active_vector_for_test(),
+        );
+
+        let result =
+            process_offer_core_at(&offer, 1_000_000, token_in_mint, 6, token_out_mint, 6, 1);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn process_offer_core_rejects_missing_active_vector() {
+        let token_in_mint = Pubkey::new_unique();
+        let token_out_mint = Pubkey::new_unique();
+        let offer = offer_for_test(
+            token_in_mint,
+            token_out_mint,
+            0,
+            OfferVector {
+                start_time: 2,
+                ..active_vector_for_test()
+            },
+        );
+
+        let result =
+            process_offer_core_at(&offer, 1_000_000, token_in_mint, 6, token_out_mint, 6, 1);
+
+        assert!(result.is_err());
+    }
 
     #[test]
     fn vector_price_matches_daily_compounding_on_day_boundaries() {
@@ -406,5 +527,26 @@ mod tests {
         assert_eq!(three_days, 1_000_802_406);
         assert_eq!(three_days_six_hours, 1_000_869_303);
         assert!(three_days_six_hours > three_days);
+    }
+
+    #[test]
+    fn vector_price_rejects_price_overflow() {
+        let result = calculate_vector_price(u64::MAX, u64::MAX, SECONDS_IN_DAY);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn step_price_rejects_time_before_base_time() {
+        let result = calculate_step_price_at(0, 1_000_000_000, 2, SECONDS_IN_DAY, 1);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn step_price_rejects_step_end_overflow() {
+        let result = calculate_step_price_at(0, 1_000_000_000, 0, 1, u64::MAX);
+
+        assert!(result.is_err());
     }
 }

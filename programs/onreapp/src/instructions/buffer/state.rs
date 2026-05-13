@@ -13,11 +13,9 @@ pub struct BufferState {
     pub gross_apr: u64,
     pub previous_supply: u64,
     pub management_fee_basis_points: u16,
-    pub management_fee_wallet: Pubkey,
     pub performance_fee_basis_points: u16,
-    pub performance_fee_wallet: Pubkey,
     pub performance_fee_high_watermark: u64,
     pub last_accrual_timestamp: i64,
     pub bump: u8,
-    pub reserved: [u8; 72],
+    pub reserved: [u8; 136],
 }

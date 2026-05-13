@@ -7,18 +7,19 @@ use crate::instructions::buffer::{
     accrue_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
     BufferAccrualAccounts,
 };
-use crate::instructions::configurable_vault::ConfigurableVaultInit;
+use crate::instructions::configurable_vault::{
+    get_or_create_configurable_vault_token_account, ConfigurableVaultTokenAccountParams,
+};
 use crate::instructions::market_info::{load_main_offer, refresh_market_stats_pda};
 use crate::instructions::redemption::{
     execute_redemption_operations, process_redemption_core, ExecuteRedemptionOpsParams,
     RedemptionOffer, RedemptionRequest,
 };
 use crate::instructions::Offer;
-use crate::state::State;
+use crate::state::{ConfigurableVaultKind, State};
 use crate::utils::{
-    get_associated_token_account, get_or_create_associated_token_account, load_or_init_pda_account,
-    load_pda_account, program_controls_mint, store_pda_account, validate_associated_token_address,
-    EnsureAtaParams,
+    get_associated_token_account, get_or_create_associated_token_account, load_pda_account,
+    program_controls_mint, store_pda_account, validate_associated_token_address, EnsureAtaParams,
 };
 use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::{
@@ -114,11 +115,11 @@ pub struct FulfillRedemptionRequest<'info> {
 
     /// CHECK: PDA and data are validated/initialized in instruction logic.
     #[account(mut)]
-    pub redemption_fee_vault: UncheckedAccount<'info>,
+    pub offer_fee_vault: UncheckedAccount<'info>,
 
     /// CHECK: Validated and optionally initialized in instruction logic.
     #[account(mut)]
-    pub redemption_fee_token_in_account: UncheckedAccount<'info>,
+    pub offer_fee_token_in_account: UncheckedAccount<'info>,
 
     /// CHECK: PDA derivation is validated through seeds constraint
     #[account(
@@ -285,46 +286,18 @@ pub fn fulfill_redemption_request<'info>(
         &token_in_mint,
         &token_out_mint,
     )?;
-    let redemption_fee_vault_info = ctx.accounts.redemption_fee_vault.to_account_info();
-    let (expected_redemption_fee_vault, redemption_fee_vault_bump) = Pubkey::find_program_address(
-        &[seeds::CONFIGURABLE_VAULT, seeds::REDEMPTION_FEE_VAULT],
-        ctx.program_id,
-    );
-    require_keys_eq!(
-        expected_redemption_fee_vault,
-        ctx.accounts.redemption_fee_vault.key(),
-        crate::OnreError::InvalidConfigurableVault
-    );
-    let should_store_redemption_fee_vault = redemption_fee_vault_info.owner
-        == &anchor_lang::system_program::ID
-        || redemption_fee_vault_info
-            .try_borrow_data()?
-            .iter()
-            .all(|byte| *byte == 0);
-    let redemption_fee_vault = load_or_init_pda_account::<ConfigurableVaultInit<1>>(
-        &redemption_fee_vault_info,
-        &ctx.accounts.redemption_admin.to_account_info(),
-        &ctx.accounts.system_program.to_account_info(),
-        ctx.program_id,
-        redemption_fee_vault_bump,
-    )?;
-    if should_store_redemption_fee_vault {
-        store_pda_account(&redemption_fee_vault_info, &redemption_fee_vault)?;
-    }
-    let redemption_fee_token_in_account =
-        get_or_create_associated_token_account(EnsureAtaParams {
-            ata_account: &ctx.accounts.redemption_fee_token_in_account,
-            payer: ctx.accounts.redemption_admin.to_account_info(),
-            authority_account: redemption_fee_vault_info,
-            mint_account: ctx.accounts.token_in_mint.to_account_info(),
-            token_program: ctx.accounts.token_in_program.to_account_info(),
-            associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
-            system_program: ctx.accounts.system_program.to_account_info(),
-            authority: ctx.accounts.redemption_fee_vault.key(),
-            mint: token_in_mint.key(),
-            token_program_id: ctx.accounts.token_in_program.key(),
-            invalid_account_error: crate::OnreError::InvalidConfigurableVaultTokenAccount,
-        })?;
+    let offer_fee_token_in_account = get_or_create_configurable_vault_token_account::<
+        { ConfigurableVaultKind::OfferFee.as_u8() },
+    >(ConfigurableVaultTokenAccountParams {
+        vault: &ctx.accounts.offer_fee_vault,
+        token_account: &ctx.accounts.offer_fee_token_in_account,
+        payer: ctx.accounts.redemption_admin.to_account_info(),
+        mint_account: ctx.accounts.token_in_mint.to_account_info(),
+        token_program: ctx.accounts.token_in_program.to_account_info(),
+        associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
+        system_program: ctx.accounts.system_program.to_account_info(),
+        program_id: ctx.program_id,
+    })?;
     execute_fulfill_redemption_request(
         ExecuteFulfillRedemptionRequestParams {
             program_id: ctx.program_id,
@@ -341,7 +314,7 @@ pub fn fulfill_redemption_request<'info>(
             token_out_program: &ctx.accounts.token_out_program,
             user_token_out_account: &user_token_out_account,
             boss_token_in_account: &boss_token_in_account,
-            redemption_fee_token_in_account: &redemption_fee_token_in_account,
+            offer_fee_token_in_account: &offer_fee_token_in_account,
             mint_authority: &ctx.accounts.mint_authority,
             redemption_vault_authority: &ctx.accounts.redemption_vault_authority,
             redemption_vault_authority_bump: ctx.bumps.redemption_vault_authority,
@@ -373,7 +346,7 @@ struct ExecuteFulfillRedemptionRequestParams<'a, 'info> {
     token_out_program: &'a Interface<'info, TokenInterface>,
     user_token_out_account: &'a InterfaceAccount<'info, TokenAccount>,
     boss_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
-    redemption_fee_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
+    offer_fee_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
     mint_authority: &'a UncheckedAccount<'info>,
     redemption_vault_authority: &'a UncheckedAccount<'info>,
     redemption_vault_authority_bump: u8,
@@ -501,7 +474,7 @@ fn execute_fulfill_redemption_request(
         token_in_fee_amount,
         vault_token_in_account: params.vault_token_in_account,
         boss_token_in_account: params.boss_token_in_account,
-        fee_destination_token_in_account: params.redemption_fee_token_in_account,
+        fee_destination_token_in_account: params.offer_fee_token_in_account,
         redemption_vault_authority: &params.redemption_vault_authority.to_account_info(),
         redemption_vault_authority_bump: params.redemption_vault_authority_bump,
         token_out_mint: params.token_out_mint,

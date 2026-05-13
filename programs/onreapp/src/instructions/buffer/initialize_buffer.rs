@@ -1,7 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::buffer::{BufferInitializedEvent, BufferState};
 use crate::instructions::Offer;
-use crate::state::State;
+use crate::state::{ConfigurableVault, ConfigurableVaultKind, State};
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
@@ -35,25 +35,23 @@ pub struct InitializeBuffer<'info> {
     )]
     pub reserve_vault_authority: UncheckedAccount<'info>,
 
-    /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
         init_if_needed,
         payer = boss,
-        space = 8,
-        seeds = [seeds::MANAGEMENT_FEE_VAULT_AUTHORITY],
+        space = 8 + ConfigurableVault::INIT_SPACE,
+        seeds = [seeds::CONFIGURABLE_VAULT, seeds::MANAGEMENT_FEE_VAULT],
         bump
     )]
-    pub management_fee_vault_authority: UncheckedAccount<'info>,
+    pub management_fee_vault: Account<'info, ConfigurableVault>,
 
-    /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
         init_if_needed,
         payer = boss,
-        space = 8,
-        seeds = [seeds::PERFORMANCE_FEE_VAULT_AUTHORITY],
+        space = 8 + ConfigurableVault::INIT_SPACE,
+        seeds = [seeds::CONFIGURABLE_VAULT, seeds::PERFORMANCE_FEE_VAULT],
         bump
     )]
-    pub performance_fee_vault_authority: UncheckedAccount<'info>,
+    pub performance_fee_vault: Account<'info, ConfigurableVault>,
 
     #[account(mut)]
     pub boss: Signer<'info>,
@@ -76,7 +74,7 @@ pub struct InitializeBuffer<'info> {
         init_if_needed,
         payer = boss,
         associated_token::mint = onyc_mint,
-        associated_token::authority = management_fee_vault_authority,
+        associated_token::authority = management_fee_vault,
         associated_token::token_program = token_program
     )]
     pub management_fee_vault_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -85,7 +83,7 @@ pub struct InitializeBuffer<'info> {
         init_if_needed,
         payer = boss,
         associated_token::mint = onyc_mint,
-        associated_token::authority = performance_fee_vault_authority,
+        associated_token::authority = performance_fee_vault,
         associated_token::token_program = token_program
     )]
     pub performance_fee_vault_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -110,12 +108,41 @@ pub fn initialize_buffer(ctx: Context<InitializeBuffer>) -> Result<()> {
     buffer_state.last_accrual_timestamp = now;
     buffer_state.bump = ctx.bumps.buffer_state;
 
+    init_fee_vault(
+        &mut ctx.accounts.management_fee_vault,
+        ConfigurableVaultKind::ManagementFee,
+        ctx.bumps.management_fee_vault,
+    )?;
+    init_fee_vault(
+        &mut ctx.accounts.performance_fee_vault,
+        ConfigurableVaultKind::PerformanceFee,
+        ctx.bumps.performance_fee_vault,
+    )?;
+
     emit!(BufferInitializedEvent {
         buffer_state: buffer_state.key(),
         onyc_mint: buffer_state.onyc_mint,
         main_offer,
         timestamp: now,
     });
+
+    Ok(())
+}
+
+fn init_fee_vault(
+    vault: &mut Account<ConfigurableVault>,
+    kind: ConfigurableVaultKind,
+    bump: u8,
+) -> Result<()> {
+    if vault.kind == 0 && vault.withdrawal_destination == Pubkey::default() && vault.bump == 0 {
+        vault.kind = kind.as_u8();
+        vault.bump = bump;
+    }
+
+    require!(
+        vault.kind == kind.as_u8(),
+        crate::OnreError::InvalidConfigurableVaultKind
+    );
 
     Ok(())
 }

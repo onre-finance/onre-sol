@@ -23,12 +23,8 @@ pub struct BufferGrossYieldUpdatedEvent {
 pub struct BufferFeeConfigUpdatedEvent {
     pub old_management_fee_basis_points: u16,
     pub new_management_fee_basis_points: u16,
-    pub old_management_fee_wallet: Pubkey,
-    pub new_management_fee_wallet: Pubkey,
     pub old_performance_fee_basis_points: u16,
     pub new_performance_fee_basis_points: u16,
-    pub old_performance_fee_wallet: Pubkey,
-    pub new_performance_fee_wallet: Pubkey,
 }
 
 #[event]
@@ -78,17 +74,5 @@ pub struct ReserveVaultDepositedEvent {
 pub struct ReserveVaultWithdrawnEvent {
     pub amount: u64,
     pub mint: Pubkey,
-    pub boss: Pubkey,
-}
-
-#[event]
-pub struct ManagementFeesWithdrawnEvent {
-    pub amount: u64,
-    pub boss: Pubkey,
-}
-
-#[event]
-pub struct PerformanceFeesWithdrawnEvent {
-    pub amount: u64,
     pub boss: Pubkey,
 }

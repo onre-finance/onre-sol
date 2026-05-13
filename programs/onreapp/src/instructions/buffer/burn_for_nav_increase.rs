@@ -8,7 +8,7 @@ use crate::instructions::market_info::{
     offer_valuation_utils::compute_offer_current_price, refresh_market_stats_pda,
 };
 use crate::instructions::Offer;
-use crate::state::State;
+use crate::state::{ConfigurableVault, ConfigurableVaultKind, State};
 use crate::utils::math_utils::ceil_div_u128;
 use crate::utils::token_utils::burn_tokens;
 use anchor_lang::prelude::*;
@@ -58,32 +58,32 @@ pub struct BurnForNavIncrease<'info> {
     #[account(mut)]
     pub reserve_vault_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
-        seeds = [seeds::MANAGEMENT_FEE_VAULT_AUTHORITY],
-        bump,
+        seeds = [seeds::CONFIGURABLE_VAULT, seeds::MANAGEMENT_FEE_VAULT],
+        bump = management_fee_vault.bump,
+        constraint = management_fee_vault.kind == ConfigurableVaultKind::ManagementFee.as_u8() @ crate::OnreError::InvalidConfigurableVaultKind,
     )]
-    pub management_fee_vault_authority: UncheckedAccount<'info>,
+    pub management_fee_vault: Box<Account<'info, ConfigurableVault>>,
 
     #[account(
         mut,
         associated_token::mint = onyc_mint,
-        associated_token::authority = management_fee_vault_authority,
+        associated_token::authority = management_fee_vault,
         associated_token::token_program = token_program
     )]
     pub management_fee_vault_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
-        seeds = [seeds::PERFORMANCE_FEE_VAULT_AUTHORITY],
-        bump,
+        seeds = [seeds::CONFIGURABLE_VAULT, seeds::PERFORMANCE_FEE_VAULT],
+        bump = performance_fee_vault.bump,
+        constraint = performance_fee_vault.kind == ConfigurableVaultKind::PerformanceFee.as_u8() @ crate::OnreError::InvalidConfigurableVaultKind,
     )]
-    pub performance_fee_vault_authority: UncheckedAccount<'info>,
+    pub performance_fee_vault: Box<Account<'info, ConfigurableVault>>,
 
     #[account(
         mut,
         associated_token::mint = onyc_mint,
-        associated_token::authority = performance_fee_vault_authority,
+        associated_token::authority = performance_fee_vault,
         associated_token::token_program = token_program
     )]
     pub performance_fee_vault_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,

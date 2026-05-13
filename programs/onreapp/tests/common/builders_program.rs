@@ -385,13 +385,10 @@ pub fn build_mint_to_ix_for_offer(
         onyc_mint,
         token_program,
     );
-    let management_fee_vault_onyc = derive_ata(
-        &find_management_fee_vault_authority_pda().0,
-        onyc_mint,
-        token_program,
-    );
+    let management_fee_vault_onyc =
+        derive_ata(&find_management_fee_vault_pda().0, onyc_mint, token_program);
     let performance_fee_vault_onyc = derive_ata(
-        &find_performance_fee_vault_authority_pda().0,
+        &find_performance_fee_vault_pda().0,
         onyc_mint,
         token_program,
     );

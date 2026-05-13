@@ -20,6 +20,7 @@ use std::convert::TryInto;
 
 mod basics;
 mod builders_buffer;
+mod builders_configurable_vault;
 mod builders_offer;
 mod builders_program;
 mod builders_redemption;
@@ -30,6 +31,7 @@ mod token_accounts;
 
 pub use basics::*;
 pub use builders_buffer::*;
+pub use builders_configurable_vault::*;
 pub use builders_offer::*;
 pub use builders_program::*;
 pub use builders_redemption::*;

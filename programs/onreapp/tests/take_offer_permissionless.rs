@@ -572,7 +572,7 @@ fn test_take_offer_permissionless_v2_accrues_buffer_and_refreshes_market_stats()
     let management_fee_balance = get_token_balance(
         &ctx.svm,
         &derive_ata(
-            &find_management_fee_vault_authority_pda().0,
+            &find_management_fee_vault_pda().0,
             &ctx.onyc_mint,
             &TOKEN_PROGRAM_ID,
         ),
@@ -580,7 +580,7 @@ fn test_take_offer_permissionless_v2_accrues_buffer_and_refreshes_market_stats()
     let performance_fee_balance = get_token_balance(
         &ctx.svm,
         &derive_ata(
-            &find_performance_fee_vault_authority_pda().0,
+            &find_performance_fee_vault_pda().0,
             &ctx.onyc_mint,
             &TOKEN_PROGRAM_ID,
         ),

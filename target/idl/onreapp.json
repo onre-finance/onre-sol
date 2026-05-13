@@ -493,9 +493,32 @@
           "writable": true
         },
         {
-          "name": "management_fee_vault_authority",
+          "name": "management_fee_vault",
           "pda": {
             "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103,
+                  117,
+                  114,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
               {
                 "kind": "const",
                 "value": [
@@ -512,23 +535,7 @@
                   95,
                   102,
                   101,
-                  101,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
+                  101
                 ]
               }
             ]
@@ -541,7 +548,7 @@
             "seeds": [
               {
                 "kind": "account",
-                "path": "management_fee_vault_authority"
+                "path": "management_fee_vault"
               },
               {
                 "kind": "account",
@@ -592,9 +599,32 @@
           }
         },
         {
-          "name": "performance_fee_vault_authority",
+          "name": "performance_fee_vault",
           "pda": {
             "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103,
+                  117,
+                  114,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
               {
                 "kind": "const",
                 "value": [
@@ -612,23 +642,7 @@
                   95,
                   102,
                   101,
-                  101,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
+                  101
                 ]
               }
             ]
@@ -641,7 +655,7 @@
             "seeds": [
               {
                 "kind": "account",
-                "path": "performance_fee_vault_authority"
+                "path": "performance_fee_vault"
               },
               {
                 "kind": "account",
@@ -2250,11 +2264,11 @@
           "writable": true
         },
         {
-          "name": "redemption_fee_vault",
+          "name": "offer_fee_vault",
           "writable": true
         },
         {
-          "name": "redemption_fee_token_in_account",
+          "name": "offer_fee_token_in_account",
           "writable": true
         },
         {
@@ -3221,10 +3235,33 @@
           }
         },
         {
-          "name": "management_fee_vault_authority",
+          "name": "management_fee_vault",
           "writable": true,
           "pda": {
             "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103,
+                  117,
+                  114,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
               {
                 "kind": "const",
                 "value": [
@@ -3241,33 +3278,40 @@
                   95,
                   102,
                   101,
-                  101,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
+                  101
                 ]
               }
             ]
           }
         },
         {
-          "name": "performance_fee_vault_authority",
+          "name": "performance_fee_vault",
           "writable": true,
           "pda": {
             "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103,
+                  117,
+                  114,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
               {
                 "kind": "const",
                 "value": [
@@ -3285,23 +3329,7 @@
                   95,
                   102,
                   101,
-                  101,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
+                  101
                 ]
               }
             ]
@@ -3388,7 +3416,7 @@
             "seeds": [
               {
                 "kind": "account",
-                "path": "management_fee_vault_authority"
+                "path": "management_fee_vault"
               },
               {
                 "kind": "account",
@@ -3445,7 +3473,7 @@
             "seeds": [
               {
                 "kind": "account",
-                "path": "performance_fee_vault_authority"
+                "path": "performance_fee_vault"
               },
               {
                 "kind": "account",
@@ -5073,6 +5101,14 @@
           "writable": true
         },
         {
+          "name": "prop_amm_fee_vault",
+          "writable": true
+        },
+        {
+          "name": "prop_amm_fee_token_in_account",
+          "writable": true
+        },
+        {
           "name": "permissionless_authority"
         },
         {
@@ -5336,6 +5372,14 @@
         },
         {
           "name": "boss_token_in_account",
+          "writable": true
+        },
+        {
+          "name": "prop_amm_fee_vault",
+          "writable": true
+        },
+        {
+          "name": "prop_amm_fee_token_in_account",
           "writable": true
         },
         {
@@ -6756,16 +6800,8 @@
           "type": "u16"
         },
         {
-          "name": "management_fee_wallet",
-          "type": "pubkey"
-        },
-        {
           "name": "performance_fee_basis_points",
           "type": "u16"
-        },
-        {
-          "name": "performance_fee_wallet",
-          "type": "pubkey"
         }
       ]
     },
@@ -7407,128 +7443,6 @@
       "args": [
         {
           "name": "new_redemption_admin",
-          "type": "pubkey"
-        }
-      ]
-    },
-    {
-      "name": "set_redemption_fee_destination",
-      "docs": [
-        "Sets or updates the fee destination address for redemption fees.",
-        "",
-        "Delegates to `redemption::set_redemption_fee_destination`.",
-        "Only updates the stored destination address; does not move any tokens.",
-        "Use `withdraw_redemption_fees` to sweep accumulated fees.",
-        "When `fee_destination` is `Pubkey::default()`, fees accumulate in the program's",
-        "fee vault PDA ATA. When set to any other address, fees are routed there on every fulfillment.",
-        "Emits a `RedemptionFeeDestinationUpdatedEvent` upon success.",
-        "",
-        "# Arguments",
-        "- `ctx`: Context for `SetRedemptionFeeDestination`.",
-        "- `fee_destination`: Pubkey of the new fee recipient.",
-        "",
-        "# Access Control",
-        "- Boss only"
-      ],
-      "discriminator": [
-        140,
-        37,
-        28,
-        52,
-        188,
-        13,
-        67,
-        7
-      ],
-      "accounts": [
-        {
-          "name": "state",
-          "docs": [
-            "Program state account — boss access control"
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "boss",
-          "docs": [
-            "Boss must sign; also pays for any new account creation"
-          ],
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "redemption_fee_vault_authority",
-          "docs": [
-            "Global fee vault authority PDA — created on first call"
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  100,
-                  101,
-                  109,
-                  112,
-                  116,
-                  105,
-                  111,
-                  110,
-                  95,
-                  102,
-                  101,
-                  101,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "system_program",
-          "docs": [
-            "System program required for account creation"
-          ],
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "fee_destination",
           "type": "pubkey"
         }
       ]
@@ -8782,11 +8696,11 @@
           "writable": true
         },
         {
-          "name": "take_offer_fee_vault",
+          "name": "offer_fee_vault",
           "writable": true
         },
         {
-          "name": "take_offer_fee_token_in_account",
+          "name": "offer_fee_token_in_account",
           "writable": true
         },
         {
@@ -9116,11 +9030,11 @@
           "writable": true
         },
         {
-          "name": "take_offer_fee_vault",
+          "name": "offer_fee_vault",
           "writable": true
         },
         {
-          "name": "take_offer_fee_token_in_account",
+          "name": "offer_fee_token_in_account",
           "writable": true
         },
         {
@@ -9967,773 +9881,6 @@
       ]
     },
     {
-      "name": "withdraw_management_fees",
-      "docs": [
-        "Transfers management fees from the management fee vault to the boss."
-      ],
-      "discriminator": [
-        175,
-        59,
-        185,
-        145,
-        48,
-        207,
-        144,
-        15
-      ],
-      "accounts": [
-        {
-          "name": "state",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "buffer_state",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  98,
-                  117,
-                  102,
-                  102,
-                  101,
-                  114,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "management_fee_vault_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  110,
-                  97,
-                  103,
-                  101,
-                  109,
-                  101,
-                  110,
-                  116,
-                  95,
-                  102,
-                  101,
-                  101,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "management_fee_recipient"
-        },
-        {
-          "name": "onyc_mint",
-          "writable": true,
-          "relations": [
-            "state",
-            "buffer_state"
-          ]
-        },
-        {
-          "name": "management_fee_recipient_onyc_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "management_fee_recipient"
-              },
-              {
-                "kind": "account",
-                "path": "token_program"
-              },
-              {
-                "kind": "account",
-                "path": "onyc_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "management_fee_vault_onyc_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "management_fee_vault_authority"
-              },
-              {
-                "kind": "account",
-                "path": "token_program"
-              },
-              {
-                "kind": "account",
-                "path": "onyc_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "boss",
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "token_program"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "amount",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "withdraw_performance_fees",
-      "docs": [
-        "Transfers performance fees from the performance fee vault to the boss."
-      ],
-      "discriminator": [
-        67,
-        217,
-        202,
-        9,
-        52,
-        159,
-        50,
-        42
-      ],
-      "accounts": [
-        {
-          "name": "state",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "buffer_state",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  98,
-                  117,
-                  102,
-                  102,
-                  101,
-                  114,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "performance_fee_vault_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  101,
-                  114,
-                  102,
-                  111,
-                  114,
-                  109,
-                  97,
-                  110,
-                  99,
-                  101,
-                  95,
-                  102,
-                  101,
-                  101,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "performance_fee_recipient"
-        },
-        {
-          "name": "onyc_mint",
-          "writable": true,
-          "relations": [
-            "state",
-            "buffer_state"
-          ]
-        },
-        {
-          "name": "performance_fee_recipient_onyc_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "performance_fee_recipient"
-              },
-              {
-                "kind": "account",
-                "path": "token_program"
-              },
-              {
-                "kind": "account",
-                "path": "onyc_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "performance_fee_vault_onyc_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "performance_fee_vault_authority"
-              },
-              {
-                "kind": "account",
-                "path": "token_program"
-              },
-              {
-                "kind": "account",
-                "path": "onyc_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "boss",
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "token_program"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "amount",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "withdraw_redemption_fees",
-      "docs": [
-        "Withdraws accumulated redemption fees from the vault to a destination chosen by the boss.",
-        "",
-        "Delegates to `redemption::withdraw_redemption_fees`.",
-        "Pass `amount = 0` to withdraw the full vault balance.",
-        "Emits a `RedemptionFeesWithdrawnEvent` upon success.",
-        "",
-        "# Arguments",
-        "- `ctx`: Context for `WithdrawRedemptionFees`.",
-        "- `amount`: Amount to withdraw; 0 means full balance.",
-        "",
-        "# Access Control",
-        "- Boss only"
-      ],
-      "discriminator": [
-        94,
-        252,
-        120,
-        140,
-        99,
-        224,
-        254,
-        159
-      ],
-      "accounts": [
-        {
-          "name": "state",
-          "docs": [
-            "Program state account — boss access control"
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "boss",
-          "docs": [
-            "Boss must sign; also pays for any new ATA creation"
-          ],
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "redemption_fee_vault_authority",
-          "docs": [
-            "Global fee vault authority PDA"
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  100,
-                  101,
-                  109,
-                  112,
-                  116,
-                  105,
-                  111,
-                  110,
-                  95,
-                  102,
-                  101,
-                  101,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "fee_vault_token_in_account",
-          "docs": [
-            "ATA of the fee vault — source of the withdrawal"
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "redemption_fee_vault_authority"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "destination_token_in_account",
-          "docs": [
-            "ATA of the destination — created if needed"
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "destination"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_program"
-              },
-              {
-                "kind": "account",
-                "path": "token_in_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "destination",
-          "docs": [
-            "Destination wallet; boss decides where fees go"
-          ]
-        },
-        {
-          "name": "token_in_mint",
-          "docs": [
-            "The token mint whose fees are being withdrawn"
-          ]
-        },
-        {
-          "name": "token_in_program",
-          "docs": [
-            "Token program for token_in"
-          ]
-        },
-        {
-          "name": "associated_token_program",
-          "docs": [
-            "Associated Token Program for ATA creation"
-          ],
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "system_program",
-          "docs": [
-            "System program required for account creation"
-          ],
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "amount",
-          "type": "u64"
-        }
-      ]
-    },
-    {
       "name": "withdraw_reserve_vault",
       "docs": [
         "Withdraws ONyc from the BUFFER reserve vault.",
@@ -11079,19 +10226,6 @@
         240,
         58,
         139
-      ]
-    },
-    {
-      "name": "RedemptionFeeVaultAuthority",
-      "discriminator": [
-        207,
-        98,
-        131,
-        212,
-        14,
-        78,
-        131,
-        138
       ]
     },
     {
@@ -11487,19 +10621,6 @@
       ]
     },
     {
-      "name": "ManagementFeesWithdrawnEvent",
-      "discriminator": [
-        96,
-        131,
-        154,
-        11,
-        86,
-        65,
-        16,
-        202
-      ]
-    },
-    {
       "name": "MarketStatsRefreshedEvent",
       "discriminator": [
         125,
@@ -11708,19 +10829,6 @@
       ]
     },
     {
-      "name": "PerformanceFeesWithdrawnEvent",
-      "discriminator": [
-        36,
-        91,
-        194,
-        195,
-        8,
-        143,
-        128,
-        156
-      ]
-    },
-    {
       "name": "PropAmmConfiguredEvent",
       "discriminator": [
         104,
@@ -11744,32 +10852,6 @@
         230,
         199,
         178
-      ]
-    },
-    {
-      "name": "RedemptionFeeDestinationUpdatedEvent",
-      "discriminator": [
-        24,
-        143,
-        70,
-        112,
-        218,
-        194,
-        241,
-        164
-      ]
-    },
-    {
-      "name": "RedemptionFeesWithdrawnEvent",
-      "discriminator": [
-        243,
-        210,
-        33,
-        160,
-        29,
-        199,
-        252,
-        85
       ]
     },
     {
@@ -12436,156 +11518,136 @@
     },
     {
       "code": 6106,
-      "name": "InvalidRedemptionFeeVaultAuthority",
-      "msg": "Invalid Redemption Fee Vault Authority"
-    },
-    {
-      "code": 6107,
-      "name": "InvalidRedemptionFeeVaultAuthorityOwner",
-      "msg": "Invalid Redemption Fee Vault Authority Owner"
-    },
-    {
-      "code": 6108,
-      "name": "InvalidRedemptionFeeVaultAuthorityData",
-      "msg": "Invalid Redemption Fee Vault Authority Data"
-    },
-    {
-      "code": 6109,
       "name": "InvalidFeeDestinationTokenInAccount",
       "msg": "Invalid Fee Destination Token In Account"
     },
     {
-      "code": 6110,
+      "code": 6107,
       "name": "InvalidOfferVaultOnycAccount",
       "msg": "Invalid Offer Vault Onyc Account"
     },
     {
-      "code": 6111,
+      "code": 6108,
       "name": "InvalidVaultTokenInAccount",
       "msg": "Invalid Vault Token In Account"
     },
     {
-      "code": 6112,
+      "code": 6109,
       "name": "InvalidVaultTokenOutAccount",
       "msg": "Invalid Vault Token Out Account"
     },
     {
-      "code": 6113,
+      "code": 6110,
       "name": "InvalidAmount",
       "msg": "Invalid Amount"
     },
     {
-      "code": 6114,
+      "code": 6111,
       "name": "OfferDisabled",
       "msg": "Offer Disabled"
     },
     {
-      "code": 6115,
+      "code": 6112,
       "name": "UnauthorizedToDisableOffer",
       "msg": "Unauthorized To Disable Offer"
     },
     {
-      "code": 6116,
+      "code": 6113,
       "name": "OnlyBossCanEnableOffer",
       "msg": "Only Boss Can Enable Offer"
     },
     {
-      "code": 6117,
+      "code": 6114,
       "name": "AmountExceedsRemaining",
       "msg": "Amount Exceeds Remaining"
     },
     {
-      "code": 6118,
+      "code": 6115,
       "name": "InvalidFeeDestination",
       "msg": "Invalid Fee Destination"
     },
     {
-      "code": 6119,
+      "code": 6116,
       "name": "InvalidConfigurableVault",
       "msg": "Invalid Configurable Vault"
     },
     {
-      "code": 6120,
+      "code": 6117,
       "name": "InvalidConfigurableVaultOwner",
       "msg": "Invalid Configurable Vault Owner"
     },
     {
-      "code": 6121,
+      "code": 6118,
       "name": "InvalidConfigurableVaultData",
       "msg": "Invalid Configurable Vault Data"
     },
     {
-      "code": 6122,
+      "code": 6119,
       "name": "InvalidConfigurableVaultKind",
       "msg": "Invalid Configurable Vault Kind"
     },
     {
-      "code": 6123,
+      "code": 6120,
       "name": "MissingConfigurableVaultDestination",
       "msg": "Missing Configurable Vault Destination"
     },
     {
-      "code": 6124,
+      "code": 6121,
       "name": "InvalidConfigurableVaultTokenAccount",
       "msg": "Invalid Configurable Vault Token Account"
     },
     {
-      "code": 6125,
+      "code": 6122,
       "name": "InvalidBufferStateAccount",
       "msg": "Invalid Buffer State Account"
     },
     {
-      "code": 6126,
+      "code": 6123,
       "name": "InvalidTimestamp",
       "msg": "Invalid Timestamp"
     },
     {
-      "code": 6127,
+      "code": 6124,
       "name": "MinimumOutNotMet",
       "msg": "Minimum Out Not Met"
     },
     {
-      "code": 6128,
+      "code": 6125,
       "name": "InvalidSwapPair",
       "msg": "Invalid Swap Pair"
     },
     {
-      "code": 6129,
-      "name": "InvalidFeeWallet",
-      "msg": "Invalid Fee Wallet"
-    },
-    {
-      "code": 6130,
+      "code": 6126,
       "name": "InvalidTargetNav",
       "msg": "Invalid Target Nav"
     },
     {
-      "code": 6131,
+      "code": 6127,
       "name": "InvalidAssetAdjustmentAmount",
       "msg": "Invalid Asset Adjustment Amount"
     },
     {
-      "code": 6132,
+      "code": 6128,
       "name": "NoBurnNeeded",
       "msg": "No Burn Needed"
     },
     {
-      "code": 6133,
+      "code": 6129,
       "name": "InsufficientCacheBalance",
       "msg": "Insufficient Cache Balance"
     },
     {
-      "code": 6134,
+      "code": 6130,
       "name": "InsufficientFeeBalance",
       "msg": "Insufficient Fee Balance"
     },
     {
-      "code": 6135,
+      "code": 6131,
       "name": "InvalidFeeRecipient",
       "msg": "Invalid Fee Recipient"
     },
     {
-      "code": 6136,
+      "code": 6132,
       "name": "InvalidBurnTarget",
       "msg": "Invalid Burn Target"
     }
@@ -12947,28 +12009,12 @@
             "type": "u16"
           },
           {
-            "name": "old_management_fee_wallet",
-            "type": "pubkey"
-          },
-          {
-            "name": "new_management_fee_wallet",
-            "type": "pubkey"
-          },
-          {
             "name": "old_performance_fee_basis_points",
             "type": "u16"
           },
           {
             "name": "new_performance_fee_basis_points",
             "type": "u16"
-          },
-          {
-            "name": "old_performance_fee_wallet",
-            "type": "pubkey"
-          },
-          {
-            "name": "new_performance_fee_wallet",
-            "type": "pubkey"
           }
         ]
       }
@@ -13075,16 +12121,8 @@
             "type": "u16"
           },
           {
-            "name": "management_fee_wallet",
-            "type": "pubkey"
-          },
-          {
             "name": "performance_fee_basis_points",
             "type": "u16"
-          },
-          {
-            "name": "performance_fee_wallet",
-            "type": "pubkey"
           },
           {
             "name": "performance_fee_high_watermark",
@@ -13103,7 +12141,7 @@
             "type": {
               "array": [
                 "u8",
-                72
+                136
               ]
             }
           }
@@ -13321,16 +12359,16 @@
         "kind": "enum",
         "variants": [
           {
-            "name": "TakeOfferFee"
-          },
-          {
-            "name": "RedemptionFee"
+            "name": "OfferFee"
           },
           {
             "name": "ManagementFee"
           },
           {
             "name": "PerformanceFee"
+          },
+          {
+            "name": "PropAmmFee"
           }
         ]
       }
@@ -13650,22 +12688,6 @@
           },
           {
             "name": "new_main_offer",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "ManagementFeesWithdrawnEvent",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "boss",
             "type": "pubkey"
           }
         ]
@@ -14525,22 +13547,6 @@
       }
     },
     {
-      "name": "PerformanceFeesWithdrawnEvent",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "boss",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
       "name": "PermissionlessAuthority",
       "docs": [
         "Program-derived authority for permissionless token routing operations",
@@ -14720,96 +13726,6 @@
               "The new redemption admin public key after the update"
             ],
             "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "RedemptionFeeDestinationUpdatedEvent",
-      "docs": [
-        "Event emitted when the redemption fee destination is updated"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "old_destination",
-            "docs": [
-              "Previous fee destination (Pubkey::default() means the vault PDA)"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "new_destination",
-            "docs": [
-              "New fee destination (Pubkey::default() means the vault PDA)"
-            ],
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "RedemptionFeeVaultAuthority",
-      "docs": [
-        "PDA that acts as a configurable fee collector for redemption fees",
-        "",
-        "When `fee_destination` is `Pubkey::default()`, fees accumulate in this PDA's ATA.",
-        "When set to a specific address, fees are routed there on every fulfillment."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "fee_destination",
-            "docs": [
-              "Destination address for fees; Pubkey::default() means fees accumulate in this PDA's ATA"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "bump",
-            "docs": [
-              "PDA bump seed"
-            ],
-            "type": "u8"
-          },
-          {
-            "name": "reserved",
-            "docs": [
-              "Reserved space for future fields"
-            ],
-            "type": {
-              "array": [
-                "u8",
-                31
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "RedemptionFeesWithdrawnEvent",
-      "docs": [
-        "Event emitted when redemption fees are withdrawn from the vault"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "destination",
-            "docs": [
-              "Destination that received the fees"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "amount",
-            "docs": [
-              "Amount of token_in withdrawn"
-            ],
-            "type": "u64"
           }
         ]
       }

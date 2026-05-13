@@ -104,28 +104,28 @@ pub struct CirculatingSupplyExcludedBalance {
 /// Fee vault selector used for deriving shared configurable vault PDAs.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
 pub enum ConfigurableVaultKind {
-    TakeOfferFee,
-    RedemptionFee,
+    OfferFee,
     ManagementFee,
     PerformanceFee,
+    PropAmmFee,
 }
 
 impl ConfigurableVaultKind {
     pub fn seed(self) -> &'static [u8] {
         match self {
-            Self::TakeOfferFee => crate::constants::seeds::TAKE_OFFER_FEE_VAULT,
-            Self::RedemptionFee => crate::constants::seeds::REDEMPTION_FEE_VAULT,
+            Self::OfferFee => crate::constants::seeds::OFFER_FEE_VAULT,
             Self::ManagementFee => crate::constants::seeds::MANAGEMENT_FEE_VAULT,
             Self::PerformanceFee => crate::constants::seeds::PERFORMANCE_FEE_VAULT,
+            Self::PropAmmFee => crate::constants::seeds::PROP_AMM_FEE_VAULT,
         }
     }
 
-    pub fn as_u8(self) -> u8 {
+    pub const fn as_u8(self) -> u8 {
         match self {
-            Self::TakeOfferFee => 0,
-            Self::RedemptionFee => 1,
-            Self::ManagementFee => 2,
-            Self::PerformanceFee => 3,
+            Self::OfferFee => 0,
+            Self::ManagementFee => 1,
+            Self::PerformanceFee => 2,
+            Self::PropAmmFee => 3,
         }
     }
 }

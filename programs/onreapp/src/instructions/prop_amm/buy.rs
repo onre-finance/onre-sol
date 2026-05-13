@@ -6,6 +6,9 @@ use crate::instructions::buffer::accrue_buffer::{
     accrue_buffer_from_accounts, store_buffer_post_supply,
 };
 use crate::instructions::buffer::BufferAccrualAccounts;
+use crate::instructions::configurable_vault::{
+    get_or_create_configurable_vault_token_account, ConfigurableVaultTokenAccountParams,
+};
 use crate::instructions::market_info::{
     load_main_offer, read_market_stats_account, refresh_market_stats_pda,
 };
@@ -13,7 +16,7 @@ use crate::instructions::offer::{
     is_onyc_token_out_mint, should_accrue_onyc_mint, verify_offer_approval,
 };
 use crate::instructions::Offer;
-use crate::state::State;
+use crate::state::{ConfigurableVaultKind, State};
 use crate::utils::{
     get_associated_token_account, get_or_create_associated_token_account, mint_tokens,
     program_controls_mint, transfer_tokens, ApprovalMessage, EnsureAtaParams,
@@ -89,6 +92,14 @@ pub struct OpenSwapBuy<'info> {
     /// CHECK: validated as canonical ATA in instruction logic
     #[account(mut)]
     pub boss_token_in_account: UncheckedAccount<'info>,
+
+    /// CHECK: PDA and data are validated/initialized in instruction logic.
+    #[account(mut)]
+    pub prop_amm_fee_vault: UncheckedAccount<'info>,
+
+    /// CHECK: Validated and optionally initialized in instruction logic.
+    #[account(mut)]
+    pub prop_amm_fee_token_in_account: UncheckedAccount<'info>,
 
     /// CHECK: PDA derivation validated in instruction logic
     pub permissionless_authority: UncheckedAccount<'info>,
@@ -196,6 +207,18 @@ fn execute_open_swap_buy<'info>(
         &ctx.accounts.token_in_program.key(),
         crate::OnreError::InvalidBossTokenInAccount,
     )?;
+    let prop_amm_fee_token_in_account = get_or_create_configurable_vault_token_account::<
+        { ConfigurableVaultKind::PropAmmFee.as_u8() },
+    >(ConfigurableVaultTokenAccountParams {
+        vault: &ctx.accounts.prop_amm_fee_vault,
+        token_account: &ctx.accounts.prop_amm_fee_token_in_account,
+        payer: ctx.accounts.user.to_account_info(),
+        mint_account: ctx.accounts.token_in_mint.to_account_info(),
+        token_program: ctx.accounts.token_in_program.to_account_info(),
+        associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
+        system_program: ctx.accounts.system_program.to_account_info(),
+        program_id: ctx.program_id,
+    })?;
     let _offer_vault_token_in_account = get_associated_token_account(
         &ctx.accounts.offer_vault_token_in_account,
         &ctx.accounts.offer_vault_authority.key(),
@@ -337,10 +360,7 @@ fn execute_open_swap_buy<'info>(
             refill_amount,
         )?;
     }
-    let boss_total_amount = boss_net_amount
-        .checked_add(result.token_in_fee_amount)
-        .ok_or(crate::OnreError::MathOverflow)?;
-    if boss_total_amount > 0 {
+    if boss_net_amount > 0 {
         transfer_tokens(
             &ctx.accounts.token_in_mint,
             &ctx.accounts.token_in_program,
@@ -348,7 +368,18 @@ fn execute_open_swap_buy<'info>(
             &boss_token_in_account,
             &ctx.accounts.permissionless_authority.to_account_info(),
             Some(permissionless_signer_seeds),
-            boss_total_amount,
+            boss_net_amount,
+        )?;
+    }
+    if result.token_in_fee_amount > 0 {
+        transfer_tokens(
+            &ctx.accounts.token_in_mint,
+            &ctx.accounts.token_in_program,
+            &permissionless_token_in_account,
+            &prop_amm_fee_token_in_account,
+            &ctx.accounts.permissionless_authority.to_account_info(),
+            Some(permissionless_signer_seeds),
+            result.token_in_fee_amount,
         )?;
     }
 

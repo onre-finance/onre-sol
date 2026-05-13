@@ -214,12 +214,6 @@ pub enum OnreError {
     InvalidRedemptionOfferOwner,
     #[msg("Invalid Redemption Offer Data")]
     InvalidRedemptionOfferData,
-    #[msg("Invalid Redemption Fee Vault Authority")]
-    InvalidRedemptionFeeVaultAuthority,
-    #[msg("Invalid Redemption Fee Vault Authority Owner")]
-    InvalidRedemptionFeeVaultAuthorityOwner,
-    #[msg("Invalid Redemption Fee Vault Authority Data")]
-    InvalidRedemptionFeeVaultAuthorityData,
     #[msg("Invalid Fee Destination Token In Account")]
     InvalidFeeDestinationTokenInAccount,
     #[msg("Invalid Offer Vault Onyc Account")]
@@ -260,8 +254,6 @@ pub enum OnreError {
     MinimumOutNotMet,
     #[msg("Invalid Swap Pair")]
     InvalidSwapPair,
-    #[msg("Invalid Fee Wallet")]
-    InvalidFeeWallet,
     #[msg("Invalid Target Nav")]
     InvalidTargetNav,
     #[msg("Invalid Asset Adjustment Amount")]

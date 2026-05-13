@@ -7,16 +7,18 @@ use crate::instructions::buffer::{
     accrue_buffer::{accrue_buffer_from_accounts, store_buffer_post_supply},
     BufferAccrualAccounts,
 };
-use crate::instructions::configurable_vault::ConfigurableVaultInit;
+use crate::instructions::configurable_vault::{
+    get_or_create_configurable_vault_token_account, ConfigurableVaultTokenAccountParams,
+};
 use crate::instructions::market_info::{load_main_offer, refresh_market_stats_pda};
 use crate::instructions::offer::offer_utils::{
     is_onyc_token_out_mint, process_offer_core, should_accrue_onyc_mint, verify_offer_approval,
 };
 use crate::instructions::Offer;
-use crate::state::State;
+use crate::state::{ConfigurableVaultKind, State};
 use crate::utils::{
-    execute_token_operations, get_or_create_associated_token_account, load_or_init_pda_account,
-    store_pda_account, u64_to_dec9, ApprovalMessage, EnsureAtaParams, ExecTokenOpsParams,
+    execute_token_operations, get_or_create_associated_token_account, u64_to_dec9, ApprovalMessage,
+    EnsureAtaParams, ExecTokenOpsParams,
 };
 use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::{
@@ -285,11 +287,11 @@ pub struct TakeOfferV2<'info> {
 
     /// CHECK: PDA and data are validated/initialized in instruction logic.
     #[account(mut)]
-    pub take_offer_fee_vault: UncheckedAccount<'info>,
+    pub offer_fee_vault: UncheckedAccount<'info>,
 
     /// CHECK: Validated and optionally initialized in instruction logic.
     #[account(mut)]
-    pub take_offer_fee_token_in_account: UncheckedAccount<'info>,
+    pub offer_fee_token_in_account: UncheckedAccount<'info>,
 
     /// CHECK: PDA derivation is validated through seeds constraint
     pub mint_authority: UncheckedAccount<'info>,
@@ -486,45 +488,18 @@ pub fn execute_take_offer_v2<'info>(
         token_program_id: ctx.accounts.token_in_program.key(),
         invalid_account_error: crate::OnreError::InvalidBossTokenInAccount,
     })?;
-    let take_offer_fee_vault_info = ctx.accounts.take_offer_fee_vault.to_account_info();
-    let (expected_take_offer_fee_vault, take_offer_fee_vault_bump) = Pubkey::find_program_address(
-        &[seeds::CONFIGURABLE_VAULT, seeds::TAKE_OFFER_FEE_VAULT],
-        ctx.program_id,
-    );
-    require_keys_eq!(
-        expected_take_offer_fee_vault,
-        ctx.accounts.take_offer_fee_vault.key(),
-        crate::OnreError::InvalidConfigurableVault
-    );
-    let should_store_take_offer_fee_vault = take_offer_fee_vault_info.owner == &system_program::ID
-        || take_offer_fee_vault_info
-            .try_borrow_data()?
-            .iter()
-            .all(|byte| *byte == 0);
-    let take_offer_fee_vault = load_or_init_pda_account::<ConfigurableVaultInit<0>>(
-        &take_offer_fee_vault_info,
-        &ctx.accounts.user.to_account_info(),
-        &ctx.accounts.system_program.to_account_info(),
-        ctx.program_id,
-        take_offer_fee_vault_bump,
-    )?;
-    if should_store_take_offer_fee_vault {
-        store_pda_account(&take_offer_fee_vault_info, &take_offer_fee_vault)?;
-    }
-    let take_offer_fee_token_in_account =
-        get_or_create_associated_token_account(EnsureAtaParams {
-            ata_account: &ctx.accounts.take_offer_fee_token_in_account,
-            payer: ctx.accounts.user.to_account_info(),
-            authority_account: take_offer_fee_vault_info,
-            mint_account: ctx.accounts.token_in_mint.to_account_info(),
-            token_program: ctx.accounts.token_in_program.to_account_info(),
-            associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
-            system_program: ctx.accounts.system_program.to_account_info(),
-            authority: ctx.accounts.take_offer_fee_vault.key(),
-            mint: ctx.accounts.token_in_mint.key(),
-            token_program_id: ctx.accounts.token_in_program.key(),
-            invalid_account_error: crate::OnreError::InvalidConfigurableVaultTokenAccount,
-        })?;
+    let offer_fee_token_in_account = get_or_create_configurable_vault_token_account::<
+        { ConfigurableVaultKind::OfferFee.as_u8() },
+    >(ConfigurableVaultTokenAccountParams {
+        vault: &ctx.accounts.offer_fee_vault,
+        token_account: &ctx.accounts.offer_fee_token_in_account,
+        payer: ctx.accounts.user.to_account_info(),
+        mint_account: ctx.accounts.token_in_mint.to_account_info(),
+        token_program: ctx.accounts.token_in_program.to_account_info(),
+        associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
+        system_program: ctx.accounts.system_program.to_account_info(),
+        program_id: ctx.program_id,
+    })?;
 
     get_or_create_associated_token_account(EnsureAtaParams {
         ata_account: &ctx.accounts.user_token_out_account,
@@ -572,7 +547,7 @@ pub fn execute_take_offer_v2<'info>(
         ]]),
         token_in_source_account: &ctx.accounts.user_token_in_account,
         token_in_destination_account: &boss_token_in_account,
-        token_in_fee_destination_account: &take_offer_fee_token_in_account,
+        token_in_fee_destination_account: &offer_fee_token_in_account,
         token_in_burn_account: &ctx.accounts.vault_token_in_account,
         token_in_burn_authority: &ctx.accounts.vault_authority.to_account_info(),
         token_out_program: &ctx.accounts.token_out_program,

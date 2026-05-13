@@ -42,29 +42,22 @@ pub mod seeds {
     /// Seed for the reserve vault authority account
     pub const RESERVE_VAULT_AUTHORITY: &[u8] = b"reserve_vault_authority";
 
-    /// Seed for the management fee vault authority account
-    pub const MANAGEMENT_FEE_VAULT_AUTHORITY: &[u8] = b"management_fee_vault_authority";
-
-    /// Seed for the performance fee vault authority account
-    pub const PERFORMANCE_FEE_VAULT_AUTHORITY: &[u8] = b"performance_fee_vault_authority";
-
     /// Seed for the redemption fee vault authority PDA
-    pub const REDEMPTION_FEE_VAULT_AUTHORITY: &[u8] = b"redemption_fee_vault_authority";
 
     /// Seed prefix for configurable fee vault authority accounts
     pub const CONFIGURABLE_VAULT: &[u8] = b"configurable_vault";
 
-    /// Seed suffix for take-offer fee vault authority
-    pub const TAKE_OFFER_FEE_VAULT: &[u8] = b"take_offer_fee";
-
-    /// Seed suffix for redemption fee vault authority
-    pub const REDEMPTION_FEE_VAULT: &[u8] = b"redemption_fee";
+    /// Seed suffix for offer fee vault authority
+    pub const OFFER_FEE_VAULT: &[u8] = b"offer_fee";
 
     /// Seed suffix for management fee vault authority
     pub const MANAGEMENT_FEE_VAULT: &[u8] = b"management_fee";
 
     /// Seed suffix for performance fee vault authority
     pub const PERFORMANCE_FEE_VAULT: &[u8] = b"performance_fee";
+
+    /// Seed suffix for prop AMM fee vault authority
+    pub const PROP_AMM_FEE_VAULT: &[u8] = b"prop_amm_fee";
 
     /// Seed for the Prop AMM configuration state PDA
     pub const PROP_AMM_STATE: &[u8] = b"prop_amm_state";

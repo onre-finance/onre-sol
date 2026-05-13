@@ -94,6 +94,47 @@ pub fn read_offer(svm: &LiteSVM, token_in_mint: &Pubkey, token_out_mint: &Pubkey
     }
 }
 
+pub fn write_offer_fee_basis_points(
+    svm: &mut LiteSVM,
+    token_in_mint: &Pubkey,
+    token_out_mint: &Pubkey,
+    fee_basis_points: u16,
+) {
+    let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
+    let mut account = svm
+        .get_account(&offer_pda)
+        .expect("offer account not found");
+    let fee_offset = 8 + 32 + 32 + MAX_VECTORS * 40;
+    account.data[fee_offset..fee_offset + 2].copy_from_slice(&fee_basis_points.to_le_bytes());
+    svm.set_account(offer_pda, account).unwrap();
+}
+
+pub fn write_offer_vector(
+    svm: &mut LiteSVM,
+    token_in_mint: &Pubkey,
+    token_out_mint: &Pubkey,
+    index: usize,
+    vector: OfferVectorData,
+) {
+    assert!(index < MAX_VECTORS);
+    let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
+    let mut account = svm
+        .get_account(&offer_pda)
+        .expect("offer account not found");
+    let mut offset = 8 + 32 + 32 + index * 40;
+    for value in [
+        vector.start_time,
+        vector.base_time,
+        vector.base_price,
+        vector.apr,
+        vector.price_fix_duration,
+    ] {
+        account.data[offset..offset + 8].copy_from_slice(&value.to_le_bytes());
+        offset += 8;
+    }
+    svm.set_account(offer_pda, account).unwrap();
+}
+
 pub fn get_mint_supply(svm: &LiteSVM, mint: &Pubkey) -> u64 {
     let account = svm.get_account(mint).expect("mint account not found");
     u64::from_le_bytes(account.data[36..44].try_into().unwrap())

@@ -193,25 +193,21 @@ pub fn build_take_offer_permissionless_v2_ix(
     let (main_offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
     let (buffer_state_pda, _) = find_buffer_state_pda();
     let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
-    let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
-    let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
+    let (management_fee_vault_pda, _) = find_management_fee_vault_pda();
+    let (performance_fee_vault_pda, _) = find_performance_fee_vault_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
     let (excluded_balance_pda, _) = find_circulating_supply_excluded_balance_pda();
-    let (take_offer_fee_vault_pda, _) = find_take_offer_fee_vault_pda();
-    let take_offer_fee_token_in_ata =
-        derive_ata(&take_offer_fee_vault_pda, token_in_mint, token_in_program);
+    let (offer_fee_vault_pda, _) = find_offer_fee_vault_pda();
+    let offer_fee_token_in_ata = derive_ata(&offer_fee_vault_pda, token_in_mint, token_in_program);
     let buffer_vault_onyc_ata = derive_ata(
         &reserve_vault_authority_pda,
         token_out_mint,
         token_out_program,
     );
-    let management_fee_vault_onyc_ata = derive_ata(
-        &management_fee_vault_authority_pda,
-        token_out_mint,
-        token_out_program,
-    );
+    let management_fee_vault_onyc_ata =
+        derive_ata(&management_fee_vault_pda, token_out_mint, token_out_program);
     let performance_fee_vault_onyc_ata = derive_ata(
-        &performance_fee_vault_authority_pda,
+        &performance_fee_vault_pda,
         token_out_mint,
         token_out_program,
     );
@@ -226,11 +222,11 @@ pub fn build_take_offer_permissionless_v2_ix(
     }
     ix.accounts.insert(
         TAKE_OFFER_PERMISSIONLESS_V2_FEE_VAULT_INDEX,
-        AccountMeta::new(take_offer_fee_vault_pda, false),
+        AccountMeta::new(offer_fee_vault_pda, false),
     );
     ix.accounts.insert(
         TAKE_OFFER_PERMISSIONLESS_V2_FEE_TOKEN_ACCOUNT_INDEX,
-        AccountMeta::new(take_offer_fee_token_in_ata, false),
+        AccountMeta::new(offer_fee_token_in_ata, false),
     );
     ix.accounts.insert(
         TAKE_OFFER_PERMISSIONLESS_V2_BUFFER_STATE_INDEX,
@@ -397,8 +393,8 @@ pub fn build_take_offer_v2_ix(
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let (buffer_state_pda, _) = find_buffer_state_pda();
     let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
-    let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
-    let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
+    let (management_fee_vault_pda, _) = find_management_fee_vault_pda();
+    let (performance_fee_vault_pda, _) = find_performance_fee_vault_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
     let (excluded_balance_pda, _) = find_circulating_supply_excluded_balance_pda();
     let (main_offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
@@ -407,21 +403,17 @@ pub fn build_take_offer_v2_ix(
     let user_token_in_ata = derive_ata(user, token_in_mint, token_in_program);
     let user_token_out_ata = derive_ata(user, token_out_mint, token_out_program);
     let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
-    let (take_offer_fee_vault_pda, _) = find_take_offer_fee_vault_pda();
-    let take_offer_fee_token_in_ata =
-        derive_ata(&take_offer_fee_vault_pda, token_in_mint, token_in_program);
+    let (offer_fee_vault_pda, _) = find_offer_fee_vault_pda();
+    let offer_fee_token_in_ata = derive_ata(&offer_fee_vault_pda, token_in_mint, token_in_program);
     let buffer_vault_onyc_ata = derive_ata(
         &reserve_vault_authority_pda,
         token_out_mint,
         token_out_program,
     );
-    let management_fee_vault_onyc_ata = derive_ata(
-        &management_fee_vault_authority_pda,
-        token_out_mint,
-        token_out_program,
-    );
+    let management_fee_vault_onyc_ata =
+        derive_ata(&management_fee_vault_pda, token_out_mint, token_out_program);
     let performance_fee_vault_onyc_ata = derive_ata(
-        &performance_fee_vault_authority_pda,
+        &performance_fee_vault_pda,
         token_out_mint,
         token_out_program,
     );
@@ -450,8 +442,8 @@ pub fn build_take_offer_v2_ix(
             AccountMeta::new(user_token_in_ata, false),
             AccountMeta::new(user_token_out_ata, false),
             AccountMeta::new(boss_token_in_ata, false),
-            AccountMeta::new(take_offer_fee_vault_pda, false),
-            AccountMeta::new(take_offer_fee_token_in_ata, false),
+            AccountMeta::new(offer_fee_vault_pda, false),
+            AccountMeta::new(offer_fee_token_in_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),
             AccountMeta::new(buffer_state_pda, false),
             AccountMeta::new(buffer_vault_onyc_ata, false),
@@ -566,8 +558,8 @@ pub fn build_open_swap_buy_ix(
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let (buffer_state_pda, _) = find_buffer_state_pda();
     let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
-    let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
-    let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
+    let (management_fee_vault_pda, _) = find_management_fee_vault_pda();
+    let (performance_fee_vault_pda, _) = find_performance_fee_vault_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
     let (excluded_balance_pda, _) = find_circulating_supply_excluded_balance_pda();
     let (main_offer_pda, _) = find_offer_pda(canonical_token_in, canonical_token_out);
@@ -586,6 +578,9 @@ pub fn build_open_swap_buy_ix(
     let user_token_in_ata = derive_ata(user, token_in_mint, token_in_program);
     let user_token_out_ata = derive_ata(user, token_out_mint, token_out_program);
     let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
+    let (prop_amm_fee_vault_pda, _) = find_prop_amm_fee_vault_pda();
+    let prop_amm_fee_token_in_ata =
+        derive_ata(&prop_amm_fee_vault_pda, token_in_mint, token_in_program);
     let permissionless_token_in_ata = derive_ata(
         &permissionless_authority_pda,
         token_in_mint,
@@ -601,13 +596,10 @@ pub fn build_open_swap_buy_ix(
         token_out_mint,
         token_out_program,
     );
-    let management_fee_vault_onyc_ata = derive_ata(
-        &management_fee_vault_authority_pda,
-        token_out_mint,
-        token_out_program,
-    );
+    let management_fee_vault_onyc_ata =
+        derive_ata(&management_fee_vault_pda, token_out_mint, token_out_program);
     let performance_fee_vault_onyc_ata = derive_ata(
-        &performance_fee_vault_authority_pda,
+        &performance_fee_vault_pda,
         canonical_token_out,
         token_out_program,
     );
@@ -640,6 +632,8 @@ pub fn build_open_swap_buy_ix(
             AccountMeta::new(user_token_in_ata, false),
             AccountMeta::new(user_token_out_ata, false),
             AccountMeta::new(boss_token_in_ata, false),
+            AccountMeta::new(prop_amm_fee_vault_pda, false),
+            AccountMeta::new(prop_amm_fee_token_in_ata, false),
             AccountMeta::new_readonly(permissionless_authority_pda, false),
             AccountMeta::new(permissionless_token_in_ata, false),
             AccountMeta::new(permissionless_token_out_ata, false),
@@ -705,6 +699,9 @@ pub fn build_open_swap_sell_ix(
     let user_token_in_ata = derive_ata(user, token_in_mint, token_in_program);
     let user_token_out_ata = derive_ata(user, token_out_mint, token_out_program);
     let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
+    let (prop_amm_fee_vault_pda, _) = find_prop_amm_fee_vault_pda();
+    let prop_amm_fee_token_in_ata =
+        derive_ata(&prop_amm_fee_vault_pda, token_in_mint, token_in_program);
     let offer_vault_onyc_ata = derive_ata(
         &offer_vault_authority_pda,
         canonical_token_out,
@@ -739,6 +736,8 @@ pub fn build_open_swap_sell_ix(
             AccountMeta::new(user_token_in_ata, false),
             AccountMeta::new(user_token_out_ata, false),
             AccountMeta::new(boss_token_in_ata, false),
+            AccountMeta::new(prop_amm_fee_vault_pda, false),
+            AccountMeta::new(prop_amm_fee_token_in_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),
             AccountMeta::new(market_stats_pda, false),
             AccountMeta::new_readonly(excluded_balance_pda, false),

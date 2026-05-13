@@ -87,12 +87,20 @@ pub fn validate_buffer_onyc_vault_accounts<'info>(
         &token_program.key(),
     );
     let expected_management_fee_vault_onyc_account = get_associated_token_address_with_program_id(
-        &Pubkey::find_program_address(&[seeds::MANAGEMENT_FEE_VAULT_AUTHORITY], program_id).0,
+        &Pubkey::find_program_address(
+            &[seeds::CONFIGURABLE_VAULT, seeds::MANAGEMENT_FEE_VAULT],
+            program_id,
+        )
+        .0,
         &onyc_mint.key(),
         &token_program.key(),
     );
     let expected_performance_fee_vault_onyc_account = get_associated_token_address_with_program_id(
-        &Pubkey::find_program_address(&[seeds::PERFORMANCE_FEE_VAULT_AUTHORITY], program_id).0,
+        &Pubkey::find_program_address(
+            &[seeds::CONFIGURABLE_VAULT, seeds::PERFORMANCE_FEE_VAULT],
+            program_id,
+        )
+        .0,
         &onyc_mint.key(),
         &token_program.key(),
     );

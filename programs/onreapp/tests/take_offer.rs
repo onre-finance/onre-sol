@@ -71,6 +71,38 @@ fn setup_take_offer_with_fee(fee_bps: u16) -> TakeOfferCtx {
     }
 }
 
+fn add_default_offer_vector(ctx: &mut TakeOfferCtx) {
+    let boss = ctx.payer.pubkey();
+    let current_time = get_clock_time(&ctx.svm);
+    let ix = build_add_offer_vector_ix(
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86400,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+}
+
+fn build_default_take_offer_ix(
+    ctx: &TakeOfferCtx,
+    token_in_amount: u64,
+) -> solana_sdk::instruction::Instruction {
+    build_take_offer_ix(
+        &ctx.user.pubkey(),
+        &ctx.payer.pubkey(),
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        token_in_amount,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+    )
+}
+
 // ===========================================================================
 // Price Calculation Tests
 // ===========================================================================
@@ -137,6 +169,37 @@ fn test_price_first_interval() {
         market_stats.last_updated_slot,
         ctx.svm.get_sysvar::<Clock>().slot
     );
+}
+
+#[test]
+fn test_take_offer_with_fractional_day_price_window() {
+    let mut ctx = setup_take_offer();
+    let boss = ctx.payer.pubkey();
+    let current_time = get_clock_time(&ctx.svm);
+
+    let ix = build_add_offer_vector_ix(
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        36_500,
+        3_600,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+    advance_clock_by(&mut ctx.svm, 1);
+
+    create_token_account(&mut ctx.svm, &ctx.onyc_mint, &ctx.user.pubkey(), 0);
+    let ix = build_default_take_offer_ix(&ctx, 2_000_000);
+    let cu_ix = ComputeBudgetInstruction::set_compute_unit_limit(680_000);
+    send_tx(&mut ctx.svm, &[cu_ix, ix], &[&ctx.payer, &ctx.user]).unwrap();
+
+    let user_onyc = get_token_balance(
+        &ctx.svm,
+        &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
+    );
+    assert!(user_onyc > 0);
 }
 
 #[test]
@@ -222,7 +285,7 @@ fn test_take_offer_v2_accrues_buffer_and_splits_fees() {
     let management_before = get_token_balance(
         &ctx.svm,
         &derive_ata(
-            &find_management_fee_vault_authority_pda().0,
+            &find_management_fee_vault_pda().0,
             &ctx.onyc_mint,
             &TOKEN_PROGRAM_ID,
         ),
@@ -230,7 +293,7 @@ fn test_take_offer_v2_accrues_buffer_and_splits_fees() {
     let performance_before = get_token_balance(
         &ctx.svm,
         &derive_ata(
-            &find_performance_fee_vault_authority_pda().0,
+            &find_performance_fee_vault_pda().0,
             &ctx.onyc_mint,
             &TOKEN_PROGRAM_ID,
         ),
@@ -262,7 +325,7 @@ fn test_take_offer_v2_accrues_buffer_and_splits_fees() {
     let management_after = get_token_balance(
         &ctx.svm,
         &derive_ata(
-            &find_management_fee_vault_authority_pda().0,
+            &find_management_fee_vault_pda().0,
             &ctx.onyc_mint,
             &TOKEN_PROGRAM_ID,
         ),
@@ -270,7 +333,7 @@ fn test_take_offer_v2_accrues_buffer_and_splits_fees() {
     let performance_after = get_token_balance(
         &ctx.svm,
         &derive_ata(
-            &find_performance_fee_vault_authority_pda().0,
+            &find_performance_fee_vault_pda().0,
             &ctx.onyc_mint,
             &TOKEN_PROGRAM_ID,
         ),
@@ -662,6 +725,89 @@ fn test_fail_no_active_vector() {
     );
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
     assert!(result.is_err(), "should fail with no active vector");
+}
+
+#[test]
+fn test_take_offer_rejects_zero_amount_in_offer_core() {
+    let mut ctx = setup_take_offer();
+    let ix = build_default_take_offer_ix(&ctx, 0);
+
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
+
+    assert!(result.is_err(), "should fail with zero amount");
+}
+
+#[test]
+fn test_take_offer_rejects_mutated_fee_above_max_in_offer_core() {
+    let mut ctx = setup_take_offer();
+    add_default_offer_vector(&mut ctx);
+    write_offer_fee_basis_points(
+        &mut ctx.svm,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        onreapp::constants::MAX_BASIS_POINTS + 1,
+    );
+    let ix = build_default_take_offer_ix(&ctx, 1_000_000);
+
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
+
+    assert!(result.is_err(), "should fail with invalid fee bps");
+}
+
+#[test]
+fn test_take_offer_rejects_vector_with_future_base_time_in_offer_core() {
+    let mut ctx = setup_take_offer();
+    add_default_offer_vector(&mut ctx);
+    let current_time = get_clock_time(&ctx.svm);
+    write_offer_vector(
+        &mut ctx.svm,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        0,
+        OfferVectorData {
+            start_time: current_time,
+            base_time: current_time + 1,
+            base_price: 1_000_000_000,
+            apr: 0,
+            price_fix_duration: 86400,
+        },
+    );
+    let ix = build_default_take_offer_ix(&ctx, 1_000_000);
+
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
+
+    assert!(
+        result.is_err(),
+        "should fail when base_time is in the future"
+    );
+}
+
+#[test]
+fn test_take_offer_rejects_vector_price_overflow_in_offer_core() {
+    let mut ctx = setup_take_offer();
+    add_default_offer_vector(&mut ctx);
+    let current_time = get_clock_time(&ctx.svm);
+    write_offer_vector(
+        &mut ctx.svm,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        0,
+        OfferVectorData {
+            start_time: current_time,
+            base_time: current_time,
+            base_price: u64::MAX,
+            apr: u64::MAX,
+            price_fix_duration: 86400,
+        },
+    );
+    let ix = build_default_take_offer_ix(&ctx, 1);
+
+    let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
+
+    assert!(
+        result.is_err(),
+        "should fail when price calculation overflows"
+    );
 }
 
 #[test]

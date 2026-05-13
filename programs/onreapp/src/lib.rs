@@ -538,16 +538,12 @@ pub mod onreapp {
     pub fn set_buffer_fee_config(
         ctx: Context<SetBufferFeeConfig>,
         management_fee_basis_points: u16,
-        management_fee_wallet: Pubkey,
         performance_fee_basis_points: u16,
-        performance_fee_wallet: Pubkey,
     ) -> Result<()> {
         buffer::set_buffer_fee_config(
             ctx,
             management_fee_basis_points,
-            management_fee_wallet,
             performance_fee_basis_points,
-            performance_fee_wallet,
         )
     }
 
@@ -573,22 +569,6 @@ pub mod onreapp {
     /// Callable by boss only.
     pub fn withdraw_reserve_vault(ctx: Context<WithdrawReserveVault>, amount: u64) -> Result<()> {
         buffer::withdraw_reserve_vault(ctx, amount)
-    }
-
-    /// Transfers management fees from the management fee vault to the boss.
-    pub fn withdraw_management_fees(
-        ctx: Context<WithdrawManagementFees>,
-        amount: u64,
-    ) -> Result<()> {
-        buffer::withdraw_management_fees(ctx, amount)
-    }
-
-    /// Transfers performance fees from the performance fee vault to the boss.
-    pub fn withdraw_performance_fees(
-        ctx: Context<WithdrawPerformanceFees>,
-        amount: u64,
-    ) -> Result<()> {
-        buffer::withdraw_performance_fees(ctx, amount)
     }
 
     /// Mints ONyc tokens to the boss's account.
@@ -859,47 +839,6 @@ pub mod onreapp {
         ctx: Context<'info, CancelRedemptionRequest<'info>>,
     ) -> Result<()> {
         redemption::cancel_redemption_request(ctx)
-    }
-
-    /// Sets or updates the fee destination address for redemption fees.
-    ///
-    /// Delegates to `redemption::set_redemption_fee_destination`.
-    /// Only updates the stored destination address; does not move any tokens.
-    /// Use `withdraw_redemption_fees` to sweep accumulated fees.
-    /// When `fee_destination` is `Pubkey::default()`, fees accumulate in the program's
-    /// fee vault PDA ATA. When set to any other address, fees are routed there on every fulfillment.
-    /// Emits a `RedemptionFeeDestinationUpdatedEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `SetRedemptionFeeDestination`.
-    /// - `fee_destination`: Pubkey of the new fee recipient.
-    ///
-    /// # Access Control
-    /// - Boss only
-    pub fn set_redemption_fee_destination(
-        ctx: Context<SetRedemptionFeeDestination>,
-        fee_destination: Pubkey,
-    ) -> Result<()> {
-        redemption::set_redemption_fee_destination(ctx, fee_destination)
-    }
-
-    /// Withdraws accumulated redemption fees from the vault to a destination chosen by the boss.
-    ///
-    /// Delegates to `redemption::withdraw_redemption_fees`.
-    /// Pass `amount = 0` to withdraw the full vault balance.
-    /// Emits a `RedemptionFeesWithdrawnEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `WithdrawRedemptionFees`.
-    /// - `amount`: Amount to withdraw; 0 means full balance.
-    ///
-    /// # Access Control
-    /// - Boss only
-    pub fn withdraw_redemption_fees(
-        ctx: Context<WithdrawRedemptionFees>,
-        amount: u64,
-    ) -> Result<()> {
-        redemption::withdraw_redemption_fees(ctx, amount)
     }
 
     /// Updates the fee configuration for a specific redemption offer.

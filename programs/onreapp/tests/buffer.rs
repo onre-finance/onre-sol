@@ -231,18 +231,12 @@ fn test_initialize_buffer_success() {
 
     let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
     let buffer_vault_ata = derive_ata(&reserve_vault_authority_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
-    let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
-    let management_fee_vault_ata = derive_ata(
-        &management_fee_vault_authority_pda,
-        &onyc_mint,
-        &TOKEN_PROGRAM_ID,
-    );
-    let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
-    let performance_fee_vault_ata = derive_ata(
-        &performance_fee_vault_authority_pda,
-        &onyc_mint,
-        &TOKEN_PROGRAM_ID,
-    );
+    let (management_fee_vault_pda, _) = find_management_fee_vault_pda();
+    let management_fee_vault_ata =
+        derive_ata(&management_fee_vault_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
+    let (performance_fee_vault_pda, _) = find_performance_fee_vault_pda();
+    let performance_fee_vault_ata =
+        derive_ata(&performance_fee_vault_pda, &onyc_mint, &TOKEN_PROGRAM_ID);
     assert!(svm.get_account(&buffer_vault_ata).is_some());
     assert!(svm.get_account(&management_fee_vault_ata).is_some());
     assert!(svm.get_account(&performance_fee_vault_ata).is_some());
@@ -646,12 +640,12 @@ fn test_buffer_baseline_accrual_seeds_performance_fee_high_watermark() {
         &TOKEN_PROGRAM_ID,
     );
     let management_fee_vault_onyc_ata = derive_ata(
-        &find_management_fee_vault_authority_pda().0,
+        &find_management_fee_vault_pda().0,
         &onyc_mint,
         &TOKEN_PROGRAM_ID,
     );
     let performance_fee_vault_onyc_ata = derive_ata(
-        &find_performance_fee_vault_authority_pda().0,
+        &find_performance_fee_vault_pda().0,
         &onyc_mint,
         &TOKEN_PROGRAM_ID,
     );
@@ -679,12 +673,12 @@ fn test_set_buffer_fee_config_settles_pending_accrual_before_fee_change() {
         &TOKEN_PROGRAM_ID,
     );
     let management_fee_vault_onyc_ata = derive_ata(
-        &find_management_fee_vault_authority_pda().0,
+        &find_management_fee_vault_pda().0,
         &onyc_mint,
         &TOKEN_PROGRAM_ID,
     );
     let performance_fee_vault_onyc_ata = derive_ata(
-        &find_performance_fee_vault_authority_pda().0,
+        &find_performance_fee_vault_pda().0,
         &onyc_mint,
         &TOKEN_PROGRAM_ID,
     );
@@ -746,44 +740,6 @@ fn test_set_buffer_fee_config_rejects_fee_above_max() {
 }
 
 #[test]
-fn test_set_buffer_fee_config_rejects_missing_fee_wallets_when_bps_nonzero() {
-    let (mut svm, payer, _token_in_mint, onyc_mint, _caller) =
-        setup_buffer_context(150_000, 50_000, 0, 0);
-    let boss = payer.pubkey();
-    let state = read_state(&svm);
-
-    let ix = build_set_buffer_fee_config_with_wallets_ix(
-        &boss,
-        &state.main_offer,
-        &onyc_mint,
-        100,
-        Pubkey::default(),
-        0,
-        boss,
-    );
-    let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(
-        result.is_err(),
-        "management fee wallet should be required when management bps is nonzero"
-    );
-
-    let ix = build_set_buffer_fee_config_with_wallets_ix(
-        &boss,
-        &state.main_offer,
-        &onyc_mint,
-        0,
-        boss,
-        1_000,
-        Pubkey::default(),
-    );
-    let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(
-        result.is_err(),
-        "performance fee wallet should be required when performance bps is nonzero"
-    );
-}
-
-#[test]
 fn test_accrue_buffer_splits_gross_mint_across_reserve_and_fee_vaults() {
     let (mut svm, payer, _token_in_mint, onyc_mint, _caller) =
         setup_buffer_context(150_000, 50_000, 100, 1_000);
@@ -797,12 +753,12 @@ fn test_accrue_buffer_splits_gross_mint_across_reserve_and_fee_vaults() {
         &TOKEN_PROGRAM_ID,
     );
     let management_fee_vault_onyc_ata = derive_ata(
-        &find_management_fee_vault_authority_pda().0,
+        &find_management_fee_vault_pda().0,
         &onyc_mint,
         &TOKEN_PROGRAM_ID,
     );
     let performance_fee_vault_onyc_ata = derive_ata(
-        &find_performance_fee_vault_authority_pda().0,
+        &find_performance_fee_vault_pda().0,
         &onyc_mint,
         &TOKEN_PROGRAM_ID,
     );
@@ -860,20 +816,51 @@ fn test_withdraw_management_and_performance_fees_transfers_out_of_fee_vaults() {
 
     let boss_onyc_ata = derive_ata(&boss, &onyc_mint, &TOKEN_PROGRAM_ID);
     let management_fee_vault_onyc_ata = derive_ata(
-        &find_management_fee_vault_authority_pda().0,
+        &find_management_fee_vault_pda().0,
         &onyc_mint,
         &TOKEN_PROGRAM_ID,
     );
     let performance_fee_vault_onyc_ata = derive_ata(
-        &find_performance_fee_vault_authority_pda().0,
+        &find_performance_fee_vault_pda().0,
         &onyc_mint,
         &TOKEN_PROGRAM_ID,
     );
 
-    let withdraw_management_ix = build_withdraw_management_fees_ix(&boss, &onyc_mint, 9_523_809);
+    let ix = build_set_configurable_vault_destination_ix(
+        &boss,
+        &find_management_fee_vault_pda().0,
+        onreapp::state::ConfigurableVaultKind::ManagementFee.as_u8(),
+        &boss,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let ix = build_set_configurable_vault_destination_ix(
+        &boss,
+        &find_performance_fee_vault_pda().0,
+        onreapp::state::ConfigurableVaultKind::PerformanceFee.as_u8(),
+        &boss,
+    );
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let withdraw_management_ix = build_withdraw_configurable_vault_ix(
+        &boss,
+        &find_management_fee_vault_pda().0,
+        &boss,
+        &onyc_mint,
+        onreapp::state::ConfigurableVaultKind::ManagementFee.as_u8(),
+        9_523_809,
+        &TOKEN_PROGRAM_ID,
+    );
     send_tx(&mut svm, &[withdraw_management_ix], &[&payer]).unwrap();
 
-    let withdraw_performance_ix = build_withdraw_performance_fees_ix(&boss, &onyc_mint, 8_571_428);
+    let withdraw_performance_ix = build_withdraw_configurable_vault_ix(
+        &boss,
+        &find_performance_fee_vault_pda().0,
+        &boss,
+        &onyc_mint,
+        onreapp::state::ConfigurableVaultKind::PerformanceFee.as_u8(),
+        8_571_428,
+        &TOKEN_PROGRAM_ID,
+    );
     send_tx(&mut svm, &[withdraw_performance_ix], &[&payer]).unwrap();
 
     assert_eq!(get_token_balance(&svm, &management_fee_vault_onyc_ata), 0);

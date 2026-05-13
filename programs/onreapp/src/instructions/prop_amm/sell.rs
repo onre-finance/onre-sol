@@ -1,4 +1,7 @@
 use crate::constants::seeds;
+use crate::instructions::configurable_vault::{
+    get_or_create_configurable_vault_token_account, ConfigurableVaultTokenAccountParams,
+};
 use crate::instructions::market_info::{
     load_main_offer, read_market_stats_account, refresh_market_stats_pda,
 };
@@ -9,7 +12,7 @@ use crate::instructions::redemption::{
     execute_redemption_operations, process_redemption_core, ExecuteRedemptionOpsParams,
 };
 use crate::instructions::Offer;
-use crate::state::State;
+use crate::state::{ConfigurableVaultKind, State};
 use crate::utils::{
     get_associated_token_account, get_or_create_associated_token_account, transfer_tokens,
     u64_to_dec9, ApprovalMessage, EnsureAtaParams,
@@ -96,6 +99,14 @@ pub struct OpenSwapSell<'info> {
     /// CHECK: validated as canonical ATA in instruction logic
     #[account(mut)]
     pub boss_token_in_account: UncheckedAccount<'info>,
+
+    /// CHECK: PDA and data are validated/initialized in instruction logic.
+    #[account(mut)]
+    pub prop_amm_fee_vault: UncheckedAccount<'info>,
+
+    /// CHECK: Validated and optionally initialized in instruction logic.
+    #[account(mut)]
+    pub prop_amm_fee_token_in_account: UncheckedAccount<'info>,
 
     /// CHECK: PDA derivation validated in instruction logic
     pub mint_authority: UncheckedAccount<'info>,
@@ -220,6 +231,18 @@ fn execute_open_swap_sell<'info>(
         token_program_id: ctx.accounts.token_in_program.key(),
         invalid_account_error: crate::OnreError::InvalidBossTokenInAccount,
     })?;
+    let prop_amm_fee_token_in_account = get_or_create_configurable_vault_token_account::<
+        { ConfigurableVaultKind::PropAmmFee.as_u8() },
+    >(ConfigurableVaultTokenAccountParams {
+        vault: &ctx.accounts.prop_amm_fee_vault,
+        token_account: &ctx.accounts.prop_amm_fee_token_in_account,
+        payer: ctx.accounts.user.to_account_info(),
+        mint_account: ctx.accounts.token_in_mint.to_account_info(),
+        token_program: ctx.accounts.token_in_program.to_account_info(),
+        associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
+        system_program: ctx.accounts.system_program.to_account_info(),
+        program_id: ctx.program_id,
+    })?;
     let redemption_vault_token_in_account =
         get_or_create_associated_token_account(EnsureAtaParams {
             ata_account: &ctx.accounts.redemption_vault_token_in_account,
@@ -291,7 +314,7 @@ fn execute_open_swap_sell<'info>(
         token_in_fee_amount: result.token_in_fee_amount,
         vault_token_in_account: &redemption_vault_token_in_account,
         boss_token_in_account: &boss_token_in_account,
-        fee_destination_token_in_account: &boss_token_in_account,
+        fee_destination_token_in_account: &prop_amm_fee_token_in_account,
         redemption_vault_authority: &ctx.accounts.redemption_vault_authority.to_account_info(),
         redemption_vault_authority_bump: ctx.bumps.redemption_vault_authority,
         token_out_mint: &ctx.accounts.token_out_mint,

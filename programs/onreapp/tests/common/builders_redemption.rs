@@ -140,15 +140,15 @@ pub fn build_fulfill_redemption_request_ix(
     let (redemption_request_pda, _) =
         find_redemption_request_pda(&redemption_offer_pda, request_id);
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
-    let (redemption_fee_vault_pda, _) = find_redemption_fee_vault_pda();
+    let (offer_fee_vault_pda, _) = find_offer_fee_vault_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
     let (excluded_balance_pda, _) = find_circulating_supply_excluded_balance_pda();
     let (buffer_state_pda, _) = find_buffer_state_pda();
     let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
-    let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
-    let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
+    let (management_fee_vault_pda, _) = find_management_fee_vault_pda();
+    let (performance_fee_vault_pda, _) = find_performance_fee_vault_pda();
     let vault_token_in_ata = derive_ata(
         &redemption_vault_authority_pda,
         token_in_mint,
@@ -163,23 +163,16 @@ pub fn build_fulfill_redemption_request_ix(
         derive_ata(&offer_vault_authority_pda, token_in_mint, token_in_program);
     let user_token_out_ata = derive_ata(redeemer, token_out_mint, token_out_program);
     let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
-    let redemption_fee_token_in_ata =
-        derive_ata(&redemption_fee_vault_pda, token_in_mint, token_in_program);
+    let offer_fee_token_in_ata = derive_ata(&offer_fee_vault_pda, token_in_mint, token_in_program);
     let buffer_vault_onyc_ata = derive_ata(
         &reserve_vault_authority_pda,
         token_in_mint,
         token_in_program,
     );
-    let management_fee_vault_onyc_ata = derive_ata(
-        &management_fee_vault_authority_pda,
-        token_in_mint,
-        token_in_program,
-    );
-    let performance_fee_vault_onyc_ata = derive_ata(
-        &performance_fee_vault_authority_pda,
-        token_in_mint,
-        token_in_program,
-    );
+    let management_fee_vault_onyc_ata =
+        derive_ata(&management_fee_vault_pda, token_in_mint, token_in_program);
+    let performance_fee_vault_onyc_ata =
+        derive_ata(&performance_fee_vault_pda, token_in_mint, token_in_program);
     let mut data = ix_discriminator("fulfill_redemption_request").to_vec();
     data.extend_from_slice(&amount.to_le_bytes());
 
@@ -200,8 +193,8 @@ pub fn build_fulfill_redemption_request_ix(
             AccountMeta::new_readonly(*token_out_program, false),
             AccountMeta::new(user_token_out_ata, false),
             AccountMeta::new(boss_token_in_ata, false),
-            AccountMeta::new(redemption_fee_vault_pda, false),
-            AccountMeta::new(redemption_fee_token_in_ata, false),
+            AccountMeta::new(offer_fee_vault_pda, false),
+            AccountMeta::new(offer_fee_token_in_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),
             AccountMeta::new_readonly(*redeemer, false),
             AccountMeta::new(*redemption_admin, true),
@@ -216,119 +209,6 @@ pub fn build_fulfill_redemption_request_ix(
             AccountMeta::new(market_stats_pda, false),
             AccountMeta::new_readonly(excluded_balance_pda, false),
             AccountMeta::new_readonly(*main_offer, false),
-        ],
-        data,
-    }
-}
-
-pub fn build_set_redemption_fee_destination_ix(
-    boss: &Pubkey,
-    fee_destination: &Pubkey,
-) -> Instruction {
-    let (state_pda, _) = find_state_pda();
-    let (redemption_fee_vault_authority_pda, _) = find_redemption_fee_vault_authority_pda();
-    let mut data = ix_discriminator("set_redemption_fee_destination").to_vec();
-    data.extend_from_slice(fee_destination.as_ref());
-    Instruction {
-        program_id: PROGRAM_ID,
-        accounts: vec![
-            AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new(*boss, true),
-            AccountMeta::new(redemption_fee_vault_authority_pda, false),
-            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
-        ],
-        data,
-    }
-}
-
-pub fn build_withdraw_redemption_fees_ix(
-    boss: &Pubkey,
-    destination: &Pubkey,
-    token_in_mint: &Pubkey,
-    amount: u64,
-    token_program: &Pubkey,
-) -> Instruction {
-    let (state_pda, _) = find_state_pda();
-    let (redemption_fee_vault_authority_pda, _) = find_redemption_fee_vault_authority_pda();
-    let fee_vault_token_in_account = derive_ata(
-        &redemption_fee_vault_authority_pda,
-        token_in_mint,
-        token_program,
-    );
-    let destination_token_in_account = derive_ata(destination, token_in_mint, token_program);
-    let mut data = ix_discriminator("withdraw_redemption_fees").to_vec();
-    data.extend_from_slice(&amount.to_le_bytes());
-
-    Instruction {
-        program_id: PROGRAM_ID,
-        accounts: vec![
-            AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new(*boss, true),
-            AccountMeta::new_readonly(redemption_fee_vault_authority_pda, false),
-            AccountMeta::new(fee_vault_token_in_account, false),
-            AccountMeta::new(destination_token_in_account, false),
-            AccountMeta::new_readonly(*destination, false),
-            AccountMeta::new_readonly(*token_in_mint, false),
-            AccountMeta::new_readonly(*token_program, false),
-            AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
-            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
-        ],
-        data,
-    }
-}
-
-pub fn build_set_configurable_vault_destination_ix(
-    boss: &Pubkey,
-    configurable_vault: &Pubkey,
-    kind: u8,
-    withdrawal_destination: &Pubkey,
-) -> Instruction {
-    let (state_pda, _) = find_state_pda();
-    let mut data = ix_discriminator("set_configurable_vault_destination").to_vec();
-    data.push(kind);
-    data.extend_from_slice(withdrawal_destination.as_ref());
-
-    Instruction {
-        program_id: PROGRAM_ID,
-        accounts: vec![
-            AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new(*boss, true),
-            AccountMeta::new(*configurable_vault, false),
-            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
-        ],
-        data,
-    }
-}
-
-pub fn build_withdraw_configurable_vault_ix(
-    boss: &Pubkey,
-    configurable_vault: &Pubkey,
-    destination: &Pubkey,
-    mint: &Pubkey,
-    kind: u8,
-    amount: u64,
-    token_program: &Pubkey,
-) -> Instruction {
-    let (state_pda, _) = find_state_pda();
-    let vault_token_account = derive_ata(configurable_vault, mint, token_program);
-    let destination_token_account = derive_ata(destination, mint, token_program);
-    let mut data = ix_discriminator("withdraw_configurable_vault").to_vec();
-    data.push(kind);
-    data.extend_from_slice(&amount.to_le_bytes());
-
-    Instruction {
-        program_id: PROGRAM_ID,
-        accounts: vec![
-            AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new(*boss, true),
-            AccountMeta::new_readonly(*configurable_vault, false),
-            AccountMeta::new(vault_token_account, false),
-            AccountMeta::new_readonly(*destination, false),
-            AccountMeta::new(destination_token_account, false),
-            AccountMeta::new_readonly(*mint, false),
-            AccountMeta::new_readonly(*token_program, false),
-            AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
-            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
         ],
         data,
     }

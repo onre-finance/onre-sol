@@ -10,10 +10,10 @@ pub(crate) struct ConfigurableVaultInit<const KIND: u8> {
 impl<const KIND: u8> ConfigurableVaultInit<KIND> {
     fn kind() -> ConfigurableVaultKind {
         match KIND {
-            0 => ConfigurableVaultKind::TakeOfferFee,
-            1 => ConfigurableVaultKind::RedemptionFee,
-            2 => ConfigurableVaultKind::ManagementFee,
-            3 => ConfigurableVaultKind::PerformanceFee,
+            0 => ConfigurableVaultKind::OfferFee,
+            1 => ConfigurableVaultKind::ManagementFee,
+            2 => ConfigurableVaultKind::PerformanceFee,
+            3 => ConfigurableVaultKind::PropAmmFee,
             _ => unreachable!("invalid configurable vault kind"),
         }
     }
@@ -22,17 +22,15 @@ impl<const KIND: u8> ConfigurableVaultInit<KIND> {
 impl<const KIND: u8> PdaAccountInit for ConfigurableVaultInit<KIND> {
     fn pda_seed_prefixes() -> &'static [&'static [u8]] {
         match Self::kind() {
-            ConfigurableVaultKind::TakeOfferFee => {
-                &[seeds::CONFIGURABLE_VAULT, seeds::TAKE_OFFER_FEE_VAULT]
-            }
-            ConfigurableVaultKind::RedemptionFee => {
-                &[seeds::CONFIGURABLE_VAULT, seeds::REDEMPTION_FEE_VAULT]
-            }
+            ConfigurableVaultKind::OfferFee => &[seeds::CONFIGURABLE_VAULT, seeds::OFFER_FEE_VAULT],
             ConfigurableVaultKind::ManagementFee => {
                 &[seeds::CONFIGURABLE_VAULT, seeds::MANAGEMENT_FEE_VAULT]
             }
             ConfigurableVaultKind::PerformanceFee => {
                 &[seeds::CONFIGURABLE_VAULT, seeds::PERFORMANCE_FEE_VAULT]
+            }
+            ConfigurableVaultKind::PropAmmFee => {
+                &[seeds::CONFIGURABLE_VAULT, seeds::PROP_AMM_FEE_VAULT]
             }
         }
     }
