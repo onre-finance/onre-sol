@@ -18,7 +18,7 @@ use crate::utils::{
     transfer_tokens, u64_to_dec9, ApprovalMessage, EnsureAtaParams, ExecTokenOpsParams,
 };
 use anchor_lang::{prelude::*, Accounts};
-use anchor_spl::associated_token::{get_associated_token_address_with_program_id, AssociatedToken};
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 use solana_instructions_sysvar::ID as INSTRUCTIONS_SYSVAR_ID;
 
@@ -290,10 +290,6 @@ pub struct TakeOfferPermissionlessV2<'info> {
     #[account(mut)]
     pub boss_token_in_account: UncheckedAccount<'info>,
 
-    /// CHECK: Validated in the handler to keep the generated account parser under the BPF stack limit.
-    /// The account may be uninitialized and is treated as a zero balance by market stats.
-    pub boss_onyc_account: UncheckedAccount<'info>,
-
     /// CHECK: PDA derivation is validated by explicit key check in the handler
     pub mint_authority: UncheckedAccount<'info>,
     pub buffer_accounts: BufferAccrualAccounts<'info>,
@@ -301,6 +297,9 @@ pub struct TakeOfferPermissionlessV2<'info> {
     /// CHECK: The handler validates PDA, writability, owner, and account data layout.
     #[account(mut)]
     pub market_stats: UncheckedAccount<'info>,
+
+    /// CHECK: PDA validation and data loading are handled by market stats refresh.
+    pub circulating_supply_excluded_balance: UncheckedAccount<'info>,
 
     /// CHECK: Validated through address constraint to instructions sysvar
     pub instructions_sysvar: UncheckedAccount<'info>,
@@ -316,8 +315,8 @@ pub struct TakeOfferPermissionlessV2<'info> {
 }
 
 pub(crate) struct PermissionlessMarketStatsRefresh<'a, 'info> {
-    pub boss_onyc_account: AccountInfo<'info>,
     pub market_stats: &'a UncheckedAccount<'info>,
+    pub circulating_supply_excluded_balance: &'a UncheckedAccount<'info>,
     pub main_offer_account: &'a UncheckedAccount<'info>,
 }
 
@@ -471,8 +470,8 @@ pub fn take_offer_permissionless_v2<'info>(
         &ctx.accounts.mint_authority,
         Some(&ctx.accounts.buffer_accounts),
         Some(PermissionlessMarketStatsRefresh {
-            boss_onyc_account: ctx.accounts.boss_onyc_account.to_account_info(),
             market_stats: &ctx.accounts.market_stats,
+            circulating_supply_excluded_balance: &ctx.accounts.circulating_supply_excluded_balance,
             main_offer_account: &ctx.accounts.main_offer,
         }),
         &ctx.accounts.system_program,
@@ -643,15 +642,6 @@ pub(crate) fn execute_take_offer_permissionless<'info>(
 
     if is_onyc_token_out_mint(state, token_out_mint) {
         if let Some(refresh) = market_stats_refresh {
-            require_keys_eq!(
-                refresh.boss_onyc_account.key(),
-                get_associated_token_address_with_program_id(
-                    &state.boss,
-                    &token_out_mint.key(),
-                    &token_out_program.key(),
-                ),
-                crate::OnreError::InvalidBossTokenInAccount
-            );
             let main_offer = load_main_offer(
                 program_id,
                 &refresh.main_offer_account.to_account_info(),
@@ -672,9 +662,9 @@ pub(crate) fn execute_take_offer_permissionless<'info>(
             refresh_market_stats_pda(
                 &main_offer,
                 token_out_mint,
-                &vault_token_out_account.to_account_info(),
-                &refresh.boss_onyc_account,
-                token_out_program,
+                &refresh
+                    .circulating_supply_excluded_balance
+                    .to_account_info(),
                 &refresh.market_stats.to_account_info(),
                 &user.to_account_info(),
                 &system_program.to_account_info(),

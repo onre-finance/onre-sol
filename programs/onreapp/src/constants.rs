@@ -18,6 +18,12 @@ pub mod seeds {
     /// Seed for the global market stats PDA
     pub const MARKET_STATS: &[u8] = b"market_stats";
 
+    /// Seed for the circulating supply excluded owner-list PDA
+    pub const CIRCULATING_SUPPLY_EXCLUDED_ACCOUNTS: &[u8] = b"circ_supply_excl_accounts";
+
+    /// Seed for the cached circulating supply excluded-balance PDA
+    pub const CIRCULATING_SUPPLY_EXCLUDED_BALANCE: &[u8] = b"circ_supply_excl_balance";
+
     /// Seed for the redemption offer account
     pub const REDEMPTION_OFFER: &[u8] = b"redemption_offer";
 
@@ -54,6 +60,9 @@ pub const MAX_VECTORS: usize = 10;
 
 /// Maximum number of admin accounts that can be stored in program state
 pub const MAX_ADMINS: usize = 20;
+
+/// Maximum number of token account owners excluded from circulating supply.
+pub const MAX_CIRCULATING_SUPPLY_EXCLUDED_ACCOUNTS: usize = 20;
 
 /// Number of decimals used for price representation
 pub const PRICE_DECIMALS: u8 = 9;

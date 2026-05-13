@@ -1,4 +1,4 @@
-use crate::constants::MAX_ADMINS;
+use crate::constants::{MAX_ADMINS, MAX_CIRCULATING_SUPPLY_EXCLUDED_ACCOUNTS};
 use anchor_lang::prelude::*;
 
 /// Global program state containing governance and configuration settings
@@ -71,4 +71,32 @@ pub struct MarketStats {
     pub bump: u8,
     /// Reserved bytes for forward-compatible layout expansion.
     pub reserved: [u8; 95],
+}
+
+/// Boss-managed owner list whose ONyc ATAs are excluded from circulating supply.
+#[account]
+#[derive(InitSpace)]
+pub struct CirculatingSupplyExcludedAccounts {
+    /// Owners whose ONyc ATAs must be included in excluded-balance updates.
+    pub owners: [Pubkey; MAX_CIRCULATING_SUPPLY_EXCLUDED_ACCOUNTS],
+    /// PDA bump seed.
+    pub bump: u8,
+    /// Reserved bytes for forward-compatible layout expansion.
+    pub reserved: [u8; 31],
+}
+
+/// Cached ONyc balance excluded from circulating supply.
+#[account]
+#[derive(InitSpace)]
+pub struct CirculatingSupplyExcludedBalance {
+    /// Sum of all configured excluded-owner ONyc ATA balances.
+    pub amount: u64,
+    /// Unix timestamp of the most recent successful update.
+    pub last_updated_at: i64,
+    /// Slot of the most recent successful update.
+    pub last_updated_slot: u64,
+    /// PDA bump seed.
+    pub bump: u8,
+    /// Reserved bytes for forward-compatible layout expansion.
+    pub reserved: [u8; 31],
 }

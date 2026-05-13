@@ -10,7 +10,6 @@ use crate::instructions::offer::offer_utils::should_accrue_onyc_mint;
 use crate::state::State;
 use crate::utils::token_utils::mint_tokens;
 use anchor_lang::prelude::*;
-use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
@@ -96,25 +95,12 @@ pub struct MintTo<'info> {
 
     pub buffer_accounts: BufferAccrualAccounts<'info>,
 
-    /// CHECK: PDA derivation is validated by seeds constraint.
-    #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
-    pub offer_vault_authority: UncheckedAccount<'info>,
-
-    /// CHECK: Validated in instruction logic against the expected offer vault ATA.
-    #[account(
-        mut,
-        constraint = offer_vault_onyc_account.key()
-            == get_associated_token_address_with_program_id(
-                &offer_vault_authority.key(),
-                &onyc_mint.key(),
-                &token_program.key(),
-            ) @ crate::OnreError::InvalidVaultAccount
-    )]
-    pub offer_vault_onyc_account: UncheckedAccount<'info>,
-
     /// CHECK: Validated and optionally initialized in instruction logic.
     #[account(mut)]
     pub market_stats: UncheckedAccount<'info>,
+
+    /// CHECK: PDA validation and data loading are handled by market stats refresh.
+    pub circulating_supply_excluded_balance: UncheckedAccount<'info>,
 }
 
 /// Mints new ONyc tokens directly to the boss's account
@@ -213,9 +199,9 @@ pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
         refresh_market_stats_pda(
             offer,
             &ctx.accounts.onyc_mint,
-            &ctx.accounts.offer_vault_onyc_account.to_account_info(),
-            &ctx.accounts.boss_onyc_account.to_account_info(),
-            &ctx.accounts.token_program,
+            &ctx.accounts
+                .circulating_supply_excluded_balance
+                .to_account_info(),
             &ctx.accounts.market_stats.to_account_info(),
             &ctx.accounts.boss.to_account_info(),
             &ctx.accounts.system_program.to_account_info(),

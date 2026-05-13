@@ -98,6 +98,26 @@ pub enum OnreError {
     InvalidMarketStatsOwner,
     #[msg("Invalid Market Stats Data")]
     InvalidMarketStatsData,
+    #[msg("Invalid Circulating Supply Excluded Accounts")]
+    InvalidCirculatingSupplyExcludedAccounts,
+    #[msg("Invalid Circulating Supply Excluded Accounts Owner")]
+    InvalidCirculatingSupplyExcludedAccountsOwner,
+    #[msg("Invalid Circulating Supply Excluded Accounts Data")]
+    InvalidCirculatingSupplyExcludedAccountsData,
+    #[msg("Invalid Circulating Supply Excluded Balance")]
+    InvalidCirculatingSupplyExcludedBalance,
+    #[msg("Invalid Circulating Supply Excluded Balance Owner")]
+    InvalidCirculatingSupplyExcludedBalanceOwner,
+    #[msg("Invalid Circulating Supply Excluded Balance Data")]
+    InvalidCirculatingSupplyExcludedBalanceData,
+    #[msg("Missing Excluded Token Account")]
+    MissingExcludedTokenAccount,
+    #[msg("Too Many Excluded Token Accounts")]
+    TooManyExcludedTokenAccounts,
+    #[msg("Invalid Excluded Token Account")]
+    InvalidExcludedTokenAccount,
+    #[msg("Duplicate Excluded Account Owner")]
+    DuplicateExcludedAccountOwner,
     #[msg("Overflow")]
     Overflow,
     #[msg("Invalid Main Offer")]

@@ -6,12 +6,9 @@ use crate::instructions::market_info::offer_valuation_utils::{
 };
 use crate::instructions::Offer;
 use crate::state::MarketStats;
-use crate::utils::{
-    load_or_init_pda_account, load_pda_account, read_optional_token_account_amount,
-    store_pda_account, PdaAccountInit,
-};
+use crate::utils::{load_or_init_pda_account, load_pda_account, store_pda_account, PdaAccountInit};
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{Mint, TokenInterface};
+use anchor_spl::token_interface::Mint;
 
 /// Canonical in-memory representation of the derived market stats values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -62,9 +59,7 @@ impl PdaAccountInit for MarketStats {
 pub fn recompute_market_stats(
     offer: &Offer,
     onyc_mint: &InterfaceAccount<Mint>,
-    onyc_vault_account: &AccountInfo,
-    boss_onyc_account: &AccountInfo,
-    token_program: &Interface<TokenInterface>,
+    excluded_balance_amount: u64,
 ) -> Result<MarketStatsSnapshot> {
     require_keys_eq!(
         offer.token_out_mint,
@@ -77,10 +72,8 @@ pub fn recompute_market_stats(
     let apy = calculate_apy_from_apr(active_vector.apr)?;
     let nav_adjustment = calculate_nav_adjustment(offer, active_vector)?;
 
-    let vault_amount = read_optional_token_account_amount(onyc_vault_account, token_program)?;
-    let boss_onyc_amount = read_optional_token_account_amount(boss_onyc_account, token_program)?;
     let circulating_supply =
-        calculate_circulating_supply(onyc_mint.supply, vault_amount, boss_onyc_amount)?;
+        calculate_circulating_supply(onyc_mint.supply, excluded_balance_amount)?;
     let tvl = calculate_tvl(circulating_supply, nav)?;
 
     Ok(MarketStatsSnapshot {
@@ -105,19 +98,11 @@ pub fn update_market_stats_account(
 pub fn refresh_market_stats_typed(
     offer: &Offer,
     onyc_mint: &InterfaceAccount<Mint>,
-    onyc_vault_account: &AccountInfo,
-    boss_onyc_account: &AccountInfo,
-    token_program: &Interface<TokenInterface>,
+    excluded_balance_amount: u64,
     market_stats: &mut MarketStats,
     bump: u8,
 ) -> Result<()> {
-    let snapshot = recompute_market_stats(
-        offer,
-        onyc_mint,
-        onyc_vault_account,
-        boss_onyc_account,
-        token_program,
-    )?;
+    let snapshot = recompute_market_stats(offer, onyc_mint, excluded_balance_amount)?;
     market_stats.bump = bump;
     update_market_stats_account(market_stats, snapshot)
 }
@@ -125,21 +110,17 @@ pub fn refresh_market_stats_typed(
 pub fn refresh_market_stats_pda<'info>(
     offer: &Offer,
     onyc_mint: &InterfaceAccount<'info, Mint>,
-    onyc_vault_account: &AccountInfo<'info>,
-    boss_onyc_account: &AccountInfo<'info>,
-    token_program: &Interface<'info, TokenInterface>,
+    excluded_balance_account: &AccountInfo<'info>,
     market_stats_account: &AccountInfo<'info>,
     payer: &AccountInfo<'info>,
     system_program: &AccountInfo<'info>,
     program_id: &Pubkey,
 ) -> Result<()> {
-    let snapshot = recompute_market_stats(
-        offer,
-        onyc_mint,
-        onyc_vault_account,
-        boss_onyc_account,
-        token_program,
+    let excluded_balance_amount = super::load_circulating_supply_excluded_balance_amount(
+        program_id,
+        excluded_balance_account,
     )?;
+    let snapshot = recompute_market_stats(offer, onyc_mint, excluded_balance_amount)?;
     let (market_stats_pda, market_stats_bump) =
         Pubkey::find_program_address(&[seeds::MARKET_STATS], program_id);
     require_keys_eq!(
@@ -225,15 +206,7 @@ pub fn calculate_tvl(circulating_supply: u64, nav: u64) -> Result<u64> {
         .ok_or_else(|| error!(crate::OnreError::Overflow))
 }
 
-pub fn calculate_circulating_supply(
-    total_supply: u64,
-    vault_amount: u64,
-    boss_onyc_amount: u64,
-) -> Result<u64> {
-    let excluded_supply = vault_amount
-        .checked_add(boss_onyc_amount)
-        .ok_or(crate::OnreError::MathOverflow)?;
-
+pub fn calculate_circulating_supply(total_supply: u64, excluded_supply: u64) -> Result<u64> {
     total_supply
         .checked_sub(excluded_supply)
         .ok_or_else(|| error!(crate::OnreError::ArithmeticUnderflow))
@@ -425,28 +398,26 @@ mod tests {
 
     #[test]
     fn circulating_supply_matches_programv4_subtraction() {
-        let circulating_supply =
-            calculate_circulating_supply(1_000_000_000, 250_000_000, 0).unwrap();
+        let circulating_supply = calculate_circulating_supply(1_000_000_000, 250_000_000).unwrap();
         assert_eq!(circulating_supply, 750_000_000);
     }
 
     #[test]
-    fn circulating_supply_subtracts_boss_onyc_account() {
-        let circulating_supply =
-            calculate_circulating_supply(1_000_000_000, 250_000_000, 100_000_000).unwrap();
+    fn circulating_supply_subtracts_cached_excluded_balance() {
+        let circulating_supply = calculate_circulating_supply(1_000_000_000, 350_000_000).unwrap();
         assert_eq!(circulating_supply, 650_000_000);
     }
 
     #[test]
-    fn circulating_supply_subtracts_boss_onyc_account_for_varied_values() {
-        for (total_supply, vault_amount, boss_onyc_amount, expected) in [
-            (10_000, 0, 0, 10_000),
-            (10_000, 1_000, 250, 8_750),
-            (5_000_000_000, 2_000_000_000, 1, 2_999_999_999),
-            (u64::MAX, 5, 15, u64::MAX - 20),
+    fn circulating_supply_subtracts_cached_excluded_balance_for_varied_values() {
+        for (total_supply, excluded_amount, expected) in [
+            (10_000, 0, 10_000),
+            (10_000, 1_250, 8_750),
+            (5_000_000_000, 2_000_000_001, 2_999_999_999),
+            (u64::MAX, 20, u64::MAX - 20),
         ] {
             assert_eq!(
-                calculate_circulating_supply(total_supply, vault_amount, boss_onyc_amount).unwrap(),
+                calculate_circulating_supply(total_supply, excluded_amount).unwrap(),
                 expected
             );
         }
@@ -454,14 +425,8 @@ mod tests {
 
     #[test]
     fn circulating_supply_rejects_excluded_supply_underflow() {
-        let err = calculate_circulating_supply(1, 2, 0).unwrap_err();
+        let err = calculate_circulating_supply(1, 2).unwrap_err();
         assert_eq!(err, error!(crate::OnreError::ArithmeticUnderflow));
-    }
-
-    #[test]
-    fn circulating_supply_rejects_excluded_supply_overflow() {
-        let err = calculate_circulating_supply(u64::MAX, u64::MAX, 1).unwrap_err();
-        assert_eq!(err, error!(crate::OnreError::MathOverflow));
     }
 
     #[test]

@@ -94,6 +94,13 @@ fn test_price_first_interval() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
     advance_clock_by(&mut ctx.svm, 1);
+    let (vault_authority, _) = find_offer_vault_authority_pda();
+    set_and_refresh_circulating_supply_exclusions(
+        &mut ctx.svm,
+        &ctx.payer,
+        &ctx.onyc_mint,
+        &[vault_authority],
+    );
 
     // Price in first interval: 1.0 * (1 + 0.0365 * 86400/31536000) = 1.0001
     let ix = build_take_offer_v2_ix(
@@ -120,8 +127,8 @@ fn test_price_first_interval() {
     assert_eq!(market_stats.bump, expected_bump);
     assert_eq!(market_stats.nav, 1_000_100_000);
     assert_eq!(market_stats.nav_adjustment, 1_000_100_000);
-    assert_eq!(market_stats.circulating_supply, 1_000_000_000);
-    assert_eq!(market_stats.tvl, 1_000_100_000);
+    assert_eq!(market_stats.circulating_supply, 0);
+    assert_eq!(market_stats.tvl, 0);
     assert_eq!(
         market_stats.last_updated_at,
         get_clock_time(&ctx.svm) as i64

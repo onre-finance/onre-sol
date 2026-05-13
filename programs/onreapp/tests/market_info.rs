@@ -1,6 +1,9 @@
 mod common;
 
+use anchor_lang::AccountDeserialize;
 use common::*;
+use onreapp::state::{CirculatingSupplyExcludedAccounts, CirculatingSupplyExcludedBalance};
+use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
 
@@ -108,6 +111,30 @@ fn setup_onyc_offer_with_supply(
     svm.set_account(onyc_mint, mint_data).unwrap();
 
     (svm, payer, token_in, onyc_mint)
+}
+
+fn read_circulating_supply_excluded_accounts(
+    svm: &litesvm::LiteSVM,
+) -> CirculatingSupplyExcludedAccounts {
+    let (pda, _) = find_circulating_supply_excluded_accounts_pda();
+    let account = svm
+        .get_account(&pda)
+        .expect("excluded accounts PDA not found");
+    let mut data = account.data.as_slice();
+    CirculatingSupplyExcludedAccounts::try_deserialize(&mut data)
+        .expect("failed to deserialize excluded accounts PDA")
+}
+
+fn read_circulating_supply_excluded_balance(
+    svm: &litesvm::LiteSVM,
+) -> CirculatingSupplyExcludedBalance {
+    let (pda, _) = find_circulating_supply_excluded_balance_pda();
+    let account = svm
+        .get_account(&pda)
+        .expect("excluded balance PDA not found");
+    let mut data = account.data.as_slice();
+    CirculatingSupplyExcludedBalance::try_deserialize(&mut data)
+        .expect("failed to deserialize excluded balance PDA")
 }
 
 // ---------------------------------------------------------------------------
@@ -540,6 +567,157 @@ fn test_get_circulating_supply_with_vault() {
 
     // circulating = total - (vault + boss ONyc) = 1000e9 - (200e9 + 300e9) = 500e9
     assert_eq!(supply, 500_000_000_000);
+}
+
+// ---------------------------------------------------------------------------
+// circulating supply excluded balance PDA
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_set_circulating_supply_excluded_accounts_boss_only_and_stores_owners() {
+    let (mut svm, payer, _onyc_mint) = setup_initialized();
+    let boss = payer.pubkey();
+    let owner_a = Pubkey::new_unique();
+    let owner_b = Pubkey::new_unique();
+    let mut owners = [Pubkey::default(); 20];
+    owners[0] = owner_a;
+    owners[1] = owner_b;
+
+    let ix = build_set_circulating_supply_excluded_accounts_ix(&boss, &owners);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+
+    let excluded_accounts = read_circulating_supply_excluded_accounts(&svm);
+    assert_eq!(excluded_accounts.owners, owners);
+
+    let non_boss = Keypair::new();
+    svm.airdrop(&non_boss.pubkey(), INITIAL_LAMPORTS).unwrap();
+    let mut updated_owners = owners;
+    updated_owners[2] = Pubkey::new_unique();
+    let ix = build_set_circulating_supply_excluded_accounts_ix(&non_boss.pubkey(), &updated_owners);
+    let result = send_tx(&mut svm, &[ix], &[&non_boss]);
+    assert!(
+        result.is_err(),
+        "non-boss should not update excluded owners"
+    );
+}
+
+#[test]
+fn test_set_circulating_supply_excluded_accounts_rejects_duplicate_owners() {
+    let (mut svm, payer, _onyc_mint) = setup_initialized();
+    let boss = payer.pubkey();
+    let owner = Pubkey::new_unique();
+    let mut owners = [Pubkey::default(); 20];
+    owners[0] = owner;
+    owners[1] = owner;
+
+    let ix = build_set_circulating_supply_excluded_accounts_ix(&boss, &owners);
+    let result = send_tx(&mut svm, &[ix], &[&payer]);
+    assert!(result.is_err(), "duplicate non-default owners should fail");
+}
+
+#[test]
+fn test_update_circulating_supply_excluded_balance_sums_configured_atas() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
+    let boss = payer.pubkey();
+    let owner_a = Pubkey::new_unique();
+    let owner_b = Pubkey::new_unique();
+    let mut owners = [Pubkey::default(); 20];
+    owners[0] = owner_a;
+    owners[1] = owner_b;
+
+    let set_ix = build_set_circulating_supply_excluded_accounts_ix(&boss, &owners);
+    send_tx(&mut svm, &[set_ix], &[&payer]).unwrap();
+
+    let ata_a = create_token_account(&mut svm, &onyc_mint, &owner_a, 125_000_000);
+    let ata_b = create_token_account(&mut svm, &onyc_mint, &owner_b, 875_000_000);
+    let update_ix = build_update_circulating_supply_excluded_balance_ix(
+        &boss,
+        &onyc_mint,
+        &[ata_a, ata_b],
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[update_ix], &[&payer]).unwrap();
+
+    let excluded_balance = read_circulating_supply_excluded_balance(&svm);
+    assert_eq!(excluded_balance.amount, 1_000_000_000);
+    assert!(excluded_balance.last_updated_at > 0);
+}
+
+#[test]
+fn test_update_circulating_supply_excluded_balance_rejects_missing_or_extra_atas() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
+    let boss = payer.pubkey();
+    let owner_a = Pubkey::new_unique();
+    let owner_b = Pubkey::new_unique();
+    let mut owners = [Pubkey::default(); 20];
+    owners[0] = owner_a;
+    owners[1] = owner_b;
+
+    let set_ix = build_set_circulating_supply_excluded_accounts_ix(&boss, &owners);
+    send_tx(&mut svm, &[set_ix], &[&payer]).unwrap();
+
+    let ata_a = create_token_account(&mut svm, &onyc_mint, &owner_a, 1);
+    let ata_b = create_token_account(&mut svm, &onyc_mint, &owner_b, 2);
+    let extra = Pubkey::new_unique();
+
+    let missing_ix = build_update_circulating_supply_excluded_balance_ix(
+        &boss,
+        &onyc_mint,
+        &[ata_a],
+        &TOKEN_PROGRAM_ID,
+    );
+    assert!(
+        send_tx(&mut svm, &[missing_ix], &[&payer]).is_err(),
+        "missing configured ATA should fail"
+    );
+
+    let extra_ix = build_update_circulating_supply_excluded_balance_ix(
+        &boss,
+        &onyc_mint,
+        &[ata_a, ata_b, extra],
+        &TOKEN_PROGRAM_ID,
+    );
+    assert!(
+        send_tx(&mut svm, &[extra_ix], &[&payer]).is_err(),
+        "extra remaining ATA should fail"
+    );
+}
+
+#[test]
+fn test_v2_market_info_uses_cached_excluded_balance() {
+    let (mut svm, payer, token_in, onyc_mint) =
+        setup_onyc_offer_with_supply(0, 1_000_000_000, 86_400, 1_000_000_000_000, 0);
+    let boss = payer.pubkey();
+    let owner = Pubkey::new_unique();
+    let mut owners = [Pubkey::default(); 20];
+    owners[0] = owner;
+
+    let set_ix = build_set_circulating_supply_excluded_accounts_ix(&boss, &owners);
+    send_tx(&mut svm, &[set_ix], &[&payer]).unwrap();
+
+    let excluded_ata = create_token_account(&mut svm, &onyc_mint, &owner, 300_000_000_000);
+    set_mint_supply(&mut svm, &onyc_mint, 1_000_000_000_000);
+    let update_ix = build_update_circulating_supply_excluded_balance_ix(
+        &boss,
+        &onyc_mint,
+        &[excluded_ata],
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[update_ix], &[&payer]).unwrap();
+
+    let supply_ix = build_get_circulating_supply_v2_ix(&onyc_mint);
+    let supply_result = send_tx(&mut svm, &[supply_ix], &[&payer]).unwrap();
+    assert_eq!(get_return_u64(&supply_result), 700_000_000_000);
+
+    let tvl_ix = build_get_tvl_v2_ix(&token_in, &onyc_mint);
+    let tvl_result = send_tx(&mut svm, &[tvl_ix], &[&payer]).unwrap();
+    assert_eq!(get_return_u64(&tvl_result), 700_000_000_000);
+
+    let refresh_ix = build_refresh_market_stats_v2_ix(&boss, &token_in, &onyc_mint);
+    send_tx(&mut svm, &[refresh_ix], &[&payer]).unwrap();
+    let market_stats = read_market_stats(&svm);
+    assert_eq!(market_stats.circulating_supply, 700_000_000_000);
+    assert_eq!(market_stats.tvl, 700_000_000_000);
 }
 
 // ---------------------------------------------------------------------------

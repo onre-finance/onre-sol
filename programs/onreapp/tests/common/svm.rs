@@ -121,3 +121,45 @@ pub fn advance_clock_by(svm: &mut LiteSVM, seconds: u64) {
     });
     svm.expire_blockhash();
 }
+
+pub fn set_and_refresh_circulating_supply_exclusions(
+    svm: &mut LiteSVM,
+    boss: &Keypair,
+    onyc_mint: &Pubkey,
+    excluded_owners: &[Pubkey],
+) -> Vec<Pubkey> {
+    assert!(
+        excluded_owners.len() <= 20,
+        "excluded owners list cannot exceed 20"
+    );
+
+    let mut owners = [Pubkey::default(); 20];
+    owners[..excluded_owners.len()].copy_from_slice(excluded_owners);
+
+    let ix = build_set_circulating_supply_excluded_accounts_ix(&boss.pubkey(), &owners);
+    send_tx(svm, &[ix], &[boss]).unwrap();
+    advance_slot(svm);
+
+    refresh_circulating_supply_excluded_balance(svm, boss, onyc_mint, excluded_owners)
+}
+
+pub fn refresh_circulating_supply_excluded_balance(
+    svm: &mut LiteSVM,
+    signer: &Keypair,
+    onyc_mint: &Pubkey,
+    excluded_owners: &[Pubkey],
+) -> Vec<Pubkey> {
+    let token_accounts: Vec<Pubkey> = excluded_owners
+        .iter()
+        .map(|owner| derive_ata(owner, onyc_mint, &TOKEN_PROGRAM_ID))
+        .collect();
+    let ix = build_update_circulating_supply_excluded_balance_ix(
+        &signer.pubkey(),
+        onyc_mint,
+        &token_accounts,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(svm, &[ix], &[signer]).unwrap();
+    advance_slot(svm);
+    token_accounts
+}

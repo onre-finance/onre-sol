@@ -58,6 +58,7 @@ export class ScriptHelper {
         performanceFeeVaultAuthorityPda: PublicKey;
         redemptionVaultAuthorityPda: PublicKey;
         marketStatsPda: PublicKey;
+        circulatingSupplyExcludedBalancePda: PublicKey;
         redemptionFeeVaultAuthorityPda: PublicKey;
     };
 
@@ -80,6 +81,7 @@ export class ScriptHelper {
             performanceFeeVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("performance_fee_vault_authority")], program.programId)[0],
             redemptionVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("redemption_offer_vault_authority")], program.programId)[0],
             marketStatsPda: PublicKey.findProgramAddressSync([Buffer.from("market_stats")], program.programId)[0],
+            circulatingSupplyExcludedBalancePda: PublicKey.findProgramAddressSync([Buffer.from("circ_supply_excl_balance")], program.programId)[0],
             redemptionFeeVaultAuthorityPda: PublicKey.findProgramAddressSync([Buffer.from("redemption_fee_vault_authority")], program.programId)[0],
         };
     }
@@ -384,6 +386,7 @@ export class ScriptHelper {
                 permissionlessAuthority,
                 mintAuthority,
                 marketStats: this.pdas.marketStatsPda,
+                circulatingSupplyExcludedBalance: this.pdas.circulatingSupplyExcludedBalancePda,
                 tokenInProgram: params.tokenInProgram ?? TOKEN_PROGRAM_ID,
                 tokenOutProgram: params.tokenOutProgram ?? TOKEN_PROGRAM_ID,
             })
@@ -481,8 +484,12 @@ export class ScriptHelper {
         return await this.program.methods
             .setBufferGrossApr(new BN(params.grossYield))
             .accountsPartial({
-                bufferState: this.pdas.bufferStatePda,
+                bufferAccounts: {
+                    bufferState: this.pdas.bufferStatePda,
+                },
                 boss: params.boss,
+                marketStats: this.pdas.marketStatsPda,
+                circulatingSupplyExcludedBalance: this.pdas.circulatingSupplyExcludedBalancePda,
             })
             .instruction();
     }
@@ -502,8 +509,12 @@ export class ScriptHelper {
                 params.performanceFeeWallet,
             )
             .accountsPartial({
-                bufferState: this.pdas.bufferStatePda,
+                bufferAccounts: {
+                    bufferState: this.pdas.bufferStatePda,
+                },
                 boss: params.boss,
+                marketStats: this.pdas.marketStatsPda,
+                circulatingSupplyExcludedBalance: this.pdas.circulatingSupplyExcludedBalancePda,
             })
             .instruction();
     }
@@ -517,7 +528,6 @@ export class ScriptHelper {
                 boss: params.boss,
                 mainOffer: params.mainOffer,
                 offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
-                vaultTokenOutAccount: getAssociatedTokenAddressSync(params.onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
                 reserveVaultAuthority: this.pdas.reserveVaultAuthorityPda,
                 reserveVaultOnycAccount: this.getBufferVaultAta(params.onycMint),
                 managementFeeVaultAuthority: this.pdas.managementFeeVaultAuthorityPda,
@@ -526,6 +536,7 @@ export class ScriptHelper {
                 performanceFeeVaultOnycAccount: this.getPerformanceFeeVaultAta(params.onycMint),
                 mintAuthority: this.pdas.mintAuthorityPda,
                 marketStats: this.pdas.marketStatsPda,
+                circulatingSupplyExcludedBalance: this.pdas.circulatingSupplyExcludedBalancePda,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: anchor.web3.SystemProgram.programId,
             })
@@ -742,9 +753,8 @@ export class ScriptHelper {
                     managementFeeVaultOnycAccount: getAssociatedTokenAddressSync(onycMint, this.pdas.managementFeeVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
                     performanceFeeVaultOnycAccount: getAssociatedTokenAddressSync(onycMint, this.pdas.performanceFeeVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
                 },
-                offerVaultAuthority: this.pdas.offerVaultAuthorityPda,
-                offerVaultOnycAccount: getAssociatedTokenAddressSync(onycMint, this.pdas.offerVaultAuthorityPda, true, TOKEN_PROGRAM_ID),
                 marketStats: this.pdas.marketStatsPda,
+                circulatingSupplyExcludedBalance: this.pdas.circulatingSupplyExcludedBalancePda,
             })
             .instruction();
     }

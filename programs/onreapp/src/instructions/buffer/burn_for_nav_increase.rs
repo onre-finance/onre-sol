@@ -4,13 +4,13 @@ use crate::instructions::buffer::{
     BufferBurnedForNavEvent, BufferState,
 };
 use crate::instructions::market_info::{
-    calculate_circulating_supply, calculate_tvl,
+    calculate_circulating_supply, calculate_tvl, load_circulating_supply_excluded_balance_amount,
     offer_valuation_utils::compute_offer_current_price, refresh_market_stats_pda,
 };
 use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::math_utils::ceil_div_u128;
-use crate::utils::token_utils::{burn_tokens, read_optional_token_account_amount};
+use crate::utils::token_utils::burn_tokens;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program_option::COption;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
@@ -55,22 +55,8 @@ pub struct BurnForNavIncrease<'info> {
     )]
     pub reserve_vault_authority: UncheckedAccount<'info>,
 
-    /// CHECK: Account is validated in instruction logic to allow uninitialized vault account
-    pub vault_token_out_account: UncheckedAccount<'info>,
-
     #[account(mut)]
     pub reserve_vault_onyc_account: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    /// CHECK: Address is validated against the boss ONyc ATA and may be uninitialized.
-    #[account(
-        constraint = boss_onyc_account.key()
-            == get_associated_token_address_with_program_id(
-                &boss.key(),
-                &onyc_mint.key(),
-                &token_program.key(),
-            ) @ crate::OnreError::InvalidBossTokenInAccount
-    )]
-    pub boss_onyc_account: UncheckedAccount<'info>,
 
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(
@@ -116,6 +102,9 @@ pub struct BurnForNavIncrease<'info> {
     /// CHECK: Validated and optionally initialized in instruction logic.
     #[account(mut)]
     pub market_stats: UncheckedAccount<'info>,
+
+    /// CHECK: PDA validation and data loading are handled by market info helpers.
+    pub circulating_supply_excluded_balance: UncheckedAccount<'info>,
 }
 
 pub fn burn_for_nav_increase(
@@ -131,16 +120,6 @@ pub fn burn_for_nav_increase(
     );
     let quoted_nav = compute_offer_current_price(&main_offer, now as u64)?;
     require!(quoted_nav > 0, crate::OnreError::InvalidTargetNav);
-    let expected_vault_token_out_account = get_associated_token_address_with_program_id(
-        &ctx.accounts.offer_vault_authority.key(),
-        &ctx.accounts.onyc_mint.key(),
-        &ctx.accounts.token_program.key(),
-    );
-    require_keys_eq!(
-        ctx.accounts.vault_token_out_account.key(),
-        expected_vault_token_out_account,
-        crate::OnreError::InvalidOnycMint
-    );
     let expected_reserve_vault_onyc_account = get_associated_token_address_with_program_id(
         &ctx.accounts.reserve_vault_authority.key(),
         &ctx.accounts.onyc_mint.key(),
@@ -177,18 +156,13 @@ pub fn burn_for_nav_increase(
     let current_nav = accrual.current_nav;
     let post_accrual_supply = accrual.post_accrual_supply;
 
-    let vault_token_out_amount = read_optional_token_account_amount(
-        &ctx.accounts.vault_token_out_account,
-        &ctx.accounts.token_program,
+    let excluded_amount = load_circulating_supply_excluded_balance_amount(
+        ctx.program_id,
+        &ctx.accounts
+            .circulating_supply_excluded_balance
+            .to_account_info(),
     )?;
-    let circulating_supply = calculate_circulating_supply(
-        post_accrual_supply,
-        vault_token_out_amount,
-        read_optional_token_account_amount(
-            &ctx.accounts.boss_onyc_account,
-            &ctx.accounts.token_program,
-        )?,
-    )?;
+    let circulating_supply = calculate_circulating_supply(post_accrual_supply, excluded_amount)?;
     // This path burns supply to preserve the current quoted NAV after reducing the
     // effective asset base by `asset_adjustment_amount`.
     let total_assets_before_burn = calculate_tvl(circulating_supply, current_nav)
@@ -228,9 +202,9 @@ pub fn burn_for_nav_increase(
     refresh_market_stats_pda(
         &main_offer,
         &ctx.accounts.onyc_mint,
-        &ctx.accounts.vault_token_out_account.to_account_info(),
-        &ctx.accounts.boss_onyc_account.to_account_info(),
-        &ctx.accounts.token_program,
+        &ctx.accounts
+            .circulating_supply_excluded_balance
+            .to_account_info(),
         &ctx.accounts.market_stats.to_account_info(),
         &ctx.accounts.boss.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),
@@ -302,8 +276,7 @@ mod tests {
     fn burn_amount_uses_circulating_supply_basis() {
         let total_supply = 1_100;
         let vault_supply = 100;
-        let circulating_supply =
-            calculate_circulating_supply(total_supply, vault_supply, 0).unwrap();
+        let circulating_supply = calculate_circulating_supply(total_supply, vault_supply).unwrap();
 
         let burn_amount = calculate_burn_amount(circulating_supply, 100, NAV_1_0, NAV_1_1).unwrap();
         let total_supply_based_burn = (total_supply as u128).checked_sub(819).unwrap() as u64;

@@ -17,12 +17,15 @@ export async function executeMarketSupply(opts: GlobalOptions): Promise<void> {
 
         // Get the offer vault token account
         const onycVaultAccount = getAssociatedTokenAddressSync(config.mints.onyc, helper.pdas.offerVaultAuthorityPda, true, tokenProgram);
+        const state = await helper.getState();
+        const bossOnycAccount = getAssociatedTokenAddressSync(config.mints.onyc, state.boss as any, false, tokenProgram);
 
         // Call the view method
         const supply = await helper.program.methods
             .getCirculatingSupply()
             .accounts({
                 onycVaultAccount,
+                bossOnycAccount,
                 tokenProgram,
             })
             .view();

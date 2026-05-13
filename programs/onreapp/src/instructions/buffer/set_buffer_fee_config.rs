@@ -11,7 +11,6 @@ use crate::instructions::Offer;
 use crate::state::State;
 use anchor_lang::solana_program::program_option::COption;
 use anchor_lang::{prelude::*, Accounts};
-use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 use anchor_spl::token_interface::{Mint, TokenInterface};
 
 #[derive(Accounts)]
@@ -36,20 +35,6 @@ pub struct SetBufferFeeConfig<'info> {
     #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
     pub offer_vault_authority: UncheckedAccount<'info>,
 
-    /// CHECK: Account is validated in instruction logic to allow uninitialized vault account.
-    pub vault_token_out_account: UncheckedAccount<'info>,
-
-    /// CHECK: Address is validated against the boss ONyc ATA and may be uninitialized.
-    #[account(
-        constraint = boss_onyc_account.key()
-            == get_associated_token_address_with_program_id(
-                &state.boss,
-                &onyc_mint.key(),
-                &token_program.key(),
-            ) @ crate::OnreError::InvalidBossTokenInAccount
-    )]
-    pub boss_onyc_account: UncheckedAccount<'info>,
-
     /// CHECK: PDA derivation is validated by seeds constraint.
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
@@ -66,6 +51,9 @@ pub struct SetBufferFeeConfig<'info> {
     /// CHECK: Validated in instruction logic.
     #[account(mut)]
     pub market_stats: UncheckedAccount<'info>,
+
+    /// CHECK: PDA validation and data loading are handled by market stats refresh.
+    pub circulating_supply_excluded_balance: UncheckedAccount<'info>,
 }
 
 pub fn set_buffer_fee_config(
@@ -106,17 +94,6 @@ pub fn set_buffer_fee_config(
     let old_performance_fee_basis_points = buffer_state.performance_fee_basis_points;
     let old_performance_fee_wallet = buffer_state.performance_fee_wallet;
 
-    let expected_vault_token_out_account = get_associated_token_address_with_program_id(
-        &ctx.accounts.offer_vault_authority.key(),
-        &ctx.accounts.onyc_mint.key(),
-        &ctx.accounts.token_program.key(),
-    );
-    require_keys_eq!(
-        ctx.accounts.vault_token_out_account.key(),
-        expected_vault_token_out_account,
-        crate::OnreError::InvalidOnycMint
-    );
-
     let offer = ctx.accounts.main_offer.load()?;
     require_keys_eq!(
         ctx.accounts.onyc_mint.key(),
@@ -139,9 +116,9 @@ pub fn set_buffer_fee_config(
     refresh_market_stats_pda(
         &offer,
         &ctx.accounts.onyc_mint,
-        &ctx.accounts.vault_token_out_account.to_account_info(),
-        &ctx.accounts.boss_onyc_account.to_account_info(),
-        &ctx.accounts.token_program,
+        &ctx.accounts
+            .circulating_supply_excluded_balance
+            .to_account_info(),
         &ctx.accounts.market_stats.to_account_info(),
         &ctx.accounts.boss.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),

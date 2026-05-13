@@ -72,8 +72,7 @@ pub fn build_set_buffer_gross_yield_ix(
     let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
-    let vault_token_out_ata = derive_ata(&offer_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
-    let boss_onyc_ata = derive_ata(boss, onyc_mint, &TOKEN_PROGRAM_ID);
+    let (excluded_balance_pda, _) = find_circulating_supply_excluded_balance_pda();
     let reserve_vault_onyc_ata =
         derive_ata(&reserve_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
     let management_fee_vault_onyc_ata = derive_ata(
@@ -96,8 +95,6 @@ pub fn build_set_buffer_gross_yield_ix(
             AccountMeta::new_readonly(*main_offer, false),
             AccountMeta::new(*onyc_mint, false),
             AccountMeta::new_readonly(offer_vault_authority_pda, false),
-            AccountMeta::new_readonly(vault_token_out_ata, false),
-            AccountMeta::new_readonly(boss_onyc_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),
             AccountMeta::new(buffer_state_pda, false),
             AccountMeta::new(reserve_vault_onyc_ata, false),
@@ -106,6 +103,7 @@ pub fn build_set_buffer_gross_yield_ix(
             AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
             AccountMeta::new(market_stats_pda, false),
+            AccountMeta::new_readonly(excluded_balance_pda, false),
         ],
         data,
     }
@@ -143,8 +141,7 @@ pub fn build_set_buffer_fee_config_with_wallets_ix(
     let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
-    let vault_token_out_ata = derive_ata(&offer_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
-    let boss_onyc_ata = derive_ata(boss, onyc_mint, &TOKEN_PROGRAM_ID);
+    let (excluded_balance_pda, _) = find_circulating_supply_excluded_balance_pda();
     let reserve_vault_onyc_ata = derive_ata(
         &find_reserve_vault_authority_pda().0,
         onyc_mint,
@@ -173,8 +170,6 @@ pub fn build_set_buffer_fee_config_with_wallets_ix(
             AccountMeta::new_readonly(*main_offer, false),
             AccountMeta::new(*onyc_mint, false),
             AccountMeta::new_readonly(offer_vault_authority_pda, false),
-            AccountMeta::new_readonly(vault_token_out_ata, false),
-            AccountMeta::new_readonly(boss_onyc_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),
             AccountMeta::new(buffer_state_pda, false),
             AccountMeta::new(reserve_vault_onyc_ata, false),
@@ -183,6 +178,7 @@ pub fn build_set_buffer_fee_config_with_wallets_ix(
             AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
             AccountMeta::new(market_stats_pda, false),
+            AccountMeta::new_readonly(excluded_balance_pda, false),
         ],
         data,
     }
@@ -334,10 +330,9 @@ pub fn build_burn_for_nav_increase_ix(
     let (performance_fee_vault_authority_pda, _) = find_performance_fee_vault_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
-    let vault_token_out_ata = derive_ata(&offer_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
+    let (excluded_balance_pda, _) = find_circulating_supply_excluded_balance_pda();
     let buffer_vault_onyc_ata =
         derive_ata(&reserve_vault_authority_pda, onyc_mint, &TOKEN_PROGRAM_ID);
-    let boss_onyc_ata = derive_ata(boss, onyc_mint, &TOKEN_PROGRAM_ID);
     let management_fee_vault_onyc_ata = derive_ata(
         &management_fee_vault_authority_pda,
         onyc_mint,
@@ -362,9 +357,7 @@ pub fn build_burn_for_nav_increase_ix(
             AccountMeta::new(*onyc_mint, false),
             AccountMeta::new_readonly(offer_vault_authority_pda, false),
             AccountMeta::new_readonly(reserve_vault_authority_pda, false),
-            AccountMeta::new_readonly(vault_token_out_ata, false),
             AccountMeta::new(buffer_vault_onyc_ata, false),
-            AccountMeta::new_readonly(boss_onyc_ata, false),
             AccountMeta::new_readonly(management_fee_vault_authority_pda, false),
             AccountMeta::new(management_fee_vault_onyc_ata, false),
             AccountMeta::new_readonly(performance_fee_vault_authority_pda, false),
@@ -373,6 +366,7 @@ pub fn build_burn_for_nav_increase_ix(
             AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
             AccountMeta::new(market_stats_pda, false),
+            AccountMeta::new_readonly(excluded_balance_pda, false),
         ],
         data,
     }

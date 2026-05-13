@@ -144,6 +144,7 @@ pub fn build_fulfill_redemption_request_ix(
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
+    let (excluded_balance_pda, _) = find_circulating_supply_excluded_balance_pda();
     let (buffer_state_pda, _) = find_buffer_state_pda();
     let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
     let (management_fee_vault_authority_pda, _) = find_management_fee_vault_authority_pda();
@@ -215,6 +216,7 @@ pub fn build_fulfill_redemption_request_ix(
             AccountMeta::new_readonly(offer_vault_authority_pda, false),
             AccountMeta::new_readonly(offer_vault_onyc_ata, false),
             AccountMeta::new(market_stats_pda, false),
+            AccountMeta::new_readonly(excluded_balance_pda, false),
             AccountMeta::new_readonly(*main_offer, false),
         ],
         data,
@@ -299,6 +301,7 @@ pub fn build_fulfill_redemption_request_with_fee_dest_ix(
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
+    let (excluded_balance_pda, _) = find_circulating_supply_excluded_balance_pda();
     let vault_token_in_ata = derive_ata(
         &redemption_vault_authority_pda,
         token_in_mint,
@@ -367,6 +370,7 @@ pub fn build_fulfill_redemption_request_with_fee_dest_ix(
             AccountMeta::new_readonly(offer_vault_authority_pda, false),
             AccountMeta::new_readonly(offer_vault_onyc_ata, false),
             AccountMeta::new(market_stats_pda, false),
+            AccountMeta::new_readonly(excluded_balance_pda, false),
             AccountMeta::new_readonly(*main_offer, false),
         ],
         data,

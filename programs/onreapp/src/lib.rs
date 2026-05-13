@@ -670,6 +670,11 @@ pub mod onreapp {
         market_info::get_circulating_supply(ctx)
     }
 
+    /// Gets circulating supply using the cached excluded-balance PDA.
+    pub fn get_circulating_supply_v2(ctx: Context<GetCirculatingSupplyV2>) -> Result<u64> {
+        market_info::get_circulating_supply_v2(ctx)
+    }
+
     /// Refreshes the canonical market-stats PDA using current on-chain state.
     ///
     /// Delegates to `market_info::refresh_market_stats`.
@@ -680,6 +685,31 @@ pub mod onreapp {
     /// - `ctx`: Context for `RefreshMarketStats`.
     pub fn refresh_market_stats(ctx: Context<RefreshMarketStats>) -> Result<()> {
         market_info::refresh_market_stats(ctx)
+    }
+
+    /// Refreshes the canonical market-stats PDA using the cached excluded-balance PDA.
+    pub fn refresh_market_stats_v2(ctx: Context<RefreshMarketStatsV2>) -> Result<()> {
+        market_info::refresh_market_stats_v2(ctx)
+    }
+
+    /// Gets TVL using the cached excluded-balance PDA.
+    pub fn get_tvl_v2(ctx: Context<GetTVLV2>) -> Result<u64> {
+        market_info::get_tvl_v2(ctx)
+    }
+
+    /// Updates the owner list whose ONyc ATAs are excluded from circulating supply.
+    pub fn set_circulating_supply_excluded_accounts(
+        ctx: Context<SetCirculatingSupplyExcludedAccounts>,
+        owners: [Pubkey; constants::MAX_CIRCULATING_SUPPLY_EXCLUDED_ACCOUNTS],
+    ) -> Result<()> {
+        market_info::set_circulating_supply_excluded_accounts(ctx, owners)
+    }
+
+    /// Refreshes the cached excluded ONyc balance from the configured owner ATAs.
+    pub fn update_circulating_supply_excluded_balance(
+        ctx: Context<UpdateCirculatingSupplyExcludedBalance>,
+    ) -> Result<()> {
+        market_info::update_circulating_supply_excluded_balance(ctx)
     }
 
     /// Adds a trusted authority for approval verification.

@@ -489,14 +489,8 @@
           }
         },
         {
-          "name": "vault_token_out_account"
-        },
-        {
           "name": "reserve_vault_onyc_account",
           "writable": true
-        },
-        {
-          "name": "boss_onyc_account"
         },
         {
           "name": "management_fee_vault_authority",
@@ -733,6 +727,9 @@
         {
           "name": "market_stats",
           "writable": true
+        },
+        {
+          "name": "circulating_supply_excluded_balance"
         }
       ],
       "args": [
@@ -2378,6 +2375,9 @@
           "writable": true
         },
         {
+          "name": "circulating_supply_excluded_balance"
+        },
+        {
           "name": "main_offer"
         }
       ],
@@ -2528,9 +2528,6 @@
         },
         {
           "name": "vault_authority",
-          "docs": [
-            "The vault authority PDA that controls vault token accounts"
-          ],
           "pda": {
             "seeds": [
               {
@@ -2563,26 +2560,59 @@
           }
         },
         {
-          "name": "onyc_vault_account",
-          "docs": [
-            "The vault's ONyc token account to exclude from circulating supply",
-            "",
-            "This account holds tokens that are not considered in circulation.",
-            "The account address is validated to match the expected ATA address",
-            "and can be uninitialized (treated as zero balance)."
+          "name": "onyc_vault_account"
+        },
+        {
+          "name": "boss_onyc_account"
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [],
+      "returns": "u64"
+    },
+    {
+      "name": "get_circulating_supply_v2",
+      "docs": [
+        "Gets circulating supply using the cached excluded-balance PDA."
+      ],
+      "discriminator": [
+        57,
+        115,
+        7,
+        115,
+        9,
+        100,
+        135,
+        111
+      ],
+      "accounts": [
+        {
+          "name": "onyc_mint",
+          "relations": [
+            "state"
           ]
         },
         {
-          "name": "boss_onyc_account",
-          "docs": [
-            "Boss ONyc account to exclude from circulating supply."
-          ]
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
-          "name": "token_program",
-          "docs": [
-            "SPL Token program for account validation"
-          ]
+          "name": "excluded_balance"
         }
       ],
       "args": [],
@@ -2831,9 +2861,6 @@
         },
         {
           "name": "vault_authority",
-          "docs": [
-            "The vault authority PDA that controls vault token accounts"
-          ],
           "pda": {
             "seeds": [
               {
@@ -2866,26 +2893,84 @@
           }
         },
         {
-          "name": "vault_token_out_account",
-          "docs": [
-            "The vault's token_out account to exclude from circulating supply",
-            "",
-            "This account holds tokens that should not be included in TVL calculations.",
-            "The account address is validated to match the expected ATA address",
-            "and can be uninitialized (treated as zero balance)."
-          ]
+          "name": "vault_token_out_account"
         },
         {
-          "name": "boss_onyc_account",
-          "docs": [
-            "Boss ONyc account to exclude from circulating supply."
-          ]
+          "name": "boss_onyc_account"
         },
         {
-          "name": "token_out_program",
-          "docs": [
-            "SPL Token program for vault account validation"
-          ]
+          "name": "token_out_program"
+        }
+      ],
+      "args": [],
+      "returns": "u64"
+    },
+    {
+      "name": "get_tvl_v2",
+      "docs": [
+        "Gets TVL using the cached excluded-balance PDA."
+      ],
+      "discriminator": [
+        64,
+        43,
+        63,
+        112,
+        186,
+        8,
+        1,
+        165
+      ],
+      "accounts": [
+        {
+          "name": "offer",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_in_mint"
+        },
+        {
+          "name": "token_out_mint"
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "excluded_balance"
         }
       ],
       "args": [],
@@ -4350,45 +4435,11 @@
           ]
         },
         {
-          "name": "offer_vault_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  111,
-                  102,
-                  102,
-                  101,
-                  114,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "offer_vault_onyc_account",
-          "writable": true
-        },
-        {
           "name": "market_stats",
           "writable": true
+        },
+        {
+          "name": "circulating_supply_excluded_balance"
         }
       ],
       "args": [
@@ -5036,9 +5087,6 @@
           "writable": true
         },
         {
-          "name": "boss_onyc_account"
-        },
-        {
           "name": "permissionless_authority"
         },
         {
@@ -5076,6 +5124,9 @@
         {
           "name": "market_stats",
           "writable": true
+        },
+        {
+          "name": "circulating_supply_excluded_balance"
         },
         {
           "name": "instructions_sysvar"
@@ -5307,6 +5358,9 @@
         {
           "name": "market_stats",
           "writable": true
+        },
+        {
+          "name": "circulating_supply_excluded_balance"
         },
         {
           "name": "instructions_sysvar"
@@ -6253,9 +6307,6 @@
         },
         {
           "name": "vault_authority",
-          "docs": [
-            "Offer vault authority PDA that owns the ONyc vault ATA."
-          ],
           "pda": {
             "seeds": [
               {
@@ -6288,22 +6339,116 @@
           }
         },
         {
-          "name": "onyc_vault_account",
+          "name": "onyc_vault_account"
+        },
+        {
+          "name": "boss_onyc_account"
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "market_stats",
           "docs": [
-            "ONyc vault ATA used to exclude vault-held supply from circulation."
+            "Canonical global market-stats PDA updated by refreshes and purchases."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "signer",
+          "docs": [
+            "Any signer can pay for PDA creation and trigger a refresh."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program for account creation."
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "refresh_market_stats_v2",
+      "docs": [
+        "Refreshes the canonical market-stats PDA using the cached excluded-balance PDA."
+      ],
+      "discriminator": [
+        151,
+        69,
+        143,
+        139,
+        105,
+        85,
+        32,
+        131
+      ],
+      "accounts": [
+        {
+          "name": "main_offer"
+        },
+        {
+          "name": "token_in_mint",
+          "docs": [
+            "The input mint paired with ONyc for the tracked offer."
           ]
         },
         {
-          "name": "boss_onyc_account",
+          "name": "state",
           "docs": [
-            "Boss ONyc ATA included in circulating supply."
+            "Program state holding the canonical ONyc mint."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "onyc_mint",
+          "docs": [
+            "The canonical ONyc mint for global market stats."
+          ],
+          "relations": [
+            "state"
           ]
         },
         {
-          "name": "token_program",
-          "docs": [
-            "Token program that owns the ONyc mint and vault ATA."
-          ]
+          "name": "excluded_balance"
         },
         {
           "name": "market_stats",
@@ -6558,12 +6703,6 @@
           }
         },
         {
-          "name": "vault_token_out_account"
-        },
-        {
-          "name": "boss_onyc_account"
-        },
-        {
           "name": "mint_authority",
           "pda": {
             "seeds": [
@@ -6620,6 +6759,9 @@
         {
           "name": "market_stats",
           "writable": true
+        },
+        {
+          "name": "circulating_supply_excluded_balance"
         }
       ],
       "args": [
@@ -6727,12 +6869,6 @@
           }
         },
         {
-          "name": "vault_token_out_account"
-        },
-        {
-          "name": "boss_onyc_account"
-        },
-        {
           "name": "mint_authority",
           "pda": {
             "seeds": [
@@ -6789,12 +6925,111 @@
         {
           "name": "market_stats",
           "writable": true
+        },
+        {
+          "name": "circulating_supply_excluded_balance"
         }
       ],
       "args": [
         {
           "name": "gross_yield",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_circulating_supply_excluded_accounts",
+      "docs": [
+        "Updates the owner list whose ONyc ATAs are excluded from circulating supply."
+      ],
+      "discriminator": [
+        109,
+        247,
+        233,
+        248,
+        196,
+        107,
+        17,
+        66
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "excluded_accounts",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  95,
+                  115,
+                  117,
+                  112,
+                  112,
+                  108,
+                  121,
+                  95,
+                  101,
+                  120,
+                  99,
+                  108,
+                  95,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "owners",
+          "type": {
+            "array": [
+              "pubkey",
+              20
+            ]
+          }
         }
       ]
     },
@@ -8521,12 +8756,6 @@
           "writable": true
         },
         {
-          "name": "boss_onyc_account",
-          "docs": [
-            "The account may be uninitialized and is treated as a zero balance by market stats."
-          ]
-        },
-        {
           "name": "mint_authority"
         },
         {
@@ -8553,6 +8782,9 @@
         {
           "name": "market_stats",
           "writable": true
+        },
+        {
+          "name": "circulating_supply_excluded_balance"
         },
         {
           "name": "instructions_sysvar"
@@ -8903,12 +9135,6 @@
           }
         },
         {
-          "name": "boss_onyc_account",
-          "docs": [
-            "The account may be uninitialized and is treated as a zero balance by market stats."
-          ]
-        },
-        {
           "name": "mint_authority"
         },
         {
@@ -8935,6 +9161,9 @@
         {
           "name": "market_stats",
           "writable": true
+        },
+        {
+          "name": "circulating_supply_excluded_balance"
         },
         {
           "name": "instructions_sysvar"
@@ -9185,6 +9414,134 @@
           "docs": [
             "SPL Token program for mint authority operations"
           ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update_circulating_supply_excluded_balance",
+      "docs": [
+        "Refreshes the cached excluded ONyc balance from the configured owner ATAs."
+      ],
+      "discriminator": [
+        3,
+        26,
+        180,
+        255,
+        32,
+        146,
+        247,
+        85
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "onyc_mint",
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "excluded_accounts",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  95,
+                  115,
+                  117,
+                  112,
+                  112,
+                  108,
+                  121,
+                  95,
+                  101,
+                  120,
+                  99,
+                  108,
+                  95,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "excluded_balance",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  95,
+                  115,
+                  117,
+                  112,
+                  112,
+                  108,
+                  121,
+                  95,
+                  101,
+                  120,
+                  99,
+                  108,
+                  95,
+                  98,
+                  97,
+                  108,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "signer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -10426,6 +10783,32 @@
       ]
     },
     {
+      "name": "CirculatingSupplyExcludedAccounts",
+      "discriminator": [
+        253,
+        157,
+        119,
+        194,
+        173,
+        214,
+        166,
+        155
+      ]
+    },
+    {
+      "name": "CirculatingSupplyExcludedBalance",
+      "discriminator": [
+        148,
+        113,
+        150,
+        192,
+        170,
+        44,
+        10,
+        140
+      ]
+    },
+    {
       "name": "MarketStats",
       "discriminator": [
         240,
@@ -10727,6 +11110,32 @@
       ]
     },
     {
+      "name": "CirculatingSupplyExcludedAccountsSetEvent",
+      "discriminator": [
+        120,
+        218,
+        239,
+        105,
+        26,
+        15,
+        181,
+        28
+      ]
+    },
+    {
+      "name": "CirculatingSupplyExcludedBalanceUpdatedEvent",
+      "discriminator": [
+        247,
+        56,
+        105,
+        146,
+        129,
+        92,
+        134,
+        92
+      ]
+    },
+    {
       "name": "GetAPYEvent",
       "discriminator": [
         235,
@@ -10750,6 +11159,19 @@
         242,
         104,
         206
+      ]
+    },
+    {
+      "name": "GetCirculatingSupplyV2Event",
+      "discriminator": [
+        3,
+        206,
+        54,
+        103,
+        158,
+        86,
+        35,
+        112
       ]
     },
     {
@@ -11477,366 +11899,416 @@
     },
     {
       "code": 6048,
+      "name": "InvalidCirculatingSupplyExcludedAccounts",
+      "msg": "Invalid Circulating Supply Excluded Accounts"
+    },
+    {
+      "code": 6049,
+      "name": "InvalidCirculatingSupplyExcludedAccountsOwner",
+      "msg": "Invalid Circulating Supply Excluded Accounts Owner"
+    },
+    {
+      "code": 6050,
+      "name": "InvalidCirculatingSupplyExcludedAccountsData",
+      "msg": "Invalid Circulating Supply Excluded Accounts Data"
+    },
+    {
+      "code": 6051,
+      "name": "InvalidCirculatingSupplyExcludedBalance",
+      "msg": "Invalid Circulating Supply Excluded Balance"
+    },
+    {
+      "code": 6052,
+      "name": "InvalidCirculatingSupplyExcludedBalanceOwner",
+      "msg": "Invalid Circulating Supply Excluded Balance Owner"
+    },
+    {
+      "code": 6053,
+      "name": "InvalidCirculatingSupplyExcludedBalanceData",
+      "msg": "Invalid Circulating Supply Excluded Balance Data"
+    },
+    {
+      "code": 6054,
+      "name": "MissingExcludedTokenAccount",
+      "msg": "Missing Excluded Token Account"
+    },
+    {
+      "code": 6055,
+      "name": "TooManyExcludedTokenAccounts",
+      "msg": "Too Many Excluded Token Accounts"
+    },
+    {
+      "code": 6056,
+      "name": "InvalidExcludedTokenAccount",
+      "msg": "Invalid Excluded Token Account"
+    },
+    {
+      "code": 6057,
+      "name": "DuplicateExcludedAccountOwner",
+      "msg": "Duplicate Excluded Account Owner"
+    },
+    {
+      "code": 6058,
       "name": "Overflow",
       "msg": "Overflow"
     },
     {
-      "code": 6049,
+      "code": 6059,
       "name": "InvalidMainOffer",
       "msg": "Invalid Main Offer"
     },
     {
-      "code": 6050,
+      "code": 6060,
       "name": "DivByZero",
       "msg": "Div By Zero"
     },
     {
-      "code": 6051,
+      "code": 6061,
       "name": "InvalidVaultAccount",
       "msg": "Invalid Vault Account"
     },
     {
-      "code": 6052,
+      "code": 6062,
       "name": "BossAlreadySet",
       "msg": "Boss Already Set"
     },
     {
-      "code": 6053,
+      "code": 6063,
       "name": "WrongBoss",
       "msg": "Wrong Boss"
     },
     {
-      "code": 6054,
+      "code": 6064,
       "name": "WrongOwner",
       "msg": "Wrong Owner"
     },
     {
-      "code": 6055,
+      "code": 6065,
       "name": "ImmutableProgram",
       "msg": "Immutable Program"
     },
     {
-      "code": 6056,
+      "code": 6066,
       "name": "WrongProgramData",
       "msg": "Wrong Program Data"
     },
     {
-      "code": 6057,
+      "code": 6067,
       "name": "MissingProgramData",
       "msg": "Missing Program Data"
     },
     {
-      "code": 6058,
+      "code": 6068,
       "name": "DeserializeProgramDataFailed",
       "msg": "Deserialize Program Data Failed"
     },
     {
-      "code": 6059,
+      "code": 6069,
       "name": "NotProgramData",
       "msg": "Not Program Data"
     },
     {
-      "code": 6060,
+      "code": 6070,
       "name": "InvalidPermissionlessAccountName",
       "msg": "Invalid Permissionless Account Name"
     },
     {
-      "code": 6061,
+      "code": 6071,
       "name": "BothApproversFilled",
       "msg": "Both Approvers Filled"
     },
     {
-      "code": 6062,
+      "code": 6072,
       "name": "InvalidApprover",
       "msg": "Invalid Approver"
     },
     {
-      "code": 6063,
+      "code": 6073,
       "name": "ApproverAlreadyExists",
       "msg": "Approver Already Exists"
     },
     {
-      "code": 6064,
+      "code": 6074,
       "name": "OnlyBossCanDisable",
       "msg": "Only Boss Can Disable"
     },
     {
-      "code": 6065,
+      "code": 6075,
       "name": "UnauthorizedToEnable",
       "msg": "Unauthorized To Enable"
     },
     {
-      "code": 6066,
+      "code": 6076,
       "name": "NotAnApprover",
       "msg": "Not An Approver"
     },
     {
-      "code": 6067,
+      "code": 6077,
       "name": "InvalidStateOwner",
       "msg": "Invalid State Owner"
     },
     {
-      "code": 6068,
+      "code": 6078,
       "name": "InvalidStatePda",
       "msg": "Invalid State Pda"
     },
     {
-      "code": 6069,
+      "code": 6079,
       "name": "InvalidStateData",
       "msg": "Invalid State Data"
     },
     {
-      "code": 6070,
+      "code": 6080,
       "name": "UnauthorizedSigner",
       "msg": "Unauthorized Signer"
     },
     {
-      "code": 6071,
+      "code": 6081,
       "name": "LamportOverflow",
       "msg": "Lamport Overflow"
     },
     {
-      "code": 6072,
+      "code": 6082,
       "name": "NoBossProposal",
       "msg": "No Boss Proposal"
     },
     {
-      "code": 6073,
+      "code": 6083,
       "name": "NotProposedBoss",
       "msg": "Not Proposed Boss"
     },
     {
-      "code": 6074,
+      "code": 6084,
       "name": "InvalidBossAddress",
       "msg": "Invalid Boss Address"
     },
     {
-      "code": 6075,
+      "code": 6085,
       "name": "NoChange",
       "msg": "No Change"
     },
     {
-      "code": 6076,
+      "code": 6086,
       "name": "AdminAlreadyExists",
       "msg": "Admin Already Exists"
     },
     {
-      "code": 6077,
+      "code": 6087,
       "name": "MaxAdminsReached",
       "msg": "Max Admins Reached"
     },
     {
-      "code": 6078,
+      "code": 6088,
       "name": "AdminNotFound",
       "msg": "Admin Not Found"
     },
     {
-      "code": 6079,
+      "code": 6089,
       "name": "ProgramNotMintAuthority",
       "msg": "Program Not Mint Authority"
     },
     {
-      "code": 6080,
+      "code": 6090,
       "name": "NoMintAuthority",
       "msg": "No Mint Authority"
     },
     {
-      "code": 6081,
+      "code": 6091,
       "name": "BossNotMintAuthority",
       "msg": "Boss Not Mint Authority"
     },
     {
-      "code": 6082,
+      "code": 6092,
       "name": "Unauthorized",
       "msg": "Unauthorized"
     },
     {
-      "code": 6083,
+      "code": 6093,
       "name": "ZeroBalance",
       "msg": "Zero Balance"
     },
     {
-      "code": 6084,
+      "code": 6094,
       "name": "InsufficientBalance",
       "msg": "Insufficient Balance"
     },
     {
-      "code": 6085,
+      "code": 6095,
       "name": "ArithmeticOverflow",
       "msg": "Arithmetic Overflow"
     },
     {
-      "code": 6086,
+      "code": 6096,
       "name": "InvalidMint",
       "msg": "Invalid Mint"
     },
     {
-      "code": 6087,
+      "code": 6097,
       "name": "InvalidRedemptionOffer",
       "msg": "Invalid Redemption Offer"
     },
     {
-      "code": 6088,
+      "code": 6098,
       "name": "ArithmeticUnderflow",
       "msg": "Arithmetic Underflow"
     },
     {
-      "code": 6089,
+      "code": 6099,
       "name": "InvalidRedeemer",
       "msg": "Invalid Redeemer"
     },
     {
-      "code": 6090,
+      "code": 6100,
       "name": "InvalidRedemptionAdmin",
       "msg": "Invalid Redemption Admin"
     },
     {
-      "code": 6091,
+      "code": 6101,
       "name": "InvalidRedeemerTokenAccount",
       "msg": "Invalid Redeemer Token Account"
     },
     {
-      "code": 6092,
+      "code": 6102,
       "name": "OfferMismatch",
       "msg": "Offer Mismatch"
     },
     {
-      "code": 6093,
+      "code": 6103,
       "name": "OfferMintMismatch",
       "msg": "Offer Mint Mismatch"
     },
     {
-      "code": 6094,
+      "code": 6104,
       "name": "InvalidRedemptionOfferOwner",
       "msg": "Invalid Redemption Offer Owner"
     },
     {
-      "code": 6095,
+      "code": 6105,
       "name": "InvalidRedemptionOfferData",
       "msg": "Invalid Redemption Offer Data"
     },
     {
-      "code": 6096,
+      "code": 6106,
       "name": "InvalidRedemptionFeeVaultAuthority",
       "msg": "Invalid Redemption Fee Vault Authority"
     },
     {
-      "code": 6097,
+      "code": 6107,
       "name": "InvalidRedemptionFeeVaultAuthorityOwner",
       "msg": "Invalid Redemption Fee Vault Authority Owner"
     },
     {
-      "code": 6098,
+      "code": 6108,
       "name": "InvalidRedemptionFeeVaultAuthorityData",
       "msg": "Invalid Redemption Fee Vault Authority Data"
     },
     {
-      "code": 6099,
+      "code": 6109,
       "name": "InvalidFeeDestinationTokenInAccount",
       "msg": "Invalid Fee Destination Token In Account"
     },
     {
-      "code": 6100,
+      "code": 6110,
       "name": "InvalidOfferVaultOnycAccount",
       "msg": "Invalid Offer Vault Onyc Account"
     },
     {
-      "code": 6101,
+      "code": 6111,
       "name": "InvalidVaultTokenInAccount",
       "msg": "Invalid Vault Token In Account"
     },
     {
-      "code": 6102,
+      "code": 6112,
       "name": "InvalidVaultTokenOutAccount",
       "msg": "Invalid Vault Token Out Account"
     },
     {
-      "code": 6103,
+      "code": 6113,
       "name": "InvalidAmount",
       "msg": "Invalid Amount"
     },
     {
-      "code": 6104,
+      "code": 6114,
       "name": "OfferDisabled",
       "msg": "Offer Disabled"
     },
     {
-      "code": 6105,
+      "code": 6115,
       "name": "UnauthorizedToDisableOffer",
       "msg": "Unauthorized To Disable Offer"
     },
     {
-      "code": 6106,
+      "code": 6116,
       "name": "OnlyBossCanEnableOffer",
       "msg": "Only Boss Can Enable Offer"
     },
     {
-      "code": 6107,
+      "code": 6117,
       "name": "AmountExceedsRemaining",
       "msg": "Amount Exceeds Remaining"
     },
     {
-      "code": 6108,
+      "code": 6118,
       "name": "InvalidFeeDestination",
       "msg": "Invalid Fee Destination"
     },
     {
-      "code": 6109,
+      "code": 6119,
       "name": "InvalidBufferStateAccount",
       "msg": "Invalid Buffer State Account"
     },
     {
-      "code": 6110,
+      "code": 6120,
       "name": "InvalidTimestamp",
       "msg": "Invalid Timestamp"
     },
     {
-      "code": 6111,
+      "code": 6121,
       "name": "MinimumOutNotMet",
       "msg": "Minimum Out Not Met"
     },
     {
-      "code": 6112,
+      "code": 6122,
       "name": "InvalidSwapPair",
       "msg": "Invalid Swap Pair"
     },
     {
-      "code": 6113,
+      "code": 6123,
       "name": "InvalidFeeWallet",
       "msg": "Invalid Fee Wallet"
     },
     {
-      "code": 6114,
+      "code": 6124,
       "name": "InvalidTargetNav",
       "msg": "Invalid Target Nav"
     },
     {
-      "code": 6115,
+      "code": 6125,
       "name": "InvalidAssetAdjustmentAmount",
       "msg": "Invalid Asset Adjustment Amount"
     },
     {
-      "code": 6116,
+      "code": 6126,
       "name": "NoBurnNeeded",
       "msg": "No Burn Needed"
     },
     {
-      "code": 6117,
+      "code": 6127,
       "name": "InsufficientCacheBalance",
       "msg": "Insufficient Cache Balance"
     },
     {
-      "code": 6118,
+      "code": 6128,
       "name": "InsufficientFeeBalance",
       "msg": "Insufficient Fee Balance"
     },
     {
-      "code": 6119,
+      "code": 6129,
       "name": "InvalidFeeRecipient",
       "msg": "Invalid Fee Recipient"
     },
     {
-      "code": 6120,
+      "code": 6130,
       "name": "InvalidBurnTarget",
       "msg": "Invalid Burn Target"
     }
@@ -12362,6 +12834,144 @@
       }
     },
     {
+      "name": "CirculatingSupplyExcludedAccounts",
+      "docs": [
+        "Boss-managed owner list whose ONyc ATAs are excluded from circulating supply."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owners",
+            "docs": [
+              "Owners whose ONyc ATAs must be included in excluded-balance updates."
+            ],
+            "type": {
+              "array": [
+                "pubkey",
+                20
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "docs": [
+              "Reserved bytes for forward-compatible layout expansion."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                31
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CirculatingSupplyExcludedAccountsSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owners",
+            "type": {
+              "array": [
+                "pubkey",
+                20
+              ]
+            }
+          },
+          {
+            "name": "boss",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CirculatingSupplyExcludedBalance",
+      "docs": [
+        "Cached ONyc balance excluded from circulating supply."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "docs": [
+              "Sum of all configured excluded-owner ONyc ATA balances."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_updated_at",
+            "docs": [
+              "Unix timestamp of the most recent successful update."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "last_updated_slot",
+            "docs": [
+              "Slot of the most recent successful update."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "docs": [
+              "Reserved bytes for forward-compatible layout expansion."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                31
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CirculatingSupplyExcludedBalanceUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "updater",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "GetAPYEvent",
       "docs": [
         "Event emitted when APY calculation is successfully completed",
@@ -12446,6 +13056,30 @@
             "docs": [
               "Unix timestamp when the calculation was performed"
             ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GetCirculatingSupplyV2Event",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circulating_supply",
+            "type": "u64"
+          },
+          {
+            "name": "total_supply",
+            "type": "u64"
+          },
+          {
+            "name": "excluded_amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
             "type": "u64"
           }
         ]

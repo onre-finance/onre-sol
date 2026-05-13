@@ -104,6 +104,9 @@ pub struct OpenSwapSell<'info> {
     #[account(mut)]
     pub market_stats: UncheckedAccount<'info>,
 
+    /// CHECK: PDA validation and data loading are handled by market stats refresh.
+    pub circulating_supply_excluded_balance: UncheckedAccount<'info>,
+
     /// CHECK: validated in instruction logic
     pub instructions_sysvar: UncheckedAccount<'info>,
 
@@ -238,7 +241,7 @@ fn execute_open_swap_sell<'info>(
         &ctx.accounts.token_out_program.key(),
         crate::OnreError::InvalidVaultTokenOutAccount,
     )?;
-    let offer_vault_onyc_account = get_associated_token_account(
+    let _offer_vault_onyc_account = get_associated_token_account(
         &ctx.accounts.offer_vault_onyc_account,
         &ctx.accounts.offer_vault_authority.key(),
         &ctx.accounts.state.onyc_mint,
@@ -308,9 +311,9 @@ fn execute_open_swap_sell<'info>(
     refresh_market_stats_pda(
         &main_offer,
         &ctx.accounts.token_in_mint,
-        &offer_vault_onyc_account.to_account_info(),
-        &boss_token_in_account.to_account_info(),
-        &ctx.accounts.token_in_program,
+        &ctx.accounts
+            .circulating_supply_excluded_balance
+            .to_account_info(),
         &ctx.accounts.market_stats.to_account_info(),
         &ctx.accounts.user.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),

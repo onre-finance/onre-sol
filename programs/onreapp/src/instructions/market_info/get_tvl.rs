@@ -1,15 +1,16 @@
 use crate::constants::seeds;
-use crate::instructions::market_info::market_stats::{
-    calculate_circulating_supply, calculate_tvl as calculate_shared_tvl,
-};
 use crate::instructions::market_info::offer_valuation_utils::get_active_vector_and_current_price;
+use crate::instructions::market_info::{
+    calculate_circulating_supply, calculate_tvl as calculate_shared_tvl,
+    load_circulating_supply_excluded_balance_amount,
+};
 use crate::instructions::Offer;
 use crate::state::State;
-use anchor_spl::associated_token::get_associated_token_address_with_program_id;
-
 use crate::utils::read_optional_token_account_amount;
+
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
+use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 use anchor_spl::token_interface::{Mint, TokenInterface};
 
 /// Event emitted when TVL (Total Value Locked) calculation is completed
@@ -70,16 +71,10 @@ pub struct GetTVL<'info> {
     #[account(seeds = [seeds::STATE], bump = state.bump)]
     pub state: Box<Account<'info, State>>,
 
-    /// The vault authority PDA that controls vault token accounts
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
     pub vault_authority: UncheckedAccount<'info>,
 
-    /// The vault's token_out account to exclude from circulating supply
-    ///
-    /// This account holds tokens that should not be included in TVL calculations.
-    /// The account address is validated to match the expected ATA address
-    /// and can be uninitialized (treated as zero balance).
     /// CHECK: Account address is validated by the constraint below to allow passing uninitialized vault account
     #[account(
         constraint = vault_token_out_account.key()
@@ -91,7 +86,6 @@ pub struct GetTVL<'info> {
     )]
     pub vault_token_out_account: UncheckedAccount<'info>,
 
-    /// Boss ONyc account to exclude from circulating supply.
     /// CHECK: Address is validated against the boss token_out ATA and may be uninitialized.
     #[account(
         constraint = boss_onyc_account.key()
@@ -103,8 +97,40 @@ pub struct GetTVL<'info> {
     )]
     pub boss_onyc_account: UncheckedAccount<'info>,
 
-    /// SPL Token program for vault account validation
     pub token_out_program: Interface<'info, TokenInterface>,
+}
+
+#[derive(Accounts)]
+pub struct GetTVLV2<'info> {
+    #[account(
+        seeds = [
+            seeds::OFFER,
+            token_in_mint.key().as_ref(),
+            token_out_mint.key().as_ref()
+        ],
+        bump = offer.load()?.bump
+    )]
+    pub offer: AccountLoader<'info, Offer>,
+
+    #[account(
+        constraint =
+            token_in_mint.key() == offer.load()?.token_in_mint
+            @ crate::OnreError::InvalidTokenInMint
+    )]
+    pub token_in_mint: InterfaceAccount<'info, Mint>,
+
+    #[account(
+        constraint =
+            token_out_mint.key() == offer.load()?.token_out_mint
+            @ crate::OnreError::InvalidTokenOutMint
+    )]
+    pub token_out_mint: InterfaceAccount<'info, Mint>,
+
+    #[account(seeds = [seeds::STATE], bump = state.bump)]
+    pub state: Box<Account<'info, State>>,
+
+    /// CHECK: PDA address and data are validated in instruction logic; uninitialized means zero.
+    pub excluded_balance: UncheckedAccount<'info>,
 }
 
 /// Calculates and returns the current TVL (Total Value Locked) for a specific offer
@@ -135,7 +161,7 @@ pub fn get_tvl(ctx: Context<GetTVL>) -> Result<u64> {
 
     let (_, current_price) = get_active_vector_and_current_price(&offer, current_time)?;
 
-    let vault_token_out_amount = read_optional_token_account_amount(
+    let vault_amount = read_optional_token_account_amount(
         &ctx.accounts.vault_token_out_account,
         &ctx.accounts.token_out_program,
     )?;
@@ -143,12 +169,48 @@ pub fn get_tvl(ctx: Context<GetTVL>) -> Result<u64> {
         &ctx.accounts.boss_onyc_account,
         &ctx.accounts.token_out_program,
     )?;
+    let excluded_amount = vault_amount
+        .checked_add(boss_onyc_amount)
+        .ok_or(crate::OnreError::MathOverflow)?;
+    let token_supply =
+        calculate_circulating_supply(ctx.accounts.token_out_mint.supply, excluded_amount)?;
 
-    let token_supply = calculate_circulating_supply(
-        ctx.accounts.token_out_mint.supply,
-        vault_token_out_amount,
-        boss_onyc_amount,
+    let tvl = calculate_shared_tvl(token_supply, current_price)
+        .map_err(|_| error!(crate::OnreError::Overflow))?;
+
+    msg!(
+        "TVL Info - Offer PDA: {}, TVL: {}, Current Price: {}, Token Supply: {}, Timestamp: {}",
+        ctx.accounts.offer.key(),
+        tvl,
+        current_price,
+        token_supply,
+        current_time
+    );
+
+    emit!(GetTVLEvent {
+        offer_pda: ctx.accounts.offer.key(),
+        tvl,
+        current_price,
+        token_supply,
+        timestamp: current_time,
+    });
+
+    Ok(tvl)
+}
+
+pub fn get_tvl_v2(ctx: Context<GetTVLV2>) -> Result<u64> {
+    let offer = ctx.accounts.offer.load()?;
+    let current_time = Clock::get()?.unix_timestamp as u64;
+
+    let (_, current_price) = get_active_vector_and_current_price(&offer, current_time)?;
+
+    let excluded_amount = load_circulating_supply_excluded_balance_amount(
+        ctx.program_id,
+        &ctx.accounts.excluded_balance.to_account_info(),
     )?;
+
+    let token_supply =
+        calculate_circulating_supply(ctx.accounts.token_out_mint.supply, excluded_amount)?;
 
     let tvl = calculate_shared_tvl(token_supply, current_price)
         .map_err(|_| error!(crate::OnreError::Overflow))?;

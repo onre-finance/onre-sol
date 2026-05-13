@@ -20,7 +20,7 @@ use crate::utils::{
 };
 use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::{
-    associated_token::{get_associated_token_address_with_program_id, AssociatedToken},
+    associated_token::AssociatedToken,
     token_interface::{Mint, TokenInterface},
 };
 
@@ -90,9 +90,6 @@ pub struct OpenSwapBuy<'info> {
     #[account(mut)]
     pub boss_token_in_account: UncheckedAccount<'info>,
 
-    /// CHECK: validated as canonical boss ONyc ATA in instruction logic
-    pub boss_onyc_account: UncheckedAccount<'info>,
-
     /// CHECK: PDA derivation validated in instruction logic
     pub permissionless_authority: UncheckedAccount<'info>,
 
@@ -112,6 +109,9 @@ pub struct OpenSwapBuy<'info> {
     /// CHECK: validated in instruction logic
     #[account(mut)]
     pub market_stats: UncheckedAccount<'info>,
+
+    /// CHECK: PDA validation and data loading are handled by market stats refresh.
+    pub circulating_supply_excluded_balance: UncheckedAccount<'info>,
 
     /// CHECK: validated in instruction logic
     pub instructions_sysvar: UncheckedAccount<'info>,
@@ -196,15 +196,6 @@ fn execute_open_swap_buy<'info>(
         &ctx.accounts.token_in_program.key(),
         crate::OnreError::InvalidBossTokenInAccount,
     )?;
-    require_keys_eq!(
-        ctx.accounts.boss_onyc_account.key(),
-        get_associated_token_address_with_program_id(
-            &ctx.accounts.boss.key(),
-            &ctx.accounts.token_out_mint.key(),
-            &ctx.accounts.token_out_program.key(),
-        ),
-        crate::OnreError::InvalidBossTokenInAccount
-    );
     let _offer_vault_token_in_account = get_associated_token_account(
         &ctx.accounts.offer_vault_token_in_account,
         &ctx.accounts.offer_vault_authority.key(),
@@ -431,9 +422,9 @@ fn execute_open_swap_buy<'info>(
         refresh_market_stats_pda(
             &main_offer,
             &ctx.accounts.token_out_mint,
-            &offer_vault_token_out_account.to_account_info(),
-            &ctx.accounts.boss_onyc_account.to_account_info(),
-            &ctx.accounts.token_out_program,
+            &ctx.accounts
+                .circulating_supply_excluded_balance
+                .to_account_info(),
             &ctx.accounts.market_stats.to_account_info(),
             &ctx.accounts.user.to_account_info(),
             &ctx.accounts.system_program.to_account_info(),

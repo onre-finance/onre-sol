@@ -1,11 +1,13 @@
 use crate::constants::seeds;
-use crate::instructions::market_info::market_stats::calculate_circulating_supply;
-use anchor_spl::associated_token::get_associated_token_address_with_program_id;
+use crate::instructions::market_info::{
+    calculate_circulating_supply, load_circulating_supply_excluded_balance_amount,
+};
 
 use crate::state::State;
 use crate::utils::token_utils::read_optional_token_account_amount;
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
+use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 use anchor_spl::token_interface::{Mint, TokenInterface};
 
 /// Event emitted when circulating supply calculation is completed
@@ -25,6 +27,14 @@ pub struct GetCirculatingSupplyEvent {
     pub timestamp: u64,
 }
 
+#[event]
+pub struct GetCirculatingSupplyV2Event {
+    pub circulating_supply: u64,
+    pub total_supply: u64,
+    pub excluded_amount: u64,
+    pub timestamp: u64,
+}
+
 /// Account structure for querying circulating supply information
 ///
 /// This struct defines the accounts required to calculate the circulating supply
@@ -39,16 +49,10 @@ pub struct GetCirculatingSupply<'info> {
     #[account(seeds = [seeds::STATE], bump = state.bump, has_one = onyc_mint)]
     pub state: Box<Account<'info, State>>,
 
-    /// The vault authority PDA that controls vault token accounts
     /// CHECK: PDA derivation is validated by seeds constraint
     #[account(seeds = [seeds::OFFER_VAULT_AUTHORITY], bump)]
     pub vault_authority: UncheckedAccount<'info>,
 
-    /// The vault's ONyc token account to exclude from circulating supply
-    ///
-    /// This account holds tokens that are not considered in circulation.
-    /// The account address is validated to match the expected ATA address
-    /// and can be uninitialized (treated as zero balance).
     /// CHECK: Account address is validated by the constraint below to allow passing uninitialized vault account
     #[account(
         constraint = onyc_vault_account.key()
@@ -60,7 +64,6 @@ pub struct GetCirculatingSupply<'info> {
     )]
     pub onyc_vault_account: UncheckedAccount<'info>,
 
-    /// Boss ONyc account to exclude from circulating supply.
     /// CHECK: Address is validated against the boss ONyc ATA and may be uninitialized.
     #[account(
         constraint = boss_onyc_account.key()
@@ -72,8 +75,18 @@ pub struct GetCirculatingSupply<'info> {
     )]
     pub boss_onyc_account: UncheckedAccount<'info>,
 
-    /// SPL Token program for account validation
     pub token_program: Interface<'info, TokenInterface>,
+}
+
+#[derive(Accounts)]
+pub struct GetCirculatingSupplyV2<'info> {
+    pub onyc_mint: InterfaceAccount<'info, Mint>,
+
+    #[account(seeds = [seeds::STATE], bump = state.bump, has_one = onyc_mint)]
+    pub state: Box<Account<'info, State>>,
+
+    /// CHECK: PDA address and data are validated in instruction logic; uninitialized means zero.
+    pub excluded_balance: UncheckedAccount<'info>,
 }
 
 /// Calculates and returns the current circulating supply of ONyc tokens
@@ -99,7 +112,7 @@ pub struct GetCirculatingSupply<'info> {
 pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64> {
     let current_time = Clock::get()?.unix_timestamp as u64;
 
-    let vault_token_out_amount = read_optional_token_account_amount(
+    let vault_amount = read_optional_token_account_amount(
         &ctx.accounts.onyc_vault_account,
         &ctx.accounts.token_program,
     )?;
@@ -107,17 +120,17 @@ pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64>
         &ctx.accounts.boss_onyc_account,
         &ctx.accounts.token_program,
     )?;
-
+    let excluded_amount = vault_amount
+        .checked_add(boss_onyc_amount)
+        .ok_or(crate::OnreError::MathOverflow)?;
     let total_supply = ctx.accounts.onyc_mint.supply;
-
-    let circulating_supply =
-        calculate_circulating_supply(total_supply, vault_token_out_amount, boss_onyc_amount)?;
+    let circulating_supply = calculate_circulating_supply(total_supply, excluded_amount)?;
 
     msg!(
         "Circulating Supply Info - Circulating Supply: {}, Total Supply: {}, Vault Amount: {}, Boss ONyc Amount: {}, Timestamp: {}",
         circulating_supply,
         total_supply,
-        vault_token_out_amount,
+        vault_amount,
         boss_onyc_amount,
         current_time
     );
@@ -125,8 +138,38 @@ pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64>
     emit!(GetCirculatingSupplyEvent {
         circulating_supply,
         total_supply,
-        vault_amount: vault_token_out_amount,
+        vault_amount,
         boss_onyc_amount,
+        timestamp: current_time,
+    });
+
+    Ok(circulating_supply)
+}
+
+pub fn get_circulating_supply_v2(ctx: Context<GetCirculatingSupplyV2>) -> Result<u64> {
+    let current_time = Clock::get()?.unix_timestamp as u64;
+
+    let excluded_amount = load_circulating_supply_excluded_balance_amount(
+        ctx.program_id,
+        &ctx.accounts.excluded_balance.to_account_info(),
+    )?;
+
+    let total_supply = ctx.accounts.onyc_mint.supply;
+
+    let circulating_supply = calculate_circulating_supply(total_supply, excluded_amount)?;
+
+    msg!(
+        "Circulating Supply Info - Circulating Supply: {}, Total Supply: {}, Excluded Amount: {}, Timestamp: {}",
+        circulating_supply,
+        total_supply,
+        excluded_amount,
+        current_time
+    );
+
+    emit!(GetCirculatingSupplyV2Event {
+        circulating_supply,
+        total_supply,
+        excluded_amount,
         timestamp: current_time,
     });
 

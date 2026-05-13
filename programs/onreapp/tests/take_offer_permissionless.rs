@@ -539,6 +539,14 @@ fn test_take_offer_permissionless_v2_accrues_buffer_and_refreshes_market_stats()
 
     let supply_before = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
 
+    let (vault_authority, _) = find_offer_vault_authority_pda();
+    set_and_refresh_circulating_supply_exclusions(
+        &mut ctx.svm,
+        &ctx.payer,
+        &ctx.onyc_mint,
+        &[vault_authority],
+    );
+
     advance_clock_by(&mut ctx.svm, ONE_YEAR_SECONDS);
 
     let ix = build_take_offer_permissionless_v2_ix(
@@ -599,20 +607,8 @@ fn test_take_offer_permissionless_v2_accrues_buffer_and_refreshes_market_stats()
     assert_eq!(buffer_state.previous_supply, post_trade_supply);
 
     let market_stats = read_market_stats(&ctx.svm);
-    let vault_token_out_balance = get_token_balance(
-        &ctx.svm,
-        &derive_ata(
-            &find_offer_vault_authority_pda().0,
-            &ctx.onyc_mint,
-            &TOKEN_PROGRAM_ID,
-        ),
-    );
-    let boss_onyc_balance = get_token_balance(
-        &ctx.svm,
-        &get_associated_token_address(&ctx.payer.pubkey(), &ctx.onyc_mint),
-    );
-    let expected_circulating_supply =
-        post_trade_supply - (vault_token_out_balance + boss_onyc_balance);
+    let cached_excluded_balance_before_trade = 1_000_000_000_000;
+    let expected_circulating_supply = post_trade_supply - cached_excluded_balance_before_trade;
     assert_eq!(market_stats.nav, 1_000_000_000);
     assert_eq!(market_stats.circulating_supply, expected_circulating_supply);
     assert_eq!(market_stats.tvl, expected_circulating_supply);

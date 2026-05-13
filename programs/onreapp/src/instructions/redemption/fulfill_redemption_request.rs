@@ -156,6 +156,9 @@ pub struct FulfillRedemptionRequest<'info> {
     #[account(mut)]
     pub market_stats: UncheckedAccount<'info>,
 
+    /// CHECK: PDA validation and data loading are handled by market stats refresh.
+    pub circulating_supply_excluded_balance: UncheckedAccount<'info>,
+
     /// CHECK: Validated in instruction logic against state.main_offer.
     pub main_offer: UncheckedAccount<'info>,
 }
@@ -331,11 +334,11 @@ pub fn fulfill_redemption_request<'info>(
             fee_destination: &ctx.accounts.fee_destination,
             fee_destination_token_in_account: &fee_destination_token_in_account,
             mint_authority: &ctx.accounts.mint_authority,
-            offer_vault_onyc_account: &ctx.accounts.offer_vault_onyc_account,
             redemption_vault_authority: &ctx.accounts.redemption_vault_authority,
             redemption_vault_authority_bump: ctx.bumps.redemption_vault_authority,
             mint_authority_bump: ctx.bumps.mint_authority,
             market_stats: &ctx.accounts.market_stats,
+            circulating_supply_excluded_balance: &ctx.accounts.circulating_supply_excluded_balance,
             main_offer: &ctx.accounts.main_offer,
             redeemer: &ctx.accounts.redeemer,
             redemption_admin: &ctx.accounts.redemption_admin,
@@ -366,11 +369,11 @@ struct ExecuteFulfillRedemptionRequestParams<'a, 'info> {
     fee_destination: &'a UncheckedAccount<'info>,
     fee_destination_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
     mint_authority: &'a UncheckedAccount<'info>,
-    offer_vault_onyc_account: &'a UncheckedAccount<'info>,
     redemption_vault_authority: &'a UncheckedAccount<'info>,
     redemption_vault_authority_bump: u8,
     mint_authority_bump: u8,
     market_stats: &'a UncheckedAccount<'info>,
+    circulating_supply_excluded_balance: &'a UncheckedAccount<'info>,
     main_offer: &'a UncheckedAccount<'info>,
     redeemer: &'a UncheckedAccount<'info>,
     redemption_admin: &'a Signer<'info>,
@@ -592,9 +595,7 @@ fn execute_fulfill_redemption_request(
         refresh_market_stats_pda(
             &main_offer,
             params.token_in_mint,
-            &params.offer_vault_onyc_account.to_account_info(),
-            &params.boss_token_in_account.to_account_info(),
-            params.token_in_program,
+            &params.circulating_supply_excluded_balance.to_account_info(),
             &params.market_stats.to_account_info(),
             &params.redemption_admin.to_account_info(),
             &params.system_program.to_account_info(),

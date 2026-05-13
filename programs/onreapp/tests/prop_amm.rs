@@ -454,6 +454,14 @@ fn test_open_swap_buy_refills_redemption_vault_until_target_then_overflows_to_bo
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
+    let (vault_authority, _) = find_offer_vault_authority_pda();
+    set_and_refresh_circulating_supply_exclusions(
+        &mut ctx.svm,
+        &ctx.payer,
+        &ctx.onyc_mint,
+        &[vault_authority],
+    );
+
     let first_quote_ix =
         build_quote_swap_ix(&ctx.onyc_mint, &ctx.usdc_mint, &ctx.onyc_mint, 1_000_000);
     let first_quote_metadata = send_tx(&mut ctx.svm, &[first_quote_ix], &[&ctx.payer]).unwrap();
@@ -482,6 +490,16 @@ fn test_open_swap_buy_refills_redemption_vault_until_target_then_overflows_to_bo
     let boss_usdc = get_associated_token_address(&boss, &ctx.usdc_mint);
     assert_eq!(get_token_balance(&ctx.svm, &redemption_vault_usdc), 0);
     assert_eq!(get_token_balance(&ctx.svm, &boss_usdc), 1_000_000);
+
+    advance_slot(&mut ctx.svm);
+    refresh_circulating_supply_excluded_balance(
+        &mut ctx.svm,
+        &ctx.payer,
+        &ctx.onyc_mint,
+        &[vault_authority],
+    );
+    let ix = build_refresh_market_stats_v2_ix(&boss, &ctx.usdc_mint, &ctx.onyc_mint);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let second_quote_ix =
         build_quote_swap_ix(&ctx.onyc_mint, &ctx.usdc_mint, &ctx.onyc_mint, 1_000_001);

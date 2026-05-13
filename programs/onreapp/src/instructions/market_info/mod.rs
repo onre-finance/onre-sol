@@ -1,3 +1,4 @@
+pub mod circulating_supply;
 pub mod get_apy;
 pub mod get_circulating_supply;
 pub mod get_nav;
@@ -7,6 +8,7 @@ pub mod market_stats;
 pub mod offer_valuation_utils;
 pub mod refresh_market_stats;
 
+pub use circulating_supply::*;
 pub use get_apy::*;
 pub use get_circulating_supply::*;
 pub use get_nav::*;

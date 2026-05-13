@@ -376,11 +376,10 @@ pub fn build_mint_to_ix_for_offer(
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
-    let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
+    let (excluded_balance_pda, _) = find_circulating_supply_excluded_balance_pda();
     let buffer_state_pda = find_buffer_state_pda().0;
     let boss_onyc_ata = derive_ata(boss, onyc_mint, token_program);
-    let offer_vault_onyc = derive_ata(&offer_vault_authority_pda, onyc_mint, token_program);
     let buffer_vault_onyc = derive_ata(
         &find_reserve_vault_authority_pda().0,
         onyc_mint,
@@ -414,9 +413,8 @@ pub fn build_mint_to_ix_for_offer(
             AccountMeta::new(buffer_vault_onyc, false),
             AccountMeta::new(management_fee_vault_onyc, false),
             AccountMeta::new(performance_fee_vault_onyc, false),
-            AccountMeta::new_readonly(offer_vault_authority_pda, false),
-            AccountMeta::new(offer_vault_onyc, false),
             AccountMeta::new(market_stats_pda, false),
+            AccountMeta::new_readonly(excluded_balance_pda, false),
         ],
         data,
     }
@@ -584,5 +582,113 @@ pub fn build_refresh_market_stats_ix(
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
         ],
         data: ix_discriminator("refresh_market_stats").to_vec(),
+    }
+}
+
+pub fn build_get_tvl_v2_ix(token_in_mint: &Pubkey, token_out_mint: &Pubkey) -> Instruction {
+    let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
+    let (state_pda, _) = find_state_pda();
+    let (excluded_balance_pda, _) = find_circulating_supply_excluded_balance_pda();
+    Instruction {
+        program_id: PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new_readonly(offer_pda, false),
+            AccountMeta::new_readonly(*token_in_mint, false),
+            AccountMeta::new_readonly(*token_out_mint, false),
+            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new_readonly(excluded_balance_pda, false),
+        ],
+        data: ix_discriminator("get_tvl_v2").to_vec(),
+    }
+}
+
+pub fn build_get_circulating_supply_v2_ix(onyc_mint: &Pubkey) -> Instruction {
+    let (state_pda, _) = find_state_pda();
+    let (excluded_balance_pda, _) = find_circulating_supply_excluded_balance_pda();
+    Instruction {
+        program_id: PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new_readonly(*onyc_mint, false),
+            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new_readonly(excluded_balance_pda, false),
+        ],
+        data: ix_discriminator("get_circulating_supply_v2").to_vec(),
+    }
+}
+
+pub fn build_refresh_market_stats_v2_ix(
+    signer: &Pubkey,
+    token_in_mint: &Pubkey,
+    onyc_mint: &Pubkey,
+) -> Instruction {
+    let (main_offer_pda, _) = find_offer_pda(token_in_mint, onyc_mint);
+    let (state_pda, _) = find_state_pda();
+    let (market_stats_pda, _) = find_market_stats_pda();
+    let (excluded_balance_pda, _) = find_circulating_supply_excluded_balance_pda();
+    Instruction {
+        program_id: PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new_readonly(main_offer_pda, false),
+            AccountMeta::new_readonly(*token_in_mint, false),
+            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new_readonly(*onyc_mint, false),
+            AccountMeta::new_readonly(excluded_balance_pda, false),
+            AccountMeta::new(market_stats_pda, false),
+            AccountMeta::new(*signer, true),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+        ],
+        data: ix_discriminator("refresh_market_stats_v2").to_vec(),
+    }
+}
+
+pub fn build_set_circulating_supply_excluded_accounts_ix(
+    boss: &Pubkey,
+    owners: &[Pubkey; 20],
+) -> Instruction {
+    let (state_pda, _) = find_state_pda();
+    let (excluded_accounts_pda, _) = find_circulating_supply_excluded_accounts_pda();
+    let mut data = ix_discriminator("set_circulating_supply_excluded_accounts").to_vec();
+    for owner in owners {
+        data.extend_from_slice(owner.as_ref());
+    }
+    Instruction {
+        program_id: PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new_readonly(state_pda, false),
+            AccountMeta::new(*boss, true),
+            AccountMeta::new(excluded_accounts_pda, false),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+        ],
+        data,
+    }
+}
+
+pub fn build_update_circulating_supply_excluded_balance_ix(
+    signer: &Pubkey,
+    onyc_mint: &Pubkey,
+    token_accounts: &[Pubkey],
+    token_program: &Pubkey,
+) -> Instruction {
+    let (state_pda, _) = find_state_pda();
+    let (excluded_accounts_pda, _) = find_circulating_supply_excluded_accounts_pda();
+    let (excluded_balance_pda, _) = find_circulating_supply_excluded_balance_pda();
+    let mut accounts = vec![
+        AccountMeta::new_readonly(state_pda, false),
+        AccountMeta::new_readonly(*onyc_mint, false),
+        AccountMeta::new_readonly(excluded_accounts_pda, false),
+        AccountMeta::new(excluded_balance_pda, false),
+        AccountMeta::new_readonly(*token_program, false),
+        AccountMeta::new(*signer, true),
+        AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+    ];
+    accounts.extend(
+        token_accounts
+            .iter()
+            .map(|account| AccountMeta::new_readonly(*account, false)),
+    );
+    Instruction {
+        program_id: PROGRAM_ID,
+        accounts,
+        data: ix_discriminator("update_circulating_supply_excluded_balance").to_vec(),
     }
 }
