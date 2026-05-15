@@ -24,7 +24,8 @@ The important distinction is that buys and sells use different mechanics:
 | `raw` | `result.token_out_amount` before hard wall | Stablecoin output from normal redemption pricing after redemption fee. |
 | `out` | final `result.token_out_amount` | Actual stablecoin output transferred to the seller. |
 | `h_peg` | `curve_peg_haircut_bps / 10_000` | Additional haircut when utilization is exactly 1. Default is `700`, or 7%. |
-| `e` | `curve_exponent_scaled / 10_000` | Haircut curve exponent. Default is `25_000`, or 2.5. |
+| `e_base` | `curve_exponent_scaled / 10_000` | Base haircut curve exponent. Default is `25_000`, or 2.5. |
+| `e_effective` | `effective_curve_exponent_scaled(...) / 10_000` | Cadence-adjusted exponent used by the sell curve. It can be reduced during high sell cadence, down to `min_cadence_exponent_scaled`. |
 | `S` | `HARD_WALL_SCALE` | Fixed-point scale, currently `1_000_000_000_000`. |
 
 All on-chain math is integer fixed-point math. In formulas below, values are shown as real numbers for readability.
@@ -49,6 +50,14 @@ The buy quote is unchanged:
 
 ```text
 stablecoin input -> process_offer_core(...) -> ONYC output
+```
+
+In formula form, the offer engine deducts the offer fee from the input first:
+
+```text
+buy_net = token_in_amount - ceil(token_in_amount * offer_fee_bps / 10_000)
+token_out_amount = buy_net * 10^(token_out_decimals + 9)
+                 / (current_offer_price * 10^token_in_decimals)
 ```
 
 The buy execution does change the routing of incoming stablecoins.
@@ -125,8 +134,10 @@ The redemption fee comes from the redemption offer if initialized. If the redemp
 Conceptually:
 
 ```text
-token_in_net = token_in_amount * (1 - redemption_fee_bps / 10_000)
-raw = token_in_net converted into stablecoin output using the offer price
+redemption_fee = ceil(token_in_amount * redemption_fee_bps / 10_000)
+token_in_net = token_in_amount - redemption_fee
+raw = token_in_net * current_offer_price * 10^token_out_decimals
+    / (10^token_in_decimals * 10^9)
 ```
 
 Example:
@@ -200,7 +211,7 @@ This is the core hard-wall logic:
 ```text
 effective_liquidity = W
 u = raw / effective_liquidity
-haircut = h_peg * u^e
+haircut = h_peg * u^e_effective
 liquidity_factor = 1 - haircut
 out = raw * liquidity_factor
 ```
@@ -231,6 +242,8 @@ When sensitivity is disabled, the legacy fixed hard-wall behavior is:
 effective_liquidity = min(actual_liquidity, hard_wall_reserve)
 ```
 
+The code contains this fallback, but normal `configure_prop_amm` validation requires `wall_sensitivity_scaled > 0`.
+
 Dynamic wall examples with `L = 10,000` and sensitivity `2.0`:
 
 ```text
@@ -255,7 +268,7 @@ So:
 ```text
 u = 0.10 means this order is 10% of effective liquidity before dampening
 u = 0.50 means this order is 50% of effective liquidity before dampening
-u = 1.00 means the order receives the flat haircut plus the peg haircut
+u = 1.00 means the order receives the peg haircut
 large u means the order can be dampened to zero output
 ```
 
@@ -264,21 +277,34 @@ large u means the order can be dampened to zero output
 The sell-side haircut is:
 
 ```text
-haircut(u) = h_peg * u^e
+haircut(u) = h_peg * u^e_effective
 ```
 
 Where:
 
 ```text
 h_peg = curve_peg_haircut_bps / 10_000
-e = curve_exponent_scaled / 10_000
+e_base = curve_exponent_scaled / 10_000
+quote_trade_count = current sell trade count if current epoch is active, else 0
+reduction_scaled =
+  floor(cadence_sensitivity_scaled * quote_trade_count / cadence_threshold / 1,000)
+  * 1,000
+effective_curve_exponent_scaled =
+  max(min_cadence_exponent_scaled, curve_exponent_scaled - reduction_scaled)
+e_effective = effective_curve_exponent_scaled / 10_000
 ```
 
-With current defaults:
+The cadence adjustment is based on the current epoch sell trade count. With no cadence adjustment, current defaults are:
 
 ```text
+pool_target_bps = 1,500
 h_peg = 700 / 10,000 = 0.07
-e = 25,000 / 10,000 = 2.5
+e_effective = 25,000 / 10,000 = 2.5
+min_cadence_exponent_scaled = 1,000
+cadence_threshold = 20
+cadence_sensitivity_scaled = 10,000
+epoch_duration_seconds = 86,400
+wall_sensitivity_scaled = 20,000
 ```
 
 So:
@@ -337,38 +363,38 @@ The user has `4,750 USDC` of raw redemption value to pass through the dampening 
 
 ### 2. Apply Dampening
 
-The vault is at the target reserve, so:
+The vault is at the target reserve and default wall sensitivity is `2.0`, so the current sell's own raw value moves the dynamic wall before utilization is calculated:
 
 ```text
-effective_liquidity = min(10,000, 10,000)
-                    = 10,000
+effective_liquidity = 10,000 / (1 + 2.0 * (4,750 / 10,000))
+                    ~= 5,128
 
-u = 4,750 / 10,000
-  = 0.475
+u = 4,750 / 5,128
+  ~= 0.926
 ```
 
 With the default curve:
 
 ```text
-haircut = 0.07 * 0.475^2.5
-        ~= 0.0109
+haircut = 0.07 * 0.926^2.5
+        ~= 0.0578
 
-liquidity_factor = 1 - 0.0109
-                 = 0.9891
+liquidity_factor = 1 - 0.0578
+                 = 0.9422
 
-out = 4,750 * 0.9891
-    ~= 4,698 USDC
+out = 4,750 * 0.9422
+    ~= 4,475 USDC
 ```
 
-So the user expected about `5,000 USDC` before fee, has `4,750 USDC` raw value after fee, and actually receives about `4,698 USDC` after hard-wall dampening.
+So the user expected about `5,000 USDC` before fee, has `4,750 USDC` raw value after fee, and actually receives about `4,475 USDC` after dynamic-wall dampening.
 
 ### 3. Vault State Updates
 
 The vault loses the actual output:
 
 ```text
-vault_after = 10,000 - 4,698
-            = 5,302 USDC
+vault_after = 10,000 - 4,475
+            = 5,525 USDC
 ```
 
 The next seller starts from the new lower vault balance.
@@ -390,9 +416,25 @@ Five sells with raw budget 1,000 each
 The current model prices each order independently:
 
 ```text
-out = raw * f(raw / min(current_vault, hard_wall_reserve))
+effective_liquidity = dynamic_wall_position(current_vault, effective_sell_volume, wall_sensitivity)
+out = raw * f(raw / effective_liquidity)
 ```
 
 That means each smaller order receives a smaller utilization and therefore a smaller haircut. However, each sell also increases global net sell pressure, so later split orders see a smaller wall.
 
 The test `test_dynamic_wall_accumulates_sell_pressure_and_buys_relieve_it` documents that sell pressure worsens later sell quotes and ONyc buys relieve current-epoch pressure.
+
+## Configuration Constraints
+
+Normal Prop AMM configuration requires:
+
+```text
+pool_target_bps <= 10,000
+curve_peg_haircut_bps <= 10,000
+curve_exponent_scaled in [1,000, 100,000], in 1,000 increments
+min_cadence_exponent_scaled in [1,000, 10,000], in 1,000 increments
+cadence_threshold > 0
+cadence_sensitivity_scaled <= 100,000
+epoch_duration_seconds > 0
+wall_sensitivity_scaled > 0
+```

@@ -8,10 +8,16 @@ The program is the sole authority for ONyc pricing. Price is derived from the NA
 
 Granular fees are applied to both directions to capture protocol revenue and manage churn.
 
-**Buy Price (`price_buy`):**
+**Buy Quote (`token_out_amount`):**
+
+Prop AMM buys use the normal offer engine. The active offer vector determines the current price, the offer fee is deducted from the stablecoin input, and the net input is converted into ONYC output.
 
 $$
-price\\_buy = NAV \times \left(1 + \frac{buy\\_fee\\_bps}{10,000}\right)
+\mathrm{buy\_net} = \mathrm{token\_in\_amount} - \left\lceil \frac{\mathrm{token\_in\_amount} \times \mathrm{offer\_fee\_bps}}{10,000} \right\rceil
+$$
+
+$$
+\mathrm{token\_out\_amount} = \frac{\mathrm{buy\_net} \times 10^{\mathrm{token\_out\_decimals} + 9}}{\mathrm{current\_offer\_price} \times 10^{\mathrm{token\_in\_decimals}}}
 $$
 
 **Raw Sell Value (`raw_sell_value_stable`):**
@@ -19,11 +25,11 @@ $$
 Before hard-wall dampening, the sell path applies the redemption offer fee:
 
 $$
-net\\_margin = 1 - \frac{redemption\\_fee\\_bps}{10,000}
+\mathrm{sell\_net} = \mathrm{token\_in\_amount} - \left\lceil \frac{\mathrm{token\_in\_amount} \times \mathrm{redemption\_fee\_bps}}{10,000} \right\rceil
 $$
 
 $$
-raw\\_sell\\_value = NAV \times amount\\_{ONyc} \times net\\_margin
+\mathrm{raw\_sell\_value} = \frac{\mathrm{sell\_net} \times \mathrm{current\_offer\_price} \times 10^{\mathrm{token\_out\_decimals}}}{10^{\mathrm{token\_in\_decimals}} \times 10^9}
 $$
 
 If the redemption offer PDA is valid but uninitialized, `redemption_fee_bps = 0`.
@@ -47,13 +53,13 @@ The sell output is anchored to the actual redemption vault balance and current n
 **Step 1: Calculate Hard-Wall Reserve (`R`)**
 
 $$
-R = TVL \times \frac{pool\\_target\\_bps}{10,000}
+R = TVL \times \frac{\mathrm{pool\_target\_bps}}{10,000}
 $$
 
 Where:
 
 $$
-pool\\_target\\_bps = 1,500
+\mathrm{pool\_target\_bps} = 1,500
 $$
 
 So by default:
@@ -84,7 +90,7 @@ The current ONYC sell's own raw stable value is included in `effective_volume`, 
 Let:
 
 $$
-L = actual\\_liquidity
+L = \mathrm{actual\_liquidity}
 $$
 
 Where `actual_liquidity` is the current redemption vault balance for the output stablecoin.
@@ -92,7 +98,7 @@ Where `actual_liquidity` is the current redemption vault balance for the output 
 The wall is:
 
 $$
-wall = \frac{L}{1 + wall\\_sensitivity \times \frac{effective\\_volume}{L}}
+\mathrm{wall} = \frac{L}{1 + \mathrm{wall\_sensitivity} \times \frac{\mathrm{effective\_volume}}{L}}
 $$
 
 The program uses this wall as effective liquidity while dynamic wall sensitivity is enabled.
@@ -104,7 +110,7 @@ The program uses this wall as effective liquidity while dynamic wall sensitivity
 The current curve is an endpoint dampening curve. It calculates utilization from the current order's raw sell value:
 
 $$
-u = \frac{raw\\_sell\\_value}{effective\\_liquidity}
+u = \frac{\mathrm{raw\_sell\_value}}{\mathrm{effective\_liquidity}}
 $$
 
 Where:
@@ -121,42 +127,88 @@ When `u >= 1`, the curve can dampen the sell to zero output. This is allowed as 
 
 ### 2.6 Haircut Function
 
-The haircut function combines a flat minimum haircut with a utilization-based curve.
+The haircut function is a utilization-based curve.
 
 $$
-h_{min} = \frac{min\\_liquidation\\_haircut\\_bps}{10,000}
-$$
-
-$$
-h_{peg} = \frac{curve\\_peg\\_haircut\\_bps}{10,000}
+h_{\mathrm{peg}} = \frac{\mathrm{curve\_peg\_haircut\_bps}}{10,000}
 $$
 
 $$
-e = \frac{curve\\_exponent\\_scaled}{10,000}
+e_{\mathrm{base}} = \frac{\mathrm{curve\_exponent\_scaled}}{10,000}
+$$
+
+Cadence can reduce the effective exponent during an active sell-heavy epoch:
+
+$$
+\mathrm{quote\_trade\_count} =
+\begin{cases}
+\mathrm{curr\_sell\_trade\_count}, & \text{if the current epoch is active} \\
+0, & \text{otherwise}
+\end{cases}
 $$
 
 $$
-haircut(u) = h_{min} + h_{peg} \times u^e
+\mathrm{reduction\_scaled}
+= 1,000 \times \left\lfloor
+\frac{\mathrm{cadence\_sensitivity\_scaled} \times \mathrm{quote\_trade\_count}}
+{\mathrm{cadence\_threshold} \times 1,000}
+\right\rfloor
+$$
+
+$$
+\mathrm{effective\_curve\_exponent\_scaled}
+= \max\left(
+  \mathrm{min\_cadence\_exponent\_scaled},
+  \mathrm{curve\_exponent\_scaled} - \mathrm{reduction\_scaled}
+\right)
+$$
+
+$$
+e_{\mathrm{effective}} = \frac{\mathrm{effective\_curve\_exponent\_scaled}}{10,000}
+$$
+
+$$
+\mathrm{haircut}(u) = h_{\mathrm{peg}} \times u^{e_{\mathrm{effective}}}
 $$
 
 Default parameters:
 
 $$
-min\\_liquidation\\_haircut\\_bps = 50
+\mathrm{pool\_target\_bps} = 1,500
 $$
 
 $$
-curve\\_peg\\_haircut\\_bps = 700
+\mathrm{curve\_peg\_haircut\_bps} = 700
 $$
 
 $$
-curve\\_exponent\\_scaled = 25,000
+\mathrm{curve\_exponent\_scaled} = 25,000
 $$
 
-So the default haircut curve is:
+$$
+\mathrm{min\_cadence\_exponent\_scaled} = 1,000
+$$
 
 $$
-haircut(u) = 0.005 + 0.07u^{2.5}
+\mathrm{cadence\_threshold} = 20
+$$
+
+$$
+\mathrm{cadence\_sensitivity\_scaled} = 10,000
+$$
+
+$$
+\mathrm{epoch\_duration\_seconds} = 86,400
+$$
+
+$$
+\mathrm{wall\_sensitivity\_scaled} = 20,000
+$$
+
+With no cadence adjustment, the default haircut curve is:
+
+$$
+\mathrm{haircut}(u) = 0.07u^{2.5}
 $$
 
 ---
@@ -166,13 +218,13 @@ $$
 The program converts the haircut into a liquidity factor:
 
 $$
-liquidity\\_factor = max(0, 1 - haircut(u))
+\mathrm{liquidity\_factor} = \max(0, 1 - \mathrm{haircut}(u))
 $$
 
 Then it applies that factor directly to the raw sell value:
 
 $$
-final\\_output = raw\\_sell\\_value \times liquidity\\_factor
+\mathrm{final\_output} = \mathrm{raw\_sell\_value} \times \mathrm{liquidity\_factor}
 $$
 
 So, in code terms:
@@ -182,7 +234,7 @@ effective_liquidity = min(actual_liquidity, hard_wall_reserve)
 if dynamic wall sensitivity is enabled:
   effective_liquidity = dynamic_wall_position
 u = raw_sell_value_stable / effective_liquidity
-haircut = curve_peg_haircut * u^curve_exponent
+haircut = curve_peg_haircut * u^effective_curve_exponent
 final_output = raw_sell_value_stable * max(0, 1 - haircut)
 ```
 
@@ -193,6 +245,10 @@ reject if raw_sell_value_stable > actual_liquidity
 ```
 
 The dynamic wall is a pricing input, not a rejection threshold. If pressure pushes `effective_liquidity` far below the order's raw value, the final output can saturate at zero.
+
+The code also contains a legacy fallback where `wall_sensitivity_scaled = 0` uses `min(actual_liquidity, hard_wall_reserve)`, but normal Prop AMM configuration rejects zero wall sensitivity.
+
+Normal Prop AMM configuration also requires `curve_exponent_scaled` to be between `1,000` and `100,000` in `1,000` increments, `min_cadence_exponent_scaled` to be between `1,000` and `10,000` in `1,000` increments, `cadence_threshold > 0`, `cadence_sensitivity_scaled <= 100,000`, and `epoch_duration_seconds > 0`.
 
 This is intentionally simple and cheap to compute.
 
