@@ -59,13 +59,9 @@ pub struct FulfillRedemptionRequest<'info> {
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
-        has_one = boss @ crate::OnreError::InvalidBoss,
         constraint = !state.is_killed @ crate::OnreError::KillSwitchActivated
     )]
     pub state: Box<Account<'info, State>>,
-
-    /// CHECK: Account validation is enforced through state account constraint
-    pub boss: UncheckedAccount<'info>,
 
     /// CHECK: Validated in instruction logic against the loaded redemption offer.
     pub offer: UncheckedAccount<'info>,
@@ -109,9 +105,13 @@ pub struct FulfillRedemptionRequest<'info> {
     #[account(mut)]
     pub user_token_out_account: UncheckedAccount<'info>,
 
+    /// CHECK: PDA and data are validated/initialized in instruction logic.
+    #[account(mut)]
+    pub offer_proceeds_vault: UncheckedAccount<'info>,
+
     /// CHECK: Validated and optionally initialized in instruction logic.
     #[account(mut)]
-    pub boss_token_in_account: UncheckedAccount<'info>,
+    pub offer_proceeds_token_in_account: UncheckedAccount<'info>,
 
     /// CHECK: PDA and data are validated/initialized in instruction logic.
     #[account(mut)]
@@ -192,7 +192,6 @@ pub fn fulfill_redemption_request<'info>(
     ctx: Context<'info, FulfillRedemptionRequest<'info>>,
     amount: u64,
 ) -> Result<()> {
-    msg!("fulfill: loading offer/request/mints");
     let offer = AccountLoader::<Offer>::try_from(&ctx.accounts.offer)?;
     let mut redemption_request =
         Account::<RedemptionRequest>::try_from(&ctx.accounts.redemption_request)?;
@@ -216,7 +215,6 @@ pub fn fulfill_redemption_request<'info>(
         ctx.accounts.redemption_offer.key(),
         crate::OnreError::OfferMismatch
     );
-    msg!("fulfill: validating redeemer/admin");
     require_keys_eq!(
         ctx.accounts.redeemer.key(),
         redemption_request.redeemer,
@@ -227,7 +225,6 @@ pub fn fulfill_redemption_request<'info>(
         ctx.accounts.state.redemption_admin,
         crate::OnreError::Unauthorized
     );
-    msg!("fulfill: validating offer vault onyc ata");
     validate_associated_token_address(
         &ctx.accounts.offer_vault_onyc_account,
         &ctx.accounts.offer_vault_authority.key(),
@@ -235,7 +232,6 @@ pub fn fulfill_redemption_request<'info>(
         &ctx.accounts.token_in_program.key(),
         crate::OnreError::InvalidOfferVaultOnycAccount,
     )?;
-    msg!("fulfill: validating redemption vault token in ata");
     let vault_token_in_account = get_associated_token_account(
         &ctx.accounts.vault_token_in_account,
         &ctx.accounts.redemption_vault_authority.key(),
@@ -243,7 +239,6 @@ pub fn fulfill_redemption_request<'info>(
         &ctx.accounts.token_in_program.key(),
         crate::OnreError::InvalidVaultTokenInAccount,
     )?;
-    msg!("fulfill: validating redemption vault token out ata");
     let vault_token_out_account = get_associated_token_account(
         &ctx.accounts.vault_token_out_account,
         &ctx.accounts.redemption_vault_authority.key(),
@@ -251,7 +246,6 @@ pub fn fulfill_redemption_request<'info>(
         &ctx.accounts.token_out_program.key(),
         crate::OnreError::InvalidVaultTokenOutAccount,
     )?;
-    msg!("fulfill: ensuring user token out ata");
     let user_token_out_account = get_or_create_associated_token_account(EnsureAtaParams {
         ata_account: &ctx.accounts.user_token_out_account,
         payer: ctx.accounts.redemption_admin.to_account_info(),
@@ -265,19 +259,17 @@ pub fn fulfill_redemption_request<'info>(
         token_program_id: ctx.accounts.token_out_program.key(),
         invalid_account_error: crate::OnreError::InvalidUserTokenOutAccount,
     })?;
-    msg!("fulfill: ensuring boss token in ata");
-    let boss_token_in_account = get_or_create_associated_token_account(EnsureAtaParams {
-        ata_account: &ctx.accounts.boss_token_in_account,
+    let offer_proceeds_token_in_account = get_or_create_configurable_vault_token_account::<
+        { ConfigurableVaultKind::OfferProceeds.as_u8() },
+    >(ConfigurableVaultTokenAccountParams {
+        vault: &ctx.accounts.offer_proceeds_vault,
+        token_account: &ctx.accounts.offer_proceeds_token_in_account,
         payer: ctx.accounts.redemption_admin.to_account_info(),
-        authority_account: ctx.accounts.boss.to_account_info(),
         mint_account: ctx.accounts.token_in_mint.to_account_info(),
         token_program: ctx.accounts.token_in_program.to_account_info(),
         associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
         system_program: ctx.accounts.system_program.to_account_info(),
-        authority: ctx.accounts.boss.key(),
-        mint: token_in_mint.key(),
-        token_program_id: ctx.accounts.token_in_program.key(),
-        invalid_account_error: crate::OnreError::InvalidBossTokenInAccount,
+        program_id: ctx.program_id,
     })?;
     let mut redemption_offer = load_redemption_offer(
         ctx.program_id,
@@ -313,7 +305,7 @@ pub fn fulfill_redemption_request<'info>(
             token_out_mint: &token_out_mint,
             token_out_program: &ctx.accounts.token_out_program,
             user_token_out_account: &user_token_out_account,
-            boss_token_in_account: &boss_token_in_account,
+            token_in_destination_account: &offer_proceeds_token_in_account,
             offer_fee_token_in_account: &offer_fee_token_in_account,
             mint_authority: &ctx.accounts.mint_authority,
             redemption_vault_authority: &ctx.accounts.redemption_vault_authority,
@@ -345,7 +337,7 @@ struct ExecuteFulfillRedemptionRequestParams<'a, 'info> {
     token_out_mint: &'a InterfaceAccount<'info, Mint>,
     token_out_program: &'a Interface<'info, TokenInterface>,
     user_token_out_account: &'a InterfaceAccount<'info, TokenAccount>,
-    boss_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
+    token_in_destination_account: &'a InterfaceAccount<'info, TokenAccount>,
     offer_fee_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
     mint_authority: &'a UncheckedAccount<'info>,
     redemption_vault_authority: &'a UncheckedAccount<'info>,
@@ -473,7 +465,7 @@ fn execute_fulfill_redemption_request(
         token_in_net_amount,
         token_in_fee_amount,
         vault_token_in_account: params.vault_token_in_account,
-        boss_token_in_account: params.boss_token_in_account,
+        token_in_destination_account: params.token_in_destination_account,
         fee_destination_token_in_account: params.offer_fee_token_in_account,
         redemption_vault_authority: &params.redemption_vault_authority.to_account_info(),
         redemption_vault_authority_bump: params.redemption_vault_authority_bump,

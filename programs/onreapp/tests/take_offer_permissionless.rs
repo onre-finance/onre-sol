@@ -158,11 +158,14 @@ fn test_take_offer_permissionless_with_valid_approval() {
     );
     assert_eq!(user_onyc, 1_000_000_000_000);
 
-    let boss_usdc = get_token_balance(
+    let proceeds_usdc = get_token_balance(
         &ctx.svm,
         &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
-    assert_eq!(boss_usdc, token_in_amount, "boss should have received USDC");
+    assert_eq!(
+        proceeds_usdc, token_in_amount,
+        "boss should have received USDC"
+    );
 }
 
 #[test]
@@ -779,10 +782,7 @@ fn test_permissionless_user_to_boss_transfer() {
         &ctx.svm,
         &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
     );
-    let boss_usdc_before = get_token_balance(
-        &ctx.svm,
-        &get_associated_token_address(&boss, &ctx.usdc_mint),
-    );
+    let proceeds_usdc_before = 0;
     let supply_before = get_mint_supply(&ctx.svm, &ctx.usdc_mint);
 
     let ix = build_take_offer_permissionless_ix(
@@ -801,7 +801,7 @@ fn test_permissionless_user_to_boss_transfer() {
         &ctx.svm,
         &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
     );
-    let boss_usdc_after = get_token_balance(
+    let proceeds_usdc_after = get_token_balance(
         &ctx.svm,
         &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
@@ -812,7 +812,7 @@ fn test_permissionless_user_to_boss_transfer() {
         "no supply change (not burning)"
     );
     assert_eq!(user_usdc_before - user_usdc_after, token_in_amount);
-    assert_eq!(boss_usdc_after - boss_usdc_before, token_in_amount);
+    assert_eq!(proceeds_usdc_after - proceeds_usdc_before, token_in_amount);
 
     // Verify intermediary accounts are empty
     let (permissionless_auth, _) = find_permissionless_authority_pda();
@@ -993,12 +993,12 @@ fn test_permissionless_fee_calculations_when_minting() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
-    // Boss receives full amount (fee included in transfer)
-    let boss_usdc = get_token_balance(
+    // Legacy take_offer_permissionless sends the full amount to the boss account.
+    let proceeds_usdc = get_token_balance(
         &ctx.svm,
         &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
-    assert_eq!(boss_usdc, token_in_amount);
+    assert_eq!(proceeds_usdc, token_in_amount);
 
     // User receives token_out based on net amount after fee
     // fee = ceil(1_050_000 * 500 / 10000) = ceil(52500) = 52_500
@@ -1247,8 +1247,9 @@ fn test_permissionless_token2022_basic_success() {
     );
     assert_eq!(user_onyc, 1_000_000_000);
 
-    let boss_usdc = get_token_balance(&svm, &get_associated_token_address_2022(&boss, &usdc_mint));
-    assert_eq!(boss_usdc, 1_000_000);
+    let proceeds_usdc =
+        get_token_balance(&svm, &get_associated_token_address_2022(&boss, &usdc_mint));
+    assert_eq!(proceeds_usdc, 1_000_000);
 }
 
 #[test]

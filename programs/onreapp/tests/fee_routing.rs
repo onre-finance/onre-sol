@@ -418,9 +418,7 @@ fn test_withdraw_offer_fees_allows_non_boss_to_configured_destination() {
 
     let caller = Keypair::new();
     let destination = Keypair::new();
-    ctx.svm
-        .airdrop(&caller.pubkey(), INITIAL_LAMPORTS)
-        .unwrap();
+    ctx.svm.airdrop(&caller.pubkey(), INITIAL_LAMPORTS).unwrap();
     ctx.svm
         .airdrop(&destination.pubkey(), INITIAL_LAMPORTS)
         .unwrap();

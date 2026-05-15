@@ -63,13 +63,9 @@ pub struct OpenSwapSell<'info> {
     #[account(
         seeds = [crate::constants::seeds::STATE],
         bump = state.bump,
-        has_one = boss @ crate::OnreError::InvalidBoss,
         constraint = state.is_killed == false @ crate::OnreError::KillSwitchActivated
     )]
     pub state: Box<Account<'info, State>>,
-
-    /// CHECK: validated through state.has_one
-    pub boss: UncheckedAccount<'info>,
 
     /// CHECK: PDA derivation validated in instruction logic
     pub offer_vault_authority: UncheckedAccount<'info>,
@@ -104,9 +100,13 @@ pub struct OpenSwapSell<'info> {
     #[account(mut)]
     pub user_token_out_account: UncheckedAccount<'info>,
 
-    /// CHECK: validated as canonical ATA in instruction logic
+    /// CHECK: PDA and data are validated/initialized in instruction logic.
     #[account(mut)]
-    pub boss_token_in_account: UncheckedAccount<'info>,
+    pub prop_amm_proceeds_vault: UncheckedAccount<'info>,
+
+    /// CHECK: Validated and optionally initialized in instruction logic.
+    #[account(mut)]
+    pub prop_amm_proceeds_token_in_account: UncheckedAccount<'info>,
 
     /// CHECK: PDA and data are validated/initialized in instruction logic.
     #[account(mut)]
@@ -228,18 +228,17 @@ fn execute_open_swap_sell<'info>(
         token_program_id: ctx.accounts.token_out_program.key(),
         invalid_account_error: crate::OnreError::InvalidUserTokenOutAccount,
     })?;
-    let boss_token_in_account = get_or_create_associated_token_account(EnsureAtaParams {
-        ata_account: &ctx.accounts.boss_token_in_account,
+    let prop_amm_proceeds_token_in_account = get_or_create_configurable_vault_token_account::<
+        { ConfigurableVaultKind::PropAmmProceeds.as_u8() },
+    >(ConfigurableVaultTokenAccountParams {
+        vault: &ctx.accounts.prop_amm_proceeds_vault,
+        token_account: &ctx.accounts.prop_amm_proceeds_token_in_account,
         payer: ctx.accounts.user.to_account_info(),
-        authority_account: ctx.accounts.boss.to_account_info(),
         mint_account: ctx.accounts.token_in_mint.to_account_info(),
         token_program: ctx.accounts.token_in_program.to_account_info(),
         associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
         system_program: ctx.accounts.system_program.to_account_info(),
-        authority: ctx.accounts.boss.key(),
-        mint: ctx.accounts.token_in_mint.key(),
-        token_program_id: ctx.accounts.token_in_program.key(),
-        invalid_account_error: crate::OnreError::InvalidBossTokenInAccount,
+        program_id: ctx.program_id,
     })?;
     let prop_amm_fee_token_in_account = get_or_create_configurable_vault_token_account::<
         { ConfigurableVaultKind::PropAmmFee.as_u8() },
@@ -352,7 +351,7 @@ fn execute_open_swap_sell<'info>(
         token_in_net_amount: result.token_in_net_amount,
         token_in_fee_amount: result.token_in_fee_amount,
         vault_token_in_account: &redemption_vault_token_in_account,
-        boss_token_in_account: &boss_token_in_account,
+        token_in_destination_account: &prop_amm_proceeds_token_in_account,
         fee_destination_token_in_account: &prop_amm_fee_token_in_account,
         redemption_vault_authority: &ctx.accounts.redemption_vault_authority.to_account_info(),
         redemption_vault_authority_bump: ctx.bumps.redemption_vault_authority,

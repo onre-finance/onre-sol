@@ -7,6 +7,7 @@ use onreapp::instructions::prop_amm::{
     dynamic_wall_position, effective_curve_exponent_scaled, preview_effective_sell_volume,
     PropAmmState, SwapQuote,
 };
+use onreapp::state::ConfigurableVaultKind;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
@@ -492,9 +493,10 @@ fn test_open_swap_buy_refills_redemption_vault_until_target_then_overflows_to_bo
         &ctx.usdc_mint,
         &TOKEN_PROGRAM_ID,
     );
-    let boss_usdc = get_associated_token_address(&boss, &ctx.usdc_mint);
+    let proceeds_usdc =
+        get_associated_token_address(&find_prop_amm_proceeds_vault_pda().0, &ctx.usdc_mint);
     assert_eq!(get_token_balance(&ctx.svm, &redemption_vault_usdc), 0);
-    assert_eq!(get_token_balance(&ctx.svm, &boss_usdc), 1_000_000);
+    assert_eq!(get_token_balance(&ctx.svm, &proceeds_usdc), 1_000_000);
 
     advance_slot(&mut ctx.svm);
     refresh_circulating_supply_excluded_balance(
@@ -526,7 +528,38 @@ fn test_open_swap_buy_refills_redemption_vault_until_target_then_overflows_to_bo
     send_tx(&mut ctx.svm, &[second_buy_ix], &[&ctx.payer, &ctx.user]).unwrap();
 
     assert_eq!(get_token_balance(&ctx.svm, &redemption_vault_usdc), 150_000);
-    assert_eq!(get_token_balance(&ctx.svm, &boss_usdc), 1_850_001);
+    assert_eq!(get_token_balance(&ctx.svm, &proceeds_usdc), 1_850_001);
+
+    let destination = Keypair::new();
+    ctx.svm
+        .airdrop(&destination.pubkey(), INITIAL_LAMPORTS)
+        .unwrap();
+    let (prop_amm_proceeds_vault_pda, _) = find_prop_amm_proceeds_vault_pda();
+    let ix = build_set_configurable_vault_destination_ix(
+        &boss,
+        &prop_amm_proceeds_vault_pda,
+        ConfigurableVaultKind::PropAmmProceeds.as_u8(),
+        &destination.pubkey(),
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+    let ix = build_withdraw_configurable_vault_ix(
+        &destination.pubkey(),
+        &prop_amm_proceeds_vault_pda,
+        &destination.pubkey(),
+        &ctx.usdc_mint,
+        ConfigurableVaultKind::PropAmmProceeds.as_u8(),
+        0,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&destination]).unwrap();
+    assert_eq!(get_token_balance(&ctx.svm, &proceeds_usdc), 0);
+    assert_eq!(
+        get_token_balance(
+            &ctx.svm,
+            &get_associated_token_address(&destination.pubkey(), &ctx.usdc_mint),
+        ),
+        1_850_001
+    );
 }
 
 #[test]

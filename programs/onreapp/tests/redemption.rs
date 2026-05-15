@@ -1768,10 +1768,11 @@ fn test_fulfill_redemption_request_transfer_mode_fee_to_boss() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
-    // In transfer mode (no mint authority), boss gets net amount only (fee goes to fee vault PDA ATA)
+    // In transfer mode (no mint authority), proceeds vault gets net amount only.
     // fee=5%, net=950_000_000
-    let boss_onyc_ata = get_associated_token_address(&boss, &ctx.onyc_mint);
-    assert_eq!(get_token_balance(&ctx.svm, &boss_onyc_ata), 950_000_000);
+    let proceeds_onyc_ata =
+        get_associated_token_address(&find_offer_proceeds_vault_pda().0, &ctx.onyc_mint);
+    assert_eq!(get_token_balance(&ctx.svm, &proceeds_onyc_ata), 950_000_000);
 }
 
 #[test]
@@ -2806,10 +2807,14 @@ fn fulfill_token2022_with_params(
         // Net amount after fee (ceiling division matches on-chain calculation for round bps)
         let fee = 1_000_000_000u64 * fee_bps as u64 / 10_000;
         let net = 1_000_000_000u64 - fee;
-        // Boss receives net onyc (transfer mode); fee goes to fee vault PDA ATA
-        let boss_onyc_ata = get_associated_token_address_2022(&boss, &onyc_mint);
-        let boss_onyc = get_token_balance(&svm, &boss_onyc_ata);
-        assert_eq!(boss_onyc, net, "boss receives net onyc in transfer mode");
+        // Proceeds vault receives net onyc (transfer mode); fee goes to fee vault PDA ATA
+        let proceeds_onyc_ata =
+            get_associated_token_address_2022(&find_offer_proceeds_vault_pda().0, &onyc_mint);
+        let proceeds_onyc = get_token_balance(&svm, &proceeds_onyc_ata);
+        assert_eq!(
+            proceeds_onyc, net,
+            "proceeds vault receives net onyc in transfer mode"
+        );
         let (fee_vault_pda, _) = find_offer_fee_vault_pda();
         let fee_vault_ata = get_associated_token_address_2022(&fee_vault_pda, &onyc_mint);
         assert_eq!(

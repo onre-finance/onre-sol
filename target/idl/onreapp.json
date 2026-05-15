@@ -2173,12 +2173,6 @@
           }
         },
         {
-          "name": "boss",
-          "relations": [
-            "state"
-          ]
-        },
-        {
           "name": "offer"
         },
         {
@@ -2260,7 +2254,11 @@
           "writable": true
         },
         {
-          "name": "boss_token_in_account",
+          "name": "offer_proceeds_vault",
+          "writable": true
+        },
+        {
+          "name": "offer_proceeds_token_in_account",
           "writable": true
         },
         {
@@ -5010,12 +5008,6 @@
           }
         },
         {
-          "name": "boss",
-          "relations": [
-            "state"
-          ]
-        },
-        {
           "name": "offer_vault_authority"
         },
         {
@@ -5097,7 +5089,11 @@
           "writable": true
         },
         {
-          "name": "boss_token_in_account",
+          "name": "prop_amm_proceeds_vault",
+          "writable": true
+        },
+        {
+          "name": "prop_amm_proceeds_token_in_account",
           "writable": true
         },
         {
@@ -5288,12 +5284,6 @@
           }
         },
         {
-          "name": "boss",
-          "relations": [
-            "state"
-          ]
-        },
-        {
           "name": "offer_vault_authority"
         },
         {
@@ -5371,7 +5361,11 @@
           "writable": true
         },
         {
-          "name": "boss_token_in_account",
+          "name": "prop_amm_proceeds_vault",
+          "writable": true
+        },
+        {
+          "name": "prop_amm_proceeds_token_in_account",
           "writable": true
         },
         {
@@ -7850,12 +7844,6 @@
         },
         {
           "name": "boss_token_in_account",
-          "docs": [
-            "Boss's input token account for receiving payments",
-            "",
-            "Destination account where the boss receives token_in payments",
-            "from users taking offers."
-          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -8049,7 +8037,7 @@
         {
           "name": "boss",
           "docs": [
-            "The boss account authorized to receive token_in payments",
+            "The boss account authorized by program state",
             "",
             "Must match the boss stored in program state for security validation."
           ],
@@ -8207,7 +8195,7 @@
             "Intermediary account for routing token_in payments",
             "",
             "Temporary holding account that receives user payments before forwarding",
-            "to boss, enabling permissionless operations without direct relationships."
+            "to the boss account, enabling permissionless operations without direct relationships."
           ],
           "writable": true,
           "pda": {
@@ -8381,12 +8369,6 @@
         },
         {
           "name": "boss_token_in_account",
-          "docs": [
-            "Boss's input token account for receiving payments",
-            "",
-            "Final destination account where the boss receives token_in payments",
-            "from users taking offers via intermediary routing."
-          ],
           "writable": true
         },
         {
@@ -8502,12 +8484,6 @@
               }
             ]
           }
-        },
-        {
-          "name": "boss",
-          "relations": [
-            "state"
-          ]
         },
         {
           "name": "vault_authority"
@@ -8713,7 +8689,11 @@
           "writable": true
         },
         {
-          "name": "boss_token_in_account",
+          "name": "offer_proceeds_vault",
+          "writable": true
+        },
+        {
+          "name": "offer_proceeds_token_in_account",
           "writable": true
         },
         {
@@ -8847,12 +8827,6 @@
               }
             ]
           }
-        },
-        {
-          "name": "boss",
-          "relations": [
-            "state"
-          ]
         },
         {
           "name": "vault_authority"
@@ -9047,7 +9021,11 @@
           "writable": true
         },
         {
-          "name": "boss_token_in_account",
+          "name": "offer_proceeds_vault",
+          "writable": true
+        },
+        {
+          "name": "offer_proceeds_token_in_account",
           "writable": true
         },
         {
@@ -12387,6 +12365,12 @@
           },
           {
             "name": "PropAmmFee"
+          },
+          {
+            "name": "OfferProceeds"
+          },
+          {
+            "name": "PropAmmProceeds"
           }
         ]
       }

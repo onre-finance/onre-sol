@@ -117,8 +117,8 @@ pub struct ExecuteRedemptionOpsParams<'a, 'info> {
     pub token_in_fee_amount: u64,
     /// Vault account containing locked token_in
     pub vault_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
-    /// Boss's account for receiving token_in net amount when program lacks mint authority
-    pub boss_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
+    /// Account for receiving token_in net amount when program lacks mint authority
+    pub token_in_destination_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Account that receives the fee portion of token_in
     pub fee_destination_token_in_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Authority for vault operations
@@ -210,9 +210,9 @@ mod tests {
 /// # Token In Processing (already locked in vault)
 /// - If program has mint authority:
 ///   1. Burn net amount from vault
-///   2. Transfer fee amount to boss (if fee > 0)
+///   2. Transfer fee amount to configured fee destination (if fee > 0)
 /// - If program lacks mint authority:
-///   - Transfer full amount (net + fee) from vault to boss
+///   - Transfer net amount to configured proceeds destination and fee to fee destination
 ///
 /// # Token Out Processing
 /// - If program has mint authority: mint directly to user
@@ -239,7 +239,7 @@ pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Resu
         &[params.redemption_vault_authority_bump],
     ]];
 
-    // Step 1a: Handle token_in (burn or transfer to boss)
+    // Step 1a: Handle token_in (burn or transfer to proceeds)
     let has_token_in_mint_authority =
         program_controls_mint(params.token_in_mint, params.mint_authority_pda);
 
@@ -254,12 +254,12 @@ pub fn execute_redemption_operations(params: ExecuteRedemptionOpsParams) -> Resu
             params.token_in_net_amount,
         )?;
     } else {
-        // When program lacks mint authority: transfer net amount to boss, fee to fee destination
+        // When program lacks mint authority: transfer net amount to proceeds, fee to fee destination
         transfer_tokens(
             params.token_in_mint,
             params.token_in_program,
             params.vault_token_in_account,
-            params.boss_token_in_account,
+            params.token_in_destination_account,
             params.redemption_vault_authority,
             Some(vault_authority_signer_seeds),
             params.token_in_net_amount,

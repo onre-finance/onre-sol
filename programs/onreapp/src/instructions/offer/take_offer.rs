@@ -169,10 +169,6 @@ pub struct TakeOffer<'info> {
     )]
     pub user_token_out_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// Boss's input token account for receiving payments
-    ///
-    /// Destination account where the boss receives token_in payments
-    /// from users taking offers.
     #[account(
         mut,
         associated_token::mint = token_in_mint,
@@ -222,13 +218,9 @@ pub struct TakeOfferV2<'info> {
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
-        has_one = boss @ crate::OnreError::InvalidBoss,
         constraint = state.is_killed == false @ crate::OnreError::KillSwitchActivated
     )]
     pub state: Box<Account<'info, State>>,
-
-    /// CHECK: Account validation is enforced through state account constraint
-    pub boss: UncheckedAccount<'info>,
 
     /// CHECK: PDA derivation is validated by seeds constraint
     pub vault_authority: UncheckedAccount<'info>,
@@ -281,9 +273,13 @@ pub struct TakeOfferV2<'info> {
     #[account(mut)]
     pub user_token_out_account: UncheckedAccount<'info>,
 
+    /// CHECK: PDA and data are validated/initialized in instruction logic.
+    #[account(mut)]
+    pub offer_proceeds_vault: UncheckedAccount<'info>,
+
     /// CHECK: Validated and optionally initialized in instruction logic.
     #[account(mut)]
-    pub boss_token_in_account: UncheckedAccount<'info>,
+    pub offer_proceeds_token_in_account: UncheckedAccount<'info>,
 
     /// CHECK: PDA and data are validated/initialized in instruction logic.
     #[account(mut)]
@@ -350,8 +346,8 @@ pub struct TakeOfferV2<'info> {
 ///
 /// # Events
 /// * `TakeOfferEvent` - Emitted with execution details and token amounts
-pub fn take_offer(
-    ctx: Context<TakeOffer>,
+pub fn take_offer<'info>(
+    ctx: Context<'info, TakeOffer<'info>>,
     token_in_amount: u64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
@@ -475,18 +471,17 @@ pub fn execute_take_offer_v2<'info>(
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
     )?;
-    let boss_token_in_account = get_or_create_associated_token_account(EnsureAtaParams {
-        ata_account: &ctx.accounts.boss_token_in_account,
+    let offer_proceeds_token_in_account = get_or_create_configurable_vault_token_account::<
+        { ConfigurableVaultKind::OfferProceeds.as_u8() },
+    >(ConfigurableVaultTokenAccountParams {
+        vault: &ctx.accounts.offer_proceeds_vault,
+        token_account: &ctx.accounts.offer_proceeds_token_in_account,
         payer: ctx.accounts.user.to_account_info(),
-        authority_account: ctx.accounts.boss.to_account_info(),
         mint_account: ctx.accounts.token_in_mint.to_account_info(),
         token_program: ctx.accounts.token_in_program.to_account_info(),
         associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
         system_program: ctx.accounts.system_program.to_account_info(),
-        authority: ctx.accounts.boss.key(),
-        mint: ctx.accounts.token_in_mint.key(),
-        token_program_id: ctx.accounts.token_in_program.key(),
-        invalid_account_error: crate::OnreError::InvalidBossTokenInAccount,
+        program_id: ctx.program_id,
     })?;
     let offer_fee_token_in_account = get_or_create_configurable_vault_token_account::<
         { ConfigurableVaultKind::OfferFee.as_u8() },
@@ -546,7 +541,7 @@ pub fn execute_take_offer_v2<'info>(
             &[vault_authority_bump],
         ]]),
         token_in_source_account: &ctx.accounts.user_token_in_account,
-        token_in_destination_account: &boss_token_in_account,
+        token_in_destination_account: &offer_proceeds_token_in_account,
         token_in_fee_destination_account: &offer_fee_token_in_account,
         token_in_burn_account: &ctx.accounts.vault_token_in_account,
         token_in_burn_authority: &ctx.accounts.vault_authority.to_account_info(),

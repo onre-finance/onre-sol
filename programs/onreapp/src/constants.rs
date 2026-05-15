@@ -59,6 +59,12 @@ pub mod seeds {
     /// Seed suffix for prop AMM fee vault authority
     pub const PROP_AMM_FEE_VAULT: &[u8] = b"prop_amm_fee";
 
+    /// Seed suffix for net proceeds vault authority
+    pub const OFFER_PROCEEDS_VAULT: &[u8] = b"offer_proceeds";
+
+    /// Seed suffix for prop AMM net proceeds vault authority
+    pub const PROP_AMM_PROCEEDS_VAULT: &[u8] = b"prop_amm_proceeds";
+
     /// Seed for the Prop AMM configuration state PDA
     pub const PROP_AMM_STATE: &[u8] = b"prop_amm_state";
 }

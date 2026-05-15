@@ -286,8 +286,8 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `TakeOffer`.
     /// - `token_in_amount`: Amount of token_in to provide.
-    pub fn take_offer(
-        ctx: Context<TakeOffer>,
+    pub fn take_offer<'info>(
+        ctx: Context<'info, TakeOffer<'info>>,
         token_in_amount: u64,
         approval_message: Option<ApprovalMessage>,
     ) -> Result<()> {

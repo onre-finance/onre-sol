@@ -125,7 +125,7 @@ pub fn build_cancel_redemption_request_ix(
 
 pub fn build_fulfill_redemption_request_ix(
     redemption_admin: &Pubkey,
-    boss: &Pubkey,
+    _boss: &Pubkey,
     main_offer: &Pubkey,
     redeemer: &Pubkey,
     token_in_mint: &Pubkey,
@@ -141,6 +141,7 @@ pub fn build_fulfill_redemption_request_ix(
         find_redemption_request_pda(&redemption_offer_pda, request_id);
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
     let (offer_fee_vault_pda, _) = find_offer_fee_vault_pda();
+    let (offer_proceeds_vault_pda, _) = find_offer_proceeds_vault_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
     let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
@@ -162,7 +163,8 @@ pub fn build_fulfill_redemption_request_ix(
     let offer_vault_onyc_ata =
         derive_ata(&offer_vault_authority_pda, token_in_mint, token_in_program);
     let user_token_out_ata = derive_ata(redeemer, token_out_mint, token_out_program);
-    let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
+    let offer_proceeds_token_in_ata =
+        derive_ata(&offer_proceeds_vault_pda, token_in_mint, token_in_program);
     let offer_fee_token_in_ata = derive_ata(&offer_fee_vault_pda, token_in_mint, token_in_program);
     let buffer_vault_onyc_ata = derive_ata(
         &reserve_vault_authority_pda,
@@ -180,7 +182,6 @@ pub fn build_fulfill_redemption_request_ix(
         program_id: PROGRAM_ID,
         accounts: vec![
             AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new_readonly(*boss, false),
             AccountMeta::new_readonly(*main_offer, false),
             AccountMeta::new(redemption_offer_pda, false),
             AccountMeta::new(redemption_request_pda, false),
@@ -192,7 +193,8 @@ pub fn build_fulfill_redemption_request_ix(
             AccountMeta::new(*token_out_mint, false),
             AccountMeta::new_readonly(*token_out_program, false),
             AccountMeta::new(user_token_out_ata, false),
-            AccountMeta::new(boss_token_in_ata, false),
+            AccountMeta::new(offer_proceeds_vault_pda, false),
+            AccountMeta::new(offer_proceeds_token_in_ata, false),
             AccountMeta::new(offer_fee_vault_pda, false),
             AccountMeta::new(offer_fee_token_in_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),

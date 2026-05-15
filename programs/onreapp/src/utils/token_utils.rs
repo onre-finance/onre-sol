@@ -406,8 +406,8 @@ pub struct ExecTokenOpsParams<'a, 'info> {
 /// - Validates that token_in does not have Token-2022 transfer fees
 /// - If program has mint authority:
 ///   - Transfers net amount (after fees) to vault → burns only net amount
-///   - Transfers fee amount directly to boss account
-/// - If program lacks mint authority: transfers full amount directly to boss/destination (standard transfer)
+///   - Transfers fee amount directly to the configured fee destination
+/// - If program lacks mint authority: transfers net amount to the configured proceeds destination
 ///
 /// # Token Out Processing
 /// - Validates that token_out does not have Token-2022 transfer fees
@@ -477,7 +477,7 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
             )?;
         }
     } else {
-        // When program lacks mint authority: transfer net to boss and fee to the fee vault.
+        // When program lacks mint authority: transfer net to proceeds and fee to the fee vault.
         transfer_tokens(
             params.token_in_mint,
             params.token_in_program,

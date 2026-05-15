@@ -2179,12 +2179,6 @@ export type Onreapp = {
           }
         },
         {
-          "name": "boss",
-          "relations": [
-            "state"
-          ]
-        },
-        {
           "name": "offer"
         },
         {
@@ -2266,7 +2260,11 @@ export type Onreapp = {
           "writable": true
         },
         {
-          "name": "bossTokenInAccount",
+          "name": "offerProceedsVault",
+          "writable": true
+        },
+        {
+          "name": "offerProceedsTokenInAccount",
           "writable": true
         },
         {
@@ -5016,12 +5014,6 @@ export type Onreapp = {
           }
         },
         {
-          "name": "boss",
-          "relations": [
-            "state"
-          ]
-        },
-        {
           "name": "offerVaultAuthority"
         },
         {
@@ -5103,7 +5095,11 @@ export type Onreapp = {
           "writable": true
         },
         {
-          "name": "bossTokenInAccount",
+          "name": "propAmmProceedsVault",
+          "writable": true
+        },
+        {
+          "name": "propAmmProceedsTokenInAccount",
           "writable": true
         },
         {
@@ -5294,12 +5290,6 @@ export type Onreapp = {
           }
         },
         {
-          "name": "boss",
-          "relations": [
-            "state"
-          ]
-        },
-        {
           "name": "offerVaultAuthority"
         },
         {
@@ -5377,7 +5367,11 @@ export type Onreapp = {
           "writable": true
         },
         {
-          "name": "bossTokenInAccount",
+          "name": "propAmmProceedsVault",
+          "writable": true
+        },
+        {
+          "name": "propAmmProceedsTokenInAccount",
           "writable": true
         },
         {
@@ -7856,12 +7850,6 @@ export type Onreapp = {
         },
         {
           "name": "bossTokenInAccount",
-          "docs": [
-            "Boss's input token account for receiving payments",
-            "",
-            "Destination account where the boss receives token_in payments",
-            "from users taking offers."
-          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -8055,7 +8043,7 @@ export type Onreapp = {
         {
           "name": "boss",
           "docs": [
-            "The boss account authorized to receive token_in payments",
+            "The boss account authorized by program state",
             "",
             "Must match the boss stored in program state for security validation."
           ],
@@ -8213,7 +8201,7 @@ export type Onreapp = {
             "Intermediary account for routing token_in payments",
             "",
             "Temporary holding account that receives user payments before forwarding",
-            "to boss, enabling permissionless operations without direct relationships."
+            "to the boss account, enabling permissionless operations without direct relationships."
           ],
           "writable": true,
           "pda": {
@@ -8387,12 +8375,6 @@ export type Onreapp = {
         },
         {
           "name": "bossTokenInAccount",
-          "docs": [
-            "Boss's input token account for receiving payments",
-            "",
-            "Final destination account where the boss receives token_in payments",
-            "from users taking offers via intermediary routing."
-          ],
           "writable": true
         },
         {
@@ -8508,12 +8490,6 @@ export type Onreapp = {
               }
             ]
           }
-        },
-        {
-          "name": "boss",
-          "relations": [
-            "state"
-          ]
         },
         {
           "name": "vaultAuthority"
@@ -8719,7 +8695,11 @@ export type Onreapp = {
           "writable": true
         },
         {
-          "name": "bossTokenInAccount",
+          "name": "offerProceedsVault",
+          "writable": true
+        },
+        {
+          "name": "offerProceedsTokenInAccount",
           "writable": true
         },
         {
@@ -8853,12 +8833,6 @@ export type Onreapp = {
               }
             ]
           }
-        },
-        {
-          "name": "boss",
-          "relations": [
-            "state"
-          ]
         },
         {
           "name": "vaultAuthority"
@@ -9053,7 +9027,11 @@ export type Onreapp = {
           "writable": true
         },
         {
-          "name": "bossTokenInAccount",
+          "name": "offerProceedsVault",
+          "writable": true
+        },
+        {
+          "name": "offerProceedsTokenInAccount",
           "writable": true
         },
         {
@@ -12393,6 +12371,12 @@ export type Onreapp = {
           },
           {
             "name": "propAmmFee"
+          },
+          {
+            "name": "offerProceeds"
+          },
+          {
+            "name": "propAmmProceeds"
           }
         ]
       }

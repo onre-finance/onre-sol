@@ -75,7 +75,7 @@ pub struct TakeOfferPermissionless<'info> {
     )]
     pub state: Box<Account<'info, State>>,
 
-    /// The boss account authorized to receive token_in payments
+    /// The boss account authorized by program state
     ///
     /// Must match the boss stored in program state for security validation.
     /// CHECK: Account validation is enforced through state account has_one constraint
@@ -122,7 +122,7 @@ pub struct TakeOfferPermissionless<'info> {
     /// Intermediary account for routing token_in payments
     ///
     /// Temporary holding account that receives user payments before forwarding
-    /// to boss, enabling permissionless operations without direct relationships.
+    /// to the boss account, enabling permissionless operations without direct relationships.
     #[account(
         mut,
         associated_token::mint = token_in_mint,
@@ -179,10 +179,6 @@ pub struct TakeOfferPermissionless<'info> {
     #[account(mut)]
     pub user_token_out_account: UncheckedAccount<'info>,
 
-    /// Boss's input token account for receiving payments
-    ///
-    /// Final destination account where the boss receives token_in payments
-    /// from users taking offers via intermediary routing.
     /// CHECK: Validated in instruction logic against the expected boss ATA.
     #[account(mut)]
     pub boss_token_in_account: UncheckedAccount<'info>,
@@ -229,12 +225,9 @@ pub struct TakeOfferPermissionlessV2<'info> {
         seeds = [seeds::STATE],
         bump = state.bump,
         constraint = state.is_killed == false @ crate::OnreError::KillSwitchActivated,
-        has_one = boss @ crate::OnreError::InvalidBoss
     )]
     pub state: Box<Account<'info, State>>,
 
-    /// CHECK: Account validation is enforced through state account has_one constraint
-    pub boss: UncheckedAccount<'info>,
     /// CHECK: PDA derivation is validated by explicit key check in the handler
     pub vault_authority: UncheckedAccount<'info>,
 
@@ -285,9 +278,13 @@ pub struct TakeOfferPermissionlessV2<'info> {
     #[account(mut)]
     pub user_token_out_account: UncheckedAccount<'info>,
 
-    /// CHECK: Validated in instruction logic against the expected boss ATA.
+    /// CHECK: PDA and data are validated/initialized in instruction logic.
     #[account(mut)]
-    pub boss_token_in_account: UncheckedAccount<'info>,
+    pub offer_proceeds_vault: UncheckedAccount<'info>,
+
+    /// CHECK: Validated and optionally initialized in instruction logic.
+    #[account(mut)]
+    pub offer_proceeds_token_in_account: UncheckedAccount<'info>,
 
     /// CHECK: PDA and data are validated/initialized in instruction logic.
     #[account(mut)]
@@ -330,10 +327,10 @@ pub(crate) struct PermissionlessMarketStatsRefresh<'a, 'info> {
 /// Executes offers via permissionless flow with secure intermediary routing
 ///
 /// This instruction enables users to execute offers without requiring direct token account
-/// relationships with the boss by routing transfers through program-owned intermediary accounts.
+/// relationships with the boss account by routing transfers through program-owned intermediary accounts.
 /// This design supports permissionless access while maintaining security and atomicity.
 ///
-/// The routing mechanism: User → Intermediary → Boss (token_in) and Vault/Mint → Intermediary → User (token_out)
+/// The routing mechanism: User -> Intermediary -> Boss (token_in) and Vault/Mint -> Intermediary -> User (token_out)
 ///
 /// # Arguments
 /// * `ctx` - The instruction context containing validated accounts
@@ -427,13 +424,18 @@ pub fn take_offer_permissionless_v2<'info>(
     token_in_amount: u64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
-    let boss_token_in_account = get_associated_token_account(
-        &ctx.accounts.boss_token_in_account,
-        &ctx.accounts.boss.key(),
-        &ctx.accounts.token_in_mint.key(),
-        &ctx.accounts.token_in_program.key(),
-        crate::OnreError::InvalidBossTokenInAccount,
-    )?;
+    let offer_proceeds_token_in_account = get_or_create_configurable_vault_token_account::<
+        { ConfigurableVaultKind::OfferProceeds.as_u8() },
+    >(ConfigurableVaultTokenAccountParams {
+        vault: &ctx.accounts.offer_proceeds_vault,
+        token_account: &ctx.accounts.offer_proceeds_token_in_account,
+        payer: ctx.accounts.user.to_account_info(),
+        mint_account: ctx.accounts.token_in_mint.to_account_info(),
+        token_program: ctx.accounts.token_in_program.to_account_info(),
+        associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
+        system_program: ctx.accounts.system_program.to_account_info(),
+        program_id: ctx.program_id,
+    })?;
     let permissionless_token_out_account = get_associated_token_account(
         &ctx.accounts.permissionless_token_out_account,
         &ctx.accounts.permissionless_authority.key(),
@@ -487,7 +489,7 @@ pub fn take_offer_permissionless_v2<'info>(
         &ctx.accounts.user_token_in_account,
         &permissionless_token_in_account,
         &ctx.accounts.permissionless_authority,
-        &boss_token_in_account,
+        &offer_proceeds_token_in_account,
         &offer_fee_token_in_account,
         &ctx.accounts.vault_token_in_account,
         &ctx.accounts.vault_authority,
@@ -520,7 +522,7 @@ pub(crate) fn execute_take_offer_permissionless<'info>(
     user_token_in_account: &InterfaceAccount<'info, TokenAccount>,
     permissionless_token_in_account: &InterfaceAccount<'info, TokenAccount>,
     permissionless_authority: &UncheckedAccount<'info>,
-    boss_token_in_account: &InterfaceAccount<'info, TokenAccount>,
+    token_in_destination_account: &InterfaceAccount<'info, TokenAccount>,
     offer_fee_token_in_account: &InterfaceAccount<'info, TokenAccount>,
     vault_token_in_account: &InterfaceAccount<'info, TokenAccount>,
     vault_authority: &UncheckedAccount<'info>,
@@ -633,7 +635,7 @@ pub(crate) fn execute_take_offer_permissionless<'info>(
         token_in_source_signer_seeds: Some(&[&[seeds::PERMISSIONLESS_AUTHORITY, &[pa_bump]]]),
         vault_authority_signer_seeds: Some(&[&[seeds::OFFER_VAULT_AUTHORITY, &[va_bump]]]),
         token_in_source_account: permissionless_token_in_account,
-        token_in_destination_account: boss_token_in_account,
+        token_in_destination_account,
         token_in_fee_destination_account: offer_fee_token_in_account,
         token_in_burn_account: vault_token_in_account,
         token_in_burn_authority: &vault_authority.to_account_info(),

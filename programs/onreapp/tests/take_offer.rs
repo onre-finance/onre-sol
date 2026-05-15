@@ -423,7 +423,7 @@ fn test_take_offer_v2_rejects_invalid_buffer_vault_account_on_accrual_path() {
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
-    ix.accounts[15].pubkey = get_associated_token_address(&boss, &ctx.onyc_mint);
+    ix.accounts[17].pubkey = get_associated_token_address(&boss, &ctx.onyc_mint);
 
     let result = send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]);
     assert!(
@@ -490,10 +490,7 @@ fn test_ceiling_fee_small_amount() {
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     // 199 * 50 = 9950, floor = 0, ceiling = 1
-    let boss_usdc_before = get_token_balance(
-        &ctx.svm,
-        &get_associated_token_address(&boss, &ctx.usdc_mint),
-    );
+    let proceeds_usdc_before = 0;
 
     let ix = build_take_offer_ix(
         &ctx.user.pubkey(),
@@ -507,11 +504,11 @@ fn test_ceiling_fee_small_amount() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
-    let boss_usdc_after = get_token_balance(
+    let proceeds_usdc_after = get_token_balance(
         &ctx.svm,
         &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
-    assert_eq!(boss_usdc_after - boss_usdc_before, 199);
+    assert_eq!(proceeds_usdc_after - proceeds_usdc_before, 199);
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -908,10 +905,6 @@ fn test_transfer_tokens_correctly() {
         &ctx.svm,
         &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
     );
-    let boss_usdc_before = get_token_balance(
-        &ctx.svm,
-        &get_associated_token_address(&boss, &ctx.usdc_mint),
-    );
     let (vault_auth, _) = find_offer_vault_authority_pda();
     let vault_onyc_before = get_token_balance(
         &ctx.svm,
@@ -938,7 +931,7 @@ fn test_transfer_tokens_correctly() {
         &ctx.svm,
         &get_associated_token_address(&ctx.user.pubkey(), &ctx.onyc_mint),
     );
-    let boss_usdc_after = get_token_balance(
+    let proceeds_usdc_after = get_token_balance(
         &ctx.svm,
         &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
@@ -949,7 +942,7 @@ fn test_transfer_tokens_correctly() {
 
     assert_eq!(user_usdc_before - user_usdc_after, token_in_amount);
     assert_eq!(user_onyc_after, 1_000_000_000);
-    assert_eq!(boss_usdc_after - boss_usdc_before, token_in_amount);
+    assert_eq!(proceeds_usdc_after, token_in_amount);
     assert_eq!(vault_onyc_before - vault_onyc_after, 1_000_000_000);
 }
 
@@ -1200,10 +1193,7 @@ fn test_user_to_boss_transfer_no_mint_authority() {
         &ctx.svm,
         &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
     );
-    let boss_usdc_before = get_token_balance(
-        &ctx.svm,
-        &get_associated_token_address(&boss, &ctx.usdc_mint),
-    );
+    let proceeds_usdc_before = 0;
     let supply_before = get_mint_supply(&ctx.svm, &ctx.usdc_mint);
 
     let ix = build_take_offer_ix(
@@ -1222,7 +1212,7 @@ fn test_user_to_boss_transfer_no_mint_authority() {
         &ctx.svm,
         &get_associated_token_address(&ctx.user.pubkey(), &ctx.usdc_mint),
     );
-    let boss_usdc_after = get_token_balance(
+    let proceeds_usdc_after = get_token_balance(
         &ctx.svm,
         &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
@@ -1230,7 +1220,7 @@ fn test_user_to_boss_transfer_no_mint_authority() {
 
     assert_eq!(supply_before, supply_after); // No burning
     assert_eq!(user_usdc_before - user_usdc_after, token_in_amount);
-    assert_eq!(boss_usdc_after - boss_usdc_before, token_in_amount);
+    assert_eq!(proceeds_usdc_after - proceeds_usdc_before, token_in_amount);
 }
 
 // ===========================================================================
@@ -1653,12 +1643,12 @@ fn test_fee_collection_with_mint_authority_burn() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
-    // Boss receives full amount
-    let boss_usdc = get_token_balance(
+    // Legacy take_offer sends the full amount to the boss account.
+    let proceeds_usdc = get_token_balance(
         &ctx.svm,
         &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
-    assert_eq!(boss_usdc, token_in_amount);
+    assert_eq!(proceeds_usdc, token_in_amount);
 
     // fee = ceil(1_000_000 * 500 / 10000) = ceil(50000) = 50_000
     // net = 1_000_000 - 50_000 = 950_000
@@ -1745,11 +1735,12 @@ fn test_take_offer_token2022_transfers() {
         &svm,
         &get_associated_token_address_2022(&user.pubkey(), &onyc_mint),
     );
-    let boss_usdc = get_token_balance(&svm, &get_associated_token_address_2022(&boss, &usdc_mint));
+    let proceeds_usdc =
+        get_token_balance(&svm, &get_associated_token_address_2022(&boss, &usdc_mint));
 
     assert_eq!(user_usdc_before - user_usdc_after, token_in_amount);
     assert_eq!(user_onyc, 1_000_000_000);
-    assert_eq!(boss_usdc, token_in_amount);
+    assert_eq!(proceeds_usdc, token_in_amount);
 }
 
 #[test]

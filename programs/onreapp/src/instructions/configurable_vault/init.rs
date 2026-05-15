@@ -14,6 +14,8 @@ impl<const KIND: u8> ConfigurableVaultInit<KIND> {
             1 => ConfigurableVaultKind::ManagementFee,
             2 => ConfigurableVaultKind::PerformanceFee,
             3 => ConfigurableVaultKind::PropAmmFee,
+            4 => ConfigurableVaultKind::OfferProceeds,
+            5 => ConfigurableVaultKind::PropAmmProceeds,
             _ => unreachable!("invalid configurable vault kind"),
         }
     }
@@ -31,6 +33,12 @@ impl<const KIND: u8> PdaAccountInit for ConfigurableVaultInit<KIND> {
             }
             ConfigurableVaultKind::PropAmmFee => {
                 &[seeds::CONFIGURABLE_VAULT, seeds::PROP_AMM_FEE_VAULT]
+            }
+            ConfigurableVaultKind::OfferProceeds => {
+                &[seeds::CONFIGURABLE_VAULT, seeds::OFFER_PROCEEDS_VAULT]
+            }
+            ConfigurableVaultKind::PropAmmProceeds => {
+                &[seeds::CONFIGURABLE_VAULT, seeds::PROP_AMM_PROCEEDS_VAULT]
             }
         }
     }
