@@ -11,6 +11,8 @@ use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
 
+const ONE_YEAR_SECONDS: u64 = 31_536_000;
+
 struct PropAmmCtx {
     svm: litesvm::LiteSVM,
     payer: Keypair,
@@ -631,6 +633,94 @@ fn test_quote_and_open_swap_support_sell_side() {
         ),
         vault_before - quote.token_out_amount
     );
+}
+
+#[test]
+fn test_open_swap_sell_accrues_buffer_before_burning_onyc() {
+    let mut ctx = setup_prop_amm();
+    let boss = ctx.payer.pubkey();
+    let current_time = get_clock_time(&ctx.svm);
+
+    let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.onyc_mint, &TOKEN_PROGRAM_ID);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let ix = build_add_offer_vector_ix(
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86_400,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    create_token_account(
+        &mut ctx.svm,
+        &ctx.onyc_mint,
+        &ctx.user.pubkey(),
+        2_000_000_000,
+    );
+
+    let (offer_pda, _) = find_offer_pda(&ctx.usdc_mint, &ctx.onyc_mint);
+    let ix = build_initialize_buffer_ix(&boss, &offer_pda, &ctx.onyc_mint);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let ix = build_set_buffer_gross_yield_ix(&boss, &offer_pda, &ctx.onyc_mint, 100_000);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
+    create_token_account(
+        &mut ctx.svm,
+        &ctx.usdc_mint,
+        &redemption_vault_authority,
+        10_000_000_000,
+    );
+    let ix = build_refresh_market_stats_ix(&boss, &boss, &ctx.usdc_mint, &ctx.onyc_mint);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    advance_clock_by(&mut ctx.svm, ONE_YEAR_SECONDS);
+
+    let buffer_state_before = read_buffer_state(&ctx.svm);
+    let supply_before = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
+    let buffer_vault = derive_ata(
+        &find_reserve_vault_authority_pda().0,
+        &ctx.onyc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let buffer_vault_before = get_token_balance(&ctx.svm, &buffer_vault);
+
+    let sell_amount = 100_000_000;
+    let ix = build_open_swap_sell_ix(
+        &ctx.onyc_mint,
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.onyc_mint,
+        &ctx.usdc_mint,
+        sell_amount,
+        0,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
+
+    let expected_buffer_accrual =
+        (buffer_state_before.previous_supply as u128 * 100_000 / 1_000_000) as u64;
+    let supply_after = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
+    let buffer_state_after = read_buffer_state(&ctx.svm);
+
+    assert_eq!(buffer_state_before.previous_supply, supply_before);
+    assert_eq!(
+        get_token_balance(&ctx.svm, &buffer_vault) - buffer_vault_before,
+        expected_buffer_accrual
+    );
+    assert_eq!(
+        supply_after,
+        supply_before + expected_buffer_accrual - sell_amount
+    );
+    assert_eq!(buffer_state_after.previous_supply, supply_after);
 }
 
 #[test]

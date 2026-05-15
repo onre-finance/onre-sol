@@ -5386,6 +5386,27 @@
           "name": "mint_authority"
         },
         {
+          "name": "buffer_accounts",
+          "accounts": [
+            {
+              "name": "buffer_state",
+              "writable": true
+            },
+            {
+              "name": "reserve_vault_onyc_account",
+              "writable": true
+            },
+            {
+              "name": "management_fee_vault_onyc_account",
+              "writable": true
+            },
+            {
+              "name": "performance_fee_vault_onyc_account",
+              "writable": true
+            }
+          ]
+        },
+        {
           "name": "market_stats",
           "writable": true
         },

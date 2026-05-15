@@ -683,6 +683,10 @@ pub fn build_open_swap_sell_ix(
     let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
     let (mint_authority_pda, _) = find_mint_authority_pda();
+    let (buffer_state_pda, _) = find_buffer_state_pda();
+    let (reserve_vault_authority_pda, _) = find_reserve_vault_authority_pda();
+    let (management_fee_vault_pda, _) = find_management_fee_vault_pda();
+    let (performance_fee_vault_pda, _) = find_performance_fee_vault_pda();
     let (market_stats_pda, _) = find_market_stats_pda();
     let (excluded_balance_pda, _) = find_circulating_supply_excluded_balance_pda();
     let (main_offer_pda, _) = find_offer_pda(canonical_token_in, canonical_token_out);
@@ -707,6 +711,12 @@ pub fn build_open_swap_sell_ix(
         canonical_token_out,
         token_out_program,
     );
+    let buffer_vault_onyc_ata =
+        derive_ata(&reserve_vault_authority_pda, onyc_mint, token_in_program);
+    let management_fee_vault_onyc_ata =
+        derive_ata(&management_fee_vault_pda, onyc_mint, token_in_program);
+    let performance_fee_vault_onyc_ata =
+        derive_ata(&performance_fee_vault_pda, onyc_mint, token_in_program);
     let mut data = ix_discriminator("open_swap_sell").to_vec();
     data.extend_from_slice(&token_in_amount.to_le_bytes());
     data.extend_from_slice(&minimum_out.to_le_bytes());
@@ -739,6 +749,10 @@ pub fn build_open_swap_sell_ix(
             AccountMeta::new(prop_amm_fee_vault_pda, false),
             AccountMeta::new(prop_amm_fee_token_in_ata, false),
             AccountMeta::new_readonly(mint_authority_pda, false),
+            AccountMeta::new(buffer_state_pda, false),
+            AccountMeta::new(buffer_vault_onyc_ata, false),
+            AccountMeta::new(management_fee_vault_onyc_ata, false),
+            AccountMeta::new(performance_fee_vault_onyc_ata, false),
             AccountMeta::new(market_stats_pda, false),
             AccountMeta::new_readonly(excluded_balance_pda, false),
             AccountMeta::new_readonly(SYSVAR_INSTRUCTIONS_ID, false),

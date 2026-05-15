@@ -1,4 +1,12 @@
 use crate::constants::seeds;
+use crate::instructions::buffer::accounts::{
+    BufferAccrualAccountsBumps, __client_accounts_buffer_accrual_accounts,
+    __cpi_client_accounts_buffer_accrual_accounts,
+};
+use crate::instructions::buffer::accrue_buffer::{
+    accrue_buffer_from_accounts, store_buffer_post_supply,
+};
+use crate::instructions::buffer::BufferAccrualAccounts;
 use crate::instructions::configurable_vault::{
     get_or_create_configurable_vault_token_account, ConfigurableVaultTokenAccountParams,
 };
@@ -14,8 +22,8 @@ use crate::instructions::redemption::{
 use crate::instructions::Offer;
 use crate::state::{ConfigurableVaultKind, State};
 use crate::utils::{
-    get_associated_token_account, get_or_create_associated_token_account, transfer_tokens,
-    u64_to_dec9, ApprovalMessage, EnsureAtaParams,
+    get_associated_token_account, get_or_create_associated_token_account, program_controls_mint,
+    transfer_tokens, u64_to_dec9, ApprovalMessage, EnsureAtaParams,
 };
 use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::{
@@ -110,6 +118,8 @@ pub struct OpenSwapSell<'info> {
 
     /// CHECK: PDA derivation validated in instruction logic
     pub mint_authority: UncheckedAccount<'info>,
+
+    pub buffer_accounts: BufferAccrualAccounts<'info>,
 
     /// CHECK: validated in instruction logic
     #[account(mut)]
@@ -272,6 +282,35 @@ fn execute_open_swap_sell<'info>(
         crate::OnreError::InvalidOfferVaultOnycAccount,
     )?;
 
+    let should_refresh_market_stats = ctx.accounts.token_in_mint.key()
+        == ctx.accounts.state.onyc_mint
+        && program_controls_mint(
+            &ctx.accounts.token_in_mint,
+            &ctx.accounts.mint_authority.to_account_info(),
+        );
+    let buffer_is_initialized = ctx
+        .accounts
+        .buffer_accounts
+        .check_is_initialized(ctx.program_id)?;
+    let accrual = if should_refresh_market_stats && buffer_is_initialized {
+        Some(accrue_buffer_from_accounts(
+            ctx.program_id,
+            &ctx.accounts.state,
+            &ctx.accounts.buffer_accounts,
+            &offer,
+            &mut ctx.accounts.token_in_mint,
+            ctx.accounts.mint_authority.to_account_info(),
+            mint_authority_bump,
+            &ctx.accounts.token_in_program,
+        )?)
+    } else {
+        None
+    };
+
+    if accrual.is_some() {
+        ctx.accounts.token_in_mint.reload()?;
+    }
+
     let mut result = process_redemption_core(
         &offer,
         token_in_amount,
@@ -326,22 +365,37 @@ fn execute_open_swap_sell<'info>(
         token_out_max_supply: ctx.accounts.state.max_supply,
     })?;
 
-    let main_offer = load_main_offer(
-        ctx.program_id,
-        &ctx.accounts.main_offer.to_account_info(),
-        &ctx.accounts.state,
-    )?;
-    refresh_market_stats_pda(
-        &main_offer,
-        &ctx.accounts.token_in_mint,
-        &ctx.accounts
-            .circulating_supply_excluded_balance
-            .to_account_info(),
-        &ctx.accounts.market_stats.to_account_info(),
-        &ctx.accounts.user.to_account_info(),
-        &ctx.accounts.system_program.to_account_info(),
-        ctx.program_id,
-    )?;
+    if let Some(accrual) = accrual {
+        let post_burn_supply = accrual
+            .post_accrual_supply
+            .checked_sub(result.token_in_net_amount)
+            .ok_or(crate::OnreError::MathOverflow)?;
+        store_buffer_post_supply(
+            &ctx.accounts.buffer_accounts,
+            post_burn_supply,
+            accrual.timestamp,
+        )?;
+    }
+
+    if should_refresh_market_stats {
+        let main_offer = load_main_offer(
+            ctx.program_id,
+            &ctx.accounts.main_offer.to_account_info(),
+            &ctx.accounts.state,
+        )?;
+        ctx.accounts.token_in_mint.reload()?;
+        refresh_market_stats_pda(
+            &main_offer,
+            &ctx.accounts.token_in_mint,
+            &ctx.accounts
+                .circulating_supply_excluded_balance
+                .to_account_info(),
+            &ctx.accounts.market_stats.to_account_info(),
+            &ctx.accounts.user.to_account_info(),
+            &ctx.accounts.system_program.to_account_info(),
+            ctx.program_id,
+        )?;
+    }
 
     msg!(
         "Open swap sell - offer: {}, token_in(+fee): {}(+{}), token_out: {}, user: {}, price: {}",
