@@ -1,6 +1,6 @@
 use crate::constants::seeds;
 use crate::state::{CirculatingSupplyExcludedAccounts, CirculatingSupplyExcludedBalance, State};
-use crate::utils::PdaAccountInit;
+use crate::utils::{load_optional_pda_account, PdaAccountInit};
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
@@ -151,13 +151,15 @@ pub fn load_circulating_supply_excluded_balance_amount(
         crate::OnreError::InvalidCirculatingSupplyExcludedBalance
     );
 
-    if excluded_balance_account.data_is_empty() || excluded_balance_account.owner == &System::id() {
+    let Some(excluded_balance) = load_optional_pda_account::<CirculatingSupplyExcludedBalance>(
+        excluded_balance_account,
+        program_id,
+        crate::OnreError::InvalidCirculatingSupplyExcludedBalanceOwner.into(),
+        crate::OnreError::InvalidCirculatingSupplyExcludedBalanceData.into(),
+    )?
+    else {
         return Ok(0);
-    }
+    };
 
-    let data = excluded_balance_account.try_borrow_data()?;
-    let mut slice: &[u8] = &data;
-    let excluded_balance = CirculatingSupplyExcludedBalance::try_deserialize(&mut slice)
-        .map_err(|_| error!(crate::OnreError::InvalidCirculatingSupplyExcludedBalanceData))?;
     Ok(excluded_balance.amount)
 }

@@ -370,6 +370,10 @@ pub struct ExecTokenOpsParams<'a, 'info> {
     pub token_in_source_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Destination account for token_in (boss's account)
     pub token_in_destination_account: &'a InterfaceAccount<'info, TokenAccount>,
+    /// Optional alternate destination for part of the net token_in amount.
+    pub token_in_refill_destination_account: Option<&'a InterfaceAccount<'info, TokenAccount>>,
+    /// Amount of net token_in to send to the alternate refill destination.
+    pub token_in_refill_amount: u64,
     /// Destination account for token_in fees
     pub token_in_fee_destination_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Vault account for burning token_in when program has mint authority
@@ -442,6 +446,8 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
         program_controls_mint(params.token_in_mint, params.mint_authority_pda);
 
     if controls_token_in_mint {
+        require!(params.token_in_refill_amount == 0, OnreError::InvalidAmount);
+
         // Transfer net amount to burn account
         transfer_tokens(
             params.token_in_mint,
@@ -477,16 +483,41 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
             )?;
         }
     } else {
-        // When program lacks mint authority: transfer net to proceeds and fee to the fee vault.
-        transfer_tokens(
-            params.token_in_mint,
-            params.token_in_program,
-            params.token_in_source_account,
-            params.token_in_destination_account,
-            params.token_in_authority,
-            params.token_in_source_signer_seeds,
-            params.token_in_net_amount,
-        )?;
+        require!(
+            params.token_in_refill_amount <= params.token_in_net_amount,
+            OnreError::InvalidAmount
+        );
+        let proceeds_amount = params
+            .token_in_net_amount
+            .checked_sub(params.token_in_refill_amount)
+            .ok_or(OnreError::ArithmeticUnderflow)?;
+
+        if params.token_in_refill_amount > 0 {
+            let refill_destination = params
+                .token_in_refill_destination_account
+                .ok_or(OnreError::InvalidVaultTokenInAccount)?;
+            transfer_tokens(
+                params.token_in_mint,
+                params.token_in_program,
+                params.token_in_source_account,
+                refill_destination,
+                params.token_in_authority,
+                params.token_in_source_signer_seeds,
+                params.token_in_refill_amount,
+            )?;
+        }
+
+        if proceeds_amount > 0 {
+            transfer_tokens(
+                params.token_in_mint,
+                params.token_in_program,
+                params.token_in_source_account,
+                params.token_in_destination_account,
+                params.token_in_authority,
+                params.token_in_source_signer_seeds,
+                proceeds_amount,
+            )?;
+        }
 
         if params.token_in_fee_amount > 0 {
             transfer_tokens(

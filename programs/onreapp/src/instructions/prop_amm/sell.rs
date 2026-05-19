@@ -34,7 +34,7 @@ use anchor_spl::{
 use super::config::PropAmmState;
 use super::quote::{
     apply_hard_wall_liquidity_factor, hard_wall_reserve_from_tvl, record_prop_amm_sell,
-    redemption_offer_fee_basis_points,
+    redemption_offer_config,
 };
 use super::quote::{validate_canonical_offer, SwapSide};
 
@@ -184,19 +184,30 @@ fn execute_open_swap_sell<'info>(
         crate::OnreError::InvalidMarketStatsPda
     );
     let market_stats = read_market_stats_account(&ctx.accounts.market_stats.to_account_info())?;
-    let hard_wall_reserve = hard_wall_reserve_from_tvl(
-        market_stats.tvl,
-        ctx.accounts.prop_amm_state.pool_target_bps,
-        ctx.accounts.token_out_mint.decimals,
-        ctx.accounts.token_in_mint.decimals,
-    )?;
-    let redemption_fee_basis_points = redemption_offer_fee_basis_points(
+    let redemption_config = redemption_offer_config(
         ctx.program_id,
         &ctx.accounts.redemption_offer,
         ctx.accounts.offer.key(),
         ctx.accounts.token_in_mint.key(),
         ctx.accounts.token_out_mint.key(),
     )?;
+    let redemption_vault_token_out_account = get_associated_token_account(
+        &ctx.accounts.redemption_vault_token_out_account,
+        &ctx.accounts.redemption_vault_authority.key(),
+        &ctx.accounts.token_out_mint.key(),
+        &ctx.accounts.token_out_program.key(),
+        crate::OnreError::InvalidVaultTokenOutAccount,
+    )?;
+    let hard_wall_reserve = if redemption_config.vault_target_bps > 0 {
+        hard_wall_reserve_from_tvl(
+            market_stats.tvl,
+            redemption_config.vault_target_bps,
+            ctx.accounts.token_out_mint.decimals,
+            ctx.accounts.token_in_mint.decimals,
+        )?
+    } else {
+        redemption_vault_token_out_account.amount
+    };
 
     verify_offer_approval(
         &offer,
@@ -266,13 +277,6 @@ fn execute_open_swap_sell<'info>(
             token_program_id: ctx.accounts.token_in_program.key(),
             invalid_account_error: crate::OnreError::InvalidVaultTokenInAccount,
         })?;
-    let redemption_vault_token_out_account = get_associated_token_account(
-        &ctx.accounts.redemption_vault_token_out_account,
-        &ctx.accounts.redemption_vault_authority.key(),
-        &ctx.accounts.token_out_mint.key(),
-        &ctx.accounts.token_out_program.key(),
-        crate::OnreError::InvalidVaultTokenOutAccount,
-    )?;
     let _offer_vault_onyc_account = get_associated_token_account(
         &ctx.accounts.offer_vault_onyc_account,
         &ctx.accounts.offer_vault_authority.key(),
@@ -315,7 +319,7 @@ fn execute_open_swap_sell<'info>(
         token_in_amount,
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
-        redemption_fee_basis_points,
+        redemption_config.fee_basis_points,
     )?;
     let raw_sell_value_stable = result.token_out_amount;
     result.token_out_amount = apply_hard_wall_liquidity_factor(

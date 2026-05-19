@@ -26,13 +26,18 @@ pub struct RedemptionOffer {
     pub requested_redemptions: u128,
     /// Fee in basis points (1000 = 10%) charged when fulfilling redemption requests
     pub fee_basis_points: u16,
+    /// Target stable-token balance for the redemption vault as basis points of TVL.
+    ///
+    /// A value of 0 disables automatic inflow into the redemption vault; net inflow
+    /// goes to the configured proceeds vault instead.
+    pub vault_target_bps: u16,
     /// Counter for sequential redemption request numbering
     /// Increments with each new redemption request created
     pub request_counter: u64,
     /// PDA bump seed for account derivation
     pub bump: u8,
     /// Reserved space for future fields
-    pub reserved: [u8; 109],
+    pub reserved: [u8; 107],
 }
 
 #[account]

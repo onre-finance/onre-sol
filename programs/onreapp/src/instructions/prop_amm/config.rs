@@ -2,7 +2,6 @@ use crate::constants::{seeds, MAX_BASIS_POINTS};
 use crate::state::State;
 use anchor_lang::prelude::*;
 
-pub const DEFAULT_POOL_TARGET_BPS: u16 = 1_500;
 pub const DEFAULT_CURVE_PEG_HAIRCUT_BPS: u16 = 700;
 pub const CURVE_EXPONENT_SCALE: u32 = 10_000;
 pub const CURVE_EXPONENT_STEP: u32 = 1_000;
@@ -17,7 +16,6 @@ pub const DEFAULT_WALL_SENSITIVITY_SCALED: u32 = 20_000;
 #[account]
 #[derive(InitSpace)]
 pub struct PropAmmState {
-    pub pool_target_bps: u16,
     pub curve_peg_haircut_bps: u16,
     pub curve_exponent_scaled: u32,
     pub min_cadence_exponent_scaled: u32,
@@ -35,8 +33,6 @@ pub struct PropAmmState {
 
 #[event]
 pub struct PropAmmConfiguredEvent {
-    pub old_pool_target_bps: u16,
-    pub new_pool_target_bps: u16,
     pub old_curve_peg_haircut_bps: u16,
     pub new_curve_peg_haircut_bps: u16,
     pub old_curve_exponent_scaled: u32,
@@ -79,7 +75,6 @@ pub struct ConfigurePropAmm<'info> {
 
 pub fn configure_prop_amm(
     ctx: Context<ConfigurePropAmm>,
-    pool_target_bps: u16,
     curve_peg_haircut_bps: u16,
     curve_exponent_scaled: u32,
     min_cadence_exponent_scaled: u32,
@@ -88,10 +83,6 @@ pub fn configure_prop_amm(
     epoch_duration_seconds: i64,
     wall_sensitivity_scaled: u32,
 ) -> Result<()> {
-    require!(
-        pool_target_bps <= MAX_BASIS_POINTS,
-        crate::OnreError::InvalidAmount
-    );
     require!(
         curve_peg_haircut_bps <= MAX_BASIS_POINTS,
         crate::OnreError::InvalidAmount
@@ -122,7 +113,6 @@ pub fn configure_prop_amm(
     require!(wall_sensitivity_scaled > 0, crate::OnreError::InvalidAmount);
 
     let prop_amm_state = &mut ctx.accounts.prop_amm_state;
-    let old_pool_target_bps = prop_amm_state.pool_target_bps;
     let old_curve_peg_haircut_bps = prop_amm_state.curve_peg_haircut_bps;
     let old_curve_exponent_scaled = prop_amm_state.curve_exponent_scaled;
     let old_min_cadence_exponent_scaled = prop_amm_state.min_cadence_exponent_scaled;
@@ -131,7 +121,6 @@ pub fn configure_prop_amm(
     let old_epoch_duration_seconds = prop_amm_state.epoch_duration_seconds;
     let old_wall_sensitivity_scaled = prop_amm_state.wall_sensitivity_scaled;
 
-    prop_amm_state.pool_target_bps = pool_target_bps;
     prop_amm_state.curve_peg_haircut_bps = curve_peg_haircut_bps;
     prop_amm_state.curve_exponent_scaled = curve_exponent_scaled;
     prop_amm_state.min_cadence_exponent_scaled = min_cadence_exponent_scaled;
@@ -145,8 +134,6 @@ pub fn configure_prop_amm(
     prop_amm_state.bump = ctx.bumps.prop_amm_state;
 
     emit!(PropAmmConfiguredEvent {
-        old_pool_target_bps,
-        new_pool_target_bps: pool_target_bps,
         old_curve_peg_haircut_bps,
         new_curve_peg_haircut_bps: curve_peg_haircut_bps,
         old_curve_exponent_scaled,
@@ -169,7 +156,6 @@ pub fn configure_prop_amm(
 impl Default for PropAmmState {
     fn default() -> Self {
         Self {
-            pool_target_bps: DEFAULT_POOL_TARGET_BPS,
             curve_peg_haircut_bps: DEFAULT_CURVE_PEG_HAIRCUT_BPS,
             curve_exponent_scaled: DEFAULT_CURVE_EXPONENT_SCALED,
             min_cadence_exponent_scaled: DEFAULT_MIN_CADENCE_EXPONENT_SCALED,

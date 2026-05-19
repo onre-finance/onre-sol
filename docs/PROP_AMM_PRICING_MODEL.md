@@ -16,7 +16,7 @@ The important distinction is that buys and sells use different mechanics:
 | Symbol | Code variable | Meaning |
 | --- | --- | --- |
 | `TVL` | `market_stats.tvl` | Protocol TVL from the market stats PDA, stored in ONYC/base precision. |
-| `target_bps` | `prop_amm_state.pool_target_bps` | Target redemption liquidity as basis points of TVL. Default is `1500`, or 15%. |
+| `target_bps` | `redemption_offer.vault_target_bps` | Target redemption liquidity as basis points of TVL. Defaults to `0`, which disables automatic redemption-vault refill and sends net stablecoin inflow to proceeds. |
 | `R` | `hard_wall_reserve` | TVL-derived hard-wall reserve target, converted into the output token decimals. |
 | `L` | `actual_liquidity` | Current redemption vault balance for the stablecoin being paid out. |
 | `V` | effective sell volume | Previous epoch pressure after decay plus current net sell pressure plus this sell's raw value. |
@@ -297,7 +297,7 @@ e_effective = effective_curve_exponent_scaled / 10_000
 The cadence adjustment is based on the current epoch sell trade count. With no cadence adjustment, current defaults are:
 
 ```text
-pool_target_bps = 1,500
+vault_target_bps = redemption_offer.vault_target_bps
 h_peg = 700 / 10,000 = 0.07
 e_effective = 25,000 / 10,000 = 2.5
 min_cadence_exponent_scaled = 1,000
@@ -429,7 +429,7 @@ The test `test_dynamic_wall_accumulates_sell_pressure_and_buys_relieve_it` docum
 Normal Prop AMM configuration requires:
 
 ```text
-pool_target_bps <= 10,000
+redemption_offer.vault_target_bps <= 10,000
 curve_peg_haircut_bps <= 10,000
 curve_exponent_scaled in [1,000, 100,000], in 1,000 increments
 min_cadence_exponent_scaled in [1,000, 10,000], in 1,000 increments

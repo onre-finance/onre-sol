@@ -42,7 +42,7 @@ fn setup_prop_amm() -> PropAmmCtx {
     let (offer_pda, _) = find_offer_pda(&usdc_mint, &onyc_mint);
     let ix = build_set_main_offer_ix(&boss, &offer_pda);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let ix = build_configure_prop_amm_ix(&boss, 1_500, 700, 25_000);
+    let ix = build_configure_prop_amm_ix(&boss, 700, 25_000);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let (vault_authority, _) = find_offer_vault_authority_pda();
@@ -124,7 +124,6 @@ fn test_hard_wall_curve_ignores_surplus_above_target_reserve() {
 #[test]
 fn test_hard_wall_curve_allows_zero_output_at_actual_vault_limit() {
     let state = PropAmmState {
-        pool_target_bps: 1_500,
         curve_peg_haircut_bps: 700,
         curve_exponent_scaled: 25_000,
         min_cadence_exponent_scaled: 1_000,
@@ -157,7 +156,6 @@ fn test_hard_wall_curve_rejects_raw_value_above_actual_vault() {
 #[test]
 fn test_dynamic_wall_preview_includes_current_sell_and_buy_relief() {
     let state = PropAmmState {
-        pool_target_bps: 1_500,
         curve_peg_haircut_bps: 700,
         curve_exponent_scaled: 25_000,
         min_cadence_exponent_scaled: 1_000,
@@ -196,7 +194,6 @@ fn test_dynamic_wall_position_uses_effective_sell_pressure() {
 #[test]
 fn test_cadence_lowers_effective_curve_exponent() {
     let state = PropAmmState {
-        pool_target_bps: 1_500,
         curve_peg_haircut_bps: 7_000,
         curve_exponent_scaled: 25_000,
         min_cadence_exponent_scaled: 1_000,
@@ -230,7 +227,6 @@ fn test_cadence_lowers_effective_curve_exponent() {
 #[test]
 fn test_cadence_penalizes_small_split_sells() {
     let state = PropAmmState {
-        pool_target_bps: 1_500,
         curve_peg_haircut_bps: 7_000,
         curve_exponent_scaled: 25_000,
         min_cadence_exponent_scaled: 1_000,
@@ -458,6 +454,18 @@ fn test_open_swap_buy_refills_redemption_vault_until_target_then_overflows_to_bo
         0,
         86_400,
     );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+    let ix = build_make_redemption_offer_ix(
+        &boss,
+        &ctx.onyc_mint,
+        &ctx.usdc_mint,
+        0,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+    let ix =
+        build_update_redemption_offer_vault_target_ix(&boss, &ctx.onyc_mint, &ctx.usdc_mint, 1_500);
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     let (vault_authority, _) = find_offer_vault_authority_pda();

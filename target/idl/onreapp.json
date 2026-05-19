@@ -1320,10 +1320,6 @@
       ],
       "args": [
         {
-          "name": "pool_target_bps",
-          "type": "u16"
-        },
-        {
           "name": "curve_peg_haircut_bps",
           "type": "u16"
         },
@@ -4989,6 +4985,9 @@
               }
             ]
           }
+        },
+        {
+          "name": "redemption_offer"
         },
         {
           "name": "state",
@@ -8689,6 +8688,57 @@
           "writable": true
         },
         {
+          "name": "redemption_offer"
+        },
+        {
+          "name": "redemption_vault_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemption_vault_token_in_account",
+          "writable": true
+        },
+        {
           "name": "offer_proceeds_vault",
           "writable": true
         },
@@ -9018,6 +9068,57 @@
         },
         {
           "name": "user_token_out_account",
+          "writable": true
+        },
+        {
+          "name": "redemption_offer"
+        },
+        {
+          "name": "redemption_vault_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemption_vault_token_in_account",
           "writable": true
         },
         {
@@ -9656,6 +9757,99 @@
       "args": [
         {
           "name": "new_fee_basis_points",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "update_redemption_offer_vault_target",
+      "discriminator": [
+        182,
+        79,
+        179,
+        178,
+        68,
+        172,
+        197,
+        1
+      ],
+      "accounts": [
+        {
+          "name": "redemption_offer",
+          "docs": [
+            "The redemption offer account whose fee will be updated"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_in_mint",
+                "account": "RedemptionOffer"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_out_mint",
+                "account": "RedemptionOffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing boss authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account authorized to update redemption offer fees"
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_vault_target_bps",
           "type": "u16"
         }
       ]
@@ -10874,6 +11068,19 @@
         154,
         166,
         156
+      ]
+    },
+    {
+      "name": "RedemptionOfferVaultTargetUpdatedEvent",
+      "discriminator": [
+        199,
+        56,
+        132,
+        45,
+        20,
+        230,
+        171,
+        98
       ]
     },
     {
@@ -13575,14 +13782,6 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "old_pool_target_bps",
-            "type": "u16"
-          },
-          {
-            "name": "new_pool_target_bps",
-            "type": "u16"
-          },
-          {
             "name": "old_curve_peg_haircut_bps",
             "type": "u16"
           },
@@ -13646,10 +13845,6 @@
       "type": {
         "kind": "struct",
         "fields": [
-          {
-            "name": "pool_target_bps",
-            "type": "u16"
-          },
           {
             "name": "curve_peg_haircut_bps",
             "type": "u16"
@@ -13793,6 +13988,16 @@
             "type": "u16"
           },
           {
+            "name": "vault_target_bps",
+            "docs": [
+              "Target stable-token balance for the redemption vault as basis points of TVL.",
+              "",
+              "A value of 0 disables automatic inflow into the redemption vault; net inflow",
+              "goes to the configured proceeds vault instead."
+            ],
+            "type": "u16"
+          },
+          {
             "name": "request_counter",
             "docs": [
               "Counter for sequential redemption request numbering",
@@ -13815,7 +14020,7 @@
             "type": {
               "array": [
                 "u8",
-                109
+                107
               ]
             }
           }
@@ -13866,6 +14071,13 @@
               "Fee in basis points (10000 = 100%) charged when fulfilling redemption requests"
             ],
             "type": "u16"
+          },
+          {
+            "name": "vault_target_bps",
+            "docs": [
+              "Target stable-token vault balance as basis points of TVL."
+            ],
+            "type": "u16"
           }
         ]
       }
@@ -13906,6 +14118,30 @@
             "docs": [
               "The boss account that authorized the fee update"
             ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RedemptionOfferVaultTargetUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "redemption_offer_pda",
+            "type": "pubkey"
+          },
+          {
+            "name": "old_vault_target_bps",
+            "type": "u16"
+          },
+          {
+            "name": "new_vault_target_bps",
+            "type": "u16"
+          },
+          {
+            "name": "boss",
             "type": "pubkey"
           }
         ]

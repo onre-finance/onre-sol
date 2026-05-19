@@ -1,4 +1,4 @@
-use crate::constants::{seeds, MAX_ALLOWED_FEE_BPS};
+use crate::constants::{seeds, MAX_ALLOWED_FEE_BPS, MAX_BASIS_POINTS};
 use crate::instructions::redemption::RedemptionOffer;
 use crate::state::State;
 use anchor_lang::prelude::*;
@@ -15,6 +15,14 @@ pub struct RedemptionOfferFeeUpdatedEvent {
     /// New fee in basis points (10000 = 100%)
     pub new_fee_basis_points: u16,
     /// The boss account that authorized the fee update
+    pub boss: Pubkey,
+}
+
+#[event]
+pub struct RedemptionOfferVaultTargetUpdatedEvent {
+    pub redemption_offer_pda: Pubkey,
+    pub old_vault_target_bps: u16,
+    pub new_vault_target_bps: u16,
     pub boss: Pubkey,
 }
 
@@ -110,6 +118,34 @@ pub fn update_redemption_offer_fee(
         redemption_offer_pda: ctx.accounts.redemption_offer.key(),
         old_fee_basis_points,
         new_fee_basis_points,
+        boss: ctx.accounts.boss.key(),
+    });
+
+    Ok(())
+}
+
+pub fn update_redemption_offer_vault_target(
+    ctx: Context<UpdateRedemptionOfferFee>,
+    new_vault_target_bps: u16,
+) -> Result<()> {
+    require!(
+        new_vault_target_bps <= MAX_BASIS_POINTS,
+        crate::OnreError::InvalidAmount
+    );
+
+    let redemption_offer = &mut ctx.accounts.redemption_offer;
+    require!(
+        new_vault_target_bps != redemption_offer.vault_target_bps,
+        crate::OnreError::NoChange
+    );
+
+    let old_vault_target_bps = redemption_offer.vault_target_bps;
+    redemption_offer.vault_target_bps = new_vault_target_bps;
+
+    emit!(RedemptionOfferVaultTargetUpdatedEvent {
+        redemption_offer_pda: ctx.accounts.redemption_offer.key(),
+        old_vault_target_bps,
+        new_vault_target_bps,
         boss: ctx.accounts.boss.key(),
     });
 

@@ -503,7 +503,6 @@ pub mod onreapp {
 
     pub fn configure_prop_amm(
         ctx: Context<ConfigurePropAmm>,
-        pool_target_bps: u16,
         curve_peg_haircut_bps: u16,
         curve_exponent_scaled: u32,
         min_cadence_exponent_scaled: u32,
@@ -514,7 +513,6 @@ pub mod onreapp {
     ) -> Result<()> {
         prop_amm::configure_prop_amm(
             ctx,
-            pool_target_bps,
             curve_peg_haircut_bps,
             curve_exponent_scaled,
             min_cadence_exponent_scaled,
@@ -857,5 +855,12 @@ pub mod onreapp {
         new_fee_basis_points: u16,
     ) -> Result<()> {
         redemption::update_redemption_offer_fee(ctx, new_fee_basis_points)
+    }
+
+    pub fn update_redemption_offer_vault_target(
+        ctx: Context<UpdateRedemptionOfferFee>,
+        new_vault_target_bps: u16,
+    ) -> Result<()> {
+        redemption::update_redemption_offer_vault_target(ctx, new_vault_target_bps)
     }
 }

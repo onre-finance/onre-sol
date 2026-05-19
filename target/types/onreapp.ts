@@ -1326,10 +1326,6 @@ export type Onreapp = {
       ],
       "args": [
         {
-          "name": "poolTargetBps",
-          "type": "u16"
-        },
-        {
           "name": "curvePegHaircutBps",
           "type": "u16"
         },
@@ -4995,6 +4991,9 @@ export type Onreapp = {
               }
             ]
           }
+        },
+        {
+          "name": "redemptionOffer"
         },
         {
           "name": "state",
@@ -8695,6 +8694,57 @@ export type Onreapp = {
           "writable": true
         },
         {
+          "name": "redemptionOffer"
+        },
+        {
+          "name": "redemptionVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemptionVaultTokenInAccount",
+          "writable": true
+        },
+        {
           "name": "offerProceedsVault",
           "writable": true
         },
@@ -9024,6 +9074,57 @@ export type Onreapp = {
         },
         {
           "name": "userTokenOutAccount",
+          "writable": true
+        },
+        {
+          "name": "redemptionOffer"
+        },
+        {
+          "name": "redemptionVaultAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "redemptionVaultTokenInAccount",
           "writable": true
         },
         {
@@ -9662,6 +9763,99 @@ export type Onreapp = {
       "args": [
         {
           "name": "newFeeBasisPoints",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "updateRedemptionOfferVaultTarget",
+      "discriminator": [
+        182,
+        79,
+        179,
+        178,
+        68,
+        172,
+        197,
+        1
+      ],
+      "accounts": [
+        {
+          "name": "redemptionOffer",
+          "docs": [
+            "The redemption offer account whose fee will be updated"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_in_mint",
+                "account": "redemptionOffer"
+              },
+              {
+                "kind": "account",
+                "path": "redemption_offer.token_out_mint",
+                "account": "redemptionOffer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "docs": [
+            "Program state account containing boss authorization"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "docs": [
+            "The boss account authorized to update redemption offer fees"
+          ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newVaultTargetBps",
           "type": "u16"
         }
       ]
@@ -10880,6 +11074,19 @@ export type Onreapp = {
         154,
         166,
         156
+      ]
+    },
+    {
+      "name": "redemptionOfferVaultTargetUpdatedEvent",
+      "discriminator": [
+        199,
+        56,
+        132,
+        45,
+        20,
+        230,
+        171,
+        98
       ]
     },
     {
@@ -13581,14 +13788,6 @@ export type Onreapp = {
         "kind": "struct",
         "fields": [
           {
-            "name": "oldPoolTargetBps",
-            "type": "u16"
-          },
-          {
-            "name": "newPoolTargetBps",
-            "type": "u16"
-          },
-          {
             "name": "oldCurvePegHaircutBps",
             "type": "u16"
           },
@@ -13652,10 +13851,6 @@ export type Onreapp = {
       "type": {
         "kind": "struct",
         "fields": [
-          {
-            "name": "poolTargetBps",
-            "type": "u16"
-          },
           {
             "name": "curvePegHaircutBps",
             "type": "u16"
@@ -13799,6 +13994,16 @@ export type Onreapp = {
             "type": "u16"
           },
           {
+            "name": "vaultTargetBps",
+            "docs": [
+              "Target stable-token balance for the redemption vault as basis points of TVL.",
+              "",
+              "A value of 0 disables automatic inflow into the redemption vault; net inflow",
+              "goes to the configured proceeds vault instead."
+            ],
+            "type": "u16"
+          },
+          {
             "name": "requestCounter",
             "docs": [
               "Counter for sequential redemption request numbering",
@@ -13821,7 +14026,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                109
+                107
               ]
             }
           }
@@ -13872,6 +14077,13 @@ export type Onreapp = {
               "Fee in basis points (10000 = 100%) charged when fulfilling redemption requests"
             ],
             "type": "u16"
+          },
+          {
+            "name": "vaultTargetBps",
+            "docs": [
+              "Target stable-token vault balance as basis points of TVL."
+            ],
+            "type": "u16"
           }
         ]
       }
@@ -13912,6 +14124,30 @@ export type Onreapp = {
             "docs": [
               "The boss account that authorized the fee update"
             ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "redemptionOfferVaultTargetUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "redemptionOfferPda",
+            "type": "pubkey"
+          },
+          {
+            "name": "oldVaultTargetBps",
+            "type": "u16"
+          },
+          {
+            "name": "newVaultTargetBps",
+            "type": "u16"
+          },
+          {
+            "name": "boss",
             "type": "pubkey"
           }
         ]

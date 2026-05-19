@@ -12,13 +12,15 @@ use crate::instructions::configurable_vault::{
 };
 use crate::instructions::market_info::{load_main_offer, refresh_market_stats_pda};
 use crate::instructions::offer::offer_utils::{
-    is_onyc_token_out_mint, process_offer_core, should_accrue_onyc_mint, verify_offer_approval,
+    calculate_redemption_vault_refill_amount, is_onyc_token_out_mint,
+    load_redemption_offer_vault_target_bps_for_offer, process_offer_core, should_accrue_onyc_mint,
+    verify_offer_approval,
 };
 use crate::instructions::Offer;
 use crate::state::{ConfigurableVaultKind, State};
 use crate::utils::{
-    execute_token_operations, get_or_create_associated_token_account, u64_to_dec9, ApprovalMessage,
-    EnsureAtaParams, ExecTokenOpsParams,
+    execute_token_operations, get_or_create_associated_token_account, program_controls_mint,
+    u64_to_dec9, ApprovalMessage, EnsureAtaParams, ExecTokenOpsParams,
 };
 use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::{
@@ -273,6 +275,17 @@ pub struct TakeOfferV2<'info> {
     #[account(mut)]
     pub user_token_out_account: UncheckedAccount<'info>,
 
+    /// CHECK: Redemption offer PDA for the opposite offer direction; may be uninitialized.
+    pub redemption_offer: UncheckedAccount<'info>,
+
+    /// CHECK: PDA derivation is validated by seeds constraint.
+    #[account(seeds = [seeds::REDEMPTION_OFFER_VAULT_AUTHORITY], bump)]
+    pub redemption_vault_authority: UncheckedAccount<'info>,
+
+    /// CHECK: Validated and optionally initialized in instruction logic.
+    #[account(mut)]
+    pub redemption_vault_token_in_account: UncheckedAccount<'info>,
+
     /// CHECK: PDA and data are validated/initialized in instruction logic.
     #[account(mut)]
     pub offer_proceeds_vault: UncheckedAccount<'info>,
@@ -389,6 +402,8 @@ pub fn take_offer<'info>(
         ]]),
         token_in_source_account: &ctx.accounts.user_token_in_account,
         token_in_destination_account: &ctx.accounts.boss_token_in_account,
+        token_in_refill_destination_account: None,
+        token_in_refill_amount: 0,
         token_in_fee_destination_account: &ctx.accounts.boss_token_in_account,
         token_in_burn_account: &ctx.accounts.vault_token_in_account,
         token_in_burn_authority: &ctx.accounts.vault_authority.to_account_info(),
@@ -471,6 +486,14 @@ pub fn execute_take_offer_v2<'info>(
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,
     )?;
+    let redemption_vault_target_bps = load_redemption_offer_vault_target_bps_for_offer(
+        ctx.program_id,
+        &ctx.accounts.redemption_offer,
+        ctx.accounts.offer.key(),
+        ctx.accounts.token_in_mint.key(),
+        ctx.accounts.token_out_mint.key(),
+    )?
+    .unwrap_or(0);
     let offer_proceeds_token_in_account = get_or_create_configurable_vault_token_account::<
         { ConfigurableVaultKind::OfferProceeds.as_u8() },
     >(ConfigurableVaultTokenAccountParams {
@@ -495,6 +518,41 @@ pub fn execute_take_offer_v2<'info>(
         system_program: ctx.accounts.system_program.to_account_info(),
         program_id: ctx.program_id,
     })?;
+    let should_refill_redemption_vault = redemption_vault_target_bps > 0
+        && !program_controls_mint(
+            &ctx.accounts.token_in_mint,
+            &ctx.accounts.mint_authority.to_account_info(),
+        );
+    let redemption_vault_token_in_account = if should_refill_redemption_vault {
+        Some(get_or_create_associated_token_account(EnsureAtaParams {
+            ata_account: &ctx.accounts.redemption_vault_token_in_account,
+            payer: ctx.accounts.user.to_account_info(),
+            authority_account: ctx.accounts.redemption_vault_authority.to_account_info(),
+            mint_account: ctx.accounts.token_in_mint.to_account_info(),
+            token_program: ctx.accounts.token_in_program.to_account_info(),
+            associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+            authority: ctx.accounts.redemption_vault_authority.key(),
+            mint: ctx.accounts.token_in_mint.key(),
+            token_program_id: ctx.accounts.token_in_program.key(),
+            invalid_account_error: crate::OnreError::InvalidVaultTokenInAccount,
+        })?)
+    } else {
+        None
+    };
+    let redemption_vault_refill_amount = redemption_vault_token_in_account
+        .as_ref()
+        .map(|account| {
+            calculate_redemption_vault_refill_amount(
+                &ctx.accounts.market_stats.to_account_info(),
+                redemption_vault_target_bps,
+                &ctx.accounts.token_in_mint,
+                &ctx.accounts.token_out_mint,
+                account.amount,
+                result.token_in_net_amount,
+            )
+        })
+        .unwrap_or(0);
 
     get_or_create_associated_token_account(EnsureAtaParams {
         ata_account: &ctx.accounts.user_token_out_account,
@@ -542,6 +600,8 @@ pub fn execute_take_offer_v2<'info>(
         ]]),
         token_in_source_account: &ctx.accounts.user_token_in_account,
         token_in_destination_account: &offer_proceeds_token_in_account,
+        token_in_refill_destination_account: redemption_vault_token_in_account.as_ref(),
+        token_in_refill_amount: redemption_vault_refill_amount,
         token_in_fee_destination_account: &offer_fee_token_in_account,
         token_in_burn_account: &ctx.accounts.vault_token_in_account,
         token_in_burn_authority: &ctx.accounts.vault_authority.to_account_info(),

@@ -21,6 +21,8 @@ pub struct RedemptionOfferCreatedEvent {
     pub token_out_mint: Pubkey,
     /// Fee in basis points (10000 = 100%) charged when fulfilling redemption requests
     pub fee_basis_points: u16,
+    /// Target stable-token vault balance as basis points of TVL.
+    pub vault_target_bps: u16,
 }
 
 /// Account structure for creating a redemption offer
@@ -170,6 +172,7 @@ pub fn make_redemption_offer(
     redemption_offer.token_in_mint = ctx.accounts.token_in_mint.key();
     redemption_offer.token_out_mint = ctx.accounts.token_out_mint.key();
     redemption_offer.fee_basis_points = fee_basis_points;
+    redemption_offer.vault_target_bps = 0;
     redemption_offer.executed_redemptions = 0;
     redemption_offer.requested_redemptions = 0;
     redemption_offer.request_counter = 0;
@@ -187,6 +190,7 @@ pub fn make_redemption_offer(
         token_in_mint: ctx.accounts.token_in_mint.key(),
         token_out_mint: ctx.accounts.token_out_mint.key(),
         fee_basis_points,
+        vault_target_bps: 0,
     });
 
     Ok(())

@@ -67,6 +67,25 @@ where
     deserialize_pda_account(account, invalid_data_error)
 }
 
+pub fn load_optional_pda_account<T>(
+    account: &AccountInfo,
+    program_id: &Pubkey,
+    invalid_owner_error: Error,
+    invalid_data_error: Error,
+) -> Result<Option<T>>
+where
+    T: AccountDeserialize,
+{
+    if account.owner == &system_program::ID {
+        if account.data_is_empty() {
+            return Ok(None);
+        }
+        return Err(invalid_data_error);
+    }
+
+    load_pda_account(account, program_id, invalid_owner_error, invalid_data_error).map(Some)
+}
+
 pub fn store_pda_account<T>(account: &AccountInfo, value: &T) -> Result<()>
 where
     T: AccountSerialize,

@@ -617,6 +617,96 @@ fn test_take_offer_permissionless_v2_accrues_buffer_and_refreshes_market_stats()
     assert_eq!(market_stats.tvl, expected_circulating_supply);
 }
 
+#[test]
+fn test_take_offer_permissionless_v2_refills_redemption_vault_then_overflows_to_offer_proceeds() {
+    let mut ctx = setup_permissionless_no_approval();
+    let boss = ctx.payer.pubkey();
+    let current_time = get_clock_time(&ctx.svm);
+
+    let ix = build_add_offer_vector_ix(
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        Some(current_time),
+        current_time,
+        1_000_000_000,
+        0,
+        86_400,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+    let ix = build_make_redemption_offer_ix(
+        &boss,
+        &ctx.onyc_mint,
+        &ctx.usdc_mint,
+        0,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+    let ix =
+        build_update_redemption_offer_vault_target_ix(&boss, &ctx.onyc_mint, &ctx.usdc_mint, 1_500);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let (vault_authority, _) = find_offer_vault_authority_pda();
+    set_and_refresh_circulating_supply_exclusions(
+        &mut ctx.svm,
+        &ctx.payer,
+        &ctx.onyc_mint,
+        &[vault_authority],
+    );
+
+    let first_ix = build_take_offer_permissionless_v2_ix(
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_000,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut ctx.svm, &[first_ix], &[&ctx.payer, &ctx.user]).unwrap();
+
+    let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
+    let redemption_vault_usdc = derive_ata(
+        &redemption_vault_authority,
+        &ctx.usdc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    let offer_proceeds_usdc = derive_ata(
+        &find_offer_proceeds_vault_pda().0,
+        &ctx.usdc_mint,
+        &TOKEN_PROGRAM_ID,
+    );
+    assert_eq!(get_token_balance(&ctx.svm, &redemption_vault_usdc), 0);
+    assert_eq!(get_token_balance(&ctx.svm, &offer_proceeds_usdc), 1_000_000);
+
+    advance_slot(&mut ctx.svm);
+    refresh_circulating_supply_excluded_balance(
+        &mut ctx.svm,
+        &ctx.payer,
+        &ctx.onyc_mint,
+        &[vault_authority],
+    );
+    let ix = build_refresh_market_stats_v2_ix(&boss, &ctx.usdc_mint, &ctx.onyc_mint);
+    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
+
+    let second_ix = build_take_offer_permissionless_v2_ix(
+        &ctx.user.pubkey(),
+        &boss,
+        &ctx.usdc_mint,
+        &ctx.onyc_mint,
+        1_000_001,
+        None,
+        &TOKEN_PROGRAM_ID,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut ctx.svm, &[second_ix], &[&ctx.payer, &ctx.user]).unwrap();
+
+    assert_eq!(get_token_balance(&ctx.svm, &redemption_vault_usdc), 150_000);
+    assert_eq!(get_token_balance(&ctx.svm, &offer_proceeds_usdc), 1_850_001);
+}
+
 // ===========================================================================
 // Price Calculation Tests
 // ===========================================================================

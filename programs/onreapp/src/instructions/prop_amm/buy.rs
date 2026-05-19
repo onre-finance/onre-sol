@@ -9,11 +9,11 @@ use crate::instructions::buffer::BufferAccrualAccounts;
 use crate::instructions::configurable_vault::{
     get_or_create_configurable_vault_token_account, ConfigurableVaultTokenAccountParams,
 };
-use crate::instructions::market_info::{
-    load_main_offer, read_market_stats_account, refresh_market_stats_pda,
-};
+use crate::instructions::market_info::{load_main_offer, refresh_market_stats_pda};
 use crate::instructions::offer::{
-    is_onyc_token_out_mint, should_accrue_onyc_mint, verify_offer_approval,
+    calculate_redemption_vault_refill_amount, is_onyc_token_out_mint,
+    load_redemption_offer_vault_target_bps_for_offer, should_accrue_onyc_mint,
+    verify_offer_approval,
 };
 use crate::instructions::Offer;
 use crate::state::{ConfigurableVaultKind, State};
@@ -40,6 +40,9 @@ pub struct OpenSwapBuy<'info> {
         bump = prop_amm_state.bump
     )]
     pub prop_amm_state: Account<'info, PropAmmState>,
+
+    /// CHECK: Redemption offer PDA for the opposite offer direction; may be uninitialized.
+    pub redemption_offer: UncheckedAccount<'info>,
 
     #[account(
         seeds = [crate::constants::seeds::STATE],
@@ -327,23 +330,22 @@ fn execute_open_swap_buy<'info>(
         token_in_amount,
     )?;
 
-    let target_liquidity = read_market_stats_account(&ctx.accounts.market_stats.to_account_info())
-        .map(|market_stats| {
-            let target_in_onyc_decimals = (market_stats.tvl as u128)
-                .saturating_mul(ctx.accounts.prop_amm_state.pool_target_bps as u128)
-                .saturating_div(crate::constants::MAX_BASIS_POINTS as u128);
-            target_in_onyc_decimals
-                .saturating_mul(10_u128.pow(ctx.accounts.token_in_mint.decimals as u32))
-                .saturating_div(10_u128.pow(ctx.accounts.token_out_mint.decimals as u32))
-        })
-        .unwrap_or(0);
-    let current_liquidity = redemption_vault_token_in_account.amount as u128;
-    let refill_amount = if target_liquidity > current_liquidity {
-        let deficit = target_liquidity - current_liquidity;
-        deficit.min(result.token_in_net_amount as u128) as u64
-    } else {
-        0
-    };
+    let redemption_vault_target_bps = load_redemption_offer_vault_target_bps_for_offer(
+        ctx.program_id,
+        &ctx.accounts.redemption_offer,
+        ctx.accounts.offer.key(),
+        ctx.accounts.token_in_mint.key(),
+        ctx.accounts.token_out_mint.key(),
+    )?
+    .unwrap_or(0);
+    let refill_amount = calculate_redemption_vault_refill_amount(
+        &ctx.accounts.market_stats.to_account_info(),
+        redemption_vault_target_bps,
+        &ctx.accounts.token_in_mint,
+        &ctx.accounts.token_out_mint,
+        redemption_vault_token_in_account.amount,
+        result.token_in_net_amount,
+    );
     let boss_net_amount = result
         .token_in_net_amount
         .checked_sub(refill_amount)

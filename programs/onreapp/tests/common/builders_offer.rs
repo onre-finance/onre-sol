@@ -197,6 +197,13 @@ pub fn build_take_offer_permissionless_v2_ix(
     );
     let user_token_in_ata = derive_ata(user, token_in_mint, token_in_program);
     let user_token_out_ata = derive_ata(user, token_out_mint, token_out_program);
+    let (redemption_offer_pda, _) = find_redemption_offer_pda(token_out_mint, token_in_mint);
+    let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
+    let redemption_vault_token_in_ata = derive_ata(
+        &redemption_vault_authority_pda,
+        token_in_mint,
+        token_in_program,
+    );
     let (offer_proceeds_vault_pda, _) = find_offer_proceeds_vault_pda();
     let offer_proceeds_token_in_ata =
         derive_ata(&offer_proceeds_vault_pda, token_in_mint, token_in_program);
@@ -240,6 +247,9 @@ pub fn build_take_offer_permissionless_v2_ix(
             AccountMeta::new_readonly(*token_out_program, false),
             AccountMeta::new(user_token_in_ata, false),
             AccountMeta::new(user_token_out_ata, false),
+            AccountMeta::new_readonly(redemption_offer_pda, false),
+            AccountMeta::new_readonly(redemption_vault_authority_pda, false),
+            AccountMeta::new(redemption_vault_token_in_ata, false),
             AccountMeta::new(offer_proceeds_vault_pda, false),
             AccountMeta::new(offer_proceeds_token_in_ata, false),
             AccountMeta::new(offer_fee_vault_pda, false),
@@ -406,6 +416,13 @@ pub fn build_take_offer_v2_ix(
     let vault_token_out_ata = derive_ata(&vault_authority_pda, token_out_mint, token_out_program);
     let user_token_in_ata = derive_ata(user, token_in_mint, token_in_program);
     let user_token_out_ata = derive_ata(user, token_out_mint, token_out_program);
+    let (redemption_offer_pda, _) = find_redemption_offer_pda(token_out_mint, token_in_mint);
+    let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
+    let redemption_vault_token_in_ata = derive_ata(
+        &redemption_vault_authority_pda,
+        token_in_mint,
+        token_in_program,
+    );
     let (offer_proceeds_vault_pda, _) = find_offer_proceeds_vault_pda();
     let offer_proceeds_token_in_ata =
         derive_ata(&offer_proceeds_vault_pda, token_in_mint, token_in_program);
@@ -446,6 +463,9 @@ pub fn build_take_offer_v2_ix(
             AccountMeta::new_readonly(*token_out_program, false),
             AccountMeta::new(user_token_in_ata, false),
             AccountMeta::new(user_token_out_ata, false),
+            AccountMeta::new_readonly(redemption_offer_pda, false),
+            AccountMeta::new_readonly(redemption_vault_authority_pda, false),
+            AccountMeta::new(redemption_vault_token_in_ata, false),
             AccountMeta::new(offer_proceeds_vault_pda, false),
             AccountMeta::new(offer_proceeds_token_in_ata, false),
             AccountMeta::new(offer_fee_vault_pda, false),
@@ -558,6 +578,7 @@ pub fn build_open_swap_buy_ix(
         token_in_mint
     };
     let (offer_pda, _) = find_offer_pda(canonical_token_in, canonical_token_out);
+    let (redemption_offer_pda, _) = find_redemption_offer_pda(token_out_mint, token_in_mint);
     let (offer_vault_authority_pda, _) = find_offer_vault_authority_pda();
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
     let (permissionless_authority_pda, _) = find_permissionless_authority_pda();
@@ -629,6 +650,7 @@ pub fn build_open_swap_buy_ix(
         accounts: vec![
             AccountMeta::new(offer_pda, false),
             AccountMeta::new(prop_amm_state_pda, false),
+            AccountMeta::new_readonly(redemption_offer_pda, false),
             AccountMeta::new_readonly(state_pda, false),
             AccountMeta::new_readonly(offer_vault_authority_pda, false),
             AccountMeta::new_readonly(redemption_vault_authority_pda, false),

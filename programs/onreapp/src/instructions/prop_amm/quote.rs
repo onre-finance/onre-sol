@@ -4,8 +4,9 @@ use crate::instructions::offer::process_offer_core;
 use crate::instructions::redemption::{process_redemption_core, RedemptionOffer};
 use crate::instructions::Offer;
 use crate::state::State;
+use crate::utils::load_optional_pda_account;
 use anchor_lang::solana_program::program::set_return_data;
-use anchor_lang::{prelude::*, system_program, Accounts, AnchorDeserialize, AnchorSerialize};
+use anchor_lang::{prelude::*, Accounts, AnchorDeserialize, AnchorSerialize};
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use super::config::{
@@ -141,32 +142,44 @@ pub(crate) fn validate_canonical_offer(
     Ok(side)
 }
 
-pub(crate) fn redemption_offer_fee_basis_points(
+pub(crate) struct RedemptionOfferConfig {
+    pub fee_basis_points: u16,
+    pub vault_target_bps: u16,
+}
+
+pub(crate) fn redemption_offer_config(
     program_id: &Pubkey,
     redemption_offer_account: &UncheckedAccount,
     offer_key: Pubkey,
     token_in_mint: Pubkey,
     token_out_mint: Pubkey,
-) -> Result<u16> {
-    let account_info = redemption_offer_account.to_account_info();
-    if account_info.owner == &system_program::ID {
-        require!(
-            account_info.data_is_empty(),
-            crate::OnreError::InvalidRedemptionOfferData
-        );
-        return Ok(0);
-    }
-
+) -> Result<RedemptionOfferConfig> {
+    let (expected_redemption_offer, _) = Pubkey::find_program_address(
+        &[
+            seeds::REDEMPTION_OFFER,
+            token_in_mint.as_ref(),
+            token_out_mint.as_ref(),
+        ],
+        program_id,
+    );
     require_keys_eq!(
-        *account_info.owner,
-        *program_id,
-        crate::OnreError::InvalidRedemptionOfferOwner
+        redemption_offer_account.key(),
+        expected_redemption_offer,
+        crate::OnreError::InvalidRedemptionOffer
     );
 
-    let data = account_info.try_borrow_data()?;
-    let mut slice: &[u8] = &data;
-    let redemption_offer = RedemptionOffer::try_deserialize(&mut slice)
-        .map_err(|_| error!(crate::OnreError::InvalidRedemptionOfferData))?;
+    let Some(redemption_offer) = load_optional_pda_account::<RedemptionOffer>(
+        &redemption_offer_account.to_account_info(),
+        program_id,
+        crate::OnreError::InvalidRedemptionOfferOwner.into(),
+        crate::OnreError::InvalidRedemptionOfferData.into(),
+    )?
+    else {
+        return Ok(RedemptionOfferConfig {
+            fee_basis_points: 0,
+            vault_target_bps: 0,
+        });
+    };
 
     require_keys_eq!(
         redemption_offer.offer,
@@ -184,7 +197,10 @@ pub(crate) fn redemption_offer_fee_basis_points(
         crate::OnreError::InvalidRedemptionOffer
     );
 
-    Ok(redemption_offer.fee_basis_points)
+    Ok(RedemptionOfferConfig {
+        fee_basis_points: redemption_offer.fee_basis_points,
+        vault_target_bps: redemption_offer.vault_target_bps,
+    })
 }
 
 pub(crate) fn apply_hard_wall_liquidity_factor(
@@ -435,7 +451,6 @@ pub fn apply_hard_wall_reserve_curve_with_params(
     curve_exponent_scaled: u32,
 ) -> Result<u64> {
     let prop_amm_state = PropAmmState {
-        pool_target_bps: 0,
         curve_peg_haircut_bps,
         curve_exponent_scaled,
         min_cadence_exponent_scaled: DEFAULT_MIN_CADENCE_EXPONENT_SCALED,
@@ -461,12 +476,12 @@ pub fn apply_hard_wall_reserve_curve_with_params(
 
 pub fn hard_wall_reserve_from_tvl(
     tvl: u64,
-    pool_target_bps: u16,
+    vault_target_bps: u16,
     token_out_decimals: u8,
     onyc_decimals: u8,
 ) -> Result<u64> {
     let target_in_onyc_decimals = (tvl as u128)
-        .checked_mul(pool_target_bps as u128)
+        .checked_mul(vault_target_bps as u128)
         .ok_or(crate::OnreError::MathOverflow)?
         .checked_div(crate::constants::MAX_BASIS_POINTS as u128)
         .ok_or(crate::OnreError::DivByZero)?;
@@ -739,19 +754,23 @@ pub fn quote_swap_sell(ctx: Context<QuoteSwapSell>, token_in_amount: u64) -> Res
         crate::OnreError::InvalidMarketStatsPda
     );
     let market_stats = read_market_stats_account(&ctx.accounts.market_stats.to_account_info())?;
-    let hard_wall_reserve = hard_wall_reserve_from_tvl(
-        market_stats.tvl,
-        ctx.accounts.prop_amm_state.pool_target_bps,
-        ctx.accounts.token_out_mint.decimals,
-        ctx.accounts.token_in_mint.decimals,
-    )?;
-    let redemption_fee_basis_points = redemption_offer_fee_basis_points(
+    let redemption_config = redemption_offer_config(
         ctx.program_id,
         &ctx.accounts.redemption_offer,
         ctx.accounts.offer.key(),
         ctx.accounts.token_in_mint.key(),
         ctx.accounts.token_out_mint.key(),
     )?;
+    let hard_wall_reserve = if redemption_config.vault_target_bps > 0 {
+        hard_wall_reserve_from_tvl(
+            market_stats.tvl,
+            redemption_config.vault_target_bps,
+            ctx.accounts.token_out_mint.decimals,
+            ctx.accounts.token_in_mint.decimals,
+        )?
+    } else {
+        ctx.accounts.redemption_vault_token_out_account.amount
+    };
     let quote = build_swap_sell_quote(
         ctx.program_id,
         &ctx.accounts.state,
@@ -760,7 +779,7 @@ pub fn quote_swap_sell(ctx: Context<QuoteSwapSell>, token_in_amount: u64) -> Res
         &ctx.accounts.prop_amm_state,
         ctx.accounts.redemption_vault_token_out_account.amount,
         hard_wall_reserve,
-        redemption_fee_basis_points,
+        redemption_config.fee_basis_points,
         token_in_amount,
         &ctx.accounts.token_in_mint,
         &ctx.accounts.token_out_mint,

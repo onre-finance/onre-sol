@@ -1,9 +1,12 @@
+use crate::constants::{seeds, MAX_BASIS_POINTS};
+use crate::instructions::market_info::read_market_stats_account;
+use crate::instructions::redemption::RedemptionOffer;
 use crate::instructions::{Offer, OfferVector};
 use crate::state::State;
 use crate::utils::approver::approver_utils;
 use crate::utils::{
-    calculate_fees, calculate_token_out_amount, mul_div_round_u128, pow_fixed,
-    program_controls_mint, ApprovalMessage,
+    calculate_fees, calculate_token_out_amount, load_optional_pda_account, mul_div_round_u128,
+    pow_fixed, program_controls_mint, ApprovalMessage,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
@@ -172,6 +175,88 @@ pub fn should_accrue_onyc_mint<'info>(
     is_onyc_token_out_mint(state, token_out_mint)
         && buffer_is_initialized
         && program_controls_mint(token_out_mint, mint_authority)
+}
+
+pub(crate) fn load_redemption_offer_vault_target_bps_for_offer(
+    program_id: &Pubkey,
+    redemption_offer_account: &UncheckedAccount,
+    offer_key: Pubkey,
+    token_in_mint: Pubkey,
+    token_out_mint: Pubkey,
+) -> Result<Option<u16>> {
+    let (expected_redemption_offer, _) = Pubkey::find_program_address(
+        &[
+            seeds::REDEMPTION_OFFER,
+            token_out_mint.as_ref(),
+            token_in_mint.as_ref(),
+        ],
+        program_id,
+    );
+    require_keys_eq!(
+        redemption_offer_account.key(),
+        expected_redemption_offer,
+        crate::OnreError::InvalidRedemptionOffer
+    );
+
+    let Some(redemption_offer) = load_optional_pda_account::<RedemptionOffer>(
+        &redemption_offer_account.to_account_info(),
+        program_id,
+        crate::OnreError::InvalidRedemptionOfferOwner.into(),
+        crate::OnreError::InvalidRedemptionOfferData.into(),
+    )?
+    else {
+        return Ok(None);
+    };
+
+    require_keys_eq!(
+        redemption_offer.offer,
+        offer_key,
+        crate::OnreError::InvalidRedemptionOffer
+    );
+    require_keys_eq!(
+        redemption_offer.token_in_mint,
+        token_out_mint,
+        crate::OnreError::InvalidRedemptionOffer
+    );
+    require_keys_eq!(
+        redemption_offer.token_out_mint,
+        token_in_mint,
+        crate::OnreError::InvalidRedemptionOffer
+    );
+
+    Ok(Some(redemption_offer.vault_target_bps))
+}
+
+pub(crate) fn calculate_redemption_vault_refill_amount(
+    market_stats_account: &AccountInfo,
+    vault_target_bps: u16,
+    token_in_mint: &Mint,
+    token_out_mint: &Mint,
+    current_redemption_vault_balance: u64,
+    token_in_net_amount: u64,
+) -> u64 {
+    if vault_target_bps == 0 {
+        return 0;
+    }
+
+    let target_liquidity = read_market_stats_account(market_stats_account)
+        .map(|market_stats| {
+            let target_in_onyc_decimals = (market_stats.tvl as u128)
+                .saturating_mul(vault_target_bps as u128)
+                .saturating_div(MAX_BASIS_POINTS as u128);
+            target_in_onyc_decimals
+                .saturating_mul(10_u128.pow(token_in_mint.decimals as u32))
+                .saturating_div(10_u128.pow(token_out_mint.decimals as u32))
+        })
+        .unwrap_or(0);
+
+    let current_liquidity = current_redemption_vault_balance as u128;
+    if target_liquidity > current_liquidity {
+        let deficit = target_liquidity - current_liquidity;
+        deficit.min(token_in_net_amount as u128) as u64
+    } else {
+        0
+    }
 }
 
 /// Finds the currently active pricing vector at a specific time

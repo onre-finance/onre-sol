@@ -175,9 +175,12 @@ pub fn apply_market_stats_snapshot(
 }
 
 pub fn read_market_stats_account(market_stats_account: &AccountInfo) -> Result<MarketStats> {
-    let data = market_stats_account.try_borrow_data()?;
-    let mut slice: &[u8] = &data;
-    MarketStats::try_deserialize(&mut slice)
+    load_pda_account(
+        market_stats_account,
+        &crate::ID,
+        crate::OnreError::InvalidMarketStatsOwner.into(),
+        crate::OnreError::InvalidMarketStatsData.into(),
+    )
 }
 
 pub fn write_market_stats_account(
