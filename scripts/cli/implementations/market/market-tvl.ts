@@ -18,6 +18,8 @@ export async function executeMarketTvl(opts: GlobalOptions & Record<string, any>
 
         // Get the offer vault token account
         const offerVaultTokenOut = getAssociatedTokenAddressSync(params.tokenOut, helper.pdas.offerVaultAuthorityPda, true, tokenOutProgram);
+        const state = await helper.getState();
+        const bossOnycAccount = getAssociatedTokenAddressSync(params.tokenOut, state.boss as any, false, tokenOutProgram);
 
         // Call the view method
         const tvl = await helper.program.methods
@@ -26,6 +28,7 @@ export async function executeMarketTvl(opts: GlobalOptions & Record<string, any>
                 tokenInMint: new PublicKey(params.tokenIn),
                 tokenOutMint: new PublicKey(params.tokenOut),
                 vaultTokenOutAccount: offerVaultTokenOut,
+                bossOnycAccount,
                 tokenOutProgram,
             })
             .view();

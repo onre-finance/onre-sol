@@ -14,7 +14,7 @@ pub struct ParsedEd25519 {
 /// Parse Ed25519 verify instruction data into useful parts.
 ///
 /// Expected data format (Solana Ed25519 instruction format):
-/// ```
+/// ```text
 /// Bytes 0:     Number of signatures (u8) - must be 1
 /// Bytes 1:     Instruction index (u8)
 /// Bytes 2-3:   Signature offset (u16 little-endian)

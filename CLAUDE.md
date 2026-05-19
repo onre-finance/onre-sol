@@ -8,17 +8,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Build the Anchor program
 anchor build
 
-# Run all tests (builds program and copies to fixtures)
-anchor test
-
-# Run a single test file
-npx jest --runInBand tests/path/to/test.spec.ts
+# Run Rust tests
+cargo test -p onreapp
 
 # Update program ID after changing keypair
 anchor keys sync && anchor build
 ```
 
 **Note**: Do NOT use `anchor test -- --testNamePattern=...` - it doesn't work.
+**Important**: In this repo, never run LiteSVM `cargo test` in parallel with `anchor build`, and never start the test before `anchor build` has fully finished. `programs/onreapp/tests/common/svm.rs` embeds `target/deploy/onreapp.so`, so tests can run against a stale binary if build/test overlap.
 
 ## Project Overview
 
@@ -44,7 +42,7 @@ This is a Solana smart contract built with Anchor that manages tokenized (re)ins
 
 ### Key Concepts
 
-**Dynamic Pricing**: Offers use `OfferVector` arrays with APR-based compound interest. Price grows over time using `base_price`, `apr` (scale=6, 1_000_000 = 1%), and `price_fix_duration`.
+**Dynamic Pricing**: Offers use `OfferVector` arrays with APR-based compound interest. Price grows over time using `base_price`, `apr` (scale=6, 10_000 = 1%, 1_000_000 = 100%), and `price_fix_duration`.
 
 **Authority Structure**:
 - `boss`: Primary authority with full control
@@ -54,13 +52,13 @@ This is a Solana smart contract built with Anchor that manages tokenized (re)ins
 
 **PDAs**: Seeds defined in `constants::seeds` - STATE, OFFER, OFFER_VAULT_AUTHORITY, PERMISSIONLESS_AUTHORITY, MINT_AUTHORITY, REDEMPTION_OFFER, etc.
 
-### Test Infrastructure (tests/)
+### Test Infrastructure (programs/onreapp/tests/)
 
-Uses **solana-bankrun** + **anchor-bankrun** for fast local testing without a validator.
+Uses Rust **LiteSVM** tests for fast local testing without a validator.
 
-- `test_helper.ts`: `TestHelper` class provides utilities for creating mints, token accounts, advancing clock time
-- Tests mirror the instruction structure (offer/, redemption/, state_operations/, etc.)
-- `onre_program.ts`: Shared program setup
+- `common/`: shared setup, instruction builders, readers, token helpers
+- Tests mirror the instruction structure (`offer.rs`, `redemption.rs`, `state_operations.rs`, etc.)
+- `programs/onreapp/tests/common/svm.rs` embeds `target/deploy/onreapp.so`; run `anchor build` first when you need tests against a freshly built SBF program
 
 ## Client Scripts (scripts/)
 

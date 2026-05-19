@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes/index.js';
-import tokenMessengerAbi from './abis/TokenMessenger.json' with { type: "json" };
-import usdcAbi from './abis/Usdc.json' with { type: "json" };
+import tokenMessengerAbi from './abis/TokenMessenger.json';
+import usdcAbi from './abis/Usdc.json';
 import { JsonRpcProvider, Wallet, Contract, hexlify, keccak256, ContractTransactionResponse, ethers } from 'ethers';
 import { decodeEventNonceFromMessage, ETH_DOMAIN_ID, getAnchorConnection, getAttestation, getPrograms, getReceiveMessagePdas, SOLANA_DOMAIN_ID, solanaAddressToHex } from './utils.ts';
 import { Keypair, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';

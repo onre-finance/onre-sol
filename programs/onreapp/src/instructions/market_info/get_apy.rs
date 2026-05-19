@@ -1,7 +1,7 @@
 use crate::constants::seeds;
 use crate::instructions::offer::offer_utils::find_active_vector_at;
 use crate::instructions::Offer;
-use crate::OfferCoreError;
+use crate::utils::{mul_div_round_u128, pow_fixed};
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 use anchor_spl::token_interface::Mint;
@@ -17,17 +17,6 @@ const INT_SCALE: u128 = 1_000_000_000_000_000_000;
 /// Number of compounding periods per year for daily compounding
 /// Standard financial calculation uses 365 days per year
 const N: u128 = 365;
-
-/// Error codes for APY calculation operations
-#[error_code]
-pub enum GetAPYErrorCode {
-    /// Mathematical overflow during APY calculations
-    #[msg("Math overflow")]
-    Overflow,
-    /// Division by zero in fixed-point arithmetic
-    #[msg("Division by zero")]
-    DivByZero,
-}
 
 /// Event emitted when APY calculation is successfully completed
 ///
@@ -75,7 +64,7 @@ pub struct GetAPY<'info> {
     #[account(
         constraint =
             token_in_mint.key() == offer.load()?.token_in_mint
-            @ OfferCoreError::InvalidTokenInMint
+            @ crate::OnreError::InvalidTokenInMint
     )]
     pub token_in_mint: InterfaceAccount<'info, Mint>,
 
@@ -87,7 +76,7 @@ pub struct GetAPY<'info> {
     #[account(
         constraint =
             token_out_mint.key() == offer.load()?.token_out_mint
-            @ OfferCoreError::InvalidTokenOutMint
+            @ crate::OnreError::InvalidTokenOutMint
     )]
     pub token_out_mint: InterfaceAccount<'info, Mint>,
 }
@@ -122,9 +111,9 @@ pub struct GetAPY<'info> {
 ///
 /// # Returns
 /// * `Ok(apy)` - The calculated APY with scale=6 (1_000_000 = 100%)
-/// * `Err(OfferCoreError::NoActiveVector)` - If no pricing vector is currently active
-/// * `Err(GetAPYErrorCode::Overflow)` - If mathematical overflow occurs during calculation
-/// * `Err(GetAPYErrorCode::DivByZero)` - If division by zero occurs during calculation
+/// * `Err(crate::OnreError::NoActiveVector)` - If no pricing vector is currently active
+/// * `Err(crate::OnreError::Overflow)` - If mathematical overflow occurs during calculation
+/// * `Err(crate::OnreError::DivByZero)` - If division by zero occurs during calculation
 ///
 /// # Events
 /// * `GetAPYEvent` - Emitted on successful calculation containing offer PDA, APY, source APR, and timestamp
@@ -163,7 +152,7 @@ pub fn get_apy(ctx: Context<GetAPY>) -> Result<u64> {
 /// fixed-point arithmetic to maintain accuracy across the full range of input values.
 ///
 /// # Mathematical Formula
-/// ```
+/// ```text
 /// APY = (1 + APR/365)^365 - 1
 /// ```
 ///
@@ -178,8 +167,8 @@ pub fn get_apy(ctx: Context<GetAPY>) -> Result<u64> {
 ///
 /// # Returns
 /// * `Ok(apy)` - Annual Percentage Yield with scale=6 (same scaling as input)
-/// * `Err(GetAPYErrorCode::Overflow)` - If mathematical overflow occurs
-/// * `Err(GetAPYErrorCode::DivByZero)` - If division by zero occurs
+/// * `Err(crate::OnreError::Overflow)` - If mathematical overflow occurs
+/// * `Err(crate::OnreError::DivByZero)` - If division by zero occurs
 ///
 /// # Scale Information
 /// Both input and output use scale=6, where 1_000_000 represents 100%:
@@ -192,93 +181,36 @@ pub fn calculate_apy_from_apr(apr_scaled: u64) -> Result<u64> {
     // incr = INT_SCALE * (apr / EXT_SCALE) / N
     let num = INT_SCALE
         .checked_mul(apr)
-        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
+        .ok_or_else(|| error!(crate::OnreError::Overflow))?;
     let den = EXT_SCALE
         .checked_mul(N as u128)
-        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
+        .ok_or_else(|| error!(crate::OnreError::Overflow))?;
     let incr = num
         .checked_add(den / 2)
-        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?
+        .ok_or_else(|| error!(crate::OnreError::Overflow))?
         .checked_div(den)
-        .ok_or_else(|| error!(GetAPYErrorCode::DivByZero))?;
+        .ok_or_else(|| error!(crate::OnreError::DivByZero))?;
 
     let base = INT_SCALE
         .checked_add(incr)
-        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
+        .ok_or_else(|| error!(crate::OnreError::Overflow))?;
 
     // (1 + r/n)^n at 1e18 precision
-    let pow = pow_fixed(base, N as u32, INT_SCALE)?;
+    let pow =
+        pow_fixed(base, N as u64, INT_SCALE).ok_or_else(|| error!(crate::OnreError::Overflow))?;
 
     // APY_int = pow - 1.0
     let apy_int = pow
         .checked_sub(INT_SCALE)
-        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
+        .ok_or_else(|| error!(crate::OnreError::Overflow))?;
 
     // Convert back to 1e6 scale with rounding: apy_scaled = round(apy_int * EXT_SCALE / INT_SCALE)
-    let apy_scaled_u128 = mul_div_round(apy_int, EXT_SCALE, INT_SCALE)?;
+    let apy_scaled_u128 = mul_div_round_u128(apy_int, EXT_SCALE, INT_SCALE)
+        .ok_or_else(|| error!(crate::OnreError::Overflow))?;
 
     if apy_scaled_u128 > u64::MAX as u128 {
-        return Err(error!(GetAPYErrorCode::Overflow));
+        return Err(error!(crate::OnreError::Overflow));
     }
 
     Ok(apy_scaled_u128 as u64)
-}
-
-/// Performs multiplication followed by division with proper rounding
-///
-/// Calculates (a * b) / denom with half-up rounding to minimize precision loss
-/// in fixed-point arithmetic operations. All operations are overflow-protected.
-///
-/// # Arguments
-/// * `a` - First multiplicand
-/// * `b` - Second multiplicand
-/// * `denom` - Denominator for division
-///
-/// # Returns
-/// * `Ok(result)` - Rounded result of (a * b) / denom
-/// * `Err(_)` - If overflow or division by zero occurs
-#[inline]
-fn mul_div_round(a: u128, b: u128, denom: u128) -> Result<u128> {
-    // (a*b + denom/2) / denom  (round half-up)
-    let prod = a
-        .checked_mul(b)
-        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
-    let adj = prod
-        .checked_add(denom / 2)
-        .ok_or_else(|| error!(GetAPYErrorCode::Overflow))?;
-    Ok(adj
-        .checked_div(denom)
-        .ok_or_else(|| error!(GetAPYErrorCode::DivByZero))?)
-}
-
-/// Computes fixed-point exponentiation using the binary exponentiation algorithm
-///
-/// Calculates base^exp in fixed-point arithmetic where both input and output
-/// use the same scale factor. This implementation uses exponentiation by squaring
-/// for efficient computation with O(log n) complexity.
-///
-/// # Arguments
-/// * `base` - Base value in fixed-point format
-/// * `exp` - Integer exponent (not scaled)
-/// * `scale` - Scale factor used for fixed-point representation
-///
-/// # Returns
-/// * `Ok(result)` - base^exp in the same scale as input
-/// * `Err(_)` - If overflow occurs during calculation
-///
-/// # Algorithm
-/// Uses binary exponentiation (exponentiation by squaring) to efficiently
-/// compute large powers while maintaining precision in fixed-point arithmetic.
-fn pow_fixed(mut base: u128, mut exp: u32, scale: u128) -> Result<u128> {
-    let mut acc = scale; // 1.0
-    while exp > 0 {
-        if (exp & 1) == 1 {
-            acc = mul_div_round(acc, base, scale)?;
-        }
-        exp >>= 1;
-        if exp > 0 {
-            base = mul_div_round(base, base, scale)?;
-        }
-    }
-    Ok(acc)
 }

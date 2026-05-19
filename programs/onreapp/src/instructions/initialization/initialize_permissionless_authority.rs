@@ -3,13 +3,6 @@ use crate::state::{PermissionlessAuthority, State};
 use anchor_lang::prelude::*;
 use anchor_lang::Accounts;
 
-/// Error codes for the initialize instruction.
-#[error_code]
-pub enum InitializePermissionlessErrorCode {
-    /// Error when attempting to initialize a permissionless account with an invalid name
-    InvalidPermissionlessAccountName,
-}
-
 /// Account structure for initializing a permissionless authority.
 ///
 /// This struct defines the accounts required to create a new permissionless account,
@@ -69,7 +62,7 @@ pub fn initialize_permissionless_authority(
     let name_cleaned = name.trim();
     require!(
         !name_cleaned.is_empty(),
-        InitializePermissionlessErrorCode::InvalidPermissionlessAccountName
+        crate::OnreError::InvalidPermissionlessAccountName
     );
     let permissionless_authority = &mut ctx.accounts.permissionless_authority;
     permissionless_authority.name = name_cleaned.to_string();

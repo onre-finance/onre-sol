@@ -1,11 +1,20 @@
 import { Command } from "commander";
 import type { GlobalOptions } from "../prompts";
-import { executeVaultDeposit, executeVaultRedemptionDeposit, executeVaultRedemptionWithdraw, executeVaultWithdraw } from "../implementations";
+import { executeVaultDeposit, executeVaultList, executeVaultRedemptionDeposit, executeVaultRedemptionWithdraw, executeVaultWithdraw } from "../implementations";
 
 /**
  * Register vault subcommands
  */
 export function registerVaultCommands(program: Command): void {
+    // vault list
+    program
+        .command("list")
+        .description("List all vault balances (offer, permissionless, redemption)")
+        .action(async (options, cmd) => {
+            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            await executeVaultList(opts);
+        });
+
     // vault deposit
     program
         .command("deposit")

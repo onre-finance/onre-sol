@@ -24,8 +24,10 @@ pub struct Offer {
     needs_approval: u8,
     /// Whether the offer allows permissionless operations (0 = false, 1 = true)
     allow_permissionless: u8,
+    /// Whether the offer is disabled by emergency controls (0 = false, 1 = true)
+    disabled: u8,
     /// Reserved space for future fields
-    reserved: [u8; 131],
+    reserved: [u8; 130],
 }
 
 impl Offer {
@@ -48,6 +50,22 @@ impl Offer {
     pub fn set_permissionless(&mut self, allow_permissionless: bool) {
         self.allow_permissionless = if allow_permissionless { 1 } else { 0 };
     }
+
+    /// Returns whether the offer is currently disabled.
+    fn is_disabled(&self) -> bool {
+        self.disabled != 0
+    }
+
+    /// Sets the disabled state for the offer.
+    pub fn set_disabled(&mut self, disabled: bool) {
+        self.disabled = if disabled { 1 } else { 0 };
+    }
+
+    /// Ensures the offer is currently enabled.
+    pub fn require_enabled(&self) -> Result<()> {
+        require!(!self.is_disabled(), crate::OnreError::OfferDisabled);
+        Ok(())
+    }
 }
 
 /// Time-based pricing vector with APR-driven compound growth
@@ -65,10 +83,10 @@ pub struct OfferVector {
     pub base_time: u64,
     /// Initial price with scale=9 (1_000_000_000 = 1.0) at vector start
     pub base_price: u64,
-    /// Annual Percentage Rate scaled by 1_000_000 (1_000_000 = 1% APR)
+    /// Annual Percentage Rate scaled by 1_000_000 (1_000_000 = 100% APR; 10_000 = 1%)
     ///
     /// Determines compound interest rate for price growth over time.
-    /// Scale=6 where 1_000_000 = 1% annual rate.
+    /// Scale=6 where 10_000 = 1% annual rate and 1_000_000 = 100%.
     pub apr: u64,
     /// Duration in seconds for each discrete pricing step
     pub price_fix_duration: u64,

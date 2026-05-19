@@ -59,7 +59,7 @@ export const setOnycMintParams: ParamDefinition[] = [
 export const maxSupplyParams: ParamDefinition[] = [
     {
         name: "amount",
-        type: "amount",
+        type: "u64",
         description: "Maximum supply amount (raw, with 9 decimals)",
         required: true,
         flag: "--amount",

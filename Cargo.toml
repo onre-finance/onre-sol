@@ -6,9 +6,10 @@ resolver = "2"
 
 [profile.release]
 overflow-checks = true
-lto = "fat"
+lto = "off"
 codegen-units = 1
-[profile.release.build-override]
+debug = true
 opt-level = 3
+[profile.release.build-override]
 incremental = false
 codegen-units = 1

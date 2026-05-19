@@ -74,6 +74,53 @@ export function printState(state: any, json: boolean = false): void {
 }
 
 /**
+ * Print BUFFER state
+ */
+export function printBufferState(bufferState: any, json: boolean = false): void {
+    if (json) {
+        console.log(
+            JSON.stringify(
+                {
+                    onycMint: bufferState.onycMint.toBase58(),
+                    grossApr: bufferState.grossApr.toString(),
+                    previousSupply: bufferState.previousSupply.toString(),
+                    managementFeeBasisPoints: bufferState.managementFeeBasisPoints,
+                    managementFeeWallet: bufferState.managementFeeWallet.toBase58(),
+                    performanceFeeBasisPoints: bufferState.performanceFeeBasisPoints,
+                    performanceFeeWallet: bufferState.performanceFeeWallet.toBase58(),
+                    performanceFeeHighWatermark: bufferState.performanceFeeHighWatermark.toString(),
+                    lastAccrualTimestamp: bufferState.lastAccrualTimestamp.toString(),
+                },
+                null,
+                2,
+            ),
+        );
+        return;
+    }
+
+    console.log(chalk.bold.blue("\n=== BUFFER State ===\n"));
+
+    const table = new Table({
+        head: [chalk.white("Field"), chalk.white("Value")],
+        colWidths: [24, 52],
+    });
+
+    table.push(
+        ["ONyc Mint", bufferState.onycMint.toBase58()],
+        ["Gross APR (1e6)", bufferState.grossApr.toString()],
+        ["Previous Supply", bufferState.previousSupply.toString()],
+        ["Management Fee (bps)", bufferState.managementFeeBasisPoints.toString()],
+        ["Management Fee Wallet", bufferState.managementFeeWallet.toBase58()],
+        ["Performance Fee (bps)", bufferState.performanceFeeBasisPoints.toString()],
+        ["Performance Fee Wallet", bufferState.performanceFeeWallet.toBase58()],
+        ["Performance HWM", bufferState.performanceFeeHighWatermark.toString()],
+        ["Last Accrual Timestamp", bufferState.lastAccrualTimestamp.toString()],
+    );
+
+    console.log(table.toString());
+}
+
+/**
  * Print offer details
  */
 export function printOffer(offer: any, tokenInMint: string, tokenOutMint: string, json: boolean = false): void {
@@ -139,6 +186,83 @@ export function printOffer(offer: any, tokenInMint: string, tokenOutMint: string
         console.log(vectorTable.toString());
     } else {
         console.log(chalk.yellow("\nNo pricing vectors configured."));
+    }
+}
+
+/**
+ * Print list of all offers
+ */
+export function printOfferList(
+    offers: Array<{ address: string; tokenIn: string; tokenOut: string; offer: any }>,
+    legacy: Array<{ address: string; dataSize: number }>,
+    json: boolean = false,
+): void {
+    if (json) {
+        console.log(
+            JSON.stringify(
+                {
+                    offers: offers.map(({ address, tokenIn, tokenOut, offer }) => ({
+                        address,
+                        tokenInMint: tokenIn,
+                        tokenOutMint: tokenOut,
+                        feeBasisPoints: offer.feeBasisPoints,
+                        needsApproval: offer.needsApproval,
+                        allowPermissionless: offer.allowPermissionless,
+                        vectorCount: offer.vectors.filter((v: any) => v.baseTime.toNumber() !== 0).length,
+                    })),
+                    legacyAccounts: legacy.map(({ address, dataSize }) => ({ address, dataSize })),
+                },
+                null,
+                2,
+            ),
+        );
+        return;
+    }
+
+    if (offers.length === 0 && legacy.length === 0) {
+        console.log(chalk.yellow("\nNo offers found."));
+        return;
+    }
+
+    if (offers.length > 0) {
+        console.log(chalk.bold.blue(`\n=== Offers (${offers.length} found) ===\n`));
+
+        const table = new Table({
+            head: [chalk.white("Address"), chalk.white("Token In"), chalk.white("Token Out"), chalk.white("Fee"), chalk.white("Approval"), chalk.white("Permissionless"), chalk.white("Vectors")],
+            colWidths: [46, 46, 46, 10, 12, 16, 10],
+        });
+
+        offers.forEach(({ address, tokenIn, tokenOut, offer }) => {
+            const activeVectors = offer.vectors.filter((v: any) => v.baseTime.toNumber() !== 0).length;
+            table.push([
+                address,
+                tokenIn,
+                tokenOut,
+                `${offer.feeBasisPoints / 100}%`,
+                offer.needsApproval ? "Yes" : "No",
+                offer.allowPermissionless ? "Yes" : "No",
+                activeVectors.toString(),
+            ]);
+        });
+
+        console.log(table.toString());
+    }
+
+    if (legacy.length > 0) {
+        console.log(chalk.bold.yellow(`\n⚠  Legacy / undecodable offer accounts (${legacy.length} found):`));
+        console.log(chalk.yellow("   These accounts share the offer discriminator but cannot be decoded with the current IDL."));
+        console.log(chalk.yellow("   They are likely stale accounts from a previous program version and can be closed manually.\n"));
+
+        const legacyTable = new Table({
+            head: [chalk.white("Address"), chalk.white("Data Size (bytes)")],
+            colWidths: [46, 20],
+        });
+
+        legacy.forEach(({ address, dataSize }) => {
+            legacyTable.push([address, dataSize.toString()]);
+        });
+
+        console.log(legacyTable.toString());
     }
 }
 
@@ -320,9 +444,87 @@ export function printRedemptionOffer(offer: any, tokenInMint: string, tokenOutMi
 }
 
 /**
+ * Print list of all redemption offers
+ */
+export function printRedemptionOfferList(
+    offers: Array<{ address: string; tokenIn: string; tokenOut: string; offer: any }>,
+    legacy: Array<{ address: string; dataSize: number }>,
+    json: boolean = false,
+): void {
+    if (json) {
+        console.log(
+            JSON.stringify(
+                {
+                    offers: offers.map(({ address, tokenIn, tokenOut, offer }) => ({
+                        address,
+                        tokenInMint: tokenIn,
+                        tokenOutMint: tokenOut,
+                        feeBasisPoints: offer.feeBasisPoints,
+                        requestCounter: offer.requestCounter.toString(),
+                        executedRedemptions: offer.executedRedemptions.toString(),
+                        requestedRedemptions: offer.requestedRedemptions.toString(),
+                    })),
+                    legacyAccounts: legacy.map(({ address, dataSize }) => ({ address, dataSize })),
+                },
+                null,
+                2,
+            ),
+        );
+        return;
+    }
+
+    if (offers.length === 0 && legacy.length === 0) {
+        console.log(chalk.yellow("\nNo redemption offers found."));
+        return;
+    }
+
+    if (offers.length > 0) {
+        console.log(chalk.bold.blue(`\n=== Redemption Offers (${offers.length} found) ===\n`));
+
+        const table = new Table({
+            head: [chalk.white("Address"), chalk.white("Token In"), chalk.white("Token Out"), chalk.white("Fee"), chalk.white("Total Requests"), chalk.white("Executed"), chalk.white("Pending")],
+            colWidths: [46, 46, 46, 10, 16, 22, 22],
+        });
+
+        offers.forEach(({ address, tokenIn, tokenOut, offer }) => {
+            table.push([
+                address,
+                tokenIn,
+                tokenOut,
+                `${offer.feeBasisPoints / 100}%`,
+                offer.requestCounter.toString(),
+                offer.executedRedemptions.toString(),
+                offer.requestedRedemptions.toString(),
+            ]);
+        });
+
+        console.log(table.toString());
+    }
+
+    if (legacy.length > 0) {
+        console.log(chalk.bold.yellow(`\n⚠  Legacy / undecodable redemption offer accounts (${legacy.length} found):`));
+        console.log(chalk.yellow("   These accounts share the redemption offer discriminator but cannot be decoded with the current IDL.\n"));
+
+        const legacyTable = new Table({
+            head: [chalk.white("Address"), chalk.white("Data Size (bytes)")],
+            colWidths: [46, 20],
+        });
+
+        legacy.forEach(({ address, dataSize }) => {
+            legacyTable.push([address, dataSize.toString()]);
+        });
+
+        console.log(legacyTable.toString());
+    }
+}
+
+/**
  * Print redemption request details
  */
 export function printRedemptionRequest(request: any, requestId: number, json: boolean = false): void {
+    const fulfilledAmount = request.fulfilledAmount ?? 0;
+    const remaining = BigInt(request.amount.toString()) - BigInt(fulfilledAmount.toString());
+
     if (json) {
         console.log(
             JSON.stringify(
@@ -331,6 +533,8 @@ export function printRedemptionRequest(request: any, requestId: number, json: bo
                     offer: request.offer.toBase58(),
                     redeemer: request.redeemer.toBase58(),
                     amount: request.amount.toString(),
+                    fulfilledAmount: fulfilledAmount.toString(),
+                    remainingAmount: remaining.toString(),
                 },
                 null,
                 2,
@@ -350,8 +554,83 @@ export function printRedemptionRequest(request: any, requestId: number, json: bo
         ["Request ID", requestId.toString()],
         ["Redemption Offer", request.offer.toBase58()],
         ["Redeemer", request.redeemer.toBase58()],
-        ["Amount", request.amount.toString()],
+        ["Total Amount", request.amount.toString()],
+        ["Fulfilled Amount", fulfilledAmount.toString()],
+        ["Remaining Amount", remaining.toString()],
     );
+
+    console.log(table.toString());
+}
+
+type VaultEntry = { token: string; mint: string; ata: string; balance: string | null; decimals: number | null; initialized: boolean };
+type VaultGroup = { name: string; authority: string; vaults: VaultEntry[] };
+
+/**
+ * Print all vault balances grouped by authority
+ */
+export function printVaultList(groups: VaultGroup[], json: boolean = false): void {
+    if (json) {
+        console.log(JSON.stringify(
+            groups.map(({ name, authority, vaults }) => ({ name, authority, vaults })),
+            null, 2,
+        ));
+        return;
+    }
+
+    console.log(chalk.bold.blue("\n=== All Vault Balances ===\n"));
+
+    for (const { name, authority, vaults } of groups) {
+        console.log(chalk.bold(`${name}`));
+        console.log(`  ${chalk.gray("Authority PDA:")} ${authority}\n`);
+
+        const table = new Table({
+            head: [chalk.white("Token"), chalk.white("Vault ATA"), chalk.white("Balance"), chalk.white("Decimals")],
+            colWidths: [8, 46, 20, 10],
+        });
+
+        for (const v of vaults) {
+            table.push([
+                v.token,
+                v.ata,
+                v.initialized ? v.balance ?? "0" : chalk.gray("—"),
+                v.initialized && v.decimals !== null ? v.decimals.toString() : chalk.gray("—"),
+            ]);
+        }
+
+        console.log(table.toString());
+        console.log();
+    }
+}
+
+/**
+ * Print redemption vault balances
+ */
+export function printRedemptionVaults(
+    vaults: Array<{ token: string; mint: string; ata: string; balance: string | null; decimals: number | null; initialized: boolean }>,
+    authorityPda: string,
+    json: boolean = false,
+): void {
+    if (json) {
+        console.log(JSON.stringify({ authorityPda, vaults }, null, 2));
+        return;
+    }
+
+    console.log(chalk.bold.blue("\n=== Redemption Vault Balances ===\n"));
+    console.log(`  ${chalk.gray("Vault Authority PDA:")} ${authorityPda}\n`);
+
+    const table = new Table({
+        head: [chalk.white("Token"), chalk.white("Vault ATA"), chalk.white("Balance"), chalk.white("Decimals")],
+        colWidths: [8, 46, 20, 10],
+    });
+
+    for (const v of vaults) {
+        table.push([
+            v.token,
+            v.ata,
+            v.initialized ? v.balance ?? "0" : chalk.gray("—"),
+            v.initialized && v.decimals !== null ? v.decimals.toString() : chalk.gray("—"),
+        ]);
+    }
 
     console.log(table.toString());
 }
@@ -363,12 +642,18 @@ export function printRedemptionRequestsList(requests: Array<{ id: number; reques
     if (json) {
         console.log(
             JSON.stringify(
-                requests.map((r) => ({
-                    requestId: r.id,
-                    offer: r.request.offer.toBase58(),
-                    redeemer: r.request.redeemer.toBase58(),
-                    amount: r.request.amount.toString(),
-                })),
+                requests.map((r) => {
+                    const fulfilledAmount = r.request.fulfilledAmount ?? 0;
+                    const remaining = BigInt(r.request.amount.toString()) - BigInt(fulfilledAmount.toString());
+                    return {
+                        requestId: r.id,
+                        offer: r.request.offer.toBase58(),
+                        redeemer: r.request.redeemer.toBase58(),
+                        amount: r.request.amount.toString(),
+                        fulfilledAmount: fulfilledAmount.toString(),
+                        remainingAmount: remaining.toString(),
+                    };
+                }),
                 null,
                 2,
             ),
@@ -384,12 +669,14 @@ export function printRedemptionRequestsList(requests: Array<{ id: number; reques
     console.log(chalk.bold.blue(`\n=== Redemption Requests (${requests.length} found) ===\n`));
 
     const table = new Table({
-        head: [chalk.white("ID"), chalk.white("Redeemer"), chalk.white("Amount")],
-        colWidths: [6, 46, 20],
+        head: [chalk.white("ID"), chalk.white("Redeemer"), chalk.white("Total"), chalk.white("Fulfilled"), chalk.white("Remaining")],
+        colWidths: [6, 46, 18, 18, 18],
     });
 
     requests.forEach(({ id, request }) => {
-        table.push([id.toString(), request.redeemer.toBase58(), request.amount.toString()]);
+        const fulfilledAmount = request.fulfilledAmount ?? 0;
+        const remaining = BigInt(request.amount.toString()) - BigInt(fulfilledAmount.toString());
+        table.push([id.toString(), request.redeemer.toBase58(), request.amount.toString(), fulfilledAmount.toString(), remaining.toString()]);
     });
 
     console.log(table.toString());

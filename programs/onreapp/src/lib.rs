@@ -1,14 +1,51 @@
+#![allow(unexpected_cfgs)]
+
 use anchor_lang::prelude::*;
 use instructions::*;
+use state::ConfigurableVaultKind;
 use utils::ApprovalMessage;
 
-// Program ID declaration
-declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
-
 pub mod constants;
+pub mod errors;
 pub mod instructions;
 pub mod state;
 pub mod utils;
+
+pub use errors::OnreError;
+
+const _ENV_FEATURE_COUNT: usize = cfg!(feature = "mainnet-test") as usize
+    + cfg!(feature = "devnet-test") as usize
+    + cfg!(feature = "devnet-dev") as usize;
+
+const _: () = assert!(
+    _ENV_FEATURE_COUNT <= 1,
+    "Environment features are mutually exclusive: enable at most one of 'mainnet-test', 'devnet-test', or 'devnet-dev'. Mainnet is the default when no environment feature is set."
+);
+
+// Program ID declaration
+cfg_if::cfg_if! {
+    if #[cfg(feature = "mainnet-test")] {
+        mod program_id {
+            anchor_lang::declare_id!("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2");
+        }
+    } else if #[cfg(feature = "devnet-test")] {
+        mod program_id {
+            anchor_lang::declare_id!("J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2");
+        }
+    } else if #[cfg(feature = "devnet-dev")] {
+        mod program_id {
+            anchor_lang::declare_id!("devHfQHgiFNifkLW49RCXpyTUZMyKuBNnFSbrQ8XsbX");
+        }
+    } else {
+        mod program_id {
+            anchor_lang::declare_id!("onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe");
+        }
+    }
+}
+
+pub use program_id::*;
+
+pub use instructions::mint_authority::mint_to::MintTo;
 
 /// The main program module for the Onre App.
 ///
@@ -31,7 +68,7 @@ pub mod utils;
 /// The price for offers is determined by time-based vectors with APR (Annual Percentage Rate) growth:
 /// - `base_time`: The timestamp when the vector becomes active.
 /// - `base_price`: The initial price at the base_time with 9 decimal precision.
-/// - `apr`: Annual percentage rate scaled by 1,000,000 (e.g., 1_000_000 = 1% APR).
+/// - `apr`: Annual percentage rate with scale=6 (e.g., 10_000 = 1%, 1_000_000 = 100%).
 /// - `price_fix_duration`: Duration in seconds for each discrete pricing step.
 /// The price increases over time based on the APR, calculated in discrete intervals.
 ///
@@ -100,7 +137,10 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `RedemptionVaultDeposit`.
     /// - `amount`: Amount of tokens to deposit.
-    pub fn redemption_vault_deposit(ctx: Context<RedemptionVaultDeposit>, amount: u64) -> Result<()> {
+    pub fn redemption_vault_deposit(
+        ctx: Context<RedemptionVaultDeposit>,
+        amount: u64,
+    ) -> Result<()> {
         vault_operations::redemption_vault_deposit(ctx, amount)
     }
 
@@ -114,8 +154,27 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `RedemptionVaultWithdraw`.
     /// - `amount`: Amount of tokens to withdraw.
-    pub fn redemption_vault_withdraw(ctx: Context<RedemptionVaultWithdraw>, amount: u64) -> Result<()> {
+    pub fn redemption_vault_withdraw(
+        ctx: Context<RedemptionVaultWithdraw>,
+        amount: u64,
+    ) -> Result<()> {
         vault_operations::redemption_vault_withdraw(ctx, amount)
+    }
+
+    pub fn set_configurable_vault_destination(
+        ctx: Context<SetConfigurableVaultDestination>,
+        kind: ConfigurableVaultKind,
+        withdrawal_destination: Pubkey,
+    ) -> Result<()> {
+        configurable_vault::set_configurable_vault_destination(ctx, kind, withdrawal_destination)
+    }
+
+    pub fn withdraw_configurable_vault(
+        ctx: Context<WithdrawConfigurableVault>,
+        kind: ConfigurableVaultKind,
+        amount: u64,
+    ) -> Result<()> {
+        configurable_vault::withdraw_configurable_vault(ctx, kind, amount)
     }
 
     /// Creates an offer.
@@ -211,6 +270,13 @@ pub mod onreapp {
         offer::update_offer_fee(ctx, new_fee_basis_points)
     }
 
+    /// Enables or disables one offer.
+    ///
+    /// Boss or admins can disable an offer. Only boss can re-enable it.
+    pub fn set_offer_disabled(ctx: Context<SetOfferDisabled>, disabled: bool) -> Result<()> {
+        offer::set_offer_disabled(ctx, disabled)
+    }
+
     /// Takes a offer.
     ///
     /// Delegates to `offer::take_offer`.
@@ -220,12 +286,46 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `TakeOffer`.
     /// - `token_in_amount`: Amount of token_in to provide.
-    pub fn take_offer(
-        ctx: Context<TakeOffer>,
+    pub fn take_offer<'info>(
+        ctx: Context<'info, TakeOffer<'info>>,
         token_in_amount: u64,
         approval_message: Option<ApprovalMessage>,
     ) -> Result<()> {
         offer::take_offer(ctx, token_in_amount, approval_message)
+    }
+
+    pub fn take_offer_v2<'info>(
+        ctx: Context<'info, TakeOfferV2<'info>>,
+        token_in_amount: u64,
+        approval_message: Option<ApprovalMessage>,
+    ) -> Result<()> {
+        offer::take_offer_v2(ctx, token_in_amount, approval_message)
+    }
+
+    pub fn quote_swap_buy(ctx: Context<QuoteSwapBuy>, token_in_amount: u64) -> Result<()> {
+        prop_amm::quote_swap_buy(ctx, token_in_amount)
+    }
+
+    pub fn quote_swap_sell(ctx: Context<QuoteSwapSell>, token_in_amount: u64) -> Result<()> {
+        prop_amm::quote_swap_sell(ctx, token_in_amount)
+    }
+
+    pub fn open_swap_buy<'info>(
+        ctx: Context<'info, OpenSwapBuy<'info>>,
+        token_in_amount: u64,
+        minimum_out: u64,
+        approval_message: Option<ApprovalMessage>,
+    ) -> Result<()> {
+        prop_amm::open_swap_buy(ctx, token_in_amount, minimum_out, approval_message)
+    }
+
+    pub fn open_swap_sell<'info>(
+        ctx: Context<'info, OpenSwapSell<'info>>,
+        token_in_amount: u64,
+        minimum_out: u64,
+        approval_message: Option<ApprovalMessage>,
+    ) -> Result<()> {
+        prop_amm::open_swap_sell(ctx, token_in_amount, minimum_out, approval_message)
     }
 
     /// Takes a offer using permissionless flow with intermediary accounts.
@@ -238,12 +338,20 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `TakeOfferPermissionless`.
     /// - `token_in_amount`: Amount of token_in to provide.
-    pub fn take_offer_permissionless(
-        ctx: Context<TakeOfferPermissionless>,
+    pub fn take_offer_permissionless<'info>(
+        ctx: Context<'info, TakeOfferPermissionless<'info>>,
         token_in_amount: u64,
         approval_message: Option<ApprovalMessage>,
     ) -> Result<()> {
         offer::take_offer_permissionless(ctx, token_in_amount, approval_message)
+    }
+
+    pub fn take_offer_permissionless_v2<'info>(
+        ctx: Context<'info, TakeOfferPermissionlessV2<'info>>,
+        token_in_amount: u64,
+        approval_message: Option<ApprovalMessage>,
+    ) -> Result<()> {
+        offer::take_offer_permissionless_v2(ctx, token_in_amount, approval_message)
     }
 
     /// Proposes a new boss for ownership transfer.
@@ -378,6 +486,89 @@ pub mod onreapp {
         state_operations::set_redemption_admin(ctx, new_redemption_admin)
     }
 
+    /// Initializes the standalone BUFFER pool state and vault accounts.
+    ///
+    /// Creates BUFFER state as a separate PDA so existing offer/redemption state
+    /// remains unchanged. Only the boss can initialize BUFFER.
+    pub fn initialize_buffer(ctx: Context<InitializeBuffer>) -> Result<()> {
+        buffer::initialize_buffer(ctx)
+    }
+
+    /// Sets the main offer stored in program state.
+    ///
+    /// Only the boss can update this value.
+    pub fn set_main_offer(ctx: Context<SetMainOffer>) -> Result<()> {
+        state_operations::set_main_offer(ctx)
+    }
+
+    pub fn configure_prop_amm(
+        ctx: Context<ConfigurePropAmm>,
+        curve_peg_haircut_bps: u16,
+        curve_exponent_scaled: u32,
+        min_cadence_exponent_scaled: u32,
+        cadence_threshold: u32,
+        cadence_sensitivity_scaled: u32,
+        epoch_duration_seconds: i64,
+        wall_sensitivity_scaled: u32,
+    ) -> Result<()> {
+        prop_amm::configure_prop_amm(
+            ctx,
+            curve_peg_haircut_bps,
+            curve_exponent_scaled,
+            min_cadence_exponent_scaled,
+            cadence_threshold,
+            cadence_sensitivity_scaled,
+            epoch_duration_seconds,
+            wall_sensitivity_scaled,
+        )
+    }
+
+    /// Sets BUFFER gross yield.
+    ///
+    /// Current yield is read from the main offer during BUFFER accrual.
+    pub fn set_buffer_gross_apr(ctx: Context<SetBufferGrossYield>, gross_yield: u64) -> Result<()> {
+        buffer::set_buffer_gross_apr(ctx, gross_yield)
+    }
+
+    /// Sets BUFFER fee split parameters.
+    ///
+    /// Both fee values are expressed in basis points and applied during accrual.
+    pub fn set_buffer_fee_config(
+        ctx: Context<SetBufferFeeConfig>,
+        management_fee_basis_points: u16,
+        performance_fee_basis_points: u16,
+    ) -> Result<()> {
+        buffer::set_buffer_fee_config(
+            ctx,
+            management_fee_basis_points,
+            performance_fee_basis_points,
+        )
+    }
+
+    /// Burns ONyc from BUFFER vault to increase NAV according to provided target inputs.
+    ///
+    /// Callable by boss only.
+    pub fn burn_for_nav_increase(
+        ctx: Context<BurnForNavIncrease>,
+        asset_adjustment_amount: u64,
+    ) -> Result<()> {
+        buffer::burn_for_nav_increase(ctx, asset_adjustment_amount)
+    }
+
+    /// Deposits ONyc into the BUFFER reserve vault.
+    ///
+    /// Callable by any signer.
+    pub fn deposit_reserve_vault(ctx: Context<DepositReserveVault>, amount: u64) -> Result<()> {
+        buffer::deposit_reserve_vault(ctx, amount)
+    }
+
+    /// Withdraws ONyc from the BUFFER reserve vault.
+    ///
+    /// Callable by boss only.
+    pub fn withdraw_reserve_vault(ctx: Context<WithdrawReserveVault>, amount: u64) -> Result<()> {
+        buffer::withdraw_reserve_vault(ctx, amount)
+    }
+
     /// Mints ONyc tokens to the boss's account.
     ///
     /// Delegates to `state_operations::mint_to` to mint ONyc tokens.
@@ -472,6 +663,48 @@ pub mod onreapp {
     /// - `Ok(circulating_supply)`: The calculated circulating supply for the offer in base units
     pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64> {
         market_info::get_circulating_supply(ctx)
+    }
+
+    /// Gets circulating supply using the cached excluded-balance PDA.
+    pub fn get_circulating_supply_v2(ctx: Context<GetCirculatingSupplyV2>) -> Result<u64> {
+        market_info::get_circulating_supply_v2(ctx)
+    }
+
+    /// Refreshes the canonical market-stats PDA using current on-chain state.
+    ///
+    /// Delegates to `market_info::refresh_market_stats`.
+    /// Any signer can call this instruction and pay for PDA creation if needed, which
+    /// allows backend automation to refresh market stats even on days without purchases.
+    ///
+    /// # Arguments
+    /// - `ctx`: Context for `RefreshMarketStats`.
+    pub fn refresh_market_stats(ctx: Context<RefreshMarketStats>) -> Result<()> {
+        market_info::refresh_market_stats(ctx)
+    }
+
+    /// Refreshes the canonical market-stats PDA using the cached excluded-balance PDA.
+    pub fn refresh_market_stats_v2(ctx: Context<RefreshMarketStatsV2>) -> Result<()> {
+        market_info::refresh_market_stats_v2(ctx)
+    }
+
+    /// Gets TVL using the cached excluded-balance PDA.
+    pub fn get_tvl_v2(ctx: Context<GetTVLV2>) -> Result<u64> {
+        market_info::get_tvl_v2(ctx)
+    }
+
+    /// Updates the owner list whose ONyc ATAs are excluded from circulating supply.
+    pub fn set_circulating_supply_excluded_accounts(
+        ctx: Context<SetCirculatingSupplyExcludedAccounts>,
+        owners: [Pubkey; constants::MAX_CIRCULATING_SUPPLY_EXCLUDED_ACCOUNTS],
+    ) -> Result<()> {
+        market_info::set_circulating_supply_excluded_accounts(ctx, owners)
+    }
+
+    /// Refreshes the cached excluded ONyc balance from the configured owner ATAs.
+    pub fn update_circulating_supply_excluded_balance(
+        ctx: Context<UpdateCirculatingSupplyExcludedBalance>,
+    ) -> Result<()> {
+        market_info::update_circulating_supply_excluded_balance(ctx)
     }
 
     /// Adds a trusted authority for approval verification.
@@ -575,22 +808,14 @@ pub mod onreapp {
         redemption::create_redemption_request(ctx, amount)
     }
 
-    /// Fulfills a redemption request.
+    /// Fulfills a redemption request with ONyc buffer accrual support.
     ///
     /// Delegates to `redemption::fulfill_redemption_request`.
-    /// This instruction fulfills a pending redemption request by handling token operations:
-    /// - Burns token_in (ONyc) if program has mint authority, else sends to boss
-    /// - Mints token_out if program has mint authority, else transfers from vault
-    /// - Uses current price from the underlying offer to calculate token_out amount
-    /// Emits a `RedemptionRequestFulfilledEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `FulfillRedemptionRequest`.
-    ///
-    /// # Access Control
-    /// - Only redemption_admin can fulfill redemptions
-    pub fn fulfill_redemption_request(ctx: Context<FulfillRedemptionRequest>) -> Result<()> {
-        redemption::fulfill_redemption_request(ctx)
+    pub fn fulfill_redemption_request<'info>(
+        ctx: Context<'info, FulfillRedemptionRequest<'info>>,
+        amount: u64,
+    ) -> Result<()> {
+        redemption::fulfill_redemption_request(ctx, amount)
     }
 
     /// Cancels a redemption request.
@@ -608,7 +833,9 @@ pub mod onreapp {
     /// # Access Control
     /// - Signer must be one of: redeemer, redemption_admin, or boss
     /// - Request must be in pending state (status = 0)
-    pub fn cancel_redemption_request(ctx: Context<CancelRedemptionRequest>) -> Result<()> {
+    pub fn cancel_redemption_request<'info>(
+        ctx: Context<'info, CancelRedemptionRequest<'info>>,
+    ) -> Result<()> {
         redemption::cancel_redemption_request(ctx)
     }
 
@@ -628,5 +855,12 @@ pub mod onreapp {
         new_fee_basis_points: u16,
     ) -> Result<()> {
         redemption::update_redemption_offer_fee(ctx, new_fee_basis_points)
+    }
+
+    pub fn update_redemption_offer_vault_target(
+        ctx: Context<UpdateRedemptionOfferFee>,
+        new_vault_target_bps: u16,
+    ) -> Result<()> {
+        redemption::update_redemption_offer_vault_target(ctx, new_vault_target_bps)
     }
 }

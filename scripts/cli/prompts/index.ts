@@ -62,6 +62,9 @@ async function promptForSingleParam(param: ParamDefinition, config: NetworkConfi
         case "amount":
             return promptAmount(message, defaultValue);
 
+        case "u64":
+            return promptU64(message, defaultValue);
+
         case "basisPoints":
             return promptBasisPoints(message, defaultValue);
 
@@ -170,6 +173,23 @@ async function promptAmount(message: string, defaultValue?: number): Promise<num
 }
 
 /**
+ * Prompt for a large token amount as string (supports values >= 2^53)
+ */
+async function promptU64(message: string, defaultValue?: string): Promise<string> {
+    const value = await input({
+        message,
+        default: defaultValue,
+        validate: (val) => {
+            if (!val || val.trim() === "") return "Amount is required";
+            if (!/^\d+$/.test(val.trim())) return "Amount must be a positive integer";
+            if (BigInt(val.trim()) <= 0n) return "Amount must be positive";
+            return true;
+        },
+    });
+    return value.trim();
+}
+
+/**
  * Prompt for basis points
  */
 async function promptBasisPoints(message: string, defaultValue?: number): Promise<number> {
@@ -255,6 +275,9 @@ function transformValue(value: any, param: ParamDefinition, config: NetworkConfi
 
         case "timestamp":
             return parseTimestamp(value);
+
+        case "u64":
+            return typeof value === "string" ? value : value.toString();
 
         case "amount":
         case "basisPoints":

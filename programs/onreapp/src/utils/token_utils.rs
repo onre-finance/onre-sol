@@ -1,6 +1,10 @@
 use crate::constants::{seeds, MAX_BASIS_POINTS, PRICE_DECIMALS};
+use crate::errors::OnreError;
+use crate::utils::math_utils::ceil_div_u128;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program_option::COption;
+use anchor_lang::system_program;
+use anchor_spl::associated_token::{self, get_associated_token_address_with_program_id};
 use anchor_spl::token_interface;
 use anchor_spl::token_interface::{
     BurnChecked, Mint, MintToChecked, TokenAccount, TokenInterface, TransferChecked,
@@ -8,20 +12,80 @@ use anchor_spl::token_interface::{
 use spl_token_2022::extension::transfer_fee::TransferFeeConfig;
 use spl_token_2022::extension::{BaseStateWithExtensions, StateWithExtensions};
 
-#[error_code]
-pub enum TokenUtilsErrorCode {
-    #[msg("Math overflow")]
-    MathOverflow,
-    #[msg("Minting would exceed maximum supply cap")]
-    MaxSupplyExceeded,
-    #[msg("Token-2022 with transfer fees not supported")]
-    TransferFeeNotSupported,
-    #[msg("Price cannot be zero")]
-    ZeroPriceNotAllowed,
-    #[msg("Token decimals exceed maximum allowed (18)")]
-    DecimalsExceedMax,
-    #[msg("Result exceeds u64 maximum value")]
-    ResultOverflow,
+pub fn validate_associated_token_address(
+    ata_account: &UncheckedAccount<'_>,
+    authority: &Pubkey,
+    mint: &Pubkey,
+    token_program_id: &Pubkey,
+    invalid_account_error: OnreError,
+) -> Result<()> {
+    let expected_ata =
+        get_associated_token_address_with_program_id(authority, mint, token_program_id);
+    if ata_account.key() != expected_ata {
+        return Err(invalid_account_error.into());
+    }
+    Ok(())
+}
+
+pub fn get_associated_token_account<'info>(
+    ata_account: &'info UncheckedAccount<'info>,
+    authority: &Pubkey,
+    mint: &Pubkey,
+    token_program_id: &Pubkey,
+    invalid_account_error: OnreError,
+) -> Result<InterfaceAccount<'info, TokenAccount>> {
+    // Validate that the provided account is the canonical ATA before loading it.
+    validate_associated_token_address(
+        ata_account,
+        authority,
+        mint,
+        token_program_id,
+        invalid_account_error,
+    )?;
+    InterfaceAccount::try_from(&*ata_account)
+}
+
+pub struct EnsureAtaParams<'info> {
+    pub ata_account: &'info UncheckedAccount<'info>,
+    pub payer: AccountInfo<'info>,
+    pub authority_account: AccountInfo<'info>,
+    pub mint_account: AccountInfo<'info>,
+    pub token_program: AccountInfo<'info>,
+    pub associated_token_program: AccountInfo<'info>,
+    pub system_program: AccountInfo<'info>,
+    pub authority: Pubkey,
+    pub mint: Pubkey,
+    pub token_program_id: Pubkey,
+    pub invalid_account_error: OnreError,
+}
+
+pub fn get_or_create_associated_token_account(
+    params: EnsureAtaParams,
+) -> Result<InterfaceAccount<TokenAccount>> {
+    // Validate that the provided account is the canonical ATA before using or creating it.
+    validate_associated_token_address(
+        params.ata_account,
+        &params.authority,
+        &params.mint,
+        &params.token_program_id,
+        params.invalid_account_error,
+    )?;
+
+    if params.ata_account.owner == &system_program::ID && params.ata_account.lamports() == 0 {
+        associated_token::create_idempotent(CpiContext::new(
+            params.associated_token_program.key(),
+            associated_token::Create {
+                payer: params.payer,
+                associated_token: params.ata_account.to_account_info(),
+                authority: params.authority_account,
+                mint: params.mint_account,
+                system_program: params.system_program,
+                token_program: params.token_program,
+            },
+        ))?;
+    }
+
+    InterfaceAccount::try_from(&*params.ata_account)
 }
 
 /// Generic token transfer function that handles both regular and PDA-signed transfers
@@ -50,10 +114,8 @@ pub fn transfer_tokens<'info>(
     };
 
     let cpi_context = match signer_seeds {
-        Some(seeds) => {
-            CpiContext::new_with_signer(token_program.to_account_info(), transfer_accounts, seeds)
-        }
-        None => CpiContext::new(token_program.to_account_info(), transfer_accounts),
+        Some(seeds) => CpiContext::new_with_signer(token_program.key(), transfer_accounts, seeds),
+        None => CpiContext::new(token_program.key(), transfer_accounts),
     };
 
     token_interface::transfer_checked(cpi_context, amount, mint.decimals)
@@ -85,16 +147,16 @@ pub fn calculate_token_out_amount(
     token_out_decimals: u8,
 ) -> Result<u64> {
     // Validate price is not zero
-    require!(price > 0, TokenUtilsErrorCode::ZeroPriceNotAllowed);
+    require!(price > 0, crate::OnreError::ZeroPriceNotAllowed);
 
     // Validate decimal values are within reasonable bounds
     require!(
         token_in_decimals <= MAX_TOKEN_DECIMALS,
-        TokenUtilsErrorCode::DecimalsExceedMax
+        crate::OnreError::DecimalsExceedMax
     );
     require!(
         token_out_decimals <= MAX_TOKEN_DECIMALS,
-        TokenUtilsErrorCode::DecimalsExceedMax
+        crate::OnreError::DecimalsExceedMax
     );
 
     let token_in_amount_u128 = token_in_amount as u128;
@@ -103,20 +165,17 @@ pub fn calculate_token_out_amount(
     // Calculate: numerator = token_in_amount * 10^(token_out_decimals + 9)
     let numerator = token_in_amount_u128
         .checked_mul(10_u128.pow((token_out_decimals + PRICE_DECIMALS) as u32))
-        .ok_or(TokenUtilsErrorCode::MathOverflow)?;
+        .ok_or(crate::OnreError::MathOverflow)?;
 
     // Calculate: denominator = price * 10^token_in_decimals
     let denominator = price_u128
         .checked_mul(10_u128.pow(token_in_decimals as u32))
-        .ok_or(TokenUtilsErrorCode::MathOverflow)?;
+        .ok_or(crate::OnreError::MathOverflow)?;
 
     let result = numerator / denominator;
 
     // Validate result fits in u64 before casting
-    require!(
-        result <= u64::MAX as u128,
-        TokenUtilsErrorCode::ResultOverflow
-    );
+    require!(result <= u64::MAX as u128, crate::OnreError::ResultOverflow);
 
     Ok(result as u64)
 }
@@ -172,26 +231,25 @@ pub struct CalculateFeeResult {
 /// * `MathOverflow` - If calculations exceed u128 limits
 ///
 /// # Example
-/// ```
+/// ```text
 /// // 5% fee on 1000 tokens = 50 fee, 950 remaining
 /// let result = calculate_fees(1000, 500)?;
-/// assert_eq!(result.fee_amount, 50);
-/// assert_eq!(result.remaining_token_in_amount, 950);
+/// assert_eq!(result.token_in_fee_amount, 50);
+/// assert_eq!(result.token_in_net_amount, 950);
 /// ```
 pub fn calculate_fees(token_in_amount: u64, fee_basis_points: u16) -> Result<CalculateFeeResult> {
     // Calculate fee amount in token_in tokens using ceiling division
     // This ensures fees always round up in favor of the protocol
-    let token_fee_amount = (token_in_amount as u128)
+    let fee_numerator = (token_in_amount as u128)
         .checked_mul(fee_basis_points as u128)
-        .ok_or(TokenUtilsErrorCode::MathOverflow)?
-        .checked_add(MAX_BASIS_POINTS as u128 - 1)
-        .and_then(|adjusted| adjusted.checked_div(MAX_BASIS_POINTS as u128))
-        .ok_or(TokenUtilsErrorCode::MathOverflow)? as u64;
+        .ok_or(crate::OnreError::MathOverflow)?;
+    let token_fee_amount = ceil_div_u128(fee_numerator, MAX_BASIS_POINTS as u128)
+        .ok_or(crate::OnreError::MathOverflow)? as u64;
 
     // Amount after fee deduction for the main offer exchange
     let token_net_amount = token_in_amount
         .checked_sub(token_fee_amount)
-        .ok_or(TokenUtilsErrorCode::MathOverflow)?;
+        .ok_or(crate::OnreError::MathOverflow)?;
 
     Ok(CalculateFeeResult {
         token_in_fee_amount: token_fee_amount,
@@ -215,7 +273,7 @@ pub fn calculate_fees(token_in_amount: u64, fee_basis_points: u16) -> Result<Cal
 ///
 /// # Returns
 /// * `Ok(())` - If minting completes successfully and doesn't exceed max supply
-/// * `Err(TokenUtilsErrorCode::MaxSupplyExceeded)` - If minting would exceed the cap
+/// * `Err(crate::OnreError::MaxSupplyExceeded)` - If minting would exceed the cap
 /// * `Err(_)` - If token minting operation fails
 ///
 /// # Security
@@ -225,7 +283,7 @@ pub fn calculate_fees(token_in_amount: u64, fee_basis_points: u16) -> Result<Cal
 pub fn mint_tokens<'info>(
     token_program: &Interface<'info, TokenInterface>,
     mint: &InterfaceAccount<'info, Mint>,
-    to_account: &InterfaceAccount<'info, TokenAccount>,
+    to_account: &AccountInfo<'info>,
     authority: &AccountInfo<'info>,
     signer_seeds: &[&[&[u8]]],
     amount: u64,
@@ -236,23 +294,22 @@ pub fn mint_tokens<'info>(
         let current_supply = mint.supply;
         let new_supply = current_supply
             .checked_add(amount)
-            .ok_or(TokenUtilsErrorCode::MathOverflow)?;
+            .ok_or(crate::OnreError::MathOverflow)?;
 
         require!(
             new_supply <= max_supply,
-            TokenUtilsErrorCode::MaxSupplyExceeded
+            crate::OnreError::MaxSupplyExceeded
         );
     }
 
     // Perform the mint operation
     let mint_accounts = MintToChecked {
         mint: mint.to_account_info(),
-        to: to_account.to_account_info(),
+        to: to_account.clone(),
         authority: authority.to_account_info(),
     };
 
-    let mint_ctx =
-        CpiContext::new_with_signer(token_program.to_account_info(), mint_accounts, signer_seeds);
+    let mint_ctx = CpiContext::new_with_signer(token_program.key(), mint_accounts, signer_seeds);
 
     token_interface::mint_to_checked(mint_ctx, amount, mint.decimals)
 }
@@ -280,8 +337,7 @@ pub fn burn_tokens<'info>(
         authority: authority.to_account_info(),
     };
 
-    let cpi_context =
-        CpiContext::new_with_signer(token_program.to_account_info(), burn_accounts, signer_seeds);
+    let cpi_context = CpiContext::new_with_signer(token_program.key(), burn_accounts, signer_seeds);
 
     token_interface::burn_checked(cpi_context, amount, mint.decimals)
 }
@@ -314,6 +370,12 @@ pub struct ExecTokenOpsParams<'a, 'info> {
     pub token_in_source_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Destination account for token_in (boss's account)
     pub token_in_destination_account: &'a InterfaceAccount<'info, TokenAccount>,
+    /// Optional alternate destination for part of the net token_in amount.
+    pub token_in_refill_destination_account: Option<&'a InterfaceAccount<'info, TokenAccount>>,
+    /// Amount of net token_in to send to the alternate refill destination.
+    pub token_in_refill_amount: u64,
+    /// Destination account for token_in fees
+    pub token_in_fee_destination_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Vault account for burning token_in when program has mint authority
     pub token_in_burn_account: &'a InterfaceAccount<'info, TokenAccount>,
     /// Authority for burning tokens from the vault
@@ -348,8 +410,8 @@ pub struct ExecTokenOpsParams<'a, 'info> {
 /// - Validates that token_in does not have Token-2022 transfer fees
 /// - If program has mint authority:
 ///   - Transfers net amount (after fees) to vault → burns only net amount
-///   - Transfers fee amount directly to boss account
-/// - If program lacks mint authority: transfers full amount directly to boss/destination (standard transfer)
+///   - Transfers fee amount directly to the configured fee destination
+/// - If program lacks mint authority: transfers net amount to the configured proceeds destination
 ///
 /// # Token Out Processing
 /// - Validates that token_out does not have Token-2022 transfer fees
@@ -372,11 +434,11 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
     // Validate that neither token has Token-2022 transfer fees
     require!(
         !has_transfer_fee(params.token_in_mint)?,
-        TokenUtilsErrorCode::TransferFeeNotSupported
+        OnreError::TransferFeeNotSupported
     );
     require!(
         !has_transfer_fee(params.token_out_mint)?,
-        TokenUtilsErrorCode::TransferFeeNotSupported
+        OnreError::TransferFeeNotSupported
     );
 
     // Step 1: User pays token_in
@@ -384,6 +446,8 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
         program_controls_mint(params.token_in_mint, params.mint_authority_pda);
 
     if controls_token_in_mint {
+        require!(params.token_in_refill_amount == 0, OnreError::InvalidAmount);
+
         // Transfer net amount to burn account
         transfer_tokens(
             params.token_in_mint,
@@ -405,9 +469,45 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
             params.token_in_net_amount,
         )?;
 
-        // Transfer fee amount directly to boss account
+        // Transfer fee amount to the configured fee vault
         if params.token_in_fee_amount > 0 {
-            msg!("Transferring fee amount to boss account");
+            msg!("Transferring fee amount to fee vault");
+            transfer_tokens(
+                params.token_in_mint,
+                params.token_in_program,
+                params.token_in_source_account,
+                params.token_in_fee_destination_account,
+                params.token_in_authority,
+                params.token_in_source_signer_seeds,
+                params.token_in_fee_amount,
+            )?;
+        }
+    } else {
+        require!(
+            params.token_in_refill_amount <= params.token_in_net_amount,
+            OnreError::InvalidAmount
+        );
+        let proceeds_amount = params
+            .token_in_net_amount
+            .checked_sub(params.token_in_refill_amount)
+            .ok_or(OnreError::ArithmeticUnderflow)?;
+
+        if params.token_in_refill_amount > 0 {
+            let refill_destination = params
+                .token_in_refill_destination_account
+                .ok_or(OnreError::InvalidVaultTokenInAccount)?;
+            transfer_tokens(
+                params.token_in_mint,
+                params.token_in_program,
+                params.token_in_source_account,
+                refill_destination,
+                params.token_in_authority,
+                params.token_in_source_signer_seeds,
+                params.token_in_refill_amount,
+            )?;
+        }
+
+        if proceeds_amount > 0 {
             transfer_tokens(
                 params.token_in_mint,
                 params.token_in_program,
@@ -415,26 +515,21 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
                 params.token_in_destination_account,
                 params.token_in_authority,
                 params.token_in_source_signer_seeds,
+                proceeds_amount,
+            )?;
+        }
+
+        if params.token_in_fee_amount > 0 {
+            transfer_tokens(
+                params.token_in_mint,
+                params.token_in_program,
+                params.token_in_source_account,
+                params.token_in_fee_destination_account,
+                params.token_in_authority,
+                params.token_in_source_signer_seeds,
                 params.token_in_fee_amount,
             )?;
         }
-    } else {
-        // When program lacks mint authority: transfer full amount to boss
-        // Use checked_add to prevent overflow
-        let total_amount = params
-            .token_in_net_amount
-            .checked_add(params.token_in_fee_amount)
-            .ok_or(TokenUtilsErrorCode::MathOverflow)?;
-
-        transfer_tokens(
-            params.token_in_mint,
-            params.token_in_program,
-            params.token_in_source_account,
-            params.token_in_destination_account,
-            params.token_in_authority,
-            params.token_in_source_signer_seeds,
-            total_amount,
-        )?;
     }
 
     // Step 2: Program distributes token_out
@@ -445,7 +540,7 @@ pub fn execute_token_operations(params: ExecTokenOpsParams) -> Result<()> {
         mint_tokens(
             params.token_out_program,
             params.token_out_mint,
-            params.token_out_destination_account,
+            &params.token_out_destination_account.to_account_info(),
             params.mint_authority_pda,
             mint_authority_signer_seeds,
             params.token_out_amount,
@@ -514,5 +609,28 @@ pub fn has_transfer_fee(mint: &InterfaceAccount<Mint>) -> Result<bool> {
             // Not a Token-2022 mint with extensions, or failed to parse
             Ok(false)
         }
+    }
+}
+
+/// Safely reads token amount from an optionally initialized token account.
+///
+/// Returns 0 when the account is missing, not owned by the provided token program,
+/// or cannot be deserialized as a token account.
+pub fn read_optional_token_account_amount(
+    token_account: &AccountInfo,
+    token_program: &Interface<TokenInterface>,
+) -> Result<u64> {
+    if token_account.owner != token_program.key {
+        return Ok(0);
+    }
+
+    if token_account.data_is_empty() {
+        return Ok(0);
+    }
+
+    let data_ref = token_account.data.borrow();
+    match TokenAccount::try_deserialize(&mut &data_ref[..]) {
+        Ok(parsed) => Ok(parsed.amount),
+        Err(_) => Ok(0),
     }
 }

@@ -5,16 +5,29 @@ import {
     executeRedemptionCreateRequest,
     executeRedemptionFetchOffer,
     executeRedemptionFetchRequest,
+    executeRedemptionFetchVaults,
     executeRedemptionFulfill,
+    executeRedemptionListOffers,
     executeRedemptionListRequests,
     executeRedemptionMakeOffer,
+    executeRedemptionSetFeeDestination,
     executeRedemptionUpdateFee,
+    executeRedemptionWithdrawFees,
 } from "../implementations";
 
 /**
  * Register redemption subcommands
  */
 export function registerRedemptionCommands(program: Command): void {
+    // redemption list-offers
+    program
+        .command("list-offers")
+        .description("List all redemption offers on-chain")
+        .action(async (options, cmd) => {
+            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            await executeRedemptionListOffers(opts);
+        });
+
     // redemption make-offer
     program
         .command("make-offer")
@@ -81,6 +94,7 @@ export function registerRedemptionCommands(program: Command): void {
         .option("-i, --token-in <mint>", "Token in mint (ONyc)")
         .option("-o, --token-out <mint>", "Token out mint (USDC)")
         .option("--request-id <number>", "Request ID")
+        .option("-a, --amount <amount>", "Amount to fulfill (omit for full remaining)")
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeRedemptionFulfill(opts);
@@ -98,12 +112,44 @@ export function registerRedemptionCommands(program: Command): void {
             await executeRedemptionCancel(opts);
         });
 
+    // redemption fetch-vaults
+    program
+        .command("fetch-vaults")
+        .description("Fetch and display all redemption vault balances")
+        .action(async (options, cmd) => {
+            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            await executeRedemptionFetchVaults(opts);
+        });
+
+    // redemption set-fee-destination
+    program
+        .command("set-fee-destination")
+        .description("Set the redemption fee destination address (boss only)")
+        .option("-d, --destination <address>", "Fee destination address")
+        .action(async (options, cmd) => {
+            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            await executeRedemptionSetFeeDestination(opts);
+        });
+
+    // redemption withdraw-fees
+    program
+        .command("withdraw-fees")
+        .description("Withdraw accumulated redemption fees from the vault (boss only)")
+        .option("-i, --token-in <mint>", "Token mint to withdraw fees for")
+        .option("-d, --destination <address>", "Destination wallet for withdrawn fees")
+        .option("-a, --amount <amount>", "Amount to withdraw (0 or omit for full balance)")
+        .action(async (options, cmd) => {
+            const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
+            await executeRedemptionWithdrawFees(opts);
+        });
+
     // redemption list-requests
     program
         .command("list-requests")
         .description("List all redemption requests for an offer")
         .option("-i, --token-in <mint>", "Token in mint (ONyc)")
         .option("-o, --token-out <mint>", "Token out mint (USDC)")
+        .option("-r, --redeemer <address>", "Filter by redeemer address (optional)")
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeRedemptionListRequests(opts);

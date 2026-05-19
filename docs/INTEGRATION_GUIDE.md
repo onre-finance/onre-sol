@@ -8,7 +8,9 @@ Simple guide for integrating NAV and APY queries into your application.
 
 The Onre program provides **read-only view instructions** to query market data. Use the program IDL and standard Anchor client libraries to make these calls.
 
-**Program ID (Mainnet):** `[INSERT_PROGRAM_ID_HERE]`
+For BUFFER integrations, keep in mind that BUFFER accrual does not accept a caller-provided current yield. Instead, `current_yield` is derived from the active APR on `state.main_offer`.
+
+**Program ID (Mainnet):** `onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe`
 
 ---
 
@@ -243,6 +245,33 @@ const [vaultAuthority] = PublicKey.findProgramAddressSync(
   programId
 );
 ```
+
+---
+
+## BUFFER Integration Notes
+
+If your integration touches BUFFER:
+
+- `initialize_buffer` must be given an offer account, and that offer's `token_out_mint` must be the ONyc mint
+- `set_main_offer` changes which offer is used as the source of APR for BUFFER
+- `set_buffer_gross_apr` only updates `gross_apr`
+- BUFFER accrual reads `current_yield` from the active vector APR on `state.main_offer`
+
+### Recommended BUFFER Rollout
+
+Recommended rollout sequence for enabling BUFFER on an already-running deployment:
+
+1. upgrade the program
+2. let integrators/backend switch to the extended instruction paths
+3. stop using the legacy fulfillment paths
+4. upgrade the program again to remove or disable the legacy paths
+5. initialize BUFFER
+
+Operational note:
+
+- `fulfill_redemption_request_extended` is designed to work before BUFFER is initialized
+- before BUFFER initialization, the extended path behaves as a no-accrual redemption flow
+- after BUFFER is initialized, set `gross_apr` deliberately as part of activation so accrual starts only when you intend it to
 
 ### Vault Token Accounts (ATAs)
 ```typescript

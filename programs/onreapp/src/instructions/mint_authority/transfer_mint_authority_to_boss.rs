@@ -1,8 +1,8 @@
 use crate::constants::seeds;
 use crate::state::State;
 use anchor_lang::prelude::*;
-use anchor_spl::token::spl_token::instruction::AuthorityType;
-use anchor_spl::token::{set_authority, SetAuthority};
+use anchor_spl::token_2022::spl_token_2022::instruction::AuthorityType;
+use anchor_spl::token_interface::{set_authority, SetAuthority};
 use anchor_spl::token_interface::{Mint, TokenInterface};
 
 /// Handles transferring mint authority from program PDA back to the boss account
@@ -15,14 +15,6 @@ use anchor_spl::token_interface::{Mint, TokenInterface};
 /// - Only the current boss can initiate the transfer
 /// - Program PDA must currently hold mint authority
 /// - Uses program-derived signatures for authorization
-
-/// Error codes for mint authority transfer to boss operations
-#[error_code]
-pub enum TransferMintAuthorityToBossErrorCode {
-    /// The program PDA is not the current mint authority for the specified token
-    #[msg("Program PDA must be the current mint authority")]
-    ProgramNotMintAuthority,
-}
 
 /// Event emitted when mint authority is successfully transferred from program PDA to boss
 ///
@@ -60,7 +52,7 @@ pub struct TransferMintAuthorityToBoss<'info> {
     /// will be updated to have the boss as the new mint authority.
     #[account(
         mut,
-        constraint = mint.mint_authority.unwrap() == mint_authority.key() @ TransferMintAuthorityToBossErrorCode::ProgramNotMintAuthority
+        constraint = mint.mint_authority.unwrap() == mint_authority.key() @ crate::OnreError::ProgramNotMintAuthority
     )]
     pub mint: InterfaceAccount<'info, Mint>,
 
@@ -93,7 +85,7 @@ pub struct TransferMintAuthorityToBoss<'info> {
 ///
 /// # Returns
 /// * `Ok(())` - If authority transfer completes successfully
-/// * `Err(TransferMintAuthorityToBossErrorCode::ProgramNotMintAuthority)` - If program PDA doesn't hold authority
+/// * `Err(crate::OnreError::ProgramNotMintAuthority)` - If program PDA doesn't hold authority
 /// * `Err(_)` - If SPL Token authority transfer fails
 ///
 /// # Access Control
@@ -111,7 +103,7 @@ pub fn transfer_mint_authority_to_boss(ctx: Context<TransferMintAuthorityToBoss>
     // Transfer mint authority from program PDA back to boss using program signature
     set_authority(
         CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.token_program.key(),
             SetAuthority {
                 current_authority: ctx.accounts.mint_authority.to_account_info(),
                 account_or_mint: ctx.accounts.mint.to_account_info(),

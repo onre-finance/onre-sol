@@ -2,6 +2,11 @@
 enabled = true
 
 
+# Program address must match the feature used to build the .so binary:
+#   mainnet (default): onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe
+#   mainnet-test:      J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2
+#   devnet-test:       J24jWEosQc5jgkdPm3YzNgzQ54CqNKkhzKy56XXJsLo2
+#   devnet-dev:        devHfQHgiFNifkLW49RCXpyTUZMyKuBNnFSbrQ8XsbX
 [[fuzz.programs]]
 address = "onreuGhHHgVzMWSkj2oQDLDtvvGvoepBPkqyaubFcwe"
 program = "../target/deploy/onreapp.so"

@@ -42,5 +42,5 @@ RUN pnpm install --frozen-lockfile || pnpm install && \
 # Copy rest of project
 COPY . .
 
-# Default command: run tests and copy artifacts to output
-CMD ["sh", "-c", "NODE_OPTIONS='--max-old-space-size=2048' pnpm exec vitest run && cp -r target/deploy target/idl /workspace/output/ 2>/dev/null || true"]
+# Default command: run Rust tests and copy artifacts to output
+CMD ["sh", "-c", "cargo test -p onreapp && cp -r target/deploy target/idl /workspace/output/ 2>/dev/null || true"]

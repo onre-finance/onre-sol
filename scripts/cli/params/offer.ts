@@ -1,5 +1,6 @@
 import { ParamDefinition } from "../prompts/types";
 import { tokenPairParams } from "./common";
+import type { NetworkConfig } from "../../utils/script-helper";
 
 /**
  * Offer command parameter definitions
@@ -107,5 +108,26 @@ export const takeOfferParams: ParamDefinition[] = [
         required: true,
         flag: "--permissionless",
         default: false,
+    },
+];
+
+export const fetchOfferParams: ParamDefinition[] = [
+    {
+        name: "tokenIn",
+        type: "mint",
+        description: "Token in mint (e.g., USDC)",
+        required: false,
+        flag: "--token-in",
+        shortFlag: "-i",
+        default: (cfg: NetworkConfig) => cfg.mints.usdc,
+    },
+    {
+        name: "tokenOut",
+        type: "mint",
+        description: "Token out mint (e.g., ONyc)",
+        required: false,
+        flag: "--token-out",
+        shortFlag: "-o",
+        default: (cfg: NetworkConfig) => cfg.mints.onyc,
     },
 ];

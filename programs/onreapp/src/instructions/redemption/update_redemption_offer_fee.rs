@@ -1,4 +1,4 @@
-use crate::constants::{seeds, MAX_ALLOWED_FEE_BPS};
+use crate::constants::{seeds, MAX_ALLOWED_FEE_BPS, MAX_BASIS_POINTS};
 use crate::instructions::redemption::RedemptionOffer;
 use crate::state::State;
 use anchor_lang::prelude::*;
@@ -15,6 +15,14 @@ pub struct RedemptionOfferFeeUpdatedEvent {
     /// New fee in basis points (10000 = 100%)
     pub new_fee_basis_points: u16,
     /// The boss account that authorized the fee update
+    pub boss: Pubkey,
+}
+
+#[event]
+pub struct RedemptionOfferVaultTargetUpdatedEvent {
+    pub redemption_offer_pda: Pubkey,
+    pub old_vault_target_bps: u16,
+    pub new_vault_target_bps: u16,
     pub boss: Pubkey,
 }
 
@@ -40,7 +48,7 @@ pub struct UpdateRedemptionOfferFee<'info> {
     #[account(
         seeds = [seeds::STATE],
         bump = state.bump,
-        has_one = boss @ UpdateRedemptionOfferFeeErrorCode::Unauthorized
+        has_one = boss @ crate::OnreError::Unauthorized
     )]
     pub state: Account<'info, State>,
 
@@ -61,8 +69,8 @@ pub struct UpdateRedemptionOfferFee<'info> {
 ///
 /// # Returns
 /// * `Ok(())` - If the fee is successfully updated
-/// * `Err(UpdateRedemptionOfferFeeErrorCode::InvalidFee)` - If fee exceeds 10000 basis points
-/// * `Err(UpdateRedemptionOfferFeeErrorCode::Unauthorized)` - If caller is not the boss
+/// * `Err(crate::OnreError::InvalidFee)` - If fee exceeds 10000 basis points
+/// * `Err(crate::OnreError::Unauthorized)` - If caller is not the boss
 ///
 /// # Access Control
 /// - Only the boss can call this instruction
@@ -82,7 +90,7 @@ pub fn update_redemption_offer_fee(
     // Validate fee is within valid range (0-1000 basis points = 0-10%)
     require!(
         new_fee_basis_points <= MAX_ALLOWED_FEE_BPS,
-        UpdateRedemptionOfferFeeErrorCode::InvalidFee
+        crate::OnreError::InvalidFee
     );
 
     let redemption_offer = &mut ctx.accounts.redemption_offer;
@@ -90,7 +98,7 @@ pub fn update_redemption_offer_fee(
     // Validate this is not a no-op (setting the same fee)
     require!(
         new_fee_basis_points != redemption_offer.fee_basis_points,
-        UpdateRedemptionOfferFeeErrorCode::NoChange
+        crate::OnreError::NoChange
     );
 
     // Store old fee for event
@@ -116,18 +124,30 @@ pub fn update_redemption_offer_fee(
     Ok(())
 }
 
-/// Error codes for update redemption offer fee operations
-#[error_code]
-pub enum UpdateRedemptionOfferFeeErrorCode {
-    /// Caller is not authorized (must be boss)
-    #[msg("Unauthorized: only boss can update redemption offer fee")]
-    Unauthorized,
+pub fn update_redemption_offer_vault_target(
+    ctx: Context<UpdateRedemptionOfferFee>,
+    new_vault_target_bps: u16,
+) -> Result<()> {
+    require!(
+        new_vault_target_bps <= MAX_BASIS_POINTS,
+        crate::OnreError::InvalidAmount
+    );
 
-    /// Fee basis points exceeds maximum allowed value of 1000 (10%)
-    #[msg("Invalid fee: fee_basis_points must be <= 1000")]
-    InvalidFee,
+    let redemption_offer = &mut ctx.accounts.redemption_offer;
+    require!(
+        new_vault_target_bps != redemption_offer.vault_target_bps,
+        crate::OnreError::NoChange
+    );
 
-    /// The new fee is the same as the current fee
-    #[msg("No change: new fee is the same as current fee")]
-    NoChange,
+    let old_vault_target_bps = redemption_offer.vault_target_bps;
+    redemption_offer.vault_target_bps = new_vault_target_bps;
+
+    emit!(RedemptionOfferVaultTargetUpdatedEvent {
+        redemption_offer_pda: ctx.accounts.redemption_offer.key(),
+        old_vault_target_bps,
+        new_vault_target_bps,
+        boss: ctx.accounts.boss.key(),
+    });
+
+    Ok(())
 }
