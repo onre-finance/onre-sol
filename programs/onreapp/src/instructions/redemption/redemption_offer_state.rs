@@ -140,6 +140,6 @@ pub struct RedemptionRequest {
     /// When fulfilled_amount == amount the request is fully settled and the account is closed.
     /// remaining = amount - fulfilled_amount is still locked in the redemption vault.
     pub fulfilled_amount: u64,
-    /// Reserved space for future fields
-    pub reserved: [u8; 27],
+    /// Reserved space preserves the 216-byte account allocation with a 32-byte request ID.
+    pub reserved: [u8; 91],
 }

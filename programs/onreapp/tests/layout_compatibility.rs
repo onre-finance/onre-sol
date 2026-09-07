@@ -1,6 +1,6 @@
 use anchor_lang::{AccountDeserialize, AnchorSerialize, Discriminator, Space};
 use onreapp::constants::MAX_ADMINS;
-use onreapp::instructions::RedemptionOffer;
+use onreapp::instructions::{RedemptionOffer, RedemptionRequest};
 use onreapp::state::State;
 use solana_sdk::pubkey::Pubkey;
 
@@ -38,6 +38,26 @@ fn account_bytes<T: AnchorSerialize>(discriminator: &[u8], account: &T) -> Vec<u
     data.extend_from_slice(discriminator);
     account.serialize(&mut data).unwrap();
     data
+}
+
+#[test]
+fn redemption_request_preserves_allocation_size_with_uuid() {
+    let request = RedemptionRequest {
+        offer: Pubkey::new_unique(),
+        request_id: "12345678901234567890123456789012".to_string(),
+        redeemer: Pubkey::new_unique(),
+        amount: 500_000,
+        bump: 249,
+        fulfilled_amount: 100_000,
+        reserved: [0; 91],
+    };
+    let data = account_bytes(RedemptionRequest::DISCRIMINATOR, &request);
+    assert_eq!(8 + RedemptionRequest::INIT_SPACE, 216);
+    assert_eq!(data.len(), 216);
+    let decoded = RedemptionRequest::try_deserialize(&mut data.as_slice()).unwrap();
+    assert_eq!(decoded.request_id, request.request_id);
+    assert_eq!(decoded.redeemer, request.redeemer);
+    assert_eq!(decoded.fulfilled_amount, request.fulfilled_amount);
 }
 
 #[test]

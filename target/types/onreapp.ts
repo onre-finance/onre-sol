@@ -15921,12 +15921,12 @@ export type Onreapp = {
           {
             "name": "reserved",
             "docs": [
-              "Reserved space for future fields"
+              "Reserved space preserves the 216-byte account allocation with a 32-byte request ID."
             ],
             "type": {
               "array": [
                 "u8",
-                27
+                91
               ]
             }
           }
