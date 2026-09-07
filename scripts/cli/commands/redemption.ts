@@ -108,6 +108,7 @@ export function registerRedemptionCommands(program: Command): void {
         .option("-i, --token-in <mint>", "Token in mint (ONyc)")
         .option("-o, --token-out <mint>", "Token out mint (USDC)")
         .option("-a, --amount <tokens>", "Amount of tokens to redeem")
+        .option("--request-id <string>", "Frontend-generated random request ID")
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeRedemptionCreateRequest(opts);
@@ -119,7 +120,8 @@ export function registerRedemptionCommands(program: Command): void {
         .description("Fetch and display redemption request details")
         .option("-i, --token-in <mint>", "Token in mint (ONyc)")
         .option("-o, --token-out <mint>", "Token out mint (USDC)")
-        .option("--request-id <number>", "Request ID")
+        .option("--request-id <string>", "Frontend-generated request ID")
+        .option("--redeemer <address>", "Redeemer public key")
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeRedemptionFetchRequest(opts);
@@ -131,7 +133,8 @@ export function registerRedemptionCommands(program: Command): void {
         .description("Fulfill a pending redemption request (worker only)")
         .option("-i, --token-in <mint>", "Token in mint (ONyc)")
         .option("-o, --token-out <mint>", "Token out mint (USDC)")
-        .option("--request-id <number>", "Request ID")
+        .option("--request-id <string>", "Frontend-generated request ID")
+        .option("--redeemer <address>", "Redeemer public key")
         .option("-a, --amount <amount>", "Amount to fulfill (omit for full remaining)")
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
@@ -144,7 +147,8 @@ export function registerRedemptionCommands(program: Command): void {
         .description("Cancel a redemption request (returns locked tokens)")
         .option("-i, --token-in <mint>", "Token in mint (ONyc)")
         .option("-o, --token-out <mint>", "Token out mint (USDC)")
-        .option("--request-id <number>", "Request ID")
+        .option("--request-id <string>", "Frontend-generated request ID")
+        .option("--redeemer <address>", "Redeemer public key")
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeRedemptionCancel(opts);

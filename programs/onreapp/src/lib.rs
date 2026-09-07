@@ -849,11 +849,13 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `CreateRedemptionRequest`.
     /// - `amount`: Amount of token_in tokens to redeem.
+    /// - `request_id`: Frontend-generated ID used with the offer and redeemer to derive the PDA.
     pub fn create_redemption_request(
         ctx: Context<CreateRedemptionRequest>,
         amount: u64,
+        request_id: String,
     ) -> Result<()> {
-        redemption::create_redemption_request(ctx, amount)
+        redemption::create_redemption_request(ctx, amount, request_id)
     }
 
     /// Fulfills a redemption request with ONyc buffer accrual support.

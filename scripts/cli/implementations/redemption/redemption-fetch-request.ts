@@ -12,7 +12,7 @@ export async function executeRedemptionFetchRequest(opts: GlobalOptions & Record
 
         // Fetch the redemption request account
         const redemptionOfferPda = helper.getRedemptionOfferPda(params.tokenIn, params.tokenOut);
-        const requestAddress = helper.getRedemptionRequestPda(redemptionOfferPda, params.requestId);
+        const requestAddress = helper.getRedemptionRequestPda(redemptionOfferPda, params.redeemer, params.requestId);
         const request = await helper.program.account.redemptionRequest.fetch(requestAddress);
 
         printRedemptionRequest(request, params.requestId, opts.json);

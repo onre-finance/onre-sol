@@ -33,13 +33,15 @@ export async function runRedemptionSmoke(runtime: SmokeRuntime, mainOffer: Publi
     for (const redemption of ACTIVE_REDEMPTIONS) {
         const redemptionOffer = redemptionOfferPda(MINTS.onyc, redemption.mint);
         const offer = offerPda(redemption.mint, MINTS.onyc);
-        const redemptionOfferAccount = await runtime.program.account.redemptionOffer.fetch(redemptionOffer);
-        const requestId = bnToBigInt(redemptionOfferAccount.requestCounter);
-        const redemptionRequest = redemptionRequestPda(redemptionOffer, requestId);
+        const requestId = `surfpool-${redemption.symbol}`.padEnd(32, "0");
+        const redemptionRequest = redemptionRequestPda(redemptionOffer, runtime.authority.publicKey, requestId);
 
         const beforeOut = await tokenBalance(runtime, ata(redemption.mint, runtime.authority.publicKey));
         const createIx = await runtime.program.methods
-            .createRedemptionRequest(bn(SMALL_ONYC_REDEMPTION_AMOUNT))
+            .createRedemptionRequest(
+                bn(SMALL_ONYC_REDEMPTION_AMOUNT),
+                requestId,
+            )
             .accountsPartial({
                 state: PDAS.state,
                 redemptionOffer,

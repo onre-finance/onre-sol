@@ -190,7 +190,7 @@ pub fn make_redemption_offer(
     redemption_offer.vault_target_bps = 0;
     redemption_offer.executed_redemptions = 0;
     redemption_offer.requested_redemptions = 0;
-    redemption_offer.request_counter = 0;
+    redemption_offer.gap = 0;
     redemption_offer.set_disabled(false);
     redemption_offer.bump = ctx.bumps.redemption_offer;
 

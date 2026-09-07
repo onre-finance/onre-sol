@@ -22,12 +22,10 @@ export async function executeRedemptionListRequests(opts: GlobalOptions & Record
                 },
             },
         ];
-
-        // Conditionally add redeemer filter if provided
         if (params.redeemer) {
             filters.push({
                 memcmp: {
-                    offset: 8 + 32 + 8, // After discriminator + offer + request_id - filter by redeemer
+                    offset: 76, // discriminator + offer + fixed 32-byte string encoding
                     bytes: params.redeemer.toBase58(),
                 },
             });
@@ -35,13 +33,13 @@ export async function executeRedemptionListRequests(opts: GlobalOptions & Record
 
         const requests = await helper.program.account.redemptionRequest.all(filters);
 
-        // Transform and sort the data by ID
+        // Transform and sort by frontend-generated request ID.
         const formattedRequests = requests
             .map((r) => ({
-                id: r.account.requestId.toNumber(),
+                id: r.account.requestId as string,
                 request: r.account,
             }))
-            .sort((a, b) => a.id - b.id);
+            .sort((a, b) => a.id.localeCompare(b.id));
 
         printRedemptionRequestsList(formattedRequests, opts.json);
     });

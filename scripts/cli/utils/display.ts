@@ -417,7 +417,6 @@ export function printRedemptionOffer(offer: any, tokenInMint: string, tokenOutMi
                     tokenInMint,
                     tokenOutMint,
                     feeBasisPoints: offer.feeBasisPoints,
-                    requestCounter: offer.requestCounter.toString(),
                     executedRedemptions: offer.executedRedemptions.toString(),
                     requestedRedemptions: offer.requestedRedemptions.toString(),
                     offer: offer.offer.toBase58(),
@@ -441,7 +440,6 @@ export function printRedemptionOffer(offer: any, tokenInMint: string, tokenOutMi
         ["Token Out Mint", tokenOutMint],
         ["Fee", `${offer.feeBasisPoints / 100}% (${offer.feeBasisPoints} bps)`],
         ["Underlying Offer", offer.offer.toBase58()],
-        ["Request Counter", offer.requestCounter.toString()],
         ["Executed Redemptions", offer.executedRedemptions.toString()],
         ["Requested Redemptions", offer.requestedRedemptions.toString()],
     );
@@ -466,7 +464,6 @@ export function printRedemptionOfferList(
                         tokenInMint: tokenIn,
                         tokenOutMint: tokenOut,
                         feeBasisPoints: offer.feeBasisPoints,
-                        requestCounter: offer.requestCounter.toString(),
                         executedRedemptions: offer.executedRedemptions.toString(),
                         requestedRedemptions: offer.requestedRedemptions.toString(),
                     })),
@@ -493,11 +490,10 @@ export function printRedemptionOfferList(
                 chalk.white("Token In"),
                 chalk.white("Token Out"),
                 chalk.white("Fee"),
-                chalk.white("Total Requests"),
                 chalk.white("Executed"),
                 chalk.white("Pending"),
             ],
-            colWidths: [46, 46, 46, 10, 16, 22, 22],
+            colWidths: [46, 46, 46, 10, 22, 22],
         });
 
         offers.forEach(({ address, tokenIn, tokenOut, offer }) => {
@@ -506,7 +502,6 @@ export function printRedemptionOfferList(
                 tokenIn,
                 tokenOut,
                 `${offer.feeBasisPoints / 100}%`,
-                offer.requestCounter.toString(),
                 offer.executedRedemptions.toString(),
                 offer.requestedRedemptions.toString(),
             ]);
@@ -535,7 +530,7 @@ export function printRedemptionOfferList(
 /**
  * Print redemption request details
  */
-export function printRedemptionRequest(request: any, requestId: number, json: boolean = false): void {
+export function printRedemptionRequest(request: any, requestId: string, json: boolean = false): void {
     const fulfilledAmount = request.fulfilledAmount ?? 0;
     const remaining = BigInt(request.amount.toString()) - BigInt(fulfilledAmount.toString());
 
@@ -645,7 +640,7 @@ export function printRedemptionVaults(
 /**
  * Print redemption requests list
  */
-export function printRedemptionRequestsList(requests: Array<{ id: number; request: any }>, json: boolean = false): void {
+export function printRedemptionRequestsList(requests: Array<{ id: string; request: any }>, json: boolean = false): void {
     if (json) {
         console.log(
             JSON.stringify(
@@ -677,7 +672,7 @@ export function printRedemptionRequestsList(requests: Array<{ id: number; reques
 
     const table = new Table({
         head: [chalk.white("ID"), chalk.white("Redeemer"), chalk.white("Total"), chalk.white("Fulfilled"), chalk.white("Remaining")],
-        colWidths: [6, 46, 18, 18, 18],
+        colWidths: [34, 46, 18, 18, 18],
     });
 
     requests.forEach(({ id, request }) => {

@@ -54,6 +54,14 @@ export const redemptionOfferParams: ParamDefinition[] = [
 export const createRequestParams: ParamDefinition[] = [
     ...redemptionTokenPairParams,
     {
+        name: "requestId",
+        type: "string",
+        description: "Frontend-generated random request ID (exactly 32 UTF-8 bytes; UUID without hyphens)",
+        required: true,
+        flag: "--request-id",
+        validate: validateRedemptionRequestId,
+    },
+    {
         name: "amount",
         type: "amount",
         description: "Amount of tokens to redeem",
@@ -68,12 +76,35 @@ export const requestParams: ParamDefinition[] = [
     {
         name: "requestId",
         type: "string",
-        description: "Redemption request ID",
+        description: "Frontend-generated 32-byte redemption request ID",
         required: true,
         flag: "--request-id",
-        transform: (value: any) => parseInt(value, 10),
+        validate: validateRedemptionRequestId,
+    },
+    {
+        name: "redeemer",
+        type: "string",
+        description: "Redeemer public key used in request PDA derivation",
+        required: true,
+        flag: "--redeemer",
+        validate: (value: string) => {
+            try {
+                new PublicKey(value.trim());
+                return true;
+            } catch {
+                return "Invalid public key format";
+            }
+        },
+        transform: (value: string) => new PublicKey(value.trim()),
     },
 ];
+
+function validateRedemptionRequestId(value: string): true | string {
+    const length = Buffer.byteLength(value, "utf8");
+    return length === 32
+        ? true
+        : "Request ID must be exactly 32 UTF-8 bytes (use a UUID without hyphens)";
+}
 
 export const fulfillRequestParams: ParamDefinition[] = [
     ...requestParams,

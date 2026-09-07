@@ -276,4 +276,6 @@ pub enum OnreError {
     InvalidFeeRecipient,
     #[msg("Invalid Burn Target")]
     InvalidBurnTarget,
+    #[msg("Invalid Redemption Request ID")]
+    InvalidRedemptionRequestId,
 }

@@ -115,7 +115,6 @@ fn test_make_redemption_offer_success() {
     let offer_data = read_redemption_offer(&svm, &redemption_tin, &redemption_tout);
     assert_eq!(offer_data.fee_basis_points, 500);
     assert_eq!(offer_data.fee_basis_points_prop_amm_sell, 0);
-    assert_eq!(offer_data.request_counter, 0);
     assert_eq!(offer_data.executed_redemptions, 0);
     assert_eq!(offer_data.requested_redemptions, 0);
     assert_eq!(offer_data.token_in_mint, redemption_tin);
@@ -387,9 +386,7 @@ fn test_create_redemption_request_success() {
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
 
-    // Check redemption offer counter incremented
     let offer_data = read_redemption_offer(&svm, &redemption_tin, &redemption_tout);
-    assert_eq!(offer_data.request_counter, 1);
     assert_eq!(offer_data.requested_redemptions, 500_000_000);
 
     // User's tokens should be locked in vault
@@ -423,8 +420,122 @@ fn test_create_redemption_request_rejects_zero_amount() {
     assert!(result.is_err(), "zero redemption requests should fail");
 
     let offer_data = read_redemption_offer(&svm, &redemption_tin, &redemption_tout);
-    assert_eq!(offer_data.request_counter, 0);
     assert_eq!(offer_data.requested_redemptions, 0);
+}
+
+#[test]
+fn test_create_redemption_request_accepts_32_byte_request_id() {
+    let (mut svm, _payer, _usdc, onyc_mint, redemption_tin, redemption_tout) = setup_redemption();
+
+    let user = Keypair::new();
+    svm.airdrop(&user.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
+    create_token_account(&mut svm, &onyc_mint, &user.pubkey(), 1_000_000_000);
+
+    let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
+    create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
+
+    let request_id = "12345678901234567890123456789012";
+    let ix = build_create_redemption_request_ix(
+        &user.pubkey(),
+        &redemption_tin,
+        &redemption_tout,
+        500_000_000,
+        request_id,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[ix], &[&user]).unwrap();
+
+    let (redemption_offer, _) = find_redemption_offer_pda(&redemption_tin, &redemption_tout);
+    let request = read_redemption_request(&svm, &redemption_offer, &user.pubkey(), request_id);
+    assert_eq!(request.request_id, request_id);
+}
+
+#[test]
+fn test_create_redemption_request_rejects_non_32_byte_request_id() {
+    let (mut svm, _payer, _usdc, onyc_mint, redemption_tin, redemption_tout) = setup_redemption();
+
+    let user = Keypair::new();
+    svm.airdrop(&user.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
+    create_token_account(&mut svm, &onyc_mint, &user.pubkey(), 1_000_000_000);
+
+    let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
+    create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
+    let user_ata = derive_ata(&user.pubkey(), &onyc_mint, &TOKEN_PROGRAM_ID);
+
+    let request_id = "too-short";
+    let (redemption_offer, _) = find_redemption_offer_pda(&redemption_tin, &redemption_tout);
+    let (short_id_request, _) = Pubkey::find_program_address(
+        &[
+            REDEMPTION_REQUEST_SEED,
+            redemption_offer.as_ref(),
+            user.pubkey().as_ref(),
+            request_id.as_bytes(),
+        ],
+        &PROGRAM_ID,
+    );
+    let mut ix = build_create_redemption_request_ix(
+        &user.pubkey(),
+        &redemption_tin,
+        &redemption_tout,
+        500_000_000,
+        "12345678901234567890123456789012",
+        &TOKEN_PROGRAM_ID,
+    );
+    ix.accounts[3].pubkey = short_id_request;
+    ix.data = ix_discriminator("create_redemption_request").to_vec();
+    ix.data.extend_from_slice(&500_000_000u64.to_le_bytes());
+    ix.data
+        .extend_from_slice(&(request_id.len() as u32).to_le_bytes());
+    ix.data.extend_from_slice(request_id.as_bytes());
+
+    let error = send_tx(&mut svm, &[ix], &[&user]).unwrap_err();
+    assert_eq!(
+        error.err,
+        solana_sdk::transaction::TransactionError::InstructionError(
+            1,
+            solana_sdk::instruction::InstructionError::Custom(
+                anchor_lang::error::ERROR_CODE_OFFSET
+                    + onreapp::OnreError::InvalidRedemptionRequestId as u32,
+            ),
+        ),
+    );
+    assert_eq!(get_token_balance(&svm, &user_ata), 1_000_000_000);
+    assert_eq!(
+        read_redemption_offer(&svm, &redemption_tin, &redemption_tout).requested_redemptions,
+        0,
+    );
+    assert!(svm.get_account(&short_id_request).is_none());
+
+    // Solana rejects a seed over 32 bytes while Anchor validates the PDA, before the handler.
+    let request_id = "123456789012345678901234567890123";
+    let mut ix = build_create_redemption_request_ix(
+        &user.pubkey(),
+        &redemption_tin,
+        &redemption_tout,
+        500_000_000,
+        "12345678901234567890123456789012",
+        &TOKEN_PROGRAM_ID,
+    );
+    ix.accounts[3].pubkey = Pubkey::new_unique();
+    ix.data = ix_discriminator("create_redemption_request").to_vec();
+    ix.data.extend_from_slice(&500_000_000u64.to_le_bytes());
+    ix.data
+        .extend_from_slice(&(request_id.len() as u32).to_le_bytes());
+    ix.data.extend_from_slice(request_id.as_bytes());
+
+    let error = send_tx(&mut svm, &[ix], &[&user]).unwrap_err();
+    assert_eq!(
+        error.err,
+        solana_sdk::transaction::TransactionError::InstructionError(
+            1,
+            solana_sdk::instruction::InstructionError::ProgramFailedToComplete,
+        ),
+    );
+    assert_eq!(get_token_balance(&svm, &user_ata), 1_000_000_000);
+    assert_eq!(
+        read_redemption_offer(&svm, &redemption_tin, &redemption_tout).requested_redemptions,
+        0,
+    );
 }
 
 #[test]
@@ -461,7 +572,6 @@ fn test_create_multiple_redemption_requests() {
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
 
     let offer_data = read_redemption_offer(&svm, &redemption_tin, &redemption_tout);
-    assert_eq!(offer_data.request_counter, 2);
     assert_eq!(offer_data.requested_redemptions, 800_000_000);
 }
 
@@ -1111,7 +1221,7 @@ fn test_make_redemption_offer_rejects_duplicate() {
 // ===========================================================================
 
 #[test]
-fn test_create_redemption_request_counter_increments() {
+fn test_create_redemption_request_ids_are_independent() {
     let (mut svm, _payer, _usdc, onyc_mint, redemption_tin, redemption_tout) = setup_redemption();
 
     let user = Keypair::new();
@@ -1121,7 +1231,7 @@ fn test_create_redemption_request_counter_increments() {
     let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
     create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
 
-    // Create 3 requests and verify counter increments
+    // Create three requests with independent frontend IDs.
     for i in 0u64..3 {
         let ix = build_create_redemption_request_ix(
             &user.pubkey(),
@@ -1133,9 +1243,6 @@ fn test_create_redemption_request_counter_increments() {
         );
         send_tx(&mut svm, &[ix], &[&user]).unwrap();
         advance_slot(&mut svm);
-
-        let offer_data = read_redemption_offer(&svm, &redemption_tin, &redemption_tout);
-        assert_eq!(offer_data.request_counter, i + 1);
     }
 }
 
@@ -1152,13 +1259,16 @@ fn test_create_redemption_request_unique_pdas() {
 
     let (redemption_offer_pda, _) = find_redemption_offer_pda(&redemption_tin, &redemption_tout);
 
-    // Create two requests, verify different PDAs
+    let first_request_id = "12345678901234567890123456789012";
+    let second_request_id = "abcdefghijklmnopqrstuvwxzy123456";
+
+    // Create two requests with frontend-generated IDs and verify different PDAs.
     let ix = build_create_redemption_request_ix(
         &user.pubkey(),
         &redemption_tin,
         &redemption_tout,
         100_000_000,
-        0,
+        first_request_id,
         &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
@@ -1169,18 +1279,76 @@ fn test_create_redemption_request_unique_pdas() {
         &redemption_tin,
         &redemption_tout,
         100_000_000,
-        1,
+        second_request_id,
         &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
 
-    let (pda0, _) = find_redemption_request_pda(&redemption_offer_pda, 0);
-    let (pda1, _) = find_redemption_request_pda(&redemption_offer_pda, 1);
-    assert_ne!(pda0, pda1, "different counters should give different PDAs");
+    let (pda0, _) =
+        find_redemption_request_pda(&redemption_offer_pda, &user.pubkey(), first_request_id);
+    let (pda1, _) =
+        find_redemption_request_pda(&redemption_offer_pda, &user.pubkey(), second_request_id);
+    assert_ne!(
+        pda0, pda1,
+        "different request IDs should give different PDAs"
+    );
 
     // Verify both accounts exist
     assert!(svm.get_account(&pda0).is_some());
     assert!(svm.get_account(&pda1).is_some());
+
+    let first_request = read_redemption_request(
+        &svm,
+        &redemption_offer_pda,
+        &user.pubkey(),
+        first_request_id,
+    );
+    assert_eq!(first_request.request_id, first_request_id);
+}
+
+#[test]
+fn test_same_request_id_is_independent_per_redeemer() {
+    let (mut svm, _payer, _usdc, onyc_mint, redemption_tin, redemption_tout) = setup_redemption();
+
+    let first_user = Keypair::new();
+    let second_user = Keypair::new();
+    for user in [&first_user, &second_user] {
+        svm.airdrop(&user.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
+        create_token_account(&mut svm, &onyc_mint, &user.pubkey(), 1_000_000_000);
+    }
+
+    let (redemption_vault_authority, _) = find_redemption_vault_authority_pda();
+    create_token_account(&mut svm, &onyc_mint, &redemption_vault_authority, 0);
+
+    let request_id = "12345678901234567890123456789012";
+    for user in [&first_user, &second_user] {
+        let ix = build_create_redemption_request_ix(
+            &user.pubkey(),
+            &redemption_tin,
+            &redemption_tout,
+            100_000_000,
+            request_id,
+            &TOKEN_PROGRAM_ID,
+        );
+        send_tx(&mut svm, &[ix], &[user]).unwrap();
+        advance_slot(&mut svm);
+    }
+
+    let (redemption_offer, _) = find_redemption_offer_pda(&redemption_tin, &redemption_tout);
+    let (first_pda, _) =
+        find_redemption_request_pda(&redemption_offer, &first_user.pubkey(), request_id);
+    let (second_pda, _) =
+        find_redemption_request_pda(&redemption_offer, &second_user.pubkey(), request_id);
+    assert_ne!(first_pda, second_pda);
+    assert_eq!(
+        read_redemption_request(&svm, &redemption_offer, &first_user.pubkey(), request_id).redeemer,
+        first_user.pubkey(),
+    );
+    assert_eq!(
+        read_redemption_request(&svm, &redemption_offer, &second_user.pubkey(), request_id)
+            .redeemer,
+        second_user.pubkey(),
+    );
 }
 
 #[test]
@@ -1207,7 +1375,6 @@ fn test_create_redemption_request_anyone_can_create() {
     send_tx(&mut svm, &[ix], &[&random_user]).unwrap();
 
     let offer_data = read_redemption_offer(&svm, &redemption_tin, &redemption_tout);
-    assert_eq!(offer_data.request_counter, 1);
     assert_eq!(offer_data.requested_redemptions, 500_000_000);
 }
 
@@ -1255,9 +1422,6 @@ fn test_create_redemption_request_kill_switch_deactivated_allows() {
         &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut svm, &[ix], &[&user]).unwrap();
-
-    let offer_data = read_redemption_offer(&svm, &redemption_tin, &redemption_tout);
-    assert_eq!(offer_data.request_counter, 1);
 }
 
 #[test]
@@ -1286,7 +1450,6 @@ fn test_create_redemption_request_same_redeemer_multiple() {
     }
 
     let offer_data = read_redemption_offer(&svm, &redemption_tin, &redemption_tout);
-    assert_eq!(offer_data.request_counter, 3);
     assert_eq!(offer_data.requested_redemptions, 3_000_000_000);
 
     // User balance should have decreased
@@ -3750,7 +3913,7 @@ fn test_cancel_redemption_request_closes_account() {
 
     // Verify the redemption request account exists
     let (redemption_offer_pda, _) = find_redemption_offer_pda(&redemption_tin, &redemption_tout);
-    let (request_pda, _) = find_redemption_request_pda(&redemption_offer_pda, 0);
+    let (request_pda, _) = find_redemption_request_pda(&redemption_offer_pda, &user.pubkey(), 0);
     assert!(
         svm.get_account(&request_pda).is_some(),
         "request account should exist before cancel"

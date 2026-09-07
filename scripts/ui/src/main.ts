@@ -17,7 +17,7 @@ import {
     PDA_SEEDS,
     PLACEHOLDER_BLOCKHASH,
     REDEMPTION_OFFER_TOKEN_OUT_KEY,
-    REDEMPTION_REQUEST_COUNTER_KEY,
+    REDEMPTION_REQUEST_ID_KEY,
     SYSVAR_INSTRUCTIONS_PUBKEY,
     TOKEN_CHOICES,
     TOKEN_PROGRAM_ID,
@@ -142,6 +142,9 @@ function initializeSelectedInstruction(): void {
 
     for (const arg of instruction.args ?? []) {
         state.argValues[arg.name] = defaultArgValue(arg.type);
+    }
+    if (instruction.name === "create_redemption_request") {
+        state.argValues.request_id = crypto.randomUUID().replaceAll("-", "");
     }
 
     for (const flat of flattenAccounts(instruction.accounts ?? [])) {
@@ -501,7 +504,7 @@ function renderRedemptionRequestControl(flat: FlatAccount, value: string): strin
     return `
         ${renderDerivedRow(flat, value)}
         <div class="input-stack">
-            <input data-redemption-request-counter="${flat.fullName}" inputmode="numeric" value="${escapeHtml(state.derivationValues[REDEMPTION_REQUEST_COUNTER_KEY] ?? "")}" placeholder="Request counter" />
+            <input data-redemption-request-id="${flat.fullName}" value="${escapeHtml(state.derivationValues[REDEMPTION_REQUEST_ID_KEY] ?? "")}" placeholder="32-byte UUID without hyphens" maxlength="32" />
         </div>
         <input type="hidden" data-account="${flat.fullName}" value="${escapeHtml(value)}" />
     `;
@@ -723,10 +726,9 @@ function bindEvents(): void {
         void refreshDecodedDerivedAccounts();
     });
 
-    for (const input of document.querySelectorAll<HTMLInputElement>("[data-redemption-request-counter]")) {
+    for (const input of document.querySelectorAll<HTMLInputElement>("[data-redemption-request-id]")) {
         input.addEventListener("input", () => {
-            state.derivationValues[REDEMPTION_REQUEST_COUNTER_KEY] = input.value.replace(/[^0-9]/g, "");
-            input.value = state.derivationValues[REDEMPTION_REQUEST_COUNTER_KEY];
+            state.derivationValues[REDEMPTION_REQUEST_ID_KEY] = input.value;
             markAccountAuto("redemption_request");
             deriveAccounts();
             updateAccountInputs();
@@ -1142,6 +1144,11 @@ async function getBlockhash(allowOfflineBlockhash: boolean): Promise<{ blockhash
 function buildInstruction(): TransactionInstruction {
     const instruction = selectedInstruction();
     const accounts = flattenAccounts(instruction.accounts ?? []);
+    if (accounts.some((flat) => flat.account.name === "redemption_request")) {
+        requireExactRedemptionRequestId(instruction.name === "create_redemption_request"
+            ? state.argValues.request_id
+            : state.derivationValues[REDEMPTION_REQUEST_ID_KEY]);
+    }
     const keys = accounts.map((flat) => {
         const value = state.accountValues[flat.fullName]?.trim();
         if (!value) {
@@ -1433,19 +1440,28 @@ function deriveRedemptionOfferPda(): PublicKey | undefined {
 function deriveRedemptionRequestPda(): PublicKey | undefined {
     const request = decodedAccountByName("redemption_request", "redemption_request");
     if (request?.kind === "redemption_request") {
-        return findPda(["redemption_request", request.value.offer, u64Seed(request.value.requestId)]);
+        return findPda(["redemption_request", request.value.offer, request.value.redeemer, Buffer.from(request.value.requestId, "utf8")]);
     }
 
     const redemptionOfferAddress = publicKeyFromAccountValue("redemption_offer") ?? deriveRedemptionOfferPda();
-    const requestCounter = redemptionRequestCounter();
-    if (redemptionOfferAddress && requestCounter !== undefined) {
-        return findPda(["redemption_request", redemptionOfferAddress, u64Seed(requestCounter)]);
-    }
+    const requestId = selectedInstruction().name === "create_redemption_request"
+        ? state.argValues.request_id?.trim()
+        : state.derivationValues[REDEMPTION_REQUEST_ID_KEY]?.trim();
+    const redeemer = publicKeyFromAccountValue("redeemer");
+    return redemptionOfferAddress && requestId && redeemer && isExactRedemptionRequestId(requestId)
+        ? findPda(["redemption_request", redemptionOfferAddress, redeemer, Buffer.from(requestId, "utf8")])
+        : undefined;
+}
 
-    if (selectedInstruction().name !== "create_redemption_request") return undefined;
-    const redemptionOffer = decodedAccountByPublicKey(redemptionOfferAddress);
-    if (redemptionOffer?.kind !== "redemption_offer") return undefined;
-    return findPda(["redemption_request", redemptionOfferAddress!, u64Seed(redemptionOffer.value.requestCounter)]);
+function isExactRedemptionRequestId(requestId: string): boolean {
+    return Buffer.byteLength(requestId, "utf8") === 32;
+}
+
+function requireExactRedemptionRequestId(requestId: string | undefined): void {
+    if ((selectedInstruction().name === "create_redemption_request" || state.accountAuto.redemption_request)
+        && !isExactRedemptionRequestId(requestId?.trim() ?? "")) {
+        throw new Error("Redemption request ID must be exactly 32 UTF-8 bytes (UUID without hyphens).");
+    }
 }
 
 function offerSeedMints(): [PublicKey | undefined, PublicKey | undefined] {
@@ -1500,12 +1516,6 @@ function redemptionOfferTokenOutMint(): PublicKey | undefined {
     } catch {
         return undefined;
     }
-}
-
-function redemptionRequestCounter(): bigint | undefined {
-    const value = state.derivationValues[REDEMPTION_REQUEST_COUNTER_KEY]?.trim();
-    if (!value) return undefined;
-    return BigInt(value);
 }
 
 function isTokenAccountName(lowerName: string): boolean {
@@ -1610,7 +1620,6 @@ function resolveAccountFieldSeed(path: string): Uint8Array | undefined {
                 offer: decoded.value.offer,
                 token_in_mint: decoded.value.tokenInMint,
                 token_out_mint: decoded.value.tokenOutMint,
-                request_counter: decoded.value.requestCounter,
             },
             fieldName,
         );
@@ -1637,10 +1646,11 @@ function resolveAccountFieldSeed(path: string): Uint8Array | undefined {
     return undefined;
 }
 
-function encodeDecodedField(fields: Record<string, PublicKey | bigint>, fieldName: string): Uint8Array | undefined {
+function encodeDecodedField(fields: Record<string, PublicKey | bigint | string>, fieldName: string): Uint8Array | undefined {
     const value = fields[fieldName];
     if (value instanceof PublicKey) return value.toBuffer();
     if (typeof value === "bigint") return u64Seed(value);
+    if (typeof value === "string") return Buffer.from(value, "utf8");
     return undefined;
 }
 

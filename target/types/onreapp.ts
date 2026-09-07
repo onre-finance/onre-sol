@@ -949,6 +949,11 @@ export type Onreapp = {
               },
               {
                 "kind": "account",
+                "path": "redemptionRequest.redeemer",
+                "account": "redemptionRequest"
+              },
+              {
+                "kind": "account",
                 "path": "redemptionRequest.requestId",
                 "account": "redemptionRequest"
               }
@@ -1515,7 +1520,8 @@ export type Onreapp = {
         "",
         "# Arguments",
         "- `ctx`: Context for `CreateRedemptionRequest`.",
-        "- `amount`: Amount of token_in tokens to redeem."
+        "- `amount`: Amount of token_in tokens to redeem.",
+        "- `request_id`: Frontend-generated ID used with the offer and redeemer to derive the PDA."
       ],
       "discriminator": [
         201,
@@ -1551,7 +1557,7 @@ export type Onreapp = {
         {
           "name": "redemptionOffer",
           "docs": [
-            "The redemption offer account"
+            "The redemption offer account. It remains writable to update aggregate pending redemptions."
           ],
           "writable": true,
           "pda": {
@@ -1600,7 +1606,7 @@ export type Onreapp = {
           "name": "redemptionRequest",
           "docs": [
             "The redemption request account",
-            "PDA derived from redemption_offer and its counter value"
+            "PDA derived from the redemption offer, redeemer, and request ID bytes."
           ],
           "writable": true,
           "pda": {
@@ -1634,8 +1640,11 @@ export type Onreapp = {
               },
               {
                 "kind": "account",
-                "path": "redemptionOffer.requestCounter",
-                "account": "redemptionOffer"
+                "path": "redeemer"
+              },
+              {
+                "kind": "arg",
+                "path": "requestId"
               }
             ]
           }
@@ -1854,6 +1863,10 @@ export type Onreapp = {
         {
           "name": "amount",
           "type": "u64"
+        },
+        {
+          "name": "requestId",
+          "type": "string"
         }
       ]
     },
@@ -13449,6 +13462,11 @@ export type Onreapp = {
       "code": 6136,
       "name": "invalidBurnTarget",
       "msg": "Invalid Burn Target"
+    },
+    {
+      "code": 6137,
+      "name": "invalidRedemptionRequestId",
+      "msg": "Invalid Redemption Request ID"
     }
   ],
   "types": [
@@ -15626,10 +15644,9 @@ export type Onreapp = {
             "type": "u16"
           },
           {
-            "name": "requestCounter",
+            "name": "gap",
             "docs": [
-              "Counter for sequential redemption request numbering",
-              "Increments with each new redemption request created"
+              "Reserved gap retained in this position so existing redemption offers keep their layout."
             ],
             "type": "u64"
           },
@@ -15865,9 +15882,11 @@ export type Onreapp = {
           {
             "name": "requestId",
             "docs": [
-              "Unique sequential identifier for this request (counter value used for PDA derivation)"
+              "Frontend-generated identifier for this request.",
+              "",
+              "Its UTF-8 bytes are used with the offer and redeemer keys to derive this account's PDA."
             ],
-            "type": "u64"
+            "type": "string"
           },
           {
             "name": "redeemer",
@@ -15909,7 +15928,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                119
+                27
               ]
             }
           }
@@ -16011,11 +16030,11 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "id",
+            "name": "requestId",
             "docs": [
-              "Unique identifier for this request (counter value used for PDA derivation)"
+              "Frontend-generated identifier for this request"
             ],
-            "type": "u64"
+            "type": "string"
           }
         ]
       }

@@ -943,6 +943,11 @@
               },
               {
                 "kind": "account",
+                "path": "redemption_request.redeemer",
+                "account": "RedemptionRequest"
+              },
+              {
+                "kind": "account",
                 "path": "redemption_request.request_id",
                 "account": "RedemptionRequest"
               }
@@ -1509,7 +1514,8 @@
         "",
         "# Arguments",
         "- `ctx`: Context for `CreateRedemptionRequest`.",
-        "- `amount`: Amount of token_in tokens to redeem."
+        "- `amount`: Amount of token_in tokens to redeem.",
+        "- `request_id`: Frontend-generated ID used with the offer and redeemer to derive the PDA."
       ],
       "discriminator": [
         201,
@@ -1545,7 +1551,7 @@
         {
           "name": "redemption_offer",
           "docs": [
-            "The redemption offer account"
+            "The redemption offer account. It remains writable to update aggregate pending redemptions."
           ],
           "writable": true,
           "pda": {
@@ -1594,7 +1600,7 @@
           "name": "redemption_request",
           "docs": [
             "The redemption request account",
-            "PDA derived from redemption_offer and its counter value"
+            "PDA derived from the redemption offer, redeemer, and request ID bytes."
           ],
           "writable": true,
           "pda": {
@@ -1628,8 +1634,11 @@
               },
               {
                 "kind": "account",
-                "path": "redemption_offer.request_counter",
-                "account": "RedemptionOffer"
+                "path": "redeemer"
+              },
+              {
+                "kind": "arg",
+                "path": "request_id"
               }
             ]
           }
@@ -1848,6 +1857,10 @@
         {
           "name": "amount",
           "type": "u64"
+        },
+        {
+          "name": "request_id",
+          "type": "string"
         }
       ]
     },
@@ -13443,6 +13456,11 @@
       "code": 6136,
       "name": "InvalidBurnTarget",
       "msg": "Invalid Burn Target"
+    },
+    {
+      "code": 6137,
+      "name": "InvalidRedemptionRequestId",
+      "msg": "Invalid Redemption Request ID"
     }
   ],
   "types": [
@@ -15620,10 +15638,9 @@
             "type": "u16"
           },
           {
-            "name": "request_counter",
+            "name": "gap",
             "docs": [
-              "Counter for sequential redemption request numbering",
-              "Increments with each new redemption request created"
+              "Reserved gap retained in this position so existing redemption offers keep their layout."
             ],
             "type": "u64"
           },
@@ -15859,9 +15876,11 @@
           {
             "name": "request_id",
             "docs": [
-              "Unique sequential identifier for this request (counter value used for PDA derivation)"
+              "Frontend-generated identifier for this request.",
+              "",
+              "Its UTF-8 bytes are used with the offer and redeemer keys to derive this account's PDA."
             ],
-            "type": "u64"
+            "type": "string"
           },
           {
             "name": "redeemer",
@@ -15903,7 +15922,7 @@
             "type": {
               "array": [
                 "u8",
-                119
+                27
               ]
             }
           }
@@ -16005,11 +16024,11 @@
             "type": "u64"
           },
           {
-            "name": "id",
+            "name": "request_id",
             "docs": [
-              "Unique identifier for this request (counter value used for PDA derivation)"
+              "Frontend-generated identifier for this request"
             ],
-            "type": "u64"
+            "type": "string"
           }
         ]
       }

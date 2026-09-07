@@ -239,9 +239,12 @@ export class ScriptHelper {
         return PublicKey.findProgramAddressSync([Buffer.from("prop_amm_pair"), offer.toBuffer()], this.program.programId)[0];
     }
 
-    getRedemptionRequestPda(redemptionOffer: PublicKey, counter: number): PublicKey {
+    getRedemptionRequestPda(redemptionOffer: PublicKey, redeemer: PublicKey, requestId: string): PublicKey {
+        if (Buffer.byteLength(requestId, "utf8") !== 32) {
+            throw new Error("Redemption request ID must be exactly 32 UTF-8 bytes (UUID without hyphens).");
+        }
         return PublicKey.findProgramAddressSync(
-            [Buffer.from("redemption_request"), redemptionOffer.toBuffer(), new BN(counter).toArrayLike(Buffer, "le", 8)],
+            [Buffer.from("redemption_request"), redemptionOffer.toBuffer(), redeemer.toBuffer(), Buffer.from(requestId, "utf8")],
             this.program.programId,
         )[0];
     }
@@ -251,8 +254,8 @@ export class ScriptHelper {
         return await this.program.account.redemptionOffer.fetch(pda);
     }
 
-    async fetchRedemptionRequest(redemptionOffer: PublicKey, counter: number) {
-        const pda = this.getRedemptionRequestPda(redemptionOffer, counter);
+    async fetchRedemptionRequest(redemptionOffer: PublicKey, redeemer: PublicKey, requestId: string) {
+        const pda = this.getRedemptionRequestPda(redemptionOffer, redeemer, requestId);
         return await this.program.account.redemptionRequest.fetch(pda);
     }
 
@@ -1354,15 +1357,9 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildCreateRedemptionRequestIx(params: { redemptionOfferPda: PublicKey; tokenInMint: PublicKey; amount: number; redeemer: PublicKey; tokenProgram?: PublicKey }) {
-        // Fetch the redemption offer to get the counter for PDA derivation
+    async buildCreateRedemptionRequestIx(params: { redemptionOfferPda: PublicKey; tokenInMint: PublicKey; amount: number; requestId: string; redeemer: PublicKey; tokenProgram?: PublicKey }) {
         const redemptionOffer = await this.program.account.redemptionOffer.fetch(params.redemptionOfferPda);
-
-        // Derive the redemption request PDA using the counter
-        const [redemptionRequest] = PublicKey.findProgramAddressSync(
-            [Buffer.from("redemption_request"), params.redemptionOfferPda.toBuffer(), Buffer.from(redemptionOffer.requestCounter.toArrayLike(Buffer, "le", 8))],
-            this.program.programId,
-        );
+        const redemptionRequest = this.getRedemptionRequestPda(params.redemptionOfferPda, params.redeemer, params.requestId);
 
         // Get the redemption vault authority PDA
         const [redemptionVaultAuthority] = PublicKey.findProgramAddressSync([Buffer.from("redemption_offer_vault_authority")], this.program.programId);
@@ -1378,10 +1375,11 @@ export class ScriptHelper {
         );
 
         return await this.program.methods
-            .createRedemptionRequest(new BN(params.amount))
+            .createRedemptionRequest(new BN(params.amount), params.requestId)
             .accountsPartial({
                 redemptionOffer: params.redemptionOfferPda,
                 offer: redemptionOffer.offer,
+                redemptionRequest,
                 tokenInMint: params.tokenInMint,
                 redeemer: params.redeemer,
                 tokenProgram: params.tokenProgram ?? TOKEN_PROGRAM_ID,

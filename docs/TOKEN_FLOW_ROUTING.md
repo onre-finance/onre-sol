@@ -130,14 +130,15 @@ Notes:
 flowchart TD
     Redeemer[User token in] --> Lock[Transfer token in to redemption vault]
     Lock --> Request[Create RedemptionRequest PDA]
+    RequestId[Frontend-generated request ID] --> Request
     Request --> Amount[Store requested amount]
-    Request --> Counter[Increment redemption offer request counter]
     Request --> Requested[Increase requested redemptions]
 ```
 
 Notes:
 
 - The request locks token-in in the redemption vault.
+- Its PDA uses the redemption offer, redeemer, and an exactly 32-byte frontend-generated request ID (a UUID without hyphens); the backend/frontend retain it for later lookup.
 - Fulfillment can be partial; the request tracks fulfilled amount.
 
 ## Redemption Fulfillment

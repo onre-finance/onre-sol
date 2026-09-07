@@ -73,13 +73,15 @@ pub fn build_create_redemption_request_ix(
     token_in_mint: &Pubkey,
     token_out_mint: &Pubkey,
     amount: u64,
-    counter: u64,
+    request_id: impl ToString,
     token_program: &Pubkey,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (redemption_offer_pda, _) = find_redemption_offer_pda(token_in_mint, token_out_mint);
     let (offer_pda, _) = find_offer_pda(token_out_mint, token_in_mint);
-    let (redemption_request_pda, _) = find_redemption_request_pda(&redemption_offer_pda, counter);
+    let request_id = test_redemption_request_id(request_id);
+    let (redemption_request_pda, _) =
+        find_redemption_request_pda(&redemption_offer_pda, redeemer, &request_id);
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
     let redeemer_token_ata = derive_ata(redeemer, token_in_mint, token_program);
     let vault_token_ata = derive_ata(
@@ -89,6 +91,8 @@ pub fn build_create_redemption_request_ix(
     );
     let mut data = ix_discriminator("create_redemption_request").to_vec();
     data.extend_from_slice(&amount.to_le_bytes());
+    data.extend_from_slice(&(request_id.len() as u32).to_le_bytes());
+    data.extend_from_slice(request_id.as_bytes());
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
@@ -115,12 +119,12 @@ pub fn build_cancel_redemption_request_ix(
     worker: &Pubkey,
     token_in_mint: &Pubkey,
     token_out_mint: &Pubkey,
-    request_id: u64,
+    request_id: impl ToString,
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (redemption_offer_pda, _) = find_redemption_offer_pda(token_in_mint, token_out_mint);
     let (redemption_request_pda, _) =
-        find_redemption_request_pda(&redemption_offer_pda, request_id);
+        find_redemption_request_pda(&redemption_offer_pda, redeemer, request_id);
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
     let redeemer_token_ata = get_associated_token_address(redeemer, token_in_mint);
     let vault_token_ata =
@@ -153,7 +157,7 @@ pub fn build_fulfill_redemption_request_ix(
     redeemer: &Pubkey,
     token_in_mint: &Pubkey,
     token_out_mint: &Pubkey,
-    request_id: u64,
+    request_id: impl ToString,
     token_in_program: &Pubkey,
     token_out_program: &Pubkey,
     amount: u64,
@@ -182,7 +186,7 @@ pub fn build_fulfill_redemption_request_ix_with_main_offer(
     redeemer: &Pubkey,
     token_in_mint: &Pubkey,
     token_out_mint: &Pubkey,
-    request_id: u64,
+    request_id: impl ToString,
     token_in_program: &Pubkey,
     token_out_program: &Pubkey,
     amount: u64,
@@ -190,7 +194,7 @@ pub fn build_fulfill_redemption_request_ix_with_main_offer(
     let (state_pda, _) = find_state_pda();
     let (redemption_offer_pda, _) = find_redemption_offer_pda(token_in_mint, token_out_mint);
     let (redemption_request_pda, _) =
-        find_redemption_request_pda(&redemption_offer_pda, request_id);
+        find_redemption_request_pda(&redemption_offer_pda, redeemer, request_id);
     let (redemption_vault_authority_pda, _) = find_redemption_vault_authority_pda();
     let (redemption_fee_vault_pda, _) = find_redemption_fee_vault_pda();
     let (offer_proceeds_vault_pda, _) = find_offer_proceeds_vault_pda();

@@ -50,21 +50,23 @@ function decodeOfferAccount(bytes: Buffer): OfferAccountInfo | undefined {
 }
 
 function decodeRedemptionOfferAccount(bytes: Buffer): RedemptionOfferAccountInfo | undefined {
-    if (bytes.length < 146) return undefined;
+    if (bytes.length < 138) return undefined;
     return {
         offer: publicKeyAt(bytes, 8),
         tokenInMint: publicKeyAt(bytes, 40),
         tokenOutMint: publicKeyAt(bytes, 72),
-        requestCounter: readU64(bytes, 138),
     };
 }
 
 function decodeRedemptionRequestAccount(bytes: Buffer): RedemptionRequestAccountInfo | undefined {
-    if (bytes.length < 80) return undefined;
+    if (bytes.length < 76) return undefined;
+    const requestIdLength = bytes.readUInt32LE(40);
+    const requestIdEnd = 44 + requestIdLength;
+    if (requestIdLength !== 32 || bytes.length < requestIdEnd + 32) return undefined;
     return {
         offer: publicKeyAt(bytes, 8),
-        requestId: readU64(bytes, 40),
-        redeemer: publicKeyAt(bytes, 48),
+        requestId: bytes.subarray(44, requestIdEnd).toString("utf8"),
+        redeemer: publicKeyAt(bytes, requestIdEnd),
     };
 }
 
@@ -93,10 +95,6 @@ export function publicKeyAt(bytes: Buffer, offset: number): PublicKey {
 
 export function isDefaultPublicKey(publicKey: PublicKey): boolean {
     return publicKey.equals(SystemProgram.programId);
-}
-
-function readU64(bytes: Buffer, offset: number): bigint {
-    return bytes.readBigUInt64LE(offset);
 }
 
 export function u64Seed(value: bigint): Buffer {

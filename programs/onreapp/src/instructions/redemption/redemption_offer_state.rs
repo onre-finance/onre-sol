@@ -2,6 +2,9 @@ use crate::constants::seeds;
 use crate::utils::load_optional_pda_account;
 use anchor_lang::prelude::*;
 
+/// Exact UTF-8 byte length required for a frontend-generated redemption request ID.
+pub const MAX_REDEMPTION_REQUEST_ID_LEN: usize = 32;
+
 /// Redemption offer for converting ONyc tokens back to a paired output asset.
 ///
 /// Manages the redemption process where users can exchange ONyc (in-token)
@@ -30,9 +33,8 @@ pub struct RedemptionOffer {
     pub requested_redemptions: u128,
     /// Fee in basis points (1000 = 10%) charged when the worker fulfills requests
     pub fee_basis_points: u16,
-    /// Counter for sequential redemption request numbering
-    /// Increments with each new redemption request created
-    pub request_counter: u64,
+    /// Reserved gap retained in this position so existing redemption offers keep their layout.
+    pub gap: u64,
     /// PDA bump seed for account derivation
     pub bump: u8,
     /// Target token-out balance for the redemption vault as basis points of TVL.
@@ -121,8 +123,11 @@ pub(crate) fn load_optional_checked_redemption_offer(
 pub struct RedemptionRequest {
     /// Reference to the RedemptionOffer PDA
     pub offer: Pubkey,
-    /// Unique sequential identifier for this request (counter value used for PDA derivation)
-    pub request_id: u64,
+    /// Frontend-generated identifier for this request.
+    ///
+    /// Its UTF-8 bytes are used with the offer and redeemer keys to derive this account's PDA.
+    #[max_len(MAX_REDEMPTION_REQUEST_ID_LEN)]
+    pub request_id: String,
     /// User requesting the redemption
     pub redeemer: Pubkey,
     /// Amount of token_in tokens requested for redemption
@@ -136,5 +141,5 @@ pub struct RedemptionRequest {
     /// remaining = amount - fulfilled_amount is still locked in the redemption vault.
     pub fulfilled_amount: u64,
     /// Reserved space for future fields
-    pub reserved: [u8; 119],
+    pub reserved: [u8; 27],
 }

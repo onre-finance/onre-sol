@@ -115,7 +115,8 @@ fn setup_partial(
     advance_slot(&mut svm);
 
     let (redemption_offer_pda, _) = find_redemption_offer_pda(&onyc_mint, &usdc_mint);
-    let (redemption_request_pda, _) = find_redemption_request_pda(&redemption_offer_pda, 0);
+    let (redemption_request_pda, _) =
+        find_redemption_request_pda(&redemption_offer_pda, &user.pubkey(), 0);
 
     (
         svm,
@@ -153,7 +154,7 @@ fn test_partial_fulfill_updates_fulfilled_amount() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    let req = read_redemption_request(&svm, &redemption_offer_pda, 0);
+    let req = read_redemption_request(&svm, &redemption_offer_pda, &user.pubkey(), 0);
     assert_eq!(
         req.fulfilled_amount, 2_000_000_000,
         "fulfilled_amount should equal partial"

@@ -367,7 +367,8 @@ flowchart TD
     RedemptionTokenOut[Redemption token out mint] --> RedemptionOfferPda
 
     RedemptionOfferPda --> RequestPda[RedemptionRequest PDA]
-    RequestId[Request id] --> RequestPda
+    Redeemer[Request redeemer] --> RequestPda
+    RequestId[Frontend request id bytes] --> RequestPda
 
     OfferPda --> PropAmmPairPda[PropAmmPairState PDA]
 
@@ -387,7 +388,7 @@ flowchart TD
 | `MarketStats` | `market_stats` | Cached market metrics. |
 | `Offer` | `offer`, `token_in_mint`, `token_out_mint` | Unique market for a token pair. |
 | `RedemptionOffer` | `redemption_offer`, `token_in_mint`, `token_out_mint` | Redemption market, usually the reverse economic direction of an offer. |
-| `RedemptionRequest` | `redemption_request`, `redemption_offer`, `request_id` | User claim against a redemption offer. |
+| `RedemptionRequest` | `redemption_request`, `redemption_offer`, `redeemer`, `request_id` | User claim against a redemption offer. |
 | `PropAmmPairState` | `prop_amm_pair`, `offer` | Per-offer Prop AMM config and pressure state. |
 | `ConfigurableVault` | `configurable_vault`, vault kind seed | Accounting vault authority with configurable withdrawal destination. |
 | `OfferVaultAuthority` | `offer_vault_authority` | Authority for regular offer vault token accounts. |
