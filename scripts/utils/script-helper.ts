@@ -956,35 +956,8 @@ export class ScriptHelper {
         if (owners.length > 20) {
             throw new Error("At most 20 excluded owners can be configured");
         }
-        while (owners.length < 20) {
-            owners.push(PublicKey.default);
-        }
-
         return await this.program.methods
-            .setCirculatingSupplyExcludedAccounts(
-                owners as [
-                    PublicKey,
-                    PublicKey,
-                    PublicKey,
-                    PublicKey,
-                    PublicKey,
-                    PublicKey,
-                    PublicKey,
-                    PublicKey,
-                    PublicKey,
-                    PublicKey,
-                    PublicKey,
-                    PublicKey,
-                    PublicKey,
-                    PublicKey,
-                    PublicKey,
-                    PublicKey,
-                    PublicKey,
-                    PublicKey,
-                    PublicKey,
-                    PublicKey,
-                ],
-            )
+            .setCirculatingSupplyExcludedAccounts(owners)
             .accountsPartial({
                 boss: params.boss,
                 excludedAccounts: this.pdas.circulatingSupplyExcludedAccountsPda,

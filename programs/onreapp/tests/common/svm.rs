@@ -253,10 +253,7 @@ pub fn set_and_refresh_circulating_supply_exclusions(
         "excluded owners list cannot exceed 20"
     );
 
-    let mut owners = [Pubkey::default(); 20];
-    owners[..excluded_owners.len()].copy_from_slice(excluded_owners);
-
-    let ix = build_set_circulating_supply_excluded_accounts_ix(&boss.pubkey(), &owners);
+    let ix = build_set_circulating_supply_excluded_accounts_ix(&boss.pubkey(), excluded_owners);
     send_tx(svm, &[ix], &[boss]).unwrap();
     advance_slot(svm);
 
