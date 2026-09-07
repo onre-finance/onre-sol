@@ -34,7 +34,7 @@
     "clipboardy": "^5.0.2",
     "commander": "^12.1.0",
     "date-fns": "^4.1.0",
-    "ethers": "^6.15.0",
+    "ethers": "^6.17.0",
     "jotai": "^2.16.0",
     "ora": "^8.2.0",
     "tweetnacl": "^1.0.3"

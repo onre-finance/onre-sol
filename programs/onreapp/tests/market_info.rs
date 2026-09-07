@@ -655,7 +655,8 @@ fn test_set_circulating_supply_excluded_accounts_boss_only_and_stores_owners() {
     owners[0] = owner_a;
     owners[1] = owner_b;
 
-    let ix = build_set_circulating_supply_excluded_accounts_ix(&boss, &owners);
+    let ix = build_set_circulating_supply_excluded_accounts_ix(&boss, &[owner_a, owner_b]);
+    assert_eq!(ix.data.len(), 12 + 2 * 32);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let excluded_accounts = read_circulating_supply_excluded_accounts(&svm);
@@ -685,6 +686,39 @@ fn test_set_circulating_supply_excluded_accounts_rejects_duplicate_owners() {
     let ix = build_set_circulating_supply_excluded_accounts_ix(&boss, &owners);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(result.is_err(), "duplicate non-default owners should fail");
+}
+
+#[test]
+fn test_excluded_owners_vec_limits_and_replacement() {
+    let (mut svm, payer, _onyc_mint) = setup_initialized();
+    let boss = payer.pubkey();
+    let owners: Vec<Pubkey> = (0..20).map(|_| Pubkey::new_unique()).collect();
+    let ix = build_set_circulating_supply_excluded_accounts_ix(&boss, &owners);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let (pda, _) = find_circulating_supply_excluded_accounts_pda();
+    let before = svm.get_account(&pda).unwrap();
+    assert_eq!(read_circulating_supply_excluded_accounts(&svm).owners.as_slice(), owners.as_slice());
+
+    let mut too_many = owners.clone();
+    too_many.push(Pubkey::new_unique());
+    let ix = build_set_circulating_supply_excluded_accounts_ix(&boss, &too_many);
+    let failure = send_tx(&mut svm, &[ix], &[&payer]).unwrap_err();
+    assert!(failure.meta.logs.iter().any(|line| line.contains("InvalidCirculatingSupplyExcludedAccounts")));
+    assert_eq!(svm.get_account(&pda).unwrap().data, before.data);
+
+    let replacement = Pubkey::new_unique();
+    let ix = build_set_circulating_supply_excluded_accounts_ix(&boss, &[replacement]);
+    assert_eq!(ix.data.len(), 44);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let stored = read_circulating_supply_excluded_accounts(&svm);
+    assert_eq!(stored.owners[0], replacement);
+    assert!(stored.owners[1..].iter().all(|owner| *owner == Pubkey::default()));
+    assert_eq!(svm.get_account(&pda).unwrap().data.len(), before.data.len());
+
+    let ix = build_set_circulating_supply_excluded_accounts_ix(&boss, &[]);
+    assert_eq!(ix.data.len(), 12);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    assert_eq!(read_circulating_supply_excluded_accounts(&svm).owners, [Pubkey::default(); 20]);
 }
 
 #[test]

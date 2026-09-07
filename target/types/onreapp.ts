@@ -8034,7 +8034,8 @@ export type Onreapp = {
     {
       "name": "setCirculatingSupplyExcludedAccounts",
       "docs": [
-        "Updates the owner list whose ONyc ATAs are excluded from circulating supply."
+        "Replaces the owner list whose ONyc ATAs are excluded from circulating supply.",
+        "Accepts at most 20 owners; an empty vector clears the list and unused stored slots are zeroed."
       ],
       "discriminator": [
         109,
@@ -8119,10 +8120,7 @@ export type Onreapp = {
         {
           "name": "owners",
           "type": {
-            "array": [
-              "pubkey",
-              20
-            ]
+            "vec": "pubkey"
           }
         }
       ]

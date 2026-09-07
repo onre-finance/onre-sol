@@ -679,11 +679,12 @@ pub fn build_get_circulating_supply_v2_ix(onyc_mint: &Pubkey) -> Instruction {
 
 pub fn build_set_circulating_supply_excluded_accounts_ix(
     boss: &Pubkey,
-    owners: &[Pubkey; 20],
+    owners: &[Pubkey],
 ) -> Instruction {
     let (state_pda, _) = find_state_pda();
     let (excluded_accounts_pda, _) = find_circulating_supply_excluded_accounts_pda();
     let mut data = ix_discriminator("set_circulating_supply_excluded_accounts").to_vec();
+    data.extend_from_slice(&(owners.len() as u32).to_le_bytes());
     for owner in owners {
         data.extend_from_slice(owner.as_ref());
     }
