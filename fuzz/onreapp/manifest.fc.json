@@ -1,0 +1,30 @@
+{
+  "Version": 3,
+  "Revision": { "Commit": "e70daaf78c4da3a4f0927258a1380e846453601b" },
+  "Lineages": [
+    {
+      "Name": "onreapp_fuzz__invariant_test",
+      "Confs": [
+        {
+          "Name": "explore",
+          "Driver": {
+            "Type": "crucible",
+            "Params": {
+              "BinaryPathInBundle": "bin/onreapp_fuzz/invariant_test",
+              "HarnessRunDirInBundle": "bin/onreapp_fuzz",
+              "SymbolsPathInBundle": "symbols/onreapp.debug.so",
+              "SourcesPathInBundle": "srcs",
+              "SourcesOriginalPath": "programs/onreapp/src/",
+              "ExtraEnv": { "SCOUT_CHECK_MUTE": "P-0002,P-0004,P-0005,P-0009" }
+            }
+          },
+          "Architecture": { "Name": "amd64" },
+          "MemoryKiB": 2097152,
+          "Cores": 1,
+          "StallTimeMinutes": 0,
+          "YieldTimeMinutes": 120
+        }
+      ]
+    }
+  ]
+}

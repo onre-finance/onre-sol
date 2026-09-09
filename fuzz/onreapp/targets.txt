@@ -1,0 +1,7 @@
+# Discovery targets: `svm <crate> <feature>`. One lineage per line.
+#
+# Only open-ended discovery harnesses belong here. Regression harnesses (regr_*) are
+# one-shot reproductions that crash by design on pre-fix code; they belong in a CI
+# compile gate, never as a bundle lineage. This harness has none — its regressions are
+# `cargo test` cases, not separate binaries.
+svm onreapp_fuzz invariant_test
