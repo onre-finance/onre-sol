@@ -18,6 +18,7 @@ export async function executeRedemptionCreateRequest(opts: GlobalOptions & Recor
                     redemptionOfferPda,
                     tokenInMint: params.tokenIn,
                     amount: params.amount,
+                    requestId: params.requestId,
                     redeemer,
                 });
             },
@@ -30,6 +31,7 @@ export async function executeRedemptionCreateRequest(opts: GlobalOptions & Recor
                     redeemer: context.helper.wallet.publicKey,
                     tokenIn: params.tokenIn,
                     tokenOut: params.tokenOut,
+                    requestId: params.requestId,
                     amount: params.amount,
                 },
             },

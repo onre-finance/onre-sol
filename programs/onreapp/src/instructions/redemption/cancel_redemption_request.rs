@@ -59,7 +59,8 @@ pub struct CancelRedemptionRequest<'info> {
         seeds = [
             seeds::REDEMPTION_REQUEST,
             redemption_request.offer.as_ref(),
-            redemption_request.request_id.to_le_bytes().as_ref()
+            redemption_request.redeemer.as_ref(),
+            redemption_request.request_id.as_bytes()
         ],
         bump = redemption_request.bump,
         close = worker,

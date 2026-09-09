@@ -278,7 +278,6 @@ pub struct RedemptionOfferData {
     pub fee_basis_points: u16,
     pub fee_basis_points_prop_amm_sell: u16,
     pub vault_target_bps: u16,
-    pub request_counter: u64,
     pub disabled: u8,
     pub bump: u8,
 }
@@ -304,8 +303,7 @@ pub fn read_redemption_offer(
     offset += 16;
     let fee_basis_points = u16::from_le_bytes(data[offset..offset + 2].try_into().unwrap());
     offset += 2;
-    let request_counter = u64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
-    offset += 8;
+    offset += 8; // Reserved gap in the redemption offer layout.
     let bump = data[offset];
     offset += 1;
     let vault_target_bps = u16::from_le_bytes(data[offset..offset + 2].try_into().unwrap());
@@ -323,7 +321,6 @@ pub fn read_redemption_offer(
         fee_basis_points,
         fee_basis_points_prop_amm_sell,
         vault_target_bps,
-        request_counter,
         disabled,
         bump,
     }
@@ -331,7 +328,7 @@ pub fn read_redemption_offer(
 
 pub struct RedemptionRequestData {
     pub offer: Pubkey,
-    pub request_id: u64,
+    pub request_id: String,
     pub redeemer: Pubkey,
     pub amount: u64,
     pub fulfilled_amount: u64,
@@ -341,9 +338,10 @@ pub struct RedemptionRequestData {
 pub fn read_redemption_request(
     svm: &LiteSVM,
     redemption_offer: &Pubkey,
-    request_id: u64,
+    redeemer: &Pubkey,
+    request_id: impl ToString,
 ) -> RedemptionRequestData {
-    let (pda, _) = find_redemption_request_pda(redemption_offer, request_id);
+    let (pda, _) = find_redemption_request_pda(redemption_offer, redeemer, request_id);
     let account = svm
         .get_account(&pda)
         .expect("redemption request account not found");

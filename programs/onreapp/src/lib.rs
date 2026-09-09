@@ -720,10 +720,11 @@ pub mod onreapp {
         market_info::get_tvl_v2(ctx)
     }
 
-    /// Updates the owner list whose ONyc ATAs are excluded from circulating supply.
+    /// Replaces the owner list whose ONyc ATAs are excluded from circulating supply.
+    /// Accepts at most 20 owners; an empty vector clears the list and unused stored slots are zeroed.
     pub fn set_circulating_supply_excluded_accounts(
         ctx: Context<SetCirculatingSupplyExcludedAccounts>,
-        owners: [Pubkey; constants::MAX_CIRCULATING_SUPPLY_EXCLUDED_ACCOUNTS],
+        owners: Vec<Pubkey>,
     ) -> Result<()> {
         market_info::set_circulating_supply_excluded_accounts(ctx, owners)
     }
@@ -849,11 +850,13 @@ pub mod onreapp {
     /// # Arguments
     /// - `ctx`: Context for `CreateRedemptionRequest`.
     /// - `amount`: Amount of token_in tokens to redeem.
+    /// - `request_id`: Frontend-generated ID used with the offer and redeemer to derive the PDA.
     pub fn create_redemption_request(
         ctx: Context<CreateRedemptionRequest>,
         amount: u64,
+        request_id: String,
     ) -> Result<()> {
-        redemption::create_redemption_request(ctx, amount)
+        redemption::create_redemption_request(ctx, amount, request_id)
     }
 
     /// Fulfills a redemption request with ONyc buffer accrual support.

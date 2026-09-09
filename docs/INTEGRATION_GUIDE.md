@@ -244,6 +244,26 @@ const [vaultAuthority] = PublicKey.findProgramAddressSync(
 );
 ```
 
+### Redemption Request PDA
+
+`create_redemption_request(amount, requestId)` takes a frontend-generated random ID of exactly 32 UTF-8 bytes. Generate it as `crypto.randomUUID().replaceAll("-", "")`; the request ID is used directly as a PDA seed.
+
+```typescript
+const [redemptionRequestPda] = PublicKey.findProgramAddressSync(
+  [
+    Buffer.from("redemption_request"),
+    redemptionOfferPda.toBuffer(),
+    redeemer.toBuffer(),
+    Buffer.from(requestId, "utf8"),
+  ],
+  programId,
+);
+```
+
+Persist `requestId`, `redeemer`, and `redemptionRequestPda` with the request. The worker can use the PDA to fulfill the request; the frontend can use the same tuple to derive it for cancellation.
+
+This is a breaking request-account and instruction change. Resolve every pending redemption request before upgrading.
+
 ---
 
 ## BUFFER Integration Notes

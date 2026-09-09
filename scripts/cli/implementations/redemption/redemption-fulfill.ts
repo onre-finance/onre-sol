@@ -19,7 +19,7 @@ export async function executeRedemptionFulfill(opts: GlobalOptions & Record<stri
             buildIx: async () => {
                 const state = await helper.getState();
                 const redemptionOfferPda = helper.getRedemptionOfferPda(params.tokenIn, params.tokenOut);
-                const redemptionRequestPda = helper.getRedemptionRequestPda(redemptionOfferPda, params.requestId);
+                const redemptionRequestPda = helper.getRedemptionRequestPda(redemptionOfferPda, params.redeemer, params.requestId);
 
                 // Validate that the worker is set.
                 if (!state.worker || state.worker.equals(PublicKey.default)) {
@@ -51,13 +51,14 @@ export async function executeRedemptionFulfill(opts: GlobalOptions & Record<stri
                 });
             },
             title: "Fulfill Redemption Request Transaction",
-            description: `Fulfills redemption request #${params.requestId}${params.amount != null ? ` (partial: ${params.amount})` : " (full remaining)"}`,
+            description: `Fulfills redemption request ${params.requestId}${params.amount != null ? ` (partial: ${params.amount})` : " (full remaining)"}`,
             showParamSummary: {
                 title: "Fulfilling redemption request:",
                 params: {
                     tokenIn: params.tokenIn,
                     tokenOut: params.tokenOut,
                     requestId: params.requestId,
+                    redeemer: params.redeemer,
                     ...(params.amount != null ? { amount: params.amount } : { amount: "(full remaining)" }),
                 },
             },

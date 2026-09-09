@@ -52,7 +52,7 @@ export const CONFIGURABLE_VAULT_ACCOUNT_SEEDS: Record<string, string> = {
 export const OFFER_TOKEN_IN_KEY = "offer.token_in_mint";
 export const OFFER_TOKEN_OUT_KEY = "offer.token_out_mint";
 export const REDEMPTION_OFFER_TOKEN_OUT_KEY = "redemption_offer.token_out_mint";
-export const REDEMPTION_REQUEST_COUNTER_KEY = "redemption_request.counter";
+export const REDEMPTION_REQUEST_ID_KEY = "redemption_request.id";
 
 export const PDA_SEEDS: Record<string, string> = {
     state: "state",

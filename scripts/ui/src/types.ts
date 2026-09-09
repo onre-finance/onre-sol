@@ -77,12 +77,11 @@ export interface RedemptionOfferAccountInfo {
     offer: PublicKey;
     tokenInMint: PublicKey;
     tokenOutMint: PublicKey;
-    requestCounter: bigint;
 }
 
 export interface RedemptionRequestAccountInfo {
     offer: PublicKey;
-    requestId: bigint;
+    requestId: string;
     redeemer: PublicKey;
 }
 

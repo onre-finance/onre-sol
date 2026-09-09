@@ -28,19 +28,9 @@ struct LegacyRedemptionOffer {
     executed_redemptions: u128,
     requested_redemptions: u128,
     fee_basis_points: u16,
-    request_counter: u64,
+    gap: u64,
     bump: u8,
     reserved: [u8; 109],
-}
-
-#[derive(AnchorSerialize)]
-struct LegacyRedemptionRequest {
-    offer: Pubkey,
-    request_id: u64,
-    redeemer: Pubkey,
-    amount: u64,
-    bump: u8,
-    reserved: [u8; 127],
 }
 
 fn account_bytes<T: AnchorSerialize>(discriminator: &[u8], account: &T) -> Vec<u8> {
@@ -48,6 +38,26 @@ fn account_bytes<T: AnchorSerialize>(discriminator: &[u8], account: &T) -> Vec<u
     data.extend_from_slice(discriminator);
     account.serialize(&mut data).unwrap();
     data
+}
+
+#[test]
+fn redemption_request_preserves_allocation_size_with_uuid() {
+    let request = RedemptionRequest {
+        offer: Pubkey::new_unique(),
+        request_id: "12345678901234567890123456789012".to_string(),
+        redeemer: Pubkey::new_unique(),
+        amount: 500_000,
+        bump: 249,
+        fulfilled_amount: 100_000,
+        reserved: [0; 91],
+    };
+    let data = account_bytes(RedemptionRequest::DISCRIMINATOR, &request);
+    assert_eq!(8 + RedemptionRequest::INIT_SPACE, 216);
+    assert_eq!(data.len(), 216);
+    let decoded = RedemptionRequest::try_deserialize(&mut data.as_slice()).unwrap();
+    assert_eq!(decoded.request_id, request.request_id);
+    assert_eq!(decoded.redeemer, request.redeemer);
+    assert_eq!(decoded.fulfilled_amount, request.fulfilled_amount);
 }
 
 #[test]
@@ -110,7 +120,7 @@ fn redemption_offer_deserializes_legacy_master_layout() {
         executed_redemptions: 123,
         requested_redemptions: 456,
         fee_basis_points: 17,
-        request_counter: 42,
+        gap: 42,
         bump: 251,
         reserved: [0; 109],
     };
@@ -129,39 +139,9 @@ fn redemption_offer_deserializes_legacy_master_layout() {
     assert_eq!(redemption_offer.executed_redemptions, 123);
     assert_eq!(redemption_offer.requested_redemptions, 456);
     assert_eq!(redemption_offer.fee_basis_points, 17);
-    assert_eq!(redemption_offer.request_counter, 42);
+    assert_eq!(redemption_offer.gap, 42);
     assert_eq!(redemption_offer.bump, 251);
     assert_eq!(redemption_offer.vault_target_bps, 0);
     assert!(!redemption_offer.is_disabled());
     assert_eq!(redemption_offer.fee_basis_points_prop_amm_sell, 0);
-}
-
-#[test]
-fn redemption_request_deserializes_legacy_master_layout() {
-    let offer = Pubkey::new_unique();
-    let redeemer = Pubkey::new_unique();
-
-    let legacy = LegacyRedemptionRequest {
-        offer,
-        request_id: 9,
-        redeemer,
-        amount: 500_000,
-        bump: 249,
-        reserved: [0; 127],
-    };
-
-    let mut body = Vec::new();
-    legacy.serialize(&mut body).unwrap();
-    assert_eq!(body.len(), RedemptionRequest::INIT_SPACE);
-
-    let data = account_bytes(RedemptionRequest::DISCRIMINATOR, &legacy);
-    let mut slice = data.as_slice();
-    let request = RedemptionRequest::try_deserialize(&mut slice).unwrap();
-
-    assert_eq!(request.offer, offer);
-    assert_eq!(request.request_id, 9);
-    assert_eq!(request.redeemer, redeemer);
-    assert_eq!(request.amount, 500_000);
-    assert_eq!(request.bump, 249);
-    assert_eq!(request.fulfilled_amount, 0);
 }

@@ -59,27 +59,33 @@ pub struct SetCirculatingSupplyExcludedAccounts<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Replaces all stored owners with at most 20 entries, zeroing unused slots.
+/// An empty vector clears the list; the stored account and event retain fixed arrays.
 pub fn set_circulating_supply_excluded_accounts(
     ctx: Context<SetCirculatingSupplyExcludedAccounts>,
-    owners: [Pubkey; MAX_CIRCULATING_SUPPLY_EXCLUDED_ACCOUNTS],
+    owners: Vec<Pubkey>,
 ) -> Result<()> {
+    require!(
+        owners.len() <= MAX_CIRCULATING_SUPPLY_EXCLUDED_ACCOUNTS,
+        crate::OnreError::InvalidCirculatingSupplyExcludedAccounts
+    );
     validate_unique_non_default_owners(&owners)?;
 
+    let mut stored_owners = [Pubkey::default(); MAX_CIRCULATING_SUPPLY_EXCLUDED_ACCOUNTS];
+    stored_owners[..owners.len()].copy_from_slice(&owners);
     let excluded_accounts = &mut ctx.accounts.excluded_accounts;
-    excluded_accounts.owners = owners;
+    excluded_accounts.owners = stored_owners;
     excluded_accounts.bump = ctx.bumps.excluded_accounts;
 
     emit!(CirculatingSupplyExcludedAccountsSetEvent {
-        owners,
+        owners: stored_owners,
         boss: ctx.accounts.boss.key(),
     });
 
     Ok(())
 }
 
-fn validate_unique_non_default_owners(
-    owners: &[Pubkey; MAX_CIRCULATING_SUPPLY_EXCLUDED_ACCOUNTS],
-) -> Result<()> {
+fn validate_unique_non_default_owners(owners: &[Pubkey]) -> Result<()> {
     for (index, owner) in owners.iter().enumerate() {
         if *owner == Pubkey::default() {
             continue;

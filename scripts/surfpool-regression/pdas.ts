@@ -28,10 +28,8 @@ export function redemptionOfferPda(onycMint: PublicKey, assetMint: PublicKey): P
     return pda(seed("redemption_offer"), onycMint.toBuffer(), assetMint.toBuffer());
 }
 
-export function redemptionRequestPda(redemptionOffer: PublicKey, requestId: bigint): PublicKey {
-    const id = Buffer.alloc(8);
-    id.writeBigUInt64LE(requestId);
-    return pda(seed("redemption_request"), redemptionOffer.toBuffer(), id);
+export function redemptionRequestPda(redemptionOffer: PublicKey, redeemer: PublicKey, requestId: string): PublicKey {
+    return pda(seed("redemption_request"), redemptionOffer.toBuffer(), redeemer.toBuffer(), Buffer.from(requestId, "utf8"));
 }
 
 export function propAmmPairPda(offer: PublicKey): PublicKey {

@@ -14,7 +14,7 @@ export async function executeRedemptionCancel(opts: GlobalOptions & Record<strin
             buildIx: async (helper) => {
                 const requester = helper.wallet.publicKey;
                 const redemptionOfferPda = helper.getRedemptionOfferPda(params.tokenIn, params.tokenOut);
-                const redemptionRequestPda = helper.getRedemptionRequestPda(redemptionOfferPda, params.requestId);
+                const redemptionRequestPda = helper.getRedemptionRequestPda(redemptionOfferPda, params.redeemer, params.requestId);
 
                 return helper.buildCancelRedemptionRequestIx({
                     redemptionOfferPda,
@@ -25,7 +25,7 @@ export async function executeRedemptionCancel(opts: GlobalOptions & Record<strin
                 });
             },
             title: "Cancel Redemption Request Transaction",
-            description: `Cancels redemption request #${params.requestId}`,
+            description: `Cancels redemption request ${params.requestId}`,
             payer: context.helper.wallet.publicKey,
             showParamSummary: {
                 title: "Cancelling redemption request:",
@@ -33,6 +33,7 @@ export async function executeRedemptionCancel(opts: GlobalOptions & Record<strin
                     tokenIn: params.tokenIn,
                     tokenOut: params.tokenOut,
                     requestId: params.requestId,
+                    redeemer: params.redeemer,
                 },
             },
         });

@@ -147,8 +147,8 @@ export function registerStateCommands(program: Command): void {
     // state set-excluded-owners
     program
         .command("set-excluded-owners")
-        .description("Configure circulating supply excluded owners")
-        .option("--owners <addresses>", "Comma-separated owner public keys")
+        .description("Replace circulating supply excluded owners (requires the Vec-input program upgrade)")
+        .option("--owners <addresses>", "Comma-separated owner public keys, maximum 20; unused stored slots are cleared")
         .action(async (options, cmd) => {
             const opts = { ...options, ...cmd.optsWithGlobals() } as GlobalOptions & Record<string, any>;
             await executeStateSetExcludedOwners(opts);

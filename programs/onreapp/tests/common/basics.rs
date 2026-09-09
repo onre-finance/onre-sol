@@ -213,13 +213,26 @@ pub fn find_redemption_offer_pda(token_in_mint: &Pubkey, token_out_mint: &Pubkey
     )
 }
 
-pub fn find_redemption_request_pda(redemption_offer: &Pubkey, counter: u64) -> (Pubkey, u8) {
+pub fn find_redemption_request_pda(
+    redemption_offer: &Pubkey,
+    redeemer: &Pubkey,
+    request_id: impl ToString,
+) -> (Pubkey, u8) {
+    let request_id = test_redemption_request_id(request_id);
     Pubkey::find_program_address(
         &[
             REDEMPTION_REQUEST_SEED,
             redemption_offer.as_ref(),
-            &counter.to_le_bytes(),
+            redeemer.as_ref(),
+            request_id.as_bytes(),
         ],
         &PROGRAM_ID,
     )
+}
+
+/// Turns concise test labels into the exact 32-byte ASCII request IDs required by the program.
+pub fn test_redemption_request_id(request_id: impl ToString) -> String {
+    let request_id = request_id.to_string();
+    assert!(request_id.is_ascii() && request_id.len() <= 32);
+    format!("{request_id:0>32}")
 }

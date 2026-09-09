@@ -1,5 +1,7 @@
 use crate::constants::seeds;
-use crate::instructions::redemption::{RedemptionOffer, RedemptionRequest};
+use crate::instructions::redemption::{
+    RedemptionOffer, RedemptionRequest, MAX_REDEMPTION_REQUEST_ID_LEN,
+};
 use crate::instructions::Offer;
 use crate::state::State;
 use crate::utils::transfer_tokens;
@@ -20,8 +22,8 @@ pub struct RedemptionRequestCreatedEvent {
     pub redeemer: Pubkey,
     /// Amount of token_in tokens requested for redemption
     pub amount: u64,
-    /// Unique identifier for this request (counter value used for PDA derivation)
-    pub id: u64,
+    /// Frontend-generated identifier for this request
+    pub request_id: String,
 }
 
 /// Account structure for creating a redemption request
@@ -30,6 +32,7 @@ pub struct RedemptionRequestCreatedEvent {
 /// where users can request to redeem token_out tokens from standard Offer for token_in tokens.
 /// Anyone can create a redemption request by paying for the PDA rent.
 #[derive(Accounts)]
+#[instruction(amount: u64, request_id: String)]
 pub struct CreateRedemptionRequest<'info> {
     /// Program state account for kill switch validation
     #[account(
@@ -39,7 +42,7 @@ pub struct CreateRedemptionRequest<'info> {
     )]
     pub state: Box<Account<'info, State>>,
 
-    /// The redemption offer account
+    /// The redemption offer account. It remains writable to update aggregate pending redemptions.
     #[account(
         mut,
         seeds = [
@@ -55,7 +58,7 @@ pub struct CreateRedemptionRequest<'info> {
     pub offer: AccountLoader<'info, Offer>,
 
     /// The redemption request account
-    /// PDA derived from redemption_offer and its counter value
+    /// PDA derived from the redemption offer, redeemer, and request ID bytes.
     #[account(
         init,
         payer = redeemer,
@@ -63,7 +66,8 @@ pub struct CreateRedemptionRequest<'info> {
         seeds = [
             seeds::REDEMPTION_REQUEST,
             redemption_offer.key().as_ref(),
-            redemption_offer.request_counter.to_le_bytes().as_ref()
+            redeemer.key().as_ref(),
+            request_id.as_bytes()
         ],
         bump
     )]
@@ -136,6 +140,7 @@ pub struct CreateRedemptionRequest<'info> {
 /// # Arguments
 /// * `ctx` - The instruction context containing validated accounts
 /// * `amount` - Amount of token_in tokens to redeem
+/// * `request_id` - Frontend-generated ID, exactly 32 UTF-8 bytes
 ///
 /// # Returns
 /// * `Ok(())` - If the redemption request is successfully created
@@ -145,15 +150,22 @@ pub struct CreateRedemptionRequest<'info> {
 /// - Redeemer pays for the redemption request PDA rent
 ///
 /// # Effects
-/// - Creates new redemption request account (PDA derived from redemption offer and request counter)
+/// - Creates a new redemption request account derived from the offer, redeemer, and request ID
 /// - Transfers token_in tokens from redeemer to redemption vault (locking them)
-/// - Increments counter on RedemptionOffer for next request
 /// - Updates requested_redemptions in RedemptionOffer
 ///
 /// # Events
 /// * `RedemptionRequestCreatedEvent` - Emitted with redemption request details
-pub fn create_redemption_request(ctx: Context<CreateRedemptionRequest>, amount: u64) -> Result<()> {
+pub fn create_redemption_request(
+    ctx: Context<CreateRedemptionRequest>,
+    amount: u64,
+    request_id: String,
+) -> Result<()> {
     require!(amount > 0, crate::OnreError::InvalidAmount);
+    require!(
+        request_id.len() == MAX_REDEMPTION_REQUEST_ID_LEN,
+        crate::OnreError::InvalidRedemptionRequestId
+    );
 
     // Validate the redemption offer is properly initialized (offer is not default)
     require!(
@@ -174,9 +186,6 @@ pub fn create_redemption_request(ctx: Context<CreateRedemptionRequest>, amount: 
     ctx.accounts.redemption_offer.require_enabled()?;
     ctx.accounts.offer.load()?.require_enabled()?;
 
-    // Capture counter before incrementing (used for PDA derivation)
-    let request_id = ctx.accounts.redemption_offer.request_counter;
-
     // Transfer tokens from redeemer to redemption vault (locking them)
     transfer_tokens(
         &ctx.accounts.token_in_mint,
@@ -191,7 +200,7 @@ pub fn create_redemption_request(ctx: Context<CreateRedemptionRequest>, amount: 
     // Initialize the redemption request
     let redemption_request = &mut ctx.accounts.redemption_request;
     redemption_request.offer = ctx.accounts.redemption_offer.key();
-    redemption_request.request_id = request_id;
+    redemption_request.request_id = request_id.clone();
     redemption_request.redeemer = ctx.accounts.redeemer.key();
     redemption_request.amount = amount;
     redemption_request.bump = ctx.bumps.redemption_request;
@@ -202,14 +211,6 @@ pub fn create_redemption_request(ctx: Context<CreateRedemptionRequest>, amount: 
         .redemption_offer
         .requested_redemptions
         .checked_add(amount as u128)
-        .ok_or(crate::OnreError::ArithmeticOverflow)?;
-
-    // Increment counter for next request
-    ctx.accounts.redemption_offer.request_counter = ctx
-        .accounts
-        .redemption_offer
-        .request_counter
-        .checked_add(1)
         .ok_or(crate::OnreError::ArithmeticOverflow)?;
 
     msg!(
@@ -225,7 +226,7 @@ pub fn create_redemption_request(ctx: Context<CreateRedemptionRequest>, amount: 
         redemption_offer_pda: ctx.accounts.redemption_offer.key(),
         redeemer: ctx.accounts.redeemer.key(),
         amount,
-        id: request_id,
+        request_id,
     });
 
     Ok(())

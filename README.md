@@ -77,6 +77,10 @@ Most token movement paths use the SPL Token interface and can work with **SPL To
 
 Token-2022 mints with non-zero transfer fees are rejected by guarded token-moving paths that cannot safely account for transfer-fee deltas, including offer execution, redemption operations, vault deposits/withdrawals, Prop AMM quotes/execution, BUFFER reserve movement, and configurable-vault withdrawals.
 
+### Redemption Request Identity
+
+`create_redemption_request` takes a frontend-generated random request ID of exactly 32 UTF-8 bytes (use a UUID without hyphens). Its PDA is derived from `redemption_request`, the redemption-offer PDA, the redeemer public key, and the request ID bytes. Persist the request ID and resulting PDA in the backend so a worker can fulfill it and the frontend can cancel it. This is a breaking account-layout and instruction change; resolve all pending redemption requests before upgrading to this version.
+
 ### BUFFER Yield Model
 
 Prop AMM and BUFFER cover different high-level needs. Prop AMM is the immediate

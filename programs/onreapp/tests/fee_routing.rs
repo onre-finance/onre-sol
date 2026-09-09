@@ -113,15 +113,14 @@ fn setup_fee_routing() -> FeeRoutingCtx {
 fn create_and_fulfill(ctx: &mut FeeRoutingCtx) {
     let boss = ctx.payer.pubkey();
 
-    let offer_data = read_redemption_offer(&ctx.svm, &ctx.onyc_mint, &ctx.usdc_mint);
-    let counter = offer_data.request_counter;
+    let request_id = "fee-routing";
 
     let ix = build_create_redemption_request_ix(
         &ctx.user.pubkey(),
         &ctx.onyc_mint,
         &ctx.usdc_mint,
         REDEMPTION_AMOUNT,
-        counter,
+        request_id,
         &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
@@ -134,7 +133,7 @@ fn create_and_fulfill(ctx: &mut FeeRoutingCtx) {
         &ctx.user.pubkey(),
         &ctx.onyc_mint,
         &ctx.usdc_mint,
-        counter,
+        request_id,
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
         REDEMPTION_AMOUNT,
@@ -309,14 +308,13 @@ fn test_fulfill_rejects_configurable_vault_with_invalid_discriminator() {
         )
         .unwrap();
 
-    let offer_data = read_redemption_offer(&ctx.svm, &ctx.onyc_mint, &ctx.usdc_mint);
-    let counter = offer_data.request_counter;
+    let request_id = "invalid-fee-vault";
     let ix = build_create_redemption_request_ix(
         &ctx.user.pubkey(),
         &ctx.onyc_mint,
         &ctx.usdc_mint,
         REDEMPTION_AMOUNT,
-        counter,
+        request_id,
         &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.user]).unwrap();
@@ -329,7 +327,7 @@ fn test_fulfill_rejects_configurable_vault_with_invalid_discriminator() {
         &ctx.user.pubkey(),
         &ctx.onyc_mint,
         &ctx.usdc_mint,
-        counter,
+        request_id,
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
         REDEMPTION_AMOUNT,
