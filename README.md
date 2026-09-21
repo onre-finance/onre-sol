@@ -356,6 +356,15 @@ building a normal release artifact.
 
 The `scripts/cross_chain_transfer/` directory contains CCTP v1 and v2 implementations for cross-chain USDC transfers between Ethereum and Solana.
 
+## Security Disclosure Metadata
+
+The program embeds `security.txt` metadata from `programs/onreapp/src/lib.rs`,
+directing vulnerability reports to [OnRe's Immunefi program](https://immunefi.com/bug-bounty/onre/information/).
+The metadata is excluded from builds with the `no-entrypoint` feature, including CPI builds.
+Metadata changes require rebuilding and deploying the program before explorers
+such as Solscan can display the updated information.
+Include metadata changes before producing the final verifiable build.
+
 ## Updating the Program ID
 
 ```bash

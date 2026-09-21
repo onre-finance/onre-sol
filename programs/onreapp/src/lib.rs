@@ -14,6 +14,16 @@ pub mod utils;
 
 pub use errors::OnreError;
 
+#[cfg(not(feature = "no-entrypoint"))]
+solana_security_txt::security_txt! {
+    name: "OnRe",
+    project_url: "https://www.onre.finance/",
+    contacts: "link:https://immunefi.com/bug-bounty/onre/information/",
+    policy: "https://immunefi.com/bug-bounty/onre/information/",
+    preferred_languages: "en",
+    source_code: "https://github.com/onre-finance/onre-sol"
+}
+
 const _ENV_FEATURE_COUNT: usize = cfg!(feature = "mainnet-test") as usize
     + cfg!(feature = "devnet-test") as usize
     + cfg!(feature = "devnet-dev") as usize;

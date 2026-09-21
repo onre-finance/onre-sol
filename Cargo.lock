@@ -2030,6 +2030,7 @@ dependencies = [
  "solana-instructions-sysvar 4.0.0",
  "solana-program",
  "solana-sdk",
+ "solana-security-txt",
  "solana-system-interface 3.2.0",
  "spl-token-2022",
 ]

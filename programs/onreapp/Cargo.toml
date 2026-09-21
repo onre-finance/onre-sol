@@ -30,6 +30,7 @@ anchor-spl = "1.1.2"
 bytemuck = { version = "1.25.2", features = ["min_const_generics"] }
 cfg-if = "1.0.4"
 solana-program = "4.0.0"
+solana-security-txt = "1.1.2"
 solana-instructions-sysvar = "4.0.0"
 solana-system-interface = { version = "3.2.0", features = ["bincode"] }
 spl-token-2022 = { version = "11.0.0", features = ["no-entrypoint"] }
