@@ -120,14 +120,6 @@ export const takeOfferParams: ParamDefinition[] = [
         flag: "--permissionless",
         default: false,
     },
-    {
-        name: "legacy",
-        type: "boolean",
-        description: "Use legacy take offer instruction",
-        required: true,
-        flag: "--legacy",
-        default: false,
-    },
 ];
 
 export const fetchOfferParams: ParamDefinition[] = [

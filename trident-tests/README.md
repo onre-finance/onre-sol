@@ -1,5 +1,11 @@
 # Fuzz tests for OnRe app
 
+The V1 offer execution step, its boss-payment invariant, and the V1 instruction
+bindings have been removed. `flow1` now exercises pricing-vector updates only.
+V2 offer execution is covered by the LiteSVM suites in
+`programs/onreapp/tests/take_offer.rs` and `take_offer_permissionless.rs`; this
+Trident target does not currently fuzz V2 offer execution.
+
 ## Installation
 
 Install Trident CLI tool

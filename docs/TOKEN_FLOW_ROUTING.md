@@ -2,7 +2,7 @@
 
 This page shows where tokens move for the main V2 offer, redemption, and Prop AMM flows. It focuses on accounting destinations: fee vaults, proceeds vaults, redemption vault liquidity, burns, mints, and user payouts.
 
-Legacy `take_offer` and legacy `take_offer_permissionless` do not use configurable accounting vaults or redemption-vault refill routing. If the program controls the token-in mint, net token-in is burned and fee token-in routes to the boss token-in ATA; otherwise both net token-in and fee token-in route to the boss token-in ATA.
+Offer execution is supported through `take_offer_v2` and `take_offer_permissionless_v2` only. Both route fees and proceeds through configurable accounting vaults. The V1 instructions that routed payments to the boss have been removed.
 
 ## Kill Switch
 

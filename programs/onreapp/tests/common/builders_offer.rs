@@ -95,74 +95,6 @@ pub fn build_set_offer_disabled_ix(
     }
 }
 
-pub fn build_take_offer_permissionless_ix(
-    user: &Pubkey,
-    boss: &Pubkey,
-    token_in_mint: &Pubkey,
-    token_out_mint: &Pubkey,
-    token_in_amount: u64,
-    approval_message: Option<&[u8]>,
-    token_in_program: &Pubkey,
-    token_out_program: &Pubkey,
-) -> Instruction {
-    let (state_pda, _) = find_state_pda();
-    let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
-    let (vault_authority_pda, _) = find_offer_vault_authority_pda();
-    let (permissionless_authority_pda, _) = find_permissionless_authority_pda();
-    let (mint_authority_pda, _) = find_mint_authority_pda();
-    let vault_token_in_ata = derive_ata(&vault_authority_pda, token_in_mint, token_in_program);
-    let vault_token_out_ata = derive_ata(&vault_authority_pda, token_out_mint, token_out_program);
-    let permissionless_token_in_ata = derive_ata(
-        &permissionless_authority_pda,
-        token_in_mint,
-        token_in_program,
-    );
-    let permissionless_token_out_ata = derive_ata(
-        &permissionless_authority_pda,
-        token_out_mint,
-        token_out_program,
-    );
-    let user_token_in_ata = derive_ata(user, token_in_mint, token_in_program);
-    let user_token_out_ata = derive_ata(user, token_out_mint, token_out_program);
-    let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
-    let mut data = ix_discriminator("take_offer_permissionless").to_vec();
-    data.extend_from_slice(&token_in_amount.to_le_bytes());
-    match approval_message {
-        Some(msg_bytes) => {
-            data.push(1);
-            data.extend_from_slice(msg_bytes);
-        }
-        None => data.push(0),
-    }
-    Instruction {
-        program_id: PROGRAM_ID,
-        accounts: vec![
-            AccountMeta::new(offer_pda, false),
-            AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new_readonly(*boss, false),
-            AccountMeta::new_readonly(vault_authority_pda, false),
-            AccountMeta::new(vault_token_in_ata, false),
-            AccountMeta::new(vault_token_out_ata, false),
-            AccountMeta::new_readonly(permissionless_authority_pda, false),
-            AccountMeta::new(permissionless_token_in_ata, false),
-            AccountMeta::new(permissionless_token_out_ata, false),
-            AccountMeta::new(*token_in_mint, false),
-            AccountMeta::new_readonly(*token_in_program, false),
-            AccountMeta::new(*token_out_mint, false),
-            AccountMeta::new_readonly(*token_out_program, false),
-            AccountMeta::new(user_token_in_ata, false),
-            AccountMeta::new(user_token_out_ata, false),
-            AccountMeta::new(boss_token_in_ata, false),
-            AccountMeta::new_readonly(mint_authority_pda, false),
-            AccountMeta::new_readonly(SYSVAR_INSTRUCTIONS_ID, false),
-            AccountMeta::new(*user, true),
-            AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
-            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
-        ],
-        data,
-    }
-}
-
 pub fn build_take_offer_permissionless_v2_ix(
     user: &Pubkey,
     _boss: &Pubkey,
@@ -377,60 +309,6 @@ pub fn build_delete_all_offer_vectors_ix(
             AccountMeta::new_readonly(*boss, true),
         ],
         data: ix_discriminator("delete_all_offer_vectors").to_vec(),
-    }
-}
-
-pub fn build_take_offer_ix(
-    user: &Pubkey,
-    boss: &Pubkey,
-    token_in_mint: &Pubkey,
-    token_out_mint: &Pubkey,
-    token_in_amount: u64,
-    approval_message: Option<&[u8]>,
-    token_in_program: &Pubkey,
-    token_out_program: &Pubkey,
-) -> Instruction {
-    let (state_pda, _) = find_state_pda();
-    let (offer_pda, _) = find_offer_pda(token_in_mint, token_out_mint);
-    let (vault_authority_pda, _) = find_offer_vault_authority_pda();
-    let (mint_authority_pda, _) = find_mint_authority_pda();
-    let vault_token_in_ata = derive_ata(&vault_authority_pda, token_in_mint, token_in_program);
-    let vault_token_out_ata = derive_ata(&vault_authority_pda, token_out_mint, token_out_program);
-    let user_token_in_ata = derive_ata(user, token_in_mint, token_in_program);
-    let user_token_out_ata = derive_ata(user, token_out_mint, token_out_program);
-    let boss_token_in_ata = derive_ata(boss, token_in_mint, token_in_program);
-    let mut data = ix_discriminator("take_offer").to_vec();
-    data.extend_from_slice(&token_in_amount.to_le_bytes());
-    match approval_message {
-        Some(msg_bytes) => {
-            data.push(1);
-            data.extend_from_slice(msg_bytes);
-        }
-        None => data.push(0),
-    }
-    Instruction {
-        program_id: PROGRAM_ID,
-        accounts: vec![
-            AccountMeta::new(offer_pda, false),
-            AccountMeta::new_readonly(state_pda, false),
-            AccountMeta::new_readonly(*boss, false),
-            AccountMeta::new_readonly(vault_authority_pda, false),
-            AccountMeta::new(vault_token_in_ata, false),
-            AccountMeta::new(vault_token_out_ata, false),
-            AccountMeta::new(*token_in_mint, false),
-            AccountMeta::new_readonly(*token_in_program, false),
-            AccountMeta::new(*token_out_mint, false),
-            AccountMeta::new_readonly(*token_out_program, false),
-            AccountMeta::new(user_token_in_ata, false),
-            AccountMeta::new(user_token_out_ata, false),
-            AccountMeta::new(boss_token_in_ata, false),
-            AccountMeta::new_readonly(mint_authority_pda, false),
-            AccountMeta::new_readonly(SYSVAR_INSTRUCTIONS_ID, false),
-            AccountMeta::new(*user, true),
-            AccountMeta::new_readonly(ATA_PROGRAM_ID, false),
-            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
-        ],
-        data,
     }
 }
 

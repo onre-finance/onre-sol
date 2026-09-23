@@ -37,7 +37,7 @@ programs/onreapp/src/
     ├── state_operations/     # Boss transfer, admin/approver management, kill switch, max supply
     ├── vault_operations/     # Deposit/withdraw tokens to offer and redemption vaults
     ├── mint_authority/       # Transfer mint authority to/from program PDA, mint_to
-    ├── market_info/          # Market stats refresh, exclusions, and NAV/APY/TVL/supply queries
+    ├── market_info/          # Market stats refresh, exclusions, and shared metric calculations
     └── targeted_disable.rs   # Token-pair targeted disable controls
 ```
 
@@ -62,7 +62,7 @@ The kill switch is an emergency stop for guarded value-moving paths. The boss ca
 
 When `state.is_killed == true`, the program rejects:
 
-- offer execution: `take_offer`, `take_offer_v2`, `take_offer_permissionless`, `take_offer_permissionless_v2`
+- offer execution: `take_offer_v2`, `take_offer_permissionless_v2`
 - Prop AMM quotes and execution: `quote_swap_buy`, `quote_swap_sell`, `open_swap_buy`, `open_swap_sell`
 - redemption request movement: `create_redemption_request`, `fulfill_redemption_request`, `cancel_redemption_request`
 - vault funding and recovery: `offer_vault_deposit`, `offer_vault_withdraw`, `redemption_vault_deposit`, `redemption_vault_withdraw`
@@ -116,6 +116,15 @@ accept a writable boss signer because the boss pays for lazy `MarketStats` PDA
 creation. Integrations may instead initialize that PDA first with the
 permissionless `refresh_market_stats` instruction.
 
+Read NAV, APY, signed NAV adjustment, circulating supply, and TVL directly from
+`["market_stats"]` over RPC (`pnpm cli market fetch --json`). This is a cached
+snapshot of `state.main_offer`; check `last_updated_at` and `last_updated_slot`.
+Refresh the excluded-balance cache first if its underlying holdings changed.
+The seven market getter instructions have been removed on this branch; migrate
+their callers before deploying this build. The PDA layout and refresh instruction
+are unchanged. See [the integration guide](docs/INTEGRATION_GUIDE.md) for units,
+refresh ordering, and differences from legacy per-offer views.
+
 ### Constants
 
 | Constant              | Value      |
@@ -133,7 +142,11 @@ permissionless `refresh_market_stats` instruction.
 
 **Prop AMM**: `configure_prop_amm`, `quote_swap_buy`, `quote_swap_sell`, `open_swap_buy`, `open_swap_sell`
 
-**Offers**: `make_offer`, `add_offer_vector`, `delete_offer_vector`, `delete_all_offer_vectors`, `update_offer_fee`, `update_offer_permissionless_fee`, `set_offer_disabled`, `take_offer`, `take_offer_v2`, `take_offer_permissionless`, `take_offer_permissionless_v2`
+V1 `take_offer` and `take_offer_permissionless` have been removed. Clients must use
+`take_offer_v2` or `take_offer_permissionless_v2`; their arguments and account lists
+are unchanged. The CLI `offer take` uses V2 and no longer supports `--legacy`.
+
+**Offers**: `make_offer`, `add_offer_vector`, `delete_offer_vector`, `delete_all_offer_vectors`, `update_offer_fee`, `update_offer_permissionless_fee`, `set_offer_disabled`, `take_offer_v2`, `take_offer_permissionless_v2`
 
 **Redemption**: `make_redemption_offer`, `set_redemption_offer_disabled`, `create_redemption_request`, `fulfill_redemption_request`, `cancel_redemption_request`, `update_redemption_offer_fee`, `update_redemption_offer_prop_amm_sell_fee`, `update_redemption_offer_vault_target`
 
@@ -143,7 +156,7 @@ permissionless `refresh_market_stats` instruction.
 
 **Mint Authority**: `transfer_mint_authority_to_program`, `transfer_mint_authority_to_boss`, `mint_to`
 
-**Market Info**: `get_nav`, `get_apy`, `get_nav_adjustment`, `get_tvl`, `get_tvl_v2`, `get_circulating_supply`, `get_circulating_supply_v2`, `refresh_market_stats`, `set_circulating_supply_excluded_accounts`, `update_circulating_supply_excluded_balance`
+**Market Info**: `refresh_market_stats`, `set_circulating_supply_excluded_accounts`, `update_circulating_supply_excluded_balance`
 
 ## CLI Tool
 
