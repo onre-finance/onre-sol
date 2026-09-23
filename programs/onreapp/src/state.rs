@@ -51,18 +51,20 @@ pub struct PermissionlessAuthority {
 
 /// Global market statistics PDA holding the canonical protocol-wide metrics.
 ///
-/// This account is intended to be updated by purchase and refresh instructions so
-/// off-chain clients can fetch the latest derived market values from one PDA.
+/// Derived from `["market_stats"]` and recomputed from `State::main_offer` by
+/// purchase and refresh instructions. RPC reads return the stored snapshot without
+/// recalculation; clients must check the timestamp and slot for freshness. Supply
+/// uses the separately cached excluded balance, which may need its own refresh.
 #[account]
 #[derive(InitSpace)]
 pub struct MarketStats {
-    /// Latest APY scaled with the program's existing market-info precision.
+    /// Latest APY, scale 6 (1_000_000 = 100%).
     pub apy: u64,
     /// Total circulating ONyc supply at the most recent refresh.
     pub circulating_supply: u64,
-    /// Latest NAV value using the market-info precision.
+    /// Latest main-offer NAV, scale 9 (1_000_000_000 = 1).
     pub nav: u64,
-    /// Latest signed NAV adjustment value using the market-info precision.
+    /// Latest signed NAV adjustment, scale 9.
     pub nav_adjustment: i64,
     /// Latest TVL computed as circulating ONyc supply multiplied by NAV, divided by the price scale.
     pub tvl: u64,

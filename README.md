@@ -37,7 +37,7 @@ programs/onreapp/src/
     ├── state_operations/     # Boss transfer, admin/approver management, kill switch, max supply
     ├── vault_operations/     # Deposit/withdraw tokens to offer and redemption vaults
     ├── mint_authority/       # Transfer mint authority to/from program PDA, mint_to
-    ├── market_info/          # Market stats refresh, exclusions, and NAV/APY/TVL/supply queries
+    ├── market_info/          # Market stats refresh, exclusions, and shared metric calculations
     └── targeted_disable.rs   # Token-pair targeted disable controls
 ```
 
@@ -116,6 +116,15 @@ accept a writable boss signer because the boss pays for lazy `MarketStats` PDA
 creation. Integrations may instead initialize that PDA first with the
 permissionless `refresh_market_stats` instruction.
 
+Read NAV, APY, signed NAV adjustment, circulating supply, and TVL directly from
+`["market_stats"]` over RPC (`pnpm cli market fetch --json`). This is a cached
+snapshot of `state.main_offer`; check `last_updated_at` and `last_updated_slot`.
+Refresh the excluded-balance cache first if its underlying holdings changed.
+The seven market getter instructions have been removed on this branch; migrate
+their callers before deploying this build. The PDA layout and refresh instruction
+are unchanged. See [the integration guide](docs/INTEGRATION_GUIDE.md) for units,
+refresh ordering, and differences from legacy per-offer views.
+
 ### Constants
 
 | Constant              | Value      |
@@ -143,7 +152,7 @@ permissionless `refresh_market_stats` instruction.
 
 **Mint Authority**: `transfer_mint_authority_to_program`, `transfer_mint_authority_to_boss`, `mint_to`
 
-**Market Info**: `get_nav`, `get_apy`, `get_nav_adjustment`, `get_tvl`, `get_tvl_v2`, `get_circulating_supply`, `get_circulating_supply_v2`, `refresh_market_stats`, `set_circulating_supply_excluded_accounts`, `update_circulating_supply_excluded_balance`
+**Market Info**: `refresh_market_stats`, `set_circulating_supply_excluded_accounts`, `update_circulating_supply_excluded_balance`
 
 ## CLI Tool
 

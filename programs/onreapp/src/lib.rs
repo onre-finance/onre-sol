@@ -72,7 +72,7 @@ pub use instructions::mint_authority::mint_to::MintTo;
 /// - Managing offer vectors for price control (`add_offer_vector`, `delete_offer_vector`).
 /// - Program state initialization and management (`initialize`, `propose_boss`, `accept_boss`, `add_admin`, `remove_admin`).
 /// - Vault operations for token deposits and withdrawals (`offer_vault_deposit`, `offer_vault_withdraw`).
-/// - Market information queries (`get_nav`, `get_apy`, `get_tvl`, `get_circulating_supply`).
+/// - Market-stat snapshots (`refresh_market_stats`), read directly from the `MarketStats` PDA.
 /// - Mint authority management (`transfer_mint_authority_to_program`, `transfer_mint_authority_to_boss`).
 /// - Emergency controls (`set_kill_switch`) and approval mechanisms (`add_approver`, `remove_approver`).
 ///
@@ -625,94 +625,6 @@ pub mod onreapp {
         mint_authority::mint_to(ctx, amount)
     }
 
-    /// Gets the current NAV (price) for a specific offer.
-    ///
-    /// Delegates to `market_info::get_nav`.
-    /// This is a read-only instruction that calculates and returns the current price
-    /// for an offer based on its time vectors and APR parameters.
-    /// Emits a `GetNAVEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `GetNAV`.
-    ///
-    /// # Returns
-    /// - `Ok(current_price)`: The calculated current price (mantissa) for the offer with scale=9
-    pub fn get_nav(ctx: Context<GetNAV>) -> Result<u64> {
-        market_info::get_nav(ctx)
-    }
-
-    /// Gets the current APY (Annual Percentage Yield) for a specific offer.
-    ///
-    /// Delegates to `market_info::get_apy`.
-    /// This is a read-only instruction that calculates and returns the current APY
-    /// by converting the stored APR using daily compounding formula.
-    /// Emits a `GetAPYEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `GetAPY`.
-    ///
-    /// # Returns
-    /// - `Ok(apy)`: The calculated APY scaled by 1_000_000 (returns the mantissa, with scale=6)
-    pub fn get_apy(ctx: Context<GetAPY>) -> Result<u64> {
-        market_info::get_apy(ctx)
-    }
-
-    /// Gets the NAV adjustment (price change) for a specific offer.
-    ///
-    /// Delegates to `market_info::get_nav_adjustment`.
-    /// This is a read-only instruction that calculates the price jump at the
-    /// active vector's start time by comparing the active vector's starting
-    /// price with the previous vector's price at that same transition timestamp.
-    /// Returns a signed integer representing the price change.
-    /// Emits a `GetNavAdjustmentEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `GetNavAdjustment`.
-    ///
-    /// # Returns
-    /// - `Ok(adjustment)`: The calculated price adjustment (current - previous) as a signed integer,
-    /// returns the mantissa with scale=9
-    pub fn get_nav_adjustment(ctx: Context<GetNavAdjustment>) -> Result<i64> {
-        market_info::get_nav_adjustment(ctx)
-    }
-
-    /// Gets the current TVL (Total Value Locked) for an ONyc offer.
-    ///
-    /// Delegates to `market_info::get_tvl`.
-    /// This legacy read-only instruction calculates TVL from circulating ONyc supply:
-    /// total ONyc mint supply minus the offer-vault ONyc ATA balance.
-    /// TVL = circulating_supply * current_NAV / 10^9.
-    /// Emits a `GetTVLEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `GetTVL`.
-    ///
-    /// # Returns
-    /// - `Ok(tvl)`: The calculated TVL in ONyc base units
-    pub fn get_tvl(ctx: Context<GetTVL>) -> Result<u64> {
-        market_info::get_tvl(ctx)
-    }
-
-    /// Delegates to `market_info::get_circulating_supply`.
-    /// This is a read-only instruction that calculates and returns the current circulating supply
-    /// based on total ONyc supply minus the offer-vault ONyc ATA balance.
-    /// circulating_supply = total_supply - vault_amount
-    /// Emits a `GetCirculatingSupplyEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `GetCirculatingSupply`.
-    ///
-    /// # Returns
-    /// - `Ok(circulating_supply)`: The calculated global ONyc circulating supply in base units
-    pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64> {
-        market_info::get_circulating_supply(ctx)
-    }
-
-    /// Gets circulating supply using the cached excluded-balance PDA.
-    pub fn get_circulating_supply_v2(ctx: Context<GetCirculatingSupplyV2>) -> Result<u64> {
-        market_info::get_circulating_supply_v2(ctx)
-    }
-
     /// Refreshes the canonical market-stats PDA using current on-chain state.
     ///
     /// Delegates to `market_info::refresh_market_stats`.
@@ -723,11 +635,6 @@ pub mod onreapp {
     /// - `ctx`: Context for `RefreshMarketStats`.
     pub fn refresh_market_stats(ctx: Context<RefreshMarketStats>) -> Result<()> {
         market_info::refresh_market_stats(ctx)
-    }
-
-    /// Gets ONyc TVL using the cached excluded-balance PDA.
-    pub fn get_tvl_v2(ctx: Context<GetTVLV2>) -> Result<u64> {
-        market_info::get_tvl_v2(ctx)
     }
 
     /// Replaces the owner list whose ONyc ATAs are excluded from circulating supply.

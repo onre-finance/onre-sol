@@ -4,7 +4,7 @@ use anchor_lang::AccountDeserialize;
 use common::*;
 use onreapp::state::{CirculatingSupplyExcludedAccounts, CirculatingSupplyExcludedBalance};
 use solana_sdk::account::Account;
-use solana_sdk::instruction::AccountMeta;
+use solana_sdk::instruction::{AccountMeta, Instruction};
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::rent::Rent;
 use solana_sdk::signature::Keypair;
@@ -37,6 +37,9 @@ fn setup_offer_with_vector(
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+    let (offer_pda, _) = find_offer_pda(&token_in, &token_out);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
@@ -140,21 +143,99 @@ fn read_circulating_supply_excluded_balance(
         .expect("failed to deserialize excluded balance PDA")
 }
 
-// ---------------------------------------------------------------------------
-// get_nav
-// ---------------------------------------------------------------------------
+// Metrics are read from the MarketStats PDA after a refresh transaction.
 
 #[test]
-fn test_get_nav_success() {
+fn test_removed_market_getters_are_rejected() {
+    let (mut svm, payer, _) = setup_initialized();
+    for name in [
+        "get_nav",
+        "get_apy",
+        "get_nav_adjustment",
+        "get_tvl",
+        "get_tvl_v2",
+        "get_circulating_supply",
+        "get_circulating_supply_v2",
+    ] {
+        let ix = Instruction {
+            program_id: PROGRAM_ID,
+            accounts: vec![],
+            data: ix_discriminator(name).to_vec(),
+        };
+        let failure = send_tx(&mut svm, &[ix], &[&payer]).unwrap_err();
+        assert!(
+            failure
+                .meta
+                .logs
+                .iter()
+                .any(|line| line.contains("InstructionFallbackNotFound")),
+            "{name} must be removed"
+        );
+    }
+}
+
+#[test]
+fn test_market_stats_snapshot_stays_cached_until_refreshed_even_while_killed() {
+    let (mut svm, payer, token_in, onyc_mint) =
+        setup_onyc_offer_with_supply(36_500, 1_000_000_000, 86_400, 5_000_000_000, 0);
+    let refresh = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &onyc_mint);
+    send_tx(&mut svm, std::slice::from_ref(&refresh), &[&payer]).unwrap();
+    let (pda, _) = find_market_stats_pda();
+    let initial = svm.get_account(&pda).unwrap().data;
+    let initial_stats = read_market_stats(&svm);
+
+    advance_clock_by(&mut svm, 86_400);
+    set_mint_supply(&mut svm, &onyc_mint, 6_000_000_000);
+    assert_eq!(svm.get_account(&pda).unwrap().data, initial);
+
+    let kill = build_set_kill_switch_ix(&payer.pubkey(), true);
+    send_tx(&mut svm, &[kill, refresh], &[&payer]).unwrap();
+    let updated = read_market_stats(&svm);
+    assert_eq!(updated.nav, 1_000_200_010);
+    assert_eq!(updated.circulating_supply, 6_000_000_000);
+    assert_eq!(updated.tvl, 6_001_200_060);
+    assert!(updated.last_updated_at > initial_stats.last_updated_at);
+    assert!(updated.last_updated_slot > initial_stats.last_updated_slot);
+}
+
+#[test]
+fn test_refresh_market_stats_rejects_an_offer_other_than_main_offer() {
+    let (mut svm, payer, token_in, onyc_mint) =
+        setup_onyc_offer_with_supply(0, 1_000_000_000, 86_400, 0, 0);
+    let other_token_in = create_mint(&mut svm, &payer, 6, &payer.pubkey());
+    let make = build_make_offer_ix(
+        &payer.pubkey(),
+        &other_token_in,
+        &onyc_mint,
+        0,
+        false,
+        false,
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[make], &[&payer]).unwrap();
+    let mut refresh = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &onyc_mint);
+    refresh.accounts[0] =
+        AccountMeta::new_readonly(find_offer_pda(&other_token_in, &onyc_mint).0, false);
+    refresh.accounts[1] = AccountMeta::new_readonly(other_token_in, false);
+    let failure = send_tx(&mut svm, &[refresh], &[&payer]).unwrap_err();
+    assert!(failure
+        .meta
+        .logs
+        .iter()
+        .any(|line| line.contains("InvalidMainOffer")));
+}
+
+#[test]
+fn test_refresh_market_stats_nav_success() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
         36_500,        // 3.65% APR
         1_000_000_000, // base_price = 1.0
         86400,         // 1 day
     );
 
-    let ix = build_get_nav_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let nav = get_return_u64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let nav = read_market_stats(&svm).nav;
 
     // Step pricing: step=0, interval=(0+1)*86400, so price grows slightly from base
     // price = 1e9 * (1 + 36500 * 86400 / (1e6 * 31536000)) = 1_000_100_000
@@ -162,7 +243,7 @@ fn test_get_nav_success() {
 }
 
 #[test]
-fn test_get_nav_price_growth() {
+fn test_refresh_market_stats_nav_price_growth() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
         36_500, // 3.65% APR
         1_000_000_000,
@@ -172,9 +253,9 @@ fn test_get_nav_price_growth() {
     // Advance 1 day so price should have grown
     advance_clock_by(&mut svm, 86400);
 
-    let ix = build_get_nav_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let nav = get_return_u64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let nav = read_market_stats(&svm).nav;
 
     // After 1 day with 3.65% APR: price = 1.0 * (1 + 0.0365 * 86400 / 31536000) = ~1.0001
     // Step price: elapsed=86400, step = 86400/86400 = 1, interval = 2 * 86400 = 172800
@@ -186,7 +267,7 @@ fn test_get_nav_price_growth() {
 }
 
 #[test]
-fn test_get_nav_zero_apr() {
+fn test_refresh_market_stats_nav_zero_apr() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
         0, // 0% APR
         1_000_000_000,
@@ -195,21 +276,21 @@ fn test_get_nav_zero_apr() {
 
     advance_clock_by(&mut svm, 86400 * 30);
 
-    let ix = build_get_nav_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let nav = get_return_u64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let nav = read_market_stats(&svm).nav;
 
     // With 0% APR, price stays the same regardless of time
     assert_eq!(nav, 1_000_000_000);
 }
 
 #[test]
-fn test_get_nav_fails_no_active_vector() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
+fn test_refresh_market_stats_nav_fails_no_active_vector() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
+    let token_out = onyc_mint;
 
     let ix = build_make_offer_ix(
         &boss,
@@ -222,20 +303,28 @@ fn test_get_nav_fails_no_active_vector() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+    let (offer_pda, _) = find_offer_pda(&token_in, &token_out);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     // No vectors added
-    let ix = build_get_nav_ix(&token_in, &token_out);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail with no active vector");
+    assert!(result
+        .unwrap_err()
+        .meta
+        .logs
+        .iter()
+        .any(|line| line.contains("NoActiveVector")));
 }
 
 #[test]
-fn test_get_nav_fails_all_vectors_future() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
+fn test_refresh_market_stats_nav_fails_all_vectors_future() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
+    let token_out = onyc_mint;
 
     let ix = build_make_offer_ix(
         &boss,
@@ -248,6 +337,9 @@ fn test_get_nav_fails_all_vectors_future() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+    let (offer_pda, _) = find_offer_pda(&token_in, &token_out);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
@@ -263,73 +355,45 @@ fn test_get_nav_fails_all_vectors_future() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
 
-    let ix = build_get_nav_ix(&token_in, &token_out);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
     let result = send_tx(&mut svm, &[ix], &[&payer]);
     assert!(
-        result.is_err(),
+        result
+            .unwrap_err()
+            .meta
+            .logs
+            .iter()
+            .any(|line| line.contains("NoActiveVector")),
         "should fail when all vectors are in the future"
     );
 }
 
-// ---------------------------------------------------------------------------
-// get_apy
-// ---------------------------------------------------------------------------
-
 #[test]
-fn test_get_apy_success() {
+fn test_refresh_market_stats_apy_success() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
         100_000, // 10% APR
         1_000_000_000,
         86400,
     );
 
-    let ix = build_get_apy_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let apy = get_return_u64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let apy = read_market_stats(&svm).apy;
 
     // 10% APR -> ~10.52% APY with daily compounding.
     assert_eq!(apy, 105_156);
 }
 
 #[test]
-fn test_get_apy_zero_apr() {
+fn test_refresh_market_stats_apy_zero_apr() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(0, 1_000_000_000, 86400);
 
-    let ix = build_get_apy_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let apy = get_return_u64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let apy = read_market_stats(&svm).apy;
 
     assert_eq!(apy, 0, "0% APR should give 0% APY");
 }
-
-#[test]
-fn test_get_apy_fails_no_active_vector() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-
-    let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
-
-    let ix = build_make_offer_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        0,
-        false,
-        false,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_get_apy_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail with no active vector");
-}
-
-// ---------------------------------------------------------------------------
-// refresh_market_stats
-// ---------------------------------------------------------------------------
 
 #[test]
 fn test_refresh_market_stats_permissionless_creates_and_updates_pda() {
@@ -425,18 +489,14 @@ fn test_refresh_market_stats_succeeds_without_recent_purchases() {
     assert_eq!(refreshed.last_updated_slot, 4);
 }
 
-// ---------------------------------------------------------------------------
-// get_nav_adjustment
-// ---------------------------------------------------------------------------
-
 #[test]
-fn test_get_nav_adjustment_first_vector() {
+fn test_refresh_market_stats_nav_adjustment_first_vector() {
     let (mut svm, payer, token_in, token_out) =
         setup_offer_with_vector(36_500, 1_000_000_000, 86400);
 
-    let ix = build_get_nav_adjustment_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let adjustment = get_return_i64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let adjustment = read_market_stats(&svm).nav_adjustment;
 
     // First vector: adjustment = current_price (no previous)
     // Step pricing: first interval gives slight growth from base_price
@@ -444,12 +504,12 @@ fn test_get_nav_adjustment_first_vector() {
 }
 
 #[test]
-fn test_get_nav_adjustment_positive() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
+fn test_refresh_market_stats_nav_adjustment_positive() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
+    let token_out = onyc_mint;
 
     let ix = build_make_offer_ix(
         &boss,
@@ -462,6 +522,9 @@ fn test_get_nav_adjustment_positive() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+    let (offer_pda, _) = find_offer_pda(&token_in, &token_out);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let current_time = get_clock_time(&svm);
 
@@ -495,69 +558,16 @@ fn test_get_nav_adjustment_positive() {
     // Advance to make vector 2 active
     advance_clock_by(&mut svm, 101);
 
-    let ix = build_get_nav_adjustment_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let adjustment = get_return_i64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let adjustment = read_market_stats(&svm).nav_adjustment;
 
     // Adjustment = 1.1 - 1.0 = 0.1 = 100_000_000
     assert_eq!(adjustment, 100_000_000);
 }
 
 #[test]
-fn test_get_nav_adjustment_fails_no_active_vector() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-
-    let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
-
-    let ix = build_make_offer_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        0,
-        false,
-        false,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_get_nav_adjustment_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail with no active vector");
-}
-
-// ---------------------------------------------------------------------------
-// get_tvl
-// ---------------------------------------------------------------------------
-
-#[test]
-fn test_get_tvl_preserves_legacy_account_layout() {
-    let boss = Pubkey::new_unique();
-    let token_in = Pubkey::new_unique();
-    let token_out = Pubkey::new_unique();
-    let (offer, _) = find_offer_pda(&token_in, &token_out);
-    let (vault_authority, _) = find_offer_vault_authority_pda();
-    let vault_token_out = get_associated_token_address(&vault_authority, &token_out);
-
-    let ix = build_get_tvl_ix(&boss, &token_in, &token_out);
-
-    assert_eq!(
-        ix.accounts,
-        vec![
-            AccountMeta::new_readonly(offer, false),
-            AccountMeta::new_readonly(token_in, false),
-            AccountMeta::new_readonly(token_out, false),
-            AccountMeta::new_readonly(vault_authority, false),
-            AccountMeta::new_readonly(vault_token_out, false),
-            AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
-        ]
-    );
-}
-
-#[test]
-fn test_get_tvl_success() {
+fn test_refresh_market_stats_tvl_success() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(0, 1_000_000_000, 86400);
 
     // Mint some token_out supply
@@ -565,85 +575,13 @@ fn test_get_tvl_success() {
     mint_data.data[36..44].copy_from_slice(&1_000_000_000_000u64.to_le_bytes()); // 1000 tokens
     svm.set_account(token_out, mint_data).unwrap();
 
-    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let tvl = get_return_u64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let tvl = read_market_stats(&svm).tvl;
 
     // TVL = supply * price / 10^9 = 1000e9 * 1e9 / 1e9 = 1000e9
     assert_eq!(tvl, 1_000_000_000_000);
 }
-
-#[test]
-fn test_get_tvl_fails_no_active_vector() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-
-    let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
-
-    let ix = build_make_offer_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        0,
-        false,
-        false,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail with no active vector");
-}
-
-// ---------------------------------------------------------------------------
-// get_circulating_supply
-// ---------------------------------------------------------------------------
-
-#[test]
-fn test_get_circulating_supply_no_vault() {
-    let (mut svm, payer, onyc_mint) = setup_initialized();
-
-    // Set some supply on the onyc mint
-    let mut mint_data = svm.get_account(&onyc_mint).unwrap();
-    mint_data.data[36..44].copy_from_slice(&500_000_000_000u64.to_le_bytes()); // 500 tokens
-    svm.set_account(onyc_mint, mint_data).unwrap();
-
-    let ix = build_get_circulating_supply_ix(&payer.pubkey(), &onyc_mint);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let supply = get_return_u64(&result);
-
-    // No vault, so circulating = total
-    assert_eq!(supply, 500_000_000_000);
-}
-
-#[test]
-fn test_get_circulating_supply_with_vault() {
-    let (mut svm, payer, onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-
-    // Create boss token account with tokens and deposit to vault
-    create_token_account(&mut svm, &onyc_mint, &boss, 500_000_000_000);
-    let mut mint_data = svm.get_account(&onyc_mint).unwrap();
-    mint_data.data[36..44].copy_from_slice(&1_000_000_000_000u64.to_le_bytes()); // 1000 tokens
-    svm.set_account(onyc_mint, mint_data).unwrap();
-    let ix = build_offer_vault_deposit_ix(&boss, &onyc_mint, 200_000_000_000, &TOKEN_PROGRAM_ID);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_get_circulating_supply_ix(&payer.pubkey(), &onyc_mint);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let supply = get_return_u64(&result);
-
-    // circulating = total - vault = 1000e9 - 200e9 = 800e9
-    assert_eq!(supply, 800_000_000_000);
-}
-
-// ---------------------------------------------------------------------------
-// circulating supply excluded balance PDA
-// ---------------------------------------------------------------------------
 
 #[test]
 fn test_set_circulating_supply_excluded_accounts_boss_only_and_stores_owners() {
@@ -697,13 +635,22 @@ fn test_excluded_owners_vec_limits_and_replacement() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let (pda, _) = find_circulating_supply_excluded_accounts_pda();
     let before = svm.get_account(&pda).unwrap();
-    assert_eq!(read_circulating_supply_excluded_accounts(&svm).owners.as_slice(), owners.as_slice());
+    assert_eq!(
+        read_circulating_supply_excluded_accounts(&svm)
+            .owners
+            .as_slice(),
+        owners.as_slice()
+    );
 
     let mut too_many = owners.clone();
     too_many.push(Pubkey::new_unique());
     let ix = build_set_circulating_supply_excluded_accounts_ix(&boss, &too_many);
     let failure = send_tx(&mut svm, &[ix], &[&payer]).unwrap_err();
-    assert!(failure.meta.logs.iter().any(|line| line.contains("InvalidCirculatingSupplyExcludedAccounts")));
+    assert!(failure
+        .meta
+        .logs
+        .iter()
+        .any(|line| line.contains("InvalidCirculatingSupplyExcludedAccounts")));
     assert_eq!(svm.get_account(&pda).unwrap().data, before.data);
 
     let replacement = Pubkey::new_unique();
@@ -712,13 +659,18 @@ fn test_excluded_owners_vec_limits_and_replacement() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     let stored = read_circulating_supply_excluded_accounts(&svm);
     assert_eq!(stored.owners[0], replacement);
-    assert!(stored.owners[1..].iter().all(|owner| *owner == Pubkey::default()));
+    assert!(stored.owners[1..]
+        .iter()
+        .all(|owner| *owner == Pubkey::default()));
     assert_eq!(svm.get_account(&pda).unwrap().data.len(), before.data.len());
 
     let ix = build_set_circulating_supply_excluded_accounts_ix(&boss, &[]);
     assert_eq!(ix.data.len(), 12);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    assert_eq!(read_circulating_supply_excluded_accounts(&svm).owners, [Pubkey::default(); 20]);
+    assert_eq!(
+        read_circulating_supply_excluded_accounts(&svm).owners,
+        [Pubkey::default(); 20]
+    );
 }
 
 #[test]
@@ -925,32 +877,42 @@ fn test_market_info_uses_cached_excluded_balance() {
     );
     send_tx(&mut svm, &[update_ix], &[&payer]).unwrap();
 
-    let supply_ix = build_get_circulating_supply_v2_ix(&onyc_mint);
-    let supply_result = send_tx(&mut svm, &[supply_ix], &[&payer]).unwrap();
-    assert_eq!(get_return_u64(&supply_result), 700_000_000_000);
-
-    let tvl_ix = build_get_tvl_v2_ix(&token_in, &onyc_mint);
-    let tvl_result = send_tx(&mut svm, &[tvl_ix], &[&payer]).unwrap();
-    assert_eq!(get_return_u64(&tvl_result), 700_000_000_000);
-
     let refresh_ix = build_refresh_market_stats_ix(&boss, &token_in, &onyc_mint);
     send_tx(&mut svm, &[refresh_ix], &[&payer]).unwrap();
     let market_stats = read_market_stats(&svm);
     assert_eq!(market_stats.circulating_supply, 700_000_000_000);
     assert_eq!(market_stats.tvl, 700_000_000_000);
+
+    // A market refresh alone still uses the old excluded-balance snapshot.
+    advance_slot(&mut svm);
+    let mut ata = svm.get_account(&excluded_ata).unwrap();
+    ata.data[64..72].copy_from_slice(&400_000_000_000u64.to_le_bytes());
+    svm.set_account(excluded_ata, ata).unwrap();
+    let refresh_ix = build_refresh_market_stats_ix(&boss, &token_in, &onyc_mint);
+    send_tx(&mut svm, std::slice::from_ref(&refresh_ix), &[&payer]).unwrap();
+    assert_eq!(read_market_stats(&svm).circulating_supply, 700_000_000_000);
+
+    // Update exclusions before the market snapshot, atomically in one transaction.
+    advance_slot(&mut svm);
+    let update_ix = build_update_circulating_supply_excluded_balance_ix(
+        &boss,
+        &onyc_mint,
+        &[excluded_ata],
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[update_ix, refresh_ix], &[&payer]).unwrap();
+    let updated = read_market_stats(&svm);
+    assert_eq!(updated.circulating_supply, 600_000_000_000);
+    assert_eq!(updated.tvl, 600_000_000_000);
 }
 
-// ---------------------------------------------------------------------------
-// Additional NAV tests
-// ---------------------------------------------------------------------------
-
 #[test]
-fn test_get_nav_multiple_vectors_uses_most_recent() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
+fn test_refresh_market_stats_nav_multiple_vectors_uses_most_recent() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
+    let token_out = onyc_mint;
 
     let ix = build_make_offer_ix(
         &boss,
@@ -963,6 +925,9 @@ fn test_get_nav_multiple_vectors_uses_most_recent() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+    let (offer_pda, _) = find_offer_pda(&token_in, &token_out);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let current_time = get_clock_time(&svm);
 
@@ -996,9 +961,9 @@ fn test_get_nav_multiple_vectors_uses_most_recent() {
     // Advance to make vector 2 active
     advance_clock_by(&mut svm, 101);
 
-    let ix = build_get_nav_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let nav = get_return_u64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let nav = read_market_stats(&svm).nav;
 
     // Should use vector 2 (base_price=2.0, APR=7.3%)
     // step=0, interval=86400, price = 2.0 * (1 + 73000 * 86400 / (1e6 * 31536000))
@@ -1006,17 +971,13 @@ fn test_get_nav_multiple_vectors_uses_most_recent() {
     assert_eq!(nav, 2_000_400_000);
 }
 
-// ---------------------------------------------------------------------------
-// Additional APY tests
-// ---------------------------------------------------------------------------
-
 #[test]
-fn test_get_apy_10_percent() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
+fn test_refresh_market_stats_apy_10_percent() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
+    let token_out = onyc_mint;
 
     let ix = build_make_offer_ix(
         &boss,
@@ -1029,6 +990,9 @@ fn test_get_apy_10_percent() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+    let (offer_pda, _) = find_offer_pda(&token_in, &token_out);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
@@ -1044,21 +1008,21 @@ fn test_get_apy_10_percent() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
 
-    let ix = build_get_apy_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let apy = get_return_u64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let apy = read_market_stats(&svm).apy;
 
     // 10% APR -> ~10.52% APY with daily compounding.
     assert_eq!(apy, 105_156);
 }
 
 #[test]
-fn test_get_apy_25_percent() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
+fn test_refresh_market_stats_apy_25_percent() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
+    let token_out = onyc_mint;
 
     let ix = build_make_offer_ix(
         &boss,
@@ -1071,6 +1035,9 @@ fn test_get_apy_25_percent() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+    let (offer_pda, _) = find_offer_pda(&token_in, &token_out);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
@@ -1086,21 +1053,21 @@ fn test_get_apy_25_percent() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_clock_by(&mut svm, 1);
 
-    let ix = build_get_apy_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let apy = get_return_u64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let apy = read_market_stats(&svm).apy;
 
     // 25% APR -> ~28.4% APY with daily compounding.
     assert_eq!(apy, 283_916);
 }
 
 #[test]
-fn test_get_apy_multiple_vectors_uses_most_recent() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
+fn test_refresh_market_stats_apy_multiple_vectors_uses_most_recent() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
+    let token_out = onyc_mint;
 
     let ix = build_make_offer_ix(
         &boss,
@@ -1113,6 +1080,9 @@ fn test_get_apy_multiple_vectors_uses_most_recent() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+    let (offer_pda, _) = find_offer_pda(&token_in, &token_out);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let current_time = get_clock_time(&svm);
 
@@ -1145,20 +1115,16 @@ fn test_get_apy_multiple_vectors_uses_most_recent() {
 
     advance_clock_by(&mut svm, 101);
 
-    let ix = build_get_apy_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let apy = get_return_u64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let apy = read_market_stats(&svm).apy;
 
     // Should use vector 2 (10% APR -> ~10.52% APY).
     assert_eq!(apy, 105_156);
 }
 
-// ---------------------------------------------------------------------------
-// Additional TVL tests
-// ---------------------------------------------------------------------------
-
 #[test]
-fn test_get_tvl_different_price() {
+fn test_refresh_market_stats_tvl_different_price() {
     let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
@@ -1176,6 +1142,9 @@ fn test_get_tvl_different_price() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+    let (offer_pda, _) = find_offer_pda(&token_in, &token_out);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
@@ -1196,16 +1165,16 @@ fn test_get_tvl_different_price() {
     mint_data.data[36..44].copy_from_slice(&1_000_000_000_000u64.to_le_bytes());
     svm.set_account(token_out, mint_data).unwrap();
 
-    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let tvl = get_return_u64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let tvl = read_market_stats(&svm).tvl;
 
     // TVL = supply * price / 10^9 = 1000e9 * 2e9 / 1e9 = 2000e9
     assert_eq!(tvl, 2_000_000_000_000);
 }
 
 #[test]
-fn test_get_tvl_after_time_advancement() {
+fn test_refresh_market_stats_tvl_after_time_advancement() {
     let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
@@ -1223,6 +1192,9 @@ fn test_get_tvl_after_time_advancement() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+    let (offer_pda, _) = find_offer_pda(&token_in, &token_out);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
@@ -1243,32 +1215,28 @@ fn test_get_tvl_after_time_advancement() {
     mint_data.data[36..44].copy_from_slice(&1_000_000_000_000u64.to_le_bytes());
     svm.set_account(token_out, mint_data).unwrap();
 
-    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
-    let result1 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let tvl1 = get_return_u64(&result1);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let tvl1 = read_market_stats(&svm).tvl;
 
     // Advance 1 day
     advance_clock_by(&mut svm, 86400);
 
-    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
-    let result2 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let tvl2 = get_return_u64(&result2);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let tvl2 = read_market_stats(&svm).tvl;
 
     assert_eq!(tvl1, 1_000_100_000_000);
     assert_eq!(tvl2, 1_000_200_010_000);
 }
 
-// ---------------------------------------------------------------------------
-// Additional NAV Adjustment tests
-// ---------------------------------------------------------------------------
-
 #[test]
-fn test_get_nav_adjustment_negative() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
+fn test_refresh_market_stats_nav_adjustment_negative() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
+    let token_out = onyc_mint;
 
     let ix = build_make_offer_ix(
         &boss,
@@ -1281,6 +1249,9 @@ fn test_get_nav_adjustment_negative() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+    let (offer_pda, _) = find_offer_pda(&token_in, &token_out);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let current_time = get_clock_time(&svm);
 
@@ -1313,9 +1284,9 @@ fn test_get_nav_adjustment_negative() {
 
     advance_clock_by(&mut svm, 101);
 
-    let ix = build_get_nav_adjustment_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let adjustment = get_return_i64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let adjustment = read_market_stats(&svm).nav_adjustment;
 
     // Adjustment = current_price - previous_price = 1.0 - 2.0 = -1.0
     assert!(
@@ -1325,12 +1296,12 @@ fn test_get_nav_adjustment_negative() {
 }
 
 #[test]
-fn test_get_nav_adjustment_time_progression() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
+fn test_refresh_market_stats_nav_adjustment_time_progression() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
+    let token_out = onyc_mint;
 
     let ix = build_make_offer_ix(
         &boss,
@@ -1343,6 +1314,9 @@ fn test_get_nav_adjustment_time_progression() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+    let (offer_pda, _) = find_offer_pda(&token_in, &token_out);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let current_time = get_clock_time(&svm);
     let ix = build_add_offer_vector_ix(
@@ -1359,139 +1333,60 @@ fn test_get_nav_adjustment_time_progression() {
     advance_clock_by(&mut svm, 1);
 
     // Get adjustment at time 1
-    let ix = build_get_nav_adjustment_ix(&token_in, &token_out);
-    let result1 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let adj1 = get_return_i64(&result1);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let adj1 = read_market_stats(&svm).nav_adjustment;
 
     // Advance within same interval - should be same
     advance_clock_by(&mut svm, 30_000);
 
-    let ix = build_get_nav_adjustment_ix(&token_in, &token_out);
-    let result2 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let adj2 = get_return_i64(&result2);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let adj2 = read_market_stats(&svm).nav_adjustment;
 
     // Same vector, same interval → same adjustment
     assert_eq!(adj1, adj2, "adjustment should be same within same interval");
 }
 
-// ===========================================================================
-// Token-2022 Tests
-// ===========================================================================
-
 #[test]
-fn test_get_nav_token2022_offer() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-
-    let token_in = create_mint_2022(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint_2022(&mut svm, &payer, 9, &boss);
-
-    let ix = build_make_offer_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        0,
-        false,
-        false,
-        &TOKEN_2022_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let current_time = get_clock_time(&svm);
-    let ix = build_add_offer_vector_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        None,
-        current_time,
-        1_000_000_000,
-        36_500,
-        86400,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_clock_by(&mut svm, 1);
-
-    let ix = build_get_nav_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let nav = get_return_u64(&result);
-
-    // Same as SPL Token test: price = 1_000_100_000
-    assert_eq!(nav, 1_000_100_000);
-}
-
-#[test]
-fn test_get_circulating_supply_token2022() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-
-    let token2022_mint = create_mint_2022(&mut svm, &payer, 9, &boss);
-
-    // Set as onyc_mint
-    let ix = build_set_onyc_mint_ix(&boss, &token2022_mint);
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    // Set supply on the Token-2022 mint
-    let mut mint_data = svm.get_account(&token2022_mint).unwrap();
-    mint_data.data[36..44].copy_from_slice(&500_000_000_000u64.to_le_bytes());
-    svm.set_account(token2022_mint, mint_data).unwrap();
-
-    let ix = build_get_circulating_supply_ix_with_token_program(
-        &payer.pubkey(),
-        &token2022_mint,
-        &TOKEN_2022_PROGRAM_ID,
-    );
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let supply = get_return_u64(&result);
-
-    // No vault, so circulating = total
-    assert_eq!(supply, 500_000_000_000);
-}
-
-// ---------------------------------------------------------------------------
-// Additional APY tests (matching TS coverage)
-// ---------------------------------------------------------------------------
-
-#[test]
-fn test_get_apy_3_65_percent() {
+fn test_refresh_market_stats_apy_3_65_percent() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
         36_500, // 3.65% APR
         1_000_000_000,
         86400,
     );
 
-    let ix = build_get_apy_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let apy = get_return_u64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let apy = read_market_stats(&svm).apy;
 
     // 3.65% APR → ~3.72% APY with daily compounding
     assert_eq!(apy, 37_172);
 }
 
 #[test]
-fn test_get_apy_small_apr() {
+fn test_refresh_market_stats_apy_small_apr() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
         100, // 0.01% APR
         1_000_000_000,
         86400,
     );
 
-    let ix = build_get_apy_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let apy = get_return_u64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let apy = read_market_stats(&svm).apy;
 
     // Very small APR ≈ same APY
     assert_eq!(apy, 100);
 }
 
 #[test]
-fn test_get_apy_fails_all_vectors_future() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
+fn test_refresh_market_stats_nav_adjustment_multiple_transitions() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
+    let token_out = onyc_mint;
 
     let ix = build_make_offer_ix(
         &boss,
@@ -1504,95 +1399,9 @@ fn test_get_apy_fails_all_vectors_future() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
-
-    let current_time = get_clock_time(&svm);
-    let ix = build_add_offer_vector_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        None,
-        current_time + 100_000,
-        1_000_000_000,
-        36_500,
-        86400,
-    );
+    let (offer_pda, _) = find_offer_pda(&token_in, &token_out);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_get_apy_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(
-        result.is_err(),
-        "should fail when all vectors are in the future"
-    );
-}
-
-// ---------------------------------------------------------------------------
-// Additional NAV tests (matching TS coverage)
-// ---------------------------------------------------------------------------
-
-#[test]
-fn test_get_nav_fails_nonexistent_offer() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-
-    let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
-    let wrong_mint = create_mint(&mut svm, &payer, 9, &boss);
-
-    // Create an offer for token_in/token_out
-    let ix = build_make_offer_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        0,
-        false,
-        false,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    // Try with wrong token_in
-    let ix = build_get_nav_ix(&wrong_mint, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(
-        result.is_err(),
-        "should fail with non-existent offer (wrong token_in)"
-    );
-
-    // Try with wrong token_out
-    let ix = build_get_nav_ix(&token_in, &wrong_mint);
-    let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(
-        result.is_err(),
-        "should fail with non-existent offer (wrong token_out)"
-    );
-}
-
-// ---------------------------------------------------------------------------
-// Additional NAV Adjustment tests (matching TS coverage)
-// ---------------------------------------------------------------------------
-
-#[test]
-fn test_get_nav_adjustment_multiple_transitions() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-
-    let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
-
-    let ix = build_make_offer_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        0,
-        false,
-        false,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
 
     let current_time = get_clock_time(&svm);
 
@@ -1642,9 +1451,9 @@ fn test_get_nav_adjustment_multiple_transitions() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     // Adjustment should compare current (vector 3) to previous (vector 2)
-    let ix = build_get_nav_adjustment_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let adjustment = get_return_i64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let adjustment = read_market_stats(&svm).nav_adjustment;
 
     // Should be negative: 1.1 - 1.2 = -0.1
     assert!(
@@ -1655,12 +1464,12 @@ fn test_get_nav_adjustment_multiple_transitions() {
 }
 
 #[test]
-fn test_get_nav_adjustment_zero_apr_different_base_price() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
+fn test_refresh_market_stats_nav_adjustment_zero_apr_different_base_price() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
+    let token_out = onyc_mint;
 
     let ix = build_make_offer_ix(
         &boss,
@@ -1673,6 +1482,9 @@ fn test_get_nav_adjustment_zero_apr_different_base_price() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+    let (offer_pda, _) = find_offer_pda(&token_in, &token_out);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let current_time = get_clock_time(&svm);
 
@@ -1706,88 +1518,16 @@ fn test_get_nav_adjustment_zero_apr_different_base_price() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    let ix = build_get_nav_adjustment_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let adjustment = get_return_i64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let adjustment = read_market_stats(&svm).nav_adjustment;
 
     // adjustment = 2.5 - 1.0 = 1.5
     assert_eq!(adjustment, 1_500_000_000);
 }
 
 #[test]
-fn test_get_nav_adjustment_fails_nonexistent_offer() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-
-    let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
-    let wrong_mint = create_mint(&mut svm, &payer, 9, &boss);
-
-    let ix = build_make_offer_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        0,
-        false,
-        false,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_get_nav_adjustment_ix(&wrong_mint, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail with non-existent offer");
-}
-
-#[test]
-fn test_get_nav_adjustment_fails_all_vectors_future() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-
-    let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
-
-    let ix = build_make_offer_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        0,
-        false,
-        false,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let current_time = get_clock_time(&svm);
-    let ix = build_add_offer_vector_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        None,
-        current_time + 100_000,
-        1_000_000_000,
-        36_500,
-        86400,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_get_nav_adjustment_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(
-        result.is_err(),
-        "should fail when all vectors are in the future"
-    );
-}
-
-// ---------------------------------------------------------------------------
-// Additional TVL tests (matching TS coverage)
-// ---------------------------------------------------------------------------
-
-#[test]
-fn test_get_tvl_zero_apr() {
+fn test_refresh_market_stats_tvl_zero_apr() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
         0,
         3_000_000_000,
@@ -1799,156 +1539,16 @@ fn test_get_tvl_zero_apr() {
     mint_data.data[36..44].copy_from_slice(&1_000_000_000_000u64.to_le_bytes()); // 1000 tokens
     svm.set_account(token_out, mint_data).unwrap();
 
-    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let tvl = get_return_u64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let tvl = read_market_stats(&svm).tvl;
 
     // TVL = 1000e9 * 3e9 / 1e9 = 3000e9
     assert_eq!(tvl, 3_000_000_000_000);
 }
 
 #[test]
-fn test_get_tvl_fails_nonexistent_offer() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-
-    let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
-    let wrong_mint = create_mint(&mut svm, &payer, 9, &boss);
-
-    let ix = build_make_offer_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        0,
-        false,
-        false,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_get_tvl_ix(&payer.pubkey(), &wrong_mint, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(
-        result.is_err(),
-        "should fail with non-existent offer (wrong token_in)"
-    );
-
-    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &wrong_mint);
-    let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(
-        result.is_err(),
-        "should fail with non-existent offer (wrong token_out)"
-    );
-}
-
-#[test]
-fn test_get_tvl_fails_all_vectors_future() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-
-    let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
-
-    let ix = build_make_offer_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        0,
-        false,
-        false,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let current_time = get_clock_time(&svm);
-    let ix = build_add_offer_vector_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        None,
-        current_time + 100_000,
-        1_000_000_000,
-        36_500,
-        86400,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(
-        result.is_err(),
-        "should fail when all vectors are in the future"
-    );
-}
-
-#[test]
-fn test_get_tvl_wrong_token_out_mint() {
-    let (mut svm, payer, token_in, _token_out) = setup_offer_with_vector(0, 1_000_000_000, 86400);
-    let boss = payer.pubkey();
-
-    let wrong_mint = create_mint(&mut svm, &payer, 9, &boss);
-
-    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &wrong_mint);
-    let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(result.is_err(), "should fail with wrong token_out_mint");
-}
-
-#[test]
-fn test_get_tvl_legacy_accepts_non_onyc_but_v2_rejects_it() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-
-    let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
-
-    let ix = build_make_offer_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        0,
-        false,
-        false,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let current_time = get_clock_time(&svm);
-    let ix = build_add_offer_vector_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        None,
-        current_time,
-        1_000_000_000,
-        0,
-        86400,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_clock_by(&mut svm, 1);
-
-    let mut mint_data = svm.get_account(&token_out).unwrap();
-    mint_data.data[36..44].copy_from_slice(&1_000_000_000_000u64.to_le_bytes());
-    svm.set_account(token_out, mint_data).unwrap();
-
-    let ix = build_get_tvl_ix(&boss, &token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    assert_eq!(get_return_u64(&result), 1_000_000_000_000);
-
-    let ix = build_get_tvl_v2_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(
-        result.is_err(),
-        "get_tvl_v2 should reject non-ONyc token_out"
-    );
-}
-
-#[test]
-fn test_get_tvl_multiple_vectors_uses_most_recent() {
+fn test_refresh_market_stats_tvl_multiple_vectors_uses_most_recent() {
     let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
@@ -1966,6 +1566,9 @@ fn test_get_tvl_multiple_vectors_uses_most_recent() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+    let (offer_pda, _) = find_offer_pda(&token_in, &token_out);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let current_time = get_clock_time(&svm);
 
@@ -2004,148 +1607,52 @@ fn test_get_tvl_multiple_vectors_uses_most_recent() {
     mint_data.data[36..44].copy_from_slice(&1_000_000_000_000u64.to_le_bytes());
     svm.set_account(token_out, mint_data).unwrap();
 
-    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let tvl = get_return_u64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let tvl = read_market_stats(&svm).tvl;
 
     // Should use vector 2: TVL = 1000e9 * 5e9 / 1e9 = 5000e9
     assert_eq!(tvl, 5_000_000_000_000);
 }
 
 #[test]
-fn test_get_tvl_token2022() {
-    let (mut svm, payer) = setup();
-    let boss = payer.pubkey();
-
-    let token_in = create_mint_2022(&mut svm, &payer, 6, &boss);
-    let token_out = create_mint_2022(&mut svm, &payer, 9, &boss);
-    let ix = build_initialize_ix(&boss, &token_out);
-    send_tx(&mut svm, &[ix], &[&payer]).expect("initialize failed");
-
-    let ix = build_make_offer_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        0,
-        false,
-        false,
-        &TOKEN_2022_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    let current_time = get_clock_time(&svm);
-    let ix = build_add_offer_vector_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        None,
-        current_time,
-        2_000_000_000,
-        36_500,
-        86400,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_clock_by(&mut svm, 1);
-
-    // Set supply
-    let mut mint_data = svm.get_account(&token_out).unwrap();
-    mint_data.data[36..44].copy_from_slice(&1_000_000_000_000u64.to_le_bytes());
-    svm.set_account(token_out, mint_data).unwrap();
-
-    let ix = build_get_tvl_ix_with_token_program(
-        &payer.pubkey(),
-        &token_in,
-        &token_out,
-        &TOKEN_2022_PROGRAM_ID,
-    );
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let tvl = get_return_u64(&result);
-
-    // TVL is based on the first stepped price for base price 2.0 and 3.65% APR.
-    assert_eq!(tvl, 2_000_200_000_000);
-}
-
-// ---------------------------------------------------------------------------
-// Additional tests (matching TS coverage)
-// ---------------------------------------------------------------------------
-
-#[test]
-fn test_get_apy_fails_nonexistent_offer() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
-    let boss = payer.pubkey();
-
-    let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
-    let wrong_mint = create_mint(&mut svm, &payer, 9, &boss);
-
-    // Create an offer for token_in/token_out
-    let ix = build_make_offer_ix(
-        &boss,
-        &token_in,
-        &token_out,
-        0,
-        false,
-        false,
-        &TOKEN_PROGRAM_ID,
-    );
-    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    advance_slot(&mut svm);
-
-    // Try with wrong mints (no offer exists for wrong_mint/token_out)
-    let ix = build_get_apy_ix(&wrong_mint, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(
-        result.is_err(),
-        "should fail with non-existent offer (wrong token_in)"
-    );
-
-    let ix = build_get_apy_ix(&token_in, &wrong_mint);
-    let result = send_tx(&mut svm, &[ix], &[&payer]);
-    assert!(
-        result.is_err(),
-        "should fail with non-existent offer (wrong token_out)"
-    );
-}
-
-#[test]
-fn test_get_apy_consistent_results() {
+fn test_refresh_market_stats_apy_consistent_results() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
         100_000, // 10% APR
         1_000_000_000,
         86400,
     );
 
-    let ix = build_get_apy_ix(&token_in, &token_out);
-    let result1 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let apy1 = get_return_u64(&result1);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let apy1 = read_market_stats(&svm).apy;
 
     advance_slot(&mut svm);
 
-    let ix = build_get_apy_ix(&token_in, &token_out);
-    let result2 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let apy2 = get_return_u64(&result2);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let apy2 = read_market_stats(&svm).apy;
 
     assert_eq!(apy1, apy2, "APY should be identical on consecutive calls");
 }
 
 #[test]
-fn test_get_nav_consistent_results() {
+fn test_refresh_market_stats_nav_consistent_results() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
         36_500, // 3.65% APR
         1_000_000_000,
         86400,
     );
 
-    let ix = build_get_nav_ix(&token_in, &token_out);
-    let result1 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let nav1 = get_return_u64(&result1);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let nav1 = read_market_stats(&svm).nav;
 
     advance_slot(&mut svm);
 
-    let ix = build_get_nav_ix(&token_in, &token_out);
-    let result2 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let nav2 = get_return_u64(&result2);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let nav2 = read_market_stats(&svm).nav;
 
     assert_eq!(
         nav1, nav2,
@@ -2154,12 +1661,12 @@ fn test_get_nav_consistent_results() {
 }
 
 #[test]
-fn test_get_nav_adjustment_zero_price_change() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
+fn test_refresh_market_stats_nav_adjustment_zero_price_change() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
+    let token_out = onyc_mint;
 
     let ix = build_make_offer_ix(
         &boss,
@@ -2172,6 +1679,9 @@ fn test_get_nav_adjustment_zero_price_change() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+    let (offer_pda, _) = find_offer_pda(&token_in, &token_out);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let current_time = get_clock_time(&svm);
 
@@ -2205,9 +1715,9 @@ fn test_get_nav_adjustment_zero_price_change() {
     // Advance to make vector 2 active
     advance_clock_by(&mut svm, 101);
 
-    let ix = build_get_nav_adjustment_ix(&token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let adjustment = get_return_i64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let adjustment = read_market_stats(&svm).nav_adjustment;
 
     // Both vectors have the same price (1.0) and 0 APR, so adjustment = 0
     assert_eq!(
@@ -2217,12 +1727,12 @@ fn test_get_nav_adjustment_zero_price_change() {
 }
 
 #[test]
-fn test_get_nav_adjustment_consistent_results() {
-    let (mut svm, payer, _onyc_mint) = setup_initialized();
+fn test_refresh_market_stats_nav_adjustment_consistent_results() {
+    let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();
 
     let token_in = create_mint(&mut svm, &payer, 9, &boss);
-    let token_out = create_mint(&mut svm, &payer, 9, &boss);
+    let token_out = onyc_mint;
 
     let ix = build_make_offer_ix(
         &boss,
@@ -2235,6 +1745,9 @@ fn test_get_nav_adjustment_consistent_results() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
     advance_slot(&mut svm);
+    let (offer_pda, _) = find_offer_pda(&token_in, &token_out);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     let current_time = get_clock_time(&svm);
 
@@ -2267,15 +1780,15 @@ fn test_get_nav_adjustment_consistent_results() {
 
     advance_clock_by(&mut svm, 101);
 
-    let ix = build_get_nav_adjustment_ix(&token_in, &token_out);
-    let result1 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let adj1 = get_return_i64(&result1);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let adj1 = read_market_stats(&svm).nav_adjustment;
 
     advance_slot(&mut svm);
 
-    let ix = build_get_nav_adjustment_ix(&token_in, &token_out);
-    let result2 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let adj2 = get_return_i64(&result2);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let adj2 = read_market_stats(&svm).nav_adjustment;
 
     assert_eq!(
         adj1, adj2,
@@ -2284,7 +1797,7 @@ fn test_get_nav_adjustment_consistent_results() {
 }
 
 #[test]
-fn test_get_tvl_large_supply() {
+fn test_refresh_market_stats_tvl_large_supply() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(
         0,
         1_000_000_000,
@@ -2297,9 +1810,9 @@ fn test_get_tvl_large_supply() {
     mint_data.data[36..44].copy_from_slice(&large_supply.to_le_bytes());
     svm.set_account(token_out, mint_data).unwrap();
 
-    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let tvl = get_return_u64(&result);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let tvl = read_market_stats(&svm).tvl;
 
     // TVL = supply * price / 10^9 = 1_000_000_000_000_000 * 1_000_000_000 / 1_000_000_000
     //     = 1_000_000_000_000_000
@@ -2310,7 +1823,7 @@ fn test_get_tvl_large_supply() {
 }
 
 #[test]
-fn test_get_tvl_consistent_results() {
+fn test_refresh_market_stats_tvl_consistent_results() {
     let (mut svm, payer, token_in, token_out) = setup_offer_with_vector(0, 1_000_000_000, 86400);
 
     // Set token_out supply
@@ -2318,68 +1831,18 @@ fn test_get_tvl_consistent_results() {
     mint_data.data[36..44].copy_from_slice(&1_000_000_000_000u64.to_le_bytes());
     svm.set_account(token_out, mint_data).unwrap();
 
-    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
-    let result1 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let tvl1 = get_return_u64(&result1);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let tvl1 = read_market_stats(&svm).tvl;
 
     advance_slot(&mut svm);
 
-    let ix = build_get_tvl_ix(&payer.pubkey(), &token_in, &token_out);
-    let result2 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let tvl2 = get_return_u64(&result2);
+    let ix = build_refresh_market_stats_ix(&payer.pubkey(), &token_in, &token_out);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
+    let tvl2 = read_market_stats(&svm).tvl;
 
     assert_eq!(
         tvl1, tvl2,
         "TVL should be identical on consecutive calls (read-only)"
-    );
-}
-
-#[test]
-fn test_get_circulating_supply_zero_vault_balance() {
-    let (mut svm, payer, onyc_mint) = setup_initialized();
-
-    // Set supply on the onyc mint
-    let total_supply: u64 = 500_000_000_000; // 500 tokens
-    let mut mint_data = svm.get_account(&onyc_mint).unwrap();
-    mint_data.data[36..44].copy_from_slice(&total_supply.to_le_bytes());
-    svm.set_account(onyc_mint, mint_data).unwrap();
-
-    // Create vault ATA with 0 balance so the account exists but has no tokens
-    let (vault_authority_pda, _) = find_offer_vault_authority_pda();
-    create_token_account(&mut svm, &onyc_mint, &vault_authority_pda, 0);
-
-    let ix = build_get_circulating_supply_ix(&payer.pubkey(), &onyc_mint);
-    let result = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let supply = get_return_u64(&result);
-
-    // Vault has 0 balance, so circulating = total supply
-    assert_eq!(
-        supply, total_supply,
-        "circulating supply should equal total supply when vault balance is 0"
-    );
-}
-
-#[test]
-fn test_get_circulating_supply_consistent_results() {
-    let (mut svm, payer, onyc_mint) = setup_initialized();
-
-    // Set supply on the onyc mint
-    let mut mint_data = svm.get_account(&onyc_mint).unwrap();
-    mint_data.data[36..44].copy_from_slice(&500_000_000_000u64.to_le_bytes());
-    svm.set_account(onyc_mint, mint_data).unwrap();
-
-    let ix = build_get_circulating_supply_ix(&payer.pubkey(), &onyc_mint);
-    let result1 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let supply1 = get_return_u64(&result1);
-
-    advance_slot(&mut svm);
-
-    let ix = build_get_circulating_supply_ix(&payer.pubkey(), &onyc_mint);
-    let result2 = send_tx(&mut svm, &[ix], &[&payer]).unwrap();
-    let supply2 = get_return_u64(&result2);
-
-    assert_eq!(
-        supply1, supply2,
-        "circulating supply should be identical on consecutive calls"
     );
 }
