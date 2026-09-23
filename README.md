@@ -62,7 +62,7 @@ The kill switch is an emergency stop for guarded value-moving paths. The boss ca
 
 When `state.is_killed == true`, the program rejects:
 
-- offer execution: `take_offer`, `take_offer_v2`, `take_offer_permissionless`, `take_offer_permissionless_v2`
+- offer execution: `take_offer_v2`, `take_offer_permissionless_v2`
 - Prop AMM quotes and execution: `quote_swap_buy`, `quote_swap_sell`, `open_swap_buy`, `open_swap_sell`
 - redemption request movement: `create_redemption_request`, `fulfill_redemption_request`, `cancel_redemption_request`
 - vault funding and recovery: `offer_vault_deposit`, `offer_vault_withdraw`, `redemption_vault_deposit`, `redemption_vault_withdraw`
@@ -142,7 +142,11 @@ refresh ordering, and differences from legacy per-offer views.
 
 **Prop AMM**: `configure_prop_amm`, `quote_swap_buy`, `quote_swap_sell`, `open_swap_buy`, `open_swap_sell`
 
-**Offers**: `make_offer`, `add_offer_vector`, `delete_offer_vector`, `delete_all_offer_vectors`, `update_offer_fee`, `update_offer_permissionless_fee`, `set_offer_disabled`, `take_offer`, `take_offer_v2`, `take_offer_permissionless`, `take_offer_permissionless_v2`
+V1 `take_offer` and `take_offer_permissionless` have been removed. Clients must use
+`take_offer_v2` or `take_offer_permissionless_v2`; their arguments and account lists
+are unchanged. The CLI `offer take` uses V2 and no longer supports `--legacy`.
+
+**Offers**: `make_offer`, `add_offer_vector`, `delete_offer_vector`, `delete_all_offer_vectors`, `update_offer_fee`, `update_offer_permissionless_fee`, `set_offer_disabled`, `take_offer_v2`, `take_offer_permissionless_v2`
 
 **Redemption**: `make_redemption_offer`, `set_redemption_offer_disabled`, `create_redemption_request`, `fulfill_redemption_request`, `cancel_redemption_request`, `update_redemption_offer_fee`, `update_redemption_offer_prop_amm_sell_fee`, `update_redemption_offer_vault_target`
 

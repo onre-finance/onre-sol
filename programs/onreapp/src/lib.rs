@@ -68,7 +68,7 @@ pub use instructions::mint_authority::mint_to::MintTo;
 ///
 /// Core functionalities include:
 /// - Making offers with dynamic pricing (`make_offer`).
-/// - Taking offers with current market pricing (`take_offer`, `take_offer_permissionless`).
+/// - Taking offers with current market pricing (`take_offer_v2`, `take_offer_permissionless_v2`).
 /// - Managing offer vectors for price control (`add_offer_vector`, `delete_offer_vector`).
 /// - Program state initialization and management (`initialize`, `propose_boss`, `accept_boss`, `add_admin`, `remove_admin`).
 /// - Vault operations for token deposits and withdrawals (`offer_vault_deposit`, `offer_vault_withdraw`).
@@ -309,23 +309,6 @@ pub mod onreapp {
         offer::set_offer_disabled(ctx, disabled)
     }
 
-    /// Takes an offer.
-    ///
-    /// Delegates to `offer::take_offer`.
-    /// Allows a user to exchange token_in for token_out based on the offer's dynamic price.
-    /// Emits an `OfferTakenEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `TakeOffer`.
-    /// - `token_in_amount`: Amount of token_in to provide.
-    pub fn take_offer<'info>(
-        ctx: Context<'info, TakeOffer<'info>>,
-        token_in_amount: u64,
-        approval_message: Option<ApprovalMessage>,
-    ) -> Result<()> {
-        offer::take_offer(ctx, token_in_amount, approval_message)
-    }
-
     pub fn take_offer_v2<'info>(
         ctx: Context<'info, TakeOfferV2<'info>>,
         token_in_amount: u64,
@@ -358,30 +341,9 @@ pub mod onreapp {
         prop_amm::open_swap_sell(ctx, token_in_amount, minimum_out)
     }
 
-    /// Takes an offer using permissionless flow with intermediary accounts.
-    ///
-    /// Delegates to `offer::take_offer_permissionless`.
-    /// Similar to take_offer but routes token transfers through intermediary accounts
-    /// owned by the program instead of direct user-to-boss and vault-to-user transfers.
-    /// Permissionless execution does not require approval; the approval argument is
-    /// retained only for legacy instruction-data compatibility.
-    /// Emits an `OfferTakenPermissionlessEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `TakeOfferPermissionless`.
-    /// - `token_in_amount`: Amount of token_in to provide.
-    pub fn take_offer_permissionless<'info>(
-        ctx: Context<'info, TakeOfferPermissionless<'info>>,
-        token_in_amount: u64,
-        approval_message: Option<ApprovalMessage>,
-    ) -> Result<()> {
-        offer::take_offer_permissionless(ctx, token_in_amount, approval_message)
-    }
-
     /// Takes an offer through the V2 permissionless route without approval verification.
     ///
-    /// Unlike the legacy permissionless instruction, V2 has no approval-message argument
-    /// or instructions-sysvar account.
+    /// This instruction has no approval-message argument or instructions-sysvar account.
     pub fn take_offer_permissionless_v2<'info>(
         ctx: Context<'info, TakeOfferPermissionlessV2<'info>>,
         token_in_amount: u64,

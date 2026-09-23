@@ -123,8 +123,6 @@ const PROFILE_INSTRUCTION_NAMES: &[&str] = &[
     "set_worker",
     "settle_buffer",
     "set_redemption_offer_disabled",
-    "take_offer",
-    "take_offer_permissionless",
     "take_offer_permissionless_v2",
     "take_offer_v2",
     "transfer_mint_authority_to_boss",
