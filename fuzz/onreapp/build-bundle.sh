@@ -62,26 +62,26 @@ emit_manifest() {
     first=0
     confs+=$(cat <<CONF
 {
-      "Name": "${crate}__${feature}",
-      "Confs": [
+      "name": "${crate}__${feature}",
+      "confs": [
         {
-          "Name": "explore",
-          "Driver": {
-            "Type": "crucible",
-            "Params": {
-              "BinaryPathInBundle": "bin/${crate}/${feature}",
-              "HarnessRunDirInBundle": "bin/${crate}",
-              "SymbolsPathInBundle": "symbols/${PROGRAM}.debug.so",
-              "SourcesPathInBundle": "srcs",
-              "SourcesOriginalPath": "programs/${PROGRAM}/src/",
-              "ExtraEnv": { "SCOUT_CHECK_MUTE": "${MUTE}" }
+          "name": "explore",
+          "driver": {
+            "type": "crucible",
+            "params": {
+              "binary_path_in_bundle": "bin/${crate}/${feature}",
+              "harness_run_dir_in_bundle": "bin/${crate}",
+              "symbols_path_in_bundle": "symbols/${PROGRAM}.debug.so",
+              "sources_path_in_bundle": "srcs",
+              "sources_original_path": "programs/${PROGRAM}/src/",
+              "extra_env": { "SCOUT_CHECK_MUTE": "${MUTE}" }
             }
           },
-          "Architecture": { "Name": "${ARCH}" },
-          "MemoryKiB": 2097152,
-          "Cores": 1,
-          "StallTimeMinutes": 0,
-          "YieldTimeMinutes": 120
+          "architecture": { "name": "${ARCH}" },
+          "memory_kib": 2097152,
+          "cores": 1,
+          "stall_time_minutes": 0,
+          "yield_time_minutes": 120
         }
       ]
     }
@@ -91,9 +91,9 @@ CONF
 
   cat > "$out" <<MANIFEST
 {
-  "Version": 3,
-  "Revision": { "Commit": "${commit}" },
-  "Lineages": [
+  "version": 3,
+  "revision": { "commit": "${commit}" },
+  "lineages": [
     ${confs}
   ]
 }
@@ -102,7 +102,7 @@ MANIFEST
 
 if [ "$MODE" = "--check" ]; then
   tmp="$(mktemp)"; emit_manifest "PLACEHOLDER" "$tmp"
-  ref="$(mktemp)"; sed 's/"Commit": "[^"]*"/"Commit": "PLACEHOLDER"/' manifest.fc.json > "$ref"
+  ref="$(mktemp)"; sed 's/"commit": "[^"]*"/"commit": "PLACEHOLDER"/' manifest.fc.json > "$ref"
   if diff -u "$ref" "$tmp"; then echo "manifest.fc.json is in sync with targets.txt"; else
     echo "manifest.fc.json has drifted from targets.txt -- run ./build-bundle.sh --write-manifest" >&2
     exit 1
