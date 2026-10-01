@@ -1,0 +1,169 @@
+name: fuzzcorp-submit
+
+# Build onreapp from source, build the fuzz harness against that build, and submit the
+# bundle to FuzzCorp. Every push refuzzes the current program: the harness is never
+# fuzzed against a checked-in binary, so an instruction added or changed here is
+# compiled and covered on the next run.
+#
+# Submission only. This workflow does not run a campaign locally; the campaign runs
+# remotely on FuzzCorp against the uploaded bundle.
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "scripts/**"
+      - "tests/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  SOLANA_VERSION: "v2.2.16"
+  RUST_VERSION: "1.86"
+  # v1.52 was found to emit larger stack frames and push MakeOffer::try_accounts past
+  # the SBF v0 4096-byte frame limit; the guard below turns that into a hard failure
+  # rather than a silently degraded campaign. v1.51 avoided it but its bundled cargo
+  # (pre-1.85) cannot parse dependencies that have since moved to edition2024 (hit on
+  # a clean checkout: "feature `edition2024` is required" downloading wincode/
+  # cpufeatures) -- a fresh CI runner has no warm registry cache to paper over this,
+  # so every real run failed at the coverage-symbols build. v1.54 (Rust 1.89, same as
+  # zolana's pinned version) verified clean on both counts: no edition2024 error, and
+  # no stack-frame violation for this program specifically. If a future bump
+  # reintroduces the frame violation, the guard below will fail the build, not this
+  # comment's absence of one.
+  SBF_TOOLS_VERSION: "v1.54"
+
+jobs:
+  submit:
+    name: build program + submit bundle
+    # MUST match the FuzzCorp fleet's architecture. `ubuntu-latest` is amd64, which is
+    # what the workers run; build-bundle.sh stamps the manifest from `uname -m`, so a
+    # runner change silently changes the bundle's declared arch. A mismatched bundle
+    # uploads and validates cleanly and is then never picked up by a worker -- it
+    # fails as silence, not as an error.
+    runs-on: ubuntu-latest
+    # Bound the job: without this a run can sit for hours (6h GitHub default).
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Install system packages
+        run: sudo apt-get update && sudo apt-get install -y build-essential libudev-dev protobuf-compiler libprotobuf-dev
+
+      - uses: hubbleprotocol/solana-setup-action@v0.5
+        with:
+          solana-version: ${{ env.SOLANA_VERSION }}
+          rust-version: ${{ env.RUST_VERSION }}
+          rust-shared-key: fuzzcorp
+
+      # No separate install step: the cargo-build-sbf shipped by solana-setup-action
+      # does not accept --install-only (it errors "Found argument '--install-only'
+      # which wasn't expected"), which failed the job before anything was built. The
+      # real `cargo build-sbf --tools-version` calls below download the pinned
+      # platform tools on first use, so the toolchain still ends up pinned to v1.51.
+
+      # ubuntu-latest is amd64, so build-bundle.sh builds this target natively.
+      - name: Add the worker target
+        run: rustup target add x86_64-unknown-linux-gnu
+
+      # Rule: fuzz what this commit actually builds -- and "this commit" means the
+      # COMMITTED Cargo.lock, not whatever cargo would freshly resolve today. Without
+      # `-- --locked`, cargo silently re-resolves and can pick up a newer semver-permitted
+      # release published on crates.io after this Cargo.lock was committed. Caught in the
+      # field: an unlocked build here silently resolved anchor-lang 1.1.2 instead of the
+      # locked 0.32.1, changing instruction-discriminator behavior enough that the fuzz
+      # harness's setup crashed with AnchorError InstructionFallbackNotFound (101) on
+      # `set_redemption_admin` -- CI stayed green throughout because the drift is a
+      # dependency-resolution difference, not a compile error.
+      - name: Build onreapp from source
+        run: |
+          cargo build-sbf --tools-version "$SBF_TOOLS_VERSION" \
+            --manifest-path programs/onreapp/Cargo.toml -- --locked 2>&1 | tee /tmp/build.log
+
+      # cargo build-sbf reports frame-size violations on stdout while exiting 0. A
+      # binary built past the limit runs until the oversized frame is entered and then
+      # takes an access violation, so whole instruction families read as unreachable
+      # for reasons that have nothing to do with the program. Fail here instead.
+      - name: Reject a build with SBF stack-frame violations
+        run: |
+          if grep -qE 'exceeded max offset|overwrites values in the frame' /tmp/build.log; then
+            echo "::error::SBF stack-frame violation in the program build -- the harness would"
+            echo "::error::fuzz a binary that faults where the real program does not."
+            grep -E 'exceeded max offset|overwrites values in the frame' /tmp/build.log
+            exit 1
+          fi
+
+      # Unstripped SBF build. Optional to the driver, but without it coverage is
+      # reported against program counters instead of source lines, which makes a
+      # coverage regression unreadable.
+      - name: Build unstripped program for coverage symbols
+        run: |
+          CARGO_PROFILE_RELEASE_DEBUG=2 CARGO_PROFILE_RELEASE_STRIP=none \
+          CARGO_TARGET_DIR=/tmp/onre_sym \
+            cargo build-sbf --tools-version "$SBF_TOOLS_VERSION" \
+              --manifest-path programs/onreapp/Cargo.toml -- --locked
+
+      - name: Stage program artifacts into the harness
+        run: |
+          mkdir -p fuzz/onreapp/programs
+          cp target/deploy/onreapp.so fuzz/onreapp/programs/onreapp.so
+          # Best-effort: build-bundle.sh omits the symbols entry when absent.
+          sym=/tmp/onre_sym/sbpf-solana-solana/release/onreapp.so
+          if [ -f "$sym" ]; then cp "$sym" fuzz/onreapp/programs/onreapp_symbols.so; fi
+
+      # crucible is public, so cargo resolves its git deps anonymously -- no token.
+      # The committed manifest is generated from targets.txt; fail if they drift rather
+      # than silently uploading a bundle whose lineages do not match the declared targets.
+      # llvm-dwarfdump lets build-bundle.sh prove the staged symbols actually carry
+      # DWARF before uploading. Without the tool that check silently degrades to
+      # "unknown" and a bundle with no debug info can ship, rendering EMPTY coverage
+      # while every step still reports success.
+      - name: Install llvm-dwarfdump (coverage gate)
+        run: sudo apt-get update && sudo apt-get install -y llvm
+
+      - name: Check manifest is in sync with targets.txt
+        working-directory: fuzz/onreapp
+        run: ./build-bundle.sh --check
+
+      - name: Build harness and assemble bundle
+        working-directory: fuzz/onreapp
+        run: ./build-bundle.sh
+
+      # Workers are linux/amd64. A bundle built for another arch uploads and validates
+      # cleanly and is then never picked up -- it fails as silence, not as an error.
+      - name: Verify the staged harness binary is x86-64
+        working-directory: fuzz/onreapp
+        run: |
+          file bundle/bin/*/* | tee /dev/stderr | grep -q 'x86-64' \
+            || { echo "::error::harness binary is not x86-64"; exit 1; }
+
+      # Fail-closed pre-upload checks. Everything this catches is otherwise SILENT:
+      # the bundle validates, uploads, runs and quietly produces nothing. It also
+      # stages any first-party source root the DWARF references but the bundle is
+      # missing (a program spanning programs/ + libraries/ loses the second one).
+      - name: Bundle guard (pre-upload)
+        run: ./fuzz/onreapp/bundle-guard.sh fuzz/onreapp/bundle .
+
+      - uses: asymmetric-research/fuzz-upload-action@bee03d6c44529f8fc1bae349c7090ad33cd50ca6 # v2.1.0
+        with:
+          # The action's ONLY inputs are upload_type/upload_path/upload_args.
+          # Credentials come from the environment below -- passing them as
+          # inputs fails its own 'Validate env' step and nothing uploads.
+          upload_type: bundle
+          upload_path: fuzz/onreapp/bundle
+        env:
+          FUZZ_ORGANIZATION: ${{ vars.FUZZ_ORGANIZATION || vars.FUZZ_ORG || 'onre' }}
+          FUZZ_PROJECT: ${{ vars.FUZZ_PROJECT || 'onre' }}
+          FUZZ_API_KEY: ${{ secrets.FUZZ_API_KEY }}

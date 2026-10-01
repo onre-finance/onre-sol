@@ -1,0 +1,19 @@
+target/
+corpus/
+crashes/
+bundle/
+*.so
+
+# FuzzCorp driver scratch (local `fuzz run ...` only)
+fc-workdir-*/
+fc-tmp-*/
+fc-corpus*/
+fc-cov/
+out_explore_*.json
+out_cover_*.json
+qemu_rustc_*.core
+
+# Cross-arch build trees from local container parity checks
+target-linux/
+target-amd64/
+bundle-*/

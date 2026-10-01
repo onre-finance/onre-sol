@@ -1,0 +1,80 @@
+[package]
+name = "onreapp_fuzz"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.89"
+
+[workspace]
+# Standalone workspace — isolated from ../onre-sol so the harness's Solana graph
+# (litesvm 0.15.2 / solana 3.x facades) cannot collide with the program crate's
+# anchor-lang 0.32 / solana-program 2.3 graph.
+
+[dependencies]
+# Fuzzing framework — pinned to crucible `main` by branch, never a path dep into a
+# working tree (a mid-session branch switch there silently changes the invariant
+# macro under a green build).
+crucible-fuzzer = { git = "https://github.com/asymmetric-research/crucible.git", branch = "main" }
+crucible-test-context = { git = "https://github.com/asymmetric-research/crucible.git", branch = "main" }
+crucible-idl-gen = { git = "https://github.com/asymmetric-research/crucible.git", branch = "main" }
+
+anchor-lang = "1.0.1"
+
+# Client facade crates. LiteSVM 0.15.2 uses a mixed modular Solana graph internally,
+# so these must not be blanket-upgraded to 4.x.
+solana-pubkey = { version = "3.0", features = ["serde"] }
+solana-keypair = "3.1"
+solana-signer = "3.0"
+solana-program = "3.0"
+solana-message = "3.0"
+solana-signature = "3.1"
+solana-instruction = "3.1"
+solana-account = "4.3.2"
+
+# Fuzzing
+libafl = { version = "0.15.1", features = ["std", "cli", "prelude"] }
+libafl_bolts = { version = "0.15.1", features = ["std"] }
+arbitrary = { version = "1", features = ["derive"] }
+
+# Utilities
+anyhow = "1.0"
+bytemuck = "1.14"
+ctor = "0.6"
+ctrlc = "3.4"
+
+serde = { version = "1.0", features = ["derive"] }
+bincode = "1.3"
+
+# onreapp supports BOTH SPL Token and Token-2022 (transfer-fee extension), so the
+# harness needs to mint and inspect both. litesvm bundles the programs as builtins;
+# these crates are for building/parsing account data harness-side.
+spl-token = "9.0"
+spl-token-2022-interface = "=3.1.1"
+
+# `spl_token_2022_interface::state::{Mint, Account}` spell their optional fields with
+# `solana_program_option::COption`, and that crate is NOT re-exported from the interface crate.
+# Depend on it directly rather than reaching through `anchor_lang::solana_program::program_option`:
+# those are the same type only while both graphs resolve to the same version, and a silent mismatch
+# would surface as an inscrutable type error the next time either side is bumped.
+solana-program-option = "3.1.0"
+
+# Depended on ONLY to turn on its `precompiles` feature. crucible-test-context pulls litesvm in
+# without it, which leaves the Ed25519SigVerify program account absent from the SVM — and this
+# program's whole approval path (`verify_approval_message_generic`) reads the Ed25519 instruction
+# at `current_index - 1` off the Instructions sysvar, so without the precompile registered the
+# approval-gated branch of take_offer / take_offer_permissionless is unreachable. Cargo unifies
+# features across the graph, so declaring it here enables it for crucible's copy too.
+litesvm = { version = "0.15.2", features = ["precompiles"] }
+
+[[bin]]
+name = "invariant_test"
+path = "src/main.rs"
+
+[features]
+# Admin/config/init actions are generated behind this gate so ordinary fuzzing never
+# re-configures or freezes the world setup() built. Enable only for admin-focused runs.
+admin_actions = []
+external_cpi_actions = []
+invariant_test = []
+# Set by quarantine_orphan_tests.py on test modules whose helpers went missing. Never
+# meant to be enabled — it only exists so cfg-checking recognises the flag.
+scout_orphaned_tests = []
