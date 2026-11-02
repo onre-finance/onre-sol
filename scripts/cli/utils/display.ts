@@ -272,86 +272,43 @@ export function printOfferList(
     }
 }
 
-/**
- * Print NAV result
- */
-export function printNav(nav: number, json: boolean = false): void {
-    const navDecimal = (nav / 1_000_000_000).toFixed(9);
-
+/** Print cached metrics in their exact on-chain units, including freshness metadata. */
+export function printMarketStats(stats: {
+    apy: { toString(): string };
+    nav: { toString(): string };
+    navAdjustment: { toString(): string };
+    circulatingSupply: { toString(): string };
+    tvl: { toString(): string };
+    lastUpdatedAt: { toString(): string };
+    lastUpdatedSlot: { toString(): string };
+}, json: boolean = false): void {
+    const values = {
+        apy: stats.apy.toString(),
+        nav: stats.nav.toString(),
+        navAdjustment: stats.navAdjustment.toString(),
+        circulatingSupply: stats.circulatingSupply.toString(),
+        tvl: stats.tvl.toString(),
+        lastUpdatedAt: stats.lastUpdatedAt.toString(),
+        lastUpdatedSlot: stats.lastUpdatedSlot.toString(),
+    };
     if (json) {
-        console.log(JSON.stringify({ nav, navDecimal }, null, 2));
+        console.log(JSON.stringify(values, null, 2));
         return;
     }
 
-    console.log(chalk.bold.blue("\n=== NAV (Net Asset Value) ===\n"));
-    console.log(`  Raw Value:     ${nav}`);
-    console.log(`  Decimal:       ${navDecimal}`);
-    console.log(`  Display:       $${parseFloat(navDecimal).toFixed(4)}`);
-}
-
-/**
- * Print NAV adjustmentresult
- */
-export function printNavAdjustment(nav: number, json: boolean = false): void {
-    const navDecimal = (nav / 1_000_000_000).toFixed(9);
-
-    if (json) {
-        console.log(JSON.stringify({ nav, navDecimal }, null, 2));
-        return;
-    }
-
-    console.log(chalk.bold.blue("\n=== NAV (Net Asset Value) Adjustment ===\n"));
-    console.log(`  Raw Value:     ${nav}`);
-    console.log(`  Decimal:       ${navDecimal}`);
-    console.log(`  Display:       $${parseFloat(navDecimal).toFixed(4)}`);
-}
-
-/**
- * Print APY result
- */
-export function printApy(apy: number, json: boolean = false): void {
-    const apyPercent = (apy / 10000).toFixed(4);
-
-    if (json) {
-        console.log(JSON.stringify({ apy, apyPercent: parseFloat(apyPercent) }, null, 2));
-        return;
-    }
-
-    console.log(chalk.bold.blue("\n=== APY ===\n"));
-    console.log(`  Raw Value:     ${apy}`);
-    console.log(`  Percentage:    ${apyPercent}%`);
-}
-
-/**
- * Print TVL result
- */
-export function printTvl(tvl: number | string, json: boolean = false): void {
-    const tvlNum = typeof tvl === "string" ? parseFloat(tvl) : tvl;
-
-    if (json) {
-        console.log(JSON.stringify({ tvl: tvl.toString(), tvlUsdc: tvlNum / 1_000_000 }, null, 2));
-        return;
-    }
-
-    console.log(chalk.bold.blue("\n=== TVL (Total Value Locked) ===\n"));
-    console.log(`  Raw Value:     ${tvl}`);
-    console.log(`  USDC:          ${(tvlNum / 1_000_000).toLocaleString()} USDC`);
-}
-
-/**
- * Print circulating supply
- */
-export function printCirculatingSupply(supply: number | string, json: boolean = false): void {
-    const supplyNum = typeof supply === "string" ? parseFloat(supply) : supply;
-
-    if (json) {
-        console.log(JSON.stringify({ supply: supply.toString(), supplyTokens: supplyNum / 1_000_000_000 }, null, 2));
-        return;
-    }
-
-    console.log(chalk.bold.blue("\n=== Circulating Supply ===\n"));
-    console.log(`  Raw Value:     ${supply}`);
-    console.log(`  Tokens:        ${(supplyNum / 1_000_000_000).toLocaleString()}`);
+    console.log(chalk.bold.blue("\n=== Cached Market Stats ===\n"));
+    const table = new Table({ head: ["Field", "Raw value"] });
+    table.push(
+        ["APY (1e6 = 100%)", values.apy],
+        ["NAV (1e9 = 1)", values.nav],
+        ["NAV adjustment (signed, scale 9)", values.navAdjustment],
+        ["Circulating supply (ONyc base units)", values.circulatingSupply],
+        ["TVL (supply * NAV / 1e9)", values.tvl],
+        ["Last updated (Unix seconds)", values.lastUpdatedAt],
+        ["Last updated slot", values.lastUpdatedSlot],
+    );
+    console.log(table.toString());
+    console.log("Snapshot of the main offer. Use market refresh when a newer snapshot is needed.");
 }
 
 /**

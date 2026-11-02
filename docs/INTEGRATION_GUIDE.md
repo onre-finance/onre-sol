@@ -1,12 +1,14 @@
 # Onre Program Integration Guide
 
-Simple guide for integrating NAV and APY queries into your application.
+Read canonical ONyc market metrics from the `MarketStats` PDA.
 
 ---
 
 ## Quick Overview
 
-The Onre program provides **read-only view instructions** to query market data. Use the program IDL and standard Anchor client libraries to make these calls.
+Market metrics are read over RPC from the singleton PDA derived with `["market_stats"]`. A read requires no instruction, transaction, or signature. The account stores a snapshot calculated from `state.main_offer`, not a live calculation for an arbitrary offer.
+
+This branch removes the seven market getter instructions (`get_nav`, `get_apy`, `get_nav_adjustment`, `get_tvl`, `get_tvl_v2`, `get_circulating_supply`, and `get_circulating_supply_v2`). Existing callers must migrate before this build is deployed as an upgrade. Use an IDL that matches the deployed program; the local IDL describes this branch.
 
 For BUFFER integrations, keep in mind that BUFFER accrual does not accept a caller-provided current yield. Instead, `current_yield` is derived from the active APR on `state.main_offer`, even when the surrounding trade or redemption is priced by another offer.
 
@@ -18,7 +20,7 @@ For BUFFER integrations, keep in mind that BUFFER accrual does not accept a call
 
 Integrations should treat `state.is_killed == true` as an emergency stop for guarded value-moving paths. While active, the program rejects offer takes, Prop AMM quotes/execution, redemption request create/fulfill/cancel, vault deposits/withdrawals, reserve vault deposits/withdrawals, configurable-vault withdrawals, direct `mint_to`, `burn_for_nav_increase`, and BUFFER config updates that would settle accrual.
 
-Read-only market views such as `get_nav`, `get_apy`, `get_tvl_v2`, and `get_circulating_supply_v2` are not kill-switch guarded. Governance and configuration-only instructions also remain callable according to their normal access control.
+RPC reads and `refresh_market_stats` remain available while the kill switch is active. Governance and configuration-only instructions also remain callable according to their normal access control.
 
 ---
 
@@ -50,165 +52,88 @@ const program = new Program(idl, provider);
 
 ---
 
-## Available View Instructions
+## Read the MarketStats PDA
 
-### 1. Get NAV (Current Price)
-
-**Instruction:** `get_nav`
-
-**Returns:** Current price with 9 decimals (divide by `1_000_000_000`)
-
-**Accounts:**
 ```typescript
-{
-  offer: PublicKey,        // PDA: ["offer", tokenInMint, tokenOutMint]
-  tokenInMint: PublicKey,  // Input token mint (e.g., USDC)
-  tokenOutMint: PublicKey  // Output token mint (e.g., ONyc)
-}
+const [marketStatsPda] = PublicKey.findProgramAddressSync(
+  [Buffer.from("market_stats")],
+  program.programId
+);
+const stats = await program.account.marketStats.fetch(marketStatsPda);
+
+// Keep u64/i64 values as BN, bigint, or decimal strings to avoid precision loss.
+console.log({
+  nav: stats.nav.toString(),
+  apy: stats.apy.toString(),
+  navAdjustment: stats.navAdjustment.toString(),
+  circulatingSupply: stats.circulatingSupply.toString(),
+  tvl: stats.tvl.toString(),
+  lastUpdatedAt: stats.lastUpdatedAt.toString(),
+  lastUpdatedSlot: stats.lastUpdatedSlot.toString(),
+});
 ```
 
-**Example:**
+| Field | Meaning and units |
+| --- | --- |
+| `nav` | Main offer price, scale 9 (`1_000_000_000` = 1) |
+| `apy` | Daily-compounded annual yield, scale 6 (`1_000_000` = 100%) |
+| `navAdjustment` | Signed price adjustment between vectors, scale 9 |
+| `circulatingSupply` | ONyc mint supply minus cached excluded balance, in ONyc base units |
+| `tvl` | `circulatingSupply * nav / 1_000_000_000`; scale follows ONyc decimals, not the input mint's decimals |
+| `lastUpdatedAt` | Unix seconds of the last recomputation |
+| `lastUpdatedSlot` | Slot of the last recomputation |
+
+APY uses `(1 + APR / 365)^365 - 1`. For the first vector, NAV adjustment is its starting step price; later vectors compare their starting step price with the preceding vector's price at the transition.
+
+### Freshness and scope
+
+Fetching the account does not recompute prices or supply. Time, mint supply, main-offer configuration, or excluded balances can change while the stored snapshot remains unchanged. Consumers should check `lastUpdatedAt` and `lastUpdatedSlot` against their own freshness requirements and refresh when needed. The PDA does not store the source offer address; refresh after changing `state.main_offer` before publishing metrics for the new offer.
+
+Supply and TVL use `["circ_supply_excl_balance"]`. If excluded ONyc ATA balances or the configured owner list changed, call `update_circulating_supply_excluded_balance` with the configured owners' ATAs in order **before** `refresh_market_stats`. Both instructions can be included in one transaction. Refreshing market stats alone does not refresh that balance cache, and its timestamp does not certify the exclusion cache's freshness. An uninitialized excluded-balance PDA is treated as zero.
+
+This is the canonical ONyc snapshot. It does not reproduce legacy pair-specific views, automatic subtraction of the offer-vault ATA, or getter-event metadata such as the next price-change timestamp. Configure excluded owners explicitly; read the offer's vectors separately when per-offer pricing details are needed. Use the execution or quote instructions for trading.
+
+### Refresh the snapshot
+
+`refresh_market_stats` is permissionless. The signer pays the transaction fee and any rent needed to create the PDA on its first refresh. The main offer must be configured, output ONyc, and have an active vector; ONyc must use classic SPL Token.
+
 ```typescript
-const tokenInMint = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // USDC
-const tokenOutMint = new PublicKey("5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5"); // ONyc
+import { SystemProgram } from "@solana/web3.js";
 
-const nav = await program.methods
-  .getNav()
-  .accounts({
-    tokenInMint,
-    tokenOutMint
-  })
-  .view();
-
-const price = nav.toNumber() / 1_000_000_000;
-console.log(`Price: ${price}`); // e.g., 1.005
-```
-
----
-
-### 2. Get APY (Annual Yield)
-
-**Instruction:** `get_apy`
-
-**Returns:** APY with 6 decimals (divide by `1_000_000`, multiply by 100 for percentage)
-
-**Accounts:**
-```typescript
-{
-  offer: PublicKey,        // PDA: ["offer", tokenInMint, tokenOutMint]
-  tokenInMint: PublicKey,
-  tokenOutMint: PublicKey
-}
-```
-
-**Example:**
-```typescript
-const apy = await program.methods
-  .getApy()
-  .accounts({
-    tokenInMint,
-    tokenOutMint
-  })
-  .view();
-
-const apyPercent = (apy.toNumber() / 1_000_000) * 100;
-console.log(`APY: ${apyPercent.toFixed(2)}%`); // e.g., 10.50%
-```
-
----
-
-### 3. Get TVL (Total Value Locked)
-
-**Recommended instruction:** `get_tvl_v2`
-
-**Returns:** `circulating_supply * current_price / 10^9`
-
-**Accounts:**
-```typescript
-{
-  offer: PublicKey,          // PDA: ["offer", tokenInMint, tokenOutMint]
-  tokenInMint: PublicKey,
-  tokenOutMint: PublicKey,   // must be the configured ONyc mint
-  state: PublicKey,          // PDA: ["state"]
-  circulatingSupplyExcludedBalance: PublicKey // PDA: ["circ_supply_excl_balance"]
-}
-```
-
-**Example:**
-```typescript
+const [statePda] = PublicKey.findProgramAddressSync(
+  [Buffer.from("state")], program.programId
+);
 const [circulatingSupplyExcludedBalance] = PublicKey.findProgramAddressSync(
-  [Buffer.from("circ_supply_excl_balance")],
-  program.programId
+  [Buffer.from("circ_supply_excl_balance")], program.programId
 );
-const [statePda] = PublicKey.findProgramAddressSync(
-  [Buffer.from("state")],
-  program.programId
-);
-
-const tvl = await program.methods
-  .getTvlV2()
-  .accounts({
-    tokenInMint,
-    tokenOutMint,
-    state: statePda,
-    circulatingSupplyExcludedBalance
-  })
-  .view();
-
-console.log(`TVL: ${tvl.toString()}`);
-```
-
----
-
-### 4. Get Circulating Supply
-
-**Recommended instruction:** `get_circulating_supply_v2`
-
-**Returns:** Current circulating supply of ONyc
-
-**Accounts:**
-```typescript
-{
-  state: PublicKey,           // PDA: ["state"]
-  onycMint: PublicKey,        // From state.onyc_mint
-  circulatingSupplyExcludedBalance: PublicKey  // PDA: ["circ_supply_excl_balance"]
-}
-```
-
-**Example:**
-```typescript
-// Derive state PDA
-const [statePda] = PublicKey.findProgramAddressSync(
-  [Buffer.from("state")],
-  program.programId
-);
-
-// Fetch state to get ONyc mint
 const state = await program.account.state.fetch(statePda);
-const onycMint = state.onycMint;
+const mainOffer = await program.account.offer.fetch(state.mainOffer);
 
-const [circulatingSupplyExcludedBalance] = PublicKey.findProgramAddressSync(
-  [Buffer.from("circ_supply_excl_balance")],
-  program.programId
-);
+// If exclusions changed, update their cached balance before this instruction.
+await program.methods.refreshMarketStats().accountsStrict({
+  mainOffer: state.mainOffer,
+  tokenInMint: mainOffer.tokenInMint,
+  state: statePda,
+  onycMint: state.onycMint,
+  circulatingSupplyExcludedBalance,
+  marketStats: marketStatsPda,
+  signer: provider.wallet.publicKey,
+  systemProgram: SystemProgram.programId,
+}).rpc();
 
-const supply = await program.methods
-  .getCirculatingSupplyV2()
-  .accounts({
-    state: statePda,
-    onycMint,
-    circulatingSupplyExcludedBalance
-  })
-  .view();
-
-console.log(`Circulating Supply: ${supply.toString()}`);
+const refreshed = await program.account.marketStats.fetch(marketStatsPda);
 ```
 
-`get_tvl` retains its pre-V5 account layout and remains a pair-specific legacy
-view that subtracts the offer-vault ATA directly. `get_circulating_supply`
-remains the legacy ONyc supply view. The V2 views use the cached ONyc
-excluded-balance PDA, which is also what `refresh_market_stats` and the Prop AMM
-paths use.
+Before initialization, fetching `MarketStats` fails because the account does not exist. Refresh it first, or handle the missing account explicitly in the application.
+
+### CLI
+
+```bash
+pnpm cli market fetch --json
+pnpm cli market refresh --token-in usdc
+```
+
+`market fetch` replaces `nav`, `nav-adjustment`, `apy`, `tvl`, `tvl-v2`, `supply`, and `supply-v2`. It reads all five metrics and freshness metadata without a transaction and prints raw integer values as strings. `market refresh` submits a transaction; the input mint must match the configured main offer.
 
 ---
 
@@ -326,54 +251,9 @@ const vaultTokenAccount = getAssociatedTokenAddressSync(
 
 ---
 
-## Complete Example
+## Reading without a signer
 
-```typescript
-import { Program, AnchorProvider } from "@coral-xyz/anchor";
-import { Connection, PublicKey } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import idl from "./onreapp.json";
-
-const connection = new Connection("https://api.mainnet-beta.solana.com");
-const provider = new AnchorProvider(connection, wallet);
-const program = new Program(idl, provider);
-
-// Token mints
-const USDC = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-const ONYC = new PublicKey("5Y8NV33Vv7WbnLfq3zBcKSdYPrk7g2KoiQoe7M2tcxp5");
-
-async function getMarketData() {
-  // Get NAV
-  const nav = await program.methods
-    .getNav()
-    .accounts({ tokenInMint: USDC, tokenOutMint: ONYC })
-    .view();
-
-  const price = nav.toNumber() / 1e9;
-
-  // Get APY
-  const apy = await program.methods
-    .getApy()
-    .accounts({ tokenInMint: USDC, tokenOutMint: ONYC })
-    .view();
-
-  const apyPercent = (apy.toNumber() / 1e6) * 100;
-
-  console.log(`Price: ${price}`);
-  console.log(`APY: ${apyPercent.toFixed(2)}%`);
-}
-
-getMarketData();
-```
-
----
-
-## Notes
-
-- All view instructions are **read-only** (no state changes, no fees)
-- No wallet/signing required for view calls
-- Accounts are automatically resolved by Anchor if you only pass the required ones
-- The `offer` PDA is usually auto-derived by Anchor from the seeds constraint
+Only refresh needs a transaction signer. RPC account readers can decode the fetched bytes using the IDL's account coder, or use an Anchor client configured for account reads. Do not use `.view()` or transaction simulation to retrieve these metrics.
 
 ---
 

@@ -146,9 +146,8 @@ the ONyc mint, for:
 - Prop AMM sell when token in is ONyc and the net amount is burned
 - `burn_for_nav_increase`
 
-Legacy `take_offer` and `take_offer_permissionless` do not update the BUFFER
-baseline, and offer executions that only burn ONyc as token in are not wired
-into the BUFFER baseline path.
+Offer executions that only burn ONyc as token in are not wired into the BUFFER
+baseline path. The V1 offer instructions have been removed.
 
 The baseline update is:
 

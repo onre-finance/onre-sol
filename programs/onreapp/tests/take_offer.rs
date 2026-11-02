@@ -13,7 +13,7 @@ const ONE_YEAR_SECONDS: u64 = 31_536_000;
 ///   - Initialized state
 ///   - USDC (token_in, 6 decimals) and ONyc (token_out, 9 decimals)
 ///   - Offer created with 0% fee
-///   - Main offer intentionally left unset for legacy-path compatibility
+///   - Main offer configured for V2 market stats
 ///   - Vault funded with 10,000 token_out (10_000e9)
 ///   - User funded with 10,000 token_in (10_000e6)
 ///   - Boss token_in account created
@@ -27,12 +27,6 @@ struct TakeOfferCtx {
 
 fn setup_take_offer() -> TakeOfferCtx {
     setup_take_offer_with_fee(0)
-}
-
-fn setup_take_offer_v2() -> TakeOfferCtx {
-    let mut ctx = setup_take_offer();
-    configure_main_offer(&mut ctx);
-    ctx
 }
 
 fn setup_take_offer_with_fee(fee_bps: u16) -> TakeOfferCtx {
@@ -52,7 +46,9 @@ fn setup_take_offer_with_fee(fee_bps: u16) -> TakeOfferCtx {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    assert_eq!(read_state(&svm).main_offer, Pubkey::default());
+    let (offer_pda, _) = find_offer_pda(&usdc_mint, &onyc_mint);
+    let ix = build_set_main_offer_ix(&boss, &offer_pda);
+    send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     // Create vault accounts (pre-funded)
     let (vault_authority, _) = find_offer_vault_authority_pda();
@@ -76,13 +72,6 @@ fn setup_take_offer_with_fee(fee_bps: u16) -> TakeOfferCtx {
     }
 }
 
-fn configure_main_offer(ctx: &mut TakeOfferCtx) {
-    let boss = ctx.payer.pubkey();
-    let (offer_pda, _) = find_offer_pda(&ctx.usdc_mint, &ctx.onyc_mint);
-    let ix = build_set_main_offer_ix(&boss, &offer_pda);
-    send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
-}
-
 fn add_default_offer_vector(ctx: &mut TakeOfferCtx) {
     let boss = ctx.payer.pubkey();
     let current_time = get_clock_time(&ctx.svm);
@@ -103,7 +92,7 @@ fn build_default_take_offer_ix(
     ctx: &TakeOfferCtx,
     token_in_amount: u64,
 ) -> solana_sdk::instruction::Instruction {
-    build_take_offer_ix(
+    build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &ctx.payer.pubkey(),
         &ctx.usdc_mint,
@@ -120,8 +109,32 @@ fn build_default_take_offer_ix(
 // ===========================================================================
 
 #[test]
+fn test_removed_v1_offer_instructions_are_rejected() {
+    let (mut svm, payer) = setup();
+    for name in ["take_offer", "take_offer_permissionless"] {
+        let mut data = ix_discriminator(name).to_vec();
+        data.extend_from_slice(&1_000_000u64.to_le_bytes());
+        data.push(0); // Legacy optional approval message: None.
+        let ix = solana_sdk::instruction::Instruction {
+            program_id: PROGRAM_ID,
+            accounts: vec![],
+            data,
+        };
+        let error = send_tx(&mut svm, &[ix], &[&payer]).unwrap_err();
+        assert!(
+            error
+                .meta
+                .logs
+                .iter()
+                .any(|line| line.contains("InstructionFallbackNotFound")),
+            "{name} must be rejected during dispatch: {error:?}"
+        );
+    }
+}
+
+#[test]
 fn test_price_first_interval() {
-    let mut ctx = setup_take_offer_v2();
+    let mut ctx = setup_take_offer();
     let boss = ctx.payer.pubkey();
     let current_time = get_clock_time(&ctx.svm);
 
@@ -222,7 +235,7 @@ fn test_take_offer_failure_does_not_create_market_stats() {
     let boss = ctx.payer.pubkey();
     let (market_stats_pda, _) = find_market_stats_pda();
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -246,7 +259,7 @@ fn test_take_offer_failure_does_not_create_market_stats() {
 
 #[test]
 fn test_take_offer_v2_accrues_buffer_and_splits_fees() {
-    let mut ctx = setup_take_offer_v2();
+    let mut ctx = setup_take_offer();
     let boss = ctx.payer.pubkey();
 
     let ix = build_transfer_mint_authority_to_program_ix(&boss, &ctx.onyc_mint, &TOKEN_PROGRAM_ID);
@@ -397,7 +410,7 @@ fn test_take_offer_v2_accrues_buffer_and_splits_fees() {
 
 #[test]
 fn test_take_offer_v2_refills_redemption_vault_then_overflows_to_offer_proceeds() {
-    let mut ctx = setup_take_offer_v2();
+    let mut ctx = setup_take_offer();
     let boss = ctx.payer.pubkey();
     add_default_offer_vector(&mut ctx);
 
@@ -476,7 +489,7 @@ fn test_take_offer_v2_refills_redemption_vault_then_overflows_to_offer_proceeds(
 
 #[test]
 fn test_take_offer_v2_rejects_invalid_buffer_vault_account_on_accrual_path() {
-    let mut ctx = setup_take_offer_v2();
+    let mut ctx = setup_take_offer();
     let boss = ctx.payer.pubkey();
     let current_time = get_clock_time(&ctx.svm);
 
@@ -551,7 +564,7 @@ fn test_price_with_fee() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -593,7 +606,7 @@ fn test_ceiling_fee_small_amount() {
     // 199 * 50 = 9950, floor = 0, ceiling = 1
     let proceeds_usdc_before = 0;
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -607,9 +620,11 @@ fn test_ceiling_fee_small_amount() {
 
     let proceeds_usdc_after = get_token_balance(
         &ctx.svm,
-        &get_associated_token_address(&boss, &ctx.usdc_mint),
+        &get_associated_token_address(&find_offer_proceeds_vault_pda().0, &ctx.usdc_mint),
     );
-    assert_eq!(proceeds_usdc_after - proceeds_usdc_before, 199);
+    assert_eq!(proceeds_usdc_after - proceeds_usdc_before, 198);
+    let fee_ata = get_associated_token_address(&find_offer_fee_vault_pda().0, &ctx.usdc_mint);
+    assert_eq!(get_token_balance(&ctx.svm, &fee_ata), 1);
 
     let user_onyc = get_token_balance(
         &ctx.svm,
@@ -638,7 +653,7 @@ fn test_price_same_interval() {
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     // First trade
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -665,7 +680,7 @@ fn test_price_same_interval() {
         10_000_000_000,
     );
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &user2.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -711,7 +726,7 @@ fn test_price_second_interval() {
     advance_clock_by(&mut ctx.svm, 86_400);
 
     // With compounded step pricing, the snapped second-interval price is 1.000200010.
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -769,7 +784,7 @@ fn test_use_most_recent_active_vector() {
     advance_clock_by(&mut ctx.svm, 2500);
 
     // Price from second vector: 2.0 * (1 + 0.073 * 86400/31536000) ≈ 2.0004
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -811,7 +826,7 @@ fn test_fail_no_active_vector() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -927,7 +942,7 @@ fn test_fail_insufficient_user_balance() {
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     // User only has 10,000 USDC, try to spend 20,000
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -961,7 +976,7 @@ fn test_fail_insufficient_vault_balance() {
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer]).unwrap();
 
     // 20 USDC at 0.001 price = 20,000 token_out, but vault has only 10,000
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -1012,7 +1027,7 @@ fn test_transfer_tokens_correctly() {
         &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
     );
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -1034,7 +1049,7 @@ fn test_transfer_tokens_correctly() {
     );
     let proceeds_usdc_after = get_token_balance(
         &ctx.svm,
-        &get_associated_token_address(&boss, &ctx.usdc_mint),
+        &get_associated_token_address(&find_offer_proceeds_vault_pda().0, &ctx.usdc_mint),
     );
     let vault_onyc_after = get_token_balance(
         &ctx.svm,
@@ -1078,7 +1093,7 @@ fn test_wrong_token_in_mint() {
         10_000_000_000,
     );
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &wrong_mint,
@@ -1119,7 +1134,7 @@ fn test_wrong_token_out_mint() {
         10_000_000_000,
     );
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -1154,7 +1169,7 @@ fn test_zero_apr_fixed_price() {
     // Advance 10 days
     advance_clock_by(&mut ctx.svm, 86_401 * 10);
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -1195,7 +1210,7 @@ fn test_high_apr_long_period() {
     advance_clock_by(&mut ctx.svm, 86400 * 365);
 
     // With compounded step pricing, 36.5% APR snapped to day 366 is 1.441691565.
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -1243,7 +1258,7 @@ fn test_vault_transfer_token_out_no_mint_authority() {
         &get_associated_token_address(&vault_auth, &ctx.onyc_mint),
     );
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -1271,7 +1286,7 @@ fn test_vault_transfer_token_out_no_mint_authority() {
 }
 
 #[test]
-fn test_user_to_boss_transfer_no_mint_authority() {
+fn test_user_to_proceeds_transfer_no_mint_authority() {
     let mut ctx = setup_take_offer();
     let boss = ctx.payer.pubkey();
     let current_time = get_clock_time(&ctx.svm);
@@ -1297,7 +1312,7 @@ fn test_user_to_boss_transfer_no_mint_authority() {
     let proceeds_usdc_before = 0;
     let supply_before = get_mint_supply(&ctx.svm, &ctx.usdc_mint);
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -1315,7 +1330,7 @@ fn test_user_to_boss_transfer_no_mint_authority() {
     );
     let proceeds_usdc_after = get_token_balance(
         &ctx.svm,
-        &get_associated_token_address(&boss, &ctx.usdc_mint),
+        &get_associated_token_address(&find_offer_proceeds_vault_pda().0, &ctx.usdc_mint),
     );
     let supply_after = get_mint_supply(&ctx.svm, &ctx.usdc_mint);
 
@@ -1362,7 +1377,7 @@ fn test_kill_switch_rejects_take_offer() {
     let state = read_state(&ctx.svm);
     assert!(state.is_killed);
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -1415,7 +1430,7 @@ fn test_kill_switch_disabled_allows_take_offer() {
     let state = read_state(&ctx.svm);
     assert!(!state.is_killed);
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -1487,7 +1502,7 @@ fn test_take_offer_with_approval_required_fails_without_approval() {
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
     // Try without approval
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &user.pubkey(),
         &boss,
         &usdc_mint,
@@ -1556,7 +1571,7 @@ fn test_take_offer_with_valid_approval() {
     let approval_msg = serialize_approval_message(&PROGRAM_ID, &user.pubkey(), expiry_unix);
     let ed25519_ix = build_ed25519_verify_ix(&approver, &approval_msg);
 
-    let take_ix = build_take_offer_ix(
+    let take_ix = build_take_offer_v2_ix(
         &user.pubkey(),
         &boss,
         &usdc_mint,
@@ -1609,7 +1624,7 @@ fn test_mint_token_out_with_program_mint_authority() {
     );
     let supply_before = get_mint_supply(&ctx.svm, &ctx.onyc_mint);
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -1678,7 +1693,7 @@ fn test_burn_token_in_with_program_mint_authority() {
         &get_associated_token_address(&boss, &ctx.usdc_mint),
     );
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -1732,7 +1747,7 @@ fn test_fee_collection_with_mint_authority_burn() {
 
     let token_in_amount = 1_000_000u64;
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &ctx.user.pubkey(),
         &boss,
         &ctx.usdc_mint,
@@ -1744,12 +1759,14 @@ fn test_fee_collection_with_mint_authority_burn() {
     );
     send_tx(&mut ctx.svm, &[ix], &[&ctx.payer, &ctx.user]).unwrap();
 
-    // Legacy take_offer sends the full amount to the boss account.
+    // V2 routes the net input to proceeds and the fee to its own vault.
     let proceeds_usdc = get_token_balance(
         &ctx.svm,
-        &get_associated_token_address(&boss, &ctx.usdc_mint),
+        &get_associated_token_address(&find_offer_proceeds_vault_pda().0, &ctx.usdc_mint),
     );
-    assert_eq!(proceeds_usdc, token_in_amount);
+    assert_eq!(proceeds_usdc, 950_000);
+    let fee_ata = get_associated_token_address(&find_offer_fee_vault_pda().0, &ctx.usdc_mint);
+    assert_eq!(get_token_balance(&ctx.svm, &fee_ata), 50_000);
 
     // fee = ceil(1_000_000 * 500 / 10000) = ceil(50000) = 50_000
     // net = 1_000_000 - 50_000 = 950_000
@@ -1816,7 +1833,7 @@ fn test_take_offer_token2022_transfers() {
         &get_associated_token_address_2022(&user.pubkey(), &usdc_mint),
     );
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &user.pubkey(),
         &boss,
         &usdc_mint,
@@ -1836,8 +1853,10 @@ fn test_take_offer_token2022_transfers() {
         &svm,
         &get_associated_token_address_2022(&user.pubkey(), &onyc_mint),
     );
-    let proceeds_usdc =
-        get_token_balance(&svm, &get_associated_token_address_2022(&boss, &usdc_mint));
+    let proceeds_usdc = get_token_balance(
+        &svm,
+        &get_associated_token_address_2022(&find_offer_proceeds_vault_pda().0, &usdc_mint),
+    );
 
     assert_eq!(user_usdc_before - user_usdc_after, token_in_amount);
     assert_eq!(user_onyc, 1_000_000_000);
@@ -1887,7 +1906,7 @@ fn test_take_offer_token2022_zero_transfer_fee_accepted() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &user.pubkey(),
         &boss,
         &usdc_mint,
@@ -1949,7 +1968,7 @@ fn test_take_offer_token2022_rejects_token_in_transfer_fee() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &user.pubkey(),
         &boss,
         &usdc_mint,
@@ -2009,7 +2028,7 @@ fn test_take_offer_token2022_rejects_token_out_transfer_fee() {
     );
     send_tx(&mut svm, &[ix], &[&payer]).unwrap();
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &user.pubkey(),
         &boss,
         &usdc_mint,
