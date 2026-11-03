@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes/index.js';
+import { bs58 } from '@anchor-lang/core/dist/cjs/utils/bytes/index.js';
 import tokenMessengerAbi from './abis/TokenMessenger.json';
 import usdcAbi from './abis/Usdc.json';
 import { JsonRpcProvider, Wallet, Contract, hexlify, keccak256, ContractTransactionResponse, ethers } from 'ethers';

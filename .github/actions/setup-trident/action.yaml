@@ -4,5 +4,5 @@ runs:
   using: "composite"
   steps:
     - name: Install Trident
-      run: cargo install trident-cli@${{ env.TRIDENT_VERSION }}
+      run: cargo install trident-cli@${{ env.TRIDENT_VERSION }} --locked
       shell: bash
