@@ -137,7 +137,13 @@ export const OnreappErrorCode = {
   InsufficientFeeBalance: 6134,
   InvalidFeeRecipient: 6135,
   InvalidBurnTarget: 6136,
-  InvalidRedemptionRequestId: 6137
+  InvalidRedemptionRequestId: 6137,
+  ConfigurationDisabled: 6138,
+  TokenRoleConflict: 6139,
+  IncompatiblePricer: 6140,
+  IncompatibleQuoter: 6141,
+  InvalidOfferDirection: 6142,
+  LiquidityVaultRequired: 6143
 };
 
 export type OnreappErrorName = keyof typeof OnreappErrorCode;

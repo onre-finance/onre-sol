@@ -1508,6 +1508,414 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "createFeeConfig",
+      "docs": [
+        "Creates a reusable input-token fee policy with a Fee vault; boss only."
+      ],
+      "discriminator": [
+        214,
+        172,
+        105,
+        64,
+        8,
+        228,
+        209,
+        204
+      ],
+      "accounts": [
+        {
+          "name": "feeVault"
+        },
+        {
+          "name": "feeConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "instanceId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "instanceId",
+          "type": "u64"
+        },
+        {
+          "name": "basisPoints",
+          "type": "u16"
+        },
+        {
+          "name": "minimumFeeAmount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "createOfferConfig",
+      "docs": [
+        "Creates a directed offer referencing compatible existing components; boss only."
+      ],
+      "discriminator": [
+        55,
+        234,
+        207,
+        228,
+        72,
+        114,
+        21,
+        101
+      ],
+      "accounts": [
+        {
+          "name": "tokenInMint"
+        },
+        {
+          "name": "tokenOutMint"
+        },
+        {
+          "name": "managedToken"
+        },
+        {
+          "name": "asset"
+        },
+        {
+          "name": "pricer"
+        },
+        {
+          "name": "quoter"
+        },
+        {
+          "name": "propAmmState",
+          "optional": true
+        },
+        {
+          "name": "feeConfig"
+        },
+        {
+          "name": "proceedsVault"
+        },
+        {
+          "name": "liquidityVault",
+          "optional": true
+        },
+        {
+          "name": "offerConfig",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "flow",
+          "type": {
+            "defined": {
+              "name": "offerFlow"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "createPricer",
+      "docs": [
+        "Creates an independent Pricer with no pricing vectors; boss only."
+      ],
+      "discriminator": [
+        8,
+        109,
+        250,
+        99,
+        58,
+        187,
+        216,
+        66
+      ],
+      "accounts": [
+        {
+          "name": "managedToken"
+        },
+        {
+          "name": "pricer",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "instanceId",
+          "type": "u64"
+        },
+        {
+          "name": "denomination",
+          "type": {
+            "defined": {
+              "name": "pricingDenomination"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "createPropAmmState",
+      "docs": [
+        "Creates immutable pair binding and initial pressure state for a Prop AMM quoter; boss only."
+      ],
+      "discriminator": [
+        127,
+        89,
+        184,
+        159,
+        162,
+        159,
+        240,
+        77
+      ],
+      "accounts": [
+        {
+          "name": "quoter"
+        },
+        {
+          "name": "managedToken"
+        },
+        {
+          "name": "asset"
+        },
+        {
+          "name": "propAmmState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  95,
+                  97,
+                  109,
+                  109
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quoter"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "config",
+          "type": {
+            "defined": {
+              "name": "propAmmConfig"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "createQuoter",
+      "docs": [
+        "Creates a reusable NAV or Prop AMM quoter instance; boss only."
+      ],
+      "discriminator": [
+        239,
+        61,
+        251,
+        169,
+        209,
+        128,
+        143,
+        223
+      ],
+      "accounts": [
+        {
+          "name": "quoter",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "kind",
+          "type": {
+            "defined": {
+              "name": "quoterKind"
+            }
+          }
+        },
+        {
+          "name": "instanceId",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "createRedemptionRequest",
       "docs": [
         "Creates a redemption request.",
@@ -1867,6 +2275,79 @@ export type Onreapp = {
         {
           "name": "requestId",
           "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "createVaultConfig",
+      "docs": [
+        "Creates a vault configuration without creating ATAs or moving tokens; boss only."
+      ],
+      "discriminator": [
+        117,
+        28,
+        147,
+        30,
+        138,
+        78,
+        193,
+        39
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "kind",
+          "type": {
+            "defined": {
+              "name": "vaultKind"
+            }
+          }
+        },
+        {
+          "name": "instanceId",
+          "type": "u64"
+        },
+        {
+          "name": "withdrawalDestination",
+          "type": "pubkey"
+        },
+        {
+          "name": "refillTargetBps",
+          "type": "u16"
         }
       ]
     },
@@ -3286,6 +3767,187 @@ export type Onreapp = {
         {
           "name": "associatedTokenProgram",
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initializeManagedTokenBuffer",
+      "docs": [
+        "Creates per-managed-mint BUFFER state and dedicated vault configurations; boss only.",
+        "Existing singleton BUFFER settlement remains unchanged."
+      ],
+      "discriminator": [
+        114,
+        35,
+        245,
+        182,
+        151,
+        152,
+        3,
+        102
+      ],
+      "accounts": [
+        {
+          "name": "managedToken"
+        },
+        {
+          "name": "managedMint"
+        },
+        {
+          "name": "pricer"
+        },
+        {
+          "name": "bufferState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reserveVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  114,
+                  101,
+                  115,
+                  101,
+                  114,
+                  118,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "managementFeeVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "performanceFeeVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  112,
+                  101,
+                  114,
+                  102,
+                  111,
+                  114,
+                  109,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
         },
         {
           "name": "systemProgram",
@@ -6811,6 +7473,219 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "registerAsset",
+      "docs": [
+        "Registers the trusted denomination of an external asset mint; boss only."
+      ],
+      "discriminator": [
+        21,
+        80,
+        155,
+        149,
+        117,
+        207,
+        235,
+        16
+      ],
+      "accounts": [
+        {
+          "name": "assetMint"
+        },
+        {
+          "name": "managedRegistration",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "assetMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "assetMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "denomination",
+          "type": {
+            "defined": {
+              "name": "pricingDenomination"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "registerManagedToken",
+      "docs": [
+        "Registers an existing mint in the reusable configuration model; boss only."
+      ],
+      "discriminator": [
+        249,
+        58,
+        220,
+        192,
+        241,
+        131,
+        239,
+        181
+      ],
+      "accounts": [
+        {
+          "name": "managedMint"
+        },
+        {
+          "name": "assetRegistration",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "managedToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "removeAdmin",
       "docs": [
         "Removes an admin from the state.",
@@ -10228,6 +11103,19 @@ export type Onreapp = {
   ],
   "accounts": [
     {
+      "name": "assetConfig",
+      "discriminator": [
+        57,
+        112,
+        247,
+        166,
+        247,
+        64,
+        140,
+        23
+      ]
+    },
+    {
       "name": "bufferState",
       "discriminator": [
         90,
@@ -10280,6 +11168,45 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "feeConfig",
+      "discriminator": [
+        143,
+        52,
+        146,
+        187,
+        219,
+        123,
+        76,
+        155
+      ]
+    },
+    {
+      "name": "managedTokenBufferState",
+      "discriminator": [
+        160,
+        43,
+        104,
+        10,
+        81,
+        38,
+        108,
+        208
+      ]
+    },
+    {
+      "name": "managedTokenConfig",
+      "discriminator": [
+        69,
+        248,
+        126,
+        154,
+        69,
+        201,
+        254,
+        127
+      ]
+    },
+    {
       "name": "marketStats",
       "discriminator": [
         240,
@@ -10306,6 +11233,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "offerConfig",
+      "discriminator": [
+        184,
+        81,
+        210,
+        46,
+        31,
+        211,
+        13,
+        43
+      ]
+    },
+    {
       "name": "permissionlessAuthority",
       "discriminator": [
         241,
@@ -10319,6 +11259,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "pricer",
+      "discriminator": [
+        19,
+        0,
+        203,
+        84,
+        178,
+        104,
+        10,
+        160
+      ]
+    },
+    {
       "name": "propAmmPairState",
       "discriminator": [
         83,
@@ -10329,6 +11282,32 @@ export type Onreapp = {
         98,
         212,
         149
+      ]
+    },
+    {
+      "name": "propAmmState",
+      "discriminator": [
+        199,
+        83,
+        38,
+        74,
+        186,
+        240,
+        58,
+        139
+      ]
+    },
+    {
+      "name": "quoter",
+      "discriminator": [
+        210,
+        248,
+        33,
+        55,
+        31,
+        128,
+        211,
+        20
       ]
     },
     {
@@ -10368,6 +11347,19 @@ export type Onreapp = {
         75,
         182,
         177
+      ]
+    },
+    {
+      "name": "vaultConfig",
+      "discriminator": [
+        99,
+        86,
+        43,
+        216,
+        184,
+        102,
+        119,
+        77
       ]
     }
   ],
@@ -11739,6 +12731,36 @@ export type Onreapp = {
       "code": 6137,
       "name": "invalidRedemptionRequestId",
       "msg": "Invalid Redemption Request ID"
+    },
+    {
+      "code": 6138,
+      "name": "configurationDisabled",
+      "msg": "Configuration is disabled"
+    },
+    {
+      "code": 6139,
+      "name": "tokenRoleConflict",
+      "msg": "Mint is already registered in the other token role"
+    },
+    {
+      "code": 6140,
+      "name": "incompatiblePricer",
+      "msg": "Pricer does not match the managed mint or asset denomination"
+    },
+    {
+      "code": 6141,
+      "name": "incompatibleQuoter",
+      "msg": "Quoter is incompatible with the offer flow or pair"
+    },
+    {
+      "code": 6142,
+      "name": "invalidOfferDirection",
+      "msg": "Offer direction is invalid for the registered mints or flow"
+    },
+    {
+      "code": 6143,
+      "name": "liquidityVaultRequired",
+      "msg": "A liquidity vault is required for managed-to-asset offers"
     }
   ],
   "types": [
@@ -11934,6 +12956,37 @@ export type Onreapp = {
               "The boss who removed the approver"
             ],
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "assetConfig",
+      "docs": [
+        "Boss-attested denomination of an external asset; mint metadata is not a price oracle."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "assetMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "denomination",
+            "type": {
+              "defined": {
+                "name": "pricingDenomination"
+              }
+            }
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
@@ -12470,6 +13523,44 @@ export type Onreapp = {
       }
     },
     {
+      "name": "feeConfig",
+      "docs": [
+        "Reusable input-token fee policy, with a reference to a Fee-kind VaultConfig."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "instanceId",
+            "type": "u64"
+          },
+          {
+            "name": "feeVault",
+            "type": "pubkey"
+          },
+          {
+            "name": "basisPoints",
+            "type": "u16"
+          },
+          {
+            "name": "minimumFeeAmount",
+            "docs": [
+              "Absolute fee floor in the consuming offer's input mint base units."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "killSwitchToggledEvent",
       "docs": [
         "Event emitted when the kill switch state is changed",
@@ -12508,6 +13599,107 @@ export type Onreapp = {
           {
             "name": "newMainOffer",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "managedTokenBufferState",
+      "docs": [
+        "EVM BufferState equivalent; distinct name preserves the legacy discriminator."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "managedMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "reserveVault",
+            "type": "pubkey"
+          },
+          {
+            "name": "managementFeeVault",
+            "type": "pubkey"
+          },
+          {
+            "name": "performanceFeeVault",
+            "type": "pubkey"
+          },
+          {
+            "name": "previousSupply",
+            "type": "u64"
+          },
+          {
+            "name": "performanceFeeHighWatermark",
+            "type": "u64"
+          },
+          {
+            "name": "lastAccrualTimestamp",
+            "type": "i64"
+          },
+          {
+            "name": "grossApr",
+            "docs": [
+              "Annual gross rate, scale 6."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "managementFeeBasisPoints",
+            "type": "u16"
+          },
+          {
+            "name": "performanceFeeBasisPoints",
+            "type": "u16"
+          },
+          {
+            "name": "performanceFeeHighWatermarkEnabled",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "managedTokenConfig",
+      "docs": [
+        "One registration per managed SPL mint, replacing ONyc-specific global configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "managedMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "decimals",
+            "type": "u8"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "maxSupply",
+            "docs": [
+              "Program-controlled issuance limits in mint base units; zero disables a limit.",
+              "SPL mints cannot enforce these limits on other mint authorities."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "maxMintAmount",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
@@ -12886,6 +14078,99 @@ export type Onreapp = {
       }
     },
     {
+      "name": "offerConfig",
+      "docs": [
+        "One immutable directed mint pair and flow, with replaceable component references.",
+        "",
+        "Pricer replacements must match the managed mint and the asset's denomination."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tokenInMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenOutMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "flow",
+            "type": {
+              "defined": {
+                "name": "offerFlow"
+              }
+            }
+          },
+          {
+            "name": "direction",
+            "type": {
+              "defined": {
+                "name": "offerDirection"
+              }
+            }
+          },
+          {
+            "name": "pricer",
+            "docs": [
+              "Explicit price source, validated against this offer's mint pair on assignment."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "quoter",
+            "type": "pubkey"
+          },
+          {
+            "name": "feeConfig",
+            "type": "pubkey"
+          },
+          {
+            "name": "proceedsVault",
+            "type": "pubkey"
+          },
+          {
+            "name": "liquidityVault",
+            "docs": [
+              "Default pubkey means absent; mandatory for ManagedToAsset."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "tokenInDecimals",
+            "type": "u8"
+          },
+          {
+            "name": "tokenOutDecimals",
+            "type": "u8"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "offerDirection",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "assetToManaged"
+          },
+          {
+            "name": "managedToAsset"
+          }
+        ]
+      }
+    },
+    {
       "name": "offerDisabledSetEvent",
       "type": {
         "kind": "struct",
@@ -12942,6 +14227,23 @@ export type Onreapp = {
               "The boss account that authorized the fee update"
             ],
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "offerFlow",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "permissioned"
+          },
+          {
+            "name": "permissionless"
+          },
+          {
+            "name": "worker"
           }
         ]
       }
@@ -13438,6 +14740,144 @@ export type Onreapp = {
       }
     },
     {
+      "name": "pricer",
+      "docs": [
+        "Independent price source for an immutable managed mint and denomination.",
+        "",
+        "Multiple instances may price the same mint in the same denomination.",
+        "Instance zero is the canonical USD source for token-wide BUFFER and reporting."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "instanceId",
+            "type": "u64"
+          },
+          {
+            "name": "managedMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "denomination",
+            "type": {
+              "defined": {
+                "name": "pricingDenomination"
+              }
+            }
+          },
+          {
+            "name": "vectors",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "pricingVector"
+                  }
+                },
+                10
+              ]
+            }
+          },
+          {
+            "name": "vectorCount",
+            "docs": [
+              "Only the first `vector_count` slots are active."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pricingDenomination",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "usd"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pricingVector",
+      "docs": [
+        "Price evolution only; vectors belong to a Pricer, never to an offer."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "startTime",
+            "type": "u64"
+          },
+          {
+            "name": "baseTime",
+            "type": "u64"
+          },
+          {
+            "name": "basePrice",
+            "docs": [
+              "USD price per managed token, scale 9."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "apr",
+            "docs": [
+              "Annual rate, scale 6 (1_000_000 = 100%)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "priceFixDuration",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "propAmmConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epochDurationSeconds",
+            "type": "u64"
+          },
+          {
+            "name": "curveExponentScaled",
+            "type": "u32"
+          },
+          {
+            "name": "cadenceThreshold",
+            "type": "u32"
+          },
+          {
+            "name": "cadenceWaveScaled",
+            "type": "u32"
+          },
+          {
+            "name": "wallSensitivityScaled",
+            "type": "u32"
+          },
+          {
+            "name": "curvePegHaircutBps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
       "name": "propAmmConfiguredEvent",
       "type": {
         "kind": "struct",
@@ -13605,6 +15045,112 @@ export type Onreapp = {
                 284
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "propAmmState",
+      "docs": [
+        "One immutable pair per Prop AMM quoter; both directed offers may share its pressure."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "quoter",
+            "type": "pubkey"
+          },
+          {
+            "name": "assetMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "managedMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "config",
+            "type": {
+              "defined": {
+                "name": "propAmmConfig"
+              }
+            }
+          },
+          {
+            "name": "currentSellValueStable",
+            "docs": [
+              "Aggregate values in asset base units; widened beyond individual SPL transfers."
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "currentBuyValueStable",
+            "type": "u128"
+          },
+          {
+            "name": "previousNetSellValueStable",
+            "type": "u128"
+          },
+          {
+            "name": "epochStart",
+            "type": "i64"
+          },
+          {
+            "name": "currentSellTradeCount",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "quoter",
+      "docs": [
+        "Reusable quote dispatch. Prop AMM configuration lives in a companion PropAmmState."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "quoterKind"
+              }
+            }
+          },
+          {
+            "name": "instanceId",
+            "type": "u64"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "quoterKind",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "nav"
+          },
+          {
+            "name": "navPermissionless"
+          },
+          {
+            "name": "propAmm"
           }
         ]
       }
@@ -14397,6 +15943,73 @@ export type Onreapp = {
               "The boss account that initiated the closure and received the rent"
             ],
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vaultConfig",
+      "docs": [
+        "EVM ConfigurableVault equivalent; distinct name preserves the legacy discriminator.",
+        "",
+        "The target SPL custody representation is one ATA per (vault PDA, mint).",
+        "Existing physical vaults are not moved or rebound by this model definition."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "vaultKind"
+              }
+            }
+          },
+          {
+            "name": "instanceId",
+            "type": "u64"
+          },
+          {
+            "name": "withdrawalDestination",
+            "docs": [
+              "Destination owner; withdrawals would pay its ATA for the selected mint."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "refillTargetBps",
+            "docs": [
+              "Liquidity target as a fraction of managed-token TVL; zero disables refill."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vaultKind",
+      "docs": [
+        "Reusable business purpose; instance identity is independent of its consumers."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "fee"
+          },
+          {
+            "name": "proceeds"
+          },
+          {
+            "name": "liquidity"
+          },
+          {
+            "name": "bufferReserve"
           }
         ]
       }

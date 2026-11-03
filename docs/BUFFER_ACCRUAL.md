@@ -1,6 +1,10 @@
 # BUFFER Accrual
 
-This document describes the BUFFER accrual model and the expected state transitions around ONyc supply changes.
+This document describes the active legacy BUFFER accrual model around ONyc supply
+changes. The new `initialize_managed_token_buffer` instruction creates separate
+per-mint configuration under `["buffer", managed_mint]`, but does not
+activate new accrual or migrate this singleton state. See
+[`MODULAR_MODEL.md`](MODULAR_MODEL.md) for the initialization boundary.
 
 ## Why BUFFER Exists
 
