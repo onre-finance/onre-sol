@@ -1,4 +1,15 @@
-use crate::model::{self, seeds::*};
+use crate::{
+    constants::{seeds::STATE, MAX_BASIS_POINTS},
+    instructions::prop_amm::config::{
+        CADENCE_WAVE_STEP, CURVE_EXPONENT_SCALE, CURVE_EXPONENT_STEP, MAX_CADENCE_WAVE_SCALED,
+    },
+    model::{
+        seeds::PROP_AMM, AssetConfig, ManagedTokenConfig, PropAmmConfig, PropAmmState, Quoter,
+        QuoterKind,
+    },
+    state::State,
+    OnreError,
+};
 use anchor_lang::prelude::*;
 
 /// Records the created account and its complete initial configuration.
@@ -6,7 +17,7 @@ use anchor_lang::prelude::*;
 pub struct PropAmmStateCreatedEvent {
     pub boss: Pubkey,
     pub prop_amm_state: Pubkey,
-    pub configuration: model::PropAmmState,
+    pub configuration: PropAmmState,
     pub timestamp: i64,
 }
 
@@ -14,36 +25,36 @@ pub struct PropAmmStateCreatedEvent {
 #[derive(Accounts)]
 pub struct CreatePropAmmState<'info> {
     #[account(
-        constraint = quoter.enabled @ crate::OnreError::ConfigurationDisabled,
-        constraint = quoter.kind == model::QuoterKind::PropAmm @ crate::OnreError::IncompatibleQuoter
+        constraint = quoter.enabled @ OnreError::ConfigurationDisabled,
+        constraint = quoter.kind == QuoterKind::PropAmm @ OnreError::IncompatibleQuoter
     )]
-    pub quoter: Box<Account<'info, model::Quoter>>,
+    pub quoter: Box<Account<'info, Quoter>>,
 
     #[account(
-        constraint = managed_token.enabled @ crate::OnreError::ConfigurationDisabled
+        constraint = managed_token.enabled @ OnreError::ConfigurationDisabled
     )]
-    pub managed_token: Box<Account<'info, model::ManagedTokenConfig>>,
+    pub managed_token: Box<Account<'info, ManagedTokenConfig>>,
 
     #[account(
-        constraint = asset.enabled @ crate::OnreError::ConfigurationDisabled
+        constraint = asset.enabled @ OnreError::ConfigurationDisabled
     )]
-    pub asset: Box<Account<'info, model::AssetConfig>>,
+    pub asset: Box<Account<'info, AssetConfig>>,
 
     #[account(
         init,
         payer = boss,
-        space = 8 + model::PropAmmState::INIT_SPACE,
+        space = 8 + PropAmmState::INIT_SPACE,
         seeds = [PROP_AMM, quoter.key().as_ref()],
         bump
     )]
-    pub prop_amm_state: Box<Account<'info, model::PropAmmState>>,
+    pub prop_amm_state: Box<Account<'info, PropAmmState>>,
 
     #[account(
-        seeds = [crate::constants::seeds::STATE],
+        seeds = [STATE],
         bump = state.bump,
-        has_one = boss @ crate::OnreError::InvalidBoss
+        has_one = boss @ OnreError::InvalidBoss
     )]
-    pub state: Box<Account<'info, crate::state::State>>,
+    pub state: Box<Account<'info, State>>,
 
     #[account(mut)]
     pub boss: Signer<'info>,
@@ -53,13 +64,10 @@ pub struct CreatePropAmmState<'info> {
 
 pub fn create_prop_amm_state(
     ctx: Context<CreatePropAmmState>,
-    config: model::PropAmmConfig,
+    config: PropAmmConfig,
 ) -> Result<()> {
-    use crate::instructions::prop_amm::config::{
-        CADENCE_WAVE_STEP, CURVE_EXPONENT_SCALE, CURVE_EXPONENT_STEP, MAX_CADENCE_WAVE_SCALED,
-    };
     require!(
-        config.curve_peg_haircut_bps <= crate::constants::MAX_BASIS_POINTS
+        config.curve_peg_haircut_bps <= MAX_BASIS_POINTS
             && (CURVE_EXPONENT_STEP..=CURVE_EXPONENT_SCALE * 10)
                 .contains(&config.curve_exponent_scaled)
             && config
@@ -71,14 +79,14 @@ pub fn create_prop_amm_state(
             && config.epoch_duration_seconds > 0
             && config.epoch_duration_seconds <= i64::MAX as u64
             && config.wall_sensitivity_scaled > 0,
-        crate::OnreError::InvalidAmount
+        OnreError::InvalidAmount
     );
     require_keys_neq!(
         ctx.accounts.managed_token.managed_mint,
         ctx.accounts.asset.asset_mint,
-        crate::OnreError::InvalidSwapPair
+        OnreError::InvalidSwapPair
     );
-    ctx.accounts.prop_amm_state.set_inner(model::PropAmmState {
+    ctx.accounts.prop_amm_state.set_inner(PropAmmState {
         quoter: ctx.accounts.quoter.key(),
         asset_mint: ctx.accounts.asset.asset_mint,
         managed_mint: ctx.accounts.managed_token.managed_mint,

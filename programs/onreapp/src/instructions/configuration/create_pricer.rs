@@ -1,4 +1,9 @@
-use crate::model::{self, seeds::*};
+use crate::{
+    constants::{seeds::STATE, MAX_VECTORS},
+    model::{seeds::PRICER, ManagedTokenConfig, Pricer, PricingDenomination, PricingVector},
+    state::State,
+    OnreError,
+};
 use anchor_lang::prelude::*;
 
 /// Records the created account and its complete initial configuration.
@@ -6,23 +11,23 @@ use anchor_lang::prelude::*;
 pub struct PricerCreatedEvent {
     pub boss: Pubkey,
     pub pricer: Pubkey,
-    pub configuration: model::Pricer,
+    pub configuration: Pricer,
     pub timestamp: i64,
 }
 
 /// Creates an independent, initially empty pricing-vector source for a registered mint.
 #[derive(Accounts)]
-#[instruction(instance_id: u64, denomination: model::PricingDenomination)]
+#[instruction(instance_id: u64, denomination: PricingDenomination)]
 pub struct CreatePricer<'info> {
     #[account(
-        constraint = managed_token.enabled @ crate::OnreError::ConfigurationDisabled
+        constraint = managed_token.enabled @ OnreError::ConfigurationDisabled
     )]
-    pub managed_token: Box<Account<'info, model::ManagedTokenConfig>>,
+    pub managed_token: Box<Account<'info, ManagedTokenConfig>>,
 
     #[account(
         init,
         payer = boss,
-        space = 8 + model::Pricer::INIT_SPACE,
+        space = 8 + Pricer::INIT_SPACE,
         seeds = [
             PRICER,
             managed_token.managed_mint.as_ref(),
@@ -31,14 +36,14 @@ pub struct CreatePricer<'info> {
         ],
         bump
     )]
-    pub pricer: Box<Account<'info, model::Pricer>>,
+    pub pricer: Box<Account<'info, Pricer>>,
 
     #[account(
-        seeds = [crate::constants::seeds::STATE],
+        seeds = [STATE],
         bump = state.bump,
-        has_one = boss @ crate::OnreError::InvalidBoss
+        has_one = boss @ OnreError::InvalidBoss
     )]
-    pub state: Box<Account<'info, crate::state::State>>,
+    pub state: Box<Account<'info, State>>,
 
     #[account(mut)]
     pub boss: Signer<'info>,
@@ -49,13 +54,13 @@ pub struct CreatePricer<'info> {
 pub fn create_pricer(
     ctx: Context<CreatePricer>,
     instance_id: u64,
-    denomination: model::PricingDenomination,
+    denomination: PricingDenomination,
 ) -> Result<()> {
-    ctx.accounts.pricer.set_inner(model::Pricer {
+    ctx.accounts.pricer.set_inner(Pricer {
         instance_id,
         managed_mint: ctx.accounts.managed_token.managed_mint,
         denomination,
-        vectors: [model::PricingVector::default(); crate::constants::MAX_VECTORS],
+        vectors: [PricingVector::default(); MAX_VECTORS],
         vector_count: 0,
         enabled: true,
         bump: ctx.bumps.pricer,
