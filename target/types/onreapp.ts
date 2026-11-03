@@ -1624,7 +1624,10 @@ export type Onreapp = {
           "name": "managedToken"
         },
         {
-          "name": "asset"
+          "name": "assetManagedRegistration",
+          "docs": [
+            "PDA and requires empty data, enforcing exactly one managed mint."
+          ]
         },
         {
           "name": "pricer"
@@ -1782,7 +1785,7 @@ export type Onreapp = {
           "name": "managedToken"
         },
         {
-          "name": "asset"
+          "name": "assetMint"
         },
         {
           "name": "propAmmState",
@@ -7473,117 +7476,6 @@ export type Onreapp = {
       "args": []
     },
     {
-      "name": "registerAsset",
-      "docs": [
-        "Registers the trusted denomination of an external asset mint; boss only."
-      ],
-      "discriminator": [
-        21,
-        80,
-        155,
-        149,
-        117,
-        207,
-        235,
-        16
-      ],
-      "accounts": [
-        {
-          "name": "assetMint"
-        },
-        {
-          "name": "managedRegistration",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  110,
-                  97,
-                  103,
-                  101,
-                  100,
-                  95,
-                  116,
-                  111,
-                  107,
-                  101,
-                  110
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "assetMint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "asset",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  115,
-                  115,
-                  101,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "assetMint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "state",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "boss",
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "state"
-          ]
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "denomination",
-          "type": {
-            "defined": {
-              "name": "pricingDenomination"
-            }
-          }
-        }
-      ]
-    },
-    {
       "name": "registerManagedToken",
       "docs": [
         "Registers an existing mint in the reusable configuration model; boss only."
@@ -7601,27 +7493,6 @@ export type Onreapp = {
       "accounts": [
         {
           "name": "managedMint"
-        },
-        {
-          "name": "assetRegistration",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  115,
-                  115,
-                  101,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "managedMint"
-              }
-            ]
-          }
         },
         {
           "name": "managedToken",
@@ -11103,19 +10974,6 @@ export type Onreapp = {
   ],
   "accounts": [
     {
-      "name": "assetConfig",
-      "discriminator": [
-        57,
-        112,
-        247,
-        166,
-        247,
-        64,
-        140,
-        23
-      ]
-    },
-    {
       "name": "bufferState",
       "discriminator": [
         90,
@@ -11440,19 +11298,6 @@ export type Onreapp = {
         119,
         7,
         23
-      ]
-    },
-    {
-      "name": "assetRegisteredEvent",
-      "discriminator": [
-        42,
-        91,
-        211,
-        181,
-        225,
-        60,
-        154,
-        60
       ]
     },
     {
@@ -12857,12 +12702,12 @@ export type Onreapp = {
     {
       "code": 6139,
       "name": "tokenRoleConflict",
-      "msg": "Mint is already registered in the other token role"
+      "msg": "The offer's asset mint is registered as a managed token"
     },
     {
       "code": 6140,
       "name": "incompatiblePricer",
-      "msg": "Pricer does not match the managed mint or asset denomination"
+      "msg": "Pricer does not match the managed mint or pricing denomination"
     },
     {
       "code": 6141,
@@ -13073,68 +12918,6 @@ export type Onreapp = {
               "The boss who removed the approver"
             ],
             "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "assetConfig",
-      "docs": [
-        "Boss-attested denomination of an external asset; mint metadata is not a price oracle."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "assetMint",
-            "type": "pubkey"
-          },
-          {
-            "name": "denomination",
-            "type": {
-              "defined": {
-                "name": "pricingDenomination"
-              }
-            }
-          },
-          {
-            "name": "enabled",
-            "type": "bool"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "assetRegisteredEvent",
-      "docs": [
-        "Records the created account and its complete initial configuration."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "boss",
-            "type": "pubkey"
-          },
-          {
-            "name": "asset",
-            "type": "pubkey"
-          },
-          {
-            "name": "configuration",
-            "type": {
-              "defined": {
-                "name": "assetConfig"
-              }
-            }
-          },
-          {
-            "name": "timestamp",
-            "type": "i64"
           }
         ]
       }
@@ -14323,7 +14106,8 @@ export type Onreapp = {
       "docs": [
         "One immutable directed mint pair and flow, with replaceable component references.",
         "",
-        "Pricer replacements must match the managed mint and the asset's denomination."
+        "The boss selects the external asset. Pricer replacements must match the managed",
+        "mint and the currently selected Pricer's denomination."
       ],
       "type": {
         "kind": "struct",

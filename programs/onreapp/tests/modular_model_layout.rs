@@ -18,7 +18,6 @@ fn check_layout<T: AccountDeserialize + AccountSerialize + Discriminator + Space
 #[test]
 fn model_account_wire_sizes_are_fixed() {
     check_layout::<model::ManagedTokenConfig>(51);
-    check_layout::<model::AssetConfig>(35);
     check_layout::<model::Pricer>(444);
     check_layout::<model::Quoter>(11);
     check_layout::<model::PropAmmState>(183);
@@ -47,7 +46,6 @@ fn model_accounts_cannot_be_mistaken_for_legacy_accounts() {
     ];
     let target = [
         model::ManagedTokenConfig::DISCRIMINATOR,
-        model::AssetConfig::DISCRIMINATOR,
         model::Pricer::DISCRIMINATOR,
         model::Quoter::DISCRIMINATOR,
         model::PropAmmState::DISCRIMINATOR,
@@ -118,7 +116,6 @@ fn configuration_seed_layouts_are_disjoint() {
 
     let current = [
         layout(new::MANAGED_TOKEN, 32),
-        layout(new::ASSET, 32),
         layout(new::PRICER, 32 + 1 + 8),
         layout(new::QUOTER, 1 + 8),
         layout(new::PROP_AMM, 32),

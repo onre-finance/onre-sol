@@ -3,7 +3,6 @@
 //! Existing settlement accounts remain authoritative until a separately implemented migration.
 //! See `docs/MODULAR_MODEL.md` for identities, relationships, and future validation rules.
 
-pub mod asset;
 pub mod buffer;
 pub mod fee;
 pub mod fulfillment;
@@ -17,7 +16,6 @@ pub mod seeds;
 pub mod supply_exclusions;
 pub mod vault;
 
-pub use asset::AssetConfig;
 pub use buffer::ManagedTokenBufferState;
 pub use fee::FeeConfig;
 pub use fulfillment::FulfillmentRequest;

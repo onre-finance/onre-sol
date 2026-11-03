@@ -49,8 +49,8 @@ The modular account layouts, EVM mapping, and boss-authorized creation instructi
 are documented in [`MODULAR_MODEL.md`](docs/MODULAR_MODEL.md). Trading and BUFFER
 settlement continue to use the existing accounts; new configuration is not yet
 connected to execution.
-Each modeled offer explicitly references a Pricer compatible with its mint pair
-and asset denomination.
+Each modeled offer explicitly references a Pricer for its managed mint. The boss
+chooses the external asset in that Pricer's denomination; no asset registration is required.
 
 ### Dynamic Pricing
 
@@ -147,7 +147,7 @@ refresh ordering, and differences from legacy per-offer views.
 
 **Initialization**: `initialize`, `initialize_permissionless_authority`
 
-**Reusable configuration**: `register_managed_token`, `register_asset`, `create_pricer`, `create_quoter`, `create_vault_config`, `create_fee_config`, `create_prop_amm_state`, `create_offer_config`, `initialize_managed_token_buffer`
+**Reusable configuration**: `register_managed_token`, `create_pricer`, `create_quoter`, `create_vault_config`, `create_fee_config`, `create_prop_amm_state`, `create_offer_config`, `initialize_managed_token_buffer`
 
 **BUFFER**: `initialize_buffer`, `settle_buffer`, `set_buffer_gross_apr`, `set_buffer_fee_config`, `burn_for_nav_increase`, `deposit_reserve_vault`, `withdraw_reserve_vault`
 

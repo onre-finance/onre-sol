@@ -1,11 +1,12 @@
 use crate::{
     constants::seeds::STATE,
     model::{
-        seeds::OFFER_CONFIG, AssetConfig, FeeConfig, ManagedTokenConfig, OfferConfig,
-        OfferDirection, OfferFlow, Pricer, PropAmmState, Quoter, QuoterKind, VaultConfig,
-        VaultKind,
+        seeds::{MANAGED_TOKEN, OFFER_CONFIG},
+        FeeConfig, ManagedTokenConfig, OfferConfig, OfferDirection, OfferFlow, Pricer,
+        PropAmmState, Quoter, QuoterKind, VaultConfig, VaultKind,
     },
     state::State,
+    utils::MAX_TOKEN_DECIMALS,
     OnreError,
 };
 use anchor_lang::prelude::*;
@@ -20,7 +21,8 @@ pub struct OfferConfigCreatedEvent {
     pub timestamp: i64,
 }
 
-/// Creates an offer from existing compatible configuration; does not enable new settlement paths.
+/// Creates an offer with a boss-selected external asset and compatible Pricer.
+/// Does not enable new settlement paths.
 #[derive(Accounts)]
 #[instruction(flow: OfferFlow)]
 pub struct CreateOfferConfig<'info> {
@@ -33,10 +35,9 @@ pub struct CreateOfferConfig<'info> {
     )]
     pub managed_token: Box<Account<'info, ManagedTokenConfig>>,
 
-    #[account(
-        constraint = asset.enabled @ OnreError::ConfigurationDisabled
-    )]
-    pub asset: Box<Account<'info, AssetConfig>>,
+    /// CHECK: The handler validates the other mint's canonical managed-registration
+    /// PDA and requires empty data, enforcing exactly one managed mint.
+    pub asset_managed_registration: UncheckedAccount<'info>,
 
     #[account(
         constraint = pricer.enabled @ OnreError::ConfigurationDisabled
@@ -91,20 +92,36 @@ pub struct CreateOfferConfig<'info> {
 
 pub fn create_offer_config(ctx: Context<CreateOfferConfig>, flow: OfferFlow) -> Result<()> {
     let a = &ctx.accounts;
-    let direction = if a.token_in_mint.key() == a.asset.asset_mint
-        && a.token_out_mint.key() == a.managed_token.managed_mint
-    {
-        OfferDirection::AssetToManaged
-    } else if a.token_in_mint.key() == a.managed_token.managed_mint
-        && a.token_out_mint.key() == a.asset.asset_mint
-    {
-        OfferDirection::ManagedToAsset
+    require!(
+        a.token_in_mint.decimals <= MAX_TOKEN_DECIMALS
+            && a.token_out_mint.decimals <= MAX_TOKEN_DECIMALS,
+        OnreError::DecimalsExceedMax
+    );
+    require_keys_neq!(
+        a.token_in_mint.key(),
+        a.token_out_mint.key(),
+        OnreError::InvalidOfferDirection
+    );
+    let (direction, asset_mint) = if a.token_in_mint.key() == a.managed_token.managed_mint {
+        (OfferDirection::ManagedToAsset, a.token_out_mint.key())
+    } else if a.token_out_mint.key() == a.managed_token.managed_mint {
+        (OfferDirection::AssetToManaged, a.token_in_mint.key())
     } else {
         return err!(OnreError::InvalidOfferDirection);
     };
+    let expected_managed_registration =
+        Pubkey::find_program_address(&[MANAGED_TOKEN, asset_mint.as_ref()], ctx.program_id).0;
+    require_keys_eq!(
+        a.asset_managed_registration.key(),
+        expected_managed_registration,
+        OnreError::InvalidMint
+    );
     require!(
-        a.pricer.managed_mint == a.managed_token.managed_mint
-            && a.pricer.denomination == a.asset.denomination,
+        a.asset_managed_registration.data_is_empty(),
+        OnreError::TokenRoleConflict
+    );
+    require!(
+        a.pricer.managed_mint == a.managed_token.managed_mint,
         OnreError::IncompatiblePricer
     );
     let compatible = match flow {
@@ -126,7 +143,7 @@ pub fn create_offer_config(ctx: Context<CreateOfferConfig>, flow: OfferFlow) -> 
         require!(
             pair.quoter == a.quoter.key()
                 && pair.managed_mint == a.managed_token.managed_mint
-                && pair.asset_mint == a.asset.asset_mint,
+                && pair.asset_mint == asset_mint,
             OnreError::IncompatibleQuoter
         );
     } else {

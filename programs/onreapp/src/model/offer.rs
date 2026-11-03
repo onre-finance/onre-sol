@@ -15,7 +15,8 @@ pub enum OfferDirection {
 
 /// One immutable directed mint pair and flow, with replaceable component references.
 ///
-/// Pricer replacements must match the managed mint and the asset's denomination.
+/// The boss selects the external asset. Pricer replacements must match the managed
+/// mint and the currently selected Pricer's denomination.
 #[account]
 #[derive(InitSpace)]
 pub struct OfferConfig {

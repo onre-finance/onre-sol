@@ -3,14 +3,12 @@ use crate::{
     instructions::prop_amm::config::{
         CADENCE_WAVE_STEP, CURVE_EXPONENT_SCALE, CURVE_EXPONENT_STEP, MAX_CADENCE_WAVE_SCALED,
     },
-    model::{
-        seeds::PROP_AMM, AssetConfig, ManagedTokenConfig, PropAmmConfig, PropAmmState, Quoter,
-        QuoterKind,
-    },
+    model::{seeds::PROP_AMM, ManagedTokenConfig, PropAmmConfig, PropAmmState, Quoter, QuoterKind},
     state::State,
     OnreError,
 };
 use anchor_lang::prelude::*;
+use anchor_spl::token_interface::Mint;
 
 /// Records the created account and its complete initial configuration.
 #[event]
@@ -21,7 +19,8 @@ pub struct PropAmmStateCreatedEvent {
     pub timestamp: i64,
 }
 
-/// Binds a Prop AMM quoter to one immutable registered pair and initializes zero pressure.
+/// Binds a Prop AMM quoter to a boss-selected external mint and registered managed mint.
+/// Initializes zero pressure; the external asset needs no registration.
 #[derive(Accounts)]
 pub struct CreatePropAmmState<'info> {
     #[account(
@@ -35,10 +34,7 @@ pub struct CreatePropAmmState<'info> {
     )]
     pub managed_token: Box<Account<'info, ManagedTokenConfig>>,
 
-    #[account(
-        constraint = asset.enabled @ OnreError::ConfigurationDisabled
-    )]
-    pub asset: Box<Account<'info, AssetConfig>>,
+    pub asset_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         init,
@@ -83,12 +79,12 @@ pub fn create_prop_amm_state(
     );
     require_keys_neq!(
         ctx.accounts.managed_token.managed_mint,
-        ctx.accounts.asset.asset_mint,
+        ctx.accounts.asset_mint.key(),
         OnreError::InvalidSwapPair
     );
     ctx.accounts.prop_amm_state.set_inner(PropAmmState {
         quoter: ctx.accounts.quoter.key(),
-        asset_mint: ctx.accounts.asset.asset_mint,
+        asset_mint: ctx.accounts.asset_mint.key(),
         managed_mint: ctx.accounts.managed_token.managed_mint,
         config,
         current_sell_value_stable: 0,
