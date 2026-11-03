@@ -1,8 +1,12 @@
 mod common;
 
-use anchor_lang::{AccountDeserialize, AccountSerialize, InstructionData, ToAccountMetas};
+use anchor_lang::{
+    AccountDeserialize, AccountSerialize, AnchorDeserialize, AnchorSerialize, Discriminator, Event,
+    InstructionData, ToAccountMetas,
+};
 use common::*;
 use litesvm::LiteSVM;
+use onreapp::instructions::configuration::*;
 use onreapp::{accounts, instruction, model, OnreError};
 use solana_sdk::{
     account::Account, instruction::Instruction, pubkey::Pubkey, signature::Keypair, signer::Signer,
@@ -31,14 +35,103 @@ fn write<T: AccountSerialize>(svm: &mut LiteSVM, key: Pubkey, value: &T) {
     svm.set_account(key, a).unwrap();
 }
 
+fn creation_events(meta: &litesvm::types::TransactionMetadata) -> Vec<Vec<u8>> {
+    use anchor_lang::__private::base64::{engine::general_purpose::STANDARD, Engine};
+    meta.logs
+        .iter()
+        .filter_map(|log| log.strip_prefix("Program data: "))
+        .map(|data| STANDARD.decode(data).unwrap())
+        .collect()
+}
+
+/// Verify the public event payload against the actual committed account, including
+/// its actor, PDA, defaults, references, and runtime timestamp.
+fn assert_creation_event<E: Event, T: AccountDeserialize + AnchorSerialize>(
+    svm: &LiteSVM,
+    data: &[u8],
+    key: Pubkey,
+    boss: Pubkey,
+) {
+    let mut expected = E::DISCRIMINATOR.to_vec();
+    boss.serialize(&mut expected).unwrap();
+    key.serialize(&mut expected).unwrap();
+    read::<T>(svm, key).serialize(&mut expected).unwrap();
+    (get_clock_time(svm) as i64)
+        .serialize(&mut expected)
+        .unwrap();
+    assert_eq!(data, expected);
+    let mut body = &data[E::DISCRIMINATOR.len()..];
+    E::deserialize(&mut body).unwrap();
+    assert!(body.is_empty());
+}
+
 fn assert_error(
     result: Result<litesvm::types::TransactionMetadata, litesvm::types::FailedTransactionMetadata>,
     error: OnreError,
 ) {
     use solana_sdk::{instruction::InstructionError, transaction::TransactionError};
+    let failed = result.unwrap_err();
+    assert!(creation_events(&failed.meta).is_empty());
     assert_eq!(
-        result.unwrap_err().err,
+        failed.err,
         TransactionError::InstructionError(1, InstructionError::Custom(6000 + error as u32))
+    );
+}
+
+#[test]
+fn registered_components_emit_complete_creation_events() {
+    let (mut svm, boss, mint) = setup_initialized();
+    let key = boss.pubkey();
+    let asset_mint = create_mint(&mut svm, &boss, 6, &key);
+    macro_rules! check {
+        ($instruction:expr, $event:ty, $account:ty, $address:expr) => {{
+            let meta = send_tx(&mut svm, &[$instruction], &[&boss]).unwrap();
+            let events = creation_events(&meta);
+            assert_eq!(events.len(), 1);
+            assert_creation_event::<$event, $account>(&svm, &events[0], $address, key);
+        }};
+    }
+    check!(
+        register_managed(key, mint),
+        ManagedTokenRegisteredEvent,
+        model::ManagedTokenConfig,
+        managed(mint)
+    );
+    check!(
+        register_asset(key, asset_mint),
+        AssetRegisteredEvent,
+        model::AssetConfig,
+        asset(asset_mint)
+    );
+    check!(
+        create_pricer(key, mint, 0),
+        PricerCreatedEvent,
+        model::Pricer,
+        pricer(mint, 0)
+    );
+    check!(
+        create_quoter(key, model::QuoterKind::Nav, 7),
+        QuoterCreatedEvent,
+        model::Quoter,
+        quoter(model::QuoterKind::Nav, 7)
+    );
+    check!(
+        create_vault(key, model::VaultKind::Fee, 8, 0),
+        VaultConfigCreatedEvent,
+        model::VaultConfig,
+        vault(model::VaultKind::Fee, 8)
+    );
+    check!(
+        create_vault(key, model::VaultKind::Liquidity, 9, 625),
+        VaultConfigCreatedEvent,
+        model::VaultConfig,
+        vault(model::VaultKind::Liquidity, 9)
+    );
+    check!(
+        create_fee(key, 10, vault(model::VaultKind::Fee, 8), 75),
+        FeeConfigCreatedEvent,
+        model::FeeConfig,
+        fee(10)
     );
 }
 
@@ -299,7 +392,15 @@ fn creates_reusable_components_and_both_nav_directions() {
     assert_eq!(assets.denomination, model::PricingDenomination::Usd);
     for reverse in [false, true] {
         let instruction = f.offer_ix(model::OfferFlow::Permissioned, reverse);
-        send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+        let meta = send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+        let events = creation_events(&meta);
+        assert_eq!(events.len(), 1);
+        assert_creation_event::<OfferConfigCreatedEvent, model::OfferConfig>(
+            &f.svm,
+            &events[0],
+            f.offer_key(model::OfferFlow::Permissioned, reverse),
+            f.boss.pubkey(),
+        );
         let offer: model::OfferConfig =
             read(&f.svm, f.offer_key(model::OfferFlow::Permissioned, reverse));
         assert_eq!(offer.pricer, f.selected_pricer);
@@ -404,13 +505,39 @@ fn duplicate_creation_preserves_existing_pricer_vectors() {
     write(&mut f.svm, f.selected_pricer, &price);
     let before = f.svm.get_account(&f.selected_pricer).unwrap();
     f.svm.expire_blockhash();
-    assert!(send_tx(
+    let failed = send_tx(
         &mut f.svm,
         &[create_pricer(f.boss.pubkey(), f.mint, 0)],
-        &[&f.boss]
+        &[&f.boss],
     )
-    .is_err());
+    .unwrap_err();
+    assert!(creation_events(&failed.meta).is_empty());
     assert_eq!(f.svm.get_account(&f.selected_pricer).unwrap(), before);
+}
+
+#[test]
+fn failed_transaction_can_contain_creation_logs_without_committing_accounts() {
+    let mut f = Fixture::new();
+    let boss = f.boss.pubkey();
+    let target = quoter(model::QuoterKind::Nav, 50);
+    let failed = send_tx(
+        &mut f.svm,
+        &[
+            create_quoter(boss, model::QuoterKind::Nav, 50),
+            create_fee(boss, 50, vault(model::VaultKind::Fee, 0), 1001),
+        ],
+        &[&f.boss],
+    )
+    .unwrap_err();
+    let events = creation_events(&failed.meta);
+    assert_eq!(events.len(), 1);
+    assert_eq!(&events[0][..8], QuoterCreatedEvent::DISCRIMINATOR);
+    let event = QuoterCreatedEvent::deserialize(&mut &events[0][8..]).unwrap();
+    assert_eq!(event.boss, boss);
+    assert_eq!(event.quoter, target);
+    assert_eq!(event.configuration.instance_id, 50);
+    assert!(f.svm.get_account(&target).is_none());
+    assert!(f.svm.get_account(&fee(50)).is_none());
 }
 
 #[test]
@@ -566,7 +693,15 @@ fn prop_amm_requires_initialized_pair_and_cannot_be_rebound() {
         OnreError::InvalidAmount,
     );
     let instruction = f.pair_ix(f.selected_quoter, f.asset, base_curve());
-    send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    let meta = send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    let events = creation_events(&meta);
+    assert_eq!(events.len(), 1);
+    assert_creation_event::<PropAmmStateCreatedEvent, model::PropAmmState>(
+        &f.svm,
+        &events[0],
+        pda(&[b"prop_amm", f.selected_quoter.as_ref()]),
+        boss,
+    );
     f.pair = Some(pda(&[b"prop_amm", f.selected_quoter.as_ref()]));
     for reverse in [false, true] {
         let instruction = f.offer_ix(model::OfferFlow::Permissionless, reverse);
@@ -620,7 +755,30 @@ fn buffer_initialization_is_per_mint_and_preserves_legacy_state() {
         let mut account = f.svm.get_account(&mint).unwrap();
         account.data[36..44].copy_from_slice(&supply.to_le_bytes());
         f.svm.set_account(mint, account).unwrap();
-        send_tx(&mut f.svm, &[initialize_buffer(boss, mint)], &[&f.boss]).unwrap();
+        let meta = send_tx(&mut f.svm, &[initialize_buffer(boss, mint)], &[&f.boss]).unwrap();
+        let events = creation_events(&meta);
+        assert_eq!(events.len(), 4);
+        for (index, seed) in [
+            b"buffer_reserve".as_slice(),
+            b"buffer_management",
+            b"buffer_performance",
+        ]
+        .iter()
+        .enumerate()
+        {
+            assert_creation_event::<VaultConfigCreatedEvent, model::VaultConfig>(
+                &f.svm,
+                &events[index],
+                pda(&[seed, mint.as_ref()]),
+                boss,
+            );
+        }
+        assert_creation_event::<ManagedTokenBufferInitializedEvent, model::ManagedTokenBufferState>(
+            &f.svm,
+            &events[3],
+            pda(&[b"buffer", mint.as_ref()]),
+            boss,
+        );
         let buffer: model::ManagedTokenBufferState = read(&f.svm, pda(&[b"buffer", mint.as_ref()]));
         assert_eq!(buffer.managed_mint, mint);
         assert_eq!(buffer.previous_supply, supply);

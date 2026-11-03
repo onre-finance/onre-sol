@@ -1,6 +1,15 @@
 use crate::model::{self, seeds::*};
 use anchor_lang::prelude::*;
 
+/// Records the created account and its complete initial configuration.
+#[event]
+pub struct AssetRegisteredEvent {
+    pub boss: Pubkey,
+    pub asset: Pubkey,
+    pub configuration: model::AssetConfig,
+    pub timestamp: i64,
+}
+
 /// Attests an external mint's pricing denomination. A mint cannot also be managed.
 #[derive(Accounts)]
 pub struct RegisterAsset<'info> {
@@ -49,6 +58,12 @@ pub fn register_asset(
         denomination,
         enabled: true,
         bump: ctx.bumps.asset,
+    });
+    emit!(AssetRegisteredEvent {
+        boss: ctx.accounts.boss.key(),
+        asset: ctx.accounts.asset.key(),
+        configuration: (**ctx.accounts.asset).clone(),
+        timestamp: Clock::get()?.unix_timestamp,
     });
     Ok(())
 }

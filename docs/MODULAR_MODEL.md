@@ -175,6 +175,38 @@ OfferConfig. BUFFER initialization is independent of offer creation. Clients may
 combine creation instructions in one transaction when transaction limits permit.
 There are no new CLI commands yet; generated IDL/types expose these instructions.
 
+### Creation events
+
+Each successful creation emits a typed Anchor `emit!` event. Every payload includes
+the authorizing `boss`, the created account's PDA, its complete initial
+`configuration` (using the corresponding model account type), and the Unix
+`timestamp`. Event definitions live beside their instruction handlers. Snapshots
+include defaults, component references, and bumps; Pricer snapshots include its
+initial empty vector array and zero active count.
+
+| Instruction | Event | Created-account field |
+| --- | --- | --- |
+| `register_managed_token` | `ManagedTokenRegisteredEvent` | `managed_token` |
+| `register_asset` | `AssetRegisteredEvent` | `asset` |
+| `create_pricer` | `PricerCreatedEvent` | `pricer` |
+| `create_quoter` | `QuoterCreatedEvent` | `quoter` |
+| `create_vault_config` | `VaultConfigCreatedEvent` | `vault` |
+| `create_fee_config` | `FeeConfigCreatedEvent` | `fee_config` |
+| `create_prop_amm_state` | `PropAmmStateCreatedEvent` | `prop_amm_state` |
+| `create_offer_config` | `OfferConfigCreatedEvent` | `offer_config` |
+| `initialize_managed_token_buffer` | `ManagedTokenBufferInitializedEvent` | `buffer_state` |
+
+BUFFER initialization emits three `VaultConfigCreatedEvent` records in reserve,
+management-fee, performance-fee order, followed by its BUFFER event. All four
+share the same boss and timestamp. The BUFFER snapshot records the mint's actual
+supply baseline and the three newly created vault addresses.
+
+Consumers must check the transaction's success status before applying events:
+logs from an earlier successful instruction can remain visible when a later
+instruction fails and rolls back the entire transaction. These are standard
+program-log events, subject to RPC log availability and transaction log limits.
+Existing instruction accounts and legacy events are unchanged.
+
 ## Validation and remaining execution rules
 
 The creation-time rules below are implemented. Runtime quoting, settlement,

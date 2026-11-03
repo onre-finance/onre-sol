@@ -1,6 +1,15 @@
 use crate::model::{self, seeds::*};
 use anchor_lang::prelude::*;
 
+/// Records the created account and its complete initial configuration.
+#[event]
+pub struct VaultConfigCreatedEvent {
+    pub boss: Pubkey,
+    pub vault: Pubkey,
+    pub configuration: model::VaultConfig,
+    pub timestamp: i64,
+}
+
 /// Creates a reusable vault authority/configuration. Does not create or fund token accounts.
 #[derive(Accounts)]
 #[instruction(kind: model::VaultKind, instance_id: u64)]
@@ -56,6 +65,12 @@ pub fn create_vault_config(
         withdrawal_destination,
         refill_target_bps,
         bump: ctx.bumps.vault,
+    });
+    emit!(VaultConfigCreatedEvent {
+        boss: ctx.accounts.boss.key(),
+        vault: ctx.accounts.vault.key(),
+        configuration: (**ctx.accounts.vault).clone(),
+        timestamp: Clock::get()?.unix_timestamp,
     });
     Ok(())
 }

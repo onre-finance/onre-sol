@@ -11443,6 +11443,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "assetRegisteredEvent",
+      "discriminator": [
+        42,
+        91,
+        211,
+        181,
+        225,
+        60,
+        154,
+        60
+      ]
+    },
+    {
       "name": "bossAcceptedEvent",
       "discriminator": [
         11,
@@ -11586,6 +11599,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "feeConfigCreatedEvent",
+      "discriminator": [
+        52,
+        51,
+        196,
+        215,
+        145,
+        202,
+        119,
+        208
+      ]
+    },
+    {
       "name": "killSwitchToggledEvent",
       "discriminator": [
         104,
@@ -11609,6 +11635,32 @@ export type Onreapp = {
         90,
         28,
         198
+      ]
+    },
+    {
+      "name": "managedTokenBufferInitializedEvent",
+      "discriminator": [
+        53,
+        119,
+        193,
+        93,
+        166,
+        89,
+        208,
+        188
+      ]
+    },
+    {
+      "name": "managedTokenRegisteredEvent",
+      "discriminator": [
+        27,
+        121,
+        253,
+        185,
+        11,
+        193,
+        71,
+        240
       ]
     },
     {
@@ -11687,6 +11739,19 @@ export type Onreapp = {
         249,
         29,
         1
+      ]
+    },
+    {
+      "name": "offerConfigCreatedEvent",
+      "discriminator": [
+        161,
+        157,
+        203,
+        42,
+        160,
+        89,
+        133,
+        210
       ]
     },
     {
@@ -11846,6 +11911,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "pricerCreatedEvent",
+      "discriminator": [
+        153,
+        25,
+        54,
+        126,
+        90,
+        67,
+        108,
+        153
+      ]
+    },
+    {
       "name": "propAmmConfiguredEvent",
       "discriminator": [
         104,
@@ -11856,6 +11934,32 @@ export type Onreapp = {
         200,
         237,
         41
+      ]
+    },
+    {
+      "name": "propAmmStateCreatedEvent",
+      "discriminator": [
+        35,
+        90,
+        100,
+        21,
+        92,
+        47,
+        240,
+        221
+      ]
+    },
+    {
+      "name": "quoterCreatedEvent",
+      "discriminator": [
+        191,
+        180,
+        94,
+        153,
+        108,
+        201,
+        73,
+        79
       ]
     },
     {
@@ -12025,6 +12129,19 @@ export type Onreapp = {
         119,
         155,
         198
+      ]
+    },
+    {
+      "name": "vaultConfigCreatedEvent",
+      "discriminator": [
+        214,
+        40,
+        71,
+        15,
+        14,
+        115,
+        32,
+        208
       ]
     },
     {
@@ -12992,6 +13109,37 @@ export type Onreapp = {
       }
     },
     {
+      "name": "assetRegisteredEvent",
+      "docs": [
+        "Records the created account and its complete initial configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "asset",
+            "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "assetConfig"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "bossAcceptedEvent",
       "docs": [
         "Event emitted when the boss authority is successfully transferred",
@@ -13561,6 +13709,37 @@ export type Onreapp = {
       }
     },
     {
+      "name": "feeConfigCreatedEvent",
+      "docs": [
+        "Records the created account and its complete initial configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "feeConfig",
+            "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "feeConfig"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "killSwitchToggledEvent",
       "docs": [
         "Event emitted when the kill switch state is changed",
@@ -13599,6 +13778,37 @@ export type Onreapp = {
           {
             "name": "newMainOffer",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "managedTokenBufferInitializedEvent",
+      "docs": [
+        "Records the created account and its complete initial configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "bufferState",
+            "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "managedTokenBufferState"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -13700,6 +13910,37 @@ export type Onreapp = {
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "managedTokenRegisteredEvent",
+      "docs": [
+        "Records the created account and its complete initial configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "managedToken",
+            "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "managedTokenConfig"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -14152,6 +14393,37 @@ export type Onreapp = {
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "offerConfigCreatedEvent",
+      "docs": [
+        "Records the created account and its complete initial configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "offerConfig",
+            "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "offerConfig"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -14798,6 +15070,37 @@ export type Onreapp = {
       }
     },
     {
+      "name": "pricerCreatedEvent",
+      "docs": [
+        "Records the created account and its complete initial configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "pricer",
+            "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "pricer"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "pricingDenomination",
       "type": {
         "kind": "enum",
@@ -15108,6 +15411,37 @@ export type Onreapp = {
       }
     },
     {
+      "name": "propAmmStateCreatedEvent",
+      "docs": [
+        "Records the created account and its complete initial configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "propAmmState",
+            "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "propAmmState"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "quoter",
       "docs": [
         "Reusable quote dispatch. Prop AMM configuration lives in a companion PropAmmState."
@@ -15134,6 +15468,37 @@ export type Onreapp = {
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "quoterCreatedEvent",
+      "docs": [
+        "Records the created account and its complete initial configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "quoter",
+            "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "quoter"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -15987,6 +16352,37 @@ export type Onreapp = {
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vaultConfigCreatedEvent",
+      "docs": [
+        "Records the created account and its complete initial configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "vaultConfig"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }

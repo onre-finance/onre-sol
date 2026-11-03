@@ -1,6 +1,15 @@
 use crate::model::{self, seeds::*};
 use anchor_lang::prelude::*;
 
+/// Records the created account and its complete initial configuration.
+#[event]
+pub struct PropAmmStateCreatedEvent {
+    pub boss: Pubkey,
+    pub prop_amm_state: Pubkey,
+    pub configuration: model::PropAmmState,
+    pub timestamp: i64,
+}
+
 /// Binds a Prop AMM quoter to one immutable registered pair and initializes zero pressure.
 #[derive(Accounts)]
 pub struct CreatePropAmmState<'info> {
@@ -80,6 +89,12 @@ pub fn create_prop_amm_state(
         epoch_start: Clock::get()?.unix_timestamp,
         current_sell_trade_count: 0,
         bump: ctx.bumps.prop_amm_state,
+    });
+    emit!(PropAmmStateCreatedEvent {
+        boss: ctx.accounts.boss.key(),
+        prop_amm_state: ctx.accounts.prop_amm_state.key(),
+        configuration: (**ctx.accounts.prop_amm_state).clone(),
+        timestamp: Clock::get()?.unix_timestamp,
     });
     Ok(())
 }
