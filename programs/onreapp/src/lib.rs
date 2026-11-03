@@ -100,14 +100,6 @@ pub mod onreapp {
         configuration::register_managed_token(ctx)
     }
 
-    /// Registers the trusted denomination of an external asset mint; boss only.
-    pub fn register_asset(
-        ctx: Context<RegisterAsset>,
-        denomination: PricingDenomination,
-    ) -> Result<()> {
-        configuration::register_asset(ctx, denomination)
-    }
-
     /// Creates an independent Pricer with no pricing vectors; boss only.
     pub fn create_pricer(
         ctx: Context<CreatePricer>,

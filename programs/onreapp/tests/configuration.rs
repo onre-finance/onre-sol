@@ -82,7 +82,6 @@ fn assert_error(
 fn registered_components_emit_complete_creation_events() {
     let (mut svm, boss, mint) = setup_initialized();
     let key = boss.pubkey();
-    let asset_mint = create_mint(&mut svm, &boss, 6, &key);
     macro_rules! check {
         ($instruction:expr, $event:ty, $account:ty, $address:expr) => {{
             let meta = send_tx(&mut svm, &[$instruction], &[&boss]).unwrap();
@@ -96,12 +95,6 @@ fn registered_components_emit_complete_creation_events() {
         ManagedTokenRegisteredEvent,
         model::ManagedTokenConfig,
         managed(mint)
-    );
-    check!(
-        register_asset(key, asset_mint),
-        AssetRegisteredEvent,
-        model::AssetConfig,
-        asset(asset_mint)
     );
     check!(
         create_pricer(key, mint, 0),
@@ -138,9 +131,6 @@ fn registered_components_emit_complete_creation_events() {
 fn managed(mint: Pubkey) -> Pubkey {
     pda(&[b"managed_token", mint.as_ref()])
 }
-fn asset(mint: Pubkey) -> Pubkey {
-    pda(&[b"asset", mint.as_ref()])
-}
 fn pricer(mint: Pubkey, id: u64) -> Pubkey {
     pda(&[b"pricer", mint.as_ref(), &[0], &id.to_le_bytes()])
 }
@@ -158,29 +148,12 @@ fn register_managed(boss: Pubkey, mint: Pubkey) -> Instruction {
     ix(
         accounts::RegisterManagedToken {
             managed_mint: mint,
-            asset_registration: asset(mint),
             managed_token: managed(mint),
             state: find_state_pda().0,
             boss,
             system_program: SYSTEM_PROGRAM_ID,
         },
         instruction::RegisterManagedToken {},
-    )
-}
-
-fn register_asset(boss: Pubkey, mint: Pubkey) -> Instruction {
-    ix(
-        accounts::RegisterAsset {
-            asset_mint: mint,
-            managed_registration: managed(mint),
-            asset: asset(mint),
-            state: find_state_pda().0,
-            boss,
-            system_program: SYSTEM_PROGRAM_ID,
-        },
-        instruction::RegisterAsset {
-            denomination: model::PricingDenomination::Usd,
-        },
     )
 }
 
@@ -296,7 +269,6 @@ impl Fixture {
         let asset = create_mint(&mut svm, &boss, 6, &key);
         for instruction in [
             register_managed(key, mint),
-            register_asset(key, asset),
             create_pricer(key, mint, 0),
             create_quoter(key, model::QuoterKind::Nav, 0),
             create_vault(key, model::VaultKind::Fee, 0, 0),
@@ -343,7 +315,7 @@ impl Fixture {
                 token_in_mint,
                 token_out_mint,
                 managed_token: managed(self.mint),
-                asset: asset(self.asset),
+                asset_managed_registration: managed(self.asset),
                 pricer: self.selected_pricer,
                 quoter: self.selected_quoter,
                 prop_amm_state: self.pair,
@@ -369,7 +341,7 @@ impl Fixture {
             accounts::CreatePropAmmState {
                 quoter: key,
                 managed_token: managed(self.mint),
-                asset: asset(asset_mint),
+                asset_mint,
                 prop_amm_state: pda(&[b"prop_amm", key.as_ref()]),
                 state: find_state_pda().0,
                 boss: self.boss.pubkey(),
@@ -388,8 +360,6 @@ fn creates_reusable_components_and_both_nav_directions() {
     let price: model::Pricer = read(&f.svm, f.selected_pricer);
     assert!(price.enabled);
     assert_eq!(price.vector_count, 0);
-    let assets: model::AssetConfig = read(&f.svm, asset(f.asset));
-    assert_eq!(assets.denomination, model::PricingDenomination::Usd);
     for reverse in [false, true] {
         let instruction = f.offer_ix(model::OfferFlow::Permissioned, reverse);
         let meta = send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
@@ -426,6 +396,102 @@ fn creates_reusable_components_and_both_nav_directions() {
 }
 
 #[test]
+fn offers_reject_two_managed_mints_and_spoofed_registration_pdas() {
+    let mut f = Fixture::new();
+    let boss = f.boss.pubkey();
+    send_tx(&mut f.svm, &[register_managed(boss, f.asset)], &[&f.boss]).unwrap();
+    for reverse in [false, true] {
+        let instruction = f.offer_ix(model::OfferFlow::Permissioned, reverse);
+        assert_error(
+            send_tx(&mut f.svm, &[instruction.clone()], &[&f.boss]),
+            OnreError::TokenRoleConflict,
+        );
+        let mut spoofed = instruction;
+        for account in &mut spoofed.accounts {
+            if account.pubkey == managed(f.asset) {
+                account.pubkey = Pubkey::new_unique();
+            }
+        }
+        assert_error(
+            send_tx(&mut f.svm, &[spoofed], &[&f.boss]),
+            OnreError::InvalidMint,
+        );
+        assert!(f
+            .svm
+            .get_account(&f.offer_key(model::OfferFlow::Permissioned, reverse))
+            .is_none());
+    }
+}
+
+#[test]
+fn offer_rejects_a_self_pair() {
+    let mut f = Fixture::new();
+    f.asset = f.mint;
+    let instruction = f.offer_ix(model::OfferFlow::Permissioned, false);
+    assert_error(
+        send_tx(&mut f.svm, &[instruction], &[&f.boss]),
+        OnreError::InvalidOfferDirection,
+    );
+    assert!(f
+        .svm
+        .get_account(&f.offer_key(model::OfferFlow::Permissioned, false))
+        .is_none());
+}
+
+#[test]
+fn offer_requires_the_selected_managed_mint_in_the_pair() {
+    let mut f = Fixture::new();
+    let boss = f.boss.pubkey();
+    let other = create_mint(&mut f.svm, &f.boss, 9, &boss);
+    send_tx(&mut f.svm, &[register_managed(boss, other)], &[&f.boss]).unwrap();
+    let mut instruction = f.offer_ix(model::OfferFlow::Permissioned, false);
+    for account in &mut instruction.accounts {
+        if account.pubkey == managed(f.mint) {
+            account.pubkey = managed(other);
+        }
+    }
+    assert_error(
+        send_tx(&mut f.svm, &[instruction], &[&f.boss]),
+        OnreError::InvalidOfferDirection,
+    );
+}
+
+#[test]
+fn offer_validates_external_mint_decimals_without_registration() {
+    let mut f = Fixture::new();
+    f.asset = create_mint(&mut f.svm, &f.boss, 19, &f.boss.pubkey());
+    for reverse in [false, true] {
+        let instruction = f.offer_ix(model::OfferFlow::Permissioned, reverse);
+        assert_error(
+            send_tx(&mut f.svm, &[instruction], &[&f.boss]),
+            OnreError::DecimalsExceedMax,
+        );
+    }
+}
+
+#[test]
+fn boss_can_choose_an_unregistered_token_2022_asset_in_both_directions() {
+    let mut f = Fixture::new();
+    f.asset = create_mint_2022(&mut f.svm, &f.boss, 6, &f.boss.pubkey());
+    for reverse in [false, true] {
+        let instruction = f.offer_ix(model::OfferFlow::Permissioned, reverse);
+        let meta = send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+        let events = creation_events(&meta);
+        assert_eq!(events.len(), 1);
+        assert_creation_event::<OfferConfigCreatedEvent, model::OfferConfig>(
+            &f.svm,
+            &events[0],
+            f.offer_key(model::OfferFlow::Permissioned, reverse),
+            f.boss.pubkey(),
+        );
+        let offer: model::OfferConfig =
+            read(&f.svm, f.offer_key(model::OfferFlow::Permissioned, reverse));
+        let price: model::Pricer = read(&f.svm, offer.pricer);
+        assert_eq!(price.denomination, model::PricingDenomination::Usd);
+    }
+}
+
+#[test]
 fn every_creator_requires_boss_and_rolls_back_allocations() {
     let mut f = Fixture::new();
     let rogue = Keypair::new();
@@ -446,7 +512,6 @@ fn every_creator_requires_boss_and_rolls_back_allocations() {
     .unwrap();
     let instructions = [
         register_managed(rogue.pubkey(), mint),
-        register_asset(rogue.pubkey(), mint),
         create_pricer(rogue.pubkey(), f.mint, 90),
         create_quoter(rogue.pubkey(), model::QuoterKind::Nav, 90),
         create_vault(rogue.pubkey(), model::VaultKind::Fee, 90, 0),
@@ -474,24 +539,12 @@ fn every_creator_requires_boss_and_rolls_back_allocations() {
 }
 
 #[test]
-fn registration_rejects_conflicting_roles_and_unsupported_decimals() {
+fn managed_registration_rejects_unsupported_decimals() {
     let mut f = Fixture::new();
     let boss = f.boss.pubkey();
-    assert_error(
-        send_tx(&mut f.svm, &[register_asset(boss, f.mint)], &[&f.boss]),
-        OnreError::TokenRoleConflict,
-    );
-    assert_error(
-        send_tx(&mut f.svm, &[register_managed(boss, f.asset)], &[&f.boss]),
-        OnreError::TokenRoleConflict,
-    );
     let mint = create_mint(&mut f.svm, &f.boss, 19, &boss);
     assert_error(
         send_tx(&mut f.svm, &[register_managed(boss, mint)], &[&f.boss]),
-        OnreError::DecimalsExceedMax,
-    );
-    assert_error(
-        send_tx(&mut f.svm, &[register_asset(boss, mint)], &[&f.boss]),
         OnreError::DecimalsExceedMax,
     );
 }
@@ -708,7 +761,6 @@ fn prop_amm_requires_initialized_pair_and_cannot_be_rebound() {
         send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
     }
     let other = create_mint(&mut f.svm, &f.boss, 6, &boss);
-    send_tx(&mut f.svm, &[register_asset(boss, other)], &[&f.boss]).unwrap();
     let instruction = f.pair_ix(f.selected_quoter, other, base_curve());
     assert!(send_tx(&mut f.svm, &[instruction], &[&f.boss]).is_err());
     f.asset = other;

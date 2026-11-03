@@ -22,7 +22,7 @@ same denomination, and each offer stores the chosen Pricer's address.
 
 ```mermaid
 flowchart TD
-    Asset[AssetConfig: trusted denomination] --> Offer
+    Asset[Boss-selected external mint] --> Offer
     Token[ManagedTokenConfig] --> Pricer[Pricer instances per mint and denomination]
     Pricer --> Vectors[Up to 10 PricingVectors]
     Token --> Buffer[ManagedTokenBufferState]
@@ -57,7 +57,7 @@ Field order in each domain module defines the proposed serialized layout. `INIT_
 excludes the eight-byte account discriminator. There is no implicit padding.
 
 The model is split into `pricer`, `quoter`, `prop_amm`, `fee`, `vault`, `offer`,
-`buffer`, `fulfillment`, `managed_token`, `asset`, `supply_exclusions`, and `market_stats`
+`buffer`, `fulfillment`, `managed_token`, `supply_exclusions`, and `market_stats`
 modules. Each module owns its domain's account and supporting types. `model/mod.rs`
 re-exports the types, preserving existing `model::Pricer`-style imports alongside
 the domain paths such as `model::pricer::Pricer`.
@@ -65,7 +65,6 @@ the domain paths such as `model::pricer::Pricer`.
 | Account | Body bytes | Allocated bytes with discriminator |
 | --- | ---: | ---: |
 | ManagedTokenConfig | 51 | 59 |
-| AssetConfig | 35 | 43 |
 | Pricer | 444 | 452 |
 | Quoter | 11 | 19 |
 | PropAmmState | 183 | 191 |
@@ -79,7 +78,6 @@ the domain paths such as `model::pricer::Pricer`.
 | EVM object | Solana model | Contents |
 | --- | --- | --- |
 | ManagedTokenConfig | ManagedTokenConfig | Managed mint, decimals, enabled, program issuance limits, bump. |
-| Supported-asset denomination | AssetConfig | External mint, boss-attested denomination, enabled, bump. |
 | PricingVector | PricingVector, embedded | Start/base times, base price, APR, price-step duration. |
 | Pricer | Pricer | Instance ID, managed mint, denomination, 10 vectors, active count, enabled, bump. |
 | Quoter | Quoter | Kind, instance ID, enabled, bump. |
@@ -99,7 +97,7 @@ module would make incompatible account bodies share a discriminator.
 
 An account's existence and ownership replace EVM mapping `exists` flags. The
 configurable executable records retain EVM's positive `enabled` polarity:
-managed tokens, assets, pricers, quoters, fee configs, and offers. Creation
+managed tokens, pricers, quoters, fee configs, and offers. Creation
 explicitly enables them. BUFFER existence is optional; Prop AMM configuration
 exists when its pair-state account exists. Neither is implied by zero-filled data.
 
@@ -117,7 +115,6 @@ numeric instance and request IDs use eight-byte little-endian encoding.
 | Object | Ordered PDA seeds |
 | --- | --- |
 | ManagedTokenConfig | `"managed_token", managed_mint` |
-| AssetConfig | `"asset", asset_mint` |
 | Pricer | `"pricer", managed_mint, denomination, instance_id` |
 | Quoter | `"quoter", kind, instance_id` |
 | PropAmmState | `"prop_amm", quoter` |
@@ -155,21 +152,20 @@ repeat creation; shared accounts are not implicitly initialized or overwritten b
 | Instruction | Behavior |
 | --- | --- |
 | `register_managed_token` | Registers an existing SPL mint, records decimals, enables it, sets issuance limits to zero. Does not acquire mint authority. |
-| `register_asset` | Registers the boss-attested denomination of an external SPL mint. A mint cannot be both an asset and a managed token. |
 | `create_pricer` | Creates an enabled instance with zero vectors. New-vector management and execution remain deferred. |
 | `create_quoter` | Creates enabled dispatch configuration for one kind and instance ID. |
 | `create_vault_config` | Creates a vault authority/config with a nonzero destination; creates no ATA. Refill targets are allowed only for Liquidity and cannot exceed 10,000 bps. |
 | `create_fee_config` | Requires an existing Fee vault; percentage fees are capped at 1,000 bps and the input-token minimum is stored in base units. |
-| `create_prop_amm_state` | Requires an enabled PropAmm quoter and registered pair. Validates curve/cadence/epoch settings and creates zero pressure with the current timestamp. Repeat creation cannot rebind the pair. |
-| `create_offer_config` | Validates registered mint roles, explicit pricer mint/denomination, enabled components, flow/quoter compatibility, Prop AMM pair binding, and vault kinds. Stores mint decimals. |
+| `create_prop_amm_state` | Requires an enabled PropAmm quoter, a registered managed mint, and a boss-selected external mint. Validates curve/cadence/epoch settings and creates zero pressure with the current timestamp. Repeat creation cannot rebind the pair. |
+| `create_offer_config` | Requires exactly one registered managed mint and a Pricer for it. The boss chooses the external mint in the Pricer's denomination. Validates mint decimals, enabled components, flow/quoter compatibility, Prop AMM pair binding, and vault kinds. |
 | `initialize_managed_token_buffer` | Creates independent per-mint accounting and three dedicated vault configs, using the token's enabled USD Pricer instance zero. |
 
 Both SPL Token and Token-2022 mint accounts are accepted through Anchor's token
-interface, with at most 18 decimals. Registration is configuration, not a promise
-that every extension is supported by future settlement. Existing transfer-fee
-checks remain on the legacy movement paths.
+interface. Managed registration and offer creation allow at most 18 decimals.
+Registration is configuration, not a promise that every extension is supported
+by future settlement. Existing transfer-fee checks remain on the legacy movement paths.
 
-Suggested setup order: register managed and asset mints; create Pricer, Quoter,
+Suggested setup order: register managed mints; create Pricer, Quoter,
 and vaults; create FeeConfig; initialize Prop AMM state if applicable; then create
 OfferConfig. BUFFER initialization is independent of offer creation. Clients may
 combine creation instructions in one transaction when transaction limits permit.
@@ -187,7 +183,6 @@ initial empty vector array and zero active count.
 | Instruction | Event | Created-account field |
 | --- | --- | --- |
 | `register_managed_token` | `ManagedTokenRegisteredEvent` | `managed_token` |
-| `register_asset` | `AssetRegisteredEvent` | `asset` |
 | `create_pricer` | `PricerCreatedEvent` | `pricer` |
 | `create_quoter` | `QuoterCreatedEvent` | `quoter` |
 | `create_vault_config` | `VaultConfigCreatedEvent` | `vault` |
@@ -216,15 +211,20 @@ Exactly one mint in an offer must be registered as managed. Managed output means
 `AssetToManaged`; managed input means `ManagedToAsset`. Both-managed and
 neither-managed pairs are invalid. Decimals must match the mint accounts.
 
-On offer creation (and in future Pricer reassignment instructions), the selected Pricer must exist,
-be enabled, and name the offer's managed mint. Its denomination must match the
-non-managed asset mint in either direction. Currently only `Usd` is modeled,
-so the asset must be a supported USD-denominated mint. A mint's decimals or symbol
-do not establish its denomination; the matching `AssetConfig` provides the
-boss-attested denomination. Registration checks the opposite role PDA to prevent
-a mint from being registered in both roles. Future execution must also check that the selected
-Pricer remains enabled. Multiple instances with the same compatible mint and
-denomination are valid choices; changing the reference does not change the offer ID.
+On offer creation, the selected Pricer must exist, be enabled, and name the offer's
+managed mint. The boss is trusted to select an external asset in the correct
+denomination, matching EVM's governance trust model. External assets are not
+registered or assigned an on-chain currency classification. The other mint's
+canonical managed-registration PDA is checked for empty data to reject
+both-managed pairs; neither-managed pairs and self-pairs are also rejected.
+
+Denomination is stored only on the Pricer and read through the offer's explicit
+reference. A future Pricer reassignment must match the managed mint and the
+currently selected Pricer's denomination before replacing that reference. No
+denomination field is duplicated on OfferConfig. Currently only `Usd` is modeled.
+Future execution must also check that the selected Pricer remains enabled.
+Multiple instances with the same compatible mint and denomination are valid
+choices; changing the reference does not change the offer ID.
 
 | Flow | Direction | Quoter |
 | --- | --- | --- |

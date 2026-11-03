@@ -1,7 +1,6 @@
 //! Domain-specific PDA seeds for configuration accounts; legacy seeds are unchanged.
 
 pub const MANAGED_TOKEN: &[u8] = b"managed_token";
-pub const ASSET: &[u8] = b"asset";
 pub const PRICER: &[u8] = b"pricer";
 pub const QUOTER: &[u8] = b"quoter";
 pub const PROP_AMM: &[u8] = b"prop_amm";

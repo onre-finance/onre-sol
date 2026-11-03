@@ -280,9 +280,9 @@ pub enum OnreError {
     InvalidRedemptionRequestId,
     #[msg("Configuration is disabled")]
     ConfigurationDisabled,
-    #[msg("Mint is already registered in the other token role")]
+    #[msg("The offer's asset mint is registered as a managed token")]
     TokenRoleConflict,
-    #[msg("Pricer does not match the managed mint or asset denomination")]
+    #[msg("Pricer does not match the managed mint or pricing denomination")]
     IncompatiblePricer,
     #[msg("Quoter is incompatible with the offer flow or pair")]
     IncompatibleQuoter,

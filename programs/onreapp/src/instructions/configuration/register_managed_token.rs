@@ -1,9 +1,6 @@
 use crate::{
     constants::seeds::STATE,
-    model::{
-        seeds::{ASSET, MANAGED_TOKEN},
-        ManagedTokenConfig,
-    },
+    model::{seeds::MANAGED_TOKEN, ManagedTokenConfig},
     state::State,
     utils::MAX_TOKEN_DECIMALS,
     OnreError,
@@ -24,14 +21,6 @@ pub struct ManagedTokenRegisteredEvent {
 #[derive(Accounts)]
 pub struct RegisterManagedToken<'info> {
     pub managed_mint: Box<InterfaceAccount<'info, Mint>>,
-
-    /// CHECK: Its derived address must have no asset registration data.
-    #[account(
-        seeds = [ASSET, managed_mint.key().as_ref()],
-        bump,
-        constraint = asset_registration.data_is_empty() @ OnreError::TokenRoleConflict
-    )]
-    pub asset_registration: UncheckedAccount<'info>,
 
     #[account(
         init,
