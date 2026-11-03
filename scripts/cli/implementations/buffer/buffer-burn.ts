@@ -1,7 +1,7 @@
 import type { GlobalOptions } from "../../prompts";
 import { buildAndHandleTransaction, executeCommand } from "../../helpers";
 import { bufferBurnParams } from "../../params";
-import { EventParser } from "@coral-xyz/anchor";
+import { EventParser } from "@anchor-lang/core";
 
 export async function executeBufferBurn(opts: GlobalOptions & Record<string, any>): Promise<void> {
     await executeCommand(opts, bufferBurnParams, async (context) => {
