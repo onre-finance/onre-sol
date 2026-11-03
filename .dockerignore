@@ -8,6 +8,7 @@ yarn.lock
 
 # Build outputs
 target/
+trident-tests/target/
 .anchor/
 coverage/
 dist/
