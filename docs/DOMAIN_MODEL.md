@@ -1,5 +1,10 @@
 # Domain Model
 
+This page describes the current runtime model. The proposed EVM-aligned account
+layouts and their creation instructions are documented separately in
+[`MODULAR_MODEL.md`](MODULAR_MODEL.md). Trading and BUFFER settlement still use
+the legacy layouts described here.
+
 This page explains the protocol objects in business terms first, then maps them to PDAs. It is meant for product, accounting, integration, and architecture discussions. Instruction-level token flow diagrams live in [`TOKEN_FLOW_ROUTING.md`](TOKEN_FLOW_ROUTING.md).
 
 The structure follows two simple modeling rules:

@@ -278,4 +278,16 @@ pub enum OnreError {
     InvalidBurnTarget,
     #[msg("Invalid Redemption Request ID")]
     InvalidRedemptionRequestId,
+    #[msg("Configuration is disabled")]
+    ConfigurationDisabled,
+    #[msg("Mint is already registered in the other token role")]
+    TokenRoleConflict,
+    #[msg("Pricer does not match the managed mint or asset denomination")]
+    IncompatiblePricer,
+    #[msg("Quoter is incompatible with the offer flow or pair")]
+    IncompatibleQuoter,
+    #[msg("Offer direction is invalid for the registered mints or flow")]
+    InvalidOfferDirection,
+    #[msg("A liquidity vault is required for managed-to-asset offers")]
+    LiquidityVaultRequired,
 }
