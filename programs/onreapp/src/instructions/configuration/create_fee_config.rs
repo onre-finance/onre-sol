@@ -1,6 +1,15 @@
 use crate::model::{self, seeds::*};
 use anchor_lang::prelude::*;
 
+/// Records the created account and its complete initial configuration.
+#[event]
+pub struct FeeConfigCreatedEvent {
+    pub boss: Pubkey,
+    pub fee_config: Pubkey,
+    pub configuration: model::FeeConfig,
+    pub timestamp: i64,
+}
+
 /// Creates an input-token fee policy referencing an existing Fee-kind vault.
 #[derive(Accounts)]
 #[instruction(instance_id: u64)]
@@ -49,6 +58,12 @@ pub fn create_fee_config(
         minimum_fee_amount,
         enabled: true,
         bump: ctx.bumps.fee_config,
+    });
+    emit!(FeeConfigCreatedEvent {
+        boss: ctx.accounts.boss.key(),
+        fee_config: ctx.accounts.fee_config.key(),
+        configuration: (**ctx.accounts.fee_config).clone(),
+        timestamp: Clock::get()?.unix_timestamp,
     });
     Ok(())
 }

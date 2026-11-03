@@ -1,6 +1,15 @@
 use crate::model::{self, seeds::*};
 use anchor_lang::prelude::*;
 
+/// Records the created account and its complete initial configuration.
+#[event]
+pub struct ManagedTokenRegisteredEvent {
+    pub boss: Pubkey,
+    pub managed_token: Pubkey,
+    pub configuration: model::ManagedTokenConfig,
+    pub timestamp: i64,
+}
+
 /// Registers an existing SPL mint for the new model. Does not change mint authority.
 #[derive(Accounts)]
 pub struct RegisterManagedToken<'info> {
@@ -51,5 +60,11 @@ pub fn register_managed_token(ctx: Context<RegisterManagedToken>) -> Result<()> 
             max_mint_amount: 0,
             bump: ctx.bumps.managed_token,
         });
+    emit!(ManagedTokenRegisteredEvent {
+        boss: ctx.accounts.boss.key(),
+        managed_token: ctx.accounts.managed_token.key(),
+        configuration: (**ctx.accounts.managed_token).clone(),
+        timestamp: Clock::get()?.unix_timestamp,
+    });
     Ok(())
 }

@@ -1,6 +1,15 @@
 use crate::model::{self, seeds::*};
 use anchor_lang::prelude::*;
 
+/// Records the created account and its complete initial configuration.
+#[event]
+pub struct PricerCreatedEvent {
+    pub boss: Pubkey,
+    pub pricer: Pubkey,
+    pub configuration: model::Pricer,
+    pub timestamp: i64,
+}
+
 /// Creates an independent, initially empty pricing-vector source for a registered mint.
 #[derive(Accounts)]
 #[instruction(instance_id: u64, denomination: model::PricingDenomination)]
@@ -50,6 +59,12 @@ pub fn create_pricer(
         vector_count: 0,
         enabled: true,
         bump: ctx.bumps.pricer,
+    });
+    emit!(PricerCreatedEvent {
+        boss: ctx.accounts.boss.key(),
+        pricer: ctx.accounts.pricer.key(),
+        configuration: (**ctx.accounts.pricer).clone(),
+        timestamp: Clock::get()?.unix_timestamp,
     });
     Ok(())
 }

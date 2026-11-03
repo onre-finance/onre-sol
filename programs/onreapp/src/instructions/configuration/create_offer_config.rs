@@ -1,6 +1,15 @@
 use crate::model::{self, seeds::*};
 use anchor_lang::prelude::*;
 
+/// Records the created account and its complete initial configuration.
+#[event]
+pub struct OfferConfigCreatedEvent {
+    pub boss: Pubkey,
+    pub offer_config: Pubkey,
+    pub configuration: model::OfferConfig,
+    pub timestamp: i64,
+}
+
 /// Creates an offer from existing compatible configuration; does not enable new settlement paths.
 #[derive(Accounts)]
 #[instruction(flow: model::OfferFlow)]
@@ -146,5 +155,11 @@ pub fn create_offer_config(ctx: Context<CreateOfferConfig>, flow: model::OfferFl
         bump: ctx.bumps.offer_config,
     };
     ctx.accounts.offer_config.set_inner(offer);
+    emit!(OfferConfigCreatedEvent {
+        boss: ctx.accounts.boss.key(),
+        offer_config: ctx.accounts.offer_config.key(),
+        configuration: (**ctx.accounts.offer_config).clone(),
+        timestamp: Clock::get()?.unix_timestamp,
+    });
     Ok(())
 }

@@ -1,5 +1,15 @@
+use super::VaultConfigCreatedEvent;
 use crate::model::{self, seeds::*};
 use anchor_lang::prelude::*;
+
+/// Records the created account and its complete initial configuration.
+#[event]
+pub struct ManagedTokenBufferInitializedEvent {
+    pub boss: Pubkey,
+    pub buffer_state: Pubkey,
+    pub configuration: model::ManagedTokenBufferState,
+    pub timestamp: i64,
+}
 
 /// Initializes independent per-mint BUFFER accounting and three dedicated vault configurations.
 /// Does not accrue, mint, create ATAs, migrate custody, or alter the legacy singleton BUFFER.
@@ -77,6 +87,7 @@ pub struct InitializeManagedTokenBuffer<'info> {
 
 pub fn initialize_managed_token_buffer(ctx: Context<InitializeManagedTokenBuffer>) -> Result<()> {
     let destination = ctx.accounts.boss.key();
+    let timestamp = Clock::get()?.unix_timestamp;
     for (vault, kind, instance_id, bump) in [
         (
             &mut ctx.accounts.reserve_vault,
@@ -104,6 +115,12 @@ pub fn initialize_managed_token_buffer(ctx: Context<InitializeManagedTokenBuffer
             refill_target_bps: 0,
             bump,
         });
+        emit!(VaultConfigCreatedEvent {
+            boss: destination,
+            vault: vault.key(),
+            configuration: (***vault).clone(),
+            timestamp,
+        });
     }
     ctx.accounts
         .buffer_state
@@ -114,12 +131,18 @@ pub fn initialize_managed_token_buffer(ctx: Context<InitializeManagedTokenBuffer
             performance_fee_vault: ctx.accounts.performance_fee_vault.key(),
             previous_supply: ctx.accounts.managed_mint.supply,
             performance_fee_high_watermark: 0,
-            last_accrual_timestamp: Clock::get()?.unix_timestamp,
+            last_accrual_timestamp: timestamp,
             gross_apr: 0,
             management_fee_basis_points: 0,
             performance_fee_basis_points: 0,
             performance_fee_high_watermark_enabled: true,
             bump: ctx.bumps.buffer_state,
         });
+    emit!(ManagedTokenBufferInitializedEvent {
+        boss: ctx.accounts.boss.key(),
+        buffer_state: ctx.accounts.buffer_state.key(),
+        configuration: (**ctx.accounts.buffer_state).clone(),
+        timestamp,
+    });
     Ok(())
 }

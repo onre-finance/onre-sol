@@ -11437,6 +11437,19 @@
       ]
     },
     {
+      "name": "AssetRegisteredEvent",
+      "discriminator": [
+        42,
+        91,
+        211,
+        181,
+        225,
+        60,
+        154,
+        60
+      ]
+    },
+    {
       "name": "BossAcceptedEvent",
       "discriminator": [
         11,
@@ -11580,6 +11593,19 @@
       ]
     },
     {
+      "name": "FeeConfigCreatedEvent",
+      "discriminator": [
+        52,
+        51,
+        196,
+        215,
+        145,
+        202,
+        119,
+        208
+      ]
+    },
+    {
       "name": "KillSwitchToggledEvent",
       "discriminator": [
         104,
@@ -11603,6 +11629,32 @@
         90,
         28,
         198
+      ]
+    },
+    {
+      "name": "ManagedTokenBufferInitializedEvent",
+      "discriminator": [
+        53,
+        119,
+        193,
+        93,
+        166,
+        89,
+        208,
+        188
+      ]
+    },
+    {
+      "name": "ManagedTokenRegisteredEvent",
+      "discriminator": [
+        27,
+        121,
+        253,
+        185,
+        11,
+        193,
+        71,
+        240
       ]
     },
     {
@@ -11681,6 +11733,19 @@
         249,
         29,
         1
+      ]
+    },
+    {
+      "name": "OfferConfigCreatedEvent",
+      "discriminator": [
+        161,
+        157,
+        203,
+        42,
+        160,
+        89,
+        133,
+        210
       ]
     },
     {
@@ -11840,6 +11905,19 @@
       ]
     },
     {
+      "name": "PricerCreatedEvent",
+      "discriminator": [
+        153,
+        25,
+        54,
+        126,
+        90,
+        67,
+        108,
+        153
+      ]
+    },
+    {
       "name": "PropAmmConfiguredEvent",
       "discriminator": [
         104,
@@ -11850,6 +11928,32 @@
         200,
         237,
         41
+      ]
+    },
+    {
+      "name": "PropAmmStateCreatedEvent",
+      "discriminator": [
+        35,
+        90,
+        100,
+        21,
+        92,
+        47,
+        240,
+        221
+      ]
+    },
+    {
+      "name": "QuoterCreatedEvent",
+      "discriminator": [
+        191,
+        180,
+        94,
+        153,
+        108,
+        201,
+        73,
+        79
       ]
     },
     {
@@ -12019,6 +12123,19 @@
         119,
         155,
         198
+      ]
+    },
+    {
+      "name": "VaultConfigCreatedEvent",
+      "discriminator": [
+        214,
+        40,
+        71,
+        15,
+        14,
+        115,
+        32,
+        208
       ]
     },
     {
@@ -12986,6 +13103,37 @@
       }
     },
     {
+      "name": "AssetRegisteredEvent",
+      "docs": [
+        "Records the created account and its complete initial configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "asset",
+            "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "AssetConfig"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "BossAcceptedEvent",
       "docs": [
         "Event emitted when the boss authority is successfully transferred",
@@ -13555,6 +13703,37 @@
       }
     },
     {
+      "name": "FeeConfigCreatedEvent",
+      "docs": [
+        "Records the created account and its complete initial configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "FeeConfig"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "KillSwitchToggledEvent",
       "docs": [
         "Event emitted when the kill switch state is changed",
@@ -13593,6 +13772,37 @@
           {
             "name": "new_main_offer",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ManagedTokenBufferInitializedEvent",
+      "docs": [
+        "Records the created account and its complete initial configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "buffer_state",
+            "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "ManagedTokenBufferState"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -13694,6 +13904,37 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ManagedTokenRegisteredEvent",
+      "docs": [
+        "Records the created account and its complete initial configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "managed_token",
+            "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "ManagedTokenConfig"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -14146,6 +14387,37 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OfferConfigCreatedEvent",
+      "docs": [
+        "Records the created account and its complete initial configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "offer_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "OfferConfig"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -14792,6 +15064,37 @@
       }
     },
     {
+      "name": "PricerCreatedEvent",
+      "docs": [
+        "Records the created account and its complete initial configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "pricer",
+            "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "Pricer"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "PricingDenomination",
       "type": {
         "kind": "enum",
@@ -15102,6 +15405,37 @@
       }
     },
     {
+      "name": "PropAmmStateCreatedEvent",
+      "docs": [
+        "Records the created account and its complete initial configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "prop_amm_state",
+            "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "PropAmmState"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "Quoter",
       "docs": [
         "Reusable quote dispatch. Prop AMM configuration lives in a companion PropAmmState."
@@ -15128,6 +15462,37 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "QuoterCreatedEvent",
+      "docs": [
+        "Records the created account and its complete initial configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "quoter",
+            "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "Quoter"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -15981,6 +16346,37 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultConfigCreatedEvent",
+      "docs": [
+        "Records the created account and its complete initial configuration."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "VaultConfig"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
