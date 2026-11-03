@@ -9,14 +9,18 @@ FROM toolchain AS builder
 
 WORKDIR /workspace
 COPY . .
-RUN anchor build --arch v3 && \
+ENV CARGO_BUILD_JOBS=2
+RUN anchor build --no-idl --arch v3 && \
+    anchor idl build -o target/idl/onreapp.json -t target/types/onreapp.ts -- --lib && \
     # Clean up build artifacts to save disk space
     rm -rf target/debug target/deploy/*.txt target/deploy/*.dump target/release/deps target/release/build && \
-    cargo clean --release --target-dir target/sbpfv3-solana-solana || true
+    cargo clean --release --target-dir target/sbpfv3-solana-solana
 
 # Stage 2: Run Rust LiteSVM tests with the same Anchor toolchain.
 FROM toolchain
 
+# Bound native test compilation for the 4 GiB Compose service.
+ENV CARGO_BUILD_JOBS=2
 WORKDIR /workspace
 
 COPY . .

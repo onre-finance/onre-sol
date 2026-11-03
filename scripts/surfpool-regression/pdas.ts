@@ -38,10 +38,12 @@ export function propAmmPairPda(offer: PublicKey): PublicKey {
 
 export const configurableVaultSeeds = {
     offerFee: "offer_fee",
+    redemptionFee: "redemption_fee",
     permissionlessOfferFee: "permissionless_offer_fee",
     managementFee: "management_fee",
     performanceFee: "performance_fee",
-    propAmmFee: "prop_amm_fee",
+    propAmmBuyFee: "prop_amm_buy_fee",
+    propAmmSellFee: "prop_amm_sell_fee",
     offerProceeds: "offer_proceeds",
     propAmmProceeds: "prop_amm_proceeds",
 } as const;
@@ -50,10 +52,12 @@ export type ConfigurableVaultName = keyof typeof configurableVaultSeeds;
 
 export const configurableVaultKinds: Record<ConfigurableVaultName, Record<string, object>> = {
     offerFee: { offerFee: {} },
+    redemptionFee: { redemptionFee: {} },
     permissionlessOfferFee: { permissionlessOfferFee: {} },
     managementFee: { managementFee: {} },
     performanceFee: { performanceFee: {} },
-    propAmmFee: { propAmmFee: {} },
+    propAmmBuyFee: { propAmmBuyFee: {} },
+    propAmmSellFee: { propAmmSellFee: {} },
     offerProceeds: { offerProceeds: {} },
     propAmmProceeds: { propAmmProceeds: {} },
 };

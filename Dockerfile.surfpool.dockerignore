@@ -6,6 +6,8 @@
 !README.md
 !package.json
 !pnpm-lock.yaml
+!pnpm-workspace.yaml
+!rust-toolchain.toml
 !.npmrc
 !.prettierrc
 !tsconfig.json
