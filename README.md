@@ -1,5 +1,9 @@
 # OnreApp Solana Program
 
+Program and client package version: **1.0.0**. The Rust crate version is the source
+for generated IDL version metadata. This version bump does not change instruction
+interfaces, account layouts, or the program ID.
+
 A Solana smart contract built with [Anchor](https://www.anchor-lang.com/) that manages tokenized (re)insurance pools. The program enables the creation, management, and redemption of **ONyc tokens**, which represent fractional ownership in a regulated investment pool specializing in (re)insurance underwriting.
 
 ## Quick Start
