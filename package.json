@@ -2,7 +2,7 @@
   "name": "onre-app",
   "description": "OnRe application to purchase, schedule and redeem tokens",
   "private": true,
-  "version": "0.0.9",
+  "version": "1.0.0",
   "type": "module",
   "packageManager": "pnpm@9.15.4",
   "scripts": {
