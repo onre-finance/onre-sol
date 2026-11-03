@@ -3,6 +3,7 @@
 
 use anchor_lang::prelude::*;
 use instructions::*;
+use model::{OfferFlow, PricingDenomination, PropAmmConfig, QuoterKind, VaultKind};
 use state::ConfigurableVaultKind;
 use utils::ApprovalMessage;
 
@@ -102,7 +103,7 @@ pub mod onreapp {
     /// Registers the trusted denomination of an external asset mint; boss only.
     pub fn register_asset(
         ctx: Context<RegisterAsset>,
-        denomination: model::PricingDenomination,
+        denomination: PricingDenomination,
     ) -> Result<()> {
         configuration::register_asset(ctx, denomination)
     }
@@ -111,7 +112,7 @@ pub mod onreapp {
     pub fn create_pricer(
         ctx: Context<CreatePricer>,
         instance_id: u64,
-        denomination: model::PricingDenomination,
+        denomination: PricingDenomination,
     ) -> Result<()> {
         configuration::create_pricer(ctx, instance_id, denomination)
     }
@@ -119,7 +120,7 @@ pub mod onreapp {
     /// Creates a reusable NAV or Prop AMM quoter instance; boss only.
     pub fn create_quoter(
         ctx: Context<CreateQuoter>,
-        kind: model::QuoterKind,
+        kind: QuoterKind,
         instance_id: u64,
     ) -> Result<()> {
         configuration::create_quoter(ctx, kind, instance_id)
@@ -128,7 +129,7 @@ pub mod onreapp {
     /// Creates a vault configuration without creating ATAs or moving tokens; boss only.
     pub fn create_vault_config(
         ctx: Context<CreateVaultConfig>,
-        kind: model::VaultKind,
+        kind: VaultKind,
         instance_id: u64,
         withdrawal_destination: Pubkey,
         refill_target_bps: u16,
@@ -155,16 +156,13 @@ pub mod onreapp {
     /// Creates immutable pair binding and initial pressure state for a Prop AMM quoter; boss only.
     pub fn create_prop_amm_state(
         ctx: Context<CreatePropAmmState>,
-        config: model::PropAmmConfig,
+        config: PropAmmConfig,
     ) -> Result<()> {
         configuration::create_prop_amm_state(ctx, config)
     }
 
     /// Creates a directed offer referencing compatible existing components; boss only.
-    pub fn create_offer_config(
-        ctx: Context<CreateOfferConfig>,
-        flow: model::OfferFlow,
-    ) -> Result<()> {
+    pub fn create_offer_config(ctx: Context<CreateOfferConfig>, flow: OfferFlow) -> Result<()> {
         configuration::create_offer_config(ctx, flow)
     }
 

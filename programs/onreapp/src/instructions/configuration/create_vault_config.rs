@@ -1,4 +1,9 @@
-use crate::model::{self, seeds::*};
+use crate::{
+    constants::{seeds::STATE, MAX_BASIS_POINTS},
+    model::{seeds::VAULT, VaultConfig, VaultKind},
+    state::State,
+    OnreError,
+};
 use anchor_lang::prelude::*;
 
 /// Records the created account and its complete initial configuration.
@@ -6,18 +11,18 @@ use anchor_lang::prelude::*;
 pub struct VaultConfigCreatedEvent {
     pub boss: Pubkey,
     pub vault: Pubkey,
-    pub configuration: model::VaultConfig,
+    pub configuration: VaultConfig,
     pub timestamp: i64,
 }
 
 /// Creates a reusable vault authority/configuration. Does not create or fund token accounts.
 #[derive(Accounts)]
-#[instruction(kind: model::VaultKind, instance_id: u64)]
+#[instruction(kind: VaultKind, instance_id: u64)]
 pub struct CreateVaultConfig<'info> {
     #[account(
         init,
         payer = boss,
-        space = 8 + model::VaultConfig::INIT_SPACE,
+        space = 8 + VaultConfig::INIT_SPACE,
         seeds = [
             VAULT,
             &[kind as u8],
@@ -25,14 +30,14 @@ pub struct CreateVaultConfig<'info> {
         ],
         bump
     )]
-    pub vault: Box<Account<'info, model::VaultConfig>>,
+    pub vault: Box<Account<'info, VaultConfig>>,
 
     #[account(
-        seeds = [crate::constants::seeds::STATE],
+        seeds = [STATE],
         bump = state.bump,
-        has_one = boss @ crate::OnreError::InvalidBoss
+        has_one = boss @ OnreError::InvalidBoss
     )]
-    pub state: Box<Account<'info, crate::state::State>>,
+    pub state: Box<Account<'info, State>>,
 
     #[account(mut)]
     pub boss: Signer<'info>,
@@ -42,24 +47,24 @@ pub struct CreateVaultConfig<'info> {
 
 pub fn create_vault_config(
     ctx: Context<CreateVaultConfig>,
-    kind: model::VaultKind,
+    kind: VaultKind,
     instance_id: u64,
     withdrawal_destination: Pubkey,
     refill_target_bps: u16,
 ) -> Result<()> {
     require!(
         withdrawal_destination != Pubkey::default(),
-        crate::OnreError::MissingConfigurableVaultDestination
+        OnreError::MissingConfigurableVaultDestination
     );
     require!(
-        refill_target_bps <= crate::constants::MAX_BASIS_POINTS,
-        crate::OnreError::InvalidAmount
+        refill_target_bps <= MAX_BASIS_POINTS,
+        OnreError::InvalidAmount
     );
     require!(
-        kind == model::VaultKind::Liquidity || refill_target_bps == 0,
-        crate::OnreError::InvalidAmount
+        kind == VaultKind::Liquidity || refill_target_bps == 0,
+        OnreError::InvalidAmount
     );
-    ctx.accounts.vault.set_inner(model::VaultConfig {
+    ctx.accounts.vault.set_inner(VaultConfig {
         kind,
         instance_id,
         withdrawal_destination,

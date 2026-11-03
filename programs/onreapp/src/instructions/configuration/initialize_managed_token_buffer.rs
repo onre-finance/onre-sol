@@ -1,13 +1,23 @@
 use super::VaultConfigCreatedEvent;
-use crate::model::{self, seeds::*};
+use crate::{
+    constants::seeds::STATE,
+    model::{
+        seeds::{BUFFER, BUFFER_MANAGEMENT, BUFFER_PERFORMANCE, BUFFER_RESERVE, PRICER},
+        ManagedTokenBufferState, ManagedTokenConfig, Pricer, PricingDenomination, VaultConfig,
+        VaultKind,
+    },
+    state::State,
+    OnreError,
+};
 use anchor_lang::prelude::*;
+use anchor_spl::token_interface::Mint;
 
 /// Records the created account and its complete initial configuration.
 #[event]
 pub struct ManagedTokenBufferInitializedEvent {
     pub boss: Pubkey,
     pub buffer_state: Pubkey,
-    pub configuration: model::ManagedTokenBufferState,
+    pub configuration: ManagedTokenBufferState,
     pub timestamp: i64,
 }
 
@@ -16,68 +26,68 @@ pub struct ManagedTokenBufferInitializedEvent {
 #[derive(Accounts)]
 pub struct InitializeManagedTokenBuffer<'info> {
     #[account(
-        constraint = managed_token.enabled @ crate::OnreError::ConfigurationDisabled,
-        constraint = managed_token.managed_mint == managed_mint.key() @ crate::OnreError::InvalidMint
+        constraint = managed_token.enabled @ OnreError::ConfigurationDisabled,
+        constraint = managed_token.managed_mint == managed_mint.key() @ OnreError::InvalidMint
     )]
-    pub managed_token: Box<Account<'info, model::ManagedTokenConfig>>,
+    pub managed_token: Box<Account<'info, ManagedTokenConfig>>,
 
-    pub managed_mint: Box<InterfaceAccount<'info, anchor_spl::token_interface::Mint>>,
+    pub managed_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         seeds = [
             PRICER,
             managed_mint.key().as_ref(),
-            &[model::PricingDenomination::Usd as u8],
+            &[PricingDenomination::Usd as u8],
             &0_u64.to_le_bytes()
         ],
         bump = pricer.bump,
-        constraint = pricer.enabled @ crate::OnreError::ConfigurationDisabled,
-        constraint = pricer.managed_mint == managed_mint.key() @ crate::OnreError::IncompatiblePricer
+        constraint = pricer.enabled @ OnreError::ConfigurationDisabled,
+        constraint = pricer.managed_mint == managed_mint.key() @ OnreError::IncompatiblePricer
     )]
-    pub pricer: Box<Account<'info, model::Pricer>>,
+    pub pricer: Box<Account<'info, Pricer>>,
 
     #[account(
         init,
         payer = boss,
-        space = 8 + model::ManagedTokenBufferState::INIT_SPACE,
+        space = 8 + ManagedTokenBufferState::INIT_SPACE,
         seeds = [BUFFER, managed_mint.key().as_ref()],
         bump
     )]
-    pub buffer_state: Box<Account<'info, model::ManagedTokenBufferState>>,
+    pub buffer_state: Box<Account<'info, ManagedTokenBufferState>>,
 
     #[account(
         init,
         payer = boss,
-        space = 8 + model::VaultConfig::INIT_SPACE,
+        space = 8 + VaultConfig::INIT_SPACE,
         seeds = [BUFFER_RESERVE, managed_mint.key().as_ref()],
         bump
     )]
-    pub reserve_vault: Box<Account<'info, model::VaultConfig>>,
+    pub reserve_vault: Box<Account<'info, VaultConfig>>,
 
     #[account(
         init,
         payer = boss,
-        space = 8 + model::VaultConfig::INIT_SPACE,
+        space = 8 + VaultConfig::INIT_SPACE,
         seeds = [BUFFER_MANAGEMENT, managed_mint.key().as_ref()],
         bump
     )]
-    pub management_fee_vault: Box<Account<'info, model::VaultConfig>>,
+    pub management_fee_vault: Box<Account<'info, VaultConfig>>,
 
     #[account(
         init,
         payer = boss,
-        space = 8 + model::VaultConfig::INIT_SPACE,
+        space = 8 + VaultConfig::INIT_SPACE,
         seeds = [BUFFER_PERFORMANCE, managed_mint.key().as_ref()],
         bump
     )]
-    pub performance_fee_vault: Box<Account<'info, model::VaultConfig>>,
+    pub performance_fee_vault: Box<Account<'info, VaultConfig>>,
 
     #[account(
-        seeds = [crate::constants::seeds::STATE],
+        seeds = [STATE],
         bump = state.bump,
-        has_one = boss @ crate::OnreError::InvalidBoss
+        has_one = boss @ OnreError::InvalidBoss
     )]
-    pub state: Box<Account<'info, crate::state::State>>,
+    pub state: Box<Account<'info, State>>,
 
     #[account(mut)]
     pub boss: Signer<'info>,
@@ -91,24 +101,24 @@ pub fn initialize_managed_token_buffer(ctx: Context<InitializeManagedTokenBuffer
     for (vault, kind, instance_id, bump) in [
         (
             &mut ctx.accounts.reserve_vault,
-            model::VaultKind::BufferReserve,
+            VaultKind::BufferReserve,
             0,
             ctx.bumps.reserve_vault,
         ),
         (
             &mut ctx.accounts.management_fee_vault,
-            model::VaultKind::Fee,
+            VaultKind::Fee,
             1,
             ctx.bumps.management_fee_vault,
         ),
         (
             &mut ctx.accounts.performance_fee_vault,
-            model::VaultKind::Fee,
+            VaultKind::Fee,
             2,
             ctx.bumps.performance_fee_vault,
         ),
     ] {
-        vault.set_inner(model::VaultConfig {
+        vault.set_inner(VaultConfig {
             kind,
             instance_id,
             withdrawal_destination: destination,
@@ -124,7 +134,7 @@ pub fn initialize_managed_token_buffer(ctx: Context<InitializeManagedTokenBuffer
     }
     ctx.accounts
         .buffer_state
-        .set_inner(model::ManagedTokenBufferState {
+        .set_inner(ManagedTokenBufferState {
             managed_mint: ctx.accounts.managed_mint.key(),
             reserve_vault: ctx.accounts.reserve_vault.key(),
             management_fee_vault: ctx.accounts.management_fee_vault.key(),

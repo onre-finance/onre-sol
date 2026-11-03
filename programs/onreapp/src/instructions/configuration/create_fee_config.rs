@@ -1,4 +1,9 @@
-use crate::model::{self, seeds::*};
+use crate::{
+    constants::{seeds::STATE, MAX_ALLOWED_FEE_BPS},
+    model::{seeds::FEE_CONFIG, FeeConfig, VaultConfig, VaultKind},
+    state::State,
+    OnreError,
+};
 use anchor_lang::prelude::*;
 
 /// Records the created account and its complete initial configuration.
@@ -6,7 +11,7 @@ use anchor_lang::prelude::*;
 pub struct FeeConfigCreatedEvent {
     pub boss: Pubkey,
     pub fee_config: Pubkey,
-    pub configuration: model::FeeConfig,
+    pub configuration: FeeConfig,
     pub timestamp: i64,
 }
 
@@ -15,25 +20,25 @@ pub struct FeeConfigCreatedEvent {
 #[instruction(instance_id: u64)]
 pub struct CreateFeeConfig<'info> {
     #[account(
-        constraint = fee_vault.kind == model::VaultKind::Fee @ crate::OnreError::InvalidConfigurableVaultKind
+        constraint = fee_vault.kind == VaultKind::Fee @ OnreError::InvalidConfigurableVaultKind
     )]
-    pub fee_vault: Box<Account<'info, model::VaultConfig>>,
+    pub fee_vault: Box<Account<'info, VaultConfig>>,
 
     #[account(
         init,
         payer = boss,
-        space = 8 + model::FeeConfig::INIT_SPACE,
+        space = 8 + FeeConfig::INIT_SPACE,
         seeds = [FEE_CONFIG, &instance_id.to_le_bytes()],
         bump
     )]
-    pub fee_config: Box<Account<'info, model::FeeConfig>>,
+    pub fee_config: Box<Account<'info, FeeConfig>>,
 
     #[account(
-        seeds = [crate::constants::seeds::STATE],
+        seeds = [STATE],
         bump = state.bump,
-        has_one = boss @ crate::OnreError::InvalidBoss
+        has_one = boss @ OnreError::InvalidBoss
     )]
-    pub state: Box<Account<'info, crate::state::State>>,
+    pub state: Box<Account<'info, State>>,
 
     #[account(mut)]
     pub boss: Signer<'info>,
@@ -47,11 +52,8 @@ pub fn create_fee_config(
     basis_points: u16,
     minimum_fee_amount: u64,
 ) -> Result<()> {
-    require!(
-        basis_points <= crate::constants::MAX_ALLOWED_FEE_BPS,
-        crate::OnreError::InvalidFee
-    );
-    ctx.accounts.fee_config.set_inner(model::FeeConfig {
+    require!(basis_points <= MAX_ALLOWED_FEE_BPS, OnreError::InvalidFee);
+    ctx.accounts.fee_config.set_inner(FeeConfig {
         instance_id,
         fee_vault: ctx.accounts.fee_vault.key(),
         basis_points,
