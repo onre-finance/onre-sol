@@ -44,7 +44,6 @@ graphify-out/
 **/.env*
 !**/.env_example
 
-trident-tests/target
 scripts/target/
 
 # Ralph local control files

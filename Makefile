@@ -24,10 +24,6 @@ test:	## Run the tests
 	anchor test
 t: test
 
-fuzz:	build	## Build and run fuzz tests
-	cd trident-tests && trident fuzz run fuzz_0
-f: fuzz
-
 surf:	build	## Build and run the surfpool fork (forks from SOL_MAINNET_RPC_URL if set)
 	SURFPOOL_DATASOURCE_RPC_URL="$(SOL_MAINNET_RPC_URL)" docker compose -f docker-compose.surfpool.yml up -d --build && docker compose -f docker-compose.surfpool.yml logs -f
 
