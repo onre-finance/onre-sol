@@ -4,12 +4,6 @@ A Solana smart contract built with [Anchor](https://www.anchor-lang.com/) that m
 
 ## Quick Start
 
-Use stable Anchor **1.2.2**, Solana CLI **4.1.2**, platform-tools **v1.57**
-(SBPF **v3**), Rust **1.99.1**, Node **22.13+**, and pnpm **12.16.1**.
-Install the JavaScript dependencies with `pnpm install --frozen-lockfile`.
-See [Dependency versions and compatibility](docs/DEPENDENCIES.md) for upgrade
-constraints, Docker setup, and the older Trident runtime.
-
 ```bash
 # Build the program
 anchor build
@@ -350,7 +344,7 @@ Run the coverage flow from the repo root:
 
 ```bash
 rm -rf sbf_trace_dir coverage
-cargo build-sbf --debug --tools-version v1.57 --arch v3
+cargo build-sbf --debug --tools-version v1.52 --arch v1
 cp target/deploy/debug/onreapp.so target/deploy/onreapp.so
 cp target/deploy/debug/onreapp.so.debug target/deploy/onreapp.so.debug
 cp target/deploy/debug/onreapp.so.debug target/deploy/onreapp.debug

@@ -19,7 +19,6 @@
 import "dotenv/config";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { hexlify } from "ethers";
-import fetch from "node-fetch";
 import { bs58 } from "@anchor-lang/core/dist/cjs/utils/bytes/index.js";
 
 import type { MessageTransmitter } from "./types/message_transmitter.ts";

@@ -1,4 +1,4 @@
-import { PublicKey, SystemProgram } from "@solana/web3.js";
+import { Connection, PublicKey, SYSVAR_RENT_PUBKEY, SystemProgram } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 
 import { ACTIVE_OFFERS, ACTIVE_REDEMPTIONS, MINTS, USER_STABLE_BALANCE } from "./constants";
@@ -7,6 +7,21 @@ import { ata, tokenProgramFor } from "./accounts";
 import { offerPda, PDAS } from "./pdas";
 import { bn, fetchNullable, SmokeRuntime } from "./runtime";
 import { setTokenBalance, surfnetRpc } from "./surfpool";
+
+/** Keep cached mainnet accounts valid under the fork's rent checks. Surfpool's
+ * genesis Rent can differ from the datasource's current Rent parameters. */
+export async function syncForkRent(): Promise<void> {
+    const datasource = new Connection(process.env.SURFPOOL_DATASOURCE_RPC_URL || process.env.SOL_MAINNET_RPC_URL || "https://api.mainnet-beta.solana.com", "confirmed");
+    const rent = await datasource.getAccountInfo(SYSVAR_RENT_PUBKEY);
+    if (!rent) throw new Error("Datasource Rent sysvar is missing");
+    await surfnetRpc("surfnet_setAccount", [SYSVAR_RENT_PUBKEY.toBase58(), {
+        lamports: rent.lamports,
+        owner: rent.owner.toBase58(),
+        executable: rent.executable,
+        data: rent.data.toString("hex"),
+    }]);
+    console.log("  ok fork Rent matches datasource");
+}
 
 export async function fundUserStableBalances(runtime: SmokeRuntime): Promise<void> {
     for (const offer of ACTIVE_OFFERS) {

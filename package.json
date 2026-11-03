@@ -18,7 +18,8 @@
     "cli": "tsx scripts/cli/index.ts",
     "ui": "vite --config scripts/ui/vite.config.ts",
     "ui:build": "vite build --config scripts/ui/vite.config.ts",
-    "docker:surfpool": "docker compose -f docker-compose.surfpool.yml up --build"
+    "docker:surfpool": "docker compose -f docker-compose.surfpool.yml up --build",
+    "test:compat": "node --import tsx --test scripts/tests/dependency-compatibility.test.ts"
   },
   "dependencies": {
     "@anchor-lang/core": "1.2.2",

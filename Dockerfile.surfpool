@@ -1,4 +1,10 @@
-FROM solanafoundation/anchor:v1.0.2
+# Install pinned stable tools; a published Anchor 1.2.2 image is not available.
+FROM solanafoundation/anchor:v1.0.2 AS toolchain
+RUN rustup toolchain install 1.99.1 --profile minimal && rustup default 1.99.1 && \
+    cargo install --git https://github.com/otter-sec/anchor --tag v1.2.2 anchor-cli --locked --force && \
+    sh -c "$(curl -sSfL https://release.anza.xyz/v4.1.2/install)"
+
+FROM toolchain
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -14,9 +20,6 @@ RUN apt-get update && apt-get install -y \
 
 ENV PATH="/root/.nvm/versions/node/v22.13.0/bin:/root/.local/bin:${PATH}"
 
-RUN rustup toolchain install 1.99.1 --profile minimal && rustup default 1.99.1
-RUN cargo install --git https://github.com/otter-sec/anchor --tag v1.2.2 anchor-cli --locked --force && \
-    sh -c "$(curl -sSfL https://release.anza.xyz/v4.1.2/install)"
 RUN source /root/.nvm/nvm.sh && \
     nvm install 22.13.0 && \
     nvm alias default 22.13.0 && \
@@ -34,7 +37,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 RUN pnpm install --frozen-lockfile --config.optional=true
 
 COPY . .
-RUN anchor build --arch v3
+ENV CARGO_BUILD_JOBS=2
+RUN anchor build --no-idl --arch v3 && \
+    anchor idl build -o target/idl/onreapp.json -t target/types/onreapp.ts -- --lib
 RUN chmod +x scripts/docker/surfpool-entrypoint.sh
 
 EXPOSE 5173 8899 8900 18488
