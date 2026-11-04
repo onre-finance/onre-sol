@@ -61,7 +61,6 @@ pub fn create_pricer(
         managed_mint: ctx.accounts.managed_token.managed_mint,
         denomination,
         vectors: [PricingVector::default(); MAX_VECTORS],
-        vector_count: 0,
         enabled: true,
         bump: ctx.bumps.pricer,
     });

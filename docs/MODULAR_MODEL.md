@@ -3,10 +3,15 @@
 Status: reusable configuration creation is implemented in
 [`instructions/configuration/`](../programs/onreapp/src/instructions/configuration/mod.rs),
 using the layouts in [`model/`](../programs/onreapp/src/model/mod.rs).
-Existing trading, pricing-vector updates, reporting, BUFFER accrual, token routing,
-and custody still use the legacy accounts. The new accounts are not a migration
-or a new settlement path. This document describes the target model; the current
-runtime model remains documented in [`DOMAIN_MODEL.md`](DOMAIN_MODEL.md).
+The first modular execution path, `take_offer`, and boss-authorized
+`add_pricer_vector` are described in [`MODULAR_TAKE_OFFER.md`](MODULAR_TAKE_OFFER.md).
+V2 trading and its account lists remain unchanged. Permissioned and permissionless
+NAV execution supports both directions; ONyc payouts combine legacy and configured liquidity.
+ONyc execution shares the legacy
+BUFFER baseline and reporting snapshot. Other managed mints use their per-mint
+BUFFER when initialized. Conditional Prop AMM accounts are validated, but Prop AMM
+execution, worker settlement, liquidity refill, and custody migration remain deferred.
+The legacy runtime remains documented in [`DOMAIN_MODEL.md`](DOMAIN_MODEL.md).
 
 The reference is the current `onre-evm` checkout:
 `src/types/OnReTypes.sol`, `src/diamond/LibOnReStorage.sol`,
@@ -65,7 +70,7 @@ the domain paths such as `model::pricer::Pricer`.
 | Account | Body bytes | Allocated bytes with discriminator |
 | --- | ---: | ---: |
 | ManagedTokenConfig | 51 | 59 |
-| Pricer | 444 | 452 |
+| Pricer | 443 | 451 |
 | Quoter | 11 | 19 |
 | PropAmmState | 183 | 191 |
 | FeeConfig | 52 | 60 |
@@ -79,7 +84,7 @@ the domain paths such as `model::pricer::Pricer`.
 | --- | --- | --- |
 | ManagedTokenConfig | ManagedTokenConfig | Managed mint, decimals, enabled, program issuance limits, bump. |
 | PricingVector | PricingVector, embedded | Start/base times, base price, APR, price-step duration. |
-| Pricer | Pricer | Instance ID, managed mint, denomination, 10 vectors, active count, enabled, bump. |
+| Pricer | Pricer | Instance ID, managed mint, denomination, 10 vector slots, enabled, bump. |
 | Quoter | Quoter | Kind, instance ID, enabled, bump. |
 | PropAmmState | PropAmmState | Parent quoter, bound asset/managed pair, embedded config, rolling volumes, epoch, sell count, bump. |
 | FeeConfig | FeeConfig | Instance ID, Fee vault reference, basis points, minimum input fee, enabled, bump. |
@@ -143,7 +148,7 @@ explicitly choose that instance or another compatible one.
 
 ## Creation instructions
 
-Every new instruction requires the existing `State::boss` signer and charges that
+Every creation instruction requires the existing `State::boss` signer and charges that
 signer rent. Configuration creation remains available while the kill switch is
 active, matching the existing governance/configuration policy. `init` rejects
 repeat creation; shared accounts are not implicitly initialized or overwritten by
@@ -152,7 +157,7 @@ repeat creation; shared accounts are not implicitly initialized or overwritten b
 | Instruction | Behavior |
 | --- | --- |
 | `register_managed_token` | Registers an existing SPL mint, records decimals, enables it, sets issuance limits to zero. Does not acquire mint authority. |
-| `create_pricer` | Creates an enabled instance with zero vectors. New-vector management and execution remain deferred. |
+| `create_pricer` | Creates an enabled instance with zero vectors; `add_pricer_vector` schedules prices. |
 | `create_quoter` | Creates enabled dispatch configuration for one kind and instance ID. |
 | `create_vault_config` | Creates a vault authority/config with a nonzero destination; creates no ATA. Refill targets are allowed only for Liquidity and cannot exceed 10,000 bps. |
 | `create_fee_config` | Requires an existing Fee vault; percentage fees are capped at 1,000 bps and the input-token minimum is stored in base units. |
@@ -163,7 +168,7 @@ repeat creation; shared accounts are not implicitly initialized or overwritten b
 Both SPL Token and Token-2022 mint accounts are accepted through Anchor's token
 interface. Managed registration and offer creation allow at most 18 decimals.
 Registration is configuration, not a promise that every extension is supported
-by future settlement. Existing transfer-fee checks remain on the legacy movement paths.
+by settlement. `take_offer` also rejects currently active transfer-fee mints.
 
 Suggested setup order: register managed mints; create Pricer, Quoter,
 and vaults; create FeeConfig; initialize Prop AMM state if applicable; then create
@@ -178,7 +183,11 @@ the authorizing `boss`, the created account's PDA, its complete initial
 `configuration` (using the corresponding model account type), and the Unix
 `timestamp`. Event definitions live beside their instruction handlers. Snapshots
 include defaults, component references, and bumps; Pricer snapshots include its
-initial empty vector array and zero active count.
+initial empty vector array. As in legacy Offer, a zero vector start time marks an
+empty slot. Pricing operates on nonempty vector data directly through the shared
+`utils/pricing.rs` helpers; Pricer stores no separate vector count.
+EVM's Pricer stores `vectorCount`; the Solana model uses its existing empty-slot
+convention instead.
 
 | Instruction | Event | Created-account field |
 | --- | --- | --- |
@@ -204,8 +213,8 @@ Existing instruction accounts and legacy events are unchanged.
 
 ## Validation and remaining execution rules
 
-The creation-time rules below are implemented. Runtime quoting, settlement,
-configuration updates, and account closure remain deferred.
+The creation-time rules below are implemented, alongside the first modular execution
+path. Other runtime paths, component replacement, and account closure remain deferred.
 
 Exactly one mint in an offer must be registered as managed. Managed output means
 `AssetToManaged`; managed input means `ManagedToAsset`. Both-managed and
@@ -291,20 +300,28 @@ Amounts and supply use SPL-native `u64`; aggregate Prop AMM volume and TVL use
 `u128`. Price uses scale 9; APR/APY use scale 6. TVL is USD scale 9 after mint
 decimal normalization. Runtime timestamps use signed Solana Unix `i64`; vector
 timestamps retain the existing `u64` representation. Arithmetic, overflow checks,
-and the EVM fixed-boundary epoch behavior are deferred with execution logic.
+and the EVM fixed-boundary epoch behavior for Prop AMM remain deferred. The first
+NAV execution path reuses existing checked pricing, conversion, and BUFFER math.
 
 ## Backward compatibility boundary
 
-This step does not modify existing account layouts, discriminators, PDA seeds,
-instruction data, account ordering, program IDs, vault authorities, or token
-accounts. New configuration accounts are exposed in the generated IDL/types. All legacy
-instruction account lists and existing account definitions remain unchanged.
+Legacy account layouts, discriminators, PDA seeds, instruction data, account
+ordering, program IDs, vault authorities, and token accounts remain unchanged.
+New configuration accounts are exposed in the generated IDL/types.
+
+The new Pricer layout now omits the redundant vector-count byte: its body is 443
+bytes and its allocated size is 451 bytes. Pricer accounts serialized under the
+earlier 444-byte draft body require recreation or migration before using this
+layout. This does not change the legacy Offer representation.
 
 Later compatibility work must define how legacy instructions resolve the shared
 model while keeping existing account lists, custody, and pending claims valid.
 The target ATA representation above is not permission to move existing vault funds.
 A cutover must choose one authoritative record for each price, fee, BUFFER
 baseline, pressure tracker, and request obligation. Mirroring independently
-mutable legacy and new state is not part of this model. Legacy adapters,
-migration, settlement, runtime validation, configuration updates, and CLI changes
-are deferred. Creation and initialization are implemented as described above.
+mutable legacy and new state is not part of this model. ONyc's shared BUFFER adapter
+is implemented for modular offer execution in both directions. The ONyc liquidity
+adapter aggregates old/new asset balances and pays from the legacy vault first.
+Permissionless NAV uses the existing intermediary PDA and its mint-specific ATAs.
+Prop AMM pressure sharing, liquidity refill, worker settlement,
+component replacement, migration controls, and CLI changes remain deferred.

@@ -2,18 +2,19 @@ use crate::constants::MAX_BASIS_POINTS;
 use crate::instructions::market_info::read_market_stats_account;
 use crate::instructions::redemption::load_optional_checked_redemption_offer;
 use crate::instructions::{Offer, OfferVector};
+use crate::model::PricingVector;
 use crate::state::State;
 use crate::utils::approver::approver_utils;
 use crate::utils::{
-    calculate_fees, calculate_token_out_amount, mul_div_round_u128, pow_fixed,
-    program_controls_mint, ApprovalMessage,
+    calculate_fees, calculate_token_out_amount, pricing, program_controls_mint, ApprovalMessage,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
 
-const INT_SCALE: u128 = 1_000_000_000_000_000_000;
-const SECONDS_IN_DAY: u64 = 86_400;
-const APR_SCALE: u128 = 1_000_000;
+pub use crate::utils::pricing::{calculate_step_price_at, calculate_vector_price};
+
+#[cfg(test)]
+use crate::utils::pricing::SECONDS_IN_DAY;
 
 /// Result structure containing offer processing calculations
 pub struct OfferProcessResult {
@@ -126,15 +127,9 @@ fn process_offer_core_at(
     require!(token_in_amount > 0, crate::OnreError::InvalidAmount);
     offer.require_mints(token_in_mint_key, token_out_mint_key)?;
 
-    // Find the currently active pricing vector
-    let active_vector = find_active_vector_at(offer, current_time)?;
-
-    // Calculate current price with 9 decimals
-    let current_price = calculate_current_step_price(
-        active_vector.apr,
-        active_vector.base_price,
-        active_vector.base_time,
-        active_vector.price_fix_duration,
+    let (_, current_price) = pricing::get_active_vector_and_current_price(
+        offer.vectors.iter().map(PricingVector::from),
+        current_time,
     )?;
 
     let fee_amounts = calculate_fees(token_in_amount, fee_basis_points)?;
@@ -244,89 +239,8 @@ pub(crate) fn calculate_redemption_vault_refill_amount(
 /// * `Ok(OfferVector)` - The active pricing vector at the specified time
 /// * `Err(crate::OnreError::NoActiveVector)` - If no vector is active at that time
 pub fn find_active_vector_at(offer: &Offer, time: u64) -> Result<OfferVector> {
-    let active_vector = offer
-        .vectors
-        .iter()
-        .filter(|vector| vector.start_time != 0 && vector.start_time <= time) // Only consider non-empty vectors
-        .max_by_key(|vector| vector.start_time) // Find latest start_time in the past
-        .ok_or(crate::OnreError::NoActiveVector)?;
-
-    Ok(*active_vector)
-}
-
-/// Calculates price growth using daily compounding with linear intra-day interpolation
-///
-/// The annual percentage rate is compounded daily, matching the APY semantics
-/// used by market info. For elapsed times that are not an exact number of days,
-/// the remaining fractional day is linearly interpolated between the current
-/// daily-compounded price and the next daily-compounded price.
-///
-/// Formula:
-///   daily_factor = 1 + apr / (APR_SCALE * 365)
-///   full_day_price = base_price * daily_factor^(elapsed_seconds / 86400)
-///   price = full_day_price + daily_delta * (elapsed_seconds % 86400) / 86400
-///
-/// # Arguments
-/// * `apr` - Annual Percentage Rate with scale=6 (10_000 = 1%, 1_000_000 = 100%)
-/// * `base_price` - Starting price with scale=9
-/// * `elapsed_time` - Time elapsed since base_time in seconds
-///
-/// # Returns
-/// * `Ok(u64)` - Calculated price with same scale as base_price
-/// * `Err(crate::OnreError::OverflowError)` - If arithmetic overflow occurs
-pub fn calculate_vector_price(apr: u64, base_price: u64, elapsed_time: u64) -> Result<u64> {
-    if apr == 0 || elapsed_time == 0 {
-        return Ok(base_price);
-    }
-
-    let daily_increment = INT_SCALE
-        .checked_mul(apr as u128)
-        .ok_or(crate::OnreError::OverflowError)?
-        .checked_add((APR_SCALE * 365) / 2)
-        .ok_or(crate::OnreError::OverflowError)?
-        .checked_div(APR_SCALE * 365)
-        .ok_or(crate::OnreError::OverflowError)?;
-
-    let daily_factor = INT_SCALE
-        .checked_add(daily_increment)
-        .ok_or(crate::OnreError::OverflowError)?;
-
-    let full_days = elapsed_time / SECONDS_IN_DAY;
-    let remaining_seconds = elapsed_time % SECONDS_IN_DAY;
-
-    let full_day_factor =
-        pow_fixed(daily_factor, full_days, INT_SCALE).ok_or(crate::OnreError::OverflowError)?;
-    let full_day_price = mul_div_round_u128(base_price as u128, full_day_factor, INT_SCALE)
-        .ok_or(crate::OnreError::OverflowError)?;
-
-    if remaining_seconds == 0 {
-        if full_day_price > u64::MAX as u128 {
-            return Err(error!(crate::OnreError::OverflowError));
-        }
-
-        return Ok(full_day_price as u64);
-    }
-
-    let next_day_price = mul_div_round_u128(full_day_price, daily_factor, INT_SCALE)
-        .ok_or(crate::OnreError::OverflowError)?;
-    let daily_delta = next_day_price
-        .checked_sub(full_day_price)
-        .ok_or(crate::OnreError::OverflowError)?;
-    let partial_day_delta = mul_div_round_u128(
-        daily_delta,
-        remaining_seconds as u128,
-        SECONDS_IN_DAY as u128,
-    )
-    .ok_or(crate::OnreError::OverflowError)?;
-    let price = full_day_price
-        .checked_add(partial_day_delta)
-        .ok_or(crate::OnreError::OverflowError)?;
-
-    if price > u64::MAX as u128 {
-        return Err(error!(crate::OnreError::OverflowError));
-    }
-
-    Ok(price as u64)
+    pricing::find_active_vector_at(offer.vectors.iter().map(PricingVector::from), time)
+        .map(OfferVector::from)
 }
 
 /// Calculates discrete interval pricing with fixed price windows
@@ -358,46 +272,6 @@ pub fn calculate_current_step_price(
     let current_time = Clock::get()?.unix_timestamp as u64;
 
     calculate_step_price_at(apr, base_price, base_time, price_fix_duration, current_time)
-}
-
-/// Calculates discrete step price at a specific time
-///
-/// Internal helper function that calculates the step price at any given time
-/// using the discrete interval pricing model.
-///
-/// # Arguments
-/// * `apr` - Annual Percentage Rate scaled by 1_000_000
-/// * `base_price` - Starting price with scale=9
-/// * `base_time` - Unix timestamp when pricing vector starts
-/// * `price_fix_duration` - Duration of each discrete price interval in seconds
-/// * `time` - Specific time to calculate price for
-///
-/// # Returns
-/// * `Ok(u64)` - Price at the specified time
-/// * `Err(_)` - If calculation fails or time is invalid
-pub fn calculate_step_price_at(
-    apr: u64,
-    base_price: u64,
-    base_time: u64,
-    price_fix_duration: u64,
-    time: u64,
-) -> Result<u64> {
-    require!(base_time <= time, crate::OnreError::NoActiveVector);
-
-    let elapsed_since_start = time.saturating_sub(base_time);
-
-    // Calculate which price interval we're in (discrete intervals)
-    let current_step = elapsed_since_start / price_fix_duration;
-
-    // elapsed_effective = (k + 1) * D  (end-of-current-interval snap)
-    let step_end_time = current_step
-        .checked_add(1)
-        .ok_or(crate::OnreError::OverflowError)?
-        .checked_mul(price_fix_duration)
-        .ok_or(crate::OnreError::OverflowError)?;
-
-    // Use the vector price calculation with the effective elapsed time
-    calculate_vector_price(apr, base_price, step_end_time)
 }
 
 /// Finds the array index of a pricing vector by its start time
