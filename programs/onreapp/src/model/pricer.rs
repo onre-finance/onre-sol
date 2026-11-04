@@ -31,9 +31,8 @@ pub struct Pricer {
     pub instance_id: u64,
     pub managed_mint: Pubkey,
     pub denomination: PricingDenomination,
+    /// Fixed slots; `start_time == 0` denotes an empty slot, as in legacy Offer.
     pub vectors: [PricingVector; MAX_VECTORS],
-    /// Only the first `vector_count` slots are active.
-    pub vector_count: u8,
     pub enabled: bool,
     pub bump: u8,
 }

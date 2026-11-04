@@ -33,6 +33,7 @@ dist/
 sbf_trace_dir/
 
 # Local simulator and analysis outputs
+/tmp/
 .surfpool/
 .surfpool-native/
 graphify-out/

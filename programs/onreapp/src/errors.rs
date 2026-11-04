@@ -290,4 +290,8 @@ pub enum OnreError {
     InvalidOfferDirection,
     #[msg("A liquidity vault is required for managed-to-asset offers")]
     LiquidityVaultRequired,
+    #[msg("This offer flow, direction or liquidity routing is not implemented by take_offer yet")]
+    UnsupportedOfferExecution,
+    #[msg("Permissionless execution requires approval_message to be absent")]
+    UnexpectedApproval,
 }

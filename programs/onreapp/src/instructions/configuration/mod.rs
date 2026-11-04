@@ -1,5 +1,6 @@
 //! Boss-authorized creation of reusable configuration; legacy execution remains unchanged.
 
+pub mod add_pricer_vector;
 pub mod create_fee_config;
 pub mod create_offer_config;
 pub mod create_pricer;
@@ -9,6 +10,7 @@ pub mod create_vault_config;
 pub mod initialize_managed_token_buffer;
 pub mod register_managed_token;
 
+pub use add_pricer_vector::*;
 pub use create_fee_config::*;
 pub use create_offer_config::*;
 pub use create_pricer::*;
