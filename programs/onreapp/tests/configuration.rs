@@ -359,7 +359,7 @@ fn creates_reusable_components_and_both_nav_directions() {
     let mint_before = f.svm.get_account(&f.mint).unwrap();
     let price: model::Pricer = read(&f.svm, f.selected_pricer);
     assert!(price.enabled);
-    assert_eq!(price.vector_count, 0);
+    assert!(price.vectors.iter().all(|vector| vector.start_time == 0));
     for reverse in [false, true] {
         let instruction = f.offer_ix(model::OfferFlow::Permissioned, reverse);
         let meta = send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
@@ -553,7 +553,7 @@ fn managed_registration_rejects_unsupported_decimals() {
 fn duplicate_creation_preserves_existing_pricer_vectors() {
     let mut f = Fixture::new();
     let mut price: model::Pricer = read(&f.svm, f.selected_pricer);
-    price.vector_count = 1;
+    price.vectors[0].start_time = 1;
     price.vectors[0].base_price = 1_234_567_890;
     write(&mut f.svm, f.selected_pricer, &price);
     let before = f.svm.get_account(&f.selected_pricer).unwrap();
@@ -566,6 +566,60 @@ fn duplicate_creation_preserves_existing_pricer_vectors() {
     .unwrap_err();
     assert!(creation_events(&failed.meta).is_empty());
     assert_eq!(f.svm.get_account(&f.selected_pricer).unwrap(), before);
+}
+
+#[test]
+fn pricer_vector_insertion_uses_empty_slots_and_checks_all_stored_start_times() {
+    let mut f = Fixture::new();
+    let boss = f.boss.pubkey();
+    let selected_pricer = f.selected_pricer;
+    let now = get_clock_time(&f.svm);
+    let vector = |start_time| model::PricingVector {
+        start_time,
+        base_time: now,
+        base_price: 1_000_000_000,
+        apr: 0,
+        price_fix_duration: 86400,
+    };
+    let append = |vector| {
+        ix(
+            accounts::AddPricerVector {
+                pricer: selected_pricer,
+                state: find_state_pda().0,
+                boss,
+            },
+            instruction::AddPricerVector { vector },
+        )
+    };
+    let mut price: model::Pricer = read(&f.svm, selected_pricer);
+    price.vectors[3] = vector(now);
+    price.vectors[8] = vector(now + 20);
+    write(&mut f.svm, selected_pricer, &price);
+
+    assert_error(
+        send_tx(&mut f.svm, &[append(vector(now + 20))], &[&f.boss]),
+        OnreError::DuplicateStartTime,
+    );
+    assert_error(
+        send_tx(&mut f.svm, &[append(vector(now + 10))], &[&f.boss]),
+        OnreError::InvalidTimeRange,
+    );
+    send_tx(&mut f.svm, &[append(vector(now + 30))], &[&f.boss]).unwrap();
+    let mut price: model::Pricer = read(&f.svm, selected_pricer);
+    assert_eq!(price.vectors[0], vector(now + 30));
+    assert_eq!(price.vectors[3], vector(now));
+    assert_eq!(price.vectors[8], vector(now + 20));
+
+    for (index, slot) in price.vectors.iter_mut().enumerate() {
+        if slot.start_time == 0 {
+            *slot = vector(now + index as u64 + 1);
+        }
+    }
+    write(&mut f.svm, selected_pricer, &price);
+    assert_error(
+        send_tx(&mut f.svm, &[append(vector(now + 40))], &[&f.boss]),
+        OnreError::TooManyVectors,
+    );
 }
 
 #[test]

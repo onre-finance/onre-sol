@@ -111,7 +111,7 @@ fn build_default_take_offer_ix(
 #[test]
 fn test_removed_v1_offer_instructions_are_rejected() {
     let (mut svm, payer) = setup();
-    for name in ["take_offer", "take_offer_permissionless"] {
+    for name in ["take_offer_permissionless"] {
         let mut data = ix_discriminator(name).to_vec();
         data.extend_from_slice(&1_000_000u64.to_le_bytes());
         data.push(0); // Legacy optional approval message: None.
@@ -130,6 +130,22 @@ fn test_removed_v1_offer_instructions_are_rejected() {
             "{name} must be rejected during dispatch: {error:?}"
         );
     }
+    // The name is reused by the modular instruction, with a new ABI. The old
+    // V1 payload must still fail before any accounts can be read or funds moved.
+    let mut data = ix_discriminator("take_offer").to_vec();
+    data.extend_from_slice(&1_000_000u64.to_le_bytes());
+    data.push(0);
+    let ix = solana_sdk::instruction::Instruction {
+        program_id: PROGRAM_ID,
+        accounts: vec![],
+        data,
+    };
+    let error = send_tx(&mut svm, &[ix], &[&payer]).unwrap_err();
+    assert!(error
+        .meta
+        .logs
+        .iter()
+        .any(|line| line.contains("InstructionDidNotDeserialize")));
 }
 
 #[test]

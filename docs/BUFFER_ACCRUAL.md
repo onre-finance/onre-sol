@@ -2,7 +2,9 @@
 
 This document describes the active legacy BUFFER accrual model around ONyc supply
 changes. The new `initialize_managed_token_buffer` instruction creates separate
-per-mint configuration under `["buffer", managed_mint]`, but does not
+per-mint configuration under `["buffer", managed_mint]`. The new
+[`take_offer`](MODULAR_TAKE_OFFER.md) uses it for other managed mints, while ONyc
+keeps the legacy singleton baseline during V2 coexistence. Initialization does not
 activate new accrual or migrate this singleton state. See
 [`MODULAR_MODEL.md`](MODULAR_MODEL.md) for the initialization boundary.
 
@@ -144,6 +146,9 @@ This currently applies when the buffer is initialized and the program controls
 the ONyc mint, for:
 
 - `mint_to`, which requires `State.main_offer` to be set
+- Modular permissioned and permissionless `take_offer` before minting or burning a
+  managed token; the post-trade
+  mint supply is stored using the managed side selected by OfferConfig.
 - `take_offer_v2` and `take_offer_permissionless_v2` when token out is ONyc
 - Prop AMM buy when token out is ONyc
 - redemption fulfillment when token in is ONyc and the net amount is burned

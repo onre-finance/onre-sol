@@ -22,7 +22,7 @@ pub struct OfferConfigCreatedEvent {
 }
 
 /// Creates an offer with a boss-selected external asset and compatible Pricer.
-/// Does not enable new settlement paths.
+/// Records enabled configuration; execution is limited to implemented paths.
 #[derive(Accounts)]
 #[instruction(flow: OfferFlow)]
 pub struct CreateOfferConfig<'info> {

@@ -3,7 +3,7 @@
 
 use anchor_lang::prelude::*;
 use instructions::*;
-use model::{OfferFlow, PricingDenomination, PropAmmConfig, QuoterKind, VaultKind};
+use model::{OfferFlow, PricingDenomination, PricingVector, PropAmmConfig, QuoterKind, VaultKind};
 use state::ConfigurableVaultKind;
 use utils::ApprovalMessage;
 
@@ -70,7 +70,8 @@ pub use instructions::mint_authority::mint_to::MintTo;
 ///
 /// Core functionalities include:
 /// - Making offers with dynamic pricing (`make_offer`).
-/// - Taking offers with current market pricing (`take_offer_v2`, `take_offer_permissionless_v2`).
+/// - Taking modular permissioned NAV offers (`take_offer`) and existing offers
+///   (`take_offer_v2`, `take_offer_permissionless_v2`).
 /// - Managing offer vectors for price control (`add_offer_vector`, `delete_offer_vector`).
 /// - Program state initialization and management (`initialize`, `propose_boss`, `accept_boss`, `add_admin`, `remove_admin`).
 /// - Vault operations for token deposits and withdrawals (`offer_vault_deposit`, `offer_vault_withdraw`).
@@ -94,6 +95,33 @@ pub use instructions::mint_authority::mint_to::MintTo;
 #[program]
 pub mod onreapp {
     use super::*;
+
+    /// Execute an offer using reusable model accounts.
+    /// Supports permissioned and permissionless NAV in both directions, with shared BUFFER accounting
+    /// and combined legacy/new ONyc liquidity for managed-to-asset payouts.
+    /// Permissionless execution routes through the canonical intermediary PDA.
+    /// Prop AMM, worker execution and liquidity refill remain explicitly unsupported.
+    /// V2 entrypoints and their account lists remain unchanged.
+    pub fn take_offer(
+        ctx: Context<TakeOffer>,
+        gross_input_amount: u64,
+        minimum_amount_out: u64,
+        deadline: u64,
+        approval_message: Option<ApprovalMessage>,
+    ) -> Result<()> {
+        execution::take_offer(
+            ctx,
+            gross_input_amount,
+            minimum_amount_out,
+            deadline,
+            approval_message,
+        )
+    }
+
+    /// Append an independent Pricer's vector; boss only.
+    pub fn add_pricer_vector(ctx: Context<AddPricerVector>, vector: PricingVector) -> Result<()> {
+        configuration::add_pricer_vector(ctx, vector)
+    }
 
     /// Registers an existing mint in the reusable configuration model; boss only.
     pub fn register_managed_token(ctx: Context<RegisterManagedToken>) -> Result<()> {
