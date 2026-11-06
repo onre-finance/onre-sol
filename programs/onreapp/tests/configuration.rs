@@ -923,3 +923,56 @@ fn buffer_initialization_is_per_mint_and_preserves_legacy_state() {
         pda(&[b"buffer_reserve", other.as_ref()])
     );
 }
+
+#[test]
+fn offer_creation_validates_legacy_liquidity_identity() {
+    use onreapp::state::{ConfigurableVault, ConfigurableVaultKind};
+    let mut f = Fixture::new();
+    let kind = ConfigurableVaultKind::PropAmmProceeds;
+    let selected = pda(&[b"configurable_vault", kind.seed()]);
+    let setup = build_set_configurable_vault_destination_ix(
+        &f.boss.pubkey(),
+        &selected,
+        kind.as_u8(),
+        &f.boss.pubkey(),
+    );
+    send_tx(&mut f.svm, &[setup], &[&f.boss]).unwrap();
+    f.liquidity = Some(selected);
+    let original = f.svm.get_account(&selected).unwrap();
+    for (index, expected) in [
+        OnreError::InvalidConfigurableVaultOwner,
+        OnreError::InvalidConfigurableVaultData,
+        OnreError::InvalidConfigurableVaultKind,
+        OnreError::InvalidConfigurableVault,
+        OnreError::InvalidConfigurableVault,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let mut account = original.clone();
+        match index {
+            0 => account.owner = SYSTEM_PROGRAM_ID,
+            1 => account.data[0] ^= 255,
+            2 => account.data[8] = 255,
+            3 => {
+                let mut vault =
+                    ConfigurableVault::try_deserialize(&mut account.data.as_slice()).unwrap();
+                vault.bump ^= 255;
+                account.data.clear();
+                vault.try_serialize(&mut account.data).unwrap();
+            }
+            4 => account.data[8] = ConfigurableVaultKind::OfferProceeds.as_u8(),
+            _ => unreachable!(),
+        }
+        f.svm.set_account(selected, account).unwrap();
+        f.svm.expire_blockhash();
+        let instruction = f.offer_ix(model::OfferFlow::Permissioned, true);
+        assert_error(send_tx(&mut f.svm, &[instruction], &[&f.boss]), expected);
+    }
+    f.svm.set_account(selected, original).unwrap();
+    f.svm.expire_blockhash();
+    let instruction = f.offer_ix(model::OfferFlow::Permissioned, true);
+    send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    let offer: model::OfferConfig = read(&f.svm, f.offer_key(model::OfferFlow::Permissioned, true));
+    assert_eq!(offer.liquidity_vault, selected);
+}

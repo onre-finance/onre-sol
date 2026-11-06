@@ -268,6 +268,34 @@ impl Fixture {
         kind: QuoterKind,
         with_liquidity: bool,
     ) {
+        let liquidity = with_liquidity.then(|| vault(VaultKind::Liquidity));
+        if let Some(vault) = liquidity.filter(|vault| self.svm.get_account(vault).is_none()) {
+            let instruction = ix(
+                accounts::CreateVaultConfig {
+                    vault,
+                    state: find_state_pda().0,
+                    boss: self.boss.pubkey(),
+                    system_program: SYSTEM_PROGRAM_ID,
+                },
+                instruction::CreateVaultConfig {
+                    kind: VaultKind::Liquidity,
+                    instance_id: 0,
+                    withdrawal_destination: self.boss.pubkey(),
+                    refill_target_bps: 0,
+                },
+            );
+            send_tx(&mut self.svm, &[instruction], &[&self.boss]).unwrap();
+        }
+        self.create_route_with_vault(direction, flow, kind, liquidity);
+    }
+
+    fn create_route_with_vault(
+        &mut self,
+        direction: OfferDirection,
+        flow: OfferFlow,
+        kind: QuoterKind,
+        liquidity: Option<Pubkey>,
+    ) {
         let quoter = pda(&[b"quoter", &[kind as u8], &0_u64.to_le_bytes()]);
         if self.svm.get_account(&quoter).is_none() {
             let instruction = ix(
@@ -306,24 +334,6 @@ impl Fixture {
                         wall_sensitivity_scaled: 20000,
                         curve_peg_haircut_bps: 700,
                     },
-                },
-            );
-            send_tx(&mut self.svm, &[instruction], &[&self.boss]).unwrap();
-        }
-        let liquidity = with_liquidity.then(|| vault(VaultKind::Liquidity));
-        if let Some(vault) = liquidity.filter(|vault| self.svm.get_account(vault).is_none()) {
-            let instruction = ix(
-                accounts::CreateVaultConfig {
-                    vault,
-                    state: find_state_pda().0,
-                    boss: self.boss.pubkey(),
-                    system_program: SYSTEM_PROGRAM_ID,
-                },
-                instruction::CreateVaultConfig {
-                    kind: VaultKind::Liquidity,
-                    instance_id: 0,
-                    withdrawal_destination: self.boss.pubkey(),
-                    refill_target_bps: 0,
                 },
             );
             send_tx(&mut self.svm, &[instruction], &[&self.boss]).unwrap();
@@ -502,23 +512,6 @@ impl Fixture {
                 liquidity_vault: has_liquidity.then_some(config.liquidity_vault),
                 liquidity_token: has_liquidity
                     .then(|| derive_ata(&config.liquidity_vault, &self.asset, &self.asset_program)),
-                legacy_liquidity_authority: (has_liquidity && self.onyc)
-                    .then(|| find_redemption_vault_authority_pda().0),
-                legacy_liquidity_token: (has_liquidity && self.onyc).then(|| {
-                    derive_ata(
-                        &find_redemption_vault_authority_pda().0,
-                        &self.asset,
-                        &self.asset_program,
-                    )
-                }),
-                legacy_prop_amm_state: (quoter.kind == QuoterKind::PropAmm && self.onyc).then(
-                    || {
-                        pda(&[
-                            b"prop_amm_pair",
-                            find_offer_pda(&self.asset, &self.mint).0.as_ref(),
-                        ])
-                    },
-                ),
                 permissionless_authority: (config.flow == OfferFlow::Permissionless)
                     .then(|| find_permissionless_authority_pda().0),
                 permissionless_token_in: (config.flow == OfferFlow::Permissionless).then(|| {
@@ -1149,8 +1142,7 @@ fn one_entrypoint_executes_both_directions_and_buffer_tracks_the_managed_input()
         let event = executed_event(&result);
         assert_eq!(event.direction, OfferDirection::ManagedToAsset);
         assert_eq!(event.proceeds_amount, 0);
-        assert_eq!(event.current_liquidity_amount, 1_960_200);
-        assert_eq!(event.legacy_liquidity_amount, 0);
+        assert_eq!(event.liquidity_amount, 1_960_200);
         assert!(f
             .svm
             .get_account(&derive_ata(
@@ -1163,8 +1155,13 @@ fn one_entrypoint_executes_both_directions_and_buffer_tracks_the_managed_input()
 }
 
 #[test]
-fn onyc_payout_uses_old_and_new_liquidity_and_can_leave_the_new_ata_empty() {
-    for (legacy, current) in [(1_000_000, 1_000_000), (3_000_000, 0), (0, 3_000_000)] {
+fn onyc_uses_only_selected_liquidity_and_keeps_the_legacy_buffer() {
+    for (legacy, current, succeeds) in [
+        (3_000_000, 3_000_000, true),
+        (3_000_000, 1_000_000, false),
+        (3_000_000, 0, false),
+        (0, 3_000_000, true),
+    ] {
         let mut f = Fixture::new(true, false);
         f.initialize_legacy_main_offer();
         f.seed_tokens(f.mint, f.user.pubkey(), 1_000_000_000);
@@ -1190,13 +1187,19 @@ fn onyc_payout_uses_old_and_new_liquidity_and_can_leave_the_new_ata_empty() {
         if current > 0 {
             f.seed_tokens(f.asset, vault(VaultKind::Liquidity), current);
         }
+        let buffer_before = f.svm.get_account(&f.buffer()).unwrap().data;
         let instruction = f.take(1_000_000_000, 1_980_000);
-        let result = f.send(instruction).unwrap();
-        let legacy_paid = legacy.min(1_980_000);
-        let current_paid = 1_980_000 - legacy_paid;
+        let paid = if succeeds {
+            let result = f.send(instruction).unwrap();
+            assert_eq!(executed_event(&result).liquidity_amount, 1_980_000);
+            1_980_000
+        } else {
+            assert_error(f.send(instruction), OnreError::InsufficientBalance);
+            0
+        };
         assert_eq!(
             f.balance(f.asset, f.user.pubkey(), f.asset_program),
-            11_980_000
+            10_000_000 + paid
         );
         if legacy > 0 {
             assert_eq!(
@@ -1205,36 +1208,28 @@ fn onyc_payout_uses_old_and_new_liquidity_and_can_leave_the_new_ata_empty() {
                     find_redemption_vault_authority_pda().0,
                     f.asset_program
                 ),
-                legacy - legacy_paid
+                legacy
             );
         }
         if current > 0 {
             assert_eq!(
                 f.balance(f.asset, vault(VaultKind::Liquidity), f.asset_program),
-                current - current_paid
+                current - paid
             );
         }
-        assert_eq!(get_mint_supply(&f.svm, &f.mint), 10_000_000);
-        let buffer: onreapp::instructions::BufferState = read(&f.svm, f.buffer());
-        assert_eq!(buffer.previous_supply, 10_000_000);
-        let event = executed_event(&result);
-        assert_eq!(event.legacy_liquidity_amount, legacy_paid);
-        assert_eq!(event.current_liquidity_amount, current_paid);
-        if current == 0 {
-            assert!(f
-                .svm
-                .get_account(&derive_ata(
-                    &vault(VaultKind::Liquidity),
-                    &f.asset,
-                    &f.asset_program
-                ))
-                .is_none());
+        let supply = if succeeds { 10_000_000 } else { 1_000_000_000 };
+        assert_eq!(get_mint_supply(&f.svm, &f.mint), supply);
+        if succeeds {
+            let buffer: onreapp::instructions::BufferState = read(&f.svm, f.buffer());
+            assert_eq!(buffer.previous_supply, supply);
+        } else {
+            assert_eq!(f.svm.get_account(&f.buffer()).unwrap().data, buffer_before);
         }
     }
 }
 
 #[test]
-fn insufficient_combined_liquidity_rolls_back_accrual_fees_and_burn() {
+fn insufficient_selected_liquidity_rolls_back_accrual_fees_and_burn() {
     let mut f = Fixture::new(false, false);
     f.seed_tokens(f.mint, f.user.pubkey(), 1_000_000_000);
     f.initialize_managed_buffer();
@@ -1273,7 +1268,7 @@ fn insufficient_combined_liquidity_rolls_back_accrual_fees_and_burn() {
 }
 
 #[test]
-fn cannot_omit_or_substitute_configured_or_legacy_liquidity() {
+fn cannot_omit_or_substitute_selected_liquidity() {
     let mut f = Fixture::new(true, false);
     f.initialize_legacy_main_offer();
     f.seed_tokens(f.mint, f.user.pubkey(), 1_000_000_000);
@@ -1293,8 +1288,6 @@ fn cannot_omit_or_substitute_configured_or_legacy_liquidity() {
             OnreError::LiquidityVaultRequired,
         ),
         (new_ata, OnreError::InvalidConfigurableVaultTokenAccount),
-        (legacy, OnreError::InvalidConfigurableVault),
-        (old_ata, OnreError::InvalidConfigurableVaultTokenAccount),
     ] {
         let mut instruction = f.take(1_000_000_000, 0);
         omit_account(&mut instruction, account);
@@ -1304,9 +1297,9 @@ fn cannot_omit_or_substitute_configured_or_legacy_liquidity() {
     instruction
         .accounts
         .iter_mut()
-        .find(|a| a.pubkey == old_ata)
+        .find(|a| a.pubkey == new_ata)
         .unwrap()
-        .pubkey = derive_ata(&f.user.pubkey(), &f.asset, &f.asset_program);
+        .pubkey = old_ata;
     assert_error(
         f.send(instruction),
         OnreError::InvalidConfigurableVaultTokenAccount,
@@ -1319,7 +1312,7 @@ fn cannot_omit_or_substitute_configured_or_legacy_liquidity() {
 }
 
 #[test]
-fn prop_amm_requires_its_pair_and_legacy_pressure_account_before_dispatch() {
+fn prop_amm_requires_only_its_selected_pair_before_dispatch() {
     for onyc in [false, true] {
         let mut f = Fixture::new(onyc, false);
         f.seed_tokens(f.mint, f.user.pubkey(), 1_000_000_000);
@@ -1335,15 +1328,6 @@ fn prop_amm_requires_its_pair_and_legacy_pressure_account_before_dispatch() {
         let mut instruction = f.take(1_000_000_000, 0);
         omit_account(&mut instruction, pair);
         assert_error(f.send(instruction), OnreError::IncompatibleQuoter);
-        if onyc {
-            let mut instruction = f.take(1_000_000_001, 0);
-            let legacy = pda(&[
-                b"prop_amm_pair",
-                find_offer_pda(&f.asset, &f.mint).0.as_ref(),
-            ]);
-            omit_account(&mut instruction, legacy);
-            assert_error(f.send(instruction), OnreError::IncompatibleQuoter);
-        }
         let instruction = f.take(1_000_000_002, 0);
         assert_error(f.send(instruction), OnreError::UnsupportedOfferExecution);
         assert_eq!(f.svm.get_account(&pair).unwrap().data, before);
@@ -1351,5 +1335,124 @@ fn prop_amm_requires_its_pair_and_legacy_pressure_account_before_dispatch() {
             f.balance(f.mint, f.user.pubkey(), f.token_program),
             1_000_000_000
         );
+    }
+}
+
+#[test]
+fn offers_can_share_a_preexisting_modular_or_legacy_liquidity_vault() {
+    use onreapp::state::ConfigurableVaultKind;
+
+    for token_2022 in [false, true] {
+        for legacy_kind in [
+            None,
+            Some(ConfigurableVaultKind::PropAmmProceeds),
+            Some(ConfigurableVaultKind::OfferProceeds),
+        ] {
+            let mut f = Fixture::new(false, token_2022);
+            let selected = if let Some(kind) = legacy_kind {
+                let selected = pda(&[b"configurable_vault", kind.seed()]);
+                let setup = build_set_configurable_vault_destination_ix(
+                    &f.boss.pubkey(),
+                    &selected,
+                    kind.as_u8(),
+                    &f.boss.pubkey(),
+                );
+                send_tx(&mut f.svm, &[setup], &[&f.boss]).unwrap();
+                selected
+            } else {
+                // A preexisting instance with a nonzero identity can be reused.
+                let selected = pda(&[
+                    b"vault",
+                    &[VaultKind::Liquidity as u8],
+                    &17_u64.to_le_bytes(),
+                ]);
+                let setup = ix(
+                    accounts::CreateVaultConfig {
+                        vault: selected,
+                        state: find_state_pda().0,
+                        boss: f.boss.pubkey(),
+                        system_program: SYSTEM_PROGRAM_ID,
+                    },
+                    instruction::CreateVaultConfig {
+                        kind: VaultKind::Liquidity,
+                        instance_id: 17,
+                        withdrawal_destination: f.boss.pubkey(),
+                        refill_target_bps: 0,
+                    },
+                );
+                send_tx(&mut f.svm, &[setup], &[&f.boss]).unwrap();
+                selected
+            };
+            let configuration_before = f.svm.get_account(&selected).unwrap().data;
+            f.seed_tokens(f.mint, f.user.pubkey(), 1_000_000_000);
+            f.seed_tokens(f.asset, selected, 3_000_000);
+            // These are two actual boss-authorized offer creations referencing
+            // the same vault. No rebinding or migration is needed.
+            for (flow, quoter) in [
+                (OfferFlow::Permissioned, QuoterKind::Nav),
+                (OfferFlow::Permissionless, QuoterKind::NavPermissionless),
+            ] {
+                f.create_route_with_vault(
+                    OfferDirection::ManagedToAsset,
+                    flow,
+                    quoter,
+                    Some(selected),
+                );
+                let instruction = f.take(500_000_000, 990_000);
+                let result = if flow == OfferFlow::Permissioned {
+                    f.send(instruction)
+                } else {
+                    f.send_without_approval(instruction)
+                }
+                .unwrap();
+                assert_eq!(executed_event(&result).liquidity_amount, 990_000);
+            }
+            assert_eq!(f.balance(f.asset, selected, f.asset_program), 1_020_000);
+            assert_eq!(
+                f.balance(f.asset, f.user.pubkey(), f.asset_program),
+                11_980_000
+            );
+            assert_eq!(get_mint_supply(&f.svm, &f.mint), 10_000_000);
+            assert_eq!(
+                f.svm.get_account(&selected).unwrap().data,
+                configuration_before
+            );
+        }
+    }
+}
+
+#[test]
+fn modular_offers_can_explicitly_share_the_old_redemption_vault() {
+    for token_2022 in [false, true] {
+        let mut f = Fixture::new(false, token_2022);
+        if token_2022 {
+            f.asset = create_mint_2022(&mut f.svm, &f.boss, 6, &f.boss.pubkey());
+            f.asset_program = TOKEN_2022_PROGRAM_ID;
+            f.seed_tokens(f.asset, f.user.pubkey(), 10_000_000);
+        }
+        let selected = find_redemption_vault_authority_pda().0;
+        f.seed_tokens(f.mint, f.user.pubkey(), 1_000_000_000);
+        f.seed_tokens(f.asset, selected, 3_000_000);
+        // The redemption authority itself is a stateless PDA. Its ATA is custody.
+        for (flow, quoter) in [
+            (OfferFlow::Permissioned, QuoterKind::Nav),
+            (OfferFlow::Permissionless, QuoterKind::NavPermissionless),
+        ] {
+            f.create_route_with_vault(OfferDirection::ManagedToAsset, flow, quoter, Some(selected));
+            let instruction = f.take(500_000_000, 990_000);
+            let result = if flow == OfferFlow::Permissioned {
+                f.send(instruction)
+            } else {
+                f.send_without_approval(instruction)
+            }
+            .unwrap();
+            assert_eq!(executed_event(&result).liquidity_amount, 990_000);
+        }
+        assert_eq!(f.balance(f.asset, selected, f.asset_program), 1_020_000);
+        assert_eq!(
+            f.balance(f.asset, f.user.pubkey(), f.asset_program),
+            11_980_000
+        );
+        assert_eq!(get_mint_supply(&f.svm, &f.mint), 10_000_000);
     }
 }

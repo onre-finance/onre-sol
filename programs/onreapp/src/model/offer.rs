@@ -29,6 +29,7 @@ pub struct OfferConfig {
     pub quoter: Pubkey,
     pub fee_config: Pubkey,
     pub proceeds_vault: Pubkey,
+    /// Modular Liquidity VaultConfig, legacy ConfigurableVault, or redemption authority.
     /// Default pubkey means absent; mandatory for ManagedToAsset.
     pub liquidity_vault: Pubkey,
     pub token_in_decimals: u8,
