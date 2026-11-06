@@ -10,7 +10,7 @@ remain explicitly unsupported. The global kill switch guards execution.
 Direction and permissions come from OfferConfig; the pricing algorithm comes from
 Quoter. The shared account context lives in `execution/accounts.rs`, validation and
 dispatch in `validation.rs`, authorization in `permissions.rs`, vector quoting
-in `quote.rs`, mint/burn settlement in `settlement.rs`, liquidity custody in `liquidity.rs`, and accrual in `buffer.rs`.
+in `quote.rs`, mint/burn settlement in `settlement.rs`, selected-vault liquidity custody in `liquidity.rs`, and accrual in `buffer.rs`.
 `take_offer.rs` orchestrates these modules and emits the execution event.
 Configured extension accounts are validated before dispatch; supplying them does
 not enable unfinished paths.
@@ -25,7 +25,9 @@ Register the managed mint, create its Pricer, append a vector with
 `add_pricer_vector`, create the appropriate Quoter, Fee and Proceeds vaults,
 a FeeConfig, and an OfferConfig. Permissioned offers select `Nav`; permissionless
 offers select `NavPermissionless`. Asset-to-managed has no liquidity vault;
-managed-to-asset references a Liquidity VaultConfig. The program's existing
+managed-to-asset references a Liquidity VaultConfig, legacy ConfigurableVault, or
+the existing redemption authority.
+Create a new vault instance first when separate liquidity is needed. The program's existing
 mint-authority PDA must control the managed mint in either direction; managed
 registration does not transfer authority. The boss selects an external
 USD-denominated asset. This path assumes one asset unit equals one USD and introduces no FX oracle.
@@ -48,9 +50,9 @@ The generated `TakeOffer` accounts contain:
   `permissionless_token_out`, required by permissionless offers and omitted for
   other flows. The token accounts are the authority's canonical input/output ATAs
   under each mint's token program and are created lazily at the user's expense.
-- Optional `prop_amm_state`, `liquidity_vault`, `liquidity_token`,
-  `legacy_liquidity_authority`, `legacy_liquidity_token`, and
-  `legacy_prop_amm_state`, as described below.
+- Optional `prop_amm_state`, `liquidity_vault`, and `liquidity_token`, as described
+  below. Redemption custody is supplied through the selected `liquidity_vault`
+  reference; no additional legacy liquidity or Prop AMM accounts are required.
 
 The managed mint and its token program are selected from the input or output side
 according to the stored direction. Both mints are writable because either may be
@@ -135,8 +137,8 @@ operation before splitting across fee destinations. Every step, including lazy
 ATA creation, rolls back if the transaction fails.
 
 `OfferExecutedEvent` records the offer, user, flow, direction, gross/net input,
-fee, output, price, zero liquidity refill, proceeds, legacy/current liquidity
-payout amounts, and timestamp. Managed-to-asset proceeds are zero.
+fee, output, price, zero liquidity refill, proceeds, selected-vault
+`liquidity_amount`, and timestamp. Managed-to-asset proceeds are zero.
 
 ## BUFFER coexistence
 
@@ -162,30 +164,46 @@ The optional legacy offer and reporting accounts do not affect other mints.
 
 ## Conditional liquidity and Prop AMM accounts
 
-When OfferConfig stores a liquidity-vault reference, provide that canonical
-Liquidity VaultConfig and its asset-mint ATA. Without a reference, liquidity
-accounts must be omitted; managed-to-asset always requires a reference.
-For ONyc liquidity, also provide the canonical existing redemption-vault authority
-and its asset ATA, even if empty. This prevents a caller from hiding old funds.
-Other managed mints must omit these ONyc legacy accounts.
+When OfferConfig stores a liquidity-vault reference, provide that exact authority
+and its canonical asset-mint ATA. The authority can be a modular Liquidity
+VaultConfig (newly created or reused), an existing legacy ConfigurableVault, or
+the canonical legacy redemption authority. Creation and execution validate the
+configuration's program owner, discriminator, kind, PDA and bump. The stateless
+redemption authority is validated by its canonical PDA identity. A legacy
+configurable vault retains its original role and withdrawal destination/policy; selecting it explicitly makes its asset ATA available to that
+offer. Legacy vaults and the redemption authority have no modular refill target.
+Without a reference, liquidity accounts must be omitted; managed-to-asset always
+requires a reference.
 
-The combined balance is the checked sum of legacy and configured asset balances.
-Payout first consumes the legacy balance, then the configured vault balance.
-An uninitialized canonical ATA owned by the system program counts as zero;
-no transfer is attempted from an empty source. Initialized token accounts must
-match the token program, mint, authority and canonical ATA address. Each source
-transfer signs with its own validated PDA seeds. Insufficient combined funds
-roll back BUFFER accrual, fee movement, burn and all earlier transfers. Fee and
-proceeds balances are independent and are not included in liquidity.
+Only the selected vault's asset balance counts toward solvency. Existing redemption
+liquidity is read and consumed only when its redemption authority is explicitly
+selected, including for ONyc. The same vault may be explicitly shared by multiple offers; separate vault instances isolate
+actual asset balances. Creating an offer does not create or migrate its liquidity.
+
+An uninitialized canonical ATA owned by the system program counts as zero.
+Initialized token accounts must match the token program, mint, authority and
+canonical ATA address. Payout signs with the selected vault's validated PDA seeds.
+Insufficient selected-vault funds roll back BUFFER accrual, fee movement, burn and
+all earlier transfers. Other fee and proceeds vault balances are not included in
+liquidity; an explicitly selected legacy configurable vault contributes only its
+own asset ATA.
+
+New VaultConfig balances can be funded or withdrawn using the
+[VaultConfig custody instructions](VAULT_CONFIG_OPERATIONS.md), which also cover
+the distinct per-mint BUFFER vault seeds.
 
 A Prop AMM Quoter requires its canonical mutable PropAmmState, bound to the same
-Quoter, asset and managed mint. ONyc additionally requires the canonical legacy
-pair-state account, even if uninitialized. Non-Prop AMM paths must omit both pair
-accounts. This fixes their positions in the shared context; it does not implement
-Prop AMM quoting or mutate either tracker. Prop AMM execution still returns
-`UnsupportedOfferExecution` until one shared pressure adapter and the full
-pricing/settlement path are implemented and tested. Worker execution is also
+Quoter, asset and managed mint. Each new quoter uses its own state, independently
+of old offers and their pressure. The two directed offers can intentionally share
+one new quoter and its pressure state. Non-Prop AMM paths must omit the pair account.
+Prop AMM execution still returns `UnsupportedOfferExecution` until the full
+pricing/settlement path is implemented and tested. Worker execution is also
 unsupported; supplying an approval cannot enable it.
+
+The modular account list removes the former legacy liquidity authority/ATA and
+legacy Prop AMM state positions. Clients must rebuild against the updated IDL.
+`OfferExecutedEvent` now reports one `liquidity_amount` instead of a legacy/current
+split. V2 instructions and events remain unchanged.
 
 ## Pricer vectors
 
@@ -199,7 +217,8 @@ remains available during the kill switch. Eviction and deletion are deferred.
 
 ## Next layers
 
-Liquidity refill, Prop AMM execution and pressure sharing,
+Liquidity refill, Prop AMM execution,
 worker fulfillment, component updates, and legacy-entrypoint disabling remain
 separate work. This instruction adds no automatic offer binding or bulk custody
-migration; legacy liquidity moves only as part of an executed payout.
+migration. Existing liquidity is used only when explicitly selected for settlement
+or moved separately.
