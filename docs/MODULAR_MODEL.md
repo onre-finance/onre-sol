@@ -6,7 +6,7 @@ using the layouts in [`model/`](../programs/onreapp/src/model/mod.rs).
 The first modular execution path, `take_offer`, and boss-authorized
 `add_pricer_vector` are described in [`MODULAR_TAKE_OFFER.md`](MODULAR_TAKE_OFFER.md).
 V2 trading and its account lists remain unchanged. Permissioned and permissionless
-NAV execution supports both directions; ONyc payouts combine legacy and configured liquidity.
+NAV execution supports both directions; payouts use only the selected liquidity vault.
 ONyc execution shares the legacy
 BUFFER baseline and reporting snapshot. Other managed mints use their per-mint
 BUFFER when initialized. Conditional Prop AMM accounts are validated, but Prop AMM
@@ -248,7 +248,9 @@ NAV kinds have no companion state. Curve, cadence, epoch duration, and sensitivi
 belong together in `PropAmmConfig` inside `PropAmmState`.
 
 FeeConfig references a Fee-kind vault. Every offer references a Proceeds vault;
-ManagedToAsset also requires a Liquidity vault. AssetToManaged may use the default
+ManagedToAsset also requires a liquidity authority: a modular Liquidity vault or
+an explicitly selected existing legacy ConfigurableVault or redemption authority. Selected custody is
+validated at creation and execution. AssetToManaged may use the default
 pubkey for absent liquidity. No other component reference is optional. The fee
 floor is input-token-denominated, so sharing a FeeConfig across different input
 mints requires an appropriate policy. EVM's minimum input fee replaces the legacy
@@ -258,11 +260,19 @@ Vault kinds are `Fee`, `Proceeds`, `Liquidity`, and `BufferReserve`. The propose
 physical representation is the vault PDA's ATA per mint; the SPL account balance
 is authoritative, replacing the EVM `(vaultId, token)` logical-balance mapping.
 Withdrawal destinations are token-account owners; payouts use their ATA for the
-selected mint. The EVM withdrawal policy is permissionless for Fee and Proceeds,
+selected mint. The implemented withdrawal policy is permissionless for Fee and Proceeds,
 and boss-controlled for Liquidity and BufferReserve, always to that destination.
 Liquidity refill targets live on the Liquidity vault, with zero disabling refill.
 Sharing a Liquidity vault across managed tokens also shares actual asset liquidity;
 separate instances are needed when each token must have independent liquidity.
+An offer may also explicitly reuse a legacy ConfigurableVault and its asset ATA,
+without changing its role, withdrawal destination or existing withdrawal policy.
+Legacy configurable vaults and the old redemption authority have no modular refill
+target. The redemption authority is stateless and validated by its canonical PDA;
+its asset ATA can be shared explicitly without migrating funds. New generic and
+per-mint BUFFER VaultConfig accounts support
+[`deposit_vault_config` and `withdraw_vault_config`](VAULT_CONFIG_OPERATIONS.md).
+The shared authority resolver selects each identity's actual PDA seeds.
 
 Each BUFFER record references one BufferReserve vault and two distinct Fee vaults.
 Initialization requires that managed mint's canonical USD Pricer instance zero,
@@ -276,10 +286,10 @@ Initialization creates no ATAs, moves no funds, and does not accrue or mint.
 
 The legacy `initialize_buffer` and `settle_buffer` still use the singleton
 `["buffer_state"]`, `State::onyc_mint`, and legacy vaults. Creating new per-token
-state does not activate it or synchronize it with the legacy baseline. Migration
-and new supply-change/accrual paths must be implemented before using it for
-settlement. Ordinary mint and
-burn paths will need explicit supply reconciliation: SPL mints do not provide
+ONyc state does not activate it or synchronize it with the legacy baseline; modular
+ONyc execution always uses the singleton and its existing vaults. Other managed
+mints use their initialized per-mint BUFFER in modular execution. Ordinary mint
+and burn paths need explicit supply reconciliation: SPL mints do not provide
 the EVM ManagedToken supply-change callback. Issuance limits therefore live in
 ManagedTokenConfig and constrain program-controlled paths only.
 
@@ -320,8 +330,9 @@ The target ATA representation above is not permission to move existing vault fun
 A cutover must choose one authoritative record for each price, fee, BUFFER
 baseline, pressure tracker, and request obligation. Mirroring independently
 mutable legacy and new state is not part of this model. ONyc's shared BUFFER adapter
-is implemented for modular offer execution in both directions. The ONyc liquidity
-adapter aggregates old/new asset balances and pays from the legacy vault first.
+is implemented for modular offer execution in both directions. Liquidity is scoped
+to the vault selected by the offer; old redemption liquidity is not automatically
+included. Modular Prop AMM state is independent of the legacy pressure tracker.
 Permissionless NAV uses the existing intermediary PDA and its mint-specific ATAs.
-Prop AMM pressure sharing, liquidity refill, worker settlement,
+Prop AMM execution, liquidity refill, worker settlement,
 component replacement, migration controls, and CLI changes remain deferred.

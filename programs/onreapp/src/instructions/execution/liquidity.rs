@@ -1,7 +1,5 @@
 use crate::{
-    constants::seeds,
-    model::{seeds::VAULT, OfferDirection, VaultKind},
-    OnreError, ID,
+    model::OfferDirection, utils::vault_authority::validate_liquidity_vault, OnreError, ID,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::{
@@ -11,96 +9,34 @@ use anchor_spl::{
 
 use super::TakeOffer;
 
-#[derive(Default)]
-pub(super) struct LiquidityBalances {
-    pub legacy: u64,
-    pub current: u64,
-}
-
-impl LiquidityBalances {
-    pub fn total(&self) -> Result<u64> {
-        self.legacy
-            .checked_add(self.current)
-            .ok_or_else(|| OnreError::MathOverflow.into())
-    }
-
-    /// Drain legacy liquidity first while retaining one combined solvency check.
-    pub fn split(&self, amount: u64) -> Result<(u64, u64)> {
-        require!(amount <= self.total()?, OnreError::InsufficientBalance);
-        let legacy = amount.min(self.legacy);
-        Ok((legacy, amount - legacy))
-    }
-}
-
-pub(super) fn validate(program_id: &Pubkey, a: &TakeOffer) -> Result<LiquidityBalances> {
+/// Only the explicitly selected vault contributes payout liquidity.
+pub(super) fn validate(program_id: &Pubkey, a: &TakeOffer) -> Result<u64> {
     if a.offer_config.liquidity_vault == Pubkey::default() {
         require!(
             a.offer_config.direction == OfferDirection::AssetToManaged,
             OnreError::LiquidityVaultRequired
         );
         require!(
-            a.liquidity_vault.is_none()
-                && a.liquidity_token.is_none()
-                && a.legacy_liquidity_authority.is_none()
-                && a.legacy_liquidity_token.is_none(),
+            a.liquidity_vault.is_none() && a.liquidity_token.is_none(),
             OnreError::InvalidConfigurableVault
         );
-        return Ok(LiquidityBalances::default());
+        return Ok(0);
     }
     let vault = a
         .liquidity_vault
         .as_ref()
         .ok_or(OnreError::LiquidityVaultRequired)?;
-    let (expected, bump) = Pubkey::find_program_address(
-        &[
-            VAULT,
-            &[VaultKind::Liquidity as u8],
-            &vault.instance_id.to_le_bytes(),
-        ],
-        program_id,
-    );
-    require!(
-        vault.key() == a.offer_config.liquidity_vault
-            && vault.key() == expected
-            && vault.bump == bump,
+    require_keys_eq!(
+        vault.key(),
+        a.offer_config.liquidity_vault,
         OnreError::InvalidConfigurableVault
     );
-    require!(
-        vault.kind == VaultKind::Liquidity,
-        OnreError::InvalidConfigurableVaultKind
-    );
+    validate_liquidity_vault(&vault.to_account_info(), program_id)?;
     let token = a
         .liquidity_token
         .as_ref()
         .ok_or(OnreError::InvalidConfigurableVaultTokenAccount)?;
-    let current = balance(a, token, &vault.key())?;
-    let legacy = if a.managed_mint().key() == a.state.onyc_mint {
-        let authority = a
-            .legacy_liquidity_authority
-            .as_ref()
-            .ok_or(OnreError::InvalidConfigurableVault)?;
-        let expected =
-            Pubkey::find_program_address(&[seeds::REDEMPTION_OFFER_VAULT_AUTHORITY], program_id).0;
-        require_keys_eq!(
-            authority.key(),
-            expected,
-            OnreError::InvalidConfigurableVault
-        );
-        let token = a
-            .legacy_liquidity_token
-            .as_ref()
-            .ok_or(OnreError::InvalidConfigurableVaultTokenAccount)?;
-        balance(a, token, &authority.key())?
-    } else {
-        require!(
-            a.legacy_liquidity_authority.is_none() && a.legacy_liquidity_token.is_none(),
-            OnreError::InvalidConfigurableVault
-        );
-        0
-    };
-    let result = LiquidityBalances { legacy, current };
-    result.total()?;
-    Ok(result)
+    balance(a, token, &vault.key())
 }
 
 fn balance(a: &TakeOffer, token: &UncheckedAccount, authority: &Pubkey) -> Result<u64> {
@@ -131,55 +67,29 @@ fn balance(a: &TakeOffer, token: &UncheckedAccount, authority: &Pubkey) -> Resul
 
 pub(super) fn consume<'info>(
     a: &TakeOffer<'info>,
-    balances: &LiquidityBalances,
+    balance: u64,
     amount: u64,
     destination: &InterfaceAccount<'info, TokenAccount>,
 ) -> Result<()> {
-    let (legacy_amount, current_amount) = balances.split(amount)?;
-    if legacy_amount > 0 {
-        let authority = a
-            .legacy_liquidity_authority
-            .as_ref()
-            .ok_or(OnreError::InvalidConfigurableVault)?;
-        let token = a
-            .legacy_liquidity_token
-            .as_ref()
-            .ok_or(OnreError::InvalidConfigurableVaultTokenAccount)?;
-        let (_, bump) =
-            Pubkey::find_program_address(&[seeds::REDEMPTION_OFFER_VAULT_AUTHORITY], &ID);
-        transfer(
-            a,
-            token,
-            destination,
-            authority.to_account_info(),
-            &[seeds::REDEMPTION_OFFER_VAULT_AUTHORITY, &[bump]],
-            legacy_amount,
-        )?;
-    }
-    if current_amount > 0 {
-        let vault = a
-            .liquidity_vault
-            .as_ref()
-            .ok_or(OnreError::LiquidityVaultRequired)?;
-        let token = a
-            .liquidity_token
-            .as_ref()
-            .ok_or(OnreError::InvalidConfigurableVaultTokenAccount)?;
-        transfer(
-            a,
-            token,
-            destination,
-            vault.to_account_info(),
-            &[
-                VAULT,
-                &[VaultKind::Liquidity as u8],
-                &vault.instance_id.to_le_bytes(),
-                &[vault.bump],
-            ],
-            current_amount,
-        )?;
-    }
-    Ok(())
+    require!(amount <= balance, OnreError::InsufficientBalance);
+    let vault = a
+        .liquidity_vault
+        .as_ref()
+        .ok_or(OnreError::LiquidityVaultRequired)?;
+    let token = a
+        .liquidity_token
+        .as_ref()
+        .ok_or(OnreError::InvalidConfigurableVaultTokenAccount)?;
+    let authority = validate_liquidity_vault(&vault.to_account_info(), &ID)?;
+    let signer_seeds = authority.signer_seeds();
+    transfer(
+        a,
+        token,
+        destination,
+        vault.to_account_info(),
+        &signer_seeds,
+        amount,
+    )
 }
 
 fn transfer<'info>(

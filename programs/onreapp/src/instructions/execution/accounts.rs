@@ -183,24 +183,12 @@ pub struct TakeOffer<'info> {
     #[account(mut)]
     pub prop_amm_state: Option<Box<Account<'info, PropAmmState>>>,
 
-    /// Required when OfferConfig references a liquidity vault.
-    pub liquidity_vault: Option<Box<Account<'info, VaultConfig>>>,
+    /// CHECK: Required when referenced; validates modular Liquidity, legacy configurable, or redemption custody.
+    pub liquidity_vault: Option<UncheckedAccount<'info>>,
 
     /// CHECK: Canonical asset ATA of liquidity_vault; an empty ATA has zero balance.
     #[account(mut)]
     pub liquidity_token: Option<UncheckedAccount<'info>>,
-
-    /// CHECK: Canonical legacy redemption authority, required for ONyc liquidity.
-    pub legacy_liquidity_authority: Option<UncheckedAccount<'info>>,
-
-    /// CHECK: Canonical legacy asset ATA; omission cannot hide existing liquidity.
-    #[account(mut)]
-    pub legacy_liquidity_token: Option<UncheckedAccount<'info>>,
-
-    /// CHECK: Canonical legacy Prop AMM state, required for ONyc Prop AMM.
-    /// Future execution must use one pressure tracker during coexistence.
-    #[account(mut)]
-    pub legacy_prop_amm_state: Option<UncheckedAccount<'info>>,
 
     /// CHECK: Canonical intermediary PDA, required only by permissionless offers.
     /// Its address and token authorities are checked before execution.

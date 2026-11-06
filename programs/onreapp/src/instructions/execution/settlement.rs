@@ -157,7 +157,7 @@ fn settle_collected_input<'info>(
                 route.signer_seeds.unwrap_or(&[]),
                 quote.net_input_amount,
             )?;
-            liquidity::consume(a, &plan.liquidity, quote.amount_out, route.output)?;
+            liquidity::consume(a, plan.liquidity_balance, quote.amount_out, route.output)?;
         }
     }
     Ok(())

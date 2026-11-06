@@ -23,8 +23,8 @@ pub struct OfferExecutedEvent {
     pub price: u64,
     pub liquidity_refill_amount: u64,
     pub proceeds_amount: u64,
-    pub legacy_liquidity_amount: u64,
-    pub current_liquidity_amount: u64,
+    /// Asset payout from the offer's selected liquidity vault.
+    pub liquidity_amount: u64,
     pub timestamp: i64,
 }
 
@@ -111,10 +111,6 @@ pub fn take_offer(
             ctx.program_id,
         )?;
     }
-    let (legacy_liquidity_amount, current_liquidity_amount) = match route.direction {
-        OfferDirection::AssetToManaged => (0, 0),
-        OfferDirection::ManagedToAsset => route.liquidity.split(quote.amount_out)?,
-    };
     emit!(OfferExecutedEvent {
         offer_config: a.offer_config.key(),
         user: a.user.key(),
@@ -131,8 +127,11 @@ pub fn take_offer(
         } else {
             0
         },
-        legacy_liquidity_amount,
-        current_liquidity_amount,
+        liquidity_amount: if route.direction == OfferDirection::ManagedToAsset {
+            quote.amount_out
+        } else {
+            0
+        },
         timestamp: now,
     });
     Ok(())

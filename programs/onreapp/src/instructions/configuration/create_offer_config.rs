@@ -6,7 +6,7 @@ use crate::{
         PropAmmState, Quoter, QuoterKind, VaultConfig, VaultKind,
     },
     state::State,
-    utils::MAX_TOKEN_DECIMALS,
+    utils::{vault_authority::validate_liquidity_vault, MAX_TOKEN_DECIMALS},
     OnreError,
 };
 use anchor_lang::prelude::*;
@@ -61,7 +61,8 @@ pub struct CreateOfferConfig<'info> {
     )]
     pub proceeds_vault: Box<Account<'info, VaultConfig>>,
 
-    pub liquidity_vault: Option<Box<Account<'info, VaultConfig>>>,
+    /// CHECK: Handler validates modular Liquidity, legacy configurable, or redemption custody.
+    pub liquidity_vault: Option<UncheckedAccount<'info>>,
 
     #[account(
         init,
@@ -150,10 +151,7 @@ pub fn create_offer_config(ctx: Context<CreateOfferConfig>, flow: OfferFlow) -> 
         require!(a.prop_amm_state.is_none(), OnreError::IncompatibleQuoter);
     }
     if let Some(vault) = &a.liquidity_vault {
-        require!(
-            vault.kind == VaultKind::Liquidity,
-            OnreError::InvalidConfigurableVaultKind
-        );
+        validate_liquidity_vault(&vault.to_account_info(), ctx.program_id)?;
     } else {
         require!(
             direction == OfferDirection::AssetToManaged,

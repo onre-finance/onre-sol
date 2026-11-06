@@ -2859,6 +2859,183 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "depositVaultConfig",
+      "docs": [
+        "Deposit into a canonical VaultConfig ATA; any depositor, subject to the kill switch."
+      ],
+      "discriminator": [
+        227,
+        223,
+        249,
+        199,
+        235,
+        241,
+        117,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "vault"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "depositorTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "depositor"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "depositor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "fulfillRedemptionRequest",
       "docs": [
         "Fulfills a redemption request with ONyc buffer accrual support.",
@@ -8922,7 +9099,7 @@ export type Onreapp = {
       "docs": [
         "Execute an offer using reusable model accounts.",
         "Supports permissioned and permissionless NAV in both directions, with shared BUFFER accounting",
-        "and combined legacy/new ONyc liquidity for managed-to-asset payouts.",
+        "and the offer's selected liquidity vault for managed-to-asset payouts.",
         "Permissionless execution routes through the canonical intermediary PDA.",
         "Prop AMM, worker execution and liquidity refill remain explicitly unsupported.",
         "V2 entrypoints and their account lists remain unchanged."
@@ -9352,30 +9529,10 @@ export type Onreapp = {
         },
         {
           "name": "liquidityVault",
-          "docs": [
-            "Required when OfferConfig references a liquidity vault."
-          ],
           "optional": true
         },
         {
           "name": "liquidityToken",
-          "writable": true,
-          "optional": true
-        },
-        {
-          "name": "legacyLiquidityAuthority",
-          "optional": true
-        },
-        {
-          "name": "legacyLiquidityToken",
-          "writable": true,
-          "optional": true
-        },
-        {
-          "name": "legacyPropAmmState",
-          "docs": [
-            "Future execution must use one pressure tracker during coexistence."
-          ],
           "writable": true,
           "optional": true
         },
@@ -11638,6 +11795,187 @@ export type Onreapp = {
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "withdrawVaultConfig",
+      "docs": [
+        "Withdraw to the configured destination; Liquidity/BufferReserve require the boss.",
+        "Fee/Proceeds permit any caller. Zero amount withdraws the full balance."
+      ],
+      "discriminator": [
+        17,
+        104,
+        75,
+        194,
+        255,
+        254,
+        175,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "vault"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "vaultTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "destination"
+        },
+        {
+          "name": "destinationTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "destination"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "caller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -12694,6 +13032,32 @@ export type Onreapp = {
         115,
         32,
         208
+      ]
+    },
+    {
+      "name": "vaultConfigDepositedEvent",
+      "discriminator": [
+        88,
+        179,
+        172,
+        241,
+        54,
+        173,
+        40,
+        181
+      ]
+    },
+    {
+      "name": "vaultConfigWithdrawnEvent",
+      "discriminator": [
+        87,
+        73,
+        167,
+        152,
+        179,
+        32,
+        121,
+        174
       ]
     },
     {
@@ -14927,6 +15291,7 @@ export type Onreapp = {
           {
             "name": "liquidityVault",
             "docs": [
+              "Modular Liquidity VaultConfig, legacy ConfigurableVault, or redemption authority.",
               "Default pubkey means absent; mandatory for ManagedToAsset."
             ],
             "type": "pubkey"
@@ -15079,11 +15444,10 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "legacyLiquidityAmount",
-            "type": "u64"
-          },
-          {
-            "name": "currentLiquidityAmount",
+            "name": "liquidityAmount",
+            "docs": [
+              "Asset payout from the offer's selected liquidity vault."
+            ],
             "type": "u64"
           },
           {
@@ -16993,7 +17357,8 @@ export type Onreapp = {
           {
             "name": "withdrawalDestination",
             "docs": [
-              "Destination owner; withdrawals would pay its ATA for the selected mint."
+              "Fixed destination owner; withdrawals pay its ATA for the selected mint.",
+              "Fee/Proceeds allow any caller; Liquidity/BufferReserve require State::boss."
             ],
             "type": "pubkey"
           },
@@ -17038,6 +17403,58 @@ export type Onreapp = {
           {
             "name": "timestamp",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vaultConfigDepositedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "depositor",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vaultConfigWithdrawnEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "caller",
+            "type": "pubkey"
+          },
+          {
+            "name": "destination",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
           }
         ]
       }

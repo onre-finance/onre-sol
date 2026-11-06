@@ -42,7 +42,7 @@ programs/onreapp/src/
     ├── prop_amm/             # Prop AMM configuration, quotes, buy/sell execution
     ├── redemption/           # redemption offers, requests, fulfillment, cancellation
     ├── state_operations/     # Boss transfer, admin/approver management, kill switch, max supply
-    ├── vault_operations/     # Deposit/withdraw tokens to offer and redemption vaults
+    ├── vault_operations/     # Deposit/withdraw tokens to legacy vaults and VaultConfig accounts
     ├── mint_authority/       # Transfer mint authority to/from program PDA, mint_to
     ├── market_info/          # Market stats refresh, exclusions, and shared metric calculations
     └── targeted_disable.rs   # Token-pair targeted disable controls
@@ -55,10 +55,15 @@ are documented in [`MODULAR_MODEL.md`](docs/MODULAR_MODEL.md). The new `take_off
 provides [modular offer execution](docs/MODULAR_TAKE_OFFER.md), currently for
 permissioned and permissionless NAV offers in both directions. Permissionless
 execution uses the existing intermediary PDA and requires no approval.
-Managed-to-asset ONyc payouts combine
-legacy and configured liquidity, consuming the legacy balance first.
+Managed-to-asset payouts use only the offer's selected liquidity vault: a reusable
+Liquidity VaultConfig, an explicitly selected legacy ConfigurableVault, or the
+existing redemption-vault authority. Existing liquidity is not automatically
+pooled with a new offer's funds.
 ONyc keeps its shared legacy BUFFER baseline; other managed mints use their per-mint
 BUFFER if initialized. V2 arguments and account lists remain unchanged.
+[VaultConfig deposit and withdrawal instructions](docs/VAULT_CONFIG_OPERATIONS.md)
+support generic and per-mint BUFFER vaults. Anyone may deposit; withdrawals use the
+fixed destination, with boss authorization required for Liquidity and BufferReserve.
 Each modeled offer explicitly references a Pricer for its managed mint. The boss
 chooses the external asset in that Pricer's denomination; no asset registration is required.
 
@@ -84,7 +89,7 @@ When `state.is_killed == true`, the program rejects:
 - offer execution: `take_offer`, `take_offer_v2`, `take_offer_permissionless_v2`
 - Prop AMM quotes and execution: `quote_swap_buy`, `quote_swap_sell`, `open_swap_buy`, `open_swap_sell`
 - redemption request movement: `create_redemption_request`, `fulfill_redemption_request`, `cancel_redemption_request`
-- vault funding and recovery: `offer_vault_deposit`, `offer_vault_withdraw`, `redemption_vault_deposit`, `redemption_vault_withdraw`
+- vault funding and recovery: `deposit_vault_config`, `withdraw_vault_config`, `offer_vault_deposit`, `offer_vault_withdraw`, `redemption_vault_deposit`, `redemption_vault_withdraw`
 - BUFFER/configurable vault movement: `settle_buffer`, `deposit_reserve_vault`, `withdraw_reserve_vault`, `withdraw_configurable_vault`
 - direct supply-changing and accrual-settling paths: `mint_to`, `burn_for_nav_increase`, `set_buffer_gross_apr`, `set_buffer_fee_config`
 
@@ -174,7 +179,7 @@ transactions. Existing clients keep using `take_offer_v2` or
 
 **State Operations**: `propose_boss`, `accept_boss`, `add_admin`, `remove_admin`, `clear_admins`, `set_kill_switch`, `set_onyc_mint`, `set_worker`, `set_main_offer`, `add_approver`, `remove_approver`, `configure_max_supply`, `configure_max_mint_amount`, `close_state`
 
-**Vault Operations**: `offer_vault_deposit`, `offer_vault_withdraw`, `redemption_vault_deposit`, `redemption_vault_withdraw`, `set_configurable_vault_destination`, `withdraw_configurable_vault`
+**Vault Operations**: `deposit_vault_config`, `withdraw_vault_config`, `offer_vault_deposit`, `offer_vault_withdraw`, `redemption_vault_deposit`, `redemption_vault_withdraw`, `set_configurable_vault_destination`, `withdraw_configurable_vault`
 
 **Mint Authority**: `transfer_mint_authority_to_program`, `transfer_mint_authority_to_boss`, `mint_to`
 

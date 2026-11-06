@@ -98,7 +98,7 @@ pub mod onreapp {
 
     /// Execute an offer using reusable model accounts.
     /// Supports permissioned and permissionless NAV in both directions, with shared BUFFER accounting
-    /// and combined legacy/new ONyc liquidity for managed-to-asset payouts.
+    /// and the offer's selected liquidity vault for managed-to-asset payouts.
     /// Permissionless execution routes through the canonical intermediary PDA.
     /// Prop AMM, worker execution and liquidity refill remain explicitly unsupported.
     /// V2 entrypoints and their account lists remain unchanged.
@@ -161,6 +161,17 @@ pub mod onreapp {
             withdrawal_destination,
             refill_target_bps,
         )
+    }
+
+    /// Deposit into a canonical VaultConfig ATA; any depositor, subject to the kill switch.
+    pub fn deposit_vault_config(ctx: Context<DepositVaultConfig>, amount: u64) -> Result<()> {
+        vault_operations::deposit_vault_config(ctx, amount)
+    }
+
+    /// Withdraw to the configured destination; Liquidity/BufferReserve require the boss.
+    /// Fee/Proceeds permit any caller. Zero amount withdraws the full balance.
+    pub fn withdraw_vault_config(ctx: Context<WithdrawVaultConfig>, amount: u64) -> Result<()> {
+        vault_operations::withdraw_vault_config(ctx, amount)
     }
 
     /// Creates a reusable input-token fee policy with a Fee vault; boss only.

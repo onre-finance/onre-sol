@@ -7,9 +7,9 @@ Both route fees and proceeds through configurable accounting vaults. The V1
 instructions that routed payments to the boss remain removed. The new
 [`take_offer`](MODULAR_TAKE_OFFER.md) uses reusable OfferConfig components for
 permissioned and permissionless NAV execution in both directions and has a different ABI from V1.
-Managed-to-asset ONyc execution burns net managed input and pays from the combined
-legacy and configured liquidity balances, consuming legacy funds first. Fees and
-proceeds remain separate. See the linked execution document for conditional accounts
+Managed-to-asset execution burns net managed input and pays only from the
+offer's selected liquidity vault. Old redemption liquidity is included only when its authority is explicitly selected. Fees
+and proceeds remain separate. See the linked execution document for conditional accounts
 and paths that are not enabled yet.
 
 For modular permissionless NAV, the user transfers gross input to the canonical
