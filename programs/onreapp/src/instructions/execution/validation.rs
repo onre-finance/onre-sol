@@ -1,6 +1,6 @@
 use crate::{
-    model::{seeds as model_seeds, OfferDirection, OfferFlow, QuoterKind},
-    utils::{has_transfer_fee, program_controls_mint},
+    model::{OfferDirection, OfferFlow, QuoterKind},
+    utils::{has_transfer_fee, pressure_link::validate_pressure_link, program_controls_mint},
     OnreError,
 };
 use anchor_lang::prelude::*;
@@ -13,7 +13,7 @@ pub(super) struct ExecutionPlan {
     pub kind: QuoterKind,
     pub flow: OfferFlow,
     pub liquidity_balance: u64,
-    pub has_liquidity: bool,
+    pub refill_target_bps: u16,
 }
 
 impl ExecutionPlan {
@@ -23,13 +23,11 @@ impl ExecutionPlan {
             matches!(
                 (self.flow, self.kind),
                 (OfferFlow::Permissioned, QuoterKind::Nav)
-                    | (OfferFlow::Permissionless, QuoterKind::NavPermissionless)
+                    | (
+                        OfferFlow::Permissionless,
+                        QuoterKind::NavPermissionless | QuoterKind::PropAmm
+                    )
             ),
-            OnreError::UnsupportedOfferExecution
-        );
-        // Asset-to-managed refill is a later layer; never ignore a configured vault.
-        require!(
-            self.direction != OfferDirection::AssetToManaged || !self.has_liquidity,
             OnreError::UnsupportedOfferExecution
         );
         Ok(())
@@ -80,36 +78,36 @@ pub(super) fn validate(program_id: &Pubkey, a: &TakeOffer) -> Result<ExecutionPl
         ),
     }
     validate_prop_amm(program_id, a)?;
-    let balances = liquidity::validate(program_id, a)?;
+    let liquidity = liquidity::validate(program_id, a)?;
     Ok(ExecutionPlan {
         direction: a.offer_config.direction,
         kind: a.quoter.kind,
         flow: a.offer_config.flow,
-        liquidity_balance: balances,
-        has_liquidity: a.liquidity_vault.is_some(),
+        liquidity_balance: liquidity.balance,
+        refill_target_bps: liquidity.refill_target_bps,
     })
 }
 
 fn validate_prop_amm(program_id: &Pubkey, a: &TakeOffer) -> Result<()> {
-    if a.quoter.kind != QuoterKind::PropAmm {
-        require!(a.prop_amm_state.is_none(), OnreError::IncompatibleQuoter);
-        return Ok(());
-    }
-    let pair = a
-        .prop_amm_state
-        .as_ref()
-        .ok_or(OnreError::IncompatibleQuoter)?;
-    let (expected, bump) = Pubkey::find_program_address(
-        &[model_seeds::PROP_AMM, a.quoter.key().as_ref()],
+    let state = validate_pressure_link(
         program_id,
-    );
-    require!(
-        pair.key() == expected
-            && pair.bump == bump
-            && pair.quoter == a.quoter.key()
-            && pair.managed_mint == a.managed_mint().key()
-            && pair.asset_mint == a.asset_mint().key(),
+        a.quoter.key(),
+        a.quoter.kind,
+        a.offer_config.direction,
+        a.offer_config.token_in_mint,
+        a.offer_config.token_out_mint,
+        a.prop_amm_state.as_deref(),
+    )?;
+    require_keys_eq!(
+        state,
+        a.offer_config.pressure_state,
         OnreError::IncompatibleQuoter
     );
+    if a.quoter.kind == QuoterKind::PropAmm {
+        require!(
+            a.offer_config.liquidity_vault != Pubkey::default(),
+            OnreError::LiquidityVaultRequired
+        );
+    }
     Ok(())
 }

@@ -6,7 +6,10 @@ use crate::{
         PropAmmState, Quoter, QuoterKind, VaultConfig, VaultKind,
     },
     state::State,
-    utils::{vault_authority::validate_liquidity_vault, MAX_TOKEN_DECIMALS},
+    utils::{
+        pressure_link::validate_pressure_link, vault_authority::validate_liquidity_vault,
+        MAX_TOKEN_DECIMALS,
+    },
     OnreError,
 };
 use anchor_lang::prelude::*;
@@ -136,25 +139,20 @@ pub fn create_offer_config(ctx: Context<CreateOfferConfig>, flow: OfferFlow) -> 
         }
     };
     require!(compatible, OnreError::IncompatibleQuoter);
-    if a.quoter.kind == QuoterKind::PropAmm {
-        let pair = a
-            .prop_amm_state
-            .as_ref()
-            .ok_or(OnreError::IncompatibleQuoter)?;
-        require!(
-            pair.quoter == a.quoter.key()
-                && pair.managed_mint == a.managed_token.managed_mint
-                && pair.asset_mint == asset_mint,
-            OnreError::IncompatibleQuoter
-        );
-    } else {
-        require!(a.prop_amm_state.is_none(), OnreError::IncompatibleQuoter);
-    }
+    let pressure_state = validate_pressure_link(
+        ctx.program_id,
+        a.quoter.key(),
+        a.quoter.kind,
+        direction,
+        a.token_in_mint.key(),
+        a.token_out_mint.key(),
+        a.prop_amm_state.as_deref(),
+    )?;
     if let Some(vault) = &a.liquidity_vault {
         validate_liquidity_vault(&vault.to_account_info(), ctx.program_id)?;
     } else {
         require!(
-            direction == OfferDirection::AssetToManaged,
+            direction == OfferDirection::AssetToManaged && a.quoter.kind != QuoterKind::PropAmm,
             OnreError::LiquidityVaultRequired
         );
     }
@@ -165,6 +163,7 @@ pub fn create_offer_config(ctx: Context<CreateOfferConfig>, flow: OfferFlow) -> 
         direction,
         pricer: a.pricer.key(),
         quoter: a.quoter.key(),
+        pressure_state,
         fee_config: a.fee_config.key(),
         proceeds_vault: a.proceeds_vault.key(),
         liquidity_vault: a

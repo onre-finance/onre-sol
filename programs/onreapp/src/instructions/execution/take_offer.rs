@@ -1,8 +1,11 @@
-use super::{buffer, permissions, quote::quote_offer, settlement, validation, TakeOffer};
+use super::{
+    buffer, liquidity_target, permissions, prop_amm, quote::quote_offer, settlement, validation,
+    TakeOffer,
+};
 use crate::{
     constants::seeds,
     instructions::market_info::{load_main_offer, refresh_market_stats_pda},
-    model::{OfferDirection, OfferFlow},
+    model::{OfferDirection, OfferFlow, QuoterKind},
     utils::ApprovalMessage,
     OnreError,
 };
@@ -21,6 +24,7 @@ pub struct OfferExecutedEvent {
     pub amount_out: u64,
     /// Selected offer Pricer's USD price, scale 9.
     pub price: u64,
+    /// Net asset input routed to the selected liquidity vault before user issuance.
     pub liquidity_refill_amount: u64,
     pub proceeds_amount: u64,
     /// Asset payout from the offer's selected liquidity vault.
@@ -44,7 +48,7 @@ pub fn take_offer(
     // fall through to NAV minting or silently omit required accounting.
     route.require_supported()?;
     permissions::authorize(ctx.program_id, a, approval_message.as_ref())?;
-    let quote = quote_offer(
+    let mut quote = quote_offer(
         &a.pricer,
         &a.fee_config,
         gross_input_amount,
@@ -53,6 +57,29 @@ pub fn take_offer(
         a.token_out_mint.decimals,
         time,
     )?;
+    if route.kind == QuoterKind::PropAmm {
+        let cap = if route.refill_target_bps == 0 {
+            route.liquidity_balance
+        } else {
+            liquidity_target::target(a, route.refill_target_bps, time)?
+                .min(route.liquidity_balance as u128) as u64
+        };
+        quote.amount_out = prop_amm::quote(
+            a.prop_amm_state
+                .as_ref()
+                .ok_or(OnreError::IncompatibleQuoter)?,
+            route.direction,
+            if route.direction == OfferDirection::AssetToManaged {
+                quote.net_input_amount
+            } else {
+                quote.raw_amount_out
+            },
+            quote.raw_amount_out,
+            route.liquidity_balance,
+            cap,
+            now,
+        )?;
+    }
     require!(
         quote.amount_out >= minimum_amount_out,
         OnreError::MinimumOutNotMet
@@ -77,6 +104,26 @@ pub fn take_offer(
     )?;
     a.reload_managed_mint()?;
 
+    if route.direction == OfferDirection::AssetToManaged && route.refill_target_bps > 0 {
+        let target = liquidity_target::target(a, route.refill_target_bps, time)?;
+        quote.liquidity_refill_amount = target
+            .saturating_sub(route.liquidity_balance as u128)
+            .min(quote.net_input_amount as u128) as u64;
+    }
+    if a.offer_config.pressure_state != Pubkey::default() {
+        prop_amm::record(
+            a.prop_amm_state
+                .as_mut()
+                .ok_or(OnreError::IncompatibleQuoter)?,
+            route.direction,
+            if route.direction == OfferDirection::AssetToManaged {
+                quote.net_input_amount
+            } else {
+                quote.raw_amount_out
+            },
+            now,
+        )?;
+    }
     settlement::settle(
         a,
         &route,
@@ -121,9 +168,9 @@ pub fn take_offer(
         net_input_amount: quote.net_input_amount,
         amount_out: quote.amount_out,
         price: quote.price,
-        liquidity_refill_amount: 0,
+        liquidity_refill_amount: quote.liquidity_refill_amount,
         proceeds_amount: if route.direction == OfferDirection::AssetToManaged {
-            quote.net_input_amount
+            quote.net_input_amount - quote.liquidity_refill_amount
         } else {
             0
         },

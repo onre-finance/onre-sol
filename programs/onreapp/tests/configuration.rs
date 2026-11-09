@@ -976,3 +976,158 @@ fn offer_creation_validates_legacy_liquidity_identity() {
     let offer: model::OfferConfig = read(&f.svm, f.offer_key(model::OfferFlow::Permissioned, true));
     assert_eq!(offer.liquidity_vault, selected);
 }
+
+#[test]
+fn pressure_links_are_boss_configured_pair_bound_and_independent_of_nav() {
+    let mut f = Fixture::new();
+    let boss = f.boss.pubkey();
+    let prop = quoter(model::QuoterKind::PropAmm, 0);
+    let pair = pda(&[b"prop_amm", prop.as_ref()]);
+    for instruction in [
+        create_quoter(boss, model::QuoterKind::PropAmm, 0),
+        f.pair_ix(prop, f.asset, base_curve()),
+    ] {
+        send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    }
+    // NAV may bind at creation without selecting PropAmm pricing.
+    f.pair = Some(pair);
+    let instruction = f.offer_ix(model::OfferFlow::Permissioned, false);
+    send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    let offer = f.offer_key(model::OfferFlow::Permissioned, false);
+    assert_eq!(
+        read::<model::OfferConfig>(&f.svm, offer).pressure_state,
+        pair
+    );
+    let setter = |boss, tracker| {
+        ix(
+            accounts::SetOfferPressureState {
+                offer_config: offer,
+                quoter: f.selected_quoter,
+                prop_amm_state: tracker,
+                state: find_state_pda().0,
+                boss,
+            },
+            instruction::SetOfferPressureState {},
+        )
+    };
+    assert_error(
+        send_tx(&mut f.svm, &[setter(boss, Some(pair))], &[&f.boss]),
+        OnreError::NoChange,
+    );
+    let rogue = Keypair::new();
+    f.svm.airdrop(&rogue.pubkey(), INITIAL_LAMPORTS).unwrap();
+    assert_error(
+        send_tx(&mut f.svm, &[setter(rogue.pubkey(), None)], &[&rogue]),
+        OnreError::InvalidBoss,
+    );
+    let before = f.svm.get_account(&pair).unwrap().data;
+    let original: model::PropAmmState = read(&f.svm, pair);
+    for wrong_asset in [false, true] {
+        let mut state: model::PropAmmState = read(&f.svm, pair);
+        if wrong_asset {
+            state.asset_mint = Pubkey::new_unique();
+        } else {
+            state.managed_mint = Pubkey::new_unique();
+        }
+        write(&mut f.svm, pair, &state);
+        f.svm.expire_blockhash();
+        assert_error(
+            send_tx(&mut f.svm, &[setter(boss, Some(pair))], &[&f.boss]),
+            OnreError::IncompatibleQuoter,
+        );
+    }
+    write(&mut f.svm, pair, &original);
+    for target in [None, Some(pair)] {
+        f.svm.expire_blockhash();
+        send_tx(&mut f.svm, &[setter(boss, target)], &[&f.boss]).unwrap();
+        assert_eq!(
+            read::<model::OfferConfig>(&f.svm, offer).pressure_state,
+            target.unwrap_or_default()
+        );
+    }
+    assert_eq!(f.svm.get_account(&pair).unwrap().data, before);
+    // The quote-side PropAmm state cannot be detached, and both sides need custody.
+    f.selected_quoter = prop;
+    f.liquidity = None;
+    for reverse in [false, true] {
+        let instruction = f.offer_ix(model::OfferFlow::Permissionless, reverse);
+        assert_error(
+            send_tx(&mut f.svm, &[instruction], &[&f.boss]),
+            OnreError::LiquidityVaultRequired,
+        );
+    }
+    f.liquidity = Some(vault(model::VaultKind::Liquidity, 0));
+    let instruction = f.offer_ix(model::OfferFlow::Permissionless, false);
+    send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    let instruction = ix(
+        accounts::SetOfferPressureState {
+            offer_config: f.offer_key(model::OfferFlow::Permissionless, false),
+            quoter: prop,
+            prop_amm_state: None,
+            state: find_state_pda().0,
+            boss,
+        },
+        instruction::SetOfferPressureState {},
+    );
+    assert_error(
+        send_tx(&mut f.svm, &[instruction], &[&f.boss]),
+        OnreError::IncompatibleQuoter,
+    );
+}
+
+#[test]
+fn cross_asset_and_cross_managed_pressure_links_fail_in_both_directions() {
+    for wrong_asset in [true, false] {
+        let mut f = Fixture::new();
+        let boss = f.boss.pubkey();
+        let quoter = quoter(model::QuoterKind::PropAmm, 0);
+        let tracker = pda(&[b"prop_amm", quoter.as_ref()]);
+        let original_mint = f.mint;
+        let original_asset = f.asset;
+        if wrong_asset {
+            f.asset = create_mint(&mut f.svm, &f.boss, 6, &boss);
+        } else {
+            f.mint = create_mint(&mut f.svm, &f.boss, 9, &boss);
+            send_tx(&mut f.svm, &[register_managed(boss, f.mint)], &[&f.boss]).unwrap();
+        }
+        for instruction in [
+            create_quoter(boss, model::QuoterKind::PropAmm, 0),
+            f.pair_ix(quoter, f.asset, base_curve()),
+        ] {
+            send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+        }
+        f.mint = original_mint;
+        f.asset = original_asset;
+        for reverse in [false, true] {
+            f.pair = Some(tracker);
+            let instruction = f.offer_ix(model::OfferFlow::Permissioned, reverse);
+            assert_error(
+                send_tx(&mut f.svm, &[instruction], &[&f.boss]),
+                OnreError::IncompatibleQuoter,
+            );
+            f.pair = None;
+            f.svm.expire_blockhash();
+            let instruction = f.offer_ix(model::OfferFlow::Permissioned, reverse);
+            send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+            let offer = f.offer_key(model::OfferFlow::Permissioned, reverse);
+            let instruction = ix(
+                accounts::SetOfferPressureState {
+                    offer_config: offer,
+                    quoter: f.selected_quoter,
+                    prop_amm_state: Some(tracker),
+                    state: find_state_pda().0,
+                    boss,
+                },
+                instruction::SetOfferPressureState {},
+            );
+            assert_error(
+                send_tx(&mut f.svm, &[instruction], &[&f.boss]),
+                OnreError::IncompatibleQuoter,
+            );
+            assert_eq!(
+                read::<model::OfferConfig>(&f.svm, offer).pressure_state,
+                Pubkey::default()
+            );
+        }
+    }
+}

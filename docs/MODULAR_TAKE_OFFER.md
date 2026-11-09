@@ -2,15 +2,17 @@
 
 `take_offer(gross_input_amount, minimum_amount_out, deadline, approval_message)`
 executes the [reusable model](MODULAR_MODEL.md) through one public instruction.
-It supports permissioned (`Nav`) and permissionless (`NavPermissionless`) NAV
-in both directions. Asset-to-managed currently requires no liquidity-vault reference; managed-to-asset requires a configured
-liquidity vault. Worker flows, Prop AMM quoting, and inbound liquidity refill
-remain explicitly unsupported. The global kill switch guards execution.
+It supports permissioned (`Nav`) and permissionless (`NavPermissionless`) NAV,
+plus permissionless [`PropAmm`](MODULAR_PROP_AMM.md), in both directions.
+NAV asset-to-managed may omit liquidity or select a vault for refill; PropAmm in
+either direction and all managed-to-asset offers require selected liquidity. Worker flows remain unsupported. The
+global kill switch guards execution.
 
 Direction and permissions come from OfferConfig; the pricing algorithm comes from
 Quoter. The shared account context lives in `execution/accounts.rs`, validation and
 dispatch in `validation.rs`, authorization in `permissions.rs`, vector quoting
-in `quote.rs`, mint/burn settlement in `settlement.rs`, selected-vault liquidity custody in `liquidity.rs`, and accrual in `buffer.rs`.
+in `quote.rs`, symmetric curve/accounting in `prop_amm.rs`, liquidity targets in
+`liquidity_target.rs`, mint/burn settlement in `settlement.rs`, selected-vault liquidity custody in `liquidity.rs`, and accrual in `buffer.rs`.
 `take_offer.rs` orchestrates these modules and emits the execution event.
 Configured extension accounts are validated before dispatch; supplying them does
 not enable unfinished paths.
@@ -24,7 +26,8 @@ invalid. The CLI still calls V2. Generated IDL/types expose the new instructions
 Register the managed mint, create its Pricer, append a vector with
 `add_pricer_vector`, create the appropriate Quoter, Fee and Proceeds vaults,
 a FeeConfig, and an OfferConfig. Permissioned offers select `Nav`; permissionless
-offers select `NavPermissionless`. Asset-to-managed has no liquidity vault;
+offers select `NavPermissionless` or a pair-configured `PropAmm` quoter.
+NAV asset-to-managed may reference a liquidity vault for refill; PropAmm always requires one;
 managed-to-asset references a Liquidity VaultConfig, legacy ConfigurableVault, or
 the existing redemption authority.
 Create a new vault instance first when separate liquidity is needed. The program's existing
@@ -90,9 +93,11 @@ are not swept, used as extra input, or included in the user's payout.
 The boss-selected target markets are USDC -> ONyc and USDG -> ONyc. These are
 configured by mint address; symbols are not an on-chain allowlist. A directed pair
 and flow have one OfferConfig, so its selected Quoter determines the algorithm.
-USDG's intended Prop AMM configuration remains a later layer: selecting PropAmm
-currently rejects execution rather than falling back to NAV. This change creates
-no live market configuration and leaves generic NAV direction handling intact.
+Prop AMM buy and sell offers may select the same quoter/state to share pressure.
+Both directions apply the liquidity curve and their directional cadence haircut.
+NAV offers may explicitly link to the same pair tracker for relief accounting while
+retaining NAV pricing; the boss sets this through `set_offer_pressure_state`. See the linked Prop AMM document for epochs and refill.
+No live market configuration is created automatically.
 
 The supported integration baseline is a v0 transaction with address lookup tables.
 The implementation must fit v0's 1,232-byte wire limit and 64-account transaction
@@ -116,8 +121,10 @@ select the latest vector whose start time is no later than the timestamp. Legacy
 Offer vectors are adapted by value; their stored layout is unchanged. Neither
 Offer nor Pricer stores a separate vector count.
 Daily compounding and the snap to the end of the current price window match V2.
-Asset-to-managed divides net asset input by NAV. Managed-to-asset multiplies net
-managed input by NAV, adjusting decimals and rounding output down.
+The NAV base quote divides net asset input by NAV for buys and multiplies net
+managed input by NAV for sells, adjusting decimals and rounding output down.
+Prop AMM buys and sells then apply the curve/cadence haircut described in
+[`MODULAR_PROP_AMM.md`](MODULAR_PROP_AMM.md).
 Percentage fees round up in input
 base units; the charged fee is `max(percentage_fee, minimum_fee_amount)`. Zero
 input, a fee consuming all input, zero rounded output, and output below
@@ -126,8 +133,9 @@ input, a fee consuming all input, zero rounded output, and output below
 Execution settles BUFFER before changing user supply. Permissioned execution uses
 the user as input authority and output recipient. Permissionless execution uses
 the intermediary as described above. Asset-to-managed transfers
-input fees to the Fee ATA and net input to the Proceeds ATA, then mints managed
-output. Managed-to-asset transfers the fee in managed tokens to the Fee ATA, burns
+input fees to the Fee ATA, optionally refills the selected liquidity ATA, sends
+remaining net input to the Proceeds ATA, then mints managed output. Managed-to-asset
+transfers the fee in managed tokens to the Fee ATA, burns
 net managed input, and pays the asset output from validated liquidity accounts
 to the route recipient. It then records the actual post-execution managed mint supply as the BUFFER
 baseline. Managed-token supply and issuance limits apply to both BUFFER accrual
@@ -137,7 +145,7 @@ operation before splitting across fee destinations. Every step, including lazy
 ATA creation, rolls back if the transaction fails.
 
 `OfferExecutedEvent` records the offer, user, flow, direction, gross/net input,
-fee, output, price, zero liquidity refill, proceeds, selected-vault
+fee, output, price, actual liquidity refill, remaining proceeds, selected-vault
 `liquidity_amount`, and timestamp. Managed-to-asset proceeds are zero.
 
 ## BUFFER coexistence
@@ -170,14 +178,15 @@ VaultConfig (newly created or reused), an existing legacy ConfigurableVault, or
 the canonical legacy redemption authority. Creation and execution validate the
 configuration's program owner, discriminator, kind, PDA and bump. The stateless
 redemption authority is validated by its canonical PDA identity. A legacy
-configurable vault retains its original role and withdrawal destination/policy; selecting it explicitly makes its asset ATA available to that
-offer. Legacy vaults and the redemption authority have no modular refill target.
+configurable vault retains its original role and withdrawal destination/policy;
+selecting it explicitly makes its asset ATA available to that offer. Legacy vaults and the redemption authority have no modular refill target.
 Without a reference, liquidity accounts must be omitted; managed-to-asset always
-requires a reference.
+requires a reference, as does PropAmm buying.
 
 Only the selected vault's asset balance counts toward solvency. Existing redemption
 liquidity is read and consumed only when its redemption authority is explicitly
-selected, including for ONyc. The same vault may be explicitly shared by multiple offers; separate vault instances isolate
+selected, including for ONyc. The same vault may be explicitly shared by multiple
+offers; separate vault instances isolate
 actual asset balances. Creating an offer does not create or migrate its liquidity.
 
 An uninitialized canonical ATA owned by the system program counts as zero.
@@ -195,10 +204,13 @@ the distinct per-mint BUFFER vault seeds.
 A Prop AMM Quoter requires its canonical mutable PropAmmState, bound to the same
 Quoter, asset and managed mint. Each new quoter uses its own state, independently
 of old offers and their pressure. The two directed offers can intentionally share
-one new quoter and its pressure state. Non-Prop AMM paths must omit the pair account.
-Prop AMM execution still returns `UnsupportedOfferExecution` until the full
-pricing/settlement path is implemented and tested. Worker execution is also
-unsupported; supplying an approval cannot enable it.
+one new quoter and its pressure state. NAV offers can explicitly select that same
+pair tracker through `OfferConfig.pressure_state` without changing their NAV quote.
+Both mints must match the tracker, regardless of quote kind. Execution requires
+exactly the stored state; an omitted, substituted, or unsolicited tracker fails.
+Prop AMM execution uses curve pricing in both directions, recording both against
+that shared state. Worker execution remains unsupported;
+supplying an approval cannot enable it.
 
 The modular account list removes the former legacy liquidity authority/ATA and
 legacy Prop AMM state positions. Clients must rebuild against the updated IDL.
@@ -217,8 +229,7 @@ remains available during the kill switch. Eviction and deletion are deferred.
 
 ## Next layers
 
-Liquidity refill, Prop AMM execution,
-worker fulfillment, component updates, and legacy-entrypoint disabling remain
+Worker fulfillment, component updates, and legacy-entrypoint disabling remain
 separate work. This instruction adds no automatic offer binding or bulk custody
 migration. Existing liquidity is used only when explicitly selected for settlement
 or moved separately.
