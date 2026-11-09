@@ -128,6 +128,13 @@ fn settle_collected_input<'info>(
                 .proceeds_token_in
                 .as_ref()
                 .ok_or(OnreError::InvalidConfigurableVaultTokenAccount)?;
+            liquidity::refill(
+                a,
+                route.input,
+                &route.authority,
+                route.signer_seeds,
+                quote.liquidity_refill_amount,
+            )?;
             transfer_tokens(
                 &a.token_in_mint,
                 &a.token_in_program,
@@ -135,7 +142,7 @@ fn settle_collected_input<'info>(
                 proceeds,
                 &route.authority,
                 route.signer_seeds,
-                quote.net_input_amount,
+                quote.net_input_amount - quote.liquidity_refill_amount,
             )?;
             mint_tokens(
                 &a.token_out_program,
