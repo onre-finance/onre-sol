@@ -22,7 +22,10 @@ pub struct PropAmmState {
     pub current_sell_value_stable: u128,
     pub current_buy_value_stable: u128,
     pub previous_net_sell_value_stable: u128,
+    pub previous_net_buy_value_stable: u128,
+    /// Scheduled epoch boundary. Rollover preserves alignment, even after idle time.
     pub epoch_start: i64,
     pub current_sell_trade_count: u32,
+    pub current_buy_trade_count: u32,
     pub bump: u8,
 }

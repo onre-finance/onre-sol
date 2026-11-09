@@ -454,7 +454,7 @@ pub fn hard_wall_reserve_from_tvl(
     Ok(target as u64)
 }
 
-fn redemption_haircut_scaled(
+pub(crate) fn redemption_haircut_scaled(
     u: u128,
     curve_peg_haircut_bps: u16,
     curve_exponent_scaled: u32,

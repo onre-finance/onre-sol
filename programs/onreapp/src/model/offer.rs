@@ -27,6 +27,9 @@ pub struct OfferConfig {
     /// Explicit price source, validated against this offer's mint pair on assignment.
     pub pricer: Pubkey,
     pub quoter: Pubkey,
+    /// Explicit pair pressure-accounting link, independent of quote selection.
+    /// Default means untracked NAV; PropAmm requires its own canonical state.
+    pub pressure_state: Pubkey,
     pub fee_config: Pubkey,
     pub proceeds_vault: Pubkey,
     /// Modular Liquidity VaultConfig, legacy ConfigurableVault, or redemption authority.

@@ -67,6 +67,7 @@ Unselected old funds are not added to the balance.
 
 Selecting the old redemption authority shares the actual old balance: a payout
 through either execution path reduces the funds available to the other. It does
-not merge quote parameters or Prop AMM pressure state. Modular Prop AMM execution
-and inbound liquidity refill remain unsupported; NAV payouts can use this custody
-adapter now. ONyc continues using its existing singleton BUFFER accounts.
+not merge quote parameters or Prop AMM pressure state. Both NAV and modular Prop
+AMM payouts can use this custody adapter. Buy-side refill targets are supported on
+generic Liquidity VaultConfig instances; legacy custody has no modular target.
+See [modular Prop AMM](MODULAR_PROP_AMM.md) for pricing and pressure accounting. ONyc continues using its existing singleton BUFFER accounts.

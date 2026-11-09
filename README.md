@@ -53,7 +53,10 @@ programs/onreapp/src/
 The modular account layouts, EVM mapping, and boss-authorized creation instructions
 are documented in [`MODULAR_MODEL.md`](docs/MODULAR_MODEL.md). The new `take_offer`
 provides [modular offer execution](docs/MODULAR_TAKE_OFFER.md), currently for
-permissioned and permissionless NAV offers in both directions. Permissionless
+permissioned and permissionless NAV offers plus permissionless Prop AMM in both
+directions. Prop AMM applies its curve symmetrically to buys and sells. NAV offers
+can explicitly link the matching pair tracker for pressure relief without changing pricing.
+Buy offers can refill a selected Liquidity VaultConfig target before issuance. Permissionless
 execution uses the existing intermediary PDA and requires no approval.
 Managed-to-asset payouts use only the offer's selected liquidity vault: a reusable
 Liquidity VaultConfig, an explicitly selected legacy ConfigurableVault, or the

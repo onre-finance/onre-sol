@@ -141,7 +141,8 @@ pub struct TakeOffer<'info> {
     #[account(mut)]
     pub buffer_state: UncheckedAccount<'info>,
 
-    /// Canonical USD instance-zero Pricer, required for an initialized per-mint BUFFER.
+    /// Canonical USD instance-zero Pricer, required for initialized per-mint BUFFER
+    /// and token-wide liquidity targets when the offer selects another Pricer.
     /// The offer's independently selected Pricer does not control token-wide accrual.
     pub buffer_pricer: Option<Box<Account<'info, Pricer>>>,
 
@@ -179,7 +180,8 @@ pub struct TakeOffer<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 
-    /// Required only for Prop AMM; validated against the Quoter and the mint pair.
+    /// Required exactly when OfferConfig.pressure_state is configured, including
+    /// linked NAV offers. Validated against the stored reference and mint pair.
     #[account(mut)]
     pub prop_amm_state: Option<Box<Account<'info, PropAmmState>>>,
 

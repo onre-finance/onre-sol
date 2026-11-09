@@ -2,6 +2,7 @@ mod account_init;
 pub mod approver;
 mod ed25519_parser;
 pub mod math_utils;
+pub(crate) mod pressure_link;
 pub mod pricing;
 pub mod token_utils;
 pub(crate) mod vault_authority;

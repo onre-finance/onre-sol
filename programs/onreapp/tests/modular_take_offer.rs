@@ -1,4 +1,6 @@
 mod common;
+#[path = "modular_take_offer/prop_amm.rs"]
+mod modular_prop_amm;
 #[path = "modular_take_offer/permissionless.rs"]
 mod permissionless;
 
@@ -314,7 +316,7 @@ impl Fixture {
         }
         let prop_amm_state =
             (kind == QuoterKind::PropAmm).then(|| pda(&[b"prop_amm", quoter.as_ref()]));
-        if let Some(pair) = prop_amm_state {
+        if let Some(pair) = prop_amm_state.filter(|pair| self.svm.get_account(pair).is_none()) {
             let instruction = ix(
                 accounts::CreatePropAmmState {
                     quoter,
@@ -456,7 +458,6 @@ impl Fixture {
                 self.asset_program,
             ),
         };
-        let quoter: Quoter = read(&self.svm, config.quoter);
         let has_liquidity = config.liquidity_vault != Pubkey::default();
         let [reserve, management, performance] = self
             .buffer_vaults()
@@ -507,8 +508,8 @@ impl Fixture {
                 token_out_program: out_program,
                 associated_token_program: ATA_PROGRAM_ID,
                 system_program: SYSTEM_PROGRAM_ID,
-                prop_amm_state: (quoter.kind == QuoterKind::PropAmm)
-                    .then(|| pda(&[b"prop_amm", config.quoter.as_ref()])),
+                prop_amm_state: (config.pressure_state != Pubkey::default())
+                    .then_some(config.pressure_state),
                 liquidity_vault: has_liquidity.then_some(config.liquidity_vault),
                 liquidity_token: has_liquidity
                     .then(|| derive_ata(&config.liquidity_vault, &self.asset, &self.asset_program)),
@@ -784,7 +785,9 @@ fn unsupported_routes_and_global_kill_fail_closed() {
         true,
     );
     let instruction = f.take(100, 0);
-    assert_error(f.send(instruction), OnreError::UnsupportedOfferExecution);
+    let event = executed_event(&f.send(instruction).unwrap());
+    assert_eq!(event.liquidity_refill_amount, 0);
+    assert_eq!(event.proceeds_amount, 95);
     f.seed_tokens(f.mint, f.user.pubkey(), 1_000_000_000);
     f.create_route(
         OfferDirection::ManagedToAsset,
@@ -1329,7 +1332,7 @@ fn prop_amm_requires_only_its_selected_pair_before_dispatch() {
         omit_account(&mut instruction, pair);
         assert_error(f.send(instruction), OnreError::IncompatibleQuoter);
         let instruction = f.take(1_000_000_002, 0);
-        assert_error(f.send(instruction), OnreError::UnsupportedOfferExecution);
+        assert_error(f.send(instruction), OnreError::InsufficientBalance);
         assert_eq!(f.svm.get_account(&pair).unwrap().data, before);
         assert_eq!(
             f.balance(f.mint, f.user.pubkey(), f.token_program),

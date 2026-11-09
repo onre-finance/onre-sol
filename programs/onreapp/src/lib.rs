@@ -100,7 +100,8 @@ pub mod onreapp {
     /// Supports permissioned and permissionless NAV in both directions, with shared BUFFER accounting
     /// and the offer's selected liquidity vault for managed-to-asset payouts.
     /// Permissionless execution routes through the canonical intermediary PDA.
-    /// Prop AMM, worker execution and liquidity refill remain explicitly unsupported.
+    /// Permissionless Prop AMM uses symmetric curve pricing; NAV offers may link pair pressure.
+    /// Buys can refill configured liquidity targets. Worker execution remains unsupported.
     /// V2 entrypoints and their account lists remain unchanged.
     pub fn take_offer(
         ctx: Context<TakeOffer>,
@@ -195,6 +196,11 @@ pub mod onreapp {
     /// Creates a directed offer referencing compatible existing components; boss only.
     pub fn create_offer_config(ctx: Context<CreateOfferConfig>, flow: OfferFlow) -> Result<()> {
         configuration::create_offer_config(ctx, flow)
+    }
+
+    /// Boss-configured pair pressure tracking, independent of NAV/PropAmm quote selection.
+    pub fn set_offer_pressure_state(ctx: Context<SetOfferPressureState>) -> Result<()> {
+        configuration::set_offer_pressure_state(ctx)
     }
 
     /// Creates per-managed-mint BUFFER state and dedicated vault configurations; boss only.

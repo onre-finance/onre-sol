@@ -8737,6 +8737,63 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "setOfferPressureState",
+      "docs": [
+        "Boss-configured pair pressure tracking, independent of NAV/PropAmm quote selection."
+      ],
+      "discriminator": [
+        186,
+        149,
+        170,
+        101,
+        65,
+        51,
+        158,
+        127
+      ],
+      "accounts": [
+        {
+          "name": "offerConfig",
+          "writable": true
+        },
+        {
+          "name": "quoter",
+          "relations": [
+            "offerConfig"
+          ]
+        },
+        {
+          "name": "propAmmState",
+          "optional": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "setOnycMint",
       "docs": [
         "Sets the Onyc mint in the state.",
@@ -9101,7 +9158,8 @@ export type Onreapp = {
         "Supports permissioned and permissionless NAV in both directions, with shared BUFFER accounting",
         "and the offer's selected liquidity vault for managed-to-asset payouts.",
         "Permissionless execution routes through the canonical intermediary PDA.",
-        "Prop AMM, worker execution and liquidity refill remain explicitly unsupported.",
+        "Permissionless Prop AMM uses symmetric curve pricing; NAV offers may link pair pressure.",
+        "Buys can refill configured liquidity targets. Worker execution remains unsupported.",
         "V2 entrypoints and their account lists remain unchanged."
       ],
       "discriminator": [
@@ -9468,7 +9526,8 @@ export type Onreapp = {
         {
           "name": "bufferPricer",
           "docs": [
-            "Canonical USD instance-zero Pricer, required for an initialized per-mint BUFFER.",
+            "Canonical USD instance-zero Pricer, required for initialized per-mint BUFFER",
+            "and token-wide liquidity targets when the offer selects another Pricer.",
             "The offer's independently selected Pricer does not control token-wide accrual."
           ],
           "optional": true
@@ -9522,7 +9581,8 @@ export type Onreapp = {
         {
           "name": "propAmmState",
           "docs": [
-            "Required only for Prop AMM; validated against the Quoter and the mint pair."
+            "Required exactly when OfferConfig.pressure_state is configured, including",
+            "linked NAV offers. Validated against the stored reference and mint pair."
           ],
           "writable": true,
           "optional": true
@@ -12684,6 +12744,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "offerPressureStateSetEvent",
+      "discriminator": [
+        91,
+        15,
+        165,
+        15,
+        239,
+        99,
+        171,
+        207
+      ]
+    },
+    {
       "name": "offerTakenEvent",
       "discriminator": [
         64,
@@ -15281,6 +15354,14 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
+            "name": "pressureState",
+            "docs": [
+              "Explicit pair pressure-accounting link, independent of quote selection.",
+              "Default means untracked NAV; PropAmm requires its own canonical state."
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "feeConfig",
             "type": "pubkey"
           },
@@ -15437,6 +15518,9 @@ export type Onreapp = {
           },
           {
             "name": "liquidityRefillAmount",
+            "docs": [
+              "Net asset input routed to the selected liquidity vault before user issuance."
+            ],
             "type": "u64"
           },
           {
@@ -15612,6 +15696,34 @@ export type Onreapp = {
               "The boss account that authorized the fee update."
             ],
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "offerPressureStateSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "offerConfig",
+            "type": "pubkey"
+          },
+          {
+            "name": "previousState",
+            "type": "pubkey"
+          },
+          {
+            "name": "pressureState",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -16415,11 +16527,22 @@ export type Onreapp = {
             "type": "u128"
           },
           {
+            "name": "previousNetBuyValueStable",
+            "type": "u128"
+          },
+          {
             "name": "epochStart",
+            "docs": [
+              "Scheduled epoch boundary. Rollover preserves alignment, even after idle time."
+            ],
             "type": "i64"
           },
           {
             "name": "currentSellTradeCount",
+            "type": "u32"
+          },
+          {
+            "name": "currentBuyTradeCount",
             "type": "u32"
           },
           {

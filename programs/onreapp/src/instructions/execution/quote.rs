@@ -14,6 +14,8 @@ pub struct OfferQuote {
     pub fee_amount: u64,
     pub net_input_amount: u64,
     pub amount_out: u64,
+    pub raw_amount_out: u64,
+    pub liquidity_refill_amount: u64,
 }
 
 pub fn quote_offer(
@@ -33,21 +35,21 @@ pub fn quote_offer(
     require!(fee_amount < gross_input, OnreError::InvalidAmount);
     let net_input_amount = gross_input - fee_amount;
     let (_, price) = get_active_vector_and_current_price(pricer.vectors.iter().copied(), now)?;
+    let amount_out = match direction {
+        OfferDirection::AssetToManaged => {
+            calculate_token_out_amount(net_input_amount, price, input_decimals, output_decimals)?
+        }
+        OfferDirection::ManagedToAsset => {
+            managed_to_asset_amount(net_input_amount, price, input_decimals, output_decimals)?
+        }
+    };
     Ok(OfferQuote {
         price,
         fee_amount,
         net_input_amount,
-        amount_out: match direction {
-            OfferDirection::AssetToManaged => calculate_token_out_amount(
-                net_input_amount,
-                price,
-                input_decimals,
-                output_decimals,
-            )?,
-            OfferDirection::ManagedToAsset => {
-                managed_to_asset_amount(net_input_amount, price, input_decimals, output_decimals)?
-            }
-        },
+        amount_out,
+        raw_amount_out: amount_out,
+        liquidity_refill_amount: 0,
     })
 }
 
