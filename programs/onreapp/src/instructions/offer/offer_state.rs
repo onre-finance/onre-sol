@@ -1,4 +1,5 @@
 use crate::constants::MAX_VECTORS;
+use crate::model::PricingVector;
 use anchor_lang::prelude::*;
 
 /// Token exchange offer with dynamic APR-based pricing
@@ -116,4 +117,29 @@ pub struct OfferVector {
     pub apr: u64,
     /// Duration in seconds for each discrete pricing step
     pub price_fix_duration: u64,
+}
+
+// Adapt vector values without changing the legacy zero-copy account layout.
+impl From<&OfferVector> for PricingVector {
+    fn from(vector: &OfferVector) -> Self {
+        Self {
+            start_time: vector.start_time,
+            base_time: vector.base_time,
+            base_price: vector.base_price,
+            apr: vector.apr,
+            price_fix_duration: vector.price_fix_duration,
+        }
+    }
+}
+
+impl From<PricingVector> for OfferVector {
+    fn from(vector: PricingVector) -> Self {
+        Self {
+            start_time: vector.start_time,
+            base_time: vector.base_time,
+            base_price: vector.base_price,
+            apr: vector.apr,
+            price_fix_duration: vector.price_fix_duration,
+        }
+    }
 }

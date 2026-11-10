@@ -33,11 +33,12 @@ programs/onreapp/src/
     ├── buffer/               # BUFFER state, accrual, fee accounting, burn support
     ├── configurable_vault/   # Shared accounting vault destinations and withdrawals
     ├── configuration/        # Create reusable components, offers, and per-mint BUFFER state
+    ├── execution/            # Modular take_offer accounts, validation, quotes, BUFFER and settlement
     ├── offer/                # make/take/disable offers, manage price vectors, fees
     ├── prop_amm/             # Prop AMM configuration, quotes, buy/sell execution
     ├── redemption/           # redemption offers, requests, fulfillment, cancellation
     ├── state_operations/     # Boss transfer, admin/approver management, kill switch, max supply
-    ├── vault_operations/     # Deposit/withdraw tokens to offer and redemption vaults
+    ├── vault_operations/     # Deposit/withdraw tokens to legacy vaults and VaultConfig accounts
     ├── mint_authority/       # Transfer mint authority to/from program PDA, mint_to
     ├── market_info/          # Market stats refresh, exclusions, and shared metric calculations
     └── targeted_disable.rs   # Token-pair targeted disable controls
@@ -46,9 +47,22 @@ programs/onreapp/src/
 ## Key Concepts
 
 The modular account layouts, EVM mapping, and boss-authorized creation instructions
-are documented in [`MODULAR_MODEL.md`](docs/MODULAR_MODEL.md). Trading and BUFFER
-settlement continue to use the existing accounts; new configuration is not yet
-connected to execution.
+are documented in [`MODULAR_MODEL.md`](docs/MODULAR_MODEL.md). The new `take_offer`
+provides [modular offer execution](docs/MODULAR_TAKE_OFFER.md), currently for
+permissioned and permissionless NAV offers plus permissionless Prop AMM in both
+directions. Prop AMM applies its curve symmetrically to buys and sells. NAV offers
+can explicitly link the matching pair tracker for pressure relief without changing pricing.
+Buy offers can refill a selected Liquidity VaultConfig target before issuance. Permissionless
+execution uses the existing intermediary PDA and requires no approval.
+Managed-to-asset payouts use only the offer's selected liquidity vault: a reusable
+Liquidity VaultConfig, an explicitly selected legacy ConfigurableVault, or the
+existing redemption-vault authority. Existing liquidity is not automatically
+pooled with a new offer's funds.
+ONyc keeps its shared legacy BUFFER baseline; other managed mints use their per-mint
+BUFFER if initialized. V2 arguments and account lists remain unchanged.
+[VaultConfig deposit and withdrawal instructions](docs/VAULT_CONFIG_OPERATIONS.md)
+support generic and per-mint BUFFER vaults. Anyone may deposit; withdrawals use the
+fixed destination, with boss authorization required for Liquidity and BufferReserve.
 Each modeled offer explicitly references a Pricer for its managed mint. The boss
 chooses the external asset in that Pricer's denomination; no asset registration is required.
 
@@ -71,10 +85,10 @@ The kill switch is an emergency stop for guarded value-moving paths. The boss ca
 
 When `state.is_killed == true`, the program rejects:
 
-- offer execution: `take_offer_v2`, `take_offer_permissionless_v2`
+- offer execution: `take_offer`, `take_offer_v2`, `take_offer_permissionless_v2`
 - Prop AMM quotes and execution: `quote_swap_buy`, `quote_swap_sell`, `open_swap_buy`, `open_swap_sell`
 - redemption request movement: `create_redemption_request`, `fulfill_redemption_request`, `cancel_redemption_request`
-- vault funding and recovery: `offer_vault_deposit`, `offer_vault_withdraw`, `redemption_vault_deposit`, `redemption_vault_withdraw`
+- vault funding and recovery: `deposit_vault_config`, `withdraw_vault_config`, `offer_vault_deposit`, `offer_vault_withdraw`, `redemption_vault_deposit`, `redemption_vault_withdraw`
 - BUFFER/configurable vault movement: `settle_buffer`, `deposit_reserve_vault`, `withdraw_reserve_vault`, `withdraw_configurable_vault`
 - direct supply-changing and accrual-settling paths: `mint_to`, `burn_for_nav_increase`, `set_buffer_gross_apr`, `set_buffer_fee_config`
 
@@ -147,23 +161,24 @@ refresh ordering, and differences from legacy per-offer views.
 
 **Initialization**: `initialize`, `initialize_permissionless_authority`
 
-**Reusable configuration**: `register_managed_token`, `create_pricer`, `create_quoter`, `create_vault_config`, `create_fee_config`, `create_prop_amm_state`, `create_offer_config`, `initialize_managed_token_buffer`
+**Reusable configuration**: `register_managed_token`, `create_pricer`, `add_pricer_vector`, `create_quoter`, `create_vault_config`, `create_fee_config`, `create_prop_amm_state`, `create_offer_config`, `initialize_managed_token_buffer`
 
 **BUFFER**: `initialize_buffer`, `settle_buffer`, `set_buffer_gross_apr`, `set_buffer_fee_config`, `burn_for_nav_increase`, `deposit_reserve_vault`, `withdraw_reserve_vault`
 
 **Prop AMM**: `configure_prop_amm`, `quote_swap_buy`, `quote_swap_sell`, `open_swap_buy`, `open_swap_sell`
 
-V1 `take_offer` and `take_offer_permissionless` have been removed. Clients must use
-`take_offer_v2` or `take_offer_permissionless_v2`; their arguments and account lists
-are unchanged. The CLI `offer take` uses V2 and no longer supports `--legacy`.
+V1 offer instructions remain removed. The name `take_offer` now identifies a new
+modular instruction with different data and accounts; it is not compatible with V1
+transactions. Existing clients keep using `take_offer_v2` or
+`take_offer_permissionless_v2` unchanged. The CLI `offer take` still uses V2.
 
-**Offers**: `make_offer`, `add_offer_vector`, `delete_offer_vector`, `delete_all_offer_vectors`, `update_offer_fee`, `update_offer_permissionless_fee`, `set_offer_disabled`, `take_offer_v2`, `take_offer_permissionless_v2`
+**Offers**: `make_offer`, `add_offer_vector`, `delete_offer_vector`, `delete_all_offer_vectors`, `update_offer_fee`, `update_offer_permissionless_fee`, `set_offer_disabled`, `take_offer`, `take_offer_v2`, `take_offer_permissionless_v2`
 
 **Redemption**: `make_redemption_offer`, `set_redemption_offer_disabled`, `create_redemption_request`, `fulfill_redemption_request`, `cancel_redemption_request`, `update_redemption_offer_fee`, `update_redemption_offer_prop_amm_sell_fee`, `update_redemption_offer_vault_target`
 
 **State Operations**: `propose_boss`, `accept_boss`, `add_admin`, `remove_admin`, `clear_admins`, `set_kill_switch`, `set_onyc_mint`, `set_worker`, `set_main_offer`, `add_approver`, `remove_approver`, `configure_max_supply`, `configure_max_mint_amount`, `close_state`
 
-**Vault Operations**: `offer_vault_deposit`, `offer_vault_withdraw`, `redemption_vault_deposit`, `redemption_vault_withdraw`, `set_configurable_vault_destination`, `withdraw_configurable_vault`
+**Vault Operations**: `deposit_vault_config`, `withdraw_vault_config`, `offer_vault_deposit`, `offer_vault_withdraw`, `redemption_vault_deposit`, `redemption_vault_withdraw`, `set_configurable_vault_destination`, `withdraw_configurable_vault`
 
 **Mint Authority**: `transfer_mint_authority_to_program`, `transfer_mint_authority_to_boss`, `mint_to`
 
