@@ -93,9 +93,13 @@ Transfers do not change supply; only the final legacy accrual may mint. Any fail
 rolls back accrual, fees, transfers, ATA creation, copied accounting and activation.
 The operation cannot be repeated or reversed through these instructions.
 
-Global `State.reserved[0] == 1` is the native ONyc activation marker;
-legacy `BufferState.reserved[0] == 1` marks its frozen retirement record.
-These use existing reserved bytes and do not change legacy layouts or PDA identities.
+Global `State.onyc_buffer_cutover_completed` selects native ONyc BUFFER;
+legacy `BufferState.retired` marks its frozen retirement record. Both are explicit
+boolean fields, set together only by successful atomic cutover. They occupy the
+first formerly reserved byte in each account; the remaining reserved arrays shrink
+by one byte, preserving account sizes, existing field offsets and PDA identities.
+Existing zero-filled bytes deserialize as `false`. Generated IDL/types expose the
+named fields.
 
 Before cutover, existing V2 and legacy swap/BUFFER paths retain their account lists
 and behavior. After explicit cutover, legacy trades, accrual, reserve operations

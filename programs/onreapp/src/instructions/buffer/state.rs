@@ -20,14 +20,16 @@ pub struct BufferState {
     pub performance_fee_high_watermark_enabled: bool,
     pub last_accrual_timestamp: i64,
     pub bump: u8,
-    pub reserved: [u8; 135],
+    /// Set only by atomic cutover; retired legacy accounting remains a frozen record.
+    /// Occupies the first formerly reserved byte without changing account size.
+    pub retired: bool,
+    pub reserved: [u8; 134],
 }
 
 impl BufferState {
-    /// Reserved byte zero is the one-way retirement marker. The legacy account
-    /// layout is unchanged; only a successful atomic cutover sets this byte.
+    /// Only a successful atomic cutover retires the legacy BUFFER.
     pub(crate) fn is_retired(&self) -> bool {
-        self.reserved[0] == 1
+        self.retired
     }
 
     pub(crate) fn require_active(&self) -> Result<()> {

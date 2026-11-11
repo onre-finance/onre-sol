@@ -13,7 +13,8 @@ fn send(
 
 fn parts(f: &Fixture) -> accounts::ManagedBufferAccounts {
     let [reserve, management, performance] = f.buffer_vaults();
-    let legacy = f.onyc && read::<GlobalState>(&f.svm, find_state_pda().0).reserved[0] == 0;
+    let legacy =
+        f.onyc && !read::<GlobalState>(&f.svm, find_state_pda().0).onyc_buffer_cutover_completed;
     accounts::ManagedBufferAccounts {
         state: find_state_pda().0,
         managed_token: managed(f.mint),
@@ -277,11 +278,8 @@ fn atomic_cutover_moves_all_balances_and_preserves_final_legacy_accounting() {
     cutover(&mut f);
     let old: BufferState = read(&f.svm, find_buffer_state_pda().0);
     let current: ManagedTokenBufferState = read(&f.svm, f.buffer());
-    assert_eq!(
-        read::<GlobalState>(&f.svm, find_state_pda().0).reserved[0],
-        1
-    );
-    assert_eq!(old.reserved[0], 1);
+    assert!(read::<GlobalState>(&f.svm, find_state_pda().0).onyc_buffer_cutover_completed);
+    assert!(old.retired);
     assert_eq!(current.previous_supply, before + accrued);
     assert_eq!(current.last_accrual_timestamp, old.last_accrual_timestamp);
     assert_eq!(
@@ -384,10 +382,7 @@ fn failed_cutover_rolls_back_accrual_transfers_ata_creation_and_route_switch() {
         old
     );
     assert_eq!(get_mint_supply(&f.svm, &f.mint), 10_000_000_000);
-    assert_eq!(
-        read::<GlobalState>(&f.svm, find_state_pda().0).reserved[0],
-        0
-    );
+    assert!(!read::<GlobalState>(&f.svm, find_state_pda().0).onyc_buffer_cutover_completed);
     for vault in native(&f).1 {
         assert!(f
             .svm

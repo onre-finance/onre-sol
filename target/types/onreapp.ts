@@ -15478,11 +15478,19 @@ export type Onreapp = {
             "type": "u8"
           },
           {
+            "name": "retired",
+            "docs": [
+              "Set only by atomic cutover; retired legacy accounting remains a frozen record.",
+              "Occupies the first formerly reserved byte without changing account size."
+            ],
+            "type": "bool"
+          },
+          {
             "name": "reserved",
             "type": {
               "array": [
                 "u8",
-                135
+                134
               ]
             }
           }
@@ -18664,6 +18672,14 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
+            "name": "onycBufferCutoverCompleted",
+            "docs": [
+              "Set only by the atomic ONyc BUFFER cutover; false keeps legacy BUFFER authoritative.",
+              "Occupies the first formerly reserved byte without changing account size."
+            ],
+            "type": "bool"
+          },
+          {
             "name": "reserved",
             "docs": [
               "Reserved space for future program state extensions"
@@ -18671,7 +18687,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                56
+                55
               ]
             }
           }

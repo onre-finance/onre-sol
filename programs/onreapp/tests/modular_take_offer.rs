@@ -435,14 +435,18 @@ impl Fixture {
     }
 
     fn buffer(&self) -> Pubkey {
-        if self.onyc && read::<GlobalState>(&self.svm, find_state_pda().0).reserved[0] == 0 {
+        if self.onyc
+            && !read::<GlobalState>(&self.svm, find_state_pda().0).onyc_buffer_cutover_completed
+        {
             find_buffer_state_pda().0
         } else {
             pda(&[b"buffer", self.mint.as_ref()])
         }
     }
     fn buffer_vaults(&self) -> [Pubkey; 3] {
-        if self.onyc && read::<GlobalState>(&self.svm, find_state_pda().0).reserved[0] == 0 {
+        if self.onyc
+            && !read::<GlobalState>(&self.svm, find_state_pda().0).onyc_buffer_cutover_completed
+        {
             [
                 find_reserve_vault_authority_pda().0,
                 find_management_fee_vault_pda().0,
@@ -510,14 +514,16 @@ impl Fixture {
                 state: find_state_pda().0,
                 buffer_state: self.buffer(),
                 buffer_pricer: if self.onyc
-                    && read::<GlobalState>(&self.svm, find_state_pda().0).reserved[0] == 0
+                    && !read::<GlobalState>(&self.svm, find_state_pda().0)
+                        .onyc_buffer_cutover_completed
                 {
                     None
                 } else {
                     Some(price(self.mint, 0))
                 },
                 main_offer: if self.onyc
-                    && read::<GlobalState>(&self.svm, find_state_pda().0).reserved[0] == 0
+                    && !read::<GlobalState>(&self.svm, find_state_pda().0)
+                        .onyc_buffer_cutover_completed
                 {
                     Some(read::<GlobalState>(&self.svm, find_state_pda().0).main_offer)
                 } else {

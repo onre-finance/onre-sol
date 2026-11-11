@@ -217,8 +217,8 @@ pub fn cut_over_onyc_buffer(ctx: Context<CutOverOnycBuffer>) -> Result<()> {
         old.performance_fee_high_watermark_enabled;
     // Preserve the initial new vault references/bump while replacing every stale
     // draft accounting value with the just-settled authoritative legacy values.
-    a.state.reserved[0] = 1;
-    a.legacy_buffer_state.reserved[0] = 1;
+    a.state.onyc_buffer_cutover_completed = true;
+    a.legacy_buffer_state.retired = true;
     offer.vectors = a.pricer.vectors.map(Into::into);
     refresh_market_stats_pda(
         &offer,
