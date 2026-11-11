@@ -24,11 +24,13 @@ pub struct OfferExecutedEvent {
     pub amount_out: u64,
     /// Selected offer Pricer's USD price, scale 9.
     pub price: u64,
-    /// Net asset input routed to the selected liquidity vault before user issuance.
+    /// Net asset input refilled into destination custody before output settlement.
     pub liquidity_refill_amount: u64,
     pub proceeds_amount: u64,
-    /// Asset payout from the offer's selected liquidity vault.
-    pub liquidity_amount: u64,
+    /// Output paid from source inventory, in the output mint's base units.
+    pub source_amount: u64,
+    /// Net input deposited into destination custody, in input mint base units.
+    pub destination_amount: u64,
     pub timestamp: i64,
 }
 
@@ -58,11 +60,11 @@ pub fn take_offer(
         time,
     )?;
     if route.kind == QuoterKind::PropAmm {
-        let cap = if route.refill_target_bps == 0 {
-            route.liquidity_balance
+        let cap = if route.curve_target_bps == 0 {
+            route.curve_balance
         } else {
-            liquidity_target::target(a, route.refill_target_bps, time)?
-                .min(route.liquidity_balance as u128) as u64
+            liquidity_target::target(a, route.curve_target_bps, time)?
+                .min(route.curve_balance as u128) as u64
         };
         quote.amount_out = prop_amm::quote(
             a.prop_amm_state
@@ -75,7 +77,7 @@ pub fn take_offer(
                 quote.raw_amount_out
             },
             quote.raw_amount_out,
-            route.liquidity_balance,
+            route.curve_balance,
             cap,
             now,
         )?;
@@ -104,10 +106,10 @@ pub fn take_offer(
     )?;
     a.reload_managed_mint()?;
 
-    if route.direction == OfferDirection::AssetToManaged && route.refill_target_bps > 0 {
-        let target = liquidity_target::target(a, route.refill_target_bps, time)?;
+    if route.direction == OfferDirection::AssetToManaged && route.destination_target_bps > 0 {
+        let target = liquidity_target::target(a, route.destination_target_bps, time)?;
         quote.liquidity_refill_amount = target
-            .saturating_sub(route.liquidity_balance as u128)
+            .saturating_sub(route.destination_balance as u128)
             .min(quote.net_input_amount as u128) as u64;
     }
     if a.offer_config.pressure_state != Pubkey::default() {
@@ -174,10 +176,17 @@ pub fn take_offer(
         } else {
             0
         },
-        liquidity_amount: if route.direction == OfferDirection::ManagedToAsset {
+        source_amount: if a.offer_config.source_vault != Pubkey::default() {
             quote.amount_out
         } else {
             0
+        },
+        destination_amount: match route.direction {
+            OfferDirection::AssetToManaged => quote.liquidity_refill_amount,
+            OfferDirection::ManagedToAsset
+                if a.offer_config.destination_vault != Pubkey::default() =>
+                quote.net_input_amount,
+            _ => 0,
         },
         timestamp: now,
     });

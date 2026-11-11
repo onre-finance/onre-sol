@@ -64,8 +64,11 @@ pub struct CreateOfferConfig<'info> {
     )]
     pub proceeds_vault: Box<Account<'info, VaultConfig>>,
 
-    /// CHECK: Handler validates modular Liquidity, legacy configurable, or redemption custody.
-    pub liquidity_vault: Option<UncheckedAccount<'info>>,
+    /// CHECK: Handler validates output custody; required for managed-to-asset.
+    pub source_vault: Option<UncheckedAccount<'info>>,
+
+    /// CHECK: Handler validates input custody; required for PropAmm buys.
+    pub destination_vault: Option<UncheckedAccount<'info>>,
 
     #[account(
         init,
@@ -148,14 +151,22 @@ pub fn create_offer_config(ctx: Context<CreateOfferConfig>, flow: OfferFlow) -> 
         a.token_out_mint.key(),
         a.prop_amm_state.as_deref(),
     )?;
-    if let Some(vault) = &a.liquidity_vault {
+    for vault in [&a.source_vault, &a.destination_vault]
+        .into_iter()
+        .flatten()
+    {
         validate_liquidity_vault(&vault.to_account_info(), ctx.program_id)?;
-    } else {
-        require!(
-            direction == OfferDirection::AssetToManaged && a.quoter.kind != QuoterKind::PropAmm,
-            OnreError::LiquidityVaultRequired
-        );
     }
+    require!(
+        direction != OfferDirection::ManagedToAsset || a.source_vault.is_some(),
+        OnreError::LiquidityVaultRequired
+    );
+    require!(
+        direction != OfferDirection::AssetToManaged
+            || a.quoter.kind != QuoterKind::PropAmm
+            || a.destination_vault.is_some(),
+        OnreError::LiquidityVaultRequired
+    );
     let offer = OfferConfig {
         token_in_mint: a.token_in_mint.key(),
         token_out_mint: a.token_out_mint.key(),
@@ -166,8 +177,9 @@ pub fn create_offer_config(ctx: Context<CreateOfferConfig>, flow: OfferFlow) -> 
         pressure_state,
         fee_config: a.fee_config.key(),
         proceeds_vault: a.proceeds_vault.key(),
-        liquidity_vault: a
-            .liquidity_vault
+        source_vault: a.source_vault.as_ref().map(|v| v.key()).unwrap_or_default(),
+        destination_vault: a
+            .destination_vault
             .as_ref()
             .map(|v| v.key())
             .unwrap_or_default(),

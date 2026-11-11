@@ -55,6 +55,9 @@ validated locally, not as deployed production instructions.
 
 Imported the actual mint accounts, legacy offers, pair tracker, vaults, exclusions,
 MarketStats and BUFFER into LiteSVM using the rebuilt local SBF binary.
+This validation predates the source/destination split. Its sell custody maps to
+`source_vault`, buy refill custody maps to `destination_vault`, and captured default
+mint/burn paths remain covered by the retained regression vectors.
 Three deployed `quote_swap_sell` simulations and local legacy quotes matched
 exactly. The modular sell with corresponding pricing/fee parameters also matched:
 

@@ -12,8 +12,10 @@ pub(super) struct ExecutionPlan {
     pub direction: OfferDirection,
     pub kind: QuoterKind,
     pub flow: OfferFlow,
-    pub liquidity_balance: u64,
-    pub refill_target_bps: u16,
+    pub destination_balance: u64,
+    pub destination_target_bps: u16,
+    pub curve_balance: u64,
+    pub curve_target_bps: u16,
 }
 
 impl ExecutionPlan {
@@ -83,8 +85,16 @@ pub(super) fn validate(program_id: &Pubkey, a: &TakeOffer) -> Result<ExecutionPl
         direction: a.offer_config.direction,
         kind: a.quoter.kind,
         flow: a.offer_config.flow,
-        liquidity_balance: liquidity.balance,
-        refill_target_bps: liquidity.refill_target_bps,
+        destination_balance: liquidity.destination.balance,
+        destination_target_bps: liquidity.destination.refill_target_bps,
+        curve_balance: match a.offer_config.direction {
+            OfferDirection::AssetToManaged => liquidity.destination.balance,
+            OfferDirection::ManagedToAsset => liquidity.source.balance,
+        },
+        curve_target_bps: match a.offer_config.direction {
+            OfferDirection::AssetToManaged => liquidity.destination.refill_target_bps,
+            OfferDirection::ManagedToAsset => liquidity.source.refill_target_bps,
+        },
     })
 }
 
@@ -103,9 +113,11 @@ fn validate_prop_amm(program_id: &Pubkey, a: &TakeOffer) -> Result<()> {
         a.offer_config.pressure_state,
         OnreError::IncompatibleQuoter
     );
-    if a.quoter.kind == QuoterKind::PropAmm {
+    if a.quoter.kind == QuoterKind::PropAmm
+        && a.offer_config.direction == OfferDirection::AssetToManaged
+    {
         require!(
-            a.offer_config.liquidity_vault != Pubkey::default(),
+            a.offer_config.destination_vault != Pubkey::default(),
             OnreError::LiquidityVaultRequired
         );
     }

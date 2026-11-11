@@ -40,7 +40,8 @@ flowchart TD
     Offer --> Fee[FeeConfig]
     Fee --> FeeVault[VaultConfig: Fee]
     Offer --> Proceeds[VaultConfig: Proceeds]
-    Offer --> Liquidity[VaultConfig: Liquidity, optional on NAV buys]
+    Offer --> Source[Source vault: output inventory]
+    Offer --> Destination[Destination vault: input custody]
     Offer --> Pricer
     Quoter --> Amm[PropAmmState: pair and directional pressure]
     Offer -. explicit pressure_state .-> Amm
@@ -78,7 +79,7 @@ the domain paths such as `model::pricer::Pricer`.
 | FeeConfig | 52 | 60 |
 | VaultConfig | 44 | 52 |
 | ManagedTokenBufferState | 166 | 174 |
-| OfferConfig | 262 | 270 |
+| OfferConfig | 294 | 302 |
 | FulfillmentRequest | 89 | 97 |
 | ManagedTokenSupplyExclusions | 674 | 682 |
 
@@ -92,7 +93,7 @@ the domain paths such as `model::pricer::Pricer`.
 | FeeConfig | FeeConfig | Instance ID, Fee vault reference, basis points, minimum input fee, enabled, bump. |
 | ConfigurableVault | VaultConfig | Kind, instance ID, withdrawal destination, refill target, bump. |
 | BufferState | ManagedTokenBufferState | Managed mint, three vault references, supply baseline, watermark, accrual time, APR, fee settings, bump. |
-| OfferConfig | OfferConfig | Directed mint pair, flow, direction, pricer/quoter/pressure-state/fee/proceeds/liquidity references, decimals, enabled, bump. |
+| OfferConfig | OfferConfig | Directed mint pair, flow, direction, pricer/quoter/pressure-state/fee/proceeds/source/destination references, decimals, enabled, bump. |
 | FulfillmentRequest | FulfillmentRequest | Offer, user, numeric request ID, gross input, fulfilled gross input, bump. |
 | Excluded-supply mappings | ManagedTokenSupplyExclusions | Managed mint, up to 20 token-account addresses, active count, bump. |
 | MarketStats | MarketStats, derived value | Managed mint, APY, circulating supply, NAV, NAV adjustment, TVL, timestamp, slot. |
@@ -255,12 +256,15 @@ change to another quoter's state. Both directions use the same curve with their
 own net directional pressure and cadence. Curve, cadence, epoch duration, and sensitivity
 belong together in `PropAmmConfig` inside `PropAmmState`.
 
-FeeConfig references a Fee-kind vault. Every offer references a Proceeds vault;
-ManagedToAsset also requires a liquidity authority: a modular Liquidity vault or
-an explicitly selected existing legacy ConfigurableVault or redemption authority. Selected custody is
-validated at creation and execution. AssetToManaged may use the default
-pubkey for absent liquidity only with a NAV quoter. PropAmm requires funded liquidity
-in both directions. NAV offers may also omit the pressure link. The fee
+FeeConfig references a Fee-kind vault. Every offer references Proceeds and may
+independently select source and destination liquidity custody. The source holds
+output tokens; the destination holds input tokens. Sells require a source; buys
+with a source transfer managed inventory instead of minting. Sells with a
+destination retain net managed input instead of burning. NAV buys allow both
+absent; PropAmm buys require funded asset destinations for the curve. Each role
+supports modular Liquidity, legacy ConfigurableVault or redemption custody.
+See [OFFER_VAULT_ROLES.md](OFFER_VAULT_ROLES.md) for the full routing matrix.
+NAV offers may also omit the pressure link. The fee
 floor is input-token-denominated, so sharing a FeeConfig across different input
 mints requires an appropriate policy. EVM's minimum input fee replaces the legacy
 Prop AMM-specific minimum ONyc haircut in this target model only.
@@ -328,16 +332,15 @@ in EVM. NAV execution reuses existing checked pricing, conversion, and BUFFER ma
 
 Legacy account layouts, discriminators, PDA seeds, instruction data, account
 ordering, program IDs, vault authorities, and token accounts remain unchanged.
-New configuration accounts are exposed in the generated IDL/types.
-`OfferConfig` grows from the earlier 230-byte body to 262 bytes for the explicit
-pressure link. `PropAmmState` grows from 183 to 203 body bytes for previous net buy
-pressure and buy cadence. Earlier modular draft accounts require recreation or
-explicit migration; there is no automatic migration instruction.
+No modular configuration accounts have been created yet; the layouts above define
+their initial representation. There is no modular-account migration requirement.
+New modular clients use the generated IDL/types. OfferConfig has a 294-byte body,
+PropAmmState a 203-byte body, and Pricer a 443-byte body (451 with discriminator).
 
-The new Pricer layout now omits the redundant vector-count byte: its body is 443
-bytes and its allocated size is 451 bytes. Pricer accounts serialized under the
-earlier 444-byte draft body require recreation or migration before using this
-layout. This does not change the legacy Offer representation.
+The existing `take_offer_v2`, `take_offer_permissionless_v2`, `open_swap_buy`, and
+`open_swap_sell` paths retain their instruction data, account lists, pricing, fees,
+custody and mint/burn/BUFFER behavior. They do not resolve the new modular vault
+references. Existing clients and accounts for those four paths remain valid.
 
 Later compatibility work must define how legacy instructions resolve the shared
 model while keeping existing account lists, custody, and pending claims valid.

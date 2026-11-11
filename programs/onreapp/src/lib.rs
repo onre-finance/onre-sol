@@ -98,10 +98,11 @@ pub mod onreapp {
 
     /// Execute an offer using reusable model accounts.
     /// Supports permissioned and permissionless NAV in both directions, with shared BUFFER accounting
-    /// and the offer's selected liquidity vault for managed-to-asset payouts.
+    /// and independent source/output and destination/input vaults.
     /// Permissionless execution routes through the canonical intermediary PDA.
     /// Permissionless Prop AMM uses symmetric curve pricing; NAV offers may link pair pressure.
-    /// Buys can refill configured liquidity targets. Worker execution remains unsupported.
+    /// Buys use inventory or mint; sells retain input in a destination or burn it.
+    /// Buy destinations can refill configured TVL targets. Worker execution remains unsupported.
     /// V2 entrypoints and their account lists remain unchanged.
     pub fn take_offer(
         ctx: Context<TakeOffer>,

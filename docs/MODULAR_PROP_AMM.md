@@ -51,7 +51,9 @@ actual liquidity for a zero refill target, or `min(actual, token-wide TVL target
 otherwise. Utilization is this trade's asset value divided by effective liquidity.
 The resulting factor multiplies the NAV output in the output mint's base units.
 
-A PropAmm buy requires a configured, funded liquidity vault, just like a sell.
+A PropAmm buy requires a funded destination asset vault; a sell requires a funded
+source asset vault. These roles are independent of optional buy inventory sources
+and sell destinations, as described in [OFFER_VAULT_ROLES.md](OFFER_VAULT_ROLES.md).
 This trade's asset value must fit the current asset balance even if its discounted
 output would fit. Pending asset input is not counted as existing pricing liquidity;
 prefund a new Prop AMM vault before its first trade. NAV buys may omit liquidity.
@@ -85,12 +87,12 @@ later failure rolls back accounting, BUFFER accrual and token movements together
 
 Refill works for all supported buy quoters: permissioned `Nav`, permissionless
 `NavPermissionless`, and permissionless `PropAmm`. A NAV buy may omit liquidity;
-a PropAmm buy must select one of the [supported custody authorities](VAULT_CONFIG_OPERATIONS.md).
+a PropAmm buy must select a destination from the [supported custody authorities](VAULT_CONFIG_OPERATIONS.md).
 Only a generic Liquidity VaultConfig has a modular `refill_target_bps`; legacy
 configurable vaults and redemption custody use zero, which disables refill.
 
-For a nonzero target, after BUFFER accrual and before the user's managed-token
-mint, execution calculates:
+For a nonzero target, after BUFFER accrual and before user output settlement
+(inventory transfer or mint), execution calculates:
 
 ```
 TVL = floor(circulating_managed_supply * canonical_NAV / 10^9)
@@ -109,31 +111,34 @@ configuration is not implemented. When the offer selects another Pricer, supply
 An initialized per-mint BUFFER retains its existing canonical Pricer requirement.
 
 Curve hard-wall valuation in both directions uses pre-execution supply before
-BUFFER accrual and user issuance/burn. Buy refill uses post-BUFFER, pre-user-mint supply. Both use
+BUFFER accrual and user issuance/burn. Buy refill uses post-BUFFER, pre-output-settlement supply. Both use
 token-wide NAV rather than an offer's independently selected Pricer. Checked
 arithmetic rejects unrepresentable intermediate values.
 
 The selected asset ATA is created at the user's expense only for a positive
 refill. Excess input goes to the Proceeds ATA. To have buys refill the funds used
-by sells, configure both offers to select the same liquidity vault. Sharing a
+by sells, configure the buy destination and sell source to select the same vault. Sharing a
 quoter alone does not link their custody references.
 
 `OfferExecutedEvent.liquidity_refill_amount` reports the actual refill, and
-`proceeds_amount` reports the remainder. Existing slippage, deadline, kill-switch,
+`proceeds_amount` reports the remainder. `source_amount` and `destination_amount`
+report the actual inventory payout and input deposit in their respective mint units. Existing slippage, deadline, kill-switch,
 mint-authority, issuance-limit, fee and transfer-fee controls remain enforced.
 ONyc still shares its original BUFFER accounts with V2; other managed tokens use
 their initialized per-mint BUFFER. No live market configuration is created by
 this implementation, and the CLI still uses V2 entrypoints.
 
-## Modular layout compatibility
+## Fresh modular layout
 
-`OfferConfig` now stores the pressure-state reference (262 body bytes, 270 with
-discriminator). `PropAmmState` stores previous net buy pressure and buy cadence
-alongside the sell fields (203 body bytes, 211 with discriminator). Earlier modular
-draft accounts require recreation or an explicit migration before this layout can
-be used. No migration instruction is provided. Legacy Offer, PropAmmPairState,
-ConfigurableVault, BUFFER and V2 account layouts and entrypoints are unchanged.
-Clients must rebuild instructions against the regenerated IDL/types.
+No modular accounts have been created yet. OfferConfig's initial layout includes
+the pressure link and independent source/destination references (294 body bytes,
+302 with discriminator). PropAmmState has 203 body bytes, 211 with discriminator.
+There is no migration requirement for these new accounts. New modular clients
+use the generated IDL/types.
 
-Production snapshot checks, representative transaction links, and the existing
+The existing `take_offer_v2`, `take_offer_permissionless_v2`, `open_swap_buy`, and
+`open_swap_sell` retain their account lists and runtime behavior. Legacy Offer,
+PropAmmPairState, ConfigurableVault and BUFFER layouts remain unchanged.
+
+Production snapshot checks, representative transaction links, and the
 intentional market getter removal are recorded in [MODULAR_PROP_AMM_VALIDATION.md](MODULAR_PROP_AMM_VALIDATION.md).

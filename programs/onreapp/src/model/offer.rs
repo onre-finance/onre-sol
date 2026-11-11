@@ -32,9 +32,14 @@ pub struct OfferConfig {
     pub pressure_state: Pubkey,
     pub fee_config: Pubkey,
     pub proceeds_vault: Pubkey,
-    /// Modular Liquidity VaultConfig, legacy ConfigurableVault, or redemption authority.
-    /// Default pubkey means absent; mandatory for ManagedToAsset.
-    pub liquidity_vault: Pubkey,
+    /// Output-mint custody: pay from inventory when set, otherwise mint managed output.
+    /// Mandatory for ManagedToAsset. Supports modular Liquidity, legacy configurable,
+    /// or redemption custody; default means absent.
+    pub source_vault: Pubkey,
+    /// Input-mint custody: buy assets refill its target; managed sell input is
+    /// transferred here instead of burned. Default means absent. PropAmm buys
+    /// require it as their funded asset-side curve liquidity.
+    pub destination_vault: Pubkey,
     pub token_in_decimals: u8,
     pub token_out_decimals: u8,
     pub enabled: bool,

@@ -54,7 +54,7 @@ fn routes(f: &mut Fixture, source: usize) -> (Pubkey, Pubkey, Pubkey) {
     (f.offer, sell, selected)
 }
 
-fn init_buffer(f: &mut Fixture) {
+pub(super) fn init_buffer(f: &mut Fixture) {
     if f.onyc {
         // Legacy MakeOffer uses one token program for both sides. ONyc's main
         // offer therefore uses an SPL asset even when the modular market uses
@@ -108,7 +108,7 @@ fn one_prop_quoter_prices_both_directions_on_curve_from_every_custody_type() {
                     f.balance(f.asset, selected, f.asset_program),
                     20_000_000 - sell_event.amount_out
                 );
-                assert_eq!(sell_event.liquidity_amount, sell_event.amount_out);
+                assert_eq!(sell_event.source_amount, sell_event.amount_out);
                 assert_eq!(sell_event.proceeds_amount, 0);
                 assert_eq!(
                     f.balance(f.mint, f.user.pubkey(), f.token_program),

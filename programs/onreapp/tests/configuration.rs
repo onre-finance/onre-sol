@@ -321,7 +321,8 @@ impl Fixture {
                 prop_amm_state: self.pair,
                 fee_config: fee(0),
                 proceeds_vault: vault(model::VaultKind::Proceeds, 0),
-                liquidity_vault: self.liquidity,
+                source_vault: reverse.then_some(self.liquidity).flatten(),
+                destination_vault: (!reverse).then_some(self.liquidity).flatten(),
                 offer_config: self.offer_key(flow, reverse),
                 state: find_state_pda().0,
                 boss: self.boss.pubkey(),
@@ -974,7 +975,7 @@ fn offer_creation_validates_legacy_liquidity_identity() {
     let instruction = f.offer_ix(model::OfferFlow::Permissioned, true);
     send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
     let offer: model::OfferConfig = read(&f.svm, f.offer_key(model::OfferFlow::Permissioned, true));
-    assert_eq!(offer.liquidity_vault, selected);
+    assert_eq!(offer.source_vault, selected);
 }
 
 #[test]

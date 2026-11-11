@@ -1703,7 +1703,11 @@ export type Onreapp = {
           "name": "proceedsVault"
         },
         {
-          "name": "liquidityVault",
+          "name": "sourceVault",
+          "optional": true
+        },
+        {
+          "name": "destinationVault",
           "optional": true
         },
         {
@@ -9156,10 +9160,11 @@ export type Onreapp = {
       "docs": [
         "Execute an offer using reusable model accounts.",
         "Supports permissioned and permissionless NAV in both directions, with shared BUFFER accounting",
-        "and the offer's selected liquidity vault for managed-to-asset payouts.",
+        "and independent source/output and destination/input vaults.",
         "Permissionless execution routes through the canonical intermediary PDA.",
         "Permissionless Prop AMM uses symmetric curve pricing; NAV offers may link pair pressure.",
-        "Buys can refill configured liquidity targets. Worker execution remains unsupported.",
+        "Buys use inventory or mint; sells retain input in a destination or burn it.",
+        "Buy destinations can refill configured TVL targets. Worker execution remains unsupported.",
         "V2 entrypoints and their account lists remain unchanged."
       ],
       "discriminator": [
@@ -9588,11 +9593,20 @@ export type Onreapp = {
           "optional": true
         },
         {
-          "name": "liquidityVault",
+          "name": "sourceVault",
           "optional": true
         },
         {
-          "name": "liquidityToken",
+          "name": "sourceTokenOut",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "destinationVault",
+          "optional": true
+        },
+        {
+          "name": "destinationTokenIn",
           "writable": true,
           "optional": true
         },
@@ -15370,10 +15384,20 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
-            "name": "liquidityVault",
+            "name": "sourceVault",
             "docs": [
-              "Modular Liquidity VaultConfig, legacy ConfigurableVault, or redemption authority.",
-              "Default pubkey means absent; mandatory for ManagedToAsset."
+              "Output-mint custody: pay from inventory when set, otherwise mint managed output.",
+              "Mandatory for ManagedToAsset. Supports modular Liquidity, legacy configurable,",
+              "or redemption custody; default means absent."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "destinationVault",
+            "docs": [
+              "Input-mint custody: buy assets refill its target; managed sell input is",
+              "transferred here instead of burned. Default means absent. PropAmm buys",
+              "require it as their funded asset-side curve liquidity."
             ],
             "type": "pubkey"
           },
@@ -15519,7 +15543,7 @@ export type Onreapp = {
           {
             "name": "liquidityRefillAmount",
             "docs": [
-              "Net asset input routed to the selected liquidity vault before user issuance."
+              "Net asset input refilled into destination custody before output settlement."
             ],
             "type": "u64"
           },
@@ -15528,9 +15552,16 @@ export type Onreapp = {
             "type": "u64"
           },
           {
-            "name": "liquidityAmount",
+            "name": "sourceAmount",
             "docs": [
-              "Asset payout from the offer's selected liquidity vault."
+              "Output paid from source inventory, in the output mint's base units."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "destinationAmount",
+            "docs": [
+              "Net input deposited into destination custody, in input mint base units."
             ],
             "type": "u64"
           },

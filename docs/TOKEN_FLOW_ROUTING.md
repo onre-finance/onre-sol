@@ -10,15 +10,17 @@ permissioned and permissionless NAV and permissionless Prop AMM execution in bot
 directions, with a different ABI from V1. Buys can split net asset input between
 selected liquidity refill and proceeds before minting. Prop AMM uses the liquidity curve for both buys
 and sells. NAV offers can explicitly link the matching pair tracker for relief accounting.
-Managed-to-asset execution burns net managed input and pays only from the
-offer's selected liquidity vault. Old redemption liquidity is included only when its authority is explicitly selected. Fees
+Managed-to-asset pays asset output from its source and transfers net managed input
+to its optional destination, otherwise burning it. Asset-to-managed takes managed
+inventory from its optional source, otherwise minting. Buy refill goes to its
+optional destination. See [OFFER_VAULT_ROLES.md](OFFER_VAULT_ROLES.md). Old redemption liquidity is included only when its authority is explicitly selected. Fees
 and proceeds remain separate. See the linked execution document for conditional accounts
 and paths that are not enabled yet.
 
 For modular permissionless NAV, the user transfers gross input to the canonical
 `permissionless-1` input ATA. That PDA transfers input fees and net proceeds, or
-burns net managed input. Managed output is minted to its output ATA; asset output
-is paid there from liquidity. The PDA then transfers exactly the quoted output to
+deposits net managed input into its configured destination or burns it when absent.
+Output is paid from source inventory, or minted for buys without a source. The PDA then transfers exactly the quoted output to
 the user's output ATA. Preexisting intermediary balances remain unchanged. Both
 intermediary ATAs can be created lazily at the user's expense. The common
 `approval_message` argument must be `None`; permissioned execution still requires

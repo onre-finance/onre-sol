@@ -58,10 +58,11 @@ directions. Prop AMM applies its curve symmetrically to buys and sells. NAV offe
 can explicitly link the matching pair tracker for pressure relief without changing pricing.
 Buy offers can refill a selected Liquidity VaultConfig target before issuance. Permissionless
 execution uses the existing intermediary PDA and requires no approval.
-Managed-to-asset payouts use only the offer's selected liquidity vault: a reusable
-Liquidity VaultConfig, an explicitly selected legacy ConfigurableVault, or the
-existing redemption-vault authority. Existing liquidity is not automatically
-pooled with a new offer's funds.
+Offers independently select [source and destination vaults](docs/OFFER_VAULT_ROLES.md).
+Sources pay output inventory; destinations receive net input. NAV buys can mint
+without a source and route input to Proceeds without a destination. Sells require
+an asset source and burn managed input only when no destination is configured.
+Both roles accept modular Liquidity, legacy ConfigurableVault or redemption custody.
 ONyc keeps its shared legacy BUFFER baseline; other managed mints use their per-mint
 BUFFER if initialized. V2 arguments and account lists remain unchanged.
 [VaultConfig deposit and withdrawal instructions](docs/VAULT_CONFIG_OPERATIONS.md)

@@ -185,12 +185,19 @@ pub struct TakeOffer<'info> {
     #[account(mut)]
     pub prop_amm_state: Option<Box<Account<'info, PropAmmState>>>,
 
-    /// CHECK: Required when referenced; validates modular Liquidity, legacy configurable, or redemption custody.
-    pub liquidity_vault: Option<UncheckedAccount<'info>>,
+    /// CHECK: Exact configured output custody; validates identity and signing seeds.
+    pub source_vault: Option<UncheckedAccount<'info>>,
 
-    /// CHECK: Canonical asset ATA of liquidity_vault; an empty ATA has zero balance.
+    /// CHECK: Canonical output-mint ATA of source_vault; empty means no inventory.
     #[account(mut)]
-    pub liquidity_token: Option<UncheckedAccount<'info>>,
+    pub source_token_out: Option<UncheckedAccount<'info>>,
+
+    /// CHECK: Exact configured input custody; validates identity and refill policy.
+    pub destination_vault: Option<UncheckedAccount<'info>>,
+
+    /// CHECK: Canonical input-mint ATA of destination_vault, initialized on deposit.
+    #[account(mut)]
+    pub destination_token_in: Option<UncheckedAccount<'info>>,
 
     /// CHECK: Canonical intermediary PDA, required only by permissionless offers.
     /// Its address and token authorities are checked before execution.
@@ -242,13 +249,6 @@ impl<'info> TakeOffer<'info> {
         match self.offer_config.direction {
             OfferDirection::AssetToManaged => &self.token_in_mint,
             OfferDirection::ManagedToAsset => &self.token_out_mint,
-        }
-    }
-
-    pub(super) fn asset_program(&self) -> &Interface<'info, TokenInterface> {
-        match self.offer_config.direction {
-            OfferDirection::AssetToManaged => &self.token_in_program,
-            OfferDirection::ManagedToAsset => &self.token_out_program,
         }
     }
 }
