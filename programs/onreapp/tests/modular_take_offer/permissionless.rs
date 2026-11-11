@@ -302,7 +302,7 @@ fn managed_to_asset_burns_from_the_intermediary_and_routes_liquidity_output_back
         read::<ManagedTokenBufferState>(&f.svm, f.buffer()).previous_supply,
         10_000_077
     );
-    assert_eq!(executed_event(&result).liquidity_amount, 1_980_000);
+    assert_eq!(executed_event(&result).source_amount, 1_980_000);
 }
 
 #[test]

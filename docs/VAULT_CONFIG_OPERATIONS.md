@@ -62,7 +62,8 @@ The new deposit/withdraw instructions accept only VaultConfig accounts. Legacy
 configurable vaults and redemption custody retain their existing movement
 instructions and access policies. Modular offers may explicitly select a generic
 Liquidity VaultConfig, a legacy ConfigurableVault, or the canonical redemption
-authority. Only that selected authority's asset ATA supplies payout liquidity.
+authority. Sources supply output-mint inventory and destinations receive input-mint
+deposits; see [OFFER_VAULT_ROLES.md](OFFER_VAULT_ROLES.md).
 Unselected old funds are not added to the balance.
 
 Selecting the old redemption authority shares the actual old balance: a payout

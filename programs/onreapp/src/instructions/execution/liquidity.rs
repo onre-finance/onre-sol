@@ -1,3 +1,4 @@
+use super::TakeOffer;
 use crate::{
     model::{OfferDirection, VaultConfig},
     utils::vault_authority::validate_liquidity_vault,
@@ -9,42 +10,86 @@ use anchor_spl::{
     token_interface::{self, TokenAccount, TransferChecked},
 };
 
-use super::TakeOffer;
-
 #[derive(Default)]
-pub(super) struct LiquidityContext {
+pub(super) struct VaultContext {
     pub balance: u64,
     pub refill_target_bps: u16,
 }
 
-/// Only the explicitly selected vault contributes payout liquidity.
+pub(super) struct LiquidityContext {
+    pub source: VaultContext,
+    pub destination: VaultContext,
+}
+
+/// Validate each configured role against its own mint and canonical ATA. Missing
+/// inventory never falls back to minting; only an absent buy source permits minting.
 pub(super) fn validate(program_id: &Pubkey, a: &TakeOffer) -> Result<LiquidityContext> {
-    if a.offer_config.liquidity_vault == Pubkey::default() {
+    require!(
+        a.offer_config.direction != OfferDirection::ManagedToAsset
+            || a.offer_config.source_vault != Pubkey::default(),
+        OnreError::LiquidityVaultRequired
+    );
+    Ok(LiquidityContext {
+        source: validate_role(
+            program_id,
+            a.offer_config.source_vault,
+            a.source_vault.as_ref(),
+            a.source_token_out.as_ref(),
+            a.token_out_mint.key(),
+            a.token_out_program.key(),
+        )?,
+        destination: validate_role(
+            program_id,
+            a.offer_config.destination_vault,
+            a.destination_vault.as_ref(),
+            a.destination_token_in.as_ref(),
+            a.token_in_mint.key(),
+            a.token_in_program.key(),
+        )?,
+    })
+}
+
+fn validate_role(
+    program_id: &Pubkey,
+    reference: Pubkey,
+    vault: Option<&UncheckedAccount>,
+    token: Option<&UncheckedAccount>,
+    mint: Pubkey,
+    program: Pubkey,
+) -> Result<VaultContext> {
+    if reference == Pubkey::default() {
         require!(
-            a.offer_config.direction == OfferDirection::AssetToManaged,
-            OnreError::LiquidityVaultRequired
-        );
-        require!(
-            a.liquidity_vault.is_none() && a.liquidity_token.is_none(),
+            vault.is_none() && token.is_none(),
             OnreError::InvalidConfigurableVault
         );
-        return Ok(LiquidityContext::default());
+        return Ok(VaultContext::default());
     }
-    let vault = a
-        .liquidity_vault
-        .as_ref()
-        .ok_or(OnreError::LiquidityVaultRequired)?;
-    require_keys_eq!(
-        vault.key(),
-        a.offer_config.liquidity_vault,
-        OnreError::InvalidConfigurableVault
-    );
+    let vault = vault.ok_or(OnreError::LiquidityVaultRequired)?;
+    require_keys_eq!(vault.key(), reference, OnreError::InvalidConfigurableVault);
     validate_liquidity_vault(&vault.to_account_info(), program_id)?;
-    let token = a
-        .liquidity_token
-        .as_ref()
-        .ok_or(OnreError::InvalidConfigurableVaultTokenAccount)?;
-    let balance = balance(a, token, &vault.key())?;
+    let token = token.ok_or(OnreError::InvalidConfigurableVaultTokenAccount)?;
+    require_keys_eq!(
+        token.key(),
+        get_associated_token_address_with_program_id(&reference, &mint, &program),
+        OnreError::InvalidConfigurableVaultTokenAccount
+    );
+    let balance = if token.data_is_empty() {
+        require_keys_eq!(
+            *token.owner,
+            System::id(),
+            OnreError::InvalidConfigurableVaultTokenAccount
+        );
+        0
+    } else {
+        require_keys_eq!(*token.owner, program, OnreError::InvalidTokenProgram);
+        let data = token.try_borrow_data()?;
+        let value = TokenAccount::try_deserialize(&mut data.as_ref())?;
+        require!(
+            value.mint == mint && value.owner == reference,
+            OnreError::InvalidConfigurableVaultTokenAccount
+        );
+        value.amount
+    };
     let data = vault.try_borrow_data()?;
     let refill_target_bps = if data.starts_with(VaultConfig::DISCRIMINATOR) {
         VaultConfig::try_deserialize(&mut data.as_ref())?.refill_target_bps
@@ -55,89 +100,55 @@ pub(super) fn validate(program_id: &Pubkey, a: &TakeOffer) -> Result<LiquidityCo
         refill_target_bps <= crate::constants::MAX_BASIS_POINTS,
         OnreError::InvalidAmount
     );
-    Ok(LiquidityContext {
+    Ok(VaultContext {
         balance,
         refill_target_bps,
     })
 }
 
-fn balance(a: &TakeOffer, token: &UncheckedAccount, authority: &Pubkey) -> Result<u64> {
-    let mint = a.asset_mint().key();
-    let program = a.asset_program().key();
-    require_keys_eq!(
-        token.key(),
-        get_associated_token_address_with_program_id(authority, &mint, &program),
-        OnreError::InvalidConfigurableVaultTokenAccount
-    );
-    if token.data_is_empty() {
-        require_keys_eq!(
-            *token.owner,
-            System::id(),
-            OnreError::InvalidConfigurableVaultTokenAccount
-        );
-        return Ok(0);
-    }
-    require_keys_eq!(*token.owner, program, OnreError::InvalidTokenProgram);
-    let data = token.try_borrow_data()?;
-    let value = TokenAccount::try_deserialize(&mut data.as_ref())?;
-    require!(
-        value.mint == mint && value.owner == *authority,
-        OnreError::InvalidConfigurableVaultTokenAccount
-    );
-    Ok(value.amount)
-}
-
+/// Pay output exclusively from the configured source, using its validated seeds.
 pub(super) fn consume<'info>(
     a: &TakeOffer<'info>,
-    balance: u64,
     amount: u64,
     destination: &InterfaceAccount<'info, TokenAccount>,
 ) -> Result<()> {
-    require!(amount <= balance, OnreError::InsufficientBalance);
     let vault = a
-        .liquidity_vault
+        .source_vault
         .as_ref()
         .ok_or(OnreError::LiquidityVaultRequired)?;
     let token = a
-        .liquidity_token
+        .source_token_out
         .as_ref()
         .ok_or(OnreError::InvalidConfigurableVaultTokenAccount)?;
-    let authority = validate_liquidity_vault(&vault.to_account_info(), &ID)?;
-    let signer_seeds = authority.signer_seeds();
-    transfer(
-        a,
-        token,
-        destination,
-        vault.to_account_info(),
-        &signer_seeds,
-        amount,
-    )
-}
-
-fn transfer<'info>(
-    a: &TakeOffer<'info>,
-    token: &UncheckedAccount<'info>,
-    destination: &InterfaceAccount<'info, TokenAccount>,
-    authority: AccountInfo<'info>,
-    seeds: &[&[u8]],
-    amount: u64,
-) -> Result<()> {
-    let accounts = TransferChecked {
-        mint: a.token_out_mint.to_account_info(),
-        from: token.to_account_info(),
-        to: destination.to_account_info(),
-        authority,
+    // BUFFER can mint into a selected legacy fee vault after quote validation.
+    // Read its actual post-accrual inventory rather than a cached pre-accrual balance.
+    let balance = if token.data_is_empty() {
+        0
+    } else {
+        TokenAccount::try_deserialize(&mut token.try_borrow_data()?.as_ref())?.amount
     };
+    require!(amount <= balance, OnreError::InsufficientBalance);
+    let authority = validate_liquidity_vault(&vault.to_account_info(), &ID)?;
+    let seeds = authority.signer_seeds();
     token_interface::transfer_checked(
-        CpiContext::new_with_signer(a.token_out_program.key(), accounts, &[seeds]),
+        CpiContext::new_with_signer(
+            a.token_out_program.key(),
+            TransferChecked {
+                mint: a.token_out_mint.to_account_info(),
+                from: token.to_account_info(),
+                to: destination.to_account_info(),
+                authority: vault.to_account_info(),
+            },
+            &[&seeds],
+        ),
         amount,
         a.token_out_mint.decimals,
     )
 }
 
-/// Fund only the selected asset ATA. Validation already checked its canonical
-/// address; initialize it lazily only when a positive refill is actually needed.
-pub(super) fn refill<'info>(
+/// Deposit input into the exact configured destination. Buys call with the TVL
+/// refill deficit; sells call with the full net managed input instead of burning.
+pub(super) fn deposit_destination<'info>(
     a: &TakeOffer<'info>,
     input: &InterfaceAccount<'info, TokenAccount>,
     input_authority: &AccountInfo<'info>,
@@ -148,11 +159,11 @@ pub(super) fn refill<'info>(
         return Ok(());
     }
     let vault = a
-        .liquidity_vault
+        .destination_vault
         .as_ref()
         .ok_or(OnreError::LiquidityVaultRequired)?;
     let token = a
-        .liquidity_token
+        .destination_token_in
         .as_ref()
         .ok_or(OnreError::InvalidConfigurableVaultTokenAccount)?;
     if *token.owner == System::id() {

@@ -3,6 +3,8 @@ mod common;
 mod modular_prop_amm;
 #[path = "modular_take_offer/permissionless.rs"]
 mod permissionless;
+#[path = "modular_take_offer/vault_roles.rs"]
+mod vault_roles;
 
 use anchor_lang::{
     AccountDeserialize, AccountSerialize, AnchorDeserialize, InstructionData, ToAccountMetas,
@@ -212,7 +214,8 @@ impl Fixture {
                 prop_amm_state: None,
                 fee_config: fee,
                 proceeds_vault: vault(VaultKind::Proceeds),
-                liquidity_vault: None,
+                source_vault: None,
+                destination_vault: None,
                 offer_config: offer,
                 state: find_state_pda().0,
                 boss: key,
@@ -298,6 +301,21 @@ impl Fixture {
         kind: QuoterKind,
         liquidity: Option<Pubkey>,
     ) {
+        let (source, destination) = match direction {
+            OfferDirection::AssetToManaged => (None, liquidity),
+            OfferDirection::ManagedToAsset => (liquidity, None),
+        };
+        self.create_route_with_vaults(direction, flow, kind, source, destination);
+    }
+
+    fn create_route_with_vaults(
+        &mut self,
+        direction: OfferDirection,
+        flow: OfferFlow,
+        kind: QuoterKind,
+        source: Option<Pubkey>,
+        destination: Option<Pubkey>,
+    ) {
         let quoter = pda(&[b"quoter", &[kind as u8], &0_u64.to_le_bytes()]);
         if self.svm.get_account(&quoter).is_none() {
             let instruction = ix(
@@ -354,7 +372,8 @@ impl Fixture {
         // handler; changing a component here only prepares an unsupported-path test.
         if offer == self.offer {
             edit::<OfferConfig>(&mut self.svm, offer, |c| {
-                c.liquidity_vault = liquidity.unwrap_or_default();
+                c.source_vault = source.unwrap_or_default();
+                c.destination_vault = destination.unwrap_or_default();
             });
         } else {
             let instruction = ix(
@@ -368,7 +387,8 @@ impl Fixture {
                     prop_amm_state,
                     fee_config: self.fee,
                     proceeds_vault: vault(VaultKind::Proceeds),
-                    liquidity_vault: liquidity,
+                    source_vault: source,
+                    destination_vault: destination,
                     offer_config: offer,
                     state: find_state_pda().0,
                     boss: self.boss.pubkey(),
@@ -458,7 +478,8 @@ impl Fixture {
                 self.asset_program,
             ),
         };
-        let has_liquidity = config.liquidity_vault != Pubkey::default();
+        let has_source = config.source_vault != Pubkey::default();
+        let has_destination = config.destination_vault != Pubkey::default();
         let [reserve, management, performance] = self
             .buffer_vaults()
             .map(|v| derive_ata(&v, &self.mint, &self.token_program));
@@ -510,9 +531,12 @@ impl Fixture {
                 system_program: SYSTEM_PROGRAM_ID,
                 prop_amm_state: (config.pressure_state != Pubkey::default())
                     .then_some(config.pressure_state),
-                liquidity_vault: has_liquidity.then_some(config.liquidity_vault),
-                liquidity_token: has_liquidity
-                    .then(|| derive_ata(&config.liquidity_vault, &self.asset, &self.asset_program)),
+                source_vault: has_source.then_some(config.source_vault),
+                source_token_out: has_source
+                    .then(|| derive_ata(&config.source_vault, &token_out, &out_program)),
+                destination_vault: has_destination.then_some(config.destination_vault),
+                destination_token_in: has_destination
+                    .then(|| derive_ata(&config.destination_vault, &token_in, &in_program)),
                 permissionless_authority: (config.flow == OfferFlow::Permissionless)
                     .then(|| find_permissionless_authority_pda().0),
                 permissionless_token_in: (config.flow == OfferFlow::Permissionless).then(|| {
@@ -1145,7 +1169,7 @@ fn one_entrypoint_executes_both_directions_and_buffer_tracks_the_managed_input()
         let event = executed_event(&result);
         assert_eq!(event.direction, OfferDirection::ManagedToAsset);
         assert_eq!(event.proceeds_amount, 0);
-        assert_eq!(event.liquidity_amount, 1_960_200);
+        assert_eq!(event.source_amount, 1_960_200);
         assert!(f
             .svm
             .get_account(&derive_ata(
@@ -1194,7 +1218,7 @@ fn onyc_uses_only_selected_liquidity_and_keeps_the_legacy_buffer() {
         let instruction = f.take(1_000_000_000, 1_980_000);
         let paid = if succeeds {
             let result = f.send(instruction).unwrap();
-            assert_eq!(executed_event(&result).liquidity_amount, 1_980_000);
+            assert_eq!(executed_event(&result).source_amount, 1_980_000);
             1_980_000
         } else {
             assert_error(f.send(instruction), OnreError::InsufficientBalance);
@@ -1408,7 +1432,7 @@ fn offers_can_share_a_preexisting_modular_or_legacy_liquidity_vault() {
                     f.send_without_approval(instruction)
                 }
                 .unwrap();
-                assert_eq!(executed_event(&result).liquidity_amount, 990_000);
+                assert_eq!(executed_event(&result).source_amount, 990_000);
             }
             assert_eq!(f.balance(f.asset, selected, f.asset_program), 1_020_000);
             assert_eq!(
@@ -1449,7 +1473,7 @@ fn modular_offers_can_explicitly_share_the_old_redemption_vault() {
                 f.send_without_approval(instruction)
             }
             .unwrap();
-            assert_eq!(executed_event(&result).liquidity_amount, 990_000);
+            assert_eq!(executed_event(&result).source_amount, 990_000);
         }
         assert_eq!(f.balance(f.asset, selected, f.asset_program), 1_020_000);
         assert_eq!(
