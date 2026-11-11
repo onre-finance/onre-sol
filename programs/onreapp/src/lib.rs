@@ -3,7 +3,10 @@
 
 use anchor_lang::prelude::*;
 use instructions::*;
-use model::{OfferFlow, PricingDenomination, PricingVector, PropAmmConfig, QuoterKind, VaultKind};
+use model::{
+    BufferSettings, OfferFlow, PricingDenomination, PricingVector, PropAmmConfig, QuoterKind,
+    VaultKind,
+};
 use state::ConfigurableVaultKind;
 use utils::ApprovalMessage;
 
@@ -202,6 +205,27 @@ pub mod onreapp {
     /// Boss-configured pair pressure tracking, independent of NAV/PropAmm quote selection.
     pub fn set_offer_pressure_state(ctx: Context<SetOfferPressureState>) -> Result<()> {
         configuration::set_offer_pressure_state(ctx)
+    }
+
+    /// Boss-only atomic ONyc BUFFER cutover: settle legacy accounting, move all
+    /// three vault balances, preserve state and activate the per-mint BUFFER.
+    pub fn cut_over_onyc_buffer(ctx: Context<CutOverOnycBuffer>) -> Result<()> {
+        managed_buffer::cut_over_onyc_buffer(ctx)
+    }
+
+    /// Worker-only BUFFER settlement for any registered mint; ONyc shares legacy
+    /// state/vaults until explicit cutover, then uses its per-mint BUFFER.
+    pub fn settle_managed_token_buffer(ctx: Context<SettleManagedTokenBuffer>) -> Result<()> {
+        managed_buffer::settle_managed_token_buffer(ctx)
+    }
+
+    /// Boss-only BUFFER policy update after settling the previous settings. ONyc
+    /// updates legacy state until cutover and per-mint state afterward.
+    pub fn set_managed_token_buffer_settings(
+        ctx: Context<SetManagedTokenBufferSettings>,
+        settings: BufferSettings,
+    ) -> Result<()> {
+        managed_buffer::set_managed_token_buffer_settings(ctx, settings)
     }
 
     /// Creates per-managed-mint BUFFER state and dedicated vault configurations; boss only.

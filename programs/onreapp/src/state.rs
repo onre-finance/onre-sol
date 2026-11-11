@@ -37,6 +37,22 @@ pub struct State {
     pub reserved: [u8; 56],
 }
 
+impl State {
+    /// Reserved byte zero selects native per-mint ONyc BUFFER after an explicit,
+    /// one-way cutover. Existing zeroed state keeps the legacy route unchanged.
+    pub(crate) fn modular_buffer_active(&self) -> bool {
+        self.reserved[0] == 1
+    }
+
+    pub(crate) fn require_legacy_buffer_active(&self) -> Result<()> {
+        require!(
+            !self.modular_buffer_active(),
+            crate::OnreError::LegacyBufferRetired
+        );
+        Ok(())
+    }
+}
+
 /// Program-derived authority for permissionless token routing operations
 ///
 /// This PDA manages intermediary accounts used for permissionless offer execution,

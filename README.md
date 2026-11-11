@@ -63,8 +63,11 @@ Sources pay output inventory; destinations receive net input. NAV buys can mint
 without a source and route input to Proceeds without a destination. Sells require
 an asset source and burn managed input only when no destination is configured.
 Both roles accept modular Liquidity, legacy ConfigurableVault or redemption custody.
-ONyc keeps its shared legacy BUFFER baseline; other managed mints use their per-mint
-BUFFER if initialized. V2 arguments and account lists remain unchanged.
+ONyc shares its legacy BUFFER state and vaults until a boss-only atomic cutover;
+other managed mints use their per-mint BUFFER if initialized. Standalone modular
+settlement/settings and the future cutover are documented in
+[BUFFER_COEXISTENCE.md](docs/BUFFER_COEXISTENCE.md). Existing V2 account lists stay
+unchanged; their legacy execution is retired only by the explicit ONyc cutover.
 [VaultConfig deposit and withdrawal instructions](docs/VAULT_CONFIG_OPERATIONS.md)
 support generic and per-mint BUFFER vaults. Anyone may deposit; withdrawals use the
 fixed destination, with boss authorization required for Liquidity and BufferReserve.

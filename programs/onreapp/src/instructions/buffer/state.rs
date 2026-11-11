@@ -22,3 +22,16 @@ pub struct BufferState {
     pub bump: u8,
     pub reserved: [u8; 135],
 }
+
+impl BufferState {
+    /// Reserved byte zero is the one-way retirement marker. The legacy account
+    /// layout is unchanged; only a successful atomic cutover sets this byte.
+    pub(crate) fn is_retired(&self) -> bool {
+        self.reserved[0] == 1
+    }
+
+    pub(crate) fn require_active(&self) -> Result<()> {
+        require!(!self.is_retired(), crate::OnreError::LegacyBufferRetired);
+        Ok(())
+    }
+}

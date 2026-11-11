@@ -169,6 +169,7 @@ pub fn open_swap_sell<'info>(
     token_in_amount: u64,
     minimum_out: u64,
 ) -> Result<()> {
+    ctx.accounts.state.require_legacy_buffer_active()?;
     validate_prop_amm_pair_for_side(
         ctx.program_id,
         &ctx.accounts.state,

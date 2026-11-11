@@ -1,10 +1,10 @@
 //! Token-wide valuation for refill and symmetric curve hard-wall targets.
-use super::TakeOffer;
+use super::{buffer, TakeOffer};
 use crate::{
     constants::{MAX_BASIS_POINTS, PRICE_DECIMALS},
     instructions::market_info::{
         calculate_circulating_supply, load_circulating_supply_excluded_balance_amount,
-        load_main_offer, offer_valuation_utils::compute_offer_current_price,
+        offer_valuation_utils::compute_offer_current_price,
     },
     model::{seeds::PRICER, PricingDenomination},
     utils::pricing::get_active_vector_and_current_price,
@@ -21,11 +21,7 @@ pub(super) fn target(a: &TakeOffer, bps: u16, now: u64) -> Result<u128> {
         return Ok(0);
     }
     let (supply, nav) = if a.managed_mint().key() == a.state.onyc_mint {
-        let offer = load_main_offer(
-            &ID,
-            a.main_offer.as_ref().ok_or(OnreError::InvalidMainOffer)?,
-            &a.state,
-        )?;
+        let offer = buffer::canonical_market_offer(&ID, a)?;
         let excluded = load_circulating_supply_excluded_balance_amount(
             &ID,
             &a.circulating_supply_excluded_balance.to_account_info(),

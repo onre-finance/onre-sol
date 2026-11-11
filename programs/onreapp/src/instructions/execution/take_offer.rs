@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     constants::seeds,
-    instructions::market_info::{load_main_offer, refresh_market_stats_pda},
+    instructions::market_info::refresh_market_stats_pda,
     model::{OfferDirection, OfferFlow, QuoterKind},
     utils::ApprovalMessage,
     OnreError,
@@ -140,11 +140,7 @@ pub fn take_offer(
     }
     if onyc {
         a.reload_managed_mint()?;
-        let offer = load_main_offer(
-            ctx.program_id,
-            a.main_offer.as_ref().ok_or(OnreError::InvalidMainOffer)?,
-            &a.state,
-        )?;
+        let offer = buffer::canonical_market_offer(ctx.program_id, a)?;
         require_keys_eq!(
             a.market_stats.key(),
             Pubkey::find_program_address(&[seeds::MARKET_STATS], ctx.program_id).0,

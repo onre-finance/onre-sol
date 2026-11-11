@@ -12,9 +12,10 @@ import {
 } from "../implementations";
 
 export function registerBufferCommands(program: Command): void {
+    program.addHelpText("after", "\nThese commands target the legacy ONyc BUFFER. After an explicit ONyc BUFFER cutover, use the modular settlement/settings instructions and per-mint vault operations from the generated IDL.");
     program
         .command("get")
-        .description("Fetch BUFFER state")
+        .description("Fetch legacy ONyc BUFFER state")
         .action(async (_, cmd) => {
             const opts = cmd.optsWithGlobals() as GlobalOptions;
             await executeBufferGet(opts);

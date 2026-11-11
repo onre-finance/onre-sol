@@ -136,8 +136,9 @@ pub struct TakeOffer<'info> {
     )]
     pub state: Box<Account<'info, State>>,
 
-    /// CHECK: Always required; handler validates the canonical address even when
-    /// uninitialized, preventing callers from skipping an active BUFFER.
+    /// CHECK: Always required at the address selected by global state. ONyc uses
+    /// legacy state until explicit cutover, then per-mint state; other mints use
+    /// per-mint state. A substitute cannot bypass initialized accrual.
     #[account(mut)]
     pub buffer_state: UncheckedAccount<'info>,
 
@@ -146,7 +147,8 @@ pub struct TakeOffer<'info> {
     /// The offer's independently selected Pricer does not control token-wide accrual.
     pub buffer_pricer: Option<Box<Account<'info, Pricer>>>,
 
-    /// CHECK: Required for ONyc execution; checked against State::main_offer.
+    /// CHECK: Required for ONyc during coexistence; checked against State::main_offer.
+    /// After cutover canonical buffer_pricer supplies valuation, so this may be omitted.
     pub main_offer: Option<UncheckedAccount<'info>>,
 
     /// CHECK: ONyc execution validates and refreshes the legacy canonical snapshot.

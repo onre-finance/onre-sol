@@ -10,7 +10,8 @@ offer exists and explicitly uses that tracker. Creation and execution do not
 require a counterpart account.
 Separate quoter instances have separate accounting even if they use the same
 custody. Permissioned offers still require `Nav`; worker execution remains
-unsupported. Legacy Prop AMM entrypoints, accounts and tracker behavior are unchanged.
+unsupported. Legacy Prop AMM accounts and tracker math are unchanged. Legacy
+execution retains its behavior until the explicit BUFFER cutover below.
 
 ## Pressure link and symmetric pricing
 
@@ -64,7 +65,7 @@ Output rounds down. Zero output, insufficient raw liquidity, or output below
 Opposite trades offset current net volume but do not erase cadence or already
 carried previous-epoch pressure. Both directional counts advance on linked trades.
 The integer curve and cadence math is shared with the legacy implementation;
-the symmetric policy and tracker are modular and leave legacy behavior unchanged.
+the symmetric policy and tracker are modular; legacy pricing and pressure math are unchanged.
 
 ## Fixed epoch boundaries
 
@@ -103,7 +104,8 @@ proceeds = net_asset_input - refill
 ```
 
 TVL here is in managed-token base units before asset decimal conversion.
-ONyc uses `State::main_offer` NAV and the canonical cached excluded balance, with
+ONyc uses `State::main_offer` NAV during coexistence and canonical USD Pricer
+instance zero after cutover, together with the canonical cached excluded balance and
 the existing cache freshness assumptions. Other managed mints use full mint
 supply and the enabled USD instance-zero Pricer; per-mint supply-exclusion
 configuration is not implemented. When the offer selects another Pricer, supply
@@ -124,8 +126,10 @@ quoter alone does not link their custody references.
 `proceeds_amount` reports the remainder. `source_amount` and `destination_amount`
 report the actual inventory payout and input deposit in their respective mint units. Existing slippage, deadline, kill-switch,
 mint-authority, issuance-limit, fee and transfer-fee controls remain enforced.
-ONyc still shares its original BUFFER accounts with V2; other managed tokens use
-their initialized per-mint BUFFER. No live market configuration is created by
+ONyc shares its original BUFFER accounts with V2 until the explicit
+[BUFFER cutover](BUFFER_COEXISTENCE.md); afterward modular execution uses per-mint
+state and legacy execution is retired. Other managed tokens use their initialized
+per-mint BUFFER. No live market configuration is created by
 this implementation, and the CLI still uses V2 entrypoints.
 
 ## Fresh modular layout
@@ -137,7 +141,8 @@ There is no migration requirement for these new accounts. New modular clients
 use the generated IDL/types.
 
 The existing `take_offer_v2`, `take_offer_permissionless_v2`, `open_swap_buy`, and
-`open_swap_sell` retain their account lists and runtime behavior. Legacy Offer,
+`open_swap_sell` retain their account lists and runtime behavior until explicit
+BUFFER cutover, which retires legacy execution. Legacy Offer,
 PropAmmPairState, ConfigurableVault and BUFFER layouts remain unchanged.
 
 Production snapshot checks, representative transaction links, and the

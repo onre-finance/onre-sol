@@ -17,7 +17,9 @@ in `quote.rs`, symmetric curve/accounting in `prop_amm.rs`, liquidity targets in
 Configured extension accounts are validated before dispatch; supplying them does
 not enable unfinished paths.
 
-V2 instructions, their data, accounts, events, and legacy layouts remain unchanged.
+V2 instruction data, accounts, events, and legacy layouts remain unchanged.
+Legacy execution retains its behavior until the explicit ONyc BUFFER cutover,
+which retires it as described below.
 The retired V1 name is reused with a different ABI; old V1 transactions remain
 invalid. The CLI still calls V2. Generated IDL/types expose the new instructions.
 
@@ -157,13 +159,17 @@ fee, output, price, actual liquidity refill, remaining proceeds, output inventor
 `buffer_state` is mandatory at the canonical address even when uninitialized.
 Supplying an empty substitute cannot bypass an initialized BUFFER.
 
-When the managed side is `State::onyc_mint`, provide the existing `["buffer_state"]`
+During coexistence, when the managed side is `State::onyc_mint`, provide the existing `["buffer_state"]`
 account and the three legacy BUFFER ATAs. `main_offer` must be `State::main_offer`; it supplies
 canonical BUFFER valuation and reporting, independently of the offer's Pricer.
-New mint/burn execution and V2 use one supply baseline, watermark, and clock. A separate
-per-mint ONyc BUFFER record remains inactive during coexistence. Execution in either direction
-also refreshes the existing MarketStats snapshot using the legacy main offer and
-the canonical cached excluded balance, with the same freshness assumptions as V2.
+New mint/burn execution and V2 use one supply baseline, watermark, and clock.
+A prepared per-mint ONyc BUFFER remains inactive until the explicit
+[atomic cutover](BUFFER_COEXISTENCE.md). After cutover, global state requires
+per-mint BUFFER/vault accounts and canonical Pricer; `main_offer` may be omitted,
+and legacy execution is retired. Execution in either direction
+also refreshes the existing MarketStats snapshot using the canonical cached excluded
+balance. Its valuation source is the legacy main offer during coexistence and the
+canonical modular Pricer after cutover. The excluded-cache freshness policy is unchanged.
 
 Other managed mints use `["buffer", managed_mint]`. When initialized,
 `buffer_pricer` must be the enabled canonical USD instance-zero Pricer, and the
@@ -218,7 +224,7 @@ remains available during the kill switch. Eviction and deletion are deferred.
 
 ## Next layers
 
-Worker fulfillment, component updates, and legacy-entrypoint disabling remain
-separate work. This instruction adds no automatic offer binding or bulk custody
+Worker fulfillment and component updates remain separate work. ONyc BUFFER's
+explicit cutover retires the legacy execution paths as documented above. This instruction adds no automatic offer binding or bulk custody
 migration. Existing liquidity is used only when explicitly selected for settlement
 or moved separately.

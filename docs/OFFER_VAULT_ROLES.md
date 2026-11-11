@@ -55,7 +55,8 @@ Source payout reads inventory after BUFFER accrual, including tokens accrued int
 a selected legacy fee vault. BUFFER records actual post-execution supply for all
 four mint/burn/inventory cases. ONyc uses its singleton BUFFER; other managed
 mints use their per-mint BUFFER. Retained input and inventory output do not change
-mint supply. All transfers, fee payments, accounting and ATA creation roll back
+mint supply. ONyc switches to per-mint BUFFER only through the explicit
+[atomic cutover](BUFFER_COEXISTENCE.md). All transfers, fee payments, accounting and ATA creation roll back
 if any step fails.
 
 `OfferExecutedEvent.source_amount` reports output paid from inventory;
@@ -74,7 +75,7 @@ TakeOffer and OfferExecutedEvent definitions in the updated IDL/types.
 The compatibility requirement is to preserve `take_offer_v2`,
 `take_offer_permissionless_v2`, `open_swap_buy`, and `open_swap_sell` exactly:
 instruction data, account lists/flags, legacy account layouts, PDA identities,
-fees, pricing, custody, mint/burn and BUFFER behavior. These entrypoints continue
-using their existing handlers and account types; they do not read the new vault
-references. Existing clients for these four paths need no changes for this work.
+fees, pricing, custody, mint/burn and BUFFER behavior during coexistence. These
+entrypoints retain their handlers/account types and do not read the new vault
+references; the explicit ONyc BUFFER cutover retires their execution afterward. Existing clients for these four paths need no changes for this work.
 The CLI continues using V2 and has no modular-offer setup commands.

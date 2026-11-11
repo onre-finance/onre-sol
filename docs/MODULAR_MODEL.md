@@ -5,13 +5,16 @@ Status: reusable configuration creation is implemented in
 using the layouts in [`model/`](../programs/onreapp/src/model/mod.rs).
 The first modular execution path, `take_offer`, and boss-authorized
 `add_pricer_vector` are described in [`MODULAR_TAKE_OFFER.md`](MODULAR_TAKE_OFFER.md).
-V2 trading and its account lists remain unchanged. Permissioned and permissionless
+V2 account lists stay unchanged; legacy trading behavior is retained until the
+explicit ONyc BUFFER cutover retires legacy execution. Permissioned and permissionless
 NAV execution supports both directions; payouts use only the selected liquidity vault.
 ONyc execution shares the legacy
 BUFFER baseline and reporting snapshot. Other managed mints use their per-mint
 BUFFER when initialized. Permissionless Prop AMM execution and optional buy-side
 liquidity refill are implemented in [`MODULAR_PROP_AMM.md`](MODULAR_PROP_AMM.md).
-Worker settlement and custody migration remain deferred.
+Modular BUFFER worker settlement/settings and the explicit ONyc cutover are
+implemented in [BUFFER_COEXISTENCE.md](BUFFER_COEXISTENCE.md). Worker redemption
+settlement and other custody migration remain deferred.
 The legacy runtime remains documented in [`DOMAIN_MODEL.md`](DOMAIN_MODEL.md).
 
 The reference is the current `onre-evm` checkout:
@@ -300,7 +303,10 @@ Initialization creates no ATAs, moves no funds, and does not accrue or mint.
 The legacy `initialize_buffer` and `settle_buffer` still use the singleton
 `["buffer_state"]`, `State::onyc_mint`, and legacy vaults. Creating new per-token
 ONyc state does not activate it or synchronize it with the legacy baseline; modular
-ONyc execution always uses the singleton and its existing vaults. Other managed
+ONyc execution uses the singleton and its existing vaults until an explicit
+`cut_over_onyc_buffer` atomically activates the per-mint state and moves all three
+balances. Standalone modular configuration/settlement shares whichever state is
+active; there is never a second accruing ONyc copy. Other managed
 mints use their initialized per-mint BUFFER in modular execution. Ordinary mint
 and burn paths need explicit supply reconciliation: SPL mints do not provide
 the EVM ManagedToken supply-change callback. Issuance limits therefore live in
@@ -338,8 +344,9 @@ New modular clients use the generated IDL/types. OfferConfig has a 294-byte body
 PropAmmState a 203-byte body, and Pricer a 443-byte body (451 with discriminator).
 
 The existing `take_offer_v2`, `take_offer_permissionless_v2`, `open_swap_buy`, and
-`open_swap_sell` paths retain their instruction data, account lists, pricing, fees,
-custody and mint/burn/BUFFER behavior. They do not resolve the new modular vault
+`open_swap_sell` paths retain their instruction data and account lists. Their
+pricing, fees, custody and mint/burn/BUFFER behavior stays unchanged until the
+explicit ONyc cutover retires legacy execution. They do not resolve the new modular vault
 references. Existing clients and accounts for those four paths remain valid.
 
 Later compatibility work must define how legacy instructions resolve the shared
@@ -353,4 +360,5 @@ to the vault selected by the offer; old redemption liquidity is not automaticall
 included. Modular Prop AMM state is independent of the legacy pressure tracker.
 Permissionless NAV uses the existing intermediary PDA and its mint-specific ATAs.
 Modular Prop AMM and buy-side refill are implemented. Worker settlement, component
-replacement, migration controls, and CLI changes remain deferred.
+replacement and CLI changes remain deferred. ONyc BUFFER has explicit atomic
+cutover controls; see the coexistence document.

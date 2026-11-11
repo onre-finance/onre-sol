@@ -16,7 +16,7 @@ pub mod seeds;
 pub mod supply_exclusions;
 pub mod vault;
 
-pub use buffer::ManagedTokenBufferState;
+pub use buffer::{BufferSettings, ManagedTokenBufferState};
 pub use fee::FeeConfig;
 pub use fulfillment::FulfillmentRequest;
 pub use managed_token::ManagedTokenConfig;

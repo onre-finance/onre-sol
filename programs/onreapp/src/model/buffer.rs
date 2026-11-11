@@ -18,3 +18,13 @@ pub struct ManagedTokenBufferState {
     pub performance_fee_high_watermark_enabled: bool,
     pub bump: u8,
 }
+
+/// BUFFER policy shared by legacy ONyc and native per-mint modular operations.
+#[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BufferSettings {
+    /// Annual gross rate, scale 6; maximum 1_000_000.
+    pub gross_apr: u64,
+    pub management_fee_basis_points: u16,
+    pub performance_fee_basis_points: u16,
+    pub performance_fee_high_watermark_enabled: bool,
+}

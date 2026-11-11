@@ -1,3 +1,5 @@
+#[path = "modular_take_offer/buffer_coexistence.rs"]
+mod buffer_coexistence;
 mod common;
 #[path = "modular_take_offer/prop_amm.rs"]
 mod modular_prop_amm;
@@ -433,14 +435,14 @@ impl Fixture {
     }
 
     fn buffer(&self) -> Pubkey {
-        if self.onyc {
+        if self.onyc && read::<GlobalState>(&self.svm, find_state_pda().0).reserved[0] == 0 {
             find_buffer_state_pda().0
         } else {
             pda(&[b"buffer", self.mint.as_ref()])
         }
     }
     fn buffer_vaults(&self) -> [Pubkey; 3] {
-        if self.onyc {
+        if self.onyc && read::<GlobalState>(&self.svm, find_state_pda().0).reserved[0] == 0 {
             [
                 find_reserve_vault_authority_pda().0,
                 find_management_fee_vault_pda().0,
@@ -507,12 +509,16 @@ impl Fixture {
                 mint_authority: find_mint_authority_pda().0,
                 state: find_state_pda().0,
                 buffer_state: self.buffer(),
-                buffer_pricer: if self.onyc {
+                buffer_pricer: if self.onyc
+                    && read::<GlobalState>(&self.svm, find_state_pda().0).reserved[0] == 0
+                {
                     None
                 } else {
                     Some(price(self.mint, 0))
                 },
-                main_offer: if self.onyc {
+                main_offer: if self.onyc
+                    && read::<GlobalState>(&self.svm, find_state_pda().0).reserved[0] == 0
+                {
                     Some(read::<GlobalState>(&self.svm, find_state_pda().0).main_offer)
                 } else {
                     None

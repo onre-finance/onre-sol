@@ -1,12 +1,12 @@
 # BUFFER Accrual
 
-This document describes the active legacy BUFFER accrual model around ONyc supply
-changes. The new `initialize_managed_token_buffer` instruction creates separate
-per-mint configuration under `["buffer", managed_mint]`. The new
-[`take_offer`](MODULAR_TAKE_OFFER.md) uses it for other managed mints, while ONyc
-keeps the legacy singleton baseline during V2 coexistence. Initialization does not
-activate new accrual or migrate this singleton state. See
-[`MODULAR_MODEL.md`](MODULAR_MODEL.md) for the initialization boundary.
+This document describes the shared accrual math and legacy ONyc lifecycle.
+[BUFFER_COEXISTENCE.md](BUFFER_COEXISTENCE.md) describes modular settlement/settings
+and the boss-only atomic cutover. Until cutover, legacy and modular ONyc execution
+use one singleton state and the same three vaults. After cutover, modular ONyc uses
+per-mint state, vaults and canonical Pricer; legacy accrual is retired. Other
+managed mints use their per-mint BUFFER. Initialization alone does not activate
+ONyc's prepared per-mint state or move custody.
 
 ## Why BUFFER Exists
 

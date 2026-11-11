@@ -2416,6 +2416,756 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "cutOverOnycBuffer",
+      "docs": [
+        "Boss-only atomic ONyc BUFFER cutover: settle legacy accounting, move all",
+        "three vault balances, preserve state and activate the per-mint BUFFER."
+      ],
+      "discriminator": [
+        201,
+        243,
+        100,
+        204,
+        184,
+        215,
+        184,
+        173
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "managedToken",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "managedMint",
+          "writable": true
+        },
+        {
+          "name": "mintAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "legacyBufferState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mainOffer"
+        },
+        {
+          "name": "pricer"
+        },
+        {
+          "name": "legacyReserveAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  115,
+                  101,
+                  114,
+                  118,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "legacyManagementVault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103,
+                  117,
+                  114,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  102,
+                  101,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "legacyPerformanceVault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103,
+                  117,
+                  114,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  102,
+                  111,
+                  114,
+                  109,
+                  97,
+                  110,
+                  99,
+                  101,
+                  95,
+                  102,
+                  101,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "legacyReserveToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "legacyReserveAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "legacyManagementToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "legacyManagementVault"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "legacyPerformanceToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "legacyPerformanceVault"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "reserveVault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  114,
+                  101,
+                  115,
+                  101,
+                  114,
+                  118,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "managementFeeVault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "performanceFeeVault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  112,
+                  101,
+                  114,
+                  102,
+                  111,
+                  114,
+                  109,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reserveToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "reserveVault"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "managementToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "managementFeeVault"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "performanceToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "performanceFeeVault"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "marketStats",
+          "writable": true
+        },
+        {
+          "name": "circulatingSupplyExcludedBalance"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "deleteAllOfferVectors",
       "docs": [
         "Deletes all time vectors from an offer.",
@@ -8690,6 +9440,169 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "setManagedTokenBufferSettings",
+      "docs": [
+        "Boss-only BUFFER policy update after settling the previous settings. ONyc",
+        "updates legacy state until cutover and per-mint state afterward."
+      ],
+      "discriminator": [
+        131,
+        191,
+        30,
+        158,
+        118,
+        151,
+        186,
+        245
+      ],
+      "accounts": [
+        {
+          "name": "bufferAccounts",
+          "accounts": [
+            {
+              "name": "state",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      115,
+                      116,
+                      97,
+                      116,
+                      101
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "name": "managedToken",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      109,
+                      97,
+                      110,
+                      97,
+                      103,
+                      101,
+                      100,
+                      95,
+                      116,
+                      111,
+                      107,
+                      101,
+                      110
+                    ]
+                  },
+                  {
+                    "kind": "account",
+                    "path": "managedMint"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "managedMint",
+              "writable": true
+            },
+            {
+              "name": "mintAuthority",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      109,
+                      105,
+                      110,
+                      116,
+                      95,
+                      97,
+                      117,
+                      116,
+                      104,
+                      111,
+                      114,
+                      105,
+                      116,
+                      121
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "name": "tokenProgram"
+            },
+            {
+              "name": "bufferState",
+              "docs": [
+                "owner/discriminator and embedded mint. Standalone operations require initialized state."
+              ],
+              "writable": true
+            },
+            {
+              "name": "bufferPricer",
+              "docs": [
+                "Canonical USD instance-zero Pricer for native per-mint BUFFER.",
+                "ONyc coexistence continues reading State.main_offer instead."
+              ],
+              "optional": true
+            },
+            {
+              "name": "mainOffer",
+              "docs": [
+                "and its mint pair. May be omitted after cutover and for other managed mints."
+              ],
+              "optional": true
+            },
+            {
+              "name": "reserveToken",
+              "writable": true
+            },
+            {
+              "name": "managementToken",
+              "writable": true
+            },
+            {
+              "name": "performanceToken",
+              "writable": true
+            }
+          ]
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "marketStats",
+          "writable": true
+        },
+        {
+          "name": "circulatingSupplyExcludedBalance"
+        }
+      ],
+      "args": [
+        {
+          "name": "settings",
+          "type": {
+            "defined": {
+              "name": "bufferSettings"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "setOfferDisabled",
       "docs": [
         "Enables or disables one offer.",
@@ -9156,6 +10069,160 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "settleManagedTokenBuffer",
+      "docs": [
+        "Worker-only BUFFER settlement for any registered mint; ONyc shares legacy",
+        "state/vaults until explicit cutover, then uses its per-mint BUFFER."
+      ],
+      "discriminator": [
+        117,
+        64,
+        145,
+        103,
+        236,
+        3,
+        89,
+        32
+      ],
+      "accounts": [
+        {
+          "name": "bufferAccounts",
+          "accounts": [
+            {
+              "name": "state",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      115,
+                      116,
+                      97,
+                      116,
+                      101
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "name": "managedToken",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      109,
+                      97,
+                      110,
+                      97,
+                      103,
+                      101,
+                      100,
+                      95,
+                      116,
+                      111,
+                      107,
+                      101,
+                      110
+                    ]
+                  },
+                  {
+                    "kind": "account",
+                    "path": "managedMint"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "managedMint",
+              "writable": true
+            },
+            {
+              "name": "mintAuthority",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      109,
+                      105,
+                      110,
+                      116,
+                      95,
+                      97,
+                      117,
+                      116,
+                      104,
+                      111,
+                      114,
+                      105,
+                      116,
+                      121
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "name": "tokenProgram"
+            },
+            {
+              "name": "bufferState",
+              "docs": [
+                "owner/discriminator and embedded mint. Standalone operations require initialized state."
+              ],
+              "writable": true
+            },
+            {
+              "name": "bufferPricer",
+              "docs": [
+                "Canonical USD instance-zero Pricer for native per-mint BUFFER.",
+                "ONyc coexistence continues reading State.main_offer instead."
+              ],
+              "optional": true
+            },
+            {
+              "name": "mainOffer",
+              "docs": [
+                "and its mint pair. May be omitted after cutover and for other managed mints."
+              ],
+              "optional": true
+            },
+            {
+              "name": "reserveToken",
+              "writable": true
+            },
+            {
+              "name": "managementToken",
+              "writable": true
+            },
+            {
+              "name": "performanceToken",
+              "writable": true
+            }
+          ]
+        },
+        {
+          "name": "worker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "marketStats",
+          "writable": true
+        },
+        {
+          "name": "circulatingSupplyExcludedBalance"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "takeOffer",
       "docs": [
         "Execute an offer using reusable model accounts.",
@@ -9524,7 +10591,8 @@ export type Onreapp = {
         {
           "name": "bufferState",
           "docs": [
-            "uninitialized, preventing callers from skipping an active BUFFER."
+            "legacy state until explicit cutover, then per-mint state; other mints use",
+            "per-mint state. A substitute cannot bypass initialized accrual."
           ],
           "writable": true
         },
@@ -9539,6 +10607,9 @@ export type Onreapp = {
         },
         {
           "name": "mainOffer",
+          "docs": [
+            "After cutover canonical buffer_pricer supplies valuation, so this may be omitted."
+          ],
           "optional": true
         },
         {
@@ -12589,6 +13660,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "managedTokenBufferSettingsSetEvent",
+      "discriminator": [
+        32,
+        33,
+        245,
+        178,
+        111,
+        96,
+        204,
+        111
+      ]
+    },
+    {
       "name": "managedTokenRegisteredEvent",
       "discriminator": [
         27,
@@ -12859,6 +13943,19 @@ export type Onreapp = {
         24,
         100,
         243
+      ]
+    },
+    {
+      "name": "onycBufferCutOverEvent",
+      "discriminator": [
+        154,
+        197,
+        0,
+        210,
+        244,
+        254,
+        187,
+        38
       ]
     },
     {
@@ -13891,6 +14988,11 @@ export type Onreapp = {
       "code": 6145,
       "name": "unexpectedApproval",
       "msg": "Permissionless execution requires approval_message to be absent"
+    },
+    {
+      "code": 6146,
+      "name": "legacyBufferRetired",
+      "msg": "Legacy BUFFER is retired; use the active modular BUFFER accounts"
     }
   ],
   "types": [
@@ -14300,6 +15402,36 @@ export type Onreapp = {
           {
             "name": "timestamp",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bufferSettings",
+      "docs": [
+        "BUFFER policy shared by legacy ONyc and native per-mint modular operations."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "grossApr",
+            "docs": [
+              "Annual gross rate, scale 6; maximum 1_000_000."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "managementFeeBasisPoints",
+            "type": "u16"
+          },
+          {
+            "name": "performanceFeeBasisPoints",
+            "type": "u16"
+          },
+          {
+            "name": "performanceFeeHighWatermarkEnabled",
+            "type": "bool"
           }
         ]
       }
@@ -14806,6 +15938,46 @@ export type Onreapp = {
             "type": {
               "defined": {
                 "name": "managedTokenBufferState"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "managedTokenBufferSettingsSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "managedMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "bufferState",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous",
+            "type": {
+              "defined": {
+                "name": "bufferSettings"
+              }
+            }
+          },
+          {
+            "name": "settings",
+            "type": {
+              "defined": {
+                "name": "bufferSettings"
               }
             }
           },
@@ -16090,6 +17262,54 @@ export type Onreapp = {
               "Start time of the retired pricing vector"
             ],
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "onycBufferCutOverEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "managedMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "legacyBufferState",
+            "type": "pubkey"
+          },
+          {
+            "name": "bufferState",
+            "type": "pubkey"
+          },
+          {
+            "name": "reserveAmount",
+            "type": "u64"
+          },
+          {
+            "name": "managementAmount",
+            "type": "u64"
+          },
+          {
+            "name": "performanceAmount",
+            "type": "u64"
+          },
+          {
+            "name": "previousSupply",
+            "type": "u64"
+          },
+          {
+            "name": "performanceFeeHighWatermark",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
