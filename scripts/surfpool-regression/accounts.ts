@@ -80,8 +80,8 @@ export function buyAccounts(assetMint: PublicKey, user: PublicKey, mainOffer: Pu
         offerFeeTokenInAccount: configurableVaultAta("offerFee", assetMint),
         propAmmProceedsVault: configurableVaultPda("propAmmProceeds"),
         propAmmProceedsTokenInAccount: configurableVaultAta("propAmmProceeds", assetMint),
-        propAmmFeeVault: configurableVaultPda("propAmmFee"),
-        propAmmFeeTokenInAccount: configurableVaultAta("propAmmFee", assetMint),
+        propAmmBuyFeeVault: configurableVaultPda("propAmmBuyFee"),
+        propAmmBuyFeeTokenInAccount: configurableVaultAta("propAmmBuyFee", assetMint),
         permissionlessAuthority: PDAS.permissionlessAuthority,
         permissionlessTokenInAccount: ata(assetMint, PDAS.permissionlessAuthority, true, assetProgram),
         permissionlessTokenOutAccount: ata(MINTS.onyc, PDAS.permissionlessAuthority, true, onycProgram),
@@ -111,7 +111,8 @@ export function sellAccounts(assetMint: PublicKey, user: PublicKey, mainOffer: P
         redemptionVaultTokenInAccount: ata(MINTS.onyc, PDAS.redemptionVaultAuthority, true, onycProgram),
         redemptionVaultTokenOutAccount: ata(assetMint, PDAS.redemptionVaultAuthority, true, assetProgram),
         propAmmProceedsTokenInAccount: configurableVaultAta("propAmmProceeds", MINTS.onyc),
-        propAmmFeeTokenInAccount: configurableVaultAta("propAmmFee", MINTS.onyc),
+        propAmmSellFeeVault: configurableVaultPda("propAmmSellFee"),
+        propAmmSellFeeTokenInAccount: configurableVaultAta("propAmmSellFee", MINTS.onyc),
         offerVaultOnycAccount: ata(MINTS.onyc, PDAS.offerVaultAuthority, true, onycProgram),
     };
 }

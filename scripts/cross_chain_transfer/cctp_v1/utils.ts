@@ -19,15 +19,14 @@
 import "dotenv/config";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { hexlify } from "ethers";
-import fetch from "node-fetch";
-import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes/index.js";
+import { bs58 } from "@anchor-lang/core/dist/cjs/utils/bytes/index.js";
 
 import type { MessageTransmitter } from "./types/message_transmitter.ts";
 import type { TokenMessengerMinter } from "./types/token_messenger_minter.ts";
 import messageTransmitterIdl from "./idl/message_transmitter.json";
 import tokenMessengerMinterIdl from "./idl/token_messenger_minter.json";
-import anchor from "@coral-xyz/anchor";
-import { encode } from "@coral-xyz/anchor/dist/cjs/utils/bytes/utf8.js";
+import anchor from "@anchor-lang/core";
+import { encode } from "@anchor-lang/core/dist/cjs/utils/bytes/utf8.js";
 
 // IRIS API
 export const IRIS_API_URL = "https://iris-api.circle.com";

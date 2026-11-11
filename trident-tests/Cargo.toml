@@ -14,7 +14,7 @@ devnet-test = []
 devnet-dev = []
 
 [dependencies]
-borsh = "1.5.3"
+borsh = "1.8.1"
 
 [dependencies.trident-fuzz]
 version = "0.12.0"
