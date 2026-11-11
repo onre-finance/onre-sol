@@ -3,12 +3,14 @@
 
 use anchor_lang::prelude::*;
 use instructions::*;
+use model::{OfferFlow, PricingDenomination, PropAmmConfig, QuoterKind, VaultKind};
 use state::ConfigurableVaultKind;
 use utils::ApprovalMessage;
 
 pub mod constants;
 pub mod errors;
 pub mod instructions;
+pub mod model;
 pub mod state;
 pub mod utils;
 
@@ -92,6 +94,77 @@ pub use instructions::mint_authority::mint_to::MintTo;
 #[program]
 pub mod onreapp {
     use super::*;
+
+    /// Registers an existing mint in the reusable configuration model; boss only.
+    pub fn register_managed_token(ctx: Context<RegisterManagedToken>) -> Result<()> {
+        configuration::register_managed_token(ctx)
+    }
+
+    /// Creates an independent Pricer with no pricing vectors; boss only.
+    pub fn create_pricer(
+        ctx: Context<CreatePricer>,
+        instance_id: u64,
+        denomination: PricingDenomination,
+    ) -> Result<()> {
+        configuration::create_pricer(ctx, instance_id, denomination)
+    }
+
+    /// Creates a reusable NAV or Prop AMM quoter instance; boss only.
+    pub fn create_quoter(
+        ctx: Context<CreateQuoter>,
+        kind: QuoterKind,
+        instance_id: u64,
+    ) -> Result<()> {
+        configuration::create_quoter(ctx, kind, instance_id)
+    }
+
+    /// Creates a vault configuration without creating ATAs or moving tokens; boss only.
+    pub fn create_vault_config(
+        ctx: Context<CreateVaultConfig>,
+        kind: VaultKind,
+        instance_id: u64,
+        withdrawal_destination: Pubkey,
+        refill_target_bps: u16,
+    ) -> Result<()> {
+        configuration::create_vault_config(
+            ctx,
+            kind,
+            instance_id,
+            withdrawal_destination,
+            refill_target_bps,
+        )
+    }
+
+    /// Creates a reusable input-token fee policy with a Fee vault; boss only.
+    pub fn create_fee_config(
+        ctx: Context<CreateFeeConfig>,
+        instance_id: u64,
+        basis_points: u16,
+        minimum_fee_amount: u64,
+    ) -> Result<()> {
+        configuration::create_fee_config(ctx, instance_id, basis_points, minimum_fee_amount)
+    }
+
+    /// Creates immutable pair binding and initial pressure state for a Prop AMM quoter; boss only.
+    pub fn create_prop_amm_state(
+        ctx: Context<CreatePropAmmState>,
+        config: PropAmmConfig,
+    ) -> Result<()> {
+        configuration::create_prop_amm_state(ctx, config)
+    }
+
+    /// Creates a directed offer referencing compatible existing components; boss only.
+    pub fn create_offer_config(ctx: Context<CreateOfferConfig>, flow: OfferFlow) -> Result<()> {
+        configuration::create_offer_config(ctx, flow)
+    }
+
+    /// Creates per-managed-mint BUFFER state and dedicated vault configurations; boss only.
+    /// Existing singleton BUFFER settlement remains unchanged.
+    pub fn initialize_managed_token_buffer(
+        ctx: Context<InitializeManagedTokenBuffer>,
+    ) -> Result<()> {
+        configuration::initialize_managed_token_buffer(ctx)
+    }
 
     /// Initializes the program state and authority accounts.
     ///
