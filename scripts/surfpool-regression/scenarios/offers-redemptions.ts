@@ -1,4 +1,4 @@
-import { PublicKey, SYSVAR_INSTRUCTIONS_PUBKEY, SystemProgram } from "@solana/web3.js";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 import { ACTIVE_OFFERS, ACTIVE_REDEMPTIONS, MINTS, SMALL_ONYC_REDEMPTION_AMOUNT, SMALL_STABLE_AMOUNT } from "../constants";
@@ -13,8 +13,8 @@ export async function runOfferSmoke(runtime: SmokeRuntime, mainOffer: PublicKey)
     for (const offer of ACTIVE_OFFERS) {
         const beforeOnyc = await tokenBalance(runtime, ata(MINTS.onyc, runtime.authority.publicKey));
         const ix = await runtime.program.methods
-            .takeOfferPermissionless(bn(SMALL_STABLE_AMOUNT), null)
-            .accountsPartial(takeOfferPermissionlessAccounts(runtime, offer.mint))
+            .takeOfferPermissionlessV2(bn(SMALL_STABLE_AMOUNT))
+            .accountsPartial(takeOfferPermissionlessAccounts(runtime, offer.mint, mainOffer))
             .instruction();
 
         await sendIxs(runtime, `take ${offer.symbol}->ONYC permissionless`, [ix]);
@@ -78,7 +78,7 @@ export async function runRedemptionSmoke(runtime: SmokeRuntime, mainOffer: Publi
     }
 }
 
-function takeOfferPermissionlessAccounts(runtime: SmokeRuntime, assetMint: PublicKey) {
+function takeOfferPermissionlessAccounts(runtime: SmokeRuntime, assetMint: PublicKey, mainOffer: PublicKey) {
     const assetProgram = tokenProgramFor(assetMint);
     const onycProgram = tokenProgramFor(MINTS.onyc);
     const user = runtime.authority.publicKey;
@@ -86,7 +86,6 @@ function takeOfferPermissionlessAccounts(runtime: SmokeRuntime, assetMint: Publi
     return {
         offer: offerPda(assetMint, MINTS.onyc),
         state: PDAS.state,
-        boss: runtime.authority.publicKey,
         vaultAuthority: PDAS.offerVaultAuthority,
         vaultTokenInAccount: ata(assetMint, PDAS.offerVaultAuthority, true, assetProgram),
         vaultTokenOutAccount: ata(MINTS.onyc, PDAS.offerVaultAuthority, true, onycProgram),
@@ -99,9 +98,18 @@ function takeOfferPermissionlessAccounts(runtime: SmokeRuntime, assetMint: Publi
         tokenOutProgram: onycProgram,
         userTokenInAccount: ata(assetMint, user, false, assetProgram),
         userTokenOutAccount: ata(MINTS.onyc, user, false, onycProgram),
-        bossTokenInAccount: ata(assetMint, runtime.authority.publicKey, false, assetProgram),
+        redemptionOffer: redemptionOfferPda(MINTS.onyc, assetMint),
+        redemptionVaultAuthority: PDAS.redemptionVaultAuthority,
+        redemptionVaultTokenInAccount: ata(assetMint, PDAS.redemptionVaultAuthority, true, assetProgram),
+        offerProceedsVault: configurableVaultPda("offerProceeds"),
+        offerProceedsTokenInAccount: configurableVaultAta("offerProceeds", assetMint),
+        permissionlessOfferFeeVault: configurableVaultPda("permissionlessOfferFee"),
+        permissionlessOfferFeeTokenInAccount: configurableVaultAta("permissionlessOfferFee", assetMint),
+        bufferAccounts: bufferAccounts(),
+        marketStats: PDAS.marketStats,
+        circulatingSupplyExcludedBalance: PDAS.circulatingSupplyExcludedBalance,
+        mainOffer,
         mintAuthority: PDAS.mintAuthority,
-        instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
         user,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
