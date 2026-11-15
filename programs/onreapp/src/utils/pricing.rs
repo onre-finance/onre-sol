@@ -11,6 +11,57 @@ const INT_SCALE: u128 = 1_000_000_000_000_000_000;
 pub(crate) const SECONDS_IN_DAY: u64 = 86_400;
 const APR_SCALE: u128 = 1_000_000;
 
+pub struct NavAdjustmentSnapshot {
+    pub current_price: u64,
+    pub previous_price: Option<u64>,
+    pub adjustment: i64,
+}
+
+pub fn compute_signed_price_delta(current_price: u64, previous_price: u64) -> Result<i64> {
+    let delta = (current_price as i128)
+        .checked_sub(previous_price as i128)
+        .ok_or(OnreError::OverflowError)?;
+    i64::try_from(delta).map_err(|_| error!(OnreError::OverflowError))
+}
+
+/// Vector-transition adjustment, independent of legacy Offer or modular Pricer storage.
+pub fn nav_adjustment_snapshot(
+    vectors: impl IntoIterator<Item = PricingVector>,
+    active: &PricingVector,
+) -> Result<NavAdjustmentSnapshot> {
+    let price_at_transition = |vector: &PricingVector| {
+        calculate_step_price_at(
+            vector.apr,
+            vector.base_price,
+            vector.base_time,
+            vector.price_fix_duration,
+            active.start_time,
+        )
+    };
+    let current_price = price_at_transition(active)?;
+    let previous = vectors
+        .into_iter()
+        .filter(|v| v.start_time != 0 && v.start_time < active.start_time)
+        .max_by_key(|v| v.start_time);
+    let (previous_price, adjustment) = if let Some(previous) = previous {
+        let price = price_at_transition(&previous)?;
+        (
+            Some(price),
+            compute_signed_price_delta(current_price, price)?,
+        )
+    } else {
+        (
+            None,
+            i64::try_from(current_price).map_err(|_| error!(OnreError::OverflowError))?,
+        )
+    };
+    Ok(NavAdjustmentSnapshot {
+        current_price,
+        previous_price,
+        adjustment,
+    })
+}
+
 /// Select the latest started vector. Zero start time denotes an empty slot;
 /// vectors may contain gaps and need not be sorted. No allocation or count is needed.
 pub fn find_active_vector_at(
@@ -62,7 +113,7 @@ pub fn get_active_vector_and_current_price(
 ///
 /// # Returns
 /// * `Ok(u64)` - Calculated price with same scale as base_price
-/// * `Err(crate::OnreError::OverflowError)` - If arithmetic overflow occurs
+/// * `Err(OnreError::OverflowError)` - If arithmetic overflow occurs
 pub fn calculate_vector_price(apr: u64, base_price: u64, elapsed_time: u64) -> Result<u64> {
     if apr == 0 || elapsed_time == 0 {
         return Ok(base_price);
@@ -70,49 +121,49 @@ pub fn calculate_vector_price(apr: u64, base_price: u64, elapsed_time: u64) -> R
 
     let daily_increment = INT_SCALE
         .checked_mul(apr as u128)
-        .ok_or(crate::OnreError::OverflowError)?
+        .ok_or(OnreError::OverflowError)?
         .checked_add((APR_SCALE * 365) / 2)
-        .ok_or(crate::OnreError::OverflowError)?
+        .ok_or(OnreError::OverflowError)?
         .checked_div(APR_SCALE * 365)
-        .ok_or(crate::OnreError::OverflowError)?;
+        .ok_or(OnreError::OverflowError)?;
 
     let daily_factor = INT_SCALE
         .checked_add(daily_increment)
-        .ok_or(crate::OnreError::OverflowError)?;
+        .ok_or(OnreError::OverflowError)?;
 
     let full_days = elapsed_time / SECONDS_IN_DAY;
     let remaining_seconds = elapsed_time % SECONDS_IN_DAY;
 
     let full_day_factor =
-        pow_fixed(daily_factor, full_days, INT_SCALE).ok_or(crate::OnreError::OverflowError)?;
+        pow_fixed(daily_factor, full_days, INT_SCALE).ok_or(OnreError::OverflowError)?;
     let full_day_price = mul_div_round_u128(base_price as u128, full_day_factor, INT_SCALE)
-        .ok_or(crate::OnreError::OverflowError)?;
+        .ok_or(OnreError::OverflowError)?;
 
     if remaining_seconds == 0 {
         if full_day_price > u64::MAX as u128 {
-            return Err(error!(crate::OnreError::OverflowError));
+            return Err(error!(OnreError::OverflowError));
         }
 
         return Ok(full_day_price as u64);
     }
 
     let next_day_price = mul_div_round_u128(full_day_price, daily_factor, INT_SCALE)
-        .ok_or(crate::OnreError::OverflowError)?;
+        .ok_or(OnreError::OverflowError)?;
     let daily_delta = next_day_price
         .checked_sub(full_day_price)
-        .ok_or(crate::OnreError::OverflowError)?;
+        .ok_or(OnreError::OverflowError)?;
     let partial_day_delta = mul_div_round_u128(
         daily_delta,
         remaining_seconds as u128,
         SECONDS_IN_DAY as u128,
     )
-    .ok_or(crate::OnreError::OverflowError)?;
+    .ok_or(OnreError::OverflowError)?;
     let price = full_day_price
         .checked_add(partial_day_delta)
-        .ok_or(crate::OnreError::OverflowError)?;
+        .ok_or(OnreError::OverflowError)?;
 
     if price > u64::MAX as u128 {
-        return Err(error!(crate::OnreError::OverflowError));
+        return Err(error!(OnreError::OverflowError));
     }
 
     Ok(price as u64)
@@ -140,11 +191,8 @@ pub fn calculate_step_price_at(
     price_fix_duration: u64,
     time: u64,
 ) -> Result<u64> {
-    require!(base_time <= time, crate::OnreError::NoActiveVector);
-    require!(
-        price_fix_duration > 0,
-        crate::OnreError::InvalidPriceFixDuration
-    );
+    require!(base_time <= time, OnreError::NoActiveVector);
+    require!(price_fix_duration > 0, OnreError::InvalidPriceFixDuration);
 
     let elapsed_since_start = time.saturating_sub(base_time);
 
@@ -154,9 +202,9 @@ pub fn calculate_step_price_at(
     // elapsed_effective = (k + 1) * D  (end-of-current-interval snap)
     let step_end_time = current_step
         .checked_add(1)
-        .ok_or(crate::OnreError::OverflowError)?
+        .ok_or(OnreError::OverflowError)?
         .checked_mul(price_fix_duration)
-        .ok_or(crate::OnreError::OverflowError)?;
+        .ok_or(OnreError::OverflowError)?;
 
     // Use the vector price calculation with the effective elapsed time
     calculate_vector_price(apr, base_price, step_end_time)

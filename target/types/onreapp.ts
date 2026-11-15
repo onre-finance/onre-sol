@@ -4198,6 +4198,116 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "initializeManagedTokenMarketStats",
+      "docs": [
+        "Creates a `[\"market_stats\", mint]` MarketStats account and selects it for the",
+        "managed token's modular reporting; boss only."
+      ],
+      "discriminator": [
+        121,
+        50,
+        126,
+        76,
+        148,
+        121,
+        220,
+        61
+      ],
+      "accounts": [
+        {
+          "name": "managedToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedToken.managedMint",
+                "account": "managedTokenConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "marketStats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedToken.managedMint",
+                "account": "managedTokenConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "initializePermissionlessAuthority",
       "docs": [
         "Initializes a permissionless account.",
@@ -8690,6 +8800,245 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "setManagedTokenBufferSettings",
+      "docs": [
+        "Boss-only per-mint BUFFER policy update after settling the previous settings."
+      ],
+      "discriminator": [
+        131,
+        191,
+        30,
+        158,
+        118,
+        151,
+        186,
+        245
+      ],
+      "accounts": [
+        {
+          "name": "bufferAccounts",
+          "accounts": [
+            {
+              "name": "state",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      115,
+                      116,
+                      97,
+                      116,
+                      101
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "name": "managedToken",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      109,
+                      97,
+                      110,
+                      97,
+                      103,
+                      101,
+                      100,
+                      95,
+                      116,
+                      111,
+                      107,
+                      101,
+                      110
+                    ]
+                  },
+                  {
+                    "kind": "account",
+                    "path": "managedMint"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "managedMint",
+              "writable": true
+            },
+            {
+              "name": "mintAuthority",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      109,
+                      105,
+                      110,
+                      116,
+                      95,
+                      97,
+                      117,
+                      116,
+                      104,
+                      111,
+                      114,
+                      105,
+                      116,
+                      121
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "name": "tokenProgram"
+            },
+            {
+              "name": "bufferState",
+              "docs": [
+                "and embedded mint. Standalone operations require initialized state."
+              ],
+              "writable": true
+            },
+            {
+              "name": "bufferPricer",
+              "docs": [
+                "Canonical USD instance-zero Pricer driving accrual and reporting valuation."
+              ],
+              "optional": true
+            },
+            {
+              "name": "reserveToken",
+              "writable": true
+            },
+            {
+              "name": "managementToken",
+              "writable": true
+            },
+            {
+              "name": "performanceToken",
+              "writable": true
+            }
+          ]
+        },
+        {
+          "name": "boss",
+          "signer": true
+        },
+        {
+          "name": "marketStats",
+          "docs": [
+            "ignored otherwise."
+          ],
+          "writable": true
+        },
+        {
+          "name": "legacyMarketStats",
+          "docs": [
+            "mint is ONyc and refreshed from the canonical Pricer once it exists (address",
+            "validated in the handler); ignored for other mints."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "circulatingSupplyExcludedBalance"
+        }
+      ],
+      "args": [
+        {
+          "name": "settings",
+          "type": {
+            "defined": {
+              "name": "bufferSettings"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "setManagedTokenMarketStats",
+      "docs": [
+        "Selects any existing program-owned MarketStats account, including the legacy",
+        "`[\"market_stats\"]` singleton, for the managed token's modular reporting; boss only."
+      ],
+      "discriminator": [
+        75,
+        65,
+        66,
+        22,
+        16,
+        219,
+        235,
+        32
+      ],
+      "accounts": [
+        {
+          "name": "managedToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedToken.managedMint",
+                "account": "managedTokenConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "marketStats"
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "setOfferDisabled",
       "docs": [
         "Enables or disables one offer.",
@@ -9156,6 +9505,159 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "settleManagedTokenBuffer",
+      "docs": [
+        "Worker-only per-mint BUFFER settlement for any registered mint, ONyc included.",
+        "Independent of the legacy singleton BUFFER."
+      ],
+      "discriminator": [
+        117,
+        64,
+        145,
+        103,
+        236,
+        3,
+        89,
+        32
+      ],
+      "accounts": [
+        {
+          "name": "bufferAccounts",
+          "accounts": [
+            {
+              "name": "state",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      115,
+                      116,
+                      97,
+                      116,
+                      101
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "name": "managedToken",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      109,
+                      97,
+                      110,
+                      97,
+                      103,
+                      101,
+                      100,
+                      95,
+                      116,
+                      111,
+                      107,
+                      101,
+                      110
+                    ]
+                  },
+                  {
+                    "kind": "account",
+                    "path": "managedMint"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "managedMint",
+              "writable": true
+            },
+            {
+              "name": "mintAuthority",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      109,
+                      105,
+                      110,
+                      116,
+                      95,
+                      97,
+                      117,
+                      116,
+                      104,
+                      111,
+                      114,
+                      105,
+                      116,
+                      121
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "name": "tokenProgram"
+            },
+            {
+              "name": "bufferState",
+              "docs": [
+                "and embedded mint. Standalone operations require initialized state."
+              ],
+              "writable": true
+            },
+            {
+              "name": "bufferPricer",
+              "docs": [
+                "Canonical USD instance-zero Pricer driving accrual and reporting valuation."
+              ],
+              "optional": true
+            },
+            {
+              "name": "reserveToken",
+              "writable": true
+            },
+            {
+              "name": "managementToken",
+              "writable": true
+            },
+            {
+              "name": "performanceToken",
+              "writable": true
+            }
+          ]
+        },
+        {
+          "name": "worker",
+          "signer": true
+        },
+        {
+          "name": "marketStats",
+          "docs": [
+            "ignored otherwise."
+          ],
+          "writable": true
+        },
+        {
+          "name": "legacyMarketStats",
+          "docs": [
+            "mint is ONyc and refreshed from the canonical Pricer once it exists (address",
+            "validated in the handler); ignored for other mints."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "circulatingSupplyExcludedBalance"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "takeOffer",
       "docs": [
         "Execute an offer using reusable model accounts.",
@@ -9179,66 +9681,71 @@ export type Onreapp = {
       ],
       "accounts": [
         {
-          "name": "offerConfig"
-        },
-        {
-          "name": "managedToken",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  97,
-                  110,
-                  97,
-                  103,
-                  101,
-                  100,
-                  95,
-                  116,
-                  111,
-                  107,
-                  101,
-                  110
+          "name": "config",
+          "accounts": [
+            {
+              "name": "offerConfig"
+            },
+            {
+              "name": "managedToken",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      109,
+                      97,
+                      110,
+                      97,
+                      103,
+                      101,
+                      100,
+                      95,
+                      116,
+                      111,
+                      107,
+                      101,
+                      110
+                    ]
+                  },
+                  {
+                    "kind": "account",
+                    "path": "managedToken.managedMint",
+                    "account": "managedTokenConfig"
+                  }
                 ]
-              },
-              {
-                "kind": "account",
-                "path": "managedToken.managedMint",
-                "account": "managedTokenConfig"
               }
-            ]
-          }
-        },
-        {
-          "name": "pricer",
-          "relations": [
-            "offerConfig"
-          ]
-        },
-        {
-          "name": "quoter",
-          "relations": [
-            "offerConfig"
-          ]
-        },
-        {
-          "name": "feeConfig",
-          "relations": [
-            "offerConfig"
-          ]
-        },
-        {
-          "name": "proceedsVault",
-          "relations": [
-            "offerConfig"
-          ]
-        },
-        {
-          "name": "feeVault",
-          "relations": [
-            "feeConfig"
+            },
+            {
+              "name": "pricer",
+              "relations": [
+                "offerConfig"
+              ]
+            },
+            {
+              "name": "quoter",
+              "relations": [
+                "offerConfig"
+              ]
+            },
+            {
+              "name": "feeConfig",
+              "relations": [
+                "offerConfig"
+              ]
+            },
+            {
+              "name": "proceedsVault",
+              "relations": [
+                "offerConfig"
+              ]
+            },
+            {
+              "name": "feeVault",
+              "relations": [
+                "feeConfig"
+              ]
+            }
           ]
         },
         {
@@ -9371,7 +9878,8 @@ export type Onreapp = {
             "seeds": [
               {
                 "kind": "account",
-                "path": "proceedsVault"
+                "path": "config.proceedsVault",
+                "account": "takeOfferConfigAccounts"
               },
               {
                 "kind": "account",
@@ -9428,7 +9936,8 @@ export type Onreapp = {
             "seeds": [
               {
                 "kind": "account",
-                "path": "feeVault"
+                "path": "config.feeVault",
+                "account": "takeOfferConfigAccounts"
               },
               {
                 "kind": "account",
@@ -9522,43 +10031,60 @@ export type Onreapp = {
           }
         },
         {
-          "name": "bufferState",
-          "docs": [
-            "uninitialized, preventing callers from skipping an active BUFFER."
-          ],
-          "writable": true
-        },
-        {
-          "name": "bufferPricer",
-          "docs": [
-            "Canonical USD instance-zero Pricer, required for initialized per-mint BUFFER",
-            "and token-wide liquidity targets when the offer selects another Pricer.",
-            "The offer's independently selected Pricer does not control token-wide accrual."
-          ],
-          "optional": true
-        },
-        {
-          "name": "mainOffer",
-          "optional": true
-        },
-        {
-          "name": "marketStats",
-          "writable": true
-        },
-        {
-          "name": "circulatingSupplyExcludedBalance"
-        },
-        {
-          "name": "bufferReserveToken",
-          "writable": true
-        },
-        {
-          "name": "bufferManagementToken",
-          "writable": true
-        },
-        {
-          "name": "bufferPerformanceToken",
-          "writable": true
+          "name": "buffer",
+          "accounts": [
+            {
+              "name": "bufferState",
+              "docs": [
+                "ONyc included. A substitute cannot bypass initialized accrual."
+              ],
+              "writable": true
+            },
+            {
+              "name": "bufferPricer",
+              "docs": [
+                "Canonical USD instance-zero Pricer, required for initialized per-mint BUFFER,",
+                "and for token-wide liquidity targets or market stats when the offer selects",
+                "another Pricer. The offer's selected Pricer does not control token-wide values."
+              ],
+              "optional": true
+            },
+            {
+              "name": "marketStats",
+              "docs": [
+                "ignored otherwise."
+              ],
+              "writable": true
+            },
+            {
+              "name": "legacyMarketStats",
+              "docs": [
+                "when the managed mint is ONyc, which always refreshes it from the canonical",
+                "Pricer (address validated in the handler, created on first use with `user`",
+                "paying); ignored for other mints."
+              ],
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "circulatingSupplyExcludedBalance",
+              "docs": [
+                "other mints ignore it."
+              ]
+            },
+            {
+              "name": "bufferReserveToken",
+              "writable": true
+            },
+            {
+              "name": "bufferManagementToken",
+              "writable": true
+            },
+            {
+              "name": "bufferPerformanceToken",
+              "writable": true
+            }
+          ]
         },
         {
           "name": "instructionsSysvar",
@@ -9584,31 +10110,36 @@ export type Onreapp = {
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "propAmmState",
-          "docs": [
-            "Required exactly when OfferConfig.pressure_state is configured, including",
-            "linked NAV offers. Validated against the stored reference and mint pair."
-          ],
-          "writable": true,
-          "optional": true
-        },
-        {
-          "name": "sourceVault",
-          "optional": true
-        },
-        {
-          "name": "sourceTokenOut",
-          "writable": true,
-          "optional": true
-        },
-        {
-          "name": "destinationVault",
-          "optional": true
-        },
-        {
-          "name": "destinationTokenIn",
-          "writable": true,
-          "optional": true
+          "name": "custody",
+          "accounts": [
+            {
+              "name": "propAmmState",
+              "docs": [
+                "Required exactly when OfferConfig.pressure_state is configured, including",
+                "linked NAV offers. Validated against the stored reference and mint pair."
+              ],
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "sourceVault",
+              "optional": true
+            },
+            {
+              "name": "sourceTokenOut",
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "destinationVault",
+              "optional": true
+            },
+            {
+              "name": "destinationTokenIn",
+              "writable": true,
+              "optional": true
+            }
+          ]
         },
         {
           "name": "permissionlessAuthority",
@@ -12589,6 +13120,32 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "managedTokenBufferSettingsSetEvent",
+      "discriminator": [
+        32,
+        33,
+        245,
+        178,
+        111,
+        96,
+        204,
+        111
+      ]
+    },
+    {
+      "name": "managedTokenMarketStatsSetEvent",
+      "discriminator": [
+        46,
+        117,
+        142,
+        109,
+        143,
+        217,
+        117,
+        183
+      ]
+    },
+    {
       "name": "managedTokenRegisteredEvent",
       "discriminator": [
         27,
@@ -13891,6 +14448,11 @@ export type Onreapp = {
       "code": 6145,
       "name": "unexpectedApproval",
       "msg": "Permissionless execution requires approval_message to be absent"
+    },
+    {
+      "code": 6146,
+      "name": "legacyMarketStatsRequired",
+      "msg": "ONyc execution requires the legacy market stats singleton"
     }
   ],
   "types": [
@@ -14300,6 +14862,36 @@ export type Onreapp = {
           {
             "name": "timestamp",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bufferSettings",
+      "docs": [
+        "BUFFER policy shared by legacy ONyc and native per-mint modular operations."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "grossApr",
+            "docs": [
+              "Annual gross rate, scale 6; maximum 1_000_000."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "managementFeeBasisPoints",
+            "type": "u16"
+          },
+          {
+            "name": "performanceFeeBasisPoints",
+            "type": "u16"
+          },
+          {
+            "name": "performanceFeeHighWatermarkEnabled",
+            "type": "bool"
           }
         ]
       }
@@ -14817,6 +15409,46 @@ export type Onreapp = {
       }
     },
     {
+      "name": "managedTokenBufferSettingsSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "managedMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "bufferState",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous",
+            "type": {
+              "defined": {
+                "name": "bufferSettings"
+              }
+            }
+          },
+          {
+            "name": "settings",
+            "type": {
+              "defined": {
+                "name": "bufferSettings"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "managedTokenBufferState",
       "docs": [
         "EVM BufferState equivalent; distinct name preserves the legacy discriminator."
@@ -14913,6 +15545,43 @@ export type Onreapp = {
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "marketStats",
+            "docs": [
+              "Program-owned MarketStats account refreshed by modular operations on this mint.",
+              "Any MarketStats address is allowed (e.g. the legacy `[\"market_stats\"]` singleton",
+              "for ONyc); default means modular reporting is disabled."
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "managedTokenMarketStatsSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "managedMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous",
+            "type": "pubkey"
+          },
+          {
+            "name": "marketStats",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -14954,7 +15623,8 @@ export type Onreapp = {
         "Global market statistics PDA holding the canonical protocol-wide metrics.",
         "",
         "Derived from `[\"market_stats\"]` and recomputed from `State::main_offer` by",
-        "purchase and refresh instructions. RPC reads return the stored snapshot without",
+        "legacy purchase and refresh instructions, and from the canonical ONyc Pricer by",
+        "modular ONyc `take_offer`. The same layout backs per-mint modular reports. RPC reads return the stored snapshot without",
         "recalculation; clients must check the timestamp and slot for freshness. Supply",
         "uses the separately cached excluded balance, which may need its own refresh."
       ],

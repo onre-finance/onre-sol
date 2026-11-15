@@ -52,7 +52,8 @@ pub struct PermissionlessAuthority {
 /// Global market statistics PDA holding the canonical protocol-wide metrics.
 ///
 /// Derived from `["market_stats"]` and recomputed from `State::main_offer` by
-/// purchase and refresh instructions. RPC reads return the stored snapshot without
+/// legacy purchase and refresh instructions, and from the canonical ONyc Pricer by
+/// modular ONyc `take_offer`. The same layout backs per-mint modular reports. RPC reads return the stored snapshot without
 /// recalculation; clients must check the timestamp and slot for freshness. Supply
 /// uses the separately cached excluded balance, which may need its own refresh.
 #[account]

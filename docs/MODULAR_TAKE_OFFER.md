@@ -17,7 +17,8 @@ in `quote.rs`, symmetric curve/accounting in `prop_amm.rs`, liquidity targets in
 Configured extension accounts are validated before dispatch; supplying them does
 not enable unfinished paths.
 
-V2 instructions, their data, accounts, events, and legacy layouts remain unchanged.
+V2 instruction data, accounts, events, and legacy layouts remain unchanged, and
+legacy execution keeps its behavior, including the legacy ONyc BUFFER.
 The retired V1 name is reused with a different ABI; old V1 transactions remain
 invalid. The CLI still calls V2. Generated IDL/types expose the new instructions.
 
@@ -37,7 +38,16 @@ mint-authority PDA must control the managed mint in either direction; managed
 registration does not transfer authority. The boss selects an external
 USD-denominated asset. This path assumes one asset unit equals one USD and introduces no FX oracle.
 
-The generated `TakeOffer` accounts contain:
+The generated `TakeOffer` accounts contain the items below. Three contiguous runs
+are nested account groups, each with its own `try_accounts` stack frame so account
+validation stays within the 4 KiB SBF frame limit: `config`
+(`TakeOfferConfigAccounts`: offer, managed token, Pricer, Quoter, FeeConfig and the
+Proceeds/Fee vaults), `buffer` (`TakeOfferBufferAccounts`: BUFFER state/Pricer,
+market stats, excluded-balance cache and the three BUFFER ATAs), and `custody`
+(`TakeOfferCustodyAccounts`: pressure state and source/destination vaults/ATAs).
+Groups flatten in place, so the transaction's account order is unchanged; Rust and
+TypeScript clients pass each group as a nested object. `offer_config` is verified
+against the PDA of its stored mint pair, and the mint accounts must equal that pair.
 
 - `offer_config`, `managed_token`, the explicitly selected `pricer`, `quoter`,
   `fee_config`, `proceeds_vault`, and `fee_vault`.
@@ -48,9 +58,13 @@ The generated `TakeOffer` accounts contain:
   managed-to-asset. A managed-token source is optional for buys.
 - Existing global `state`, `mint_authority`, the user signer, instructions sysvar,
   associated-token program, and system program.
-- Canonical `buffer_state`, optional `buffer_pricer` and `main_offer`, and the
+- Canonical `buffer_state`, optional canonical `buffer_pricer`, and the
   reserve, management-fee, and performance-fee BUFFER token accounts, as below.
-- `market_stats` and `circulating_supply_excluded_balance`, used for ONyc reporting.
+- `market_stats`, which must be the account selected by `ManagedTokenConfig`
+  when one is selected and is ignored otherwise, and
+  `circulating_supply_excluded_balance`, used by ONyc targets and reporting.
+- Optional `legacy_market_stats`: the `["market_stats"]` singleton, required when
+  the managed mint is ONyc and ignored otherwise (see Market stats).
 - Optional `permissionless_authority`, `permissionless_token_in`, and
   `permissionless_token_out`, required by permissionless offers and omitted for
   other flows. The token accounts are the authority's canonical input/output ATAs
@@ -152,26 +166,76 @@ ATA creation, rolls back if the transaction fails.
 fee, output, price, actual liquidity refill, remaining proceeds, output inventory
 `source_amount`, input deposit `destination_amount`, and timestamp. Managed-to-asset proceeds are zero.
 
-## BUFFER coexistence
+## Per-mint BUFFER
 
-`buffer_state` is mandatory at the canonical address even when uninitialized.
-Supplying an empty substitute cannot bypass an initialized BUFFER.
-
-When the managed side is `State::onyc_mint`, provide the existing `["buffer_state"]`
-account and the three legacy BUFFER ATAs. `main_offer` must be `State::main_offer`; it supplies
-canonical BUFFER valuation and reporting, independently of the offer's Pricer.
-New mint/burn execution and V2 use one supply baseline, watermark, and clock. A separate
-per-mint ONyc BUFFER record remains inactive during coexistence. Execution in either direction
-also refreshes the existing MarketStats snapshot using the legacy main offer and
-the canonical cached excluded balance, with the same freshness assumptions as V2.
-
-Other managed mints use `["buffer", managed_mint]`. When initialized,
-`buffer_pricer` must be the enabled canonical USD instance-zero Pricer, and the
-three BUFFER token accounts must be the ATAs of the vaults referenced by that
-state. Create those ATAs before a positive accrual. The offer may choose a
-different Pricer. Accrual reuses existing gross-accrual and fee-split math and emits
+Every managed mint, ONyc included, uses its own `["buffer", managed_mint]` state.
+`buffer_state` is mandatory at that canonical address even when uninitialized;
+supplying an empty substitute cannot bypass an initialized BUFFER. When it is
+initialized, `buffer_pricer` must be the enabled canonical USD instance-zero
+Pricer, and the three BUFFER token accounts must be the ATAs of the vaults
+referenced by that state. Create those ATAs before a positive accrual. The offer
+may choose a different Pricer; it never drives token-wide accrual. Accrual reuses
+the existing gross-accrual and fee-split math and emits
 `ManagedTokenBufferAccruedEvent` with mint, state, canonical Pricer, mint splits,
-old/new supply, watermark, and timestamp. No second ONyc accrual engine is activated.
+old/new supply, watermark, and timestamp.
+
+The modular ONyc BUFFER is independent of the legacy `["buffer_state"]` singleton.
+Legacy V2 trades, `settle_buffer`, and other legacy BUFFER-aware paths keep
+accruing the legacy state into the legacy vaults from `State::main_offer`; modular
+execution and the instructions below accrue only the per-mint state into its own
+vaults from the canonical Pricer. Each engine keeps its own policy, supply
+baseline, watermark, and clock. Both read the actual mint supply, so tokens minted
+by one engine join the other's baseline at its next settlement. Configure both
+policies with that in mind; there is no cutover or retirement step.
+
+### Standalone settlement and policy
+
+`settle_managed_token_buffer` is worker-only, using the existing `State.worker`.
+It settles the per-mint BUFFER through the current timestamp without a trade and
+refreshes the mint's selected MarketStats, if any.
+
+`set_managed_token_buffer_settings(settings)` is boss-only. The settings are:
+
+- `gross_apr`, scale 6, at most 1,000,000;
+- `management_fee_basis_points`, at most 10,000;
+- `performance_fee_basis_points`, at most 10,000;
+- `performance_fee_high_watermark_enabled`.
+
+It first accrues under the existing policy, then applies the next interval's
+settings while preserving the just-settled baseline, timestamp, and watermark.
+An unchanged policy fails with `NoChange`. Both instructions honor the kill
+switch, canonical account and mint checks, program mint authority, and issuance
+caps. For ONyc the stricter nonzero of the global and per-mint caps applies;
+other mints use their per-mint caps. Both require initialized state, and positive
+accrual requires initialized vault ATAs; neither instruction creates them.
+
+## Market stats
+
+Modular reporting is opt-in per managed mint through
+`ManagedTokenConfig::market_stats`. The default (unset) disables it: execution
+and settlement skip the refresh and ignore the supplied `market_stats` account.
+The boss selects an account with either instruction:
+
+- `initialize_managed_token_market_stats` creates `["market_stats", mint]` and
+  selects it.
+- `set_managed_token_market_stats` selects any existing program-owned
+  MarketStats account, such as the legacy `["market_stats"]` singleton for ONyc.
+
+Once selected, the supplied `market_stats` must equal the selection. Each refresh
+values the mint at its canonical USD instance-zero Pricer. ONyc subtracts the
+canonical cached excluded balance (freshness policy unchanged); other mints report
+full supply. ONyc execution additionally always refreshes the legacy `["market_stats"]`
+singleton that integrators read, so it is never stale after a modular trade.
+`take_offer` requires it as `legacy_market_stats` for ONyc (missing:
+`LegacyMarketStatsRequired`; wrong address: `InvalidMarketStatsOwner`), creates it
+on first use at the user's expense, and values it with the same canonical Pricer.
+When ONyc selects the singleton itself, it is written once. Legacy
+`refresh_market_stats` and legacy instructions keep refreshing only the singleton
+from `State::main_offer`, so its NAV reflects whichever source refreshed last;
+keep the ONyc Pricer and main offer vectors aligned. Standalone BUFFER
+`settle_managed_token_buffer` and `set_managed_token_buffer_settings` apply the
+same rule with the same required `legacy_market_stats` account, but have no payer:
+they refresh the singleton only once it exists.
 The optional legacy offer and reporting accounts do not affect other mints.
 
 ## Conditional liquidity and Prop AMM accounts
@@ -218,7 +282,7 @@ remains available during the kill switch. Eviction and deletion are deferred.
 
 ## Next layers
 
-Worker fulfillment, component updates, and legacy-entrypoint disabling remain
-separate work. This instruction adds no automatic offer binding or bulk custody
+Worker fulfillment and component updates remain separate work. Legacy execution
+paths stay available alongside modular execution. This instruction adds no automatic offer binding or bulk custody
 migration. Existing liquidity is used only when explicitly selected for settlement
 or moved separately.

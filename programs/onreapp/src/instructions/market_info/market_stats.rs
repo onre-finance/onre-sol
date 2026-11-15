@@ -1,13 +1,16 @@
-use crate::constants::seeds;
-use crate::constants::PRICE_DECIMALS;
-use crate::instructions::market_info::offer_valuation_utils::{
-    get_active_vector_and_current_price, get_nav_adjustment_snapshot,
-};
-use crate::instructions::Offer;
-use crate::state::MarketStats;
-use crate::utils::{
-    load_or_init_pda_account, load_pda_account, mul_div_round_u128, pow_fixed, store_pda_account,
-    PdaAccountInit,
+use super::MarketValuation;
+use crate::{
+    constants::{seeds, PRICE_DECIMALS},
+    instructions::{
+        market_info::offer_valuation_utils::get_nav_adjustment_snapshot, Offer, OfferVector,
+    },
+    model::ManagedTokenConfig,
+    state::{MarketStats, State},
+    utils::{
+        load_or_init_pda_account, load_pda_account, mul_div_round_u128, pow_fixed, pricing,
+        store_pda_account, PdaAccountInit,
+    },
+    OnreError, ID,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
@@ -58,11 +61,11 @@ impl PdaAccountInit for MarketStats {
     }
 
     fn invalid_owner_error() -> Error {
-        error!(crate::OnreError::InvalidMarketStatsOwner)
+        error!(OnreError::InvalidMarketStatsOwner)
     }
 
     fn invalid_data_error() -> Error {
-        error!(crate::OnreError::InvalidMarketStatsData)
+        error!(OnreError::InvalidMarketStatsData)
     }
 }
 
@@ -78,21 +81,37 @@ pub fn recompute_market_stats(
     require_keys_eq!(
         *onyc_mint.to_account_info().owner,
         anchor_spl::token::ID,
-        crate::OnreError::InvalidTokenProgram
+        OnreError::InvalidTokenProgram
     );
+    recompute_market_stats_from_valuation(
+        &MarketValuation::from(offer),
+        onyc_mint,
+        excluded_balance_amount,
+    )
+}
+
+/// Token-program agnostic; the legacy ONyc path enforces SPL Token separately.
+pub(crate) fn recompute_market_stats_from_valuation(
+    valuation: &MarketValuation,
+    managed_mint: &InterfaceAccount<Mint>,
+    excluded_balance_amount: u64,
+) -> Result<MarketStatsSnapshot> {
     require_keys_eq!(
-        offer.token_out_mint,
-        onyc_mint.key(),
-        crate::OnreError::InvalidOnycMint
+        valuation.managed_mint,
+        managed_mint.key(),
+        OnreError::InvalidOnycMint
     );
 
     let current_time = Clock::get()?.unix_timestamp as u64;
-    let (active_vector, nav) = get_active_vector_and_current_price(offer, current_time)?;
+    let (active_vector, nav) =
+        pricing::get_active_vector_and_current_price(valuation.vectors, current_time)?;
     let apy = calculate_apy_from_apr(active_vector.apr)?;
-    let nav_adjustment = calculate_nav_adjustment(offer, active_vector)?;
+    let nav_adjustment = pricing::nav_adjustment_snapshot(valuation.vectors, &active_vector)
+        .map_err(|_| error!(OnreError::Overflow))?
+        .adjustment;
 
     let circulating_supply =
-        calculate_circulating_supply(onyc_mint.supply, excluded_balance_amount)?;
+        calculate_circulating_supply(managed_mint.supply, excluded_balance_amount)?;
     let tvl = calculate_tvl(circulating_supply, nav)?;
 
     Ok(MarketStatsSnapshot {
@@ -140,22 +159,155 @@ pub fn refresh_market_stats_pda<'info>(
         excluded_balance_account,
     )?;
     let snapshot = recompute_market_stats(offer, onyc_mint, excluded_balance_amount)?;
+    let bump = legacy_market_stats_bump(market_stats_account, program_id)?;
+    store_legacy_market_stats(
+        snapshot,
+        market_stats_account,
+        bump,
+        Some((payer, system_program)),
+        program_id,
+    )
+}
+
+/// Payer and system program that create the legacy singleton on first use.
+pub(crate) type LegacyMarketStatsInit<'a, 'info> = (&'a AccountInfo<'info>, &'a AccountInfo<'info>);
+
+/// Modular reporting after any operation that can change a managed mint's NAV or supply.
+///
+/// Refreshes the account selected by `ManagedTokenConfig::market_stats` and, for ONyc,
+/// always the legacy `["market_stats"]` singleton that integrators read; ONyc must
+/// supply it. Both use the canonical Pricer valuation, and a singleton that ONyc also
+/// selected is written once. Legacy instructions keep writing the singleton from
+/// `State::main_offer`. With `init`, an uncreated singleton is created; without it,
+/// the singleton is refreshed only once it exists.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn refresh_modular_market_stats<'info>(
+    program_id: &Pubkey,
+    state: &State,
+    managed_token: &ManagedTokenConfig,
+    managed_mint: &InterfaceAccount<'info, Mint>,
+    excluded_balance_account: &AccountInfo<'info>,
+    market_stats_account: &AccountInfo<'info>,
+    legacy_market_stats_account: Option<&AccountInfo<'info>>,
+    init: Option<LegacyMarketStatsInit<'_, 'info>>,
+    valuation: impl Fn() -> Result<MarketValuation>,
+) -> Result<()> {
+    let legacy = if managed_mint.key() == state.onyc_mint {
+        Some(legacy_market_stats_account.ok_or(OnreError::LegacyMarketStatsRequired)?)
+    } else {
+        None
+    };
+    if legacy.map(|legacy| legacy.key()) != Some(managed_token.market_stats) {
+        refresh_managed_token_market_stats(
+            program_id,
+            state,
+            managed_token,
+            managed_mint,
+            excluded_balance_account,
+            market_stats_account,
+            &valuation,
+        )?;
+    }
+    let Some(legacy) = legacy else {
+        return Ok(());
+    };
+    let bump = legacy_market_stats_bump(legacy, program_id)?;
+    if init.is_none() && legacy.data_is_empty() {
+        return Ok(());
+    }
+    let excluded_balance_amount = super::load_circulating_supply_excluded_balance_amount(
+        program_id,
+        excluded_balance_account,
+    )?;
+    let snapshot = recompute_market_stats_from_valuation(
+        &valuation()?,
+        managed_mint,
+        excluded_balance_amount,
+    )?;
+    store_legacy_market_stats(snapshot, legacy, bump, init, program_id)
+}
+
+/// Validates the singleton address and returns its bump.
+fn legacy_market_stats_bump(market_stats_account: &AccountInfo, program_id: &Pubkey) -> Result<u8> {
     let (market_stats_pda, market_stats_bump) =
         Pubkey::find_program_address(&[seeds::MARKET_STATS], program_id);
     require_keys_eq!(
         market_stats_account.key(),
         market_stats_pda,
-        crate::OnreError::InvalidMarketStatsOwner
+        OnreError::InvalidMarketStatsOwner
     );
+    Ok(market_stats_bump)
+}
 
-    let mut market_stats = load_or_init_pda_account::<MarketStats>(
+/// Writes `snapshot` into the singleton, creating it first when `init` is given.
+fn store_legacy_market_stats<'info>(
+    snapshot: MarketStatsSnapshot,
+    market_stats_account: &AccountInfo<'info>,
+    bump: u8,
+    init: Option<LegacyMarketStatsInit<'_, 'info>>,
+    program_id: &Pubkey,
+) -> Result<()> {
+    let mut market_stats = match init {
+        Some((payer, system_program)) => load_or_init_pda_account::<MarketStats>(
+            market_stats_account,
+            payer,
+            system_program,
+            program_id,
+            bump,
+        )?,
+        None => load_pda_account(
+            market_stats_account,
+            program_id,
+            OnreError::InvalidMarketStatsOwner.into(),
+            OnreError::InvalidMarketStatsData.into(),
+        )?,
+    };
+    market_stats.bump = bump;
+    update_market_stats_account(&mut market_stats, snapshot)?;
+    store_pda_account(market_stats_account, &market_stats)
+}
+
+/// Refreshes the MarketStats account selected by `ManagedTokenConfig::market_stats`.
+/// Any program-owned MarketStats account may be selected, so identity is the stored
+/// key and the account must deserialize as MarketStats. An unset selection skips
+/// reporting without evaluating `valuation`. Only ONyc has an excluded-balance cache;
+/// other mints report their full supply.
+pub(crate) fn refresh_managed_token_market_stats<'info>(
+    program_id: &Pubkey,
+    state: &State,
+    managed_token: &ManagedTokenConfig,
+    managed_mint: &InterfaceAccount<'info, Mint>,
+    excluded_balance_account: &AccountInfo<'info>,
+    market_stats_account: &AccountInfo<'info>,
+    valuation: impl FnOnce() -> Result<MarketValuation>,
+) -> Result<()> {
+    if managed_token.market_stats == Pubkey::default() {
+        return Ok(());
+    }
+    require_keys_eq!(
+        market_stats_account.key(),
+        managed_token.market_stats,
+        OnreError::InvalidMarketStatsPda
+    );
+    let mut market_stats: MarketStats = load_pda_account(
         market_stats_account,
-        payer,
-        system_program,
         program_id,
-        market_stats_bump,
+        OnreError::InvalidMarketStatsOwner.into(),
+        OnreError::InvalidMarketStatsData.into(),
     )?;
-    market_stats.bump = market_stats_bump;
+    let excluded_balance_amount = if managed_mint.key() == state.onyc_mint {
+        super::load_circulating_supply_excluded_balance_amount(
+            program_id,
+            excluded_balance_account,
+        )?
+    } else {
+        0
+    };
+    let snapshot = recompute_market_stats_from_valuation(
+        &valuation()?,
+        managed_mint,
+        excluded_balance_amount,
+    )?;
     update_market_stats_account(&mut market_stats, snapshot)?;
     store_pda_account(market_stats_account, &market_stats)
 }
@@ -163,19 +315,19 @@ pub fn refresh_market_stats_pda<'info>(
 pub fn load_main_offer(
     program_id: &Pubkey,
     market_offer_account: &AccountInfo,
-    state: &crate::state::State,
+    state: &State,
 ) -> Result<Offer> {
     require_keys_eq!(
         market_offer_account.key(),
         state.main_offer,
-        crate::OnreError::InvalidMainOffer
+        OnreError::InvalidMainOffer
     );
 
     load_pda_account(
         market_offer_account,
         program_id,
-        crate::OnreError::InvalidMainOffer.into(),
-        crate::OnreError::InvalidMainOffer.into(),
+        OnreError::InvalidMainOffer.into(),
+        OnreError::InvalidMainOffer.into(),
     )
 }
 
@@ -196,9 +348,9 @@ pub fn apply_market_stats_snapshot(
 pub fn read_market_stats_account(market_stats_account: &AccountInfo) -> Result<MarketStats> {
     load_pda_account(
         market_stats_account,
-        &crate::ID,
-        crate::OnreError::InvalidMarketStatsOwner.into(),
-        crate::OnreError::InvalidMarketStatsData.into(),
+        &ID,
+        OnreError::InvalidMarketStatsOwner.into(),
+        OnreError::InvalidMarketStatsData.into(),
     )
 }
 
@@ -211,12 +363,9 @@ pub fn write_market_stats_account(
     market_stats.try_serialize(&mut slice)
 }
 
-pub fn calculate_nav_adjustment(
-    offer: &Offer,
-    active_vector: crate::instructions::OfferVector,
-) -> Result<i64> {
+pub fn calculate_nav_adjustment(offer: &Offer, active_vector: OfferVector) -> Result<i64> {
     Ok(get_nav_adjustment_snapshot(offer, &active_vector)
-        .map_err(|_| error!(crate::OnreError::Overflow))?
+        .map_err(|_| error!(OnreError::Overflow))?
         .adjustment)
 }
 
@@ -225,13 +374,13 @@ pub fn calculate_tvl(circulating_supply: u64, nav: u64) -> Result<u64> {
         .checked_mul(nav as u128)
         .and_then(|result| result.checked_div(10_u128.pow(PRICE_DECIMALS as u32)))
         .and_then(|result| u64::try_from(result).ok())
-        .ok_or_else(|| error!(crate::OnreError::Overflow))
+        .ok_or_else(|| error!(OnreError::Overflow))
 }
 
 pub fn calculate_circulating_supply(total_supply: u64, excluded_supply: u64) -> Result<u64> {
     total_supply
         .checked_sub(excluded_supply)
-        .ok_or_else(|| error!(crate::OnreError::ArithmeticUnderflow))
+        .ok_or_else(|| error!(OnreError::ArithmeticUnderflow))
 }
 
 /// Converts Annual Percentage Rate (APR) to Annual Percentage Yield (APY) using daily compounding
@@ -256,8 +405,8 @@ pub fn calculate_circulating_supply(total_supply: u64, excluded_supply: u64) -> 
 ///
 /// # Returns
 /// * `Ok(apy)` - Annual Percentage Yield with scale=6 (same scaling as input)
-/// * `Err(crate::OnreError::Overflow)` - If mathematical overflow occurs
-/// * `Err(crate::OnreError::DivByZero)` - If division by zero occurs
+/// * `Err(OnreError::Overflow)` - If mathematical overflow occurs
+/// * `Err(OnreError::DivByZero)` - If division by zero occurs
 ///
 /// # Scale Information
 /// Both input and output use scale=6, where 1_000_000 represents 100%:
@@ -270,35 +419,34 @@ pub fn calculate_apy_from_apr(apr_scaled: u64) -> Result<u64> {
     // incr = INT_SCALE * (apr / EXT_SCALE) / N
     let num = INT_SCALE
         .checked_mul(apr)
-        .ok_or_else(|| error!(crate::OnreError::Overflow))?;
+        .ok_or_else(|| error!(OnreError::Overflow))?;
     let den = EXT_SCALE
         .checked_mul(N)
-        .ok_or_else(|| error!(crate::OnreError::Overflow))?;
+        .ok_or_else(|| error!(OnreError::Overflow))?;
     let incr = num
         .checked_add(den / 2)
-        .ok_or_else(|| error!(crate::OnreError::Overflow))?
+        .ok_or_else(|| error!(OnreError::Overflow))?
         .checked_div(den)
-        .ok_or_else(|| error!(crate::OnreError::DivByZero))?;
+        .ok_or_else(|| error!(OnreError::DivByZero))?;
 
     let base = INT_SCALE
         .checked_add(incr)
-        .ok_or_else(|| error!(crate::OnreError::Overflow))?;
+        .ok_or_else(|| error!(OnreError::Overflow))?;
 
     // (1 + r/n)^n at 1e18 precision
-    let pow =
-        pow_fixed(base, N as u64, INT_SCALE).ok_or_else(|| error!(crate::OnreError::Overflow))?;
+    let pow = pow_fixed(base, N as u64, INT_SCALE).ok_or_else(|| error!(OnreError::Overflow))?;
 
     // APY_int = pow - 1.0
     let apy_int = pow
         .checked_sub(INT_SCALE)
-        .ok_or_else(|| error!(crate::OnreError::Overflow))?;
+        .ok_or_else(|| error!(OnreError::Overflow))?;
 
     // Convert back to 1e6 scale with rounding: apy_scaled = round(apy_int * EXT_SCALE / INT_SCALE)
     let apy_scaled_u128 = mul_div_round_u128(apy_int, EXT_SCALE, INT_SCALE)
-        .ok_or_else(|| error!(crate::OnreError::Overflow))?;
+        .ok_or_else(|| error!(OnreError::Overflow))?;
 
     if apy_scaled_u128 > u64::MAX as u128 {
-        return Err(error!(crate::OnreError::Overflow));
+        return Err(error!(OnreError::Overflow));
     }
 
     Ok(apy_scaled_u128 as u64)
@@ -307,10 +455,11 @@ pub fn calculate_apy_from_apr(apr_scaled: u64) -> Result<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::instructions::OfferVector;
+    use crate::constants::MAX_VECTORS;
+    use std::mem::zeroed;
 
-    fn offer_with_vectors(vectors: [OfferVector; crate::constants::MAX_VECTORS]) -> Offer {
-        let mut offer: Offer = unsafe { std::mem::zeroed() };
+    fn offer_with_vectors(vectors: [OfferVector; MAX_VECTORS]) -> Offer {
+        let mut offer: Offer = unsafe { zeroed() };
         offer.token_in_mint = Pubkey::new_unique();
         offer.token_out_mint = Pubkey::new_unique();
         offer.vectors = vectors;
@@ -335,7 +484,7 @@ mod tests {
             apr: 0,
             price_fix_duration: 60,
         };
-        let mut vectors = [OfferVector::default(); crate::constants::MAX_VECTORS];
+        let mut vectors = [OfferVector::default(); MAX_VECTORS];
         vectors[0] = previous;
         vectors[1] = current;
         let offer = offer_with_vectors(vectors);
@@ -361,7 +510,7 @@ mod tests {
             apr: 0,
             price_fix_duration: 60,
         };
-        let mut vectors = [OfferVector::default(); crate::constants::MAX_VECTORS];
+        let mut vectors = [OfferVector::default(); MAX_VECTORS];
         vectors[0] = previous;
         vectors[1] = current;
         let offer = offer_with_vectors(vectors);
@@ -387,7 +536,7 @@ mod tests {
             apr: 365_000,
             price_fix_duration: 86_400,
         };
-        let mut vectors = [OfferVector::default(); crate::constants::MAX_VECTORS];
+        let mut vectors = [OfferVector::default(); MAX_VECTORS];
         vectors[0] = previous;
         vectors[1] = current;
         let offer = offer_with_vectors(vectors);
@@ -485,7 +634,7 @@ mod tests {
     #[test]
     fn tvl_overflow_is_rejected() {
         let err = calculate_tvl(u64::MAX, u64::MAX).unwrap_err();
-        assert_eq!(err, error!(crate::OnreError::Overflow));
+        assert_eq!(err, error!(OnreError::Overflow));
     }
 
     #[test]
@@ -518,7 +667,7 @@ mod tests {
     #[test]
     fn circulating_supply_rejects_excluded_supply_underflow() {
         let err = calculate_circulating_supply(1, 2).unwrap_err();
-        assert_eq!(err, error!(crate::OnreError::ArithmeticUnderflow));
+        assert_eq!(err, error!(OnreError::ArithmeticUnderflow));
     }
 
     #[test]
@@ -530,7 +679,7 @@ mod tests {
             apr: 36_500,
             price_fix_duration: 86_400,
         };
-        let mut vectors = [OfferVector::default(); crate::constants::MAX_VECTORS];
+        let mut vectors = [OfferVector::default(); MAX_VECTORS];
         vectors[0] = current;
         let offer = offer_with_vectors(vectors);
 

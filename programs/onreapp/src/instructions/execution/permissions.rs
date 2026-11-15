@@ -14,7 +14,7 @@ pub(super) fn authorize(
     a: &TakeOffer,
     approval: Option<&ApprovalMessage>,
 ) -> Result<()> {
-    match a.offer_config.flow {
+    match a.config.offer_config.flow {
         OfferFlow::Permissioned => verify_approval_message_generic(
             program_id,
             &a.user.key(),
@@ -32,7 +32,7 @@ pub(super) fn authorize(
 }
 
 pub(super) fn validate_accounts(program_id: &Pubkey, a: &TakeOffer) -> Result<()> {
-    if a.offer_config.flow != OfferFlow::Permissionless {
+    if a.config.offer_config.flow != OfferFlow::Permissionless {
         require!(
             a.permissionless_authority.is_none()
                 && a.permissionless_token_in.is_none()

@@ -1,3 +1,5 @@
+#[path = "modular_take_offer/buffer_independence.rs"]
+mod buffer_independence;
 mod common;
 #[path = "modular_take_offer/prop_amm.rs"]
 mod modular_prop_amm;
@@ -85,7 +87,6 @@ struct Fixture {
     offer: Pubkey,
     quoter: Pubkey,
     fee: Pubkey,
-    onyc: bool,
     token_program: Pubkey,
     asset_program: Pubkey,
 }
@@ -252,7 +253,6 @@ impl Fixture {
             offer,
             quoter,
             fee,
-            onyc,
             token_program,
             asset_program,
         }
@@ -433,26 +433,27 @@ impl Fixture {
     }
 
     fn buffer(&self) -> Pubkey {
-        if self.onyc {
-            find_buffer_state_pda().0
-        } else {
-            pda(&[b"buffer", self.mint.as_ref()])
-        }
+        pda(&[b"buffer", self.mint.as_ref()])
     }
     fn buffer_vaults(&self) -> [Pubkey; 3] {
-        if self.onyc {
-            [
-                find_reserve_vault_authority_pda().0,
-                find_management_fee_vault_pda().0,
-                find_performance_fee_vault_pda().0,
-            ]
+        [
+            pda(&[b"buffer_reserve", self.mint.as_ref()]),
+            pda(&[b"buffer_management", self.mint.as_ref()]),
+            pda(&[b"buffer_performance", self.mint.as_ref()]),
+        ]
+    }
+    /// The selected MarketStats account, or any placeholder when none is selected.
+    fn market_stats(&self) -> Pubkey {
+        let selected = read::<ManagedTokenConfig>(&self.svm, managed(self.mint)).market_stats;
+        if selected == Pubkey::default() {
+            find_market_stats_pda().0
         } else {
-            [
-                pda(&[b"buffer_reserve", self.mint.as_ref()]),
-                pda(&[b"buffer_management", self.mint.as_ref()]),
-                pda(&[b"buffer_performance", self.mint.as_ref()]),
-            ]
+            selected
         }
+    }
+    /// The legacy singleton, required only when the managed mint is ONyc.
+    fn legacy_market_stats(&self) -> Option<Pubkey> {
+        (read_state(&self.svm).onyc_mint == self.mint).then(|| find_market_stats_pda().0)
     }
     fn approval(&self) -> ApprovalMessage {
         ApprovalMessage {
@@ -485,13 +486,15 @@ impl Fixture {
             .map(|v| derive_ata(&v, &self.mint, &self.token_program));
         ix(
             accounts::TakeOffer {
-                offer_config: self.offer,
-                managed_token: managed(self.mint),
-                pricer: price(self.mint, 0),
-                quoter: config.quoter,
-                fee_config: self.fee,
-                proceeds_vault: vault(VaultKind::Proceeds),
-                fee_vault: vault(VaultKind::Fee),
+                config: accounts::TakeOfferConfigAccounts {
+                    offer_config: self.offer,
+                    managed_token: managed(self.mint),
+                    pricer: price(self.mint, 0),
+                    quoter: config.quoter,
+                    fee_config: self.fee,
+                    proceeds_vault: vault(VaultKind::Proceeds),
+                    fee_vault: vault(VaultKind::Fee),
+                },
                 token_in_mint: token_in,
                 token_out_mint: token_out,
                 user_token_in: derive_ata(&self.user.pubkey(), &token_in, &in_program),
@@ -506,37 +509,33 @@ impl Fixture {
                 fee_token_in: derive_ata(&vault(VaultKind::Fee), &token_in, &in_program),
                 mint_authority: find_mint_authority_pda().0,
                 state: find_state_pda().0,
-                buffer_state: self.buffer(),
-                buffer_pricer: if self.onyc {
-                    None
-                } else {
-                    Some(price(self.mint, 0))
+                buffer: accounts::TakeOfferBufferAccounts {
+                    buffer_state: self.buffer(),
+                    buffer_pricer: Some(price(self.mint, 0)),
+                    market_stats: self.market_stats(),
+                    legacy_market_stats: self.legacy_market_stats(),
+                    circulating_supply_excluded_balance:
+                        find_circulating_supply_excluded_balance_pda().0,
+                    buffer_reserve_token: reserve,
+                    buffer_management_token: management,
+                    buffer_performance_token: performance,
                 },
-                main_offer: if self.onyc {
-                    Some(read::<GlobalState>(&self.svm, find_state_pda().0).main_offer)
-                } else {
-                    None
-                },
-                market_stats: find_market_stats_pda().0,
-                circulating_supply_excluded_balance: find_circulating_supply_excluded_balance_pda()
-                    .0,
-                buffer_reserve_token: reserve,
-                buffer_management_token: management,
-                buffer_performance_token: performance,
                 instructions_sysvar: SYSVAR_INSTRUCTIONS_ID,
                 user: self.user.pubkey(),
                 token_in_program: in_program,
                 token_out_program: out_program,
                 associated_token_program: ATA_PROGRAM_ID,
                 system_program: SYSTEM_PROGRAM_ID,
-                prop_amm_state: (config.pressure_state != Pubkey::default())
-                    .then_some(config.pressure_state),
-                source_vault: has_source.then_some(config.source_vault),
-                source_token_out: has_source
-                    .then(|| derive_ata(&config.source_vault, &token_out, &out_program)),
-                destination_vault: has_destination.then_some(config.destination_vault),
-                destination_token_in: has_destination
-                    .then(|| derive_ata(&config.destination_vault, &token_in, &in_program)),
+                custody: accounts::TakeOfferCustodyAccounts {
+                    prop_amm_state: (config.pressure_state != Pubkey::default())
+                        .then_some(config.pressure_state),
+                    source_vault: has_source.then_some(config.source_vault),
+                    source_token_out: has_source
+                        .then(|| derive_ata(&config.source_vault, &token_out, &out_program)),
+                    destination_vault: has_destination.then_some(config.destination_vault),
+                    destination_token_in: has_destination
+                        .then(|| derive_ata(&config.destination_vault, &token_in, &in_program)),
+                },
                 permissionless_authority: (config.flow == OfferFlow::Permissionless)
                     .then(|| find_permissionless_authority_pda().0),
                 permissionless_token_in: (config.flow == OfferFlow::Permissionless).then(|| {
@@ -856,45 +855,10 @@ fn per_mint_buffer_accrues_before_execution_and_tracks_actual_supply() {
 }
 
 #[test]
-fn onyc_coexists_with_v2_using_one_legacy_buffer_baseline() {
+fn onyc_modular_and_legacy_buffers_accrue_independently() {
     let mut f = Fixture::new(true, false);
-    let now = get_clock_time(&f.svm);
-    send_tx(
-        &mut f.svm,
-        &[build_make_offer_ix(
-            &f.boss.pubkey(),
-            &f.asset,
-            &f.mint,
-            0,
-            false,
-            false,
-            &TOKEN_PROGRAM_ID,
-        )],
-        &[&f.boss],
-    )
-    .unwrap();
-    send_tx(
-        &mut f.svm,
-        &[build_add_offer_vector_ix(
-            &f.boss.pubkey(),
-            &f.asset,
-            &f.mint,
-            Some(now),
-            now,
-            1_000_000_000,
-            0,
-            86400,
-        )],
-        &[&f.boss],
-    )
-    .unwrap();
+    f.initialize_legacy_main_offer();
     let legacy_offer = find_offer_pda(&f.asset, &f.mint).0;
-    send_tx(
-        &mut f.svm,
-        &[build_set_main_offer_ix(&f.boss.pubkey(), &legacy_offer)],
-        &[&f.boss],
-    )
-    .unwrap();
     send_tx(
         &mut f.svm,
         &[build_initialize_buffer_ix(
@@ -905,19 +869,28 @@ fn onyc_coexists_with_v2_using_one_legacy_buffer_baseline() {
         &[&f.boss],
     )
     .unwrap();
-    // Initialize through an actual modular issuance, then accrue on the shared baseline.
+    f.initialize_managed_buffer();
+    let legacy = find_buffer_state_pda().0;
+    let legacy_before = f.svm.get_account(&legacy).unwrap().data;
+    // Modular issuance and accrual move only the per-mint ONyc baseline and vaults.
     let instruction = f.take(2_000_000, 990_000_000);
     f.send(instruction).unwrap();
-    let mut b: onreapp::instructions::BufferState = read(&f.svm, f.buffer());
+    let mut b: ManagedTokenBufferState = read(&f.svm, f.buffer());
     assert_eq!(b.previous_supply, 990_000_000);
     let buffer = f.buffer();
-    edit::<onreapp::instructions::BufferState>(&mut f.svm, buffer, |b| b.gross_apr = 100_000);
+    edit::<ManagedTokenBufferState>(&mut f.svm, buffer, |b| b.gross_apr = 100_000);
     advance_clock_by(&mut f.svm, 31_536_000);
     let instruction = f.take(2_000_000, 990_000_000);
     f.send(instruction).unwrap();
     b = read(&f.svm, f.buffer());
     assert_eq!(b.previous_supply, 2_079_000_000);
-    // The old adapter observes the same clock and supply; no second year of accrual.
+    assert_eq!(
+        f.balance(f.mint, f.buffer_vaults()[0], f.token_program),
+        99_000_000
+    );
+    assert_eq!(f.svm.get_account(&legacy).unwrap().data, legacy_before);
+    // Legacy execution settles only the legacy singleton; the per-mint state is untouched.
+    let per_mint_before = f.svm.get_account(&buffer).unwrap().data;
     let authority = find_offer_vault_authority_pda().0;
     create_token_account(&mut f.svm, &f.asset, &authority, 0);
     create_token_account(&mut f.svm, &f.mint, &authority, 0);
@@ -932,12 +905,9 @@ fn onyc_coexists_with_v2_using_one_legacy_buffer_baseline() {
         &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut f.svm, &[instruction], &[&f.user]).unwrap();
-    b = read(&f.svm, f.buffer());
-    assert_eq!(b.previous_supply, 4_079_000_000);
-    assert_eq!(
-        f.balance(f.mint, f.buffer_vaults()[0], f.token_program),
-        99_000_000
-    );
+    let legacy_after: onreapp::instructions::BufferState = read(&f.svm, legacy);
+    assert_eq!(legacy_after.previous_supply, 4_079_000_000);
+    assert_eq!(f.svm.get_account(&buffer).unwrap().data, per_mint_before);
 }
 
 #[test]
@@ -1182,7 +1152,7 @@ fn one_entrypoint_executes_both_directions_and_buffer_tracks_the_managed_input()
 }
 
 #[test]
-fn onyc_uses_only_selected_liquidity_and_keeps_the_legacy_buffer() {
+fn onyc_uses_only_selected_liquidity_and_leaves_the_legacy_buffer_untouched() {
     for (legacy, current, succeeds) in [
         (3_000_000, 3_000_000, true),
         (3_000_000, 1_000_000, false),
@@ -1214,7 +1184,8 @@ fn onyc_uses_only_selected_liquidity_and_keeps_the_legacy_buffer() {
         if current > 0 {
             f.seed_tokens(f.asset, vault(VaultKind::Liquidity), current);
         }
-        let buffer_before = f.svm.get_account(&f.buffer()).unwrap().data;
+        let legacy_buffer = find_buffer_state_pda().0;
+        let legacy_before = f.svm.get_account(&legacy_buffer).unwrap().data;
         let instruction = f.take(1_000_000_000, 1_980_000);
         let paid = if succeeds {
             let result = f.send(instruction).unwrap();
@@ -1246,12 +1217,10 @@ fn onyc_uses_only_selected_liquidity_and_keeps_the_legacy_buffer() {
         }
         let supply = if succeeds { 10_000_000 } else { 1_000_000_000 };
         assert_eq!(get_mint_supply(&f.svm, &f.mint), supply);
-        if succeeds {
-            let buffer: onreapp::instructions::BufferState = read(&f.svm, f.buffer());
-            assert_eq!(buffer.previous_supply, supply);
-        } else {
-            assert_eq!(f.svm.get_account(&f.buffer()).unwrap().data, buffer_before);
-        }
+        assert_eq!(
+            f.svm.get_account(&legacy_buffer).unwrap().data,
+            legacy_before
+        );
     }
 }
 

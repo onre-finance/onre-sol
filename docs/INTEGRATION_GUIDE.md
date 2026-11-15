@@ -6,7 +6,7 @@ Read canonical ONyc market metrics from the `MarketStats` PDA.
 
 ## Quick Overview
 
-Market metrics are read over RPC from the singleton PDA derived with `["market_stats"]`. A read requires no instruction, transaction, or signature. The account stores a snapshot calculated from `state.main_offer`, not a live calculation for an arbitrary offer.
+Market metrics are read over RPC from the singleton PDA derived with `["market_stats"]`. A read requires no instruction, transaction, or signature. The account stores a snapshot calculated from `state.main_offer` by legacy instructions and from the canonical ONyc USD Pricer by modular ONyc `take_offer`, not a live calculation for an arbitrary offer.
 
 This branch removes the seven market getter instructions (`get_nav`, `get_apy`, `get_nav_adjustment`, `get_tvl`, `get_tvl_v2`, `get_circulating_supply`, and `get_circulating_supply_v2`). Existing callers must migrate before this build is deployed as an upgrade. Use an IDL that matches the deployed program; the local IDL describes this branch.
 

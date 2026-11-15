@@ -306,7 +306,7 @@ fn managed_to_asset_burns_from_the_intermediary_and_routes_liquidity_output_back
 }
 
 #[test]
-fn usdc_and_usdg_share_onyc_buffer_and_coexist_with_legacy_execution() {
+fn usdc_and_usdg_share_the_onyc_per_mint_buffer_independent_of_legacy_execution() {
     let mut f = Fixture::new(true, false);
     f.initialize_legacy_main_offer();
     let main_offer = find_offer_pda(&f.asset, &f.mint).0;
@@ -320,19 +320,20 @@ fn usdc_and_usdg_share_onyc_buffer_and_coexist_with_legacy_execution() {
         &[&f.boss],
     )
     .unwrap();
+    f.initialize_managed_buffer();
     let usdc = f.asset;
     permissionless_buy(&mut f);
     let instruction = f.take(2_000_000, 990_000_000);
     f.send_without_approval(instruction).unwrap();
     let buffer = f.buffer();
     assert_eq!(
-        read::<onreapp::instructions::BufferState>(&f.svm, buffer).previous_supply,
+        read::<ManagedTokenBufferState>(&f.svm, buffer).previous_supply,
         990_000_000
     );
-    edit::<onreapp::instructions::BufferState>(&mut f.svm, buffer, |b| b.gross_apr = 100_000);
+    edit::<ManagedTokenBufferState>(&mut f.svm, buffer, |b| b.gross_apr = 100_000);
 
     // Representative stable assets: six-decimal SPL USDC and Token-2022 USDG,
-    // sharing one ONyc mint and the original USDC main offer for token-wide accrual.
+    // sharing one ONyc mint and its per-mint BUFFER for token-wide accrual.
     let usdg = create_mint_2022(&mut f.svm, &f.boss, 6, &f.boss.pubkey());
     f.seed_tokens(usdg, f.user.pubkey(), 10_000_000);
     f.asset = usdg;
@@ -341,13 +342,15 @@ fn usdc_and_usdg_share_onyc_buffer_and_coexist_with_legacy_execution() {
     advance_clock_by(&mut f.svm, 31_536_000);
     let instruction = f.take(2_000_000, 990_000_000);
     f.send_without_approval(instruction).unwrap();
-    let after = read::<onreapp::instructions::BufferState>(&f.svm, buffer);
+    let after = read::<ManagedTokenBufferState>(&f.svm, buffer);
     assert_eq!(after.previous_supply, 2_079_000_000);
     assert_eq!(
         f.balance(f.mint, f.buffer_vaults()[0], f.token_program),
         99_000_000
     );
 
+    // Legacy execution settles only the legacy singleton BUFFER.
+    let per_mint_before = f.svm.get_account(&buffer).unwrap().data;
     let vault = find_offer_vault_authority_pda().0;
     f.seed_tokens(usdc, vault, 0);
     f.seed_tokens(f.mint, vault, 0);
@@ -362,12 +365,9 @@ fn usdc_and_usdg_share_onyc_buffer_and_coexist_with_legacy_execution() {
         &f.token_program,
     );
     send_tx(&mut f.svm, &[instruction], &[&f.user]).unwrap();
-    let after_legacy = read::<onreapp::instructions::BufferState>(&f.svm, buffer);
-    assert_eq!(after_legacy.previous_supply, 4_079_000_000);
-    assert_eq!(
-        after_legacy.last_accrual_timestamp,
-        after.last_accrual_timestamp
-    );
+    let legacy = read::<onreapp::instructions::BufferState>(&f.svm, find_buffer_state_pda().0);
+    assert_eq!(legacy.previous_supply, 4_079_000_000);
+    assert_eq!(f.svm.get_account(&buffer).unwrap().data, per_mint_before);
     assert_eq!(
         f.balance(f.mint, f.buffer_vaults()[0], f.token_program),
         99_000_000

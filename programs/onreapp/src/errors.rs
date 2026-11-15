@@ -294,4 +294,6 @@ pub enum OnreError {
     UnsupportedOfferExecution,
     #[msg("Permissionless execution requires approval_message to be absent")]
     UnexpectedApproval,
+    #[msg("ONyc execution requires the legacy market stats singleton")]
+    LegacyMarketStatsRequired,
 }

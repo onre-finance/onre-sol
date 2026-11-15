@@ -10,7 +10,7 @@ offer exists and explicitly uses that tracker. Creation and execution do not
 require a counterpart account.
 Separate quoter instances have separate accounting even if they use the same
 custody. Permissioned offers still require `Nav`; worker execution remains
-unsupported. Legacy Prop AMM entrypoints, accounts and tracker behavior are unchanged.
+unsupported. Legacy Prop AMM accounts, tracker math and execution are unchanged.
 
 ## Pressure link and symmetric pricing
 
@@ -64,7 +64,7 @@ Output rounds down. Zero output, insufficient raw liquidity, or output below
 Opposite trades offset current net volume but do not erase cadence or already
 carried previous-epoch pressure. Both directional counts advance on linked trades.
 The integer curve and cadence math is shared with the legacy implementation;
-the symmetric policy and tracker are modular and leave legacy behavior unchanged.
+the symmetric policy and tracker are modular; legacy pricing and pressure math are unchanged.
 
 ## Fixed epoch boundaries
 
@@ -103,9 +103,10 @@ proceeds = net_asset_input - refill
 ```
 
 TVL here is in managed-token base units before asset decimal conversion.
-ONyc uses `State::main_offer` NAV and the canonical cached excluded balance, with
-the existing cache freshness assumptions. Other managed mints use full mint
-supply and the enabled USD instance-zero Pricer; per-mint supply-exclusion
+Every managed mint, ONyc included, values supply at its enabled canonical USD
+instance-zero Pricer; `State::main_offer` is not used. ONyc subtracts the
+canonical cached excluded balance under the existing cache freshness assumptions.
+Other managed mints use full mint supply; per-mint supply-exclusion
 configuration is not implemented. When the offer selects another Pricer, supply
 `buffer_pricer` as the canonical instance-zero Pricer even if BUFFER is absent.
 An initialized per-mint BUFFER retains its existing canonical Pricer requirement.
@@ -124,8 +125,9 @@ quoter alone does not link their custody references.
 `proceeds_amount` reports the remainder. `source_amount` and `destination_amount`
 report the actual inventory payout and input deposit in their respective mint units. Existing slippage, deadline, kill-switch,
 mint-authority, issuance-limit, fee and transfer-fee controls remain enforced.
-ONyc still shares its original BUFFER accounts with V2; other managed tokens use
-their initialized per-mint BUFFER. No live market configuration is created by
+Every managed token, ONyc included, uses its initialized
+[per-mint BUFFER](MODULAR_TAKE_OFFER.md#per-mint-buffer), independent of the
+legacy ONyc BUFFER that V2 keeps using. No live market configuration is created by
 this implementation, and the CLI still uses V2 entrypoints.
 
 ## Fresh modular layout

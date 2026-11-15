@@ -55,23 +55,7 @@ fn routes(f: &mut Fixture, source: usize) -> (Pubkey, Pubkey, Pubkey) {
 }
 
 pub(super) fn init_buffer(f: &mut Fixture) {
-    if f.onyc {
-        // Legacy MakeOffer uses one token program for both sides. ONyc's main
-        // offer therefore uses an SPL asset even when the modular market uses
-        // Token-2022. Canonical valuation is independent of the traded asset.
-        let modular_asset = (f.asset, f.asset_program);
-        if f.asset_program == TOKEN_2022_PROGRAM_ID {
-            f.asset = create_mint(&mut f.svm, &f.boss, 6, &f.boss.pubkey());
-            f.asset_program = TOKEN_PROGRAM_ID;
-        }
-        f.initialize_legacy_main_offer();
-        let main_offer = read::<GlobalState>(&f.svm, find_state_pda().0).main_offer;
-        (f.asset, f.asset_program) = modular_asset;
-        let instruction = build_initialize_buffer_ix(&f.boss.pubkey(), &main_offer, &f.mint);
-        send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
-    } else {
-        f.initialize_managed_buffer();
-    }
+    f.initialize_managed_buffer();
 }
 
 #[test]
@@ -114,19 +98,11 @@ fn one_prop_quoter_prices_both_directions_on_curve_from_every_custody_type() {
                     f.balance(f.mint, f.user.pubkey(), f.token_program),
                     buy_event.amount_out - 495_000_000
                 );
-                let supply = get_mint_supply(&f.svm, &f.mint);
-                if onyc {
-                    assert_eq!(
-                        read::<onreapp::instructions::BufferState>(&f.svm, f.buffer())
-                            .previous_supply,
-                        supply
-                    );
-                } else {
-                    assert_eq!(
-                        read::<ManagedTokenBufferState>(&f.svm, f.buffer()).previous_supply,
-                        supply
-                    );
-                }
+                // ONyc uses the same per-mint BUFFER layout as every other managed mint.
+                assert_eq!(
+                    read::<ManagedTokenBufferState>(&f.svm, f.buffer()).previous_supply,
+                    get_mint_supply(&f.svm, &f.mint)
+                );
                 assert_eq!(
                     read::<OfferConfig>(&f.svm, buy).quoter,
                     read::<OfferConfig>(&f.svm, sell).quoter
@@ -344,7 +320,7 @@ fn independent_quoters_do_not_share_pressure_even_when_they_share_custody() {
     assert_eq!(f.balance(f.asset, selected, f.asset_program), 20_000_000);
 }
 
-fn alternate_pricer(f: &mut Fixture) -> Pubkey {
+pub(super) fn alternate_pricer(f: &mut Fixture) -> Pubkey {
     let selected = price(f.mint, 1);
     let now = get_clock_time(&f.svm);
     for instruction in [
@@ -443,9 +419,9 @@ fn canonical_nav_controls_refill_and_sell_cap_independently_of_offer_nav() {
 }
 
 #[test]
-fn onyc_refill_uses_main_offer_nav_and_the_canonical_excluded_balance() {
+fn onyc_refill_uses_canonical_pricer_nav_and_the_canonical_excluded_balance() {
     let mut f = Fixture::new(true, false);
-    f.initialize_legacy_main_offer(); // main NAV 1; modular offer NAV 2
+    f.initialize_legacy_main_offer(); // legacy main NAV 1 is ignored; canonical Pricer NAV 2
     let excluded = Pubkey::new_unique();
     f.seed_tokens(f.mint, f.boss.pubkey(), 8_000_000_000);
     f.seed_tokens(f.mint, excluded, 2_000_000_000);
@@ -470,8 +446,10 @@ fn onyc_refill_uses_main_offer_nav_and_the_canonical_excluded_balance() {
     });
     let instruction = f.take(2_000_000, 1);
     let event = executed_event(&f.send_without_approval(instruction).unwrap());
-    assert_eq!(event.liquidity_refill_amount, 800_000);
-    assert_eq!(event.proceeds_amount, 1_180_000);
+    // 10% of 8 circulating ONyc at canonical NAV 2 = 1.6 USDC; the 1% fee
+    // leaves 1.98 USDC, so 0.38 USDC goes to proceeds.
+    assert_eq!(event.liquidity_refill_amount, 1_600_000);
+    assert_eq!(event.proceeds_amount, 380_000);
 }
 
 fn link_instruction(f: &Fixture, tracker: Option<Pubkey>) -> Instruction {
