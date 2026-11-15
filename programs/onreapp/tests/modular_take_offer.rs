@@ -7,6 +7,8 @@ mod mint_multisig;
 mod modular_prop_amm;
 #[path = "modular_take_offer/permissionless.rs"]
 mod permissionless;
+#[path = "modular_take_offer/pricer_vectors.rs"]
+mod pricer_vectors;
 #[path = "modular_take_offer/vault_roles.rs"]
 mod vault_roles;
 

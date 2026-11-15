@@ -301,13 +301,10 @@ starts enabled. All three vault destinations initially point to the current boss
 Initialization creates no ATAs, moves no funds, and does not accrue or mint.
 
 The legacy `initialize_buffer` and `settle_buffer` still use the singleton
-`["buffer_state"]`, `State::onyc_mint`, and legacy vaults. Creating new per-token
-ONyc state does not activate it or synchronize it with the legacy baseline; modular
-ONyc execution uses the singleton and its existing vaults until an explicit
-`cut_over_onyc_buffer` atomically activates the per-mint state and moves all three
-balances. Standalone modular configuration/settlement shares whichever state is
-active; there is never a second accruing ONyc copy. Other managed
-mints use their initialized per-mint BUFFER in modular execution. Ordinary mint
+`["buffer_state"]`, `State::onyc_mint`, and legacy vaults. Modular instructions
+never touch the singleton: every managed mint, ONyc included, accrues only its
+initialized per-mint BUFFER in modular execution and standalone settlement, and
+there is no cutover between the two. Ordinary mint
 and burn paths need explicit supply reconciliation: SPL mints do not provide
 the EVM ManagedToken supply-change callback. Issuance limits therefore live in
 ManagedTokenConfig and constrain program-controlled paths only.
@@ -327,8 +324,8 @@ disables reporting). ONyc refreshes subtract the existing cached excluded balanc
 other mints report full supply until an exclusion cache exists for them.
 
 Amounts and supply use SPL-native `u64`; aggregate Prop AMM volume and TVL use
-`u128`. Price uses scale 9; APR/APY use scale 6. TVL is USD scale 9 after mint
-decimal normalization. Runtime timestamps use signed Solana Unix `i64`; vector
+`u128`. Price uses scale 9; APR/APY use scale 6. TVL is circulating supply ×
+NAV / 1e9, in the managed mint's base units (no decimal normalization). Runtime timestamps use signed Solana Unix `i64`; vector
 timestamps retain the existing `u64` representation. Arithmetic and conversions
 retain checked overflow handling. Modular and legacy Prop AMM share the curve/cadence math and
 the fixed-boundary epoch rules. Operational

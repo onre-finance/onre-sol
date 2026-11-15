@@ -75,6 +75,32 @@ pub fn find_active_vector_at(
         .ok_or_else(|| error!(OnreError::NoActiveVector))
 }
 
+/// Vectors to keep when a vector starting at `new_start_time` is added at `now`:
+/// the vector active at `now` (the new one when it starts now), the vector active
+/// immediately before it, and every future vector. Returns `(active, previous)`
+/// start times, or `None` while nothing is active, when nothing may be evicted.
+/// Shared by legacy offers and modular Pricers; matches the EVM eviction rule.
+pub fn vector_retention(
+    vectors: impl IntoIterator<Item = PricingVector> + Clone,
+    new_start_time: u64,
+    now: u64,
+) -> Option<(u64, u64)> {
+    let active = if new_start_time == now {
+        new_start_time
+    } else {
+        find_active_vector_at(vectors.clone(), now).ok()?.start_time
+    };
+    let previous = find_active_vector_at(vectors, active.saturating_sub(1))
+        .map(|vector| vector.start_time)
+        .unwrap_or(0);
+    Some((active, previous))
+}
+
+/// Whether a stored vector falls outside the `vector_retention` window.
+pub fn is_evicted(start_time: u64, (active, previous): (u64, u64)) -> bool {
+    start_time != 0 && start_time < active && start_time != previous
+}
+
 /// Select a vector and calculate its stepped price at the supplied timestamp.
 /// Callers supply vector values directly, adapting their storage representation
 /// at the boundary; pricing does not load or inspect Offer or Pricer accounts.
