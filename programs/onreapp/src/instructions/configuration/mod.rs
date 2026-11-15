@@ -10,6 +10,7 @@ pub mod create_vault_config;
 pub mod delete_pricer_vector;
 pub mod initialize_managed_token_buffer;
 pub mod managed_token_market_stats;
+pub mod managed_token_mint_limits;
 pub mod managed_token_mint_multisig;
 pub mod register_managed_token;
 pub mod set_offer_pressure_state;
@@ -24,6 +25,7 @@ pub use create_vault_config::*;
 pub use delete_pricer_vector::*;
 pub use initialize_managed_token_buffer::*;
 pub use managed_token_market_stats::*;
+pub use managed_token_mint_limits::*;
 pub use managed_token_mint_multisig::*;
 pub use register_managed_token::*;
 

@@ -9408,6 +9408,95 @@
       "args": []
     },
     {
+      "name": "set_managed_token_mint_limits",
+      "docs": [
+        "Sets the managed token's issuance limits for program mints (zero disables a",
+        "limit; a nonzero max supply must cover current supply); boss only."
+      ],
+      "discriminator": [
+        125,
+        230,
+        153,
+        231,
+        39,
+        137,
+        154,
+        126
+      ],
+      "accounts": [
+        {
+          "name": "managed_token",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managed_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "managed_mint",
+          "docs": [
+            "Supplies the current supply that a nonzero `max_supply` must not undercut."
+          ]
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "max_supply",
+          "type": "u64"
+        },
+        {
+          "name": "max_mint_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "set_offer_disabled",
       "docs": [
         "Enables or disables one offer.",
@@ -13617,6 +13706,19 @@
       ]
     },
     {
+      "name": "ManagedTokenMintLimitsSetEvent",
+      "discriminator": [
+        200,
+        161,
+        96,
+        112,
+        86,
+        78,
+        76,
+        225
+      ]
+    },
+    {
       "name": "ManagedTokenMintMultisigSetEvent",
       "discriminator": [
         4,
@@ -14978,6 +15080,11 @@
       "code": 6149,
       "name": "InvalidMintMultisig",
       "msg": "Mint multisig must be the configured initialized 1-of-N multisig containing the program mint authority"
+    },
+    {
+      "code": 6150,
+      "name": "MaxSupplyBelowCurrentSupply",
+      "msg": "A nonzero max supply must be at least the current supply"
     }
   ],
   "types": [
@@ -16136,6 +16243,42 @@
           {
             "name": "market_stats",
             "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ManagedTokenMintLimitsSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "managed_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous_max_supply",
+            "type": "u64"
+          },
+          {
+            "name": "previous_max_mint_amount",
+            "type": "u64"
+          },
+          {
+            "name": "max_supply",
+            "type": "u64"
+          },
+          {
+            "name": "max_mint_amount",
+            "type": "u64"
           },
           {
             "name": "timestamp",

@@ -9414,6 +9414,95 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "setManagedTokenMintLimits",
+      "docs": [
+        "Sets the managed token's issuance limits for program mints (zero disables a",
+        "limit; a nonzero max supply must cover current supply); boss only."
+      ],
+      "discriminator": [
+        125,
+        230,
+        153,
+        231,
+        39,
+        137,
+        154,
+        126
+      ],
+      "accounts": [
+        {
+          "name": "managedToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "managedMint",
+          "docs": [
+            "Supplies the current supply that a nonzero `max_supply` must not undercut."
+          ]
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "maxSupply",
+          "type": "u64"
+        },
+        {
+          "name": "maxMintAmount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "setOfferDisabled",
       "docs": [
         "Enables or disables one offer.",
@@ -13623,6 +13712,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "managedTokenMintLimitsSetEvent",
+      "discriminator": [
+        200,
+        161,
+        96,
+        112,
+        86,
+        78,
+        76,
+        225
+      ]
+    },
+    {
       "name": "managedTokenMintMultisigSetEvent",
       "discriminator": [
         4,
@@ -14984,6 +15086,11 @@ export type Onreapp = {
       "code": 6149,
       "name": "invalidMintMultisig",
       "msg": "Mint multisig must be the configured initialized 1-of-N multisig containing the program mint authority"
+    },
+    {
+      "code": 6150,
+      "name": "maxSupplyBelowCurrentSupply",
+      "msg": "A nonzero max supply must be at least the current supply"
     }
   ],
   "types": [
@@ -16142,6 +16249,42 @@ export type Onreapp = {
           {
             "name": "marketStats",
             "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "managedTokenMintLimitsSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "managedMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "previousMaxSupply",
+            "type": "u64"
+          },
+          {
+            "name": "previousMaxMintAmount",
+            "type": "u64"
+          },
+          {
+            "name": "maxSupply",
+            "type": "u64"
+          },
+          {
+            "name": "maxMintAmount",
+            "type": "u64"
           },
           {
             "name": "timestamp",

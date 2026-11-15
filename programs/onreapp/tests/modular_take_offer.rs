@@ -1,6 +1,8 @@
 #[path = "modular_take_offer/buffer_independence.rs"]
 mod buffer_independence;
 mod common;
+#[path = "modular_take_offer/mint_limits.rs"]
+mod mint_limits;
 #[path = "modular_take_offer/mint_multisig.rs"]
 mod mint_multisig;
 #[path = "modular_take_offer/prop_amm.rs"]
