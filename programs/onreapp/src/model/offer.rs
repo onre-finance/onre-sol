@@ -22,6 +22,10 @@ pub enum OfferDirection {
 pub struct OfferConfig {
     pub token_in_mint: Pubkey,
     pub token_out_mint: Pubkey,
+    /// Boss-chosen identity within the directed pair: the PDA is
+    /// `["offer_config", token_in_mint, token_out_mint, instance_id_le]`, so any number
+    /// of offers, with any flows, can exist per pair.
+    pub instance_id: u64,
     pub flow: OfferFlow,
     pub direction: OfferDirection,
     /// Explicit price source, validated against this offer's mint pair on assignment.

@@ -1659,7 +1659,8 @@ export type Onreapp = {
     {
       "name": "createOfferConfig",
       "docs": [
-        "Creates a directed offer referencing compatible existing components; boss only."
+        "Creates a directed offer referencing compatible existing components; boss only.",
+        "Identified by the mint pair and a boss-chosen `instance_id`, not by its flow."
       ],
       "discriminator": [
         55,
@@ -1713,7 +1714,40 @@ export type Onreapp = {
         },
         {
           "name": "offerConfig",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              },
+              {
+                "kind": "arg",
+                "path": "instanceId"
+              }
+            ]
+          }
         },
         {
           "name": "state",
@@ -1746,6 +1780,10 @@ export type Onreapp = {
         }
       ],
       "args": [
+        {
+          "name": "instanceId",
+          "type": "u64"
+        },
         {
           "name": "flow",
           "type": {
@@ -9444,7 +9482,43 @@ export type Onreapp = {
       "accounts": [
         {
           "name": "offerConfig",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "offerConfig.tokenInMint",
+                "account": "offerConfig"
+              },
+              {
+                "kind": "account",
+                "path": "offerConfig.tokenOutMint",
+                "account": "offerConfig"
+              },
+              {
+                "kind": "account",
+                "path": "offerConfig.instanceId",
+                "account": "offerConfig"
+              }
+            ]
+          }
         },
         {
           "name": "quoter",
@@ -10031,7 +10105,43 @@ export type Onreapp = {
           "name": "config",
           "accounts": [
             {
-              "name": "offerConfig"
+              "name": "offerConfig",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      111,
+                      102,
+                      102,
+                      101,
+                      114,
+                      95,
+                      99,
+                      111,
+                      110,
+                      102,
+                      105,
+                      103
+                    ]
+                  },
+                  {
+                    "kind": "account",
+                    "path": "offerConfig.tokenInMint",
+                    "account": "offerConfig"
+                  },
+                  {
+                    "kind": "account",
+                    "path": "offerConfig.tokenOutMint",
+                    "account": "offerConfig"
+                  },
+                  {
+                    "kind": "account",
+                    "path": "offerConfig.instanceId",
+                    "account": "offerConfig"
+                  }
+                ]
+              }
             },
             {
               "name": "managedToken",
@@ -16494,6 +16604,15 @@ export type Onreapp = {
           {
             "name": "tokenOutMint",
             "type": "pubkey"
+          },
+          {
+            "name": "instanceId",
+            "docs": [
+              "Boss-chosen identity within the directed pair: the PDA is",
+              "`[\"offer_config\", token_in_mint, token_out_mint, instance_id_le]`, so any number",
+              "of offers, with any flows, can exist per pair."
+            ],
+            "type": "u64"
           },
           {
             "name": "flow",

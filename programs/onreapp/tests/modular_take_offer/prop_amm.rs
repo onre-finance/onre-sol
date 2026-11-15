@@ -369,7 +369,7 @@ fn canonical_nav_controls_refill_and_sell_cap_independently_of_offer_nav() {
         b"offer_config",
         f.asset.as_ref(),
         f.mint.as_ref(),
-        &[OfferFlow::Permissioned as u8],
+        &(OfferFlow::Permissioned as u64).to_le_bytes(),
     ]);
     f.create_route(
         OfferDirection::AssetToManaged,
@@ -490,7 +490,7 @@ fn nav_link_is_explicit_mandatory_and_relieves_the_configured_curve() {
         b"offer_config",
         f.asset.as_ref(),
         f.mint.as_ref(),
-        &[OfferFlow::Permissioned as u8],
+        &(OfferFlow::Permissioned as u64).to_le_bytes(),
     ]);
     let instruction = f.take(2_000_000, 990_000_000);
     let snapshot = f.svm.get_account(&tracker).unwrap().data;
@@ -676,7 +676,7 @@ fn standalone_prop_offer_executes_and_pressure_expires_without_reverse_offer() {
                 b"offer_config",
                 reverse_in.as_ref(),
                 reverse_out.as_ref(),
-                &[flow as u8],
+                &(flow as u64).to_le_bytes(),
             ]);
             assert!(f.svm.get_account(&reverse).is_none());
         }

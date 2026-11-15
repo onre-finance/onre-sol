@@ -22,7 +22,12 @@ pub struct OfferPressureStateSetEvent {
 pub struct SetOfferPressureState<'info> {
     #[account(
         mut,
-        seeds = [OFFER_CONFIG, offer_config.token_in_mint.as_ref(), offer_config.token_out_mint.as_ref(), &[offer_config.flow as u8]],
+        seeds = [
+            OFFER_CONFIG,
+            offer_config.token_in_mint.as_ref(),
+            offer_config.token_out_mint.as_ref(),
+            &offer_config.instance_id.to_le_bytes()
+        ],
         bump = offer_config.bump,
         has_one = quoter @ OnreError::IncompatibleQuoter
     )]

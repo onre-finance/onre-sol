@@ -47,7 +47,8 @@ market stats, excluded-balance cache and the three BUFFER ATAs), and `custody`
 (`TakeOfferCustodyAccounts`: pressure state and source/destination vaults/ATAs).
 Groups flatten in place, so the transaction's account order is unchanged; Rust and
 TypeScript clients pass each group as a nested object. `offer_config` is verified
-against the PDA of its stored mint pair, and the mint accounts must equal that pair.
+against the PDA of its stored mint pair and instance ID, and the mint accounts must
+equal that pair.
 
 - `offer_config`, `managed_token`, the explicitly selected `pricer`, `quoter`,
   `fee_config`, `proceeds_vault`, and `fee_vault`.

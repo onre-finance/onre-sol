@@ -300,7 +300,7 @@ impl Fixture {
             b"offer_config",
             input.as_ref(),
             output.as_ref(),
-            &[flow as u8],
+            &(flow as u64).to_le_bytes(),
         ])
     }
 
@@ -328,7 +328,10 @@ impl Fixture {
                 boss: self.boss.pubkey(),
                 system_program: SYSTEM_PROGRAM_ID,
             },
-            instruction::CreateOfferConfig { flow },
+            instruction::CreateOfferConfig {
+                instance_id: flow as u64,
+                flow,
+            },
         )
     }
 

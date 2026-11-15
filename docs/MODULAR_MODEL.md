@@ -80,7 +80,7 @@ the domain paths such as `model::pricer::Pricer`.
 | FeeConfig | 52 | 60 |
 | VaultConfig | 44 | 52 |
 | ManagedTokenBufferState | 166 | 174 |
-| OfferConfig | 294 | 302 |
+| OfferConfig | 302 | 310 |
 | FulfillmentRequest | 89 | 97 |
 | ManagedTokenSupplyExclusions | 674 | 682 |
 
@@ -94,7 +94,7 @@ the domain paths such as `model::pricer::Pricer`.
 | FeeConfig | FeeConfig | Instance ID, Fee vault reference, basis points, minimum input fee, enabled, bump. |
 | ConfigurableVault | VaultConfig | Kind, instance ID, withdrawal destination, refill target, bump. |
 | BufferState | ManagedTokenBufferState | Managed mint, three vault references, supply baseline, watermark, accrual time, APR, fee settings, bump. |
-| OfferConfig | OfferConfig | Directed mint pair, flow, direction, pricer/quoter/pressure-state/fee/proceeds/source/destination references, decimals, enabled, bump. |
+| OfferConfig | OfferConfig | Directed mint pair, instance ID, flow, direction, pricer/quoter/pressure-state/fee/proceeds/source/destination references, decimals, enabled, bump. |
 | FulfillmentRequest | FulfillmentRequest | Offer, user, numeric request ID, gross input, fulfilled gross input, bump. |
 | Excluded-supply mappings | ManagedTokenSupplyExclusions | Managed mint, up to 20 token-account addresses, active count, bump. |
 | MarketStats | Existing `state::MarketStats` account, selected per mint by `ManagedTokenConfig::market_stats` | APY, circulating supply, NAV, NAV adjustment, TVL, timestamp, slot, bump. |
@@ -133,7 +133,7 @@ numeric instance and request IDs use eight-byte little-endian encoding.
 | BUFFER management Fee VaultConfig | `"buffer_management", managed_mint` |
 | BUFFER performance Fee VaultConfig | `"buffer_performance", managed_mint` |
 | ManagedTokenBufferState | `"buffer", managed_mint` |
-| OfferConfig | `"offer_config", token_in_mint, token_out_mint, flow` |
+| OfferConfig | `"offer_config", token_in_mint, token_out_mint, instance_id` (u64 LE) |
 | FulfillmentRequest | `"fulfillment", offer_config, user, request_id` |
 | ManagedTokenSupplyExclusions | `"supply_exclusions", managed_mint` |
 | Per-mint MarketStats (optional) | `"market_stats", managed_mint` |
@@ -142,8 +142,9 @@ BUFFER vaults use token-and-role identities, as in EVM, with instance IDs 0 for
 reserve, 1 for management fees, and 2 for performance fees in their account bodies.
 Those dedicated identities do not occupy the ordinary vault instance namespace.
 
-There is exactly one offer per directed pair and flow, without an extra offer
-instance ID or offer-kind enum. Its mints, flow, and derived direction are
+Offers are identified by their directed mint pair and a boss-chosen `u64`
+`instance_id`, not by flow, so a pair can have any number of offers with the same
+or different flows. Its mints, instance ID, flow, and derived direction are
 immutable. The target model allows governance to replace component references, including the
 explicit Pricer reference, after revalidating compatibility with the unchanged
 mint pair. `set_offer_pressure_state` implements the pressure link update only;
@@ -168,7 +169,7 @@ repeat creation; shared accounts are not implicitly initialized or overwritten b
 | `create_vault_config` | Creates a vault authority/config with a nonzero destination; creates no ATA. Refill targets are allowed only for Liquidity and cannot exceed 10,000 bps. |
 | `create_fee_config` | Requires an existing Fee vault; percentage fees are capped at 1,000 bps and the input-token minimum is stored in base units. |
 | `create_prop_amm_state` | Requires an enabled PropAmm quoter, a registered managed mint, and a boss-selected external mint. Validates curve/cadence/epoch settings and creates zero pressure with the current timestamp. Repeat creation cannot rebind the pair. |
-| `create_offer_config` | Requires exactly one registered managed mint and a Pricer for it. The boss chooses the external mint in the Pricer's denomination. Validates mint decimals, enabled components, flow/quoter compatibility, Prop AMM pair binding, and vault kinds. |
+| `create_offer_config` | Takes a boss-chosen `instance_id` that, with the mint pair, derives the offer address. Requires exactly one registered managed mint and a Pricer for it. The boss chooses the external mint in the Pricer's denomination. Validates mint decimals, enabled components, flow/quoter compatibility, Prop AMM pair binding, and vault kinds. |
 | `enable_managed_token_mint_multisig` / `disable_managed_token_mint_multisig` | Boss-only switch of modular minting between the program PDA and a 1-of-N SPL multisig that includes it; see [MODULAR_TAKE_OFFER.md](MODULAR_TAKE_OFFER.md#minting-authority). |
 | `initialize_managed_token_buffer` | Creates independent per-mint accounting and three dedicated vault configs, using the token's enabled USD Pricer instance zero. |
 

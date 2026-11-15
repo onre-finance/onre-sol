@@ -212,8 +212,13 @@ pub mod onreapp {
     }
 
     /// Creates a directed offer referencing compatible existing components; boss only.
-    pub fn create_offer_config(ctx: Context<CreateOfferConfig>, flow: OfferFlow) -> Result<()> {
-        configuration::create_offer_config(ctx, flow)
+    /// Identified by the mint pair and a boss-chosen `instance_id`, not by its flow.
+    pub fn create_offer_config(
+        ctx: Context<CreateOfferConfig>,
+        instance_id: u64,
+        flow: OfferFlow,
+    ) -> Result<()> {
+        configuration::create_offer_config(ctx, instance_id, flow)
     }
 
     /// Boss-configured pair pressure tracking, independent of NAV/PropAmm quote selection.

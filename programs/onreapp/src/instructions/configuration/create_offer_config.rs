@@ -27,7 +27,7 @@ pub struct OfferConfigCreatedEvent {
 /// Creates an offer with a boss-selected external asset and compatible Pricer.
 /// Records enabled configuration; execution is limited to implemented paths.
 #[derive(Accounts)]
-#[instruction(flow: OfferFlow)]
+#[instruction(instance_id: u64)]
 pub struct CreateOfferConfig<'info> {
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
 
@@ -78,7 +78,7 @@ pub struct CreateOfferConfig<'info> {
             OFFER_CONFIG,
             token_in_mint.key().as_ref(),
             token_out_mint.key().as_ref(),
-            &[flow as u8]
+            &instance_id.to_le_bytes()
         ],
         bump
     )]
@@ -97,7 +97,11 @@ pub struct CreateOfferConfig<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn create_offer_config(ctx: Context<CreateOfferConfig>, flow: OfferFlow) -> Result<()> {
+pub fn create_offer_config(
+    ctx: Context<CreateOfferConfig>,
+    instance_id: u64,
+    flow: OfferFlow,
+) -> Result<()> {
     let a = &ctx.accounts;
     require!(
         a.token_in_mint.decimals <= MAX_TOKEN_DECIMALS
@@ -170,6 +174,7 @@ pub fn create_offer_config(ctx: Context<CreateOfferConfig>, flow: OfferFlow) -> 
     let offer = OfferConfig {
         token_in_mint: a.token_in_mint.key(),
         token_out_mint: a.token_out_mint.key(),
+        instance_id,
         flow,
         direction,
         pricer: a.pricer.key(),
