@@ -9049,6 +9049,82 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "setFeeConfigEnabled",
+      "docs": [
+        "Enables or disables a FeeConfig; boss only."
+      ],
+      "discriminator": [
+        233,
+        82,
+        131,
+        216,
+        2,
+        40,
+        222,
+        0
+      ],
+      "accounts": [
+        {
+          "name": "feeConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "feeConfig.instanceId",
+                "account": "feeConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "setKillSwitch",
       "docs": [
         "Enables or disables the kill switch.",
@@ -9336,6 +9412,85 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "setManagedTokenEnabled",
+      "docs": [
+        "Enables or disables a managed token for modular use; boss only."
+      ],
+      "discriminator": [
+        116,
+        72,
+        114,
+        88,
+        89,
+        207,
+        213,
+        223
+      ],
+      "accounts": [
+        {
+          "name": "managedToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedToken.managedMint",
+                "account": "managedTokenConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "setManagedTokenMarketStats",
       "docs": [
         "Selects any existing program-owned MarketStats account, including the legacy",
@@ -9499,6 +9654,94 @@ export type Onreapp = {
         {
           "name": "maxMintAmount",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "setOfferConfigEnabled",
+      "docs": [
+        "Enables or disables an OfferConfig; boss only."
+      ],
+      "discriminator": [
+        84,
+        164,
+        255,
+        159,
+        251,
+        129,
+        92,
+        221
+      ],
+      "accounts": [
+        {
+          "name": "offerConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "offerConfig.tokenInMint",
+                "account": "offerConfig"
+              },
+              {
+                "kind": "account",
+                "path": "offerConfig.tokenOutMint",
+                "account": "offerConfig"
+              },
+              {
+                "kind": "account",
+                "path": "offerConfig.instanceId",
+                "account": "offerConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
         }
       ]
     },
@@ -9711,6 +9954,110 @@ export type Onreapp = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "setPricerEnabled",
+      "docs": [
+        "Enables or disables a Pricer; boss only."
+      ],
+      "discriminator": [
+        73,
+        86,
+        202,
+        27,
+        149,
+        58,
+        205,
+        108
+      ],
+      "accounts": [
+        {
+          "name": "pricer",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "setQuoterEnabled",
+      "docs": [
+        "Enables or disables a Quoter; boss only."
+      ],
+      "discriminator": [
+        122,
+        60,
+        105,
+        125,
+        209,
+        9,
+        184,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "quoter",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
     },
     {
       "name": "setRedemptionOfferDisabled",
@@ -13634,6 +13981,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "feeConfigEnabledSetEvent",
+      "discriminator": [
+        45,
+        141,
+        49,
+        8,
+        90,
+        102,
+        64,
+        159
+      ]
+    },
+    {
       "name": "killSwitchToggledEvent",
       "discriminator": [
         104,
@@ -13696,6 +14056,19 @@ export type Onreapp = {
         96,
         204,
         111
+      ]
+    },
+    {
+      "name": "managedTokenEnabledSetEvent",
+      "discriminator": [
+        124,
+        183,
+        175,
+        204,
+        140,
+        6,
+        233,
+        92
       ]
     },
     {
@@ -13839,6 +14212,19 @@ export type Onreapp = {
         89,
         133,
         210
+      ]
+    },
+    {
+      "name": "offerConfigEnabledSetEvent",
+      "discriminator": [
+        127,
+        152,
+        36,
+        11,
+        177,
+        18,
+        253,
+        63
       ]
     },
     {
@@ -14037,6 +14423,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "pricerEnabledSetEvent",
+      "discriminator": [
+        187,
+        209,
+        180,
+        232,
+        3,
+        4,
+        7,
+        66
+      ]
+    },
+    {
       "name": "pricerVectorAddedEvent",
       "discriminator": [
         216,
@@ -14112,6 +14511,19 @@ export type Onreapp = {
         201,
         73,
         79
+      ]
+    },
+    {
+      "name": "quoterEnabledSetEvent",
+      "discriminator": [
+        17,
+        116,
+        1,
+        85,
+        113,
+        199,
+        202,
+        211
       ]
     },
     {
@@ -15945,6 +16357,30 @@ export type Onreapp = {
       }
     },
     {
+      "name": "feeConfigEnabledSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "feeConfig",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "killSwitchToggledEvent",
       "docs": [
         "Event emitted when the kill switch state is changed",
@@ -16225,6 +16661,30 @@ export type Onreapp = {
               "instructions always mint directly. See `utils::program_minter`."
             ],
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "managedTokenEnabledSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "managedToken",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -16860,6 +17320,30 @@ export type Onreapp = {
                 "name": "offerConfig"
               }
             }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "offerConfigEnabledSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "offerConfig",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
           },
           {
             "name": "timestamp",
@@ -17652,6 +18136,30 @@ export type Onreapp = {
       }
     },
     {
+      "name": "pricerEnabledSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "pricer",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "pricerVectorAddedEvent",
       "type": {
         "kind": "struct",
@@ -18125,6 +18633,30 @@ export type Onreapp = {
                 "name": "quoter"
               }
             }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "quoterEnabledSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "quoter",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
           },
           {
             "name": "timestamp",

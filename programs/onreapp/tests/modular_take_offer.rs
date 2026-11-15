@@ -1,3 +1,5 @@
+#[path = "modular_take_offer/admin_updates.rs"]
+mod admin_updates;
 #[path = "modular_take_offer/buffer_independence.rs"]
 mod buffer_independence;
 mod common;

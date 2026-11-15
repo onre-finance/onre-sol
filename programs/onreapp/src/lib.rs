@@ -272,6 +272,37 @@ pub mod onreapp {
         configuration::set_managed_token_mint_limits(ctx, max_supply, max_mint_amount)
     }
 
+    /// Enables or disables a managed token for modular use; boss only.
+    pub fn set_managed_token_enabled(
+        ctx: Context<SetManagedTokenEnabled>,
+        enabled: bool,
+    ) -> Result<()> {
+        configuration::set_managed_token_enabled(ctx, enabled)
+    }
+
+    /// Enables or disables a Pricer; boss only.
+    pub fn set_pricer_enabled(ctx: Context<SetPricerEnabled>, enabled: bool) -> Result<()> {
+        configuration::set_pricer_enabled(ctx, enabled)
+    }
+
+    /// Enables or disables a Quoter; boss only.
+    pub fn set_quoter_enabled(ctx: Context<SetQuoterEnabled>, enabled: bool) -> Result<()> {
+        configuration::set_quoter_enabled(ctx, enabled)
+    }
+
+    /// Enables or disables a FeeConfig; boss only.
+    pub fn set_fee_config_enabled(ctx: Context<SetFeeConfigEnabled>, enabled: bool) -> Result<()> {
+        configuration::set_fee_config_enabled(ctx, enabled)
+    }
+
+    /// Enables or disables an OfferConfig; boss only.
+    pub fn set_offer_config_enabled(
+        ctx: Context<SetOfferConfigEnabled>,
+        enabled: bool,
+    ) -> Result<()> {
+        configuration::set_offer_config_enabled(ctx, enabled)
+    }
+
     /// Switches the managed token's modular minting to a 1-of-N SPL multisig that already
     /// holds mint authority and includes the program mint-authority PDA; boss only.
     /// Legacy instructions keep minting directly.
