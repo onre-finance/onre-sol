@@ -1,6 +1,7 @@
 pub mod buffer;
 pub mod configurable_vault;
 pub mod configuration;
+pub mod execution;
 pub mod initialization;
 pub mod market_info;
 pub mod mint_authority;
@@ -14,6 +15,7 @@ pub mod vault_operations;
 pub use buffer::*;
 pub use configurable_vault::*;
 pub use configuration::*;
+pub use execution::*;
 pub use initialization::*;
 pub use market_info::*;
 pub use mint_authority::*;

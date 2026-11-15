@@ -90,8 +90,10 @@ pub fn create_prop_amm_state(
         current_sell_value_stable: 0,
         current_buy_value_stable: 0,
         previous_net_sell_value_stable: 0,
+        previous_net_buy_value_stable: 0,
         epoch_start: Clock::get()?.unix_timestamp,
         current_sell_trade_count: 0,
+        current_buy_trade_count: 0,
         bump: ctx.bumps.prop_amm_state,
     });
     emit!(PropAmmStateCreatedEvent {

@@ -143,7 +143,9 @@ export const OnreappErrorCode = {
   IncompatiblePricer: 6140,
   IncompatibleQuoter: 6141,
   InvalidOfferDirection: 6142,
-  LiquidityVaultRequired: 6143
+  LiquidityVaultRequired: 6143,
+  UnsupportedOfferExecution: 6144,
+  UnexpectedApproval: 6145
 };
 
 export type OnreappErrorName = keyof typeof OnreappErrorCode;

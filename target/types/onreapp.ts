@@ -23,7 +23,8 @@ export type Onreapp = {
     "",
     "Core functionalities include:",
     "- Making offers with dynamic pricing (`make_offer`).",
-    "- Taking offers with current market pricing (`take_offer_v2`, `take_offer_permissionless_v2`).",
+    "- Taking modular permissioned NAV offers (`take_offer`) and existing offers",
+    "(`take_offer_v2`, `take_offer_permissionless_v2`).",
     "- Managing offer vectors for price control (`add_offer_vector`, `delete_offer_vector`).",
     "- Program state initialization and management (`initialize`, `propose_boss`, `accept_boss`, `add_admin`, `remove_admin`).",
     "- Vault operations for token deposits and withdrawals (`offer_vault_deposit`, `offer_vault_withdraw`).",
@@ -349,6 +350,62 @@ export type Onreapp = {
         {
           "name": "priceFixDuration",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "addPricerVector",
+      "docs": [
+        "Append an independent Pricer's vector; boss only."
+      ],
+      "discriminator": [
+        124,
+        225,
+        78,
+        186,
+        87,
+        216,
+        198,
+        154
+      ],
+      "accounts": [
+        {
+          "name": "pricer",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "vector",
+          "type": {
+            "defined": {
+              "name": "pricingVector"
+            }
+          }
         }
       ]
     },
@@ -2781,6 +2838,183 @@ export type Onreapp = {
           "name": "depositor",
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "depositVaultConfig",
+      "docs": [
+        "Deposit into a canonical VaultConfig ATA; any depositor, subject to the kill switch."
+      ],
+      "discriminator": [
+        227,
+        223,
+        249,
+        199,
+        235,
+        241,
+        117,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "vault"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "depositorTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "depositor"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vaultTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "depositor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "tokenProgram"
@@ -8503,6 +8737,63 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "setOfferPressureState",
+      "docs": [
+        "Boss-configured pair pressure tracking, independent of NAV/PropAmm quote selection."
+      ],
+      "discriminator": [
+        186,
+        149,
+        170,
+        101,
+        65,
+        51,
+        158,
+        127
+      ],
+      "accounts": [
+        {
+          "name": "offerConfig",
+          "writable": true
+        },
+        {
+          "name": "quoter",
+          "relations": [
+            "offerConfig"
+          ]
+        },
+        {
+          "name": "propAmmState",
+          "optional": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "setOnycMint",
       "docs": [
         "Sets the Onyc mint in the state.",
@@ -8859,6 +9150,600 @@ export type Onreapp = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "takeOffer",
+      "docs": [
+        "Execute an offer using reusable model accounts.",
+        "Supports permissioned and permissionless NAV in both directions, with shared BUFFER accounting",
+        "and the offer's selected liquidity vault for managed-to-asset payouts.",
+        "Permissionless execution routes through the canonical intermediary PDA.",
+        "Permissionless Prop AMM uses symmetric curve pricing; NAV offers may link pair pressure.",
+        "Buys can refill configured liquidity targets. Worker execution remains unsupported.",
+        "V2 entrypoints and their account lists remain unchanged."
+      ],
+      "discriminator": [
+        128,
+        156,
+        242,
+        207,
+        237,
+        192,
+        103,
+        240
+      ],
+      "accounts": [
+        {
+          "name": "offerConfig"
+        },
+        {
+          "name": "managedToken",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedToken.managedMint",
+                "account": "managedTokenConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pricer",
+          "relations": [
+            "offerConfig"
+          ]
+        },
+        {
+          "name": "quoter",
+          "relations": [
+            "offerConfig"
+          ]
+        },
+        {
+          "name": "feeConfig",
+          "relations": [
+            "offerConfig"
+          ]
+        },
+        {
+          "name": "proceedsVault",
+          "relations": [
+            "offerConfig"
+          ]
+        },
+        {
+          "name": "feeVault",
+          "relations": [
+            "feeConfig"
+          ]
+        },
+        {
+          "name": "tokenInMint",
+          "writable": true
+        },
+        {
+          "name": "tokenOutMint",
+          "writable": true
+        },
+        {
+          "name": "userTokenIn",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "userTokenOut",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "proceedsTokenIn",
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "proceedsVault"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "feeTokenIn",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "feeVault"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "mintAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferState",
+          "docs": [
+            "uninitialized, preventing callers from skipping an active BUFFER."
+          ],
+          "writable": true
+        },
+        {
+          "name": "bufferPricer",
+          "docs": [
+            "Canonical USD instance-zero Pricer, required for initialized per-mint BUFFER",
+            "and token-wide liquidity targets when the offer selects another Pricer.",
+            "The offer's independently selected Pricer does not control token-wide accrual."
+          ],
+          "optional": true
+        },
+        {
+          "name": "mainOffer",
+          "optional": true
+        },
+        {
+          "name": "marketStats",
+          "writable": true
+        },
+        {
+          "name": "circulatingSupplyExcludedBalance"
+        },
+        {
+          "name": "bufferReserveToken",
+          "writable": true
+        },
+        {
+          "name": "bufferManagementToken",
+          "writable": true
+        },
+        {
+          "name": "bufferPerformanceToken",
+          "writable": true
+        },
+        {
+          "name": "instructionsSysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "tokenInProgram"
+        },
+        {
+          "name": "tokenOutProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "propAmmState",
+          "docs": [
+            "Required exactly when OfferConfig.pressure_state is configured, including",
+            "linked NAV offers. Validated against the stored reference and mint pair."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "liquidityVault",
+          "optional": true
+        },
+        {
+          "name": "liquidityToken",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "permissionlessAuthority",
+          "docs": [
+            "Its address and token authorities are checked before execution."
+          ],
+          "optional": true
+        },
+        {
+          "name": "permissionlessTokenIn",
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "permissionlessAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "permissionlessTokenOut",
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "permissionlessAuthority"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "grossInputAmount",
+          "type": "u64"
+        },
+        {
+          "name": "minimumAmountOut",
+          "type": "u64"
+        },
+        {
+          "name": "deadline",
+          "type": "u64"
+        },
+        {
+          "name": "approvalMessage",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "approvalMessage"
+              }
+            }
+          }
+        }
+      ]
     },
     {
       "name": "takeOfferPermissionlessV2",
@@ -10970,6 +11855,187 @@ export type Onreapp = {
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "withdrawVaultConfig",
+      "docs": [
+        "Withdraw to the configured destination; Liquidity/BufferReserve require the boss.",
+        "Fee/Proceeds permit any caller. Zero amount withdraws the full balance."
+      ],
+      "discriminator": [
+        17,
+        104,
+        75,
+        194,
+        255,
+        254,
+        175,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "vault"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "vaultTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "destination"
+        },
+        {
+          "name": "destinationTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "destination"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "caller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -11483,6 +12549,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "managedTokenBufferAccruedEvent",
+      "discriminator": [
+        109,
+        30,
+        87,
+        243,
+        220,
+        122,
+        52,
+        212
+      ]
+    },
+    {
       "name": "managedTokenBufferInitializedEvent",
       "discriminator": [
         53,
@@ -11613,6 +12692,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "offerExecutedEvent",
+      "discriminator": [
+        73,
+        249,
+        246,
+        82,
+        116,
+        145,
+        122,
+        171
+      ]
+    },
+    {
       "name": "offerFeeUpdatedEvent",
       "discriminator": [
         65,
@@ -11649,6 +12741,19 @@ export type Onreapp = {
         173,
         69,
         147
+      ]
+    },
+    {
+      "name": "offerPressureStateSetEvent",
+      "discriminator": [
+        91,
+        15,
+        165,
+        15,
+        239,
+        99,
+        171,
+        207
       ]
     },
     {
@@ -11766,6 +12871,19 @@ export type Onreapp = {
         67,
         108,
         153
+      ]
+    },
+    {
+      "name": "pricerVectorAddedEvent",
+      "discriminator": [
+        216,
+        43,
+        200,
+        217,
+        202,
+        169,
+        243,
+        182
       ]
     },
     {
@@ -11987,6 +13105,32 @@ export type Onreapp = {
         115,
         32,
         208
+      ]
+    },
+    {
+      "name": "vaultConfigDepositedEvent",
+      "discriminator": [
+        88,
+        179,
+        172,
+        241,
+        54,
+        173,
+        40,
+        181
+      ]
+    },
+    {
+      "name": "vaultConfigWithdrawnEvent",
+      "discriminator": [
+        87,
+        73,
+        167,
+        152,
+        179,
+        32,
+        121,
+        174
       ]
     },
     {
@@ -12723,6 +13867,16 @@ export type Onreapp = {
       "code": 6143,
       "name": "liquidityVaultRequired",
       "msg": "A liquidity vault is required for managed-to-asset offers"
+    },
+    {
+      "code": 6144,
+      "name": "unsupportedOfferExecution",
+      "msg": "This offer flow, direction or liquidity routing is not implemented by take_offer yet"
+    },
+    {
+      "code": 6145,
+      "name": "unexpectedApproval",
+      "msg": "Permissionless execution requires approval_message to be absent"
     }
   ],
   "types": [
@@ -13566,6 +14720,58 @@ export type Onreapp = {
       }
     },
     {
+      "name": "managedTokenBufferAccruedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bufferState",
+            "type": "pubkey"
+          },
+          {
+            "name": "managedMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "canonicalPricer",
+            "type": "pubkey"
+          },
+          {
+            "name": "bufferMintAmount",
+            "type": "u64"
+          },
+          {
+            "name": "reserveMintAmount",
+            "type": "u64"
+          },
+          {
+            "name": "managementFeeMintAmount",
+            "type": "u64"
+          },
+          {
+            "name": "performanceFeeMintAmount",
+            "type": "u64"
+          },
+          {
+            "name": "previousSupply",
+            "type": "u64"
+          },
+          {
+            "name": "postAccrualSupply",
+            "type": "u64"
+          },
+          {
+            "name": "performanceFeeHighWatermark",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "managedTokenBufferInitializedEvent",
       "docs": [
         "Records the created account and its complete initial configuration."
@@ -14148,6 +15354,14 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
+            "name": "pressureState",
+            "docs": [
+              "Explicit pair pressure-accounting link, independent of quote selection.",
+              "Default means untracked NAV; PropAmm requires its own canonical state."
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "feeConfig",
             "type": "pubkey"
           },
@@ -14158,6 +15372,7 @@ export type Onreapp = {
           {
             "name": "liquidityVault",
             "docs": [
+              "Modular Liquidity VaultConfig, legacy ConfigurableVault, or redemption authority.",
               "Default pubkey means absent; mandatory for ManagedToAsset."
             ],
             "type": "pubkey"
@@ -14242,6 +15457,86 @@ export type Onreapp = {
           {
             "name": "signer",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "offerExecutedEvent",
+      "docs": [
+        "Accounting for one completed offer execution, in mint base units."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerConfig",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "flow",
+            "type": {
+              "defined": {
+                "name": "offerFlow"
+              }
+            }
+          },
+          {
+            "name": "direction",
+            "type": {
+              "defined": {
+                "name": "offerDirection"
+              }
+            }
+          },
+          {
+            "name": "grossInputAmount",
+            "type": "u64"
+          },
+          {
+            "name": "feeAmount",
+            "type": "u64"
+          },
+          {
+            "name": "netInputAmount",
+            "type": "u64"
+          },
+          {
+            "name": "amountOut",
+            "type": "u64"
+          },
+          {
+            "name": "price",
+            "docs": [
+              "Selected offer Pricer's USD price, scale 9."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "liquidityRefillAmount",
+            "docs": [
+              "Net asset input routed to the selected liquidity vault before user issuance."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "proceedsAmount",
+            "type": "u64"
+          },
+          {
+            "name": "liquidityAmount",
+            "docs": [
+              "Asset payout from the offer's selected liquidity vault."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -14401,6 +15696,34 @@ export type Onreapp = {
               "The boss account that authorized the fee update."
             ],
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "offerPressureStateSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "offerConfig",
+            "type": "pubkey"
+          },
+          {
+            "name": "previousState",
+            "type": "pubkey"
+          },
+          {
+            "name": "pressureState",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -14824,6 +16147,9 @@ export type Onreapp = {
           },
           {
             "name": "vectors",
+            "docs": [
+              "Fixed slots; `start_time == 0` denotes an empty slot, as in legacy Offer."
+            ],
             "type": {
               "array": [
                 {
@@ -14834,13 +16160,6 @@ export type Onreapp = {
                 10
               ]
             }
-          },
-          {
-            "name": "vectorCount",
-            "docs": [
-              "Only the first `vector_count` slots are active."
-            ],
-            "type": "u8"
           },
           {
             "name": "enabled",
@@ -14874,6 +16193,34 @@ export type Onreapp = {
             "type": {
               "defined": {
                 "name": "pricer"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pricerVectorAddedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "pricer",
+            "type": "pubkey"
+          },
+          {
+            "name": "vector",
+            "type": {
+              "defined": {
+                "name": "pricingVector"
               }
             }
           },
@@ -15180,11 +16527,22 @@ export type Onreapp = {
             "type": "u128"
           },
           {
+            "name": "previousNetBuyValueStable",
+            "type": "u128"
+          },
+          {
             "name": "epochStart",
+            "docs": [
+              "Scheduled epoch boundary. Rollover preserves alignment, even after idle time."
+            ],
             "type": "i64"
           },
           {
             "name": "currentSellTradeCount",
+            "type": "u32"
+          },
+          {
+            "name": "currentBuyTradeCount",
             "type": "u32"
           },
           {
@@ -16122,7 +17480,8 @@ export type Onreapp = {
           {
             "name": "withdrawalDestination",
             "docs": [
-              "Destination owner; withdrawals would pay its ATA for the selected mint."
+              "Fixed destination owner; withdrawals pay its ATA for the selected mint.",
+              "Fee/Proceeds allow any caller; Liquidity/BufferReserve require State::boss."
             ],
             "type": "pubkey"
           },
@@ -16167,6 +17526,58 @@ export type Onreapp = {
           {
             "name": "timestamp",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vaultConfigDepositedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "depositor",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vaultConfigWithdrawnEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "caller",
+            "type": "pubkey"
+          },
+          {
+            "name": "destination",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
           }
         ]
       }
