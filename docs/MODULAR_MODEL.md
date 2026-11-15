@@ -177,6 +177,7 @@ repeat creation; shared accounts are not implicitly initialized or overwritten b
 | `update_vault_config` | Boss-only replacement of withdrawal destination and refill target with the creation rules; kind and instance unchanged. Also applies to BUFFER vaults, whose destination is the boss at initialization. |
 | `update_prop_amm_config` | Boss-only replacement of curve, cadence, epoch and wall settings with the creation limits; the bound pair and accumulated pressure are kept. |
 | `unset_managed_token_market_stats` | Boss-only reset of the MarketStats selection to default (reporting disabled); the MarketStats account is untouched. |
+| `refresh_managed_token_market_stats` | Permissionless recomputation of the selected MarketStats (and the ONyc legacy singleton) from current supply and the canonical USD Pricer, between trades. |
 | `set_managed_token_mint_limits` | Boss-only per-mint `max_supply` / `max_mint_amount` for program mints; zero disables a limit and a nonzero max supply must cover current supply. ONyc combines them with the global `State` limits (stricter nonzero wins). |
 | `enable_managed_token_mint_multisig` / `disable_managed_token_mint_multisig` | Boss-only switch of modular minting between the program PDA and a 1-of-N SPL multisig that includes it; see [MODULAR_TAKE_OFFER.md](MODULAR_TAKE_OFFER.md#minting-authority). |
 | `initialize_managed_token_buffer` | Creates independent per-mint accounting and three dedicated vault configs, using the token's enabled USD Pricer instance zero. |

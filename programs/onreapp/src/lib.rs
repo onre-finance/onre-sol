@@ -343,6 +343,14 @@ pub mod onreapp {
         configuration::unset_managed_token_market_stats(ctx)
     }
 
+    /// Permissionlessly recomputes a managed token's selected MarketStats (and the
+    /// legacy singleton for ONyc) from current supply and its canonical Pricer.
+    pub fn refresh_managed_token_market_stats(
+        ctx: Context<RefreshManagedTokenMarketStats>,
+    ) -> Result<()> {
+        market_info::refresh_managed_token_market_stats(ctx)
+    }
+
     /// Switches the managed token's modular minting to a 1-of-N SPL multisig that already
     /// holds mint authority and includes the program mint-authority PDA; boss only.
     /// Legacy instructions keep minting directly.

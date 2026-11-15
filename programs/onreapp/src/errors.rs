@@ -304,4 +304,6 @@ pub enum OnreError {
     InvalidMintMultisig,
     #[msg("A nonzero max supply must be at least the current supply")]
     MaxSupplyBelowCurrentSupply,
+    #[msg("The managed token has no MarketStats selected to refresh")]
+    MarketStatsNotSelected,
 }

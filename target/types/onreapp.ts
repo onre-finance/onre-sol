@@ -8046,6 +8046,112 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "refreshManagedTokenMarketStats",
+      "docs": [
+        "Permissionlessly recomputes a managed token's selected MarketStats (and the",
+        "legacy singleton for ONyc) from current supply and its canonical Pricer."
+      ],
+      "discriminator": [
+        165,
+        58,
+        153,
+        250,
+        162,
+        202,
+        67,
+        55
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "managedToken",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "managedMint"
+        },
+        {
+          "name": "pricer",
+          "docs": [
+            "Canonical USD instance-zero Pricer of the managed mint, the token-wide",
+            "valuation source also used by trades and BUFFER settlement."
+          ]
+        },
+        {
+          "name": "marketStats",
+          "docs": [
+            "ignored otherwise."
+          ],
+          "writable": true
+        },
+        {
+          "name": "legacyMarketStats",
+          "docs": [
+            "other mints. Address validated in the handler; created on first use."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "circulatingSupplyExcludedBalance"
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "Any signer; pays only if the ONyc legacy singleton must be created."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "refreshMarketStats",
       "docs": [
         "Refreshes the canonical market-stats PDA using current on-chain state.",
@@ -14488,6 +14594,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "managedTokenMarketStatsRefreshedEvent",
+      "discriminator": [
+        16,
+        245,
+        141,
+        101,
+        0,
+        227,
+        188,
+        35
+      ]
+    },
+    {
       "name": "managedTokenMarketStatsSetEvent",
       "discriminator": [
         46,
@@ -15958,6 +16077,11 @@ export type Onreapp = {
       "code": 6150,
       "name": "maxSupplyBelowCurrentSupply",
       "msg": "A nonzero max supply must be at least the current supply"
+    },
+    {
+      "code": 6151,
+      "name": "marketStatsNotSelected",
+      "msg": "The managed token has no MarketStats selected to refresh"
     }
   ],
   "types": [
@@ -17176,6 +17300,40 @@ export type Onreapp = {
           {
             "name": "timestamp",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "managedTokenMarketStatsRefreshedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "managedMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "marketStats",
+            "docs": [
+              "Selected MarketStats account; default when only the ONyc singleton was refreshed."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "legacyMarketStats",
+            "docs": [
+              "Legacy `[\"market_stats\"]` singleton refreshed for ONyc; default otherwise."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
           }
         ]
       }

@@ -198,7 +198,7 @@ pub(crate) fn refresh_modular_market_stats<'info>(
         None
     };
     if legacy.map(|legacy| legacy.key()) != Some(managed_token.market_stats) {
-        refresh_managed_token_market_stats(
+        refresh_selected_market_stats(
             program_id,
             state,
             managed_token,
@@ -272,7 +272,7 @@ fn store_legacy_market_stats<'info>(
 /// key and the account must deserialize as MarketStats. An unset selection skips
 /// reporting without evaluating `valuation`. Only ONyc has an excluded-balance cache;
 /// other mints report their full supply.
-pub(crate) fn refresh_managed_token_market_stats<'info>(
+fn refresh_selected_market_stats<'info>(
     program_id: &Pubkey,
     state: &State,
     managed_token: &ManagedTokenConfig,
