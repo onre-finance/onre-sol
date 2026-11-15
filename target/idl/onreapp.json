@@ -350,7 +350,8 @@
     {
       "name": "add_pricer_vector",
       "docs": [
-        "Append an independent Pricer's vector; boss only."
+        "Appends a Pricer vector after evicting vectors older than the previously",
+        "active one (shared rule with legacy offers and EVM); boss only."
       ],
       "discriminator": [
         124,
@@ -2511,6 +2512,53 @@
       "args": []
     },
     {
+      "name": "delete_all_pricer_vectors",
+      "docs": [
+        "Deletes every Pricer vector, including the active one; boss only."
+      ],
+      "discriminator": [
+        46,
+        39,
+        64,
+        149,
+        229,
+        73,
+        244,
+        201
+      ],
+      "accounts": [
+        {
+          "name": "pricer",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "delete_offer_vector",
       "docs": [
         "Deletes a time vector from an offer.",
@@ -2604,6 +2652,58 @@
           "docs": [
             "The boss account authorized to delete pricing vectors from offers"
           ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "vector_start_time",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "delete_pricer_vector",
+      "docs": [
+        "Deletes one Pricer vector that has not started yet; boss only."
+      ],
+      "discriminator": [
+        141,
+        68,
+        135,
+        192,
+        174,
+        75,
+        205,
+        223
+      ],
+      "accounts": [
+        {
+          "name": "pricer",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
           "signer": true,
           "relations": [
             "state"
@@ -13134,6 +13234,19 @@
       ]
     },
     {
+      "name": "AllPricerVectorsDeletedEvent",
+      "discriminator": [
+        166,
+        101,
+        101,
+        246,
+        200,
+        62,
+        141,
+        189
+      ]
+    },
+    {
       "name": "ApproverAddedEvent",
       "discriminator": [
         130,
@@ -13716,6 +13829,32 @@
         169,
         243,
         182
+      ]
+    },
+    {
+      "name": "PricerVectorDeletedEvent",
+      "discriminator": [
+        6,
+        172,
+        149,
+        60,
+        110,
+        131,
+        215,
+        124
+      ]
+    },
+    {
+      "name": "PricerVectorEvictedEvent",
+      "discriminator": [
+        207,
+        197,
+        108,
+        199,
+        157,
+        248,
+        235,
+        176
       ]
     },
     {
@@ -14829,6 +14968,30 @@
               "Number of vectors that were deleted (non-empty vectors)"
             ],
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AllPricerVectorsDeletedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "pricer",
+            "type": "pubkey"
+          },
+          {
+            "name": "vectors_deleted_count",
+            "type": "u8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -17244,6 +17407,46 @@
           {
             "name": "timestamp",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PricerVectorDeletedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "pricer",
+            "type": "pubkey"
+          },
+          {
+            "name": "vector_start_time",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PricerVectorEvictedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pricer",
+            "type": "pubkey"
+          },
+          {
+            "name": "vector_start_time",
+            "type": "u64"
           }
         ]
       }

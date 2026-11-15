@@ -209,7 +209,8 @@ settings while preserving the just-settled baseline, timestamp, and watermark.
 An unchanged policy fails with `NoChange`. Both instructions honor the kill
 switch, canonical account and mint checks, program mint authority, and issuance
 caps. For ONyc the stricter nonzero of the global and per-mint caps applies;
-other mints use their per-mint caps. Both require initialized state, and positive
+other mints use their per-mint caps, which default to zero (uncapped); no
+instruction sets them yet. Both require initialized state, and positive
 accrual requires initialized vault ATAs; neither instruction creates them.
 
 ## Market stats
@@ -310,12 +311,24 @@ two custody roles, replacing the former `liquidity_amount`. V2 instructions and 
 ## Pricer vectors
 
 `add_pricer_vector(vector)` requires the existing boss signer and a canonical
-Pricer. It fills the first empty slot and requires the new start time to exceed
-every stored start time. Up to ten slots are available. Start time cannot
-be in the past; base time must be positive and no later than start time. Price and
-step duration must be positive. `PricerVectorAddedEvent` includes boss, Pricer,
-complete vector, and timestamp. Like other configuration changes, vector append
-remains available during the kill switch. Eviction and deletion are deferred.
+Pricer, and requires the new start time to exceed every stored start time. Start
+time cannot be in the past; base time must be positive and no later than start
+time. Price must be positive and the step duration (`price_fix_duration`) must be
+between 1 second and 1 day, as on EVM.
+
+Before filling a slot it evicts history with the rule shared with legacy offers
+and EVM: it keeps the vector active at the current time (the new one if it starts
+now), the vector active immediately before it, and every future vector, and clears
+all older vectors with `PricerVectorEvictedEvent`. Up to ten slots are available,
+so `TooManyVectors` only occurs when active, previous and scheduled vectors fill
+them. `PricerVectorAddedEvent` includes boss, Pricer, complete vector, and timestamp.
+
+`delete_pricer_vector(vector_start_time)` removes one vector that has not started
+yet (`StartTimeInPast` otherwise, `VectorNotFound` if absent).
+`delete_all_pricer_vectors` clears every vector, including the active one; pricing
+then fails with `NoActiveVector` until a new vector is added. Both are boss-only
+and emit `PricerVectorDeletedEvent` / `AllPricerVectorsDeletedEvent`. Like other
+configuration changes, vector management remains available during the kill switch.
 
 ## Next layers
 

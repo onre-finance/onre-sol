@@ -123,9 +123,23 @@ pub mod onreapp {
         )
     }
 
-    /// Append an independent Pricer's vector; boss only.
+    /// Appends a Pricer vector after evicting vectors older than the previously
+    /// active one (shared rule with legacy offers and EVM); boss only.
     pub fn add_pricer_vector(ctx: Context<AddPricerVector>, vector: PricingVector) -> Result<()> {
         configuration::add_pricer_vector(ctx, vector)
+    }
+
+    /// Deletes one Pricer vector that has not started yet; boss only.
+    pub fn delete_pricer_vector(
+        ctx: Context<DeletePricerVector>,
+        vector_start_time: u64,
+    ) -> Result<()> {
+        configuration::delete_pricer_vector(ctx, vector_start_time)
+    }
+
+    /// Deletes every Pricer vector, including the active one; boss only.
+    pub fn delete_all_pricer_vectors(ctx: Context<DeletePricerVector>) -> Result<()> {
+        configuration::delete_all_pricer_vectors(ctx)
     }
 
     /// Registers an existing mint in the reusable configuration model; boss only.

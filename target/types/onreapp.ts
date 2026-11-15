@@ -356,7 +356,8 @@ export type Onreapp = {
     {
       "name": "addPricerVector",
       "docs": [
-        "Append an independent Pricer's vector; boss only."
+        "Appends a Pricer vector after evicting vectors older than the previously",
+        "active one (shared rule with legacy offers and EVM); boss only."
       ],
       "discriminator": [
         124,
@@ -2517,6 +2518,53 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "deleteAllPricerVectors",
+      "docs": [
+        "Deletes every Pricer vector, including the active one; boss only."
+      ],
+      "discriminator": [
+        46,
+        39,
+        64,
+        149,
+        229,
+        73,
+        244,
+        201
+      ],
+      "accounts": [
+        {
+          "name": "pricer",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "deleteOfferVector",
       "docs": [
         "Deletes a time vector from an offer.",
@@ -2610,6 +2658,58 @@ export type Onreapp = {
           "docs": [
             "The boss account authorized to delete pricing vectors from offers"
           ],
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "vectorStartTime",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "deletePricerVector",
+      "docs": [
+        "Deletes one Pricer vector that has not started yet; boss only."
+      ],
+      "discriminator": [
+        141,
+        68,
+        135,
+        192,
+        174,
+        75,
+        205,
+        223
+      ],
+      "accounts": [
+        {
+          "name": "pricer",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
           "signer": true,
           "relations": [
             "state"
@@ -13140,6 +13240,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "allPricerVectorsDeletedEvent",
+      "discriminator": [
+        166,
+        101,
+        101,
+        246,
+        200,
+        62,
+        141,
+        189
+      ]
+    },
+    {
       "name": "approverAddedEvent",
       "discriminator": [
         130,
@@ -13722,6 +13835,32 @@ export type Onreapp = {
         169,
         243,
         182
+      ]
+    },
+    {
+      "name": "pricerVectorDeletedEvent",
+      "discriminator": [
+        6,
+        172,
+        149,
+        60,
+        110,
+        131,
+        215,
+        124
+      ]
+    },
+    {
+      "name": "pricerVectorEvictedEvent",
+      "discriminator": [
+        207,
+        197,
+        108,
+        199,
+        157,
+        248,
+        235,
+        176
       ]
     },
     {
@@ -14835,6 +14974,30 @@ export type Onreapp = {
               "Number of vectors that were deleted (non-empty vectors)"
             ],
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "allPricerVectorsDeletedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "pricer",
+            "type": "pubkey"
+          },
+          {
+            "name": "vectorsDeletedCount",
+            "type": "u8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -17250,6 +17413,46 @@ export type Onreapp = {
           {
             "name": "timestamp",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pricerVectorDeletedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "pricer",
+            "type": "pubkey"
+          },
+          {
+            "name": "vectorStartTime",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pricerVectorEvictedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pricer",
+            "type": "pubkey"
+          },
+          {
+            "name": "vectorStartTime",
+            "type": "u64"
           }
         ]
       }
