@@ -1,6 +1,7 @@
 use super::*;
 use crate::common::send_tx;
 use onreapp::{instructions::BufferState, state::MarketStats};
+use solana_sdk::instruction::AccountMeta;
 
 fn send(
     svm: &mut LiteSVM,
@@ -33,6 +34,7 @@ fn settle_with_stats_ix(f: &Fixture, worker: Pubkey, market_stats: Pubkey) -> In
             buffer_accounts: parts(f),
             worker,
             market_stats,
+            legacy_market_stats: f.legacy_market_stats(),
             circulating_supply_excluded_balance: find_circulating_supply_excluded_balance_pda().0,
         },
         instruction::SettleManagedTokenBuffer {},
@@ -47,6 +49,7 @@ fn configure_ix(f: &Fixture, boss: Pubkey, settings: BufferSettings) -> Instruct
             buffer_accounts: parts(f),
             boss,
             market_stats: f.market_stats(),
+            legacy_market_stats: f.legacy_market_stats(),
             circulating_supply_excluded_balance: find_circulating_supply_excluded_balance_pda().0,
         },
         instruction::SetManagedTokenBufferSettings { settings },
@@ -444,5 +447,160 @@ fn onyc_prop_amm_uses_canonical_pricer_nav_for_refill_curve_caps_and_reporting()
         assert_eq!(stats.nav, 2_000_000_000);
         let state: ManagedTokenBufferState = read(&f.svm, f.buffer());
         assert_eq!(state.previous_supply, get_mint_supply(&f.svm, &f.mint));
+    }
+}
+
+/// Replaces the `account` meta in a built take instruction.
+fn with_account(
+    mut instruction: Instruction,
+    account: Pubkey,
+    replacement: AccountMeta,
+) -> Instruction {
+    let metas: Vec<_> = instruction
+        .accounts
+        .iter_mut()
+        .filter(|meta| meta.pubkey == account)
+        .collect();
+    assert_eq!(metas.len(), 1);
+    for meta in metas {
+        *meta = replacement.clone();
+    }
+    instruction
+}
+
+#[test]
+fn onyc_take_refreshes_selected_and_legacy_market_stats() {
+    let mut f = setup(true, false);
+    f.initialize_legacy_main_offer(); // legacy NAV 1; canonical modular Pricer NAV 2
+    let instruction = init_stats_ix(&f, f.boss.pubkey());
+    send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    let legacy_stats = find_market_stats_pda().0;
+    assert!(f.svm.get_account(&legacy_stats).is_none());
+
+    // ONyc cannot omit or substitute the legacy singleton.
+    let missing = with_account(
+        f.take(2_000_000, 0),
+        legacy_stats,
+        AccountMeta::new_readonly(PROGRAM_ID, false),
+    );
+    assert_error(f.send(missing), OnreError::LegacyMarketStatsRequired);
+    let substitute = with_account(
+        f.take(2_000_000, 0),
+        legacy_stats,
+        AccountMeta::new(Pubkey::new_unique(), false),
+    );
+    assert_error(f.send(substitute), OnreError::InvalidMarketStatsOwner);
+
+    // One trade refreshes both accounts from the canonical Pricer with post-trade
+    // supply; the singleton is created on first use.
+    let instruction = f.take(2_000_000, 0);
+    f.send(instruction).unwrap();
+    let supply = get_mint_supply(&f.svm, &f.mint);
+    let now = get_clock_time(&f.svm) as i64;
+    for account in [per_mint_stats(&f), legacy_stats] {
+        let stats: MarketStats = read(&f.svm, account);
+        assert_eq!(stats.nav, 2_000_000_000);
+        assert_eq!(stats.circulating_supply, supply);
+        assert_eq!(stats.tvl, supply * 2);
+        assert_eq!(stats.last_updated_at, now);
+    }
+    assert_eq!(read_market_stats(&f.svm).bump, find_market_stats_pda().1);
+
+    // Legacy refresh keeps writing only the singleton, from the main offer.
+    let instruction = build_refresh_market_stats_ix(&f.boss.pubkey(), &f.asset, &f.mint);
+    send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    assert_eq!(read_market_stats(&f.svm).nav, 1_000_000_000);
+    let per_mint: MarketStats = read(&f.svm, per_mint_stats(&f));
+    assert_eq!(per_mint.nav, 2_000_000_000);
+
+    // Selecting the singleton itself still refreshes it from the Pricer.
+    let instruction = select_stats_ix(&f, f.boss.pubkey(), legacy_stats);
+    send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    let instruction = f.take(2_000_000, 0);
+    f.send(instruction).unwrap();
+    let stats = read_market_stats(&f.svm);
+    assert_eq!(stats.nav, 2_000_000_000);
+    assert_eq!(stats.circulating_supply, get_mint_supply(&f.svm, &f.mint));
+}
+
+#[test]
+fn non_onyc_take_does_not_require_or_touch_legacy_market_stats() {
+    let mut f = setup(false, false);
+    let instruction = init_stats_ix(&f, f.boss.pubkey());
+    send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    let instruction = f.take(2_000_000, 0);
+    f.send(instruction).unwrap();
+    let stats: MarketStats = read(&f.svm, per_mint_stats(&f));
+    assert_eq!(stats.circulating_supply, get_mint_supply(&f.svm, &f.mint));
+    assert!(f.svm.get_account(&find_market_stats_pda().0).is_none());
+}
+
+#[test]
+fn onyc_buffer_operations_refresh_legacy_market_stats_once_created() {
+    let mut f = setup(true, false); // settings were configured before the singleton existed
+    let instruction = init_stats_ix(&f, f.boss.pubkey());
+    send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    let legacy_stats = find_market_stats_pda().0;
+    assert!(f.svm.get_account(&legacy_stats).is_none());
+
+    // ONyc cannot omit or substitute the legacy singleton.
+    advance_clock_by(&mut f.svm, 3_153_600);
+    let missing = with_account(
+        settle_ix(&f, f.boss.pubkey()),
+        legacy_stats,
+        AccountMeta::new_readonly(PROGRAM_ID, false),
+    );
+    check_error(
+        send(&mut f.svm, &[missing], &[&f.boss]),
+        OnreError::LegacyMarketStatsRequired,
+    );
+    let substitute = with_account(
+        configure_ix(
+            &f,
+            f.boss.pubkey(),
+            BufferSettings {
+                gross_apr: 200_000,
+                ..config()
+            },
+        ),
+        legacy_stats,
+        AccountMeta::new(Pubkey::new_unique(), false),
+    );
+    check_error(
+        send(&mut f.svm, &[substitute], &[&f.boss]),
+        OnreError::InvalidMarketStatsOwner,
+    );
+
+    // Without a payer, BUFFER operations do not create the singleton.
+    settle(&mut f);
+    assert!(f.svm.get_account(&legacy_stats).is_none());
+    let stats: MarketStats = read(&f.svm, per_mint_stats(&f));
+    assert_eq!(stats.circulating_supply, get_mint_supply(&f.svm, &f.mint));
+
+    // Once a trade creates it, settlement and settings refresh it with the accrued
+    // supply, alongside the selected per-mint account.
+    let instruction = f.take(2_000_000, 0);
+    f.send(instruction).unwrap();
+    for operation in 0..2 {
+        advance_clock_by(&mut f.svm, 3_153_600);
+        if operation == 0 {
+            settle(&mut f);
+        } else {
+            configure(
+                &mut f,
+                BufferSettings {
+                    gross_apr: 200_000,
+                    ..config()
+                },
+            );
+        }
+        let supply = get_mint_supply(&f.svm, &f.mint);
+        let now = get_clock_time(&f.svm) as i64;
+        for account in [per_mint_stats(&f), legacy_stats] {
+            let stats: MarketStats = read(&f.svm, account);
+            assert_eq!(stats.nav, 2_000_000_000);
+            assert_eq!(stats.circulating_supply, supply);
+            assert_eq!(stats.last_updated_at, now);
+        }
     }
 }

@@ -34,6 +34,12 @@ pub struct SetManagedTokenBufferSettings<'info> {
     #[account(mut)]
     pub market_stats: UncheckedAccount<'info>,
 
+    /// CHECK: Legacy ONyc `["market_stats"]` singleton. Required when the managed
+    /// mint is ONyc and refreshed from the canonical Pricer once it exists (address
+    /// validated in the handler); ignored for other mints.
+    #[account(mut)]
+    pub legacy_market_stats: Option<UncheckedAccount<'info>>,
+
     /// CHECK: ONyc refresh validates the canonical excluded-balance cache; other mints ignore it.
     pub circulating_supply_excluded_balance: UncheckedAccount<'info>,
 }
@@ -61,6 +67,9 @@ pub fn set_managed_token_buffer_settings(
         ctx.bumps.buffer_accounts.mint_authority,
         now,
         a.market_stats.to_account_info(),
+        a.legacy_market_stats
+            .as_ref()
+            .map(|account| account.to_account_info()),
         a.circulating_supply_excluded_balance.to_account_info(),
     )?;
     modular_accrual::write_settings(ctx.program_id, &a.buffer_accounts.context(), settings)?;

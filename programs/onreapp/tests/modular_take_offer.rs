@@ -451,6 +451,10 @@ impl Fixture {
             selected
         }
     }
+    /// The legacy singleton, required only when the managed mint is ONyc.
+    fn legacy_market_stats(&self) -> Option<Pubkey> {
+        (read_state(&self.svm).onyc_mint == self.mint).then(|| find_market_stats_pda().0)
+    }
     fn approval(&self) -> ApprovalMessage {
         ApprovalMessage {
             program_id: PROGRAM_ID,
@@ -509,6 +513,7 @@ impl Fixture {
                     buffer_state: self.buffer(),
                     buffer_pricer: Some(price(self.mint, 0)),
                     market_stats: self.market_stats(),
+                    legacy_market_stats: self.legacy_market_stats(),
                     circulating_supply_excluded_balance:
                         find_circulating_supply_excluded_balance_pda().0,
                     buffer_reserve_token: reserve,

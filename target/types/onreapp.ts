@@ -8937,6 +8937,15 @@ export type Onreapp = {
           "writable": true
         },
         {
+          "name": "legacyMarketStats",
+          "docs": [
+            "mint is ONyc and refreshed from the canonical Pricer once it exists (address",
+            "validated in the handler); ignored for other mints."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
           "name": "circulatingSupplyExcludedBalance"
         }
       ],
@@ -9634,6 +9643,15 @@ export type Onreapp = {
           "writable": true
         },
         {
+          "name": "legacyMarketStats",
+          "docs": [
+            "mint is ONyc and refreshed from the canonical Pricer once it exists (address",
+            "validated in the handler); ignored for other mints."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
           "name": "circulatingSupplyExcludedBalance"
         }
       ],
@@ -10037,6 +10055,16 @@ export type Onreapp = {
                 "ignored otherwise."
               ],
               "writable": true
+            },
+            {
+              "name": "legacyMarketStats",
+              "docs": [
+                "when the managed mint is ONyc, which always refreshes it from the canonical",
+                "Pricer (address validated in the handler, created on first use with `user`",
+                "paying); ignored for other mints."
+              ],
+              "writable": true,
+              "optional": true
             },
             {
               "name": "circulatingSupplyExcludedBalance",
@@ -14420,6 +14448,11 @@ export type Onreapp = {
       "code": 6145,
       "name": "unexpectedApproval",
       "msg": "Permissionless execution requires approval_message to be absent"
+    },
+    {
+      "code": 6146,
+      "name": "legacyMarketStatsRequired",
+      "msg": "ONyc execution requires the legacy market stats singleton"
     }
   ],
   "types": [
@@ -15590,7 +15623,8 @@ export type Onreapp = {
         "Global market statistics PDA holding the canonical protocol-wide metrics.",
         "",
         "Derived from `[\"market_stats\"]` and recomputed from `State::main_offer` by",
-        "purchase and refresh instructions. RPC reads return the stored snapshot without",
+        "legacy purchase and refresh instructions, and from the canonical ONyc Pricer by",
+        "modular ONyc `take_offer`. The same layout backs per-mint modular reports. RPC reads return the stored snapshot without",
         "recalculation; clients must check the timestamp and slot for freshness. Supply",
         "uses the separately cached excluded balance, which may need its own refresh."
       ],

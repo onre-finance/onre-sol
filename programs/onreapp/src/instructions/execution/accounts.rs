@@ -150,6 +150,13 @@ pub struct TakeOfferBufferAccounts<'info> {
     #[account(mut)]
     pub market_stats: UncheckedAccount<'info>,
 
+    /// CHECK: Legacy ONyc `["market_stats"]` singleton read by integrators. Required
+    /// when the managed mint is ONyc, which always refreshes it from the canonical
+    /// Pricer (address validated in the handler, created on first use with `user`
+    /// paying); ignored for other mints.
+    #[account(mut)]
+    pub legacy_market_stats: Option<UncheckedAccount<'info>>,
+
     /// CHECK: ONyc refresh and targets validate the canonical excluded-balance cache;
     /// other mints ignore it.
     pub circulating_supply_excluded_balance: UncheckedAccount<'info>,

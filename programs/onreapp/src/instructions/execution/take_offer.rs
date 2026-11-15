@@ -3,7 +3,7 @@ use super::{
     TakeOffer,
 };
 use crate::{
-    instructions::market_info::{refresh_managed_token_market_stats, MarketValuation},
+    instructions::market_info::{refresh_modular_market_stats, MarketValuation},
     model::{OfferDirection, OfferFlow, QuoterKind},
     utils::{managed_token::effective_mint_limits, ApprovalMessage},
     OnreError,
@@ -131,15 +131,7 @@ pub fn take_offer(
     if buffer_active {
         buffer::store_post_execution_supply(ctx.program_id, a, now)?;
     }
-    refresh_managed_token_market_stats(
-        ctx.program_id,
-        &a.state,
-        &a.config.managed_token,
-        a.managed_mint(),
-        &a.buffer.circulating_supply_excluded_balance,
-        &a.buffer.market_stats,
-        || liquidity_target::canonical_pricer(a).map(|p| MarketValuation::from(&**p)),
-    )?;
+    refresh_market_stats(ctx.program_id, a)?;
     emit!(OfferExecutedEvent {
         offer_config: a.config.offer_config.key(),
         user: a.user.key(),
@@ -171,4 +163,26 @@ pub fn take_offer(
         timestamp: now,
     });
     Ok(())
+}
+
+fn refresh_market_stats<'info>(program_id: &Pubkey, a: &TakeOffer<'info>) -> Result<()> {
+    let legacy = a
+        .buffer
+        .legacy_market_stats
+        .as_ref()
+        .map(|account| account.to_account_info());
+    refresh_modular_market_stats(
+        program_id,
+        &a.state,
+        &a.config.managed_token,
+        a.managed_mint(),
+        &a.buffer.circulating_supply_excluded_balance,
+        &a.buffer.market_stats,
+        legacy.as_ref(),
+        Some((
+            &a.user.to_account_info(),
+            &a.system_program.to_account_info(),
+        )),
+        || liquidity_target::canonical_pricer(a).map(|p| MarketValuation::from(&**p)),
+    )
 }

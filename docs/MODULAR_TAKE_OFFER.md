@@ -63,6 +63,8 @@ against the PDA of its stored mint pair, and the mint accounts must equal that p
 - `market_stats`, which must be the account selected by `ManagedTokenConfig`
   when one is selected and is ignored otherwise, and
   `circulating_supply_excluded_balance`, used by ONyc targets and reporting.
+- Optional `legacy_market_stats`: the `["market_stats"]` singleton, required when
+  the managed mint is ONyc and ignored otherwise (see Market stats).
 - Optional `permissionless_authority`, `permissionless_token_in`, and
   `permissionless_token_out`, required by permissionless offers and omitted for
   other flows. The token accounts are the authority's canonical input/output ATAs
@@ -222,9 +224,18 @@ The boss selects an account with either instruction:
 Once selected, the supplied `market_stats` must equal the selection. Each refresh
 values the mint at its canonical USD instance-zero Pricer. ONyc subtracts the
 canonical cached excluded balance (freshness policy unchanged); other mints report
-full supply. If ONyc selects the legacy singleton, legacy `refresh_market_stats`
-and legacy trades keep refreshing it from `State::main_offer`, so the snapshot
-reflects whichever source refreshed last.
+full supply. ONyc execution additionally always refreshes the legacy `["market_stats"]`
+singleton that integrators read, so it is never stale after a modular trade.
+`take_offer` requires it as `legacy_market_stats` for ONyc (missing:
+`LegacyMarketStatsRequired`; wrong address: `InvalidMarketStatsOwner`), creates it
+on first use at the user's expense, and values it with the same canonical Pricer.
+When ONyc selects the singleton itself, it is written once. Legacy
+`refresh_market_stats` and legacy instructions keep refreshing only the singleton
+from `State::main_offer`, so its NAV reflects whichever source refreshed last;
+keep the ONyc Pricer and main offer vectors aligned. Standalone BUFFER
+`settle_managed_token_buffer` and `set_managed_token_buffer_settings` apply the
+same rule with the same required `legacy_market_stats` account, but have no payer:
+they refresh the singleton only once it exists.
 The optional legacy offer and reporting accounts do not affect other mints.
 
 ## Conditional liquidity and Prop AMM accounts

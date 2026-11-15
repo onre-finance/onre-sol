@@ -145,7 +145,8 @@ export const OnreappErrorCode = {
   InvalidOfferDirection: 6142,
   LiquidityVaultRequired: 6143,
   UnsupportedOfferExecution: 6144,
-  UnexpectedApproval: 6145
+  UnexpectedApproval: 6145,
+  LegacyMarketStatsRequired: 6146
 };
 
 export type OnreappErrorName = keyof typeof OnreappErrorCode;

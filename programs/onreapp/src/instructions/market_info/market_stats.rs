@@ -159,6 +159,76 @@ pub fn refresh_market_stats_pda<'info>(
         excluded_balance_account,
     )?;
     let snapshot = recompute_market_stats(offer, onyc_mint, excluded_balance_amount)?;
+    let bump = legacy_market_stats_bump(market_stats_account, program_id)?;
+    store_legacy_market_stats(
+        snapshot,
+        market_stats_account,
+        bump,
+        Some((payer, system_program)),
+        program_id,
+    )
+}
+
+/// Payer and system program that create the legacy singleton on first use.
+pub(crate) type LegacyMarketStatsInit<'a, 'info> = (&'a AccountInfo<'info>, &'a AccountInfo<'info>);
+
+/// Modular reporting after any operation that can change a managed mint's NAV or supply.
+///
+/// Refreshes the account selected by `ManagedTokenConfig::market_stats` and, for ONyc,
+/// always the legacy `["market_stats"]` singleton that integrators read; ONyc must
+/// supply it. Both use the canonical Pricer valuation, and a singleton that ONyc also
+/// selected is written once. Legacy instructions keep writing the singleton from
+/// `State::main_offer`. With `init`, an uncreated singleton is created; without it,
+/// the singleton is refreshed only once it exists.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn refresh_modular_market_stats<'info>(
+    program_id: &Pubkey,
+    state: &State,
+    managed_token: &ManagedTokenConfig,
+    managed_mint: &InterfaceAccount<'info, Mint>,
+    excluded_balance_account: &AccountInfo<'info>,
+    market_stats_account: &AccountInfo<'info>,
+    legacy_market_stats_account: Option<&AccountInfo<'info>>,
+    init: Option<LegacyMarketStatsInit<'_, 'info>>,
+    valuation: impl Fn() -> Result<MarketValuation>,
+) -> Result<()> {
+    let legacy = if managed_mint.key() == state.onyc_mint {
+        Some(legacy_market_stats_account.ok_or(OnreError::LegacyMarketStatsRequired)?)
+    } else {
+        None
+    };
+    if legacy.map(|legacy| legacy.key()) != Some(managed_token.market_stats) {
+        refresh_managed_token_market_stats(
+            program_id,
+            state,
+            managed_token,
+            managed_mint,
+            excluded_balance_account,
+            market_stats_account,
+            &valuation,
+        )?;
+    }
+    let Some(legacy) = legacy else {
+        return Ok(());
+    };
+    let bump = legacy_market_stats_bump(legacy, program_id)?;
+    if init.is_none() && legacy.data_is_empty() {
+        return Ok(());
+    }
+    let excluded_balance_amount = super::load_circulating_supply_excluded_balance_amount(
+        program_id,
+        excluded_balance_account,
+    )?;
+    let snapshot = recompute_market_stats_from_valuation(
+        &valuation()?,
+        managed_mint,
+        excluded_balance_amount,
+    )?;
+    store_legacy_market_stats(snapshot, legacy, bump, init, program_id)
+}
+
+/// Validates the singleton address and returns its bump.
+fn legacy_market_stats_bump(market_stats_account: &AccountInfo, program_id: &Pubkey) -> Result<u8> {
     let (market_stats_pda, market_stats_bump) =
         Pubkey::find_program_address(&[seeds::MARKET_STATS], program_id);
     require_keys_eq!(
@@ -166,15 +236,33 @@ pub fn refresh_market_stats_pda<'info>(
         market_stats_pda,
         OnreError::InvalidMarketStatsOwner
     );
+    Ok(market_stats_bump)
+}
 
-    let mut market_stats = load_or_init_pda_account::<MarketStats>(
-        market_stats_account,
-        payer,
-        system_program,
-        program_id,
-        market_stats_bump,
-    )?;
-    market_stats.bump = market_stats_bump;
+/// Writes `snapshot` into the singleton, creating it first when `init` is given.
+fn store_legacy_market_stats<'info>(
+    snapshot: MarketStatsSnapshot,
+    market_stats_account: &AccountInfo<'info>,
+    bump: u8,
+    init: Option<LegacyMarketStatsInit<'_, 'info>>,
+    program_id: &Pubkey,
+) -> Result<()> {
+    let mut market_stats = match init {
+        Some((payer, system_program)) => load_or_init_pda_account::<MarketStats>(
+            market_stats_account,
+            payer,
+            system_program,
+            program_id,
+            bump,
+        )?,
+        None => load_pda_account(
+            market_stats_account,
+            program_id,
+            OnreError::InvalidMarketStatsOwner.into(),
+            OnreError::InvalidMarketStatsData.into(),
+        )?,
+    };
+    market_stats.bump = bump;
     update_market_stats_account(&mut market_stats, snapshot)?;
     store_pda_account(market_stats_account, &market_stats)
 }
