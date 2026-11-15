@@ -1653,7 +1653,8 @@
     {
       "name": "create_offer_config",
       "docs": [
-        "Creates a directed offer referencing compatible existing components; boss only."
+        "Creates a directed offer referencing compatible existing components; boss only.",
+        "Identified by the mint pair and a boss-chosen `instance_id`, not by its flow."
       ],
       "discriminator": [
         55,
@@ -1707,7 +1708,40 @@
         },
         {
           "name": "offer_config",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
+              },
+              {
+                "kind": "arg",
+                "path": "instance_id"
+              }
+            ]
+          }
         },
         {
           "name": "state",
@@ -1740,6 +1774,10 @@
         }
       ],
       "args": [
+        {
+          "name": "instance_id",
+          "type": "u64"
+        },
         {
           "name": "flow",
           "type": {
@@ -9438,7 +9476,43 @@
       "accounts": [
         {
           "name": "offer_config",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "offer_config.token_in_mint",
+                "account": "OfferConfig"
+              },
+              {
+                "kind": "account",
+                "path": "offer_config.token_out_mint",
+                "account": "OfferConfig"
+              },
+              {
+                "kind": "account",
+                "path": "offer_config.instance_id",
+                "account": "OfferConfig"
+              }
+            ]
+          }
         },
         {
           "name": "quoter",
@@ -10025,7 +10099,43 @@
           "name": "config",
           "accounts": [
             {
-              "name": "offer_config"
+              "name": "offer_config",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      111,
+                      102,
+                      102,
+                      101,
+                      114,
+                      95,
+                      99,
+                      111,
+                      110,
+                      102,
+                      105,
+                      103
+                    ]
+                  },
+                  {
+                    "kind": "account",
+                    "path": "offer_config.token_in_mint",
+                    "account": "OfferConfig"
+                  },
+                  {
+                    "kind": "account",
+                    "path": "offer_config.token_out_mint",
+                    "account": "OfferConfig"
+                  },
+                  {
+                    "kind": "account",
+                    "path": "offer_config.instance_id",
+                    "account": "OfferConfig"
+                  }
+                ]
+              }
             },
             {
               "name": "managed_token",
@@ -16488,6 +16598,15 @@
           {
             "name": "token_out_mint",
             "type": "pubkey"
+          },
+          {
+            "name": "instance_id",
+            "docs": [
+              "Boss-chosen identity within the directed pair: the PDA is",
+              "`[\"offer_config\", token_in_mint, token_out_mint, instance_id_le]`, so any number",
+              "of offers, with any flows, can exist per pair."
+            ],
+            "type": "u64"
           },
           {
             "name": "flow",

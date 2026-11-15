@@ -210,7 +210,7 @@ pub struct TakeOfferConfigAccounts<'info> {
             OFFER_CONFIG,
             offer_config.token_in_mint.as_ref(),
             offer_config.token_out_mint.as_ref(),
-            &[offer_config.flow as u8]
+            &offer_config.instance_id.to_le_bytes()
         ],
         bump = offer_config.bump,
         constraint = offer_config.enabled @ OnreError::ConfigurationDisabled,

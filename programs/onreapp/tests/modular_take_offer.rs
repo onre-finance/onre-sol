@@ -123,7 +123,7 @@ impl Fixture {
             b"offer_config",
             asset.as_ref(),
             mint.as_ref(),
-            &[OfferFlow::Permissioned as u8],
+            &(OfferFlow::Permissioned as u64).to_le_bytes(),
         ]);
         let now = get_clock_time(&svm);
         let vector = PricingVector {
@@ -227,6 +227,7 @@ impl Fixture {
                 system_program: SYSTEM_PROGRAM_ID,
             },
             instruction::CreateOfferConfig {
+                instance_id: OfferFlow::Permissioned as u64,
                 flow: OfferFlow::Permissioned,
             },
         ));
@@ -370,7 +371,7 @@ impl Fixture {
             b"offer_config",
             token_in_mint.as_ref(),
             token_out_mint.as_ref(),
-            &[flow as u8],
+            &(flow as u64).to_le_bytes(),
         ]);
         // The initial permissioned buy already exists. Its creation used the same
         // handler; changing a component here only prepares an unsupported-path test.
@@ -398,7 +399,10 @@ impl Fixture {
                     boss: self.boss.pubkey(),
                     system_program: SYSTEM_PROGRAM_ID,
                 },
-                instruction::CreateOfferConfig { flow },
+                instruction::CreateOfferConfig {
+                    instance_id: flow as u64,
+                    flow,
+                },
             );
             send_tx(&mut self.svm, &[instruction], &[&self.boss]).unwrap();
         }
@@ -693,6 +697,80 @@ impl Fixture {
             self.seed_tokens(self.mint, owner, 0);
         }
     }
+}
+
+fn offer_pda(token_in: Pubkey, token_out: Pubkey, instance_id: u64) -> Pubkey {
+    pda(&[
+        b"offer_config",
+        token_in.as_ref(),
+        token_out.as_ref(),
+        &instance_id.to_le_bytes(),
+    ])
+}
+
+#[test]
+fn offers_are_identified_by_pair_and_instance_not_flow() {
+    let mut f = Fixture::new(false, false);
+    let first = f.offer;
+    assert_eq!(
+        first,
+        offer_pda(f.asset, f.mint, OfferFlow::Permissioned as u64)
+    );
+    // `address` is the PDA supplied; `instance_id` the instruction argument.
+    let create = |f: &Fixture, address: u64, instance_id: u64| {
+        ix(
+            accounts::CreateOfferConfig {
+                token_in_mint: f.asset,
+                token_out_mint: f.mint,
+                managed_token: managed(f.mint),
+                asset_managed_registration: managed(f.asset),
+                pricer: price(f.mint, 0),
+                quoter: f.quoter,
+                prop_amm_state: None,
+                fee_config: f.fee,
+                proceeds_vault: vault(VaultKind::Proceeds),
+                source_vault: None,
+                destination_vault: None,
+                offer_config: offer_pda(f.asset, f.mint, address),
+                state: find_state_pda().0,
+                boss: f.boss.pubkey(),
+                system_program: SYSTEM_PROGRAM_ID,
+            },
+            instruction::CreateOfferConfig {
+                instance_id,
+                flow: OfferFlow::Permissioned,
+            },
+        )
+    };
+
+    // A second offer with the same pair and the same flow.
+    let second = offer_pda(f.asset, f.mint, 7);
+    let instruction = create(&f, 7, 7);
+    send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    let config: OfferConfig = read(&f.svm, second);
+    assert_eq!(
+        (config.instance_id, config.flow),
+        (7, OfferFlow::Permissioned)
+    );
+
+    // An instance id cannot be reused, and the address must match the argument.
+    advance_slot(&mut f.svm);
+    let instruction = create(&f, 7, 7);
+    assert!(send_tx(&mut f.svm, &[instruction], &[&f.boss]).is_err());
+    let instruction = create(&f, 8, 9);
+    assert!(send_tx(&mut f.svm, &[instruction], &[&f.boss]).is_err());
+    assert!(f.svm.get_account(&offer_pda(f.asset, f.mint, 8)).is_none());
+
+    // Both offers execute independently.
+    for offer in [first, second] {
+        f.offer = offer;
+        let instruction = f.take(2_000_000, 990_000_000);
+        f.send(instruction).unwrap();
+    }
+    assert_eq!(
+        f.balance(f.mint, f.user.pubkey(), f.token_program),
+        1_980_000_000
+    );
 }
 
 #[test]
