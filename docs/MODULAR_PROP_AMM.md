@@ -17,6 +17,10 @@ unsupported. Legacy Prop AMM accounts, tracker math and execution are unchanged.
 `OfferConfig.pressure_state` explicitly selects the PropAmmState that receives
 successful trade accounting, independently of quote selection. At creation,
 provide `prop_amm_state` to attach the tracker, or omit it for untracked NAV.
+The boss can replace a tracker's curve, cadence, epoch and wall settings with
+`update_prop_amm_config` (creation limits apply); its pair and accumulated
+pressure are kept, and a new epoch duration applies to the stored epoch start.
+
 The boss can later call `set_offer_pressure_state` to attach, detach, or switch a
 NAV offer's tracker. This emits `OfferPressureStateSetEvent` and never resets
 tracker history. PropAmm pricing requires its own canonical state and cannot

@@ -52,18 +52,7 @@ pub fn create_vault_config(
     withdrawal_destination: Pubkey,
     refill_target_bps: u16,
 ) -> Result<()> {
-    require!(
-        withdrawal_destination != Pubkey::default(),
-        OnreError::MissingConfigurableVaultDestination
-    );
-    require!(
-        refill_target_bps <= MAX_BASIS_POINTS,
-        OnreError::InvalidAmount
-    );
-    require!(
-        kind == VaultKind::Liquidity || refill_target_bps == 0,
-        OnreError::InvalidAmount
-    );
+    validate_vault_settings(kind, withdrawal_destination, refill_target_bps)?;
     ctx.accounts.vault.set_inner(VaultConfig {
         kind,
         instance_id,
@@ -77,5 +66,28 @@ pub fn create_vault_config(
         configuration: (**ctx.accounts.vault).clone(),
         timestamp: Clock::get()?.unix_timestamp,
     });
+    Ok(())
+}
+
+/// Destination and refill-target rules shared by creation and updates: a nonzero
+/// destination, and a refill target of at most 10,000 bps that only Liquidity
+/// vaults may set.
+pub(crate) fn validate_vault_settings(
+    kind: VaultKind,
+    withdrawal_destination: Pubkey,
+    refill_target_bps: u16,
+) -> Result<()> {
+    require!(
+        withdrawal_destination != Pubkey::default(),
+        OnreError::MissingConfigurableVaultDestination
+    );
+    require!(
+        refill_target_bps <= MAX_BASIS_POINTS,
+        OnreError::InvalidAmount
+    );
+    require!(
+        kind == VaultKind::Liquidity || refill_target_bps == 0,
+        OnreError::InvalidAmount
+    );
     Ok(())
 }

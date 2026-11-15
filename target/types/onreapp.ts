@@ -9049,6 +9049,82 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "setFeeConfigEnabled",
+      "docs": [
+        "Enables or disables a FeeConfig; boss only."
+      ],
+      "discriminator": [
+        233,
+        82,
+        131,
+        216,
+        2,
+        40,
+        222,
+        0
+      ],
+      "accounts": [
+        {
+          "name": "feeConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "feeConfig.instanceId",
+                "account": "feeConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "setKillSwitch",
       "docs": [
         "Enables or disables the kill switch.",
@@ -9336,6 +9412,85 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "setManagedTokenEnabled",
+      "docs": [
+        "Enables or disables a managed token for modular use; boss only."
+      ],
+      "discriminator": [
+        116,
+        72,
+        114,
+        88,
+        89,
+        207,
+        213,
+        223
+      ],
+      "accounts": [
+        {
+          "name": "managedToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedToken.managedMint",
+                "account": "managedTokenConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "setManagedTokenMarketStats",
       "docs": [
         "Selects any existing program-owned MarketStats account, including the legacy",
@@ -9499,6 +9654,94 @@ export type Onreapp = {
         {
           "name": "maxMintAmount",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "setOfferConfigEnabled",
+      "docs": [
+        "Enables or disables an OfferConfig; boss only."
+      ],
+      "discriminator": [
+        84,
+        164,
+        255,
+        159,
+        251,
+        129,
+        92,
+        221
+      ],
+      "accounts": [
+        {
+          "name": "offerConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "offerConfig.tokenInMint",
+                "account": "offerConfig"
+              },
+              {
+                "kind": "account",
+                "path": "offerConfig.tokenOutMint",
+                "account": "offerConfig"
+              },
+              {
+                "kind": "account",
+                "path": "offerConfig.instanceId",
+                "account": "offerConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
         }
       ]
     },
@@ -9711,6 +9954,110 @@ export type Onreapp = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "setPricerEnabled",
+      "docs": [
+        "Enables or disables a Pricer; boss only."
+      ],
+      "discriminator": [
+        73,
+        86,
+        202,
+        27,
+        149,
+        58,
+        205,
+        108
+      ],
+      "accounts": [
+        {
+          "name": "pricer",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "setQuoterEnabled",
+      "docs": [
+        "Enables or disables a Quoter; boss only."
+      ],
+      "discriminator": [
+        122,
+        60,
+        105,
+        125,
+        209,
+        9,
+        184,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "quoter",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
     },
     {
       "name": "setRedemptionOfferDisabled",
@@ -11871,6 +12218,80 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "unsetManagedTokenMarketStats",
+      "docs": [
+        "Clears the managed token's MarketStats selection; boss only."
+      ],
+      "discriminator": [
+        237,
+        213,
+        128,
+        106,
+        83,
+        250,
+        132,
+        94
+      ],
+      "accounts": [
+        {
+          "name": "managedToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedToken.managedMint",
+                "account": "managedTokenConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "updateCirculatingSupplyExcludedBalance",
       "docs": [
         "Refreshes the cached excluded ONyc balance from the configured owner ATAs."
@@ -11994,6 +12415,200 @@ export type Onreapp = {
         {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "updateFeeConfig",
+      "docs": [
+        "Updates a FeeConfig's rate, minimum fee and Fee-kind vault; boss only."
+      ],
+      "discriminator": [
+        104,
+        184,
+        103,
+        242,
+        88,
+        151,
+        107,
+        20
+      ],
+      "accounts": [
+        {
+          "name": "feeConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "feeConfig.instanceId",
+                "account": "feeConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "feeVault"
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "basisPoints",
+          "type": "u16"
+        },
+        {
+          "name": "minimumFeeAmount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "updateOfferConfig",
+      "docs": [
+        "Replaces an offer's Pricer, quoter, pressure link, fee config and vaults with",
+        "the creation rules; mints, instance ID and flow stay immutable. Boss only."
+      ],
+      "discriminator": [
+        122,
+        202,
+        139,
+        235,
+        177,
+        37,
+        50,
+        11
+      ],
+      "accounts": [
+        {
+          "name": "offerConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "offerConfig.tokenInMint",
+                "account": "offerConfig"
+              },
+              {
+                "kind": "account",
+                "path": "offerConfig.tokenOutMint",
+                "account": "offerConfig"
+              },
+              {
+                "kind": "account",
+                "path": "offerConfig.instanceId",
+                "account": "offerConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pricer",
+          "docs": [
+            "Any enabled Pricer instance of the offer's managed mint."
+          ]
+        },
+        {
+          "name": "quoter"
+        },
+        {
+          "name": "propAmmState",
+          "optional": true
+        },
+        {
+          "name": "feeConfig"
+        },
+        {
+          "name": "proceedsVault"
+        },
+        {
+          "name": "sourceVault",
+          "optional": true
+        },
+        {
+          "name": "destinationVault",
+          "optional": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
         }
       ],
       "args": []
@@ -12198,6 +12813,85 @@ export type Onreapp = {
         {
           "name": "newFeeBasisPointsPermissionless",
           "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "updatePropAmmConfig",
+      "docs": [
+        "Replaces a modular Prop AMM state's configuration, keeping its pair and",
+        "accumulated pressure; boss only."
+      ],
+      "discriminator": [
+        217,
+        4,
+        158,
+        192,
+        46,
+        17,
+        11,
+        142
+      ],
+      "accounts": [
+        {
+          "name": "propAmmState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  95,
+                  97,
+                  109,
+                  109
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "propAmmState.quoter",
+                "account": "propAmmState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "config",
+          "type": {
+            "defined": {
+              "name": "propAmmConfig"
+            }
+          }
         }
       ]
     },
@@ -12492,6 +13186,62 @@ export type Onreapp = {
       "args": [
         {
           "name": "newVaultTargetBps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "updateVaultConfig",
+      "docs": [
+        "Updates a VaultConfig's withdrawal destination and refill target; boss only."
+      ],
+      "discriminator": [
+        122,
+        3,
+        21,
+        222,
+        158,
+        255,
+        238,
+        157
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "withdrawalDestination",
+          "type": "pubkey"
+        },
+        {
+          "name": "refillTargetBps",
           "type": "u16"
         }
       ]
@@ -13634,6 +14384,32 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "feeConfigEnabledSetEvent",
+      "discriminator": [
+        45,
+        141,
+        49,
+        8,
+        90,
+        102,
+        64,
+        159
+      ]
+    },
+    {
+      "name": "feeConfigUpdatedEvent",
+      "discriminator": [
+        139,
+        188,
+        235,
+        116,
+        222,
+        55,
+        95,
+        201
+      ]
+    },
+    {
       "name": "killSwitchToggledEvent",
       "discriminator": [
         104,
@@ -13696,6 +14472,19 @@ export type Onreapp = {
         96,
         204,
         111
+      ]
+    },
+    {
+      "name": "managedTokenEnabledSetEvent",
+      "discriminator": [
+        124,
+        183,
+        175,
+        204,
+        140,
+        6,
+        233,
+        92
       ]
     },
     {
@@ -13839,6 +14628,32 @@ export type Onreapp = {
         89,
         133,
         210
+      ]
+    },
+    {
+      "name": "offerConfigEnabledSetEvent",
+      "discriminator": [
+        127,
+        152,
+        36,
+        11,
+        177,
+        18,
+        253,
+        63
+      ]
+    },
+    {
+      "name": "offerConfigUpdatedEvent",
+      "discriminator": [
+        159,
+        116,
+        77,
+        115,
+        241,
+        176,
+        142,
+        255
       ]
     },
     {
@@ -14037,6 +14852,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "pricerEnabledSetEvent",
+      "discriminator": [
+        187,
+        209,
+        180,
+        232,
+        3,
+        4,
+        7,
+        66
+      ]
+    },
+    {
       "name": "pricerVectorAddedEvent",
       "discriminator": [
         216,
@@ -14076,6 +14904,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "propAmmConfigUpdatedEvent",
+      "discriminator": [
+        55,
+        115,
+        235,
+        55,
+        208,
+        118,
+        55,
+        232
+      ]
+    },
+    {
       "name": "propAmmConfiguredEvent",
       "discriminator": [
         104,
@@ -14112,6 +14953,19 @@ export type Onreapp = {
         201,
         73,
         79
+      ]
+    },
+    {
+      "name": "quoterEnabledSetEvent",
+      "discriminator": [
+        17,
+        116,
+        1,
+        85,
+        113,
+        199,
+        202,
+        211
       ]
     },
     {
@@ -14307,6 +15161,19 @@ export type Onreapp = {
         173,
         40,
         181
+      ]
+    },
+    {
+      "name": "vaultConfigUpdatedEvent",
+      "discriminator": [
+        174,
+        161,
+        60,
+        112,
+        199,
+        36,
+        246,
+        139
       ]
     },
     {
@@ -15945,6 +16812,66 @@ export type Onreapp = {
       }
     },
     {
+      "name": "feeConfigEnabledSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "feeConfig",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "feeConfigUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "feeConfig",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous",
+            "type": {
+              "defined": {
+                "name": "feeConfig"
+              }
+            }
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "feeConfig"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "killSwitchToggledEvent",
       "docs": [
         "Event emitted when the kill switch state is changed",
@@ -16225,6 +17152,30 @@ export type Onreapp = {
               "instructions always mint directly. See `utils::program_minter`."
             ],
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "managedTokenEnabledSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "managedToken",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -16852,6 +17803,66 @@ export type Onreapp = {
           {
             "name": "offerConfig",
             "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "offerConfig"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "offerConfigEnabledSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "offerConfig",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "offerConfigUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "offerConfig",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous",
+            "type": {
+              "defined": {
+                "name": "offerConfig"
+              }
+            }
           },
           {
             "name": "configuration",
@@ -17652,6 +18663,30 @@ export type Onreapp = {
       }
     },
     {
+      "name": "pricerEnabledSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "pricer",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "pricerVectorAddedEvent",
       "type": {
         "kind": "struct",
@@ -17795,6 +18830,42 @@ export type Onreapp = {
           {
             "name": "curvePegHaircutBps",
             "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "propAmmConfigUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "propAmmState",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous",
+            "type": {
+              "defined": {
+                "name": "propAmmConfig"
+              }
+            }
+          },
+          {
+            "name": "config",
+            "type": {
+              "defined": {
+                "name": "propAmmConfig"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -18125,6 +19196,30 @@ export type Onreapp = {
                 "name": "quoter"
               }
             }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "quoterEnabledSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "quoter",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
           },
           {
             "name": "timestamp",
@@ -19038,6 +20133,42 @@ export type Onreapp = {
           {
             "name": "amount",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vaultConfigUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous",
+            "type": {
+              "defined": {
+                "name": "vaultConfig"
+              }
+            }
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "vaultConfig"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }

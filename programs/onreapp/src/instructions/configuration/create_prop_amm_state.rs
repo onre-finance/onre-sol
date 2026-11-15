@@ -62,21 +62,7 @@ pub fn create_prop_amm_state(
     ctx: Context<CreatePropAmmState>,
     config: PropAmmConfig,
 ) -> Result<()> {
-    require!(
-        config.curve_peg_haircut_bps <= MAX_BASIS_POINTS
-            && (CURVE_EXPONENT_STEP..=CURVE_EXPONENT_SCALE * 10)
-                .contains(&config.curve_exponent_scaled)
-            && config
-                .curve_exponent_scaled
-                .is_multiple_of(CURVE_EXPONENT_STEP)
-            && config.cadence_threshold > 0
-            && config.cadence_wave_scaled <= MAX_CADENCE_WAVE_SCALED
-            && config.cadence_wave_scaled.is_multiple_of(CADENCE_WAVE_STEP)
-            && config.epoch_duration_seconds > 0
-            && config.epoch_duration_seconds <= i64::MAX as u64
-            && config.wall_sensitivity_scaled > 0,
-        OnreError::InvalidAmount
-    );
+    validate_prop_amm_config(&config)?;
     require_keys_neq!(
         ctx.accounts.managed_token.managed_mint,
         ctx.accounts.asset_mint.key(),
@@ -102,5 +88,25 @@ pub fn create_prop_amm_state(
         configuration: (**ctx.accounts.prop_amm_state).clone(),
         timestamp: Clock::get()?.unix_timestamp,
     });
+    Ok(())
+}
+
+/// Curve, cadence, epoch and wall limits shared by creation and updates.
+pub(crate) fn validate_prop_amm_config(config: &PropAmmConfig) -> Result<()> {
+    require!(
+        config.curve_peg_haircut_bps <= MAX_BASIS_POINTS
+            && (CURVE_EXPONENT_STEP..=CURVE_EXPONENT_SCALE * 10)
+                .contains(&config.curve_exponent_scaled)
+            && config
+                .curve_exponent_scaled
+                .is_multiple_of(CURVE_EXPONENT_STEP)
+            && config.cadence_threshold > 0
+            && config.cadence_wave_scaled <= MAX_CADENCE_WAVE_SCALED
+            && config.cadence_wave_scaled.is_multiple_of(CADENCE_WAVE_STEP)
+            && config.epoch_duration_seconds > 0
+            && config.epoch_duration_seconds <= i64::MAX as u64
+            && config.wall_sensitivity_scaled > 0,
+        OnreError::InvalidAmount
+    );
     Ok(())
 }

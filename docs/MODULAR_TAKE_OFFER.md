@@ -230,6 +230,8 @@ The boss selects an account with either instruction:
   selects it.
 - `set_managed_token_market_stats` selects any existing program-owned
   MarketStats account, such as the legacy `["market_stats"]` singleton for ONyc.
+- `unset_managed_token_market_stats` clears the selection, disabling modular
+  reporting without modifying the MarketStats account.
 
 Once selected, the supplied `market_stats` must equal the selection. Each refresh
 values the mint at its canonical USD instance-zero Pricer. ONyc subtracts the
@@ -338,7 +340,7 @@ configuration changes, vector management remains available during the kill switc
 
 ## Next layers
 
-Worker fulfillment and component updates remain separate work. Legacy execution
+Worker fulfillment remains separate work. Legacy execution
 paths stay available alongside modular execution. This instruction adds no automatic offer binding or bulk custody
 migration. Existing liquidity is used only when explicitly selected for settlement
 or moved separately.

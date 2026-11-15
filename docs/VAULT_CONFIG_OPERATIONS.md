@@ -5,6 +5,8 @@ SPL Token or Token-2022 balances. They do not mint, burn, change BUFFER accrual
 state, create configuration, or change withdrawal destinations. Both instructions
 are blocked by the global kill switch and reject active transfer-fee mints.
 The generated IDL/types expose these instructions; CLI commands are not added.
+Withdrawal destinations and Liquidity refill targets are changed separately with
+the boss-only `update_vault_config`, which applies the creation rules.
 
 ## Deposits
 

@@ -9043,6 +9043,82 @@
       ]
     },
     {
+      "name": "set_fee_config_enabled",
+      "docs": [
+        "Enables or disables a FeeConfig; boss only."
+      ],
+      "discriminator": [
+        233,
+        82,
+        131,
+        216,
+        2,
+        40,
+        222,
+        0
+      ],
+      "accounts": [
+        {
+          "name": "fee_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "fee_config.instance_id",
+                "account": "FeeConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "set_kill_switch",
       "docs": [
         "Enables or disables the kill switch.",
@@ -9330,6 +9406,85 @@
       ]
     },
     {
+      "name": "set_managed_token_enabled",
+      "docs": [
+        "Enables or disables a managed token for modular use; boss only."
+      ],
+      "discriminator": [
+        116,
+        72,
+        114,
+        88,
+        89,
+        207,
+        213,
+        223
+      ],
+      "accounts": [
+        {
+          "name": "managed_token",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managed_token.managed_mint",
+                "account": "ManagedTokenConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "set_managed_token_market_stats",
       "docs": [
         "Selects any existing program-owned MarketStats account, including the legacy",
@@ -9493,6 +9648,94 @@
         {
           "name": "max_mint_amount",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_offer_config_enabled",
+      "docs": [
+        "Enables or disables an OfferConfig; boss only."
+      ],
+      "discriminator": [
+        84,
+        164,
+        255,
+        159,
+        251,
+        129,
+        92,
+        221
+      ],
+      "accounts": [
+        {
+          "name": "offer_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "offer_config.token_in_mint",
+                "account": "OfferConfig"
+              },
+              {
+                "kind": "account",
+                "path": "offer_config.token_out_mint",
+                "account": "OfferConfig"
+              },
+              {
+                "kind": "account",
+                "path": "offer_config.instance_id",
+                "account": "OfferConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
         }
       ]
     },
@@ -9705,6 +9948,110 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "set_pricer_enabled",
+      "docs": [
+        "Enables or disables a Pricer; boss only."
+      ],
+      "discriminator": [
+        73,
+        86,
+        202,
+        27,
+        149,
+        58,
+        205,
+        108
+      ],
+      "accounts": [
+        {
+          "name": "pricer",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "set_quoter_enabled",
+      "docs": [
+        "Enables or disables a Quoter; boss only."
+      ],
+      "discriminator": [
+        122,
+        60,
+        105,
+        125,
+        209,
+        9,
+        184,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "quoter",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
     },
     {
       "name": "set_redemption_offer_disabled",
@@ -11865,6 +12212,80 @@
       "args": []
     },
     {
+      "name": "unset_managed_token_market_stats",
+      "docs": [
+        "Clears the managed token's MarketStats selection; boss only."
+      ],
+      "discriminator": [
+        237,
+        213,
+        128,
+        106,
+        83,
+        250,
+        132,
+        94
+      ],
+      "accounts": [
+        {
+          "name": "managed_token",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managed_token.managed_mint",
+                "account": "ManagedTokenConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "update_circulating_supply_excluded_balance",
       "docs": [
         "Refreshes the cached excluded ONyc balance from the configured owner ATAs."
@@ -11988,6 +12409,200 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update_fee_config",
+      "docs": [
+        "Updates a FeeConfig's rate, minimum fee and Fee-kind vault; boss only."
+      ],
+      "discriminator": [
+        104,
+        184,
+        103,
+        242,
+        88,
+        151,
+        107,
+        20
+      ],
+      "accounts": [
+        {
+          "name": "fee_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "fee_config.instance_id",
+                "account": "FeeConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "fee_vault"
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "basis_points",
+          "type": "u16"
+        },
+        {
+          "name": "minimum_fee_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "update_offer_config",
+      "docs": [
+        "Replaces an offer's Pricer, quoter, pressure link, fee config and vaults with",
+        "the creation rules; mints, instance ID and flow stay immutable. Boss only."
+      ],
+      "discriminator": [
+        122,
+        202,
+        139,
+        235,
+        177,
+        37,
+        50,
+        11
+      ],
+      "accounts": [
+        {
+          "name": "offer_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "offer_config.token_in_mint",
+                "account": "OfferConfig"
+              },
+              {
+                "kind": "account",
+                "path": "offer_config.token_out_mint",
+                "account": "OfferConfig"
+              },
+              {
+                "kind": "account",
+                "path": "offer_config.instance_id",
+                "account": "OfferConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pricer",
+          "docs": [
+            "Any enabled Pricer instance of the offer's managed mint."
+          ]
+        },
+        {
+          "name": "quoter"
+        },
+        {
+          "name": "prop_amm_state",
+          "optional": true
+        },
+        {
+          "name": "fee_config"
+        },
+        {
+          "name": "proceeds_vault"
+        },
+        {
+          "name": "source_vault",
+          "optional": true
+        },
+        {
+          "name": "destination_vault",
+          "optional": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
         }
       ],
       "args": []
@@ -12192,6 +12807,85 @@
         {
           "name": "new_fee_basis_points_permissionless",
           "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "update_prop_amm_config",
+      "docs": [
+        "Replaces a modular Prop AMM state's configuration, keeping its pair and",
+        "accumulated pressure; boss only."
+      ],
+      "discriminator": [
+        217,
+        4,
+        158,
+        192,
+        46,
+        17,
+        11,
+        142
+      ],
+      "accounts": [
+        {
+          "name": "prop_amm_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  95,
+                  97,
+                  109,
+                  109
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "prop_amm_state.quoter",
+                "account": "PropAmmState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "config",
+          "type": {
+            "defined": {
+              "name": "PropAmmConfig"
+            }
+          }
         }
       ]
     },
@@ -12486,6 +13180,62 @@
       "args": [
         {
           "name": "new_vault_target_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "update_vault_config",
+      "docs": [
+        "Updates a VaultConfig's withdrawal destination and refill target; boss only."
+      ],
+      "discriminator": [
+        122,
+        3,
+        21,
+        222,
+        158,
+        255,
+        238,
+        157
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "withdrawal_destination",
+          "type": "pubkey"
+        },
+        {
+          "name": "refill_target_bps",
           "type": "u16"
         }
       ]
@@ -13628,6 +14378,32 @@
       ]
     },
     {
+      "name": "FeeConfigEnabledSetEvent",
+      "discriminator": [
+        45,
+        141,
+        49,
+        8,
+        90,
+        102,
+        64,
+        159
+      ]
+    },
+    {
+      "name": "FeeConfigUpdatedEvent",
+      "discriminator": [
+        139,
+        188,
+        235,
+        116,
+        222,
+        55,
+        95,
+        201
+      ]
+    },
+    {
       "name": "KillSwitchToggledEvent",
       "discriminator": [
         104,
@@ -13690,6 +14466,19 @@
         96,
         204,
         111
+      ]
+    },
+    {
+      "name": "ManagedTokenEnabledSetEvent",
+      "discriminator": [
+        124,
+        183,
+        175,
+        204,
+        140,
+        6,
+        233,
+        92
       ]
     },
     {
@@ -13833,6 +14622,32 @@
         89,
         133,
         210
+      ]
+    },
+    {
+      "name": "OfferConfigEnabledSetEvent",
+      "discriminator": [
+        127,
+        152,
+        36,
+        11,
+        177,
+        18,
+        253,
+        63
+      ]
+    },
+    {
+      "name": "OfferConfigUpdatedEvent",
+      "discriminator": [
+        159,
+        116,
+        77,
+        115,
+        241,
+        176,
+        142,
+        255
       ]
     },
     {
@@ -14031,6 +14846,19 @@
       ]
     },
     {
+      "name": "PricerEnabledSetEvent",
+      "discriminator": [
+        187,
+        209,
+        180,
+        232,
+        3,
+        4,
+        7,
+        66
+      ]
+    },
+    {
       "name": "PricerVectorAddedEvent",
       "discriminator": [
         216,
@@ -14070,6 +14898,19 @@
       ]
     },
     {
+      "name": "PropAmmConfigUpdatedEvent",
+      "discriminator": [
+        55,
+        115,
+        235,
+        55,
+        208,
+        118,
+        55,
+        232
+      ]
+    },
+    {
       "name": "PropAmmConfiguredEvent",
       "discriminator": [
         104,
@@ -14106,6 +14947,19 @@
         201,
         73,
         79
+      ]
+    },
+    {
+      "name": "QuoterEnabledSetEvent",
+      "discriminator": [
+        17,
+        116,
+        1,
+        85,
+        113,
+        199,
+        202,
+        211
       ]
     },
     {
@@ -14301,6 +15155,19 @@
         173,
         40,
         181
+      ]
+    },
+    {
+      "name": "VaultConfigUpdatedEvent",
+      "discriminator": [
+        174,
+        161,
+        60,
+        112,
+        199,
+        36,
+        246,
+        139
       ]
     },
     {
@@ -15939,6 +16806,66 @@
       }
     },
     {
+      "name": "FeeConfigEnabledSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FeeConfigUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous",
+            "type": {
+              "defined": {
+                "name": "FeeConfig"
+              }
+            }
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "FeeConfig"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "KillSwitchToggledEvent",
       "docs": [
         "Event emitted when the kill switch state is changed",
@@ -16219,6 +17146,30 @@
               "instructions always mint directly. See `utils::program_minter`."
             ],
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ManagedTokenEnabledSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "managed_token",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -16846,6 +17797,66 @@
           {
             "name": "offer_config",
             "type": "pubkey"
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "OfferConfig"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OfferConfigEnabledSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "offer_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OfferConfigUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "offer_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous",
+            "type": {
+              "defined": {
+                "name": "OfferConfig"
+              }
+            }
           },
           {
             "name": "configuration",
@@ -17646,6 +18657,30 @@
       }
     },
     {
+      "name": "PricerEnabledSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "pricer",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "PricerVectorAddedEvent",
       "type": {
         "kind": "struct",
@@ -17789,6 +18824,42 @@
           {
             "name": "curve_peg_haircut_bps",
             "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PropAmmConfigUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "prop_amm_state",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous",
+            "type": {
+              "defined": {
+                "name": "PropAmmConfig"
+              }
+            }
+          },
+          {
+            "name": "config",
+            "type": {
+              "defined": {
+                "name": "PropAmmConfig"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
@@ -18119,6 +19190,30 @@
                 "name": "Quoter"
               }
             }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "QuoterEnabledSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "quoter",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
           },
           {
             "name": "timestamp",
@@ -19032,6 +20127,42 @@
           {
             "name": "amount",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultConfigUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous",
+            "type": {
+              "defined": {
+                "name": "VaultConfig"
+              }
+            }
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "VaultConfig"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }

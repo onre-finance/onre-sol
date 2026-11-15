@@ -92,6 +92,35 @@ pub fn set_managed_token_market_stats(ctx: Context<SetManagedTokenMarketStats>) 
     )
 }
 
+/// Clears the managed token's MarketStats selection, disabling modular reporting.
+/// The MarketStats account itself is left untouched.
+#[derive(Accounts)]
+pub struct UnsetManagedTokenMarketStats<'info> {
+    #[account(
+        mut,
+        seeds = [MANAGED_TOKEN, managed_token.managed_mint.as_ref()],
+        bump = managed_token.bump,
+    )]
+    pub managed_token: Box<Account<'info, ManagedTokenConfig>>,
+
+    #[account(
+        seeds = [STATE],
+        bump = state.bump,
+        has_one = boss @ OnreError::InvalidBoss
+    )]
+    pub state: Box<Account<'info, State>>,
+
+    pub boss: Signer<'info>,
+}
+
+pub fn unset_managed_token_market_stats(ctx: Context<UnsetManagedTokenMarketStats>) -> Result<()> {
+    select(
+        &mut ctx.accounts.managed_token,
+        Pubkey::default(),
+        ctx.accounts.boss.key(),
+    )
+}
+
 fn select(
     managed_token: &mut ManagedTokenConfig,
     market_stats: Pubkey,

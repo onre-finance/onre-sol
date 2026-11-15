@@ -221,6 +221,12 @@ pub mod onreapp {
         configuration::create_offer_config(ctx, instance_id, flow)
     }
 
+    /// Replaces an offer's Pricer, quoter, pressure link, fee config and vaults with
+    /// the creation rules; mints, instance ID and flow stay immutable. Boss only.
+    pub fn update_offer_config(ctx: Context<UpdateOfferConfig>) -> Result<()> {
+        configuration::update_offer_config(ctx)
+    }
+
     /// Boss-configured pair pressure tracking, independent of NAV/PropAmm quote selection.
     pub fn set_offer_pressure_state(ctx: Context<SetOfferPressureState>) -> Result<()> {
         configuration::set_offer_pressure_state(ctx)
@@ -270,6 +276,71 @@ pub mod onreapp {
         max_mint_amount: u64,
     ) -> Result<()> {
         configuration::set_managed_token_mint_limits(ctx, max_supply, max_mint_amount)
+    }
+
+    /// Enables or disables a managed token for modular use; boss only.
+    pub fn set_managed_token_enabled(
+        ctx: Context<SetManagedTokenEnabled>,
+        enabled: bool,
+    ) -> Result<()> {
+        configuration::set_managed_token_enabled(ctx, enabled)
+    }
+
+    /// Enables or disables a Pricer; boss only.
+    pub fn set_pricer_enabled(ctx: Context<SetPricerEnabled>, enabled: bool) -> Result<()> {
+        configuration::set_pricer_enabled(ctx, enabled)
+    }
+
+    /// Enables or disables a Quoter; boss only.
+    pub fn set_quoter_enabled(ctx: Context<SetQuoterEnabled>, enabled: bool) -> Result<()> {
+        configuration::set_quoter_enabled(ctx, enabled)
+    }
+
+    /// Enables or disables a FeeConfig; boss only.
+    pub fn set_fee_config_enabled(ctx: Context<SetFeeConfigEnabled>, enabled: bool) -> Result<()> {
+        configuration::set_fee_config_enabled(ctx, enabled)
+    }
+
+    /// Enables or disables an OfferConfig; boss only.
+    pub fn set_offer_config_enabled(
+        ctx: Context<SetOfferConfigEnabled>,
+        enabled: bool,
+    ) -> Result<()> {
+        configuration::set_offer_config_enabled(ctx, enabled)
+    }
+
+    /// Updates a FeeConfig's rate, minimum fee and Fee-kind vault; boss only.
+    pub fn update_fee_config(
+        ctx: Context<UpdateFeeConfig>,
+        basis_points: u16,
+        minimum_fee_amount: u64,
+    ) -> Result<()> {
+        configuration::update_fee_config(ctx, basis_points, minimum_fee_amount)
+    }
+
+    /// Updates a VaultConfig's withdrawal destination and refill target; boss only.
+    pub fn update_vault_config(
+        ctx: Context<UpdateVaultConfig>,
+        withdrawal_destination: Pubkey,
+        refill_target_bps: u16,
+    ) -> Result<()> {
+        configuration::update_vault_config(ctx, withdrawal_destination, refill_target_bps)
+    }
+
+    /// Replaces a modular Prop AMM state's configuration, keeping its pair and
+    /// accumulated pressure; boss only.
+    pub fn update_prop_amm_config(
+        ctx: Context<UpdatePropAmmConfig>,
+        config: PropAmmConfig,
+    ) -> Result<()> {
+        configuration::update_prop_amm_config(ctx, config)
+    }
+
+    /// Clears the managed token's MarketStats selection; boss only.
+    pub fn unset_managed_token_market_stats(
+        ctx: Context<UnsetManagedTokenMarketStats>,
+    ) -> Result<()> {
+        configuration::unset_managed_token_market_stats(ctx)
     }
 
     /// Switches the managed token's modular minting to a 1-of-N SPL multisig that already
