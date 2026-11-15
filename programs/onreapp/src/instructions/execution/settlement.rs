@@ -1,7 +1,7 @@
 use crate::{
     constants::seeds,
     model::{OfferDirection, OfferFlow},
-    utils::{burn_tokens, mint_tokens, transfer_tokens},
+    utils::{burn_tokens, transfer_tokens},
     OnreError, ID,
 };
 use anchor_lang::prelude::*;
@@ -147,12 +147,10 @@ fn settle_collected_input<'info>(
             if a.config.offer_config.source_vault != Pubkey::default() {
                 liquidity::consume(a, quote.amount_out, route.output)?;
             } else {
-                mint_tokens(
+                a.minter(authority_bump)?.mint(
                     &a.token_out_program,
                     &a.token_out_mint,
                     &route.output.to_account_info(),
-                    &a.mint_authority,
-                    &[&[seeds::MINT_AUTHORITY, &[authority_bump]]],
                     quote.amount_out,
                     max_supply,
                     max_mint,

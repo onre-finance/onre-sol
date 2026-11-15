@@ -3034,6 +3034,233 @@
       ]
     },
     {
+      "name": "disable_managed_token_mint_multisig",
+      "docs": [
+        "Restores direct PDA minting, reclaiming mint authority from the configured",
+        "multisig if it still holds it; boss only."
+      ],
+      "discriminator": [
+        156,
+        163,
+        76,
+        43,
+        84,
+        144,
+        166,
+        205
+      ],
+      "accounts": [
+        {
+          "name": "managed_token",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managed_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "managed_mint",
+          "writable": true
+        },
+        {
+          "name": "mint_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint_multisig",
+          "docs": [
+            "mint authority; disable requires the currently configured multisig."
+          ]
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "enable_managed_token_mint_multisig",
+      "docs": [
+        "Switches the managed token's modular minting to a 1-of-N SPL multisig that already",
+        "holds mint authority and includes the program mint-authority PDA; boss only.",
+        "Legacy instructions keep minting directly."
+      ],
+      "discriminator": [
+        39,
+        241,
+        27,
+        125,
+        150,
+        187,
+        228,
+        65
+      ],
+      "accounts": [
+        {
+          "name": "managed_token",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managed_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "managed_mint",
+          "writable": true
+        },
+        {
+          "name": "mint_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint_multisig",
+          "docs": [
+            "mint authority; disable requires the currently configured multisig."
+          ]
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "fulfill_redemption_request",
       "docs": [
         "Fulfills a redemption request with ONyc buffer accrual support.",
@@ -8860,6 +9087,9 @@
             },
             {
               "name": "managed_mint",
+              "docs": [
+                "Program control in the configured direct or multisig mode is checked before accrual."
+              ],
               "writable": true
             },
             {
@@ -8887,6 +9117,13 @@
                   }
                 ]
               }
+            },
+            {
+              "name": "mint_multisig",
+              "docs": [
+                "equal it; omitted for direct PDA minting. See `utils::program_minter`."
+              ],
+              "optional": true
             },
             {
               "name": "token_program"
@@ -9566,6 +9803,9 @@
             },
             {
               "name": "managed_mint",
+              "docs": [
+                "Program control in the configured direct or multisig mode is checked before accrual."
+              ],
               "writable": true
             },
             {
@@ -9593,6 +9833,13 @@
                   }
                 ]
               }
+            },
+            {
+              "name": "mint_multisig",
+              "docs": [
+                "equal it; omitted for direct PDA minting. See `utils::program_minter`."
+              ],
+              "optional": true
             },
             {
               "name": "token_program"
@@ -10077,6 +10324,13 @@
             {
               "name": "buffer_performance_token",
               "writable": true
+            },
+            {
+              "name": "mint_multisig",
+              "docs": [
+                "equal it; omitted for direct PDA minting. See `utils::program_minter`."
+              ],
+              "optional": true
             }
           ]
         },
@@ -13140,6 +13394,19 @@
       ]
     },
     {
+      "name": "ManagedTokenMintMultisigSetEvent",
+      "discriminator": [
+        4,
+        25,
+        193,
+        220,
+        183,
+        249,
+        109,
+        215
+      ]
+    },
+    {
       "name": "ManagedTokenRegisteredEvent",
       "discriminator": [
         27,
@@ -14447,6 +14714,21 @@
       "code": 6146,
       "name": "LegacyMarketStatsRequired",
       "msg": "ONyc execution requires the legacy market stats singleton"
+    },
+    {
+      "code": 6147,
+      "name": "MintMultisigRequired",
+      "msg": "Multisig minting is enabled: the configured mint multisig is required"
+    },
+    {
+      "code": 6148,
+      "name": "UnexpectedMintMultisig",
+      "msg": "Direct minting is enabled: no mint multisig account may be supplied"
+    },
+    {
+      "code": 6149,
+      "name": "InvalidMintMultisig",
+      "msg": "Mint multisig must be the configured initialized 1-of-N multisig containing the program mint authority"
     }
   ],
   "types": [
@@ -15548,6 +15830,15 @@
               "for ONyc); default means modular reporting is disabled."
             ],
             "type": "pubkey"
+          },
+          {
+            "name": "mint_multisig",
+            "docs": [
+              "1-of-N SPL multisig used as mint authority for modular minting, with the program",
+              "mint-authority PDA as one signer. Default means the PDA mints directly. Legacy",
+              "instructions always mint directly. See `utils::program_minter`."
+            ],
+            "type": "pubkey"
           }
         ]
       }
@@ -15571,6 +15862,37 @@
           },
           {
             "name": "market_stats",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ManagedTokenMintMultisigSetEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "managed_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint_multisig",
+            "docs": [
+              "Default when direct PDA minting was restored."
+            ],
             "type": "pubkey"
           },
           {

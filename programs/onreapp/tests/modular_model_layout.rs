@@ -17,7 +17,7 @@ fn check_layout<T: AccountDeserialize + AccountSerialize + Discriminator + Space
 
 #[test]
 fn model_account_wire_sizes_are_fixed() {
-    check_layout::<model::ManagedTokenConfig>(83);
+    check_layout::<model::ManagedTokenConfig>(115);
     check_layout::<model::Pricer>(443);
     check_layout::<model::Quoter>(11);
     check_layout::<model::PropAmmState>(203);

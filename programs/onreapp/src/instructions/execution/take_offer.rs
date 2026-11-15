@@ -44,7 +44,7 @@ pub fn take_offer(
     let time = u64::try_from(now).map_err(|_| OnreError::InvalidTimestamp)?;
     require!(time <= deadline, OnreError::Expired);
     let a = ctx.accounts;
-    let route = validation::validate(ctx.program_id, a)?;
+    let route = validation::validate(ctx.program_id, a, ctx.bumps.mint_authority)?;
     // Validate every configured component before dispatch. Future paths must not
     // fall through to NAV minting or silently omit required accounting.
     route.require_supported()?;

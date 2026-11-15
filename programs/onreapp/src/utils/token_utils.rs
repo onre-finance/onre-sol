@@ -280,6 +280,22 @@ pub fn validate_max_supply(current_supply: u64, amount: u64, max_supply: u64) ->
     Ok(())
 }
 
+/// Applies the per-mint amount cap and the max-supply cap; zero disables either.
+pub(crate) fn validate_mint_limits(
+    mint: &InterfaceAccount<Mint>,
+    amount: u64,
+    max_supply: u64,
+    max_mint_amount: u64,
+) -> Result<()> {
+    if max_mint_amount > 0 {
+        require!(
+            amount <= max_mint_amount,
+            crate::OnreError::MaxMintAmountExceeded
+        );
+    }
+    validate_max_supply(mint.supply, amount, max_supply)
+}
+
 /// Mints tokens with max-supply and per-mint amount validation.
 ///
 /// `max_supply == 0` or `max_mint_amount == 0` disables that respective cap.
@@ -294,14 +310,7 @@ pub fn mint_tokens<'info>(
     max_supply: u64,
     max_mint_amount: u64,
 ) -> Result<()> {
-    if max_mint_amount > 0 {
-        require!(
-            amount <= max_mint_amount,
-            crate::OnreError::MaxMintAmountExceeded
-        );
-    }
-
-    validate_max_supply(mint.supply, amount, max_supply)?;
+    validate_mint_limits(mint, amount, max_supply, max_mint_amount)?;
 
     // Perform the mint operation
     let mint_accounts = MintToChecked {

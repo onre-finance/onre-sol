@@ -5,6 +5,7 @@ pub(crate) mod managed_token;
 pub mod math_utils;
 pub(crate) mod pressure_link;
 pub mod pricing;
+pub(crate) mod program_minter;
 pub mod token_utils;
 pub(crate) mod vault_authority;
 

@@ -58,6 +58,9 @@ against the PDA of its stored mint pair, and the mint accounts must equal that p
   managed-to-asset. A managed-token source is optional for buys.
 - Existing global `state`, `mint_authority`, the user signer, instructions sysvar,
   associated-token program, and system program.
+- Optional `mint_multisig`: required exactly when the managed token mints through a
+  multisig and must equal `ManagedTokenConfig::mint_multisig`; omitted for direct
+  minting (see Minting authority).
 - Canonical `buffer_state`, optional canonical `buffer_pricer`, and the
   reserve, management-fee, and performance-fee BUFFER token accounts, as below.
 - `market_stats`, which must be the account selected by `ManagedTokenConfig`
@@ -237,6 +240,40 @@ keep the ONyc Pricer and main offer vectors aligned. Standalone BUFFER
 same rule with the same required `legacy_market_stats` account, but have no payer:
 they refresh the singleton only once it exists.
 The optional legacy offer and reporting accounts do not affect other mints.
+
+## Minting authority
+
+Modular minting (`take_offer` output and every BUFFER accrual, including
+`settle_managed_token_buffer` and `set_managed_token_buffer_settings`) supports two
+paths, selected per managed mint by `ManagedTokenConfig::mint_multisig`:
+
+- **Direct** (default): the program's `["mint_authority"]` PDA is the mint
+  authority and signs mints itself. No `mint_multisig` account may be supplied
+  (`UnexpectedMintMultisig`).
+- **Multisig**: the mint authority is a 1-of-N SPL multisig of the mint's token
+  program whose signers include the PDA. The program mints by passing the multisig
+  as authority and signing as the PDA member, so other members, such as a CCIP token
+  pool, can mint independently. The configured multisig must be supplied
+  (`MintMultisigRequired`; any other account: `InvalidMintMultisig`).
+
+The path always comes from configuration, never from the mint's current authority;
+each instruction requires the program to control the mint in that path, even when it
+mints nothing, and applies the same issuance limits on both paths. Legacy instructions
+remain direct-only: once a mint's authority moves to a multisig they no longer see
+program mint control.
+
+The boss switches with one transaction, after creating the multisig:
+
+1. `transfer_mint_authority_to_boss`;
+2. SPL `set_authority` (`MintTokens`) from the boss to the multisig;
+3. `enable_managed_token_mint_multisig`, which requires an initialized 1-of-N
+   multisig of the mint's token program that contains the PDA and already holds mint
+   authority.
+
+`disable_managed_token_mint_multisig` restores direct minting. If the configured
+multisig still holds mint authority, the program reclaims it to its PDA by signing as
+the multisig member; otherwise the PDA must already be the mint authority. Both
+instructions are boss-only and emit `ManagedTokenMintMultisigSetEvent`.
 
 ## Conditional liquidity and Prop AMM accounts
 

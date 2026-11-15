@@ -146,7 +146,10 @@ export const OnreappErrorCode = {
   LiquidityVaultRequired: 6143,
   UnsupportedOfferExecution: 6144,
   UnexpectedApproval: 6145,
-  LegacyMarketStatsRequired: 6146
+  LegacyMarketStatsRequired: 6146,
+  MintMultisigRequired: 6147,
+  UnexpectedMintMultisig: 6148,
+  InvalidMintMultisig: 6149
 };
 
 export type OnreappErrorName = keyof typeof OnreappErrorCode;

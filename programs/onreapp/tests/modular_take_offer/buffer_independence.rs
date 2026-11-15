@@ -20,6 +20,7 @@ fn parts(f: &Fixture) -> accounts::ManagedBufferAccounts {
         managed_token: managed(f.mint),
         managed_mint: f.mint,
         mint_authority: find_mint_authority_pda().0,
+        mint_multisig: f.mint_multisig(),
         token_program: f.token_program,
         buffer_state: f.buffer(),
         buffer_pricer: Some(price(f.mint, 0)),
@@ -602,5 +603,72 @@ fn onyc_buffer_operations_refresh_legacy_market_stats_once_created() {
             assert_eq!(stats.circulating_supply, supply);
             assert_eq!(stats.last_updated_at, now);
         }
+    }
+}
+
+/// Settle with an explicit `mint_multisig` account, overriding the configured one.
+fn settle_with_mint_multisig_ix(f: &Fixture, mint_multisig: Option<Pubkey>) -> Instruction {
+    let mut buffer_accounts = parts(f);
+    buffer_accounts.mint_multisig = mint_multisig;
+    ix(
+        accounts::SettleManagedTokenBuffer {
+            buffer_accounts,
+            worker: f.boss.pubkey(),
+            market_stats: f.market_stats(),
+            legacy_market_stats: f.legacy_market_stats(),
+            circulating_supply_excluded_balance: find_circulating_supply_excluded_balance_pda().0,
+        },
+        instruction::SettleManagedTokenBuffer {},
+    )
+}
+
+#[test]
+fn buffer_operations_mint_directly_or_through_the_multisig_as_configured() {
+    use super::mint_multisig::{create_multisig, expect_error, switch_to_multisig, toggle_ix};
+    for token_2022 in [false, true] {
+        let mut f = setup(false, token_2022);
+        let pda = find_mint_authority_pda().0;
+        let multisig = create_multisig(f.token_program, &mut f, 1, &[Pubkey::new_unique(), pda]);
+        let accrue = |f: &mut Fixture, operation: &dyn Fn(&mut Fixture)| {
+            let before = get_mint_supply(&f.svm, &f.mint);
+            advance_clock_by(&mut f.svm, 3_153_600);
+            operation(f);
+            assert!(get_mint_supply(&f.svm, &f.mint) > before);
+        };
+
+        // Direct: the PDA mints accrual, and a supplied multisig is rejected.
+        let instruction = settle_with_mint_multisig_ix(&f, Some(multisig));
+        expect_error(
+            send(&mut f.svm, &[instruction], &[&f.boss]),
+            OnreError::UnexpectedMintMultisig,
+        );
+        accrue(&mut f, &|f| settle(f));
+        assert_eq!(get_mint_authority_pubkey(&f.svm, &f.mint), Some(pda));
+
+        // Multisig: settlement and settings changes mint through the configured multisig,
+        // which must be supplied.
+        switch_to_multisig(&mut f, multisig).unwrap();
+        let instruction = settle_with_mint_multisig_ix(&f, None);
+        expect_error(
+            send(&mut f.svm, &[instruction], &[&f.boss]),
+            OnreError::MintMultisigRequired,
+        );
+        accrue(&mut f, &|f| settle(f));
+        accrue(&mut f, &|f| {
+            configure(
+                f,
+                BufferSettings {
+                    gross_apr: 200_000,
+                    ..config()
+                },
+            )
+        });
+        assert_eq!(get_mint_authority_pubkey(&f.svm, &f.mint), Some(multisig));
+
+        // Back to direct: authority returns to the PDA, which mints accrual again.
+        let instruction = toggle_ix(&f, f.boss.pubkey(), multisig, false);
+        send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+        accrue(&mut f, &|f| settle(f));
+        assert_eq!(get_mint_authority_pubkey(&f.svm, &f.mint), Some(pda));
     }
 }

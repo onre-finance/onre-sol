@@ -1,13 +1,13 @@
 use crate::{
-    constants::seeds,
     instructions::{
         buffer::{calculate_buffer_fee_split, calculate_gross_buffer_accrual},
         market_info::MarketValuation,
     },
     model::{seeds as model_seeds, BufferSettings, ManagedTokenBufferState, Pricer},
     utils::{
-        load_pda_account, managed_token::validate_canonical_usd_pricer, mint_tokens,
-        pricing::get_active_vector_and_current_price, store_pda_account, validate_max_supply,
+        load_pda_account, managed_token::validate_canonical_usd_pricer,
+        pricing::get_active_vector_and_current_price, program_minter::ProgramMinter,
+        store_pda_account, validate_max_supply,
     },
     OnreError,
 };
@@ -29,6 +29,22 @@ pub(crate) struct BufferContext<'a, 'info> {
     pub management_token: &'a UncheckedAccount<'info>,
     pub performance_token: &'a UncheckedAccount<'info>,
     pub mint_authority: &'a UncheckedAccount<'info>,
+    /// Configured `ManagedTokenConfig::mint_multisig` and the supplied account.
+    pub configured_mint_multisig: Pubkey,
+    pub mint_multisig: Option<&'a UncheckedAccount<'info>>,
+}
+
+impl<'a, 'info> BufferContext<'a, 'info> {
+    /// Program minting path for the managed mint in its configured mode.
+    pub(crate) fn minter(&self, authority_bump: u8) -> Result<ProgramMinter<'a, 'info>> {
+        ProgramMinter::resolve(
+            self.configured_mint_multisig,
+            self.managed_mint,
+            self.mint_authority.as_ref(),
+            authority_bump,
+            self.mint_multisig.map(AsRef::as_ref),
+        )
+    }
 }
 
 #[event]
@@ -66,6 +82,7 @@ pub(crate) fn accrue(
         return Ok(false);
     }
     let mut buffer = load_buffer(program_id, a)?;
+    let minter = a.minter(authority_bump)?;
     require!(
         now >= buffer.last_accrual_timestamp,
         OnreError::InvalidTimestamp
@@ -116,12 +133,10 @@ pub(crate) fn accrue(
         (&a.performance_token, split.performance_fee_mint_amount),
     ] {
         if amount > 0 {
-            mint_tokens(
+            minter.mint(
                 a.managed_program,
                 a.managed_mint,
                 token,
-                &a.mint_authority,
-                &[&[seeds::MINT_AUTHORITY, &[authority_bump]]],
                 amount,
                 max_supply,
                 max_mint,

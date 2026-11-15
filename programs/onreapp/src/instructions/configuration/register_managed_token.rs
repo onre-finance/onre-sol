@@ -57,6 +57,7 @@ pub fn register_managed_token(ctx: Context<RegisterManagedToken>) -> Result<()> 
         max_mint_amount: 0,
         bump: ctx.bumps.managed_token,
         market_stats: Pubkey::default(),
+        mint_multisig: Pubkey::default(),
     });
     emit!(ManagedTokenRegisteredEvent {
         boss: ctx.accounts.boss.key(),

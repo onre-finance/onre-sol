@@ -1,6 +1,6 @@
 use crate::{
     model::{OfferDirection, OfferFlow, QuoterKind},
-    utils::{has_transfer_fee, pressure_link::validate_pressure_link, program_controls_mint},
+    utils::{has_transfer_fee, pressure_link::validate_pressure_link},
     OnreError,
 };
 use anchor_lang::prelude::*;
@@ -36,7 +36,11 @@ impl ExecutionPlan {
     }
 }
 
-pub(super) fn validate(program_id: &Pubkey, a: &TakeOffer) -> Result<ExecutionPlan> {
+pub(super) fn validate(
+    program_id: &Pubkey,
+    a: &TakeOffer,
+    authority_bump: u8,
+) -> Result<ExecutionPlan> {
     require!(
         a.managed_mint().key() == a.config.managed_token.managed_mint
             && a.asset_mint().key() != a.config.managed_token.managed_mint,
@@ -48,10 +52,8 @@ pub(super) fn validate(program_id: &Pubkey, a: &TakeOffer) -> Result<ExecutionPl
             && a.config.managed_token.decimals == a.managed_mint().decimals,
         OnreError::InvalidMint
     );
-    require!(
-        program_controls_mint(a.managed_mint(), &a.mint_authority),
-        OnreError::ProgramNotMintAuthority
-    );
+    // Direct or multisig control, exactly as configured, even when no mint occurs.
+    a.minter(authority_bump)?;
     require!(
         !has_transfer_fee(&a.token_in_mint)? && !has_transfer_fee(&a.token_out_mint)?,
         OnreError::TransferFeeNotSupported

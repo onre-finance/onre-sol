@@ -73,7 +73,7 @@ the domain paths such as `model::pricer::Pricer`.
 
 | Account | Body bytes | Allocated bytes with discriminator |
 | --- | ---: | ---: |
-| ManagedTokenConfig | 83 | 91 |
+| ManagedTokenConfig | 115 | 123 |
 | Pricer | 443 | 451 |
 | Quoter | 11 | 19 |
 | PropAmmState | 203 | 211 |
@@ -86,7 +86,7 @@ the domain paths such as `model::pricer::Pricer`.
 
 | EVM object | Solana model | Contents |
 | --- | --- | --- |
-| ManagedTokenConfig | ManagedTokenConfig | Managed mint, decimals, enabled, program issuance limits, bump, selected MarketStats account (default = reporting disabled). |
+| ManagedTokenConfig | ManagedTokenConfig | Managed mint, decimals, enabled, program issuance limits, bump, selected MarketStats account (default = reporting disabled), mint multisig (default = direct PDA minting). |
 | PricingVector | PricingVector, embedded | Start/base times, base price, APR, price-step duration. |
 | Pricer | Pricer | Instance ID, managed mint, denomination, 10 vector slots, enabled, bump. |
 | Quoter | Quoter | Kind, instance ID, enabled, bump. |
@@ -169,6 +169,7 @@ repeat creation; shared accounts are not implicitly initialized or overwritten b
 | `create_fee_config` | Requires an existing Fee vault; percentage fees are capped at 1,000 bps and the input-token minimum is stored in base units. |
 | `create_prop_amm_state` | Requires an enabled PropAmm quoter, a registered managed mint, and a boss-selected external mint. Validates curve/cadence/epoch settings and creates zero pressure with the current timestamp. Repeat creation cannot rebind the pair. |
 | `create_offer_config` | Requires exactly one registered managed mint and a Pricer for it. The boss chooses the external mint in the Pricer's denomination. Validates mint decimals, enabled components, flow/quoter compatibility, Prop AMM pair binding, and vault kinds. |
+| `enable_managed_token_mint_multisig` / `disable_managed_token_mint_multisig` | Boss-only switch of modular minting between the program PDA and a 1-of-N SPL multisig that includes it; see [MODULAR_TAKE_OFFER.md](MODULAR_TAKE_OFFER.md#minting-authority). |
 | `initialize_managed_token_buffer` | Creates independent per-mint accounting and three dedicated vault configs, using the token's enabled USD Pricer instance zero. |
 
 Both SPL Token and Token-2022 mint accounts are accepted through Anchor's token

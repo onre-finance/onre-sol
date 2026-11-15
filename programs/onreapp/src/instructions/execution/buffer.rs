@@ -15,6 +15,8 @@ fn context<'a, 'info>(a: &'a TakeOffer<'info>) -> BufferContext<'a, 'info> {
         management_token: &a.buffer.buffer_management_token,
         performance_token: &a.buffer.buffer_performance_token,
         mint_authority: &a.mint_authority,
+        configured_mint_multisig: a.config.managed_token.mint_multisig,
+        mint_multisig: a.buffer.mint_multisig.as_ref(),
     }
 }
 
