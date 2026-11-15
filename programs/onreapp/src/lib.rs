@@ -303,6 +303,40 @@ pub mod onreapp {
         configuration::set_offer_config_enabled(ctx, enabled)
     }
 
+    /// Updates a FeeConfig's rate, minimum fee and Fee-kind vault; boss only.
+    pub fn update_fee_config(
+        ctx: Context<UpdateFeeConfig>,
+        basis_points: u16,
+        minimum_fee_amount: u64,
+    ) -> Result<()> {
+        configuration::update_fee_config(ctx, basis_points, minimum_fee_amount)
+    }
+
+    /// Updates a VaultConfig's withdrawal destination and refill target; boss only.
+    pub fn update_vault_config(
+        ctx: Context<UpdateVaultConfig>,
+        withdrawal_destination: Pubkey,
+        refill_target_bps: u16,
+    ) -> Result<()> {
+        configuration::update_vault_config(ctx, withdrawal_destination, refill_target_bps)
+    }
+
+    /// Replaces a modular Prop AMM state's configuration, keeping its pair and
+    /// accumulated pressure; boss only.
+    pub fn update_prop_amm_config(
+        ctx: Context<UpdatePropAmmConfig>,
+        config: PropAmmConfig,
+    ) -> Result<()> {
+        configuration::update_prop_amm_config(ctx, config)
+    }
+
+    /// Clears the managed token's MarketStats selection; boss only.
+    pub fn unset_managed_token_market_stats(
+        ctx: Context<UnsetManagedTokenMarketStats>,
+    ) -> Result<()> {
+        configuration::unset_managed_token_market_stats(ctx)
+    }
+
     /// Switches the managed token's modular minting to a 1-of-N SPL multisig that already
     /// holds mint authority and includes the program mint-authority PDA; boss only.
     /// Legacy instructions keep minting directly.

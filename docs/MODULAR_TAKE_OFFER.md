@@ -230,6 +230,8 @@ The boss selects an account with either instruction:
   selects it.
 - `set_managed_token_market_stats` selects any existing program-owned
   MarketStats account, such as the legacy `["market_stats"]` singleton for ONyc.
+- `unset_managed_token_market_stats` clears the selection, disabling modular
+  reporting without modifying the MarketStats account.
 
 Once selected, the supplied `market_stats` must equal the selection. Each refresh
 values the mint at its canonical USD instance-zero Pricer. ONyc subtracts the
