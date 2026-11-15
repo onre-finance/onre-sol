@@ -128,7 +128,7 @@ fn settle_collected_input<'info>(
                 .proceeds_token_in
                 .as_ref()
                 .ok_or(OnreError::InvalidConfigurableVaultTokenAccount)?;
-            liquidity::refill(
+            liquidity::deposit_destination(
                 a,
                 route.input,
                 &route.authority,
@@ -144,27 +144,41 @@ fn settle_collected_input<'info>(
                 route.signer_seeds,
                 quote.net_input_amount - quote.liquidity_refill_amount,
             )?;
-            mint_tokens(
-                &a.token_out_program,
-                &a.token_out_mint,
-                &route.output.to_account_info(),
-                &a.mint_authority,
-                &[&[seeds::MINT_AUTHORITY, &[authority_bump]]],
-                quote.amount_out,
-                max_supply,
-                max_mint,
-            )?;
+            if a.offer_config.source_vault != Pubkey::default() {
+                liquidity::consume(a, quote.amount_out, route.output)?;
+            } else {
+                mint_tokens(
+                    &a.token_out_program,
+                    &a.token_out_mint,
+                    &route.output.to_account_info(),
+                    &a.mint_authority,
+                    &[&[seeds::MINT_AUTHORITY, &[authority_bump]]],
+                    quote.amount_out,
+                    max_supply,
+                    max_mint,
+                )?;
+            }
         }
         OfferDirection::ManagedToAsset => {
-            burn_tokens(
-                &a.token_in_program,
-                &a.token_in_mint,
-                route.input,
-                &route.authority,
-                route.signer_seeds.unwrap_or(&[]),
-                quote.net_input_amount,
-            )?;
-            liquidity::consume(a, plan.liquidity_balance, quote.amount_out, route.output)?;
+            if a.offer_config.destination_vault != Pubkey::default() {
+                liquidity::deposit_destination(
+                    a,
+                    route.input,
+                    &route.authority,
+                    route.signer_seeds,
+                    quote.net_input_amount,
+                )?;
+            } else {
+                burn_tokens(
+                    &a.token_in_program,
+                    &a.token_in_mint,
+                    route.input,
+                    &route.authority,
+                    route.signer_seeds.unwrap_or(&[]),
+                    quote.net_input_amount,
+                )?;
+            }
+            liquidity::consume(a, quote.amount_out, route.output)?;
         }
     }
     Ok(())

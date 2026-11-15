@@ -4,9 +4,9 @@
 executes the [reusable model](MODULAR_MODEL.md) through one public instruction.
 It supports permissioned (`Nav`) and permissionless (`NavPermissionless`) NAV,
 plus permissionless [`PropAmm`](MODULAR_PROP_AMM.md), in both directions.
-NAV asset-to-managed may omit liquidity or select a vault for refill; PropAmm in
-either direction and all managed-to-asset offers require selected liquidity. Worker flows remain unsupported. The
-global kill switch guards execution.
+Offers independently select [source and destination vaults](OFFER_VAULT_ROLES.md).
+NAV buys allow both absent; sells require a source and PropAmm buys require a
+destination. Worker flows remain unsupported. The global kill switch guards execution.
 
 Direction and permissions come from OfferConfig; the pricing algorithm comes from
 Quoter. The shared account context lives in `execution/accounts.rs`, validation and
@@ -27,9 +27,11 @@ Register the managed mint, create its Pricer, append a vector with
 `add_pricer_vector`, create the appropriate Quoter, Fee and Proceeds vaults,
 a FeeConfig, and an OfferConfig. Permissioned offers select `Nav`; permissionless
 offers select `NavPermissionless` or a pair-configured `PropAmm` quoter.
-NAV asset-to-managed may reference a liquidity vault for refill; PropAmm always requires one;
-managed-to-asset references a Liquidity VaultConfig, legacy ConfigurableVault, or
-the existing redemption authority.
+Buy sources optionally supply managed inventory; buy destinations optionally receive
+asset refill. Sells require an asset source and optionally transfer net managed
+input to a destination instead of burning. PropAmm buys require asset destinations
+for curve pricing. Both roles support modular Liquidity, legacy configurable, or
+redemption custody. See the linked vault-role document for the complete matrix.
 Create a new vault instance first when separate liquidity is needed. The program's existing
 mint-authority PDA must control the managed mint in either direction; managed
 registration does not transfer authority. The boss selects an external
@@ -43,7 +45,7 @@ The generated `TakeOffer` accounts contain:
   Fee vault's input-mint ATA and optional Proceeds input-mint ATA. The user's output
   and fee ATAs are created lazily at the user's expense. The Proceeds ATA is
   required and created lazily only for asset-to-managed; it must be omitted for
-  managed-to-asset. No managed-token output inventory vault is required.
+  managed-to-asset. A managed-token source is optional for buys.
 - Existing global `state`, `mint_authority`, the user signer, instructions sysvar,
   associated-token program, and system program.
 - Canonical `buffer_state`, optional `buffer_pricer` and `main_offer`, and the
@@ -53,9 +55,9 @@ The generated `TakeOffer` accounts contain:
   `permissionless_token_out`, required by permissionless offers and omitted for
   other flows. The token accounts are the authority's canonical input/output ATAs
   under each mint's token program and are created lazily at the user's expense.
-- Optional `prop_amm_state`, `liquidity_vault`, and `liquidity_token`, as described
-  below. Redemption custody is supplied through the selected `liquidity_vault`
-  reference; no additional legacy liquidity or Prop AMM accounts are required.
+- Optional `prop_amm_state`, plus independently configured `source_vault` /
+  `source_token_out` and `destination_vault` / `destination_token_in`.
+  Each vault token account is the canonical ATA for that role's mint.
 
 The managed mint and its token program are selected from the input or output side
 according to the stored direction. Both mints are writable because either may be
@@ -84,9 +86,10 @@ does not introduce a new authority account layout. Its optional stored display
 name is not an execution gate, matching V2's address-based validation.
 
 The user signs a gross-input transfer into the intermediary input ATA. The program
-signs as the intermediary to distribute the input fee and net proceeds, or to burn
-net managed input for the opposite direction. Minted managed output or liquidity
-asset output goes to the intermediary output ATA. It then transfers exactly this
+signs as the intermediary to distribute input fees and net input to its configured
+destination or Proceeds, or to burn net managed input when no sell destination is
+set. Source inventory or newly minted managed output goes to the intermediary
+output ATA. It then transfers exactly this
 trade's amount out to the user. Preexisting balances in either intermediary ATA
 are not swept, used as extra input, or included in the user's payout.
 
@@ -133,10 +136,11 @@ input, a fee consuming all input, zero rounded output, and output below
 Execution settles BUFFER before changing user supply. Permissioned execution uses
 the user as input authority and output recipient. Permissionless execution uses
 the intermediary as described above. Asset-to-managed transfers
-input fees to the Fee ATA, optionally refills the selected liquidity ATA, sends
-remaining net input to the Proceeds ATA, then mints managed output. Managed-to-asset
-transfers the fee in managed tokens to the Fee ATA, burns
-net managed input, and pays the asset output from validated liquidity accounts
+input fees to the Fee ATA, optionally refills the destination asset ATA, sends
+remaining net input to Proceeds, then transfers managed output from the source or
+mints if no source is configured. Managed-to-asset transfers fees to the Fee ATA,
+then transfers all net managed input to its destination or burns it if absent,
+and pays asset output from its required source
 to the route recipient. It then records the actual post-execution managed mint supply as the BUFFER
 baseline. Managed-token supply and issuance limits apply to both BUFFER accrual
 and user issuance. ONyc additionally retains
@@ -145,8 +149,8 @@ operation before splitting across fee destinations. Every step, including lazy
 ATA creation, rolls back if the transaction fails.
 
 `OfferExecutedEvent` records the offer, user, flow, direction, gross/net input,
-fee, output, price, actual liquidity refill, remaining proceeds, selected-vault
-`liquidity_amount`, and timestamp. Managed-to-asset proceeds are zero.
+fee, output, price, actual liquidity refill, remaining proceeds, output inventory
+`source_amount`, input deposit `destination_amount`, and timestamp. Managed-to-asset proceeds are zero.
 
 ## BUFFER coexistence
 
@@ -172,34 +176,18 @@ The optional legacy offer and reporting accounts do not affect other mints.
 
 ## Conditional liquidity and Prop AMM accounts
 
-When OfferConfig stores a liquidity-vault reference, provide that exact authority
-and its canonical asset-mint ATA. The authority can be a modular Liquidity
-VaultConfig (newly created or reused), an existing legacy ConfigurableVault, or
-the canonical legacy redemption authority. Creation and execution validate the
-configuration's program owner, discriminator, kind, PDA and bump. The stateless
-redemption authority is validated by its canonical PDA identity. A legacy
-configurable vault retains its original role and withdrawal destination/policy;
-selecting it explicitly makes its asset ATA available to that offer. Legacy vaults and the redemption authority have no modular refill target.
-Without a reference, liquidity accounts must be omitted; managed-to-asset always
-requires a reference, as does PropAmm buying.
+Each configured vault role requires its exact authority and canonical role-mint
+ATA. Source uses the output mint; destination uses the input mint. Unconfigured
+roles must be omitted. Modular Liquidity, legacy ConfigurableVault and canonical
+redemption authority identities are supported independently in each role. See
+[OFFER_VAULT_ROLES.md](OFFER_VAULT_ROLES.md) for settlement, mint/burn and refill
+rules, signing seeds, validation and account-layout compatibility.
 
-Only the selected vault's asset balance counts toward solvency. Existing redemption
-liquidity is read and consumed only when its redemption authority is explicitly
-selected, including for ONyc. The same vault may be explicitly shared by multiple
-offers; separate vault instances isolate
-actual asset balances. Creating an offer does not create or migrate its liquidity.
-
-An uninitialized canonical ATA owned by the system program counts as zero.
-Initialized token accounts must match the token program, mint, authority and
-canonical ATA address. Payout signs with the selected vault's validated PDA seeds.
-Insufficient selected-vault funds roll back BUFFER accrual, fee movement, burn and
-all earlier transfers. Other fee and proceeds vault balances are not included in
-liquidity; an explicitly selected legacy configurable vault contributes only its
-own asset ATA.
-
-New VaultConfig balances can be funded or withdrawn using the
-[VaultConfig custody instructions](VAULT_CONFIG_OPERATIONS.md), which also cover
-the distinct per-mint BUFFER vault seeds.
+Only the source's output balance can fund payouts. No automatic inventory fallback
+or balance pooling occurs. A missing destination ATA can be created for a positive
+deposit; a missing source ATA is empty inventory. All earlier actions roll back
+when settlement fails. Custody can be funded and withdrawn through the existing
+[VaultConfig instructions](VAULT_CONFIG_OPERATIONS.md).
 
 A Prop AMM Quoter requires its canonical mutable PropAmmState, bound to the same
 Quoter, asset and managed mint. Each new quoter uses its own state, independently
@@ -212,10 +200,11 @@ Prop AMM execution uses curve pricing in both directions, recording both against
 that shared state. Worker execution remains unsupported;
 supplying an approval cannot enable it.
 
-The modular account list removes the former legacy liquidity authority/ATA and
-legacy Prop AMM state positions. Clients must rebuild against the updated IDL.
-`OfferExecutedEvent` now reports one `liquidity_amount` instead of a legacy/current
-split. V2 instructions and events remain unchanged.
+The fresh modular account list uses independent source and destination custody
+positions. New modular clients use the generated IDL/types; existing V2 and swap
+clients retain their current account lists.
+`OfferExecutedEvent` now reports `source_amount` and `destination_amount` for the
+two custody roles, replacing the former `liquidity_amount`. V2 instructions and events remain unchanged.
 
 ## Pricer vectors
 
