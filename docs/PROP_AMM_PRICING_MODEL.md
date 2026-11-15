@@ -278,7 +278,9 @@ effective_volume = decayed_prev_net + curr_net + raw
 
 The current sell's own `raw` pair-asset value is included in `effective_volume`, so the order pays against the pressure it creates. ONYC buy pressure relief is the pair-asset net input paid by the buyer, not the 9-decimal ONYC amount minted. The code uses field names ending in `_stable` for this value, but the unit is the canonical pair asset's base units.
 
-If an epoch rolls over, current net sell pressure moves into `prev_net_sell_value_stable`; if two or more epochs elapsed, pressure resets to zero. Previous pressure decays linearly through the next epoch.
+Epochs use fixed boundaries aligned to the stored `epoch_start` (`instructions/prop_amm/epoch.rs`, shared with the modular Prop AMM). At the scheduled end of an epoch its net sell pressure becomes previous pressure and decays linearly to zero over the next epoch, measured from that boundary even if no trade rolled the tracker. A trade rolls `epoch_start` forward by whole epochs, never to its own timestamp; after two or more elapsed epochs all pressure expires while the boundary alignment is kept. Cadence sell counts expire at the same boundary.
+
+For example, with a 100-second epoch starting at 100 and net sells of 100 before 200, the previous pressure is 100, 50, 1 and 0 at 200, 250, 299 and 300. A sell of 20 at 299 quotes against 21 and, when executed, rolls the start to 200 rather than 299.
 
 ### Step 3: Calculate the Dynamic Wall
 

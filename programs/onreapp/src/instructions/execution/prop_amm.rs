@@ -1,8 +1,9 @@
-//! Symmetric modular Prop AMM pricing/accounting with scheduled epoch boundaries;
-//! legacy PropAmmPairState and its tracker remain unchanged.
+//! Symmetric modular Prop AMM pricing/accounting. Volume epochs use the shared
+//! fixed-boundary rules in `prop_amm::epoch`, like the legacy tracker.
 use crate::{
     instructions::prop_amm::{
-        cadence_wave_target_haircut_scaled, pricing::redemption_haircut_scaled, HARD_WALL_SCALE,
+        cadence_wave_target_haircut_scaled, epoch::Epoch, pricing::redemption_haircut_scaled,
+        HARD_WALL_SCALE,
     },
     model::{OfferDirection, PropAmmState},
     OnreError,
@@ -12,20 +13,8 @@ use anchor_lang::prelude::*;
 const WALL_SCALE: u128 = 10_000;
 const CADENCE_SCALE: u128 = 10_000;
 
-fn elapsed(state: &PropAmmState, now: i64) -> Result<Option<u64>> {
-    require!(
-        state.config.epoch_duration_seconds > 0,
-        OnreError::InvalidAmount
-    );
-    require!(
-        now >= 0 && state.epoch_start >= 0,
-        OnreError::InvalidTimestamp
-    );
-    if state.epoch_start == 0 || now < state.epoch_start {
-        Ok(None)
-    } else {
-        Ok(Some((now - state.epoch_start) as u64))
-    }
+fn epoch(state: &PropAmmState, now: i64) -> Result<Epoch> {
+    Epoch::at(state.epoch_start, state.config.epoch_duration_seconds, now)
 }
 
 fn net_volume(state: &PropAmmState, direction: OfferDirection) -> u128 {
@@ -46,28 +35,16 @@ fn effective_volume(
     raw: u64,
     now: i64,
 ) -> Result<u128> {
-    let duration = state.config.epoch_duration_seconds as u128;
-    let net = net_volume(state, direction);
     let previous_net = match direction {
         OfferDirection::AssetToManaged => state.previous_net_buy_value_stable,
         OfferDirection::ManagedToAsset => state.previous_net_sell_value_stable,
     };
-    let (previous, current, offset) = match elapsed(state, now)? {
-        None => (0, 0, 0),
-        Some(e) if e as u128 >= duration * 2 => (0, 0, 0),
-        Some(e) if e as u128 >= duration => (net, 0, e as u128 - duration),
-        Some(e) => (previous_net, net, e as u128),
-    };
-    // Split the product to retain the full u128 accumulator range during decay.
-    let remaining = duration - offset;
-    let decayed = (previous / duration)
-        .checked_mul(remaining)
-        .and_then(|v| v.checked_add((previous % duration) * remaining / duration))
-        .ok_or(OnreError::MathOverflow)?;
-    decayed
-        .checked_add(current)
-        .and_then(|v| v.checked_add(raw as u128))
-        .ok_or_else(|| OnreError::MathOverflow.into())
+    epoch(state, now)?.effective_volume(
+        state.config.epoch_duration_seconds,
+        previous_net,
+        net_volume(state, direction),
+        raw as u128,
+    )
 }
 
 /// Apply the same asset-denominated curve to either direction's NAV output.
@@ -100,7 +77,7 @@ pub(super) fn quote(
         state.config.curve_exponent_scaled,
     )?;
     let mut wave = 0;
-    if matches!(elapsed(state, now)?, Some(e) if e < state.config.epoch_duration_seconds) {
+    if epoch(state, now)?.is_current() {
         require!(state.config.cadence_threshold > 0, OnreError::InvalidAmount);
         let count = match direction {
             OfferDirection::AssetToManaged => state.current_buy_trade_count,
@@ -151,36 +128,26 @@ pub(super) fn record(
 }
 
 fn roll(state: &mut PropAmmState, now: i64) -> Result<()> {
-    let duration = state.config.epoch_duration_seconds;
-    let offset = elapsed(state, now)?;
-    let start = match offset {
-        None => {
-            state.previous_net_sell_value_stable = 0;
-            state.previous_net_buy_value_stable = 0;
-            now
-        }
-        Some(e) if e >= duration => {
-            state.previous_net_buy_value_stable = if e as u128 >= duration as u128 * 2 {
-                0
-            } else {
-                net_volume(state, OfferDirection::AssetToManaged)
-            };
-            state.previous_net_sell_value_stable = if e as u128 >= duration as u128 * 2 {
-                0
-            } else {
-                state
-                    .current_sell_value_stable
-                    .saturating_sub(state.current_buy_value_stable)
-            };
-            now - (e % duration) as i64
-        }
-        _ => return Ok(()),
+    let Some(rollover) = epoch(state, now)?.rollover(state.config.epoch_duration_seconds, now)
+    else {
+        return Ok(());
+    };
+    (
+        state.previous_net_buy_value_stable,
+        state.previous_net_sell_value_stable,
+    ) = if rollover.carry_current_net {
+        (
+            net_volume(state, OfferDirection::AssetToManaged),
+            net_volume(state, OfferDirection::ManagedToAsset),
+        )
+    } else {
+        (0, 0)
     };
     state.current_sell_value_stable = 0;
     state.current_buy_value_stable = 0;
     state.current_sell_trade_count = 0;
     state.current_buy_trade_count = 0;
-    state.epoch_start = start;
+    state.epoch_start = rollover.start;
     Ok(())
 }
 

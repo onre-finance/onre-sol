@@ -329,8 +329,8 @@ Amounts and supply use SPL-native `u64`; aggregate Prop AMM volume and TVL use
 `u128`. Price uses scale 9; APR/APY use scale 6. TVL is USD scale 9 after mint
 decimal normalization. Runtime timestamps use signed Solana Unix `i64`; vector
 timestamps retain the existing `u64` representation. Arithmetic and conversions
-retain checked overflow handling. Modular Prop AMM uses fixed-boundary epochs and shares the
-legacy curve/cadence math; the legacy tracker itself remains unchanged. Operational
+retain checked overflow handling. Modular and legacy Prop AMM share the curve/cadence math and
+the fixed-boundary epoch rules. Operational
 liquidity targets use TVL in managed-token base units before asset conversion, as
 in EVM. NAV execution reuses existing checked pricing, conversion, and BUFFER math.
 

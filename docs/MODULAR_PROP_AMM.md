@@ -64,12 +64,14 @@ Output rounds down. Zero output, insufficient raw liquidity, or output below
 Opposite trades offset current net volume but do not erase cadence or already
 carried previous-epoch pressure. Both directional counts advance on linked trades.
 The integer curve and cadence math is shared with the legacy implementation;
-the symmetric policy and tracker are modular; legacy pricing and pressure math are unchanged.
+the symmetric policy and tracker are modular. Both trackers share the fixed epoch
+rules below.
 
 ## Fixed epoch boundaries
 
-The modular tracker uses scheduled boundaries, independently of the
-legacy Solana tracker. For epoch duration `E` and stored start `S`:
+The modular and legacy trackers use the same scheduled boundaries, implemented
+once in `instructions/prop_amm/epoch.rs`; the legacy tracker applies them to sell
+pressure only. For epoch duration `E` and stored start `S`:
 
 - Before `S + E`, previous net pressure decays linearly and current net pressure
   contributes in full.
