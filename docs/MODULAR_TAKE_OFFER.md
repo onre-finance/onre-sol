@@ -340,7 +340,7 @@ configuration changes, vector management remains available during the kill switc
 
 ## Next layers
 
-Worker fulfillment and component updates remain separate work. Legacy execution
+Worker fulfillment remains separate work. Legacy execution
 paths stay available alongside modular execution. This instruction adds no automatic offer binding or bulk custody
 migration. Existing liquidity is used only when explicitly selected for settlement
 or moved separately.

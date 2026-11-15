@@ -131,46 +131,21 @@ pub fn create_offer_config(
         a.asset_managed_registration.data_is_empty(),
         OnreError::TokenRoleConflict
     );
-    require!(
-        a.pricer.managed_mint == a.managed_token.managed_mint,
-        OnreError::IncompatiblePricer
-    );
-    let compatible = match flow {
-        OfferFlow::Permissioned => a.quoter.kind == QuoterKind::Nav,
-        OfferFlow::Permissionless => matches!(
-            a.quoter.kind,
-            QuoterKind::NavPermissionless | QuoterKind::PropAmm
-        ),
-        OfferFlow::Worker => {
-            direction == OfferDirection::ManagedToAsset && a.quoter.kind == QuoterKind::Nav
-        }
-    };
-    require!(compatible, OnreError::IncompatibleQuoter);
-    let pressure_state = validate_pressure_link(
+    let pressure_state = validate_offer_components(
         ctx.program_id,
-        a.quoter.key(),
-        a.quoter.kind,
+        flow,
         direction,
+        a.managed_token.managed_mint,
         a.token_in_mint.key(),
         a.token_out_mint.key(),
-        a.prop_amm_state.as_deref(),
+        &OfferComponents {
+            pricer: &a.pricer,
+            quoter: &a.quoter,
+            prop_amm_state: a.prop_amm_state.as_deref(),
+            source_vault: a.source_vault.as_ref().map(|v| v.to_account_info()),
+            destination_vault: a.destination_vault.as_ref().map(|v| v.to_account_info()),
+        },
     )?;
-    for vault in [&a.source_vault, &a.destination_vault]
-        .into_iter()
-        .flatten()
-    {
-        validate_liquidity_vault(&vault.to_account_info(), ctx.program_id)?;
-    }
-    require!(
-        direction != OfferDirection::ManagedToAsset || a.source_vault.is_some(),
-        OnreError::LiquidityVaultRequired
-    );
-    require!(
-        direction != OfferDirection::AssetToManaged
-            || a.quoter.kind != QuoterKind::PropAmm
-            || a.destination_vault.is_some(),
-        OnreError::LiquidityVaultRequired
-    );
     let offer = OfferConfig {
         token_in_mint: a.token_in_mint.key(),
         token_out_mint: a.token_out_mint.key(),
@@ -201,4 +176,69 @@ pub fn create_offer_config(
         timestamp: Clock::get()?.unix_timestamp,
     });
     Ok(())
+}
+
+/// Selected components of an offer, validated together on creation and update.
+pub(crate) struct OfferComponents<'a, 'info> {
+    pub pricer: &'a Account<'info, Pricer>,
+    pub quoter: &'a Account<'info, Quoter>,
+    pub prop_amm_state: Option<&'a Account<'info, PropAmmState>>,
+    pub source_vault: Option<AccountInfo<'info>>,
+    pub destination_vault: Option<AccountInfo<'info>>,
+}
+
+/// Rules shared by `create_offer_config` and `update_offer_config`: the Pricer
+/// belongs to the managed mint, the quoter suits the flow, the pressure link is
+/// valid, custody roles are supported vaults, managed-to-asset offers have a
+/// source, and PropAmm buys have a destination. Returns the pressure link.
+pub(crate) fn validate_offer_components(
+    program_id: &Pubkey,
+    flow: OfferFlow,
+    direction: OfferDirection,
+    managed_mint: Pubkey,
+    token_in_mint: Pubkey,
+    token_out_mint: Pubkey,
+    c: &OfferComponents,
+) -> Result<Pubkey> {
+    require!(
+        c.pricer.managed_mint == managed_mint,
+        OnreError::IncompatiblePricer
+    );
+    let compatible = match flow {
+        OfferFlow::Permissioned => c.quoter.kind == QuoterKind::Nav,
+        OfferFlow::Permissionless => matches!(
+            c.quoter.kind,
+            QuoterKind::NavPermissionless | QuoterKind::PropAmm
+        ),
+        OfferFlow::Worker => {
+            direction == OfferDirection::ManagedToAsset && c.quoter.kind == QuoterKind::Nav
+        }
+    };
+    require!(compatible, OnreError::IncompatibleQuoter);
+    let pressure_state = validate_pressure_link(
+        program_id,
+        c.quoter.key(),
+        c.quoter.kind,
+        direction,
+        token_in_mint,
+        token_out_mint,
+        c.prop_amm_state,
+    )?;
+    for vault in [&c.source_vault, &c.destination_vault]
+        .into_iter()
+        .flatten()
+    {
+        validate_liquidity_vault(vault, program_id)?;
+    }
+    require!(
+        direction != OfferDirection::ManagedToAsset || c.source_vault.is_some(),
+        OnreError::LiquidityVaultRequired
+    );
+    require!(
+        direction != OfferDirection::AssetToManaged
+            || c.quoter.kind != QuoterKind::PropAmm
+            || c.destination_vault.is_some(),
+        OnreError::LiquidityVaultRequired
+    );
+    Ok(pressure_state)
 }

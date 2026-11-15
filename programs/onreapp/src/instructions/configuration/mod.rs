@@ -21,6 +21,7 @@ pub mod set_offer_pressure_state;
 pub mod set_pricer_enabled;
 pub mod set_quoter_enabled;
 pub mod update_fee_config;
+pub mod update_offer_config;
 pub mod update_prop_amm_config;
 pub mod update_vault_config;
 
@@ -44,5 +45,6 @@ pub use set_offer_pressure_state::*;
 pub use set_pricer_enabled::*;
 pub use set_quoter_enabled::*;
 pub use update_fee_config::*;
+pub use update_offer_config::*;
 pub use update_prop_amm_config::*;
 pub use update_vault_config::*;

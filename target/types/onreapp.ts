@@ -12503,6 +12503,117 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "updateOfferConfig",
+      "docs": [
+        "Replaces an offer's Pricer, quoter, pressure link, fee config and vaults with",
+        "the creation rules; mints, instance ID and flow stay immutable. Boss only."
+      ],
+      "discriminator": [
+        122,
+        202,
+        139,
+        235,
+        177,
+        37,
+        50,
+        11
+      ],
+      "accounts": [
+        {
+          "name": "offerConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "offerConfig.tokenInMint",
+                "account": "offerConfig"
+              },
+              {
+                "kind": "account",
+                "path": "offerConfig.tokenOutMint",
+                "account": "offerConfig"
+              },
+              {
+                "kind": "account",
+                "path": "offerConfig.instanceId",
+                "account": "offerConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pricer",
+          "docs": [
+            "Any enabled Pricer instance of the offer's managed mint."
+          ]
+        },
+        {
+          "name": "quoter"
+        },
+        {
+          "name": "propAmmState",
+          "optional": true
+        },
+        {
+          "name": "feeConfig"
+        },
+        {
+          "name": "proceedsVault"
+        },
+        {
+          "name": "sourceVault",
+          "optional": true
+        },
+        {
+          "name": "destinationVault",
+          "optional": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "updateOfferFee",
       "docs": [
         "Updates the fee basis points for an offer.",
@@ -14530,6 +14641,19 @@ export type Onreapp = {
         18,
         253,
         63
+      ]
+    },
+    {
+      "name": "offerConfigUpdatedEvent",
+      "discriminator": [
+        159,
+        116,
+        77,
+        115,
+        241,
+        176,
+        142,
+        255
       ]
     },
     {
@@ -17711,6 +17835,42 @@ export type Onreapp = {
           {
             "name": "enabled",
             "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "offerConfigUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "offerConfig",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous",
+            "type": {
+              "defined": {
+                "name": "offerConfig"
+              }
+            }
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "offerConfig"
+              }
+            }
           },
           {
             "name": "timestamp",

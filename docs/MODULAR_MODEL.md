@@ -145,10 +145,11 @@ Those dedicated identities do not occupy the ordinary vault instance namespace.
 Offers are identified by their directed mint pair and a boss-chosen `u64`
 `instance_id`, not by flow, so a pair can have any number of offers with the same
 or different flows. Its mints, instance ID, flow, and derived direction are
-immutable. The target model allows governance to replace component references, including the
-explicit Pricer reference, after revalidating compatibility with the unchanged
-mint pair. `set_offer_pressure_state` implements the pressure link update only;
-other reference-update instructions are not implemented yet.
+immutable. The boss replaces component references with `update_offer_config`:
+Pricer (any enabled instance of the managed mint), quoter, pressure link, fee
+config, proceeds vault and source/destination vaults, revalidated with the same
+rules as creation (`validate_offer_components`). `set_offer_pressure_state`
+remains for changing the pressure link alone.
 Pricer mint, denomination, and instance ID are immutable. Instance zero in USD
 remains the canonical token-wide source for BUFFER and MarketStats; an offer may
 explicitly choose that instance or another compatible one.
@@ -171,6 +172,7 @@ repeat creation; shared accounts are not implicitly initialized or overwritten b
 | `create_prop_amm_state` | Requires an enabled PropAmm quoter, a registered managed mint, and a boss-selected external mint. Validates curve/cadence/epoch settings and creates zero pressure with the current timestamp. Repeat creation cannot rebind the pair. |
 | `create_offer_config` | Takes a boss-chosen `instance_id` that, with the mint pair, derives the offer address. Requires exactly one registered managed mint and a Pricer for it. The boss chooses the external mint in the Pricer's denomination. Validates mint decimals, enabled components, flow/quoter compatibility, Prop AMM pair binding, and vault kinds. |
 | `set_managed_token_enabled` / `set_pricer_enabled` / `set_quoter_enabled` / `set_fee_config_enabled` / `set_offer_config_enabled` | Boss-only enable/disable of a component (`NoChange` on a no-op, one event per kind). A disabled component fails execution and creation checks that require it; nothing else changes. |
+| `update_offer_config` | Boss-only replacement of an offer's Pricer (any enabled instance of its managed mint), quoter, pressure link, fee config, proceeds vault and source/destination vaults with the creation rules. Mints, instance ID, flow and direction stay immutable. |
 | `update_fee_config` | Boss-only replacement of basis points, minimum fee and Fee-kind vault with the creation rules; instance and enabled flag unchanged. |
 | `update_vault_config` | Boss-only replacement of withdrawal destination and refill target with the creation rules; kind and instance unchanged. Also applies to BUFFER vaults, whose destination is the boss at initialization. |
 | `update_prop_amm_config` | Boss-only replacement of curve, cadence, epoch and wall settings with the creation limits; the bound pair and accumulated pressure are kept. |
@@ -228,7 +230,8 @@ Existing instruction accounts and legacy events are unchanged.
 ## Validation and remaining execution rules
 
 The creation-time rules below are implemented, alongside the first modular execution
-path. Other runtime paths, component replacement, and account closure remain deferred.
+path, together with boss-only enable flags and component updates. Other runtime
+paths and account closure remain deferred.
 
 Exactly one mint in an offer must be registered as managed. Managed output means
 `AssetToManaged`; managed input means `ManagedToAsset`. Both-managed and
@@ -364,4 +367,4 @@ to the vault selected by the offer; old redemption liquidity is not automaticall
 included. Modular Prop AMM state is independent of the legacy pressure tracker.
 Permissionless NAV uses the existing intermediary PDA and its mint-specific ATAs.
 Modular Prop AMM, buy-side refill and per-mint BUFFER settlement are implemented.
-Worker redemption settlement, component replacement and CLI changes remain deferred.
+Worker redemption settlement and CLI changes remain deferred.

@@ -12497,6 +12497,117 @@
       ]
     },
     {
+      "name": "update_offer_config",
+      "docs": [
+        "Replaces an offer's Pricer, quoter, pressure link, fee config and vaults with",
+        "the creation rules; mints, instance ID and flow stay immutable. Boss only."
+      ],
+      "discriminator": [
+        122,
+        202,
+        139,
+        235,
+        177,
+        37,
+        50,
+        11
+      ],
+      "accounts": [
+        {
+          "name": "offer_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "offer_config.token_in_mint",
+                "account": "OfferConfig"
+              },
+              {
+                "kind": "account",
+                "path": "offer_config.token_out_mint",
+                "account": "OfferConfig"
+              },
+              {
+                "kind": "account",
+                "path": "offer_config.instance_id",
+                "account": "OfferConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pricer",
+          "docs": [
+            "Any enabled Pricer instance of the offer's managed mint."
+          ]
+        },
+        {
+          "name": "quoter"
+        },
+        {
+          "name": "prop_amm_state",
+          "optional": true
+        },
+        {
+          "name": "fee_config"
+        },
+        {
+          "name": "proceeds_vault"
+        },
+        {
+          "name": "source_vault",
+          "optional": true
+        },
+        {
+          "name": "destination_vault",
+          "optional": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "update_offer_fee",
       "docs": [
         "Updates the fee basis points for an offer.",
@@ -14524,6 +14635,19 @@
         18,
         253,
         63
+      ]
+    },
+    {
+      "name": "OfferConfigUpdatedEvent",
+      "discriminator": [
+        159,
+        116,
+        77,
+        115,
+        241,
+        176,
+        142,
+        255
       ]
     },
     {
@@ -17705,6 +17829,42 @@
           {
             "name": "enabled",
             "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OfferConfigUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "offer_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous",
+            "type": {
+              "defined": {
+                "name": "OfferConfig"
+              }
+            }
+          },
+          {
+            "name": "configuration",
+            "type": {
+              "defined": {
+                "name": "OfferConfig"
+              }
+            }
           },
           {
             "name": "timestamp",

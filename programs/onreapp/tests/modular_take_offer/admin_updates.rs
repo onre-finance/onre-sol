@@ -329,3 +329,167 @@ fn boss_replaces_prop_amm_config_and_unsets_market_stats() {
     let report: onreapp::state::MarketStats = read(&f.svm, stats);
     assert_eq!(report.last_updated_at, 0);
 }
+
+#[test]
+fn boss_replaces_offer_components_including_the_pricer_instance() {
+    let mut f = Fixture::new(false, false);
+    let now = get_clock_time(&f.svm);
+    let state = find_state_pda().0;
+    let boss = f.boss.pubkey();
+    let pricer = price(f.mint, 1);
+    let fee = pda(&[b"fee_config", &1_u64.to_le_bytes()]);
+    let permissionless = pda(&[
+        b"quoter",
+        &[QuoterKind::NavPermissionless as u8],
+        &0_u64.to_le_bytes(),
+    ]);
+    for instruction in [
+        ix(
+            accounts::CreatePricer {
+                managed_token: managed(f.mint),
+                pricer,
+                state,
+                boss,
+                system_program: SYSTEM_PROGRAM_ID,
+            },
+            instruction::CreatePricer {
+                instance_id: 1,
+                denomination: PricingDenomination::Usd,
+            },
+        ),
+        ix(
+            accounts::AddPricerVector {
+                pricer,
+                state,
+                boss,
+            },
+            instruction::AddPricerVector {
+                vector: PricingVector {
+                    start_time: now,
+                    base_time: now,
+                    base_price: 4_000_000_000,
+                    apr: 0,
+                    price_fix_duration: 86_400,
+                },
+            },
+        ),
+        ix(
+            accounts::CreateFeeConfig {
+                fee_vault: vault(VaultKind::Fee),
+                fee_config: fee,
+                state,
+                boss,
+                system_program: SYSTEM_PROGRAM_ID,
+            },
+            instruction::CreateFeeConfig {
+                instance_id: 1,
+                basis_points: 300,
+                minimum_fee_amount: 5,
+            },
+        ),
+        ix(
+            accounts::CreateQuoter {
+                quoter: permissionless,
+                state,
+                boss,
+                system_program: SYSTEM_PROGRAM_ID,
+            },
+            instruction::CreateQuoter {
+                kind: QuoterKind::NavPermissionless,
+                instance_id: 0,
+            },
+        ),
+    ] {
+        boss_send(&mut f, instruction).unwrap();
+    }
+    let update = |f: &Fixture, boss: Pubkey, pricer: Pubkey, quoter: Pubkey, fee: Pubkey| {
+        ix(
+            accounts::UpdateOfferConfig {
+                offer_config: f.offer,
+                pricer,
+                quoter,
+                prop_amm_state: None,
+                fee_config: fee,
+                proceeds_vault: vault(VaultKind::Proceeds),
+                source_vault: None,
+                destination_vault: None,
+                state: find_state_pda().0,
+                boss,
+            },
+            instruction::UpdateOfferConfig {},
+        )
+    };
+
+    let rogue = Keypair::new();
+    f.svm.airdrop(&rogue.pubkey(), INITIAL_LAMPORTS).unwrap();
+    let instruction = update(&f, rogue.pubkey(), pricer, f.quoter, fee);
+    expect_error(
+        send(&mut f.svm, &[instruction], &[&rogue]),
+        OnreError::InvalidBoss,
+    );
+    let instruction = update(&f, boss, price(f.mint, 0), f.quoter, f.fee);
+    expect_error(boss_send(&mut f, instruction), OnreError::NoChange);
+    // A permissioned offer still needs a Nav quoter.
+    let instruction = update(&f, boss, pricer, permissionless, fee);
+    expect_error(
+        boss_send(&mut f, instruction),
+        OnreError::IncompatibleQuoter,
+    );
+    // Disabled components are rejected like at creation.
+    let disable = ix(
+        accounts::SetPricerEnabled {
+            pricer,
+            state,
+            boss,
+        },
+        instruction::SetPricerEnabled { enabled: false },
+    );
+    boss_send(&mut f, disable).unwrap();
+    let instruction = update(&f, boss, pricer, f.quoter, fee);
+    expect_error(
+        boss_send(&mut f, instruction),
+        OnreError::ConfigurationDisabled,
+    );
+    let enable = ix(
+        accounts::SetPricerEnabled {
+            pricer,
+            state,
+            boss,
+        },
+        instruction::SetPricerEnabled { enabled: true },
+    );
+    boss_send(&mut f, enable).unwrap();
+
+    // Switch to Pricer instance 1 (NAV 4) and a 3% fee.
+    let instruction = update(&f, boss, pricer, f.quoter, fee);
+    boss_send(&mut f, instruction).unwrap();
+    let config: OfferConfig = read(&f.svm, f.offer);
+    assert_eq!((config.pricer, config.fee_config), (pricer, fee));
+    assert_eq!(config.flow, OfferFlow::Permissioned);
+    // 1_000_000 gross, 30_000 fee, 970_000 net at NAV 4. The offer's Pricer is the
+    // first canonical-Pricer account in the take instruction; the BUFFER Pricer
+    // later in the list stays canonical.
+    let mut instruction = f.take(1_000_000, 242_500_000);
+    let offer_pricer = instruction
+        .accounts
+        .iter()
+        .position(|meta| meta.pubkey == price(f.mint, 0))
+        .unwrap();
+    instruction.accounts[offer_pricer].pubkey = pricer;
+    for meta in instruction
+        .accounts
+        .iter_mut()
+        .filter(|meta| meta.pubkey == f.fee)
+    {
+        meta.pubkey = fee;
+    }
+    f.send(instruction).unwrap();
+    assert_eq!(
+        f.balance(f.mint, f.user.pubkey(), f.token_program),
+        242_500_000
+    );
+    assert_eq!(
+        f.balance(f.asset, vault(VaultKind::Fee), f.asset_program),
+        30_000
+    );
+}

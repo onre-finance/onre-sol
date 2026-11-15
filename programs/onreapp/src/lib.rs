@@ -221,6 +221,12 @@ pub mod onreapp {
         configuration::create_offer_config(ctx, instance_id, flow)
     }
 
+    /// Replaces an offer's Pricer, quoter, pressure link, fee config and vaults with
+    /// the creation rules; mints, instance ID and flow stay immutable. Boss only.
+    pub fn update_offer_config(ctx: Context<UpdateOfferConfig>) -> Result<()> {
+        configuration::update_offer_config(ctx)
+    }
+
     /// Boss-configured pair pressure tracking, independent of NAV/PropAmm quote selection.
     pub fn set_offer_pressure_state(ctx: Context<SetOfferPressureState>) -> Result<()> {
         configuration::set_offer_pressure_state(ctx)
