@@ -55,7 +55,6 @@ pub struct DepositReserveVault<'info> {
 }
 
 pub fn deposit_reserve_vault(ctx: Context<DepositReserveVault>, amount: u64) -> Result<()> {
-    ctx.accounts.state.require_legacy_buffer_active()?;
     require!(
         !has_transfer_fee(&ctx.accounts.onyc_mint)?,
         crate::OnreError::TransferFeeNotSupported

@@ -1,12 +1,10 @@
 # BUFFER Accrual
 
 This document describes the shared accrual math and legacy ONyc lifecycle.
-[BUFFER_COEXISTENCE.md](BUFFER_COEXISTENCE.md) describes modular settlement/settings
-and the boss-only atomic cutover. Until cutover, legacy and modular ONyc execution
-use one singleton state and the same three vaults. After cutover, modular ONyc uses
-per-mint state, vaults and canonical Pricer; legacy accrual is retired. Other
-managed mints use their per-mint BUFFER. Initialization alone does not activate
-ONyc's prepared per-mint state or move custody.
+Modular execution uses a separate per-mint BUFFER for every managed mint, ONyc
+included, valued at the canonical USD Pricer and accruing independently of the
+legacy singleton described here; see
+[MODULAR_TAKE_OFFER.md](MODULAR_TAKE_OFFER.md#per-mint-buffer).
 
 ## Why BUFFER Exists
 

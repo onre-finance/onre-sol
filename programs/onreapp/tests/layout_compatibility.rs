@@ -119,25 +119,19 @@ fn state_deserializes_legacy_master_layout() {
     assert_eq!(state.worker, redemption_admin);
     assert_eq!(state.max_mint_amount, 0);
     assert_eq!(state.main_offer, Pubkey::default());
-    assert!(!state.onyc_buffer_cutover_completed);
 
-    // The current State's former reserve begins after max_mint_amount (8 bytes)
-    // and main_offer (32 bytes) in the original master's 96-byte reserve.
-    // Both pre-cutover and already-cut-over accounts retain identical bytes.
-    legacy.reserved[41..].fill(0xa5);
-    for completed in [false, true] {
-        legacy.reserved[40] = u8::from(completed);
-        let data = account_bytes(State::DISCRIMINATOR, &legacy);
-        let state = State::try_deserialize(&mut data.as_slice()).unwrap();
-        assert_eq!(state.onyc_buffer_cutover_completed, completed);
-        assert_eq!(state.reserved, [0xa5; 55]);
-        assert_eq!(account_bytes(State::DISCRIMINATOR, &state), data);
-    }
+    // The current State's reserve begins after max_mint_amount (8 bytes) and
+    // main_offer (32 bytes) in the original master's 96-byte reserve.
+    legacy.reserved[40..].fill(0xa5);
+    let data = account_bytes(State::DISCRIMINATOR, &legacy);
+    let state = State::try_deserialize(&mut data.as_slice()).unwrap();
+    assert_eq!(state.reserved, [0xa5; 56]);
+    assert_eq!(account_bytes(State::DISCRIMINATOR, &state), data);
 }
 
 #[test]
-fn buffer_state_preserves_legacy_bytes_with_named_retirement_flag() {
-    let mut legacy = LegacyBufferState {
+fn buffer_state_preserves_legacy_bytes() {
+    let legacy = LegacyBufferState {
         onyc_mint: Pubkey::new_unique(),
         gross_apr: 150_000,
         previous_supply: 99,
@@ -147,18 +141,13 @@ fn buffer_state_preserves_legacy_bytes_with_named_retirement_flag() {
         performance_fee_high_watermark_enabled: true,
         last_accrual_timestamp: 100,
         bump: 254,
-        reserved: [0; 135],
+        reserved: [0xa5; 135],
     };
-    legacy.reserved[1..].fill(0xa5);
-    for retired in [false, true] {
-        legacy.reserved[0] = u8::from(retired);
-        let data = account_bytes(BufferState::DISCRIMINATOR, &legacy);
-        assert_eq!(data.len(), 8 + BufferState::INIT_SPACE);
-        let buffer = BufferState::try_deserialize(&mut data.as_slice()).unwrap();
-        assert_eq!(buffer.retired, retired);
-        assert_eq!(buffer.reserved, [0xa5; 134]);
-        assert_eq!(account_bytes(BufferState::DISCRIMINATOR, &buffer), data);
-    }
+    let data = account_bytes(BufferState::DISCRIMINATOR, &legacy);
+    assert_eq!(data.len(), 8 + BufferState::INIT_SPACE);
+    let buffer = BufferState::try_deserialize(&mut data.as_slice()).unwrap();
+    assert_eq!(buffer.reserved, [0xa5; 135]);
+    assert_eq!(account_bytes(BufferState::DISCRIMINATOR, &buffer), data);
 }
 
 #[test]

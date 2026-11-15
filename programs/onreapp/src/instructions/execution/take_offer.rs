@@ -3,10 +3,9 @@ use super::{
     TakeOffer,
 };
 use crate::{
-    constants::seeds,
-    instructions::market_info::refresh_market_stats_pda,
+    instructions::market_info::{refresh_managed_token_market_stats, MarketValuation},
     model::{OfferDirection, OfferFlow, QuoterKind},
-    utils::ApprovalMessage,
+    utils::{managed_token::effective_mint_limits, ApprovalMessage},
     OnreError,
 };
 use anchor_lang::prelude::*;
@@ -51,8 +50,8 @@ pub fn take_offer(
     route.require_supported()?;
     permissions::authorize(ctx.program_id, a, approval_message.as_ref())?;
     let mut quote = quote_offer(
-        &a.pricer,
-        &a.fee_config,
+        &a.config.pricer,
+        &a.config.fee_config,
         gross_input_amount,
         route.direction,
         a.token_in_mint.decimals,
@@ -67,7 +66,8 @@ pub fn take_offer(
                 .min(route.curve_balance as u128) as u64
         };
         quote.amount_out = prop_amm::quote(
-            a.prop_amm_state
+            a.custody
+                .prop_amm_state
                 .as_ref()
                 .ok_or(OnreError::IncompatibleQuoter)?,
             route.direction,
@@ -87,15 +87,7 @@ pub fn take_offer(
         OnreError::MinimumOutNotMet
     );
 
-    let onyc = a.managed_mint().key() == a.state.onyc_mint;
-    let max_supply = effective_limit(
-        a.managed_token.max_supply,
-        onyc.then_some(a.state.max_supply),
-    );
-    let max_mint = effective_limit(
-        a.managed_token.max_mint_amount,
-        onyc.then_some(a.state.max_mint_amount),
-    );
+    let (max_supply, max_mint) = effective_mint_limits(&a.state, &a.config.managed_token);
     let buffer_active = buffer::accrue_before_execution(
         ctx.program_id,
         a,
@@ -112,9 +104,10 @@ pub fn take_offer(
             .saturating_sub(route.destination_balance as u128)
             .min(quote.net_input_amount as u128) as u64;
     }
-    if a.offer_config.pressure_state != Pubkey::default() {
+    if a.config.offer_config.pressure_state != Pubkey::default() {
         prop_amm::record(
-            a.prop_amm_state
+            a.custody
+                .prop_amm_state
                 .as_mut()
                 .ok_or(OnreError::IncompatibleQuoter)?,
             route.direction,
@@ -134,32 +127,23 @@ pub fn take_offer(
         max_supply,
         max_mint,
     )?;
+    a.reload_managed_mint()?;
     if buffer_active {
-        a.reload_managed_mint()?;
-        buffer::store_post_execution_supply(a, now)?;
+        buffer::store_post_execution_supply(ctx.program_id, a, now)?;
     }
-    if onyc {
-        a.reload_managed_mint()?;
-        let offer = buffer::canonical_market_offer(ctx.program_id, a)?;
-        require_keys_eq!(
-            a.market_stats.key(),
-            Pubkey::find_program_address(&[seeds::MARKET_STATS], ctx.program_id).0,
-            OnreError::InvalidMarketStatsPda
-        );
-        refresh_market_stats_pda(
-            &offer,
-            a.managed_mint(),
-            &a.circulating_supply_excluded_balance,
-            &a.market_stats,
-            &a.user.to_account_info(),
-            &a.system_program.to_account_info(),
-            ctx.program_id,
-        )?;
-    }
+    refresh_managed_token_market_stats(
+        ctx.program_id,
+        &a.state,
+        &a.config.managed_token,
+        a.managed_mint(),
+        &a.buffer.circulating_supply_excluded_balance,
+        &a.buffer.market_stats,
+        || liquidity_target::canonical_pricer(a).map(|p| MarketValuation::from(&**p)),
+    )?;
     emit!(OfferExecutedEvent {
-        offer_config: a.offer_config.key(),
+        offer_config: a.config.offer_config.key(),
         user: a.user.key(),
-        flow: a.offer_config.flow,
+        flow: a.config.offer_config.flow,
         direction: route.direction,
         gross_input_amount,
         fee_amount: quote.fee_amount,
@@ -172,7 +156,7 @@ pub fn take_offer(
         } else {
             0
         },
-        source_amount: if a.offer_config.source_vault != Pubkey::default() {
+        source_amount: if a.config.offer_config.source_vault != Pubkey::default() {
             quote.amount_out
         } else {
             0
@@ -180,19 +164,11 @@ pub fn take_offer(
         destination_amount: match route.direction {
             OfferDirection::AssetToManaged => quote.liquidity_refill_amount,
             OfferDirection::ManagedToAsset
-                if a.offer_config.destination_vault != Pubkey::default() =>
+                if a.config.offer_config.destination_vault != Pubkey::default() =>
                 quote.net_input_amount,
             _ => 0,
         },
         timestamp: now,
     });
     Ok(())
-}
-
-/// Zero disables a cap; when both apply, retain the stricter one.
-fn effective_limit(managed: u64, legacy: Option<u64>) -> u64 {
-    match (managed, legacy.unwrap_or(0)) {
-        (0, other) | (other, 0) => other,
-        (a, b) => a.min(b),
-    }
 }

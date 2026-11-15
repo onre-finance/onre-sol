@@ -63,7 +63,6 @@ pub struct RefreshMarketStats<'info> {
 /// `update_circulating_supply_excluded_balance` first when excluded owner
 /// balances need to be included in the next market-stats snapshot.
 pub fn refresh_market_stats(ctx: Context<RefreshMarketStats>) -> Result<()> {
-    ctx.accounts.state.require_legacy_buffer_active()?;
     let main_offer = load_main_offer(
         ctx.program_id,
         &ctx.accounts.main_offer.to_account_info(),

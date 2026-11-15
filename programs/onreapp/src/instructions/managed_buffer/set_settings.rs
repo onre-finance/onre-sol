@@ -19,18 +19,22 @@ pub struct ManagedTokenBufferSettingsSetEvent {
     pub timestamp: i64,
 }
 
-/// Boss-only policy update; first settle under existing settings. ONyc updates
-/// legacy settings during coexistence and per-mint settings after cutover.
+/// Boss-only per-mint policy update; first settle under existing settings.
 #[derive(Accounts)]
 pub struct SetManagedTokenBufferSettings<'info> {
     pub buffer_accounts: ManagedBufferAccounts<'info>,
-    #[account(mut,address=buffer_accounts.state.boss @ OnreError::InvalidBoss)]
+
+    #[account(
+        address = buffer_accounts.state.boss @ OnreError::InvalidBoss,
+    )]
     pub boss: Signer<'info>,
-    pub system_program: Program<'info, System>,
-    /// CHECK: ONyc refresh validates the canonical MarketStats PDA; other mints ignore it.
+
+    /// CHECK: Must equal `ManagedTokenConfig::market_stats` when one is selected;
+    /// ignored otherwise.
     #[account(mut)]
     pub market_stats: UncheckedAccount<'info>,
-    /// CHECK: ONyc refresh validates the canonical excluded-balance cache.
+
+    /// CHECK: ONyc refresh validates the canonical excluded-balance cache; other mints ignore it.
     pub circulating_supply_excluded_balance: UncheckedAccount<'info>,
 }
 
@@ -56,8 +60,6 @@ pub fn set_managed_token_buffer_settings(
         &mut a.buffer_accounts,
         ctx.bumps.buffer_accounts.mint_authority,
         now,
-        a.boss.to_account_info(),
-        a.system_program.to_account_info(),
         a.market_stats.to_account_info(),
         a.circulating_supply_excluded_balance.to_account_info(),
     )?;

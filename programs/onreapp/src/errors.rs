@@ -294,6 +294,4 @@ pub enum OnreError {
     UnsupportedOfferExecution,
     #[msg("Permissionless execution requires approval_message to be absent")]
     UnexpectedApproval,
-    #[msg("Legacy BUFFER is retired; use the active modular BUFFER accounts")]
-    LegacyBufferRetired,
 }

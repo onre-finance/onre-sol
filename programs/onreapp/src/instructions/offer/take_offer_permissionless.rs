@@ -182,7 +182,6 @@ pub fn take_offer_permissionless_v2<'info>(
     ctx: Context<'info, TakeOfferPermissionlessV2<'info>>,
     token_in_amount: u64,
 ) -> Result<()> {
-    ctx.accounts.state.require_legacy_buffer_active()?;
     let offer_proceeds_token_in_account = get_or_create_configurable_vault_token_account::<
         { ConfigurableVaultKind::OfferProceeds.as_u8() },
     >(ConfigurableVaultTokenAccountParams {

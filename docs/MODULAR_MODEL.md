@@ -5,16 +5,16 @@ Status: reusable configuration creation is implemented in
 using the layouts in [`model/`](../programs/onreapp/src/model/mod.rs).
 The first modular execution path, `take_offer`, and boss-authorized
 `add_pricer_vector` are described in [`MODULAR_TAKE_OFFER.md`](MODULAR_TAKE_OFFER.md).
-V2 account lists stay unchanged; legacy trading behavior is retained until the
-explicit ONyc BUFFER cutover retires legacy execution. Permissioned and permissionless
-NAV execution supports both directions; payouts use only the selected liquidity vault.
-ONyc execution shares the legacy
-BUFFER baseline and reporting snapshot. Other managed mints use their per-mint
-BUFFER when initialized. Permissionless Prop AMM execution and optional buy-side
-liquidity refill are implemented in [`MODULAR_PROP_AMM.md`](MODULAR_PROP_AMM.md).
-Modular BUFFER worker settlement/settings and the explicit ONyc cutover are
-implemented in [BUFFER_COEXISTENCE.md](BUFFER_COEXISTENCE.md). Worker redemption
-settlement and other custody migration remain deferred.
+V2 account lists and legacy trading behavior stay unchanged. Permissioned and
+permissionless NAV execution supports both directions; payouts use only the
+selected liquidity vault. Every managed mint, ONyc included, uses its per-mint
+BUFFER when initialized; ONyc's accrues independently of the legacy singleton.
+Modular market stats are opt-in per mint. Permissionless Prop AMM execution and
+optional buy-side liquidity refill are implemented in
+[`MODULAR_PROP_AMM.md`](MODULAR_PROP_AMM.md). Modular BUFFER worker
+settlement/settings and market-stats selection are described in
+[`MODULAR_TAKE_OFFER.md`](MODULAR_TAKE_OFFER.md#per-mint-buffer). Worker
+redemption settlement and custody migration remain deferred.
 The legacy runtime remains documented in [`DOMAIN_MODEL.md`](DOMAIN_MODEL.md).
 
 The reference is the current `onre-evm` checkout:
@@ -36,9 +36,8 @@ flowchart TD
     Pricer --> Vectors[Up to 10 PricingVectors]
     Token --> Buffer[ManagedTokenBufferState]
     Token --> Exclusions[ManagedTokenSupplyExclusions]
-    Token --> Stats[Derived MarketStats]
+    Token -. optional selection .-> Stats[MarketStats account]
     Pricer -. USD instance zero .-> Stats
-    Exclusions --> Stats
     Offer[OfferConfig: directed pair + flow] --> Quoter
     Offer --> Fee[FeeConfig]
     Fee --> FeeVault[VaultConfig: Fee]
@@ -68,14 +67,13 @@ Field order in each domain module defines the proposed serialized layout. `INIT_
 excludes the eight-byte account discriminator. There is no implicit padding.
 
 The model is split into `pricer`, `quoter`, `prop_amm`, `fee`, `vault`, `offer`,
-`buffer`, `fulfillment`, `managed_token`, `supply_exclusions`, and `market_stats`
-modules. Each module owns its domain's account and supporting types. `model/mod.rs`
+`buffer`, `fulfillment`, `managed_token`, and `supply_exclusions` modules. Each module owns its domain's account and supporting types. `model/mod.rs`
 re-exports the types, preserving existing `model::Pricer`-style imports alongside
 the domain paths such as `model::pricer::Pricer`.
 
 | Account | Body bytes | Allocated bytes with discriminator |
 | --- | ---: | ---: |
-| ManagedTokenConfig | 51 | 59 |
+| ManagedTokenConfig | 83 | 91 |
 | Pricer | 443 | 451 |
 | Quoter | 11 | 19 |
 | PropAmmState | 203 | 211 |
@@ -88,7 +86,7 @@ the domain paths such as `model::pricer::Pricer`.
 
 | EVM object | Solana model | Contents |
 | --- | --- | --- |
-| ManagedTokenConfig | ManagedTokenConfig | Managed mint, decimals, enabled, program issuance limits, bump. |
+| ManagedTokenConfig | ManagedTokenConfig | Managed mint, decimals, enabled, program issuance limits, bump, selected MarketStats account (default = reporting disabled). |
 | PricingVector | PricingVector, embedded | Start/base times, base price, APR, price-step duration. |
 | Pricer | Pricer | Instance ID, managed mint, denomination, 10 vector slots, enabled, bump. |
 | Quoter | Quoter | Kind, instance ID, enabled, bump. |
@@ -99,7 +97,7 @@ the domain paths such as `model::pricer::Pricer`.
 | OfferConfig | OfferConfig | Directed mint pair, flow, direction, pricer/quoter/pressure-state/fee/proceeds/source/destination references, decimals, enabled, bump. |
 | FulfillmentRequest | FulfillmentRequest | Offer, user, numeric request ID, gross input, fulfilled gross input, bump. |
 | Excluded-supply mappings | ManagedTokenSupplyExclusions | Managed mint, up to 20 token-account addresses, active count, bump. |
-| MarketStats | MarketStats, derived value | Managed mint, APY, circulating supply, NAV, NAV adjustment, TVL, timestamp, slot. |
+| MarketStats | Existing `state::MarketStats` account, selected per mint by `ManagedTokenConfig::market_stats` | APY, circulating supply, NAV, NAV adjustment, TVL, timestamp, slot, bump. |
 
 `VaultConfig` and `ManagedTokenBufferState` deliberately have different Rust names
 from the legacy `ConfigurableVault` and `BufferState`. Anchor discriminators are
@@ -138,6 +136,7 @@ numeric instance and request IDs use eight-byte little-endian encoding.
 | OfferConfig | `"offer_config", token_in_mint, token_out_mint, flow` |
 | FulfillmentRequest | `"fulfillment", offer_config, user, request_id` |
 | ManagedTokenSupplyExclusions | `"supply_exclusions", managed_mint` |
+| Per-mint MarketStats (optional) | `"market_stats", managed_mint` |
 
 BUFFER vaults use token-and-role identities, as in EVM, with instance IDs 0 for
 reserve, 1 for management fees, and 2 for performance fees in their account bodies.
@@ -321,9 +320,10 @@ constraints and rent/closure behavior belong to the instruction stage.
 Supply exclusions are explicit SPL token accounts, each unique and holding the
 configured managed mint, rather than the legacy owner-to-ATA convention. All
 managed-token balances, including BUFFER reserves, count as circulating unless
-explicitly excluded. MarketStats is a derived value per managed mint. How callers
-supply or refresh excluded balances for Solana's account model remains an
-instruction-stage decision; this definition adds no reporting endpoint or cache.
+explicitly excluded. Modular reporting reuses the existing MarketStats account
+layout: `ManagedTokenConfig::market_stats` selects one account per mint (unset
+disables reporting). ONyc refreshes subtract the existing cached excluded balance;
+other mints report full supply until an exclusion cache exists for them.
 
 Amounts and supply use SPL-native `u64`; aggregate Prop AMM volume and TVL use
 `u128`. Price uses scale 9; APR/APY use scale 6. TVL is USD scale 9 after mint
@@ -345,20 +345,18 @@ PropAmmState a 203-byte body, and Pricer a 443-byte body (451 with discriminator
 
 The existing `take_offer_v2`, `take_offer_permissionless_v2`, `open_swap_buy`, and
 `open_swap_sell` paths retain their instruction data and account lists. Their
-pricing, fees, custody and mint/burn/BUFFER behavior stays unchanged until the
-explicit ONyc cutover retires legacy execution. They do not resolve the new modular vault
+pricing, fees, custody and mint/burn/BUFFER behavior stays unchanged, alongside
+modular execution. They do not resolve the new modular vault
 references. Existing clients and accounts for those four paths remain valid.
 
 Later compatibility work must define how legacy instructions resolve the shared
 model while keeping existing account lists, custody, and pending claims valid.
 The target ATA representation above is not permission to move existing vault funds.
-A cutover must choose one authoritative record for each price, fee, BUFFER
-baseline, pressure tracker, and request obligation. Mirroring independently
-mutable legacy and new state is not part of this model. ONyc's shared BUFFER adapter
-is implemented for modular offer execution in both directions. Liquidity is scoped
+Legacy and modular records are independent rather than mirrored: ONyc's modular
+BUFFER has its own baseline, policy, clock and vaults, valued at the canonical
+Pricer, while the legacy singleton keeps using `State::main_offer`. Liquidity is scoped
 to the vault selected by the offer; old redemption liquidity is not automatically
 included. Modular Prop AMM state is independent of the legacy pressure tracker.
 Permissionless NAV uses the existing intermediary PDA and its mint-specific ATAs.
-Modular Prop AMM and buy-side refill are implemented. Worker settlement, component
-replacement and CLI changes remain deferred. ONyc BUFFER has explicit atomic
-cutover controls; see the coexistence document.
+Modular Prop AMM, buy-side refill and per-mint BUFFER settlement are implemented.
+Worker redemption settlement, component replacement and CLI changes remain deferred.

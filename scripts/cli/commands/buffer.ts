@@ -12,7 +12,7 @@ import {
 } from "../implementations";
 
 export function registerBufferCommands(program: Command): void {
-    program.addHelpText("after", "\nThese commands target the legacy ONyc BUFFER. After an explicit ONyc BUFFER cutover, use the modular settlement/settings instructions and per-mint vault operations from the generated IDL.");
+    program.addHelpText("after", "\nThese commands target the legacy ONyc BUFFER. The independent per-mint BUFFER used by modular execution is managed through the modular settlement/settings instructions and per-mint vault operations from the generated IDL.");
     program
         .command("get")
         .description("Fetch legacy ONyc BUFFER state")

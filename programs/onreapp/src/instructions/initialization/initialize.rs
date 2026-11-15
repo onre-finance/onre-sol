@@ -144,7 +144,6 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
     // Set core state fields
     state.boss = ctx.accounts.boss.key();
     state.is_killed = false; // Normal operations enabled
-    state.onyc_buffer_cutover_completed = false;
     state.onyc_mint = ctx.accounts.onyc_mint.key();
 
     // Initialize admin list as empty

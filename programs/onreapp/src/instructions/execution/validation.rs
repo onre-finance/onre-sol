@@ -38,14 +38,14 @@ impl ExecutionPlan {
 
 pub(super) fn validate(program_id: &Pubkey, a: &TakeOffer) -> Result<ExecutionPlan> {
     require!(
-        a.managed_mint().key() == a.managed_token.managed_mint
-            && a.asset_mint().key() != a.managed_token.managed_mint,
+        a.managed_mint().key() == a.config.managed_token.managed_mint
+            && a.asset_mint().key() != a.config.managed_token.managed_mint,
         OnreError::InvalidOfferDirection
     );
     require!(
-        a.token_in_mint.decimals == a.offer_config.token_in_decimals
-            && a.token_out_mint.decimals == a.offer_config.token_out_decimals
-            && a.managed_token.decimals == a.managed_mint().decimals,
+        a.token_in_mint.decimals == a.config.offer_config.token_in_decimals
+            && a.token_out_mint.decimals == a.config.offer_config.token_out_decimals
+            && a.config.managed_token.decimals == a.managed_mint().decimals,
         OnreError::InvalidMint
     );
     require!(
@@ -56,20 +56,20 @@ pub(super) fn validate(program_id: &Pubkey, a: &TakeOffer) -> Result<ExecutionPl
         !has_transfer_fee(&a.token_in_mint)? && !has_transfer_fee(&a.token_out_mint)?,
         OnreError::TransferFeeNotSupported
     );
-    let compatible = match a.offer_config.flow {
-        OfferFlow::Permissioned => a.quoter.kind == QuoterKind::Nav,
+    let compatible = match a.config.offer_config.flow {
+        OfferFlow::Permissioned => a.config.quoter.kind == QuoterKind::Nav,
         OfferFlow::Permissionless => matches!(
-            a.quoter.kind,
+            a.config.quoter.kind,
             QuoterKind::NavPermissionless | QuoterKind::PropAmm
         ),
         OfferFlow::Worker => {
-            a.offer_config.direction == OfferDirection::ManagedToAsset
-                && a.quoter.kind == QuoterKind::Nav
+            a.config.offer_config.direction == OfferDirection::ManagedToAsset
+                && a.config.quoter.kind == QuoterKind::Nav
         }
     };
     require!(compatible, OnreError::IncompatibleQuoter);
     permissions::validate_accounts(program_id, a)?;
-    match a.offer_config.direction {
+    match a.config.offer_config.direction {
         OfferDirection::AssetToManaged => require!(
             a.proceeds_token_in.is_some(),
             OnreError::InvalidConfigurableVaultTokenAccount
@@ -82,16 +82,16 @@ pub(super) fn validate(program_id: &Pubkey, a: &TakeOffer) -> Result<ExecutionPl
     validate_prop_amm(program_id, a)?;
     let liquidity = liquidity::validate(program_id, a)?;
     Ok(ExecutionPlan {
-        direction: a.offer_config.direction,
-        kind: a.quoter.kind,
-        flow: a.offer_config.flow,
+        direction: a.config.offer_config.direction,
+        kind: a.config.quoter.kind,
+        flow: a.config.offer_config.flow,
         destination_balance: liquidity.destination.balance,
         destination_target_bps: liquidity.destination.refill_target_bps,
-        curve_balance: match a.offer_config.direction {
+        curve_balance: match a.config.offer_config.direction {
             OfferDirection::AssetToManaged => liquidity.destination.balance,
             OfferDirection::ManagedToAsset => liquidity.source.balance,
         },
-        curve_target_bps: match a.offer_config.direction {
+        curve_target_bps: match a.config.offer_config.direction {
             OfferDirection::AssetToManaged => liquidity.destination.refill_target_bps,
             OfferDirection::ManagedToAsset => liquidity.source.refill_target_bps,
         },
@@ -101,23 +101,23 @@ pub(super) fn validate(program_id: &Pubkey, a: &TakeOffer) -> Result<ExecutionPl
 fn validate_prop_amm(program_id: &Pubkey, a: &TakeOffer) -> Result<()> {
     let state = validate_pressure_link(
         program_id,
-        a.quoter.key(),
-        a.quoter.kind,
-        a.offer_config.direction,
-        a.offer_config.token_in_mint,
-        a.offer_config.token_out_mint,
-        a.prop_amm_state.as_deref(),
+        a.config.quoter.key(),
+        a.config.quoter.kind,
+        a.config.offer_config.direction,
+        a.config.offer_config.token_in_mint,
+        a.config.offer_config.token_out_mint,
+        a.custody.prop_amm_state.as_deref(),
     )?;
     require_keys_eq!(
         state,
-        a.offer_config.pressure_state,
+        a.config.offer_config.pressure_state,
         OnreError::IncompatibleQuoter
     );
-    if a.quoter.kind == QuoterKind::PropAmm
-        && a.offer_config.direction == OfferDirection::AssetToManaged
+    if a.config.quoter.kind == QuoterKind::PropAmm
+        && a.config.offer_config.direction == OfferDirection::AssetToManaged
     {
         require!(
-            a.offer_config.destination_vault != Pubkey::default(),
+            a.config.offer_config.destination_vault != Pubkey::default(),
             OnreError::LiquidityVaultRequired
         );
     }

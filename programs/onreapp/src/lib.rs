@@ -207,20 +207,13 @@ pub mod onreapp {
         configuration::set_offer_pressure_state(ctx)
     }
 
-    /// Boss-only atomic ONyc BUFFER cutover: settle legacy accounting, move all
-    /// three vault balances, preserve state and activate the per-mint BUFFER.
-    pub fn cut_over_onyc_buffer(ctx: Context<CutOverOnycBuffer>) -> Result<()> {
-        managed_buffer::cut_over_onyc_buffer(ctx)
-    }
-
-    /// Worker-only BUFFER settlement for any registered mint; ONyc shares legacy
-    /// state/vaults until explicit cutover, then uses its per-mint BUFFER.
+    /// Worker-only per-mint BUFFER settlement for any registered mint, ONyc included.
+    /// Independent of the legacy singleton BUFFER.
     pub fn settle_managed_token_buffer(ctx: Context<SettleManagedTokenBuffer>) -> Result<()> {
         managed_buffer::settle_managed_token_buffer(ctx)
     }
 
-    /// Boss-only BUFFER policy update after settling the previous settings. ONyc
-    /// updates legacy state until cutover and per-mint state afterward.
+    /// Boss-only per-mint BUFFER policy update after settling the previous settings.
     pub fn set_managed_token_buffer_settings(
         ctx: Context<SetManagedTokenBufferSettings>,
         settings: BufferSettings,
@@ -234,6 +227,20 @@ pub mod onreapp {
         ctx: Context<InitializeManagedTokenBuffer>,
     ) -> Result<()> {
         configuration::initialize_managed_token_buffer(ctx)
+    }
+
+    /// Creates a `["market_stats", mint]` MarketStats account and selects it for the
+    /// managed token's modular reporting; boss only.
+    pub fn initialize_managed_token_market_stats(
+        ctx: Context<InitializeManagedTokenMarketStats>,
+    ) -> Result<()> {
+        configuration::initialize_managed_token_market_stats(ctx)
+    }
+
+    /// Selects any existing program-owned MarketStats account, including the legacy
+    /// `["market_stats"]` singleton, for the managed token's modular reporting; boss only.
+    pub fn set_managed_token_market_stats(ctx: Context<SetManagedTokenMarketStats>) -> Result<()> {
+        configuration::set_managed_token_market_stats(ctx)
     }
 
     /// Initializes the program state and authority accounts.

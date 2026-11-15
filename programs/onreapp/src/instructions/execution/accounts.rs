@@ -22,11 +22,182 @@ use solana_instructions_sysvar::ID as INSTRUCTIONS_SYSVAR_ID;
 /// Execution support remains limited to the implemented settlement paths.
 #[derive(Accounts)]
 pub struct TakeOffer<'info> {
+    /// Offer components. A separate `try_accounts` frame keeps validation within the
+    /// SBF stack limit; the mint accounts below must equal the stored mint pair.
+    pub config: TakeOfferConfigAccounts<'info>,
+
+    #[account(
+        mut,
+        address = config.offer_config.token_in_mint @ OnreError::InvalidTokenInMint,
+        mint::token_program = token_in_program
+    )]
+    pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
+
+    #[account(
+        mut,
+        address = config.offer_config.token_out_mint @ OnreError::InvalidTokenOutMint,
+        mint::token_program = token_out_program
+    )]
+    pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
+
+    #[account(
+        mut,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = user,
+        associated_token::token_program = token_in_program
+    )]
+    pub user_token_in: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        init_if_needed,
+        payer = user,
+        associated_token::mint = token_out_mint,
+        associated_token::authority = user,
+        associated_token::token_program = token_out_program
+    )]
+    pub user_token_out: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        init_if_needed,
+        payer = user,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = config.proceeds_vault,
+        associated_token::token_program = token_in_program
+    )]
+    pub proceeds_token_in: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
+
+    #[account(
+        init_if_needed,
+        payer = user,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = config.fee_vault,
+        associated_token::token_program = token_in_program
+    )]
+    pub fee_token_in: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    /// CHECK: Canonical program mint authority; mint authority is checked in the handler.
+    #[account(
+        seeds = [seeds::MINT_AUTHORITY],
+        bump
+    )]
+    pub mint_authority: UncheckedAccount<'info>,
+
+    #[account(
+        seeds = [seeds::STATE],
+        bump = state.bump,
+        constraint = !state.is_killed @ OnreError::KillSwitchActivated
+    )]
+    pub state: Box<Account<'info, State>>,
+
+    /// Canonical per-mint BUFFER state, Pricer, reporting and BUFFER vault ATAs.
+    /// A separate `try_accounts` frame keeps validation within the SBF stack limit.
+    pub buffer: TakeOfferBufferAccounts<'info>,
+
+    /// CHECK: Ed25519 approval verification reads the canonical instructions sysvar.
+    #[account(address = INSTRUCTIONS_SYSVAR_ID @ OnreError::InvalidInstructionsSysvar)]
+    pub instructions_sysvar: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    pub token_in_program: Interface<'info, TokenInterface>,
+    pub token_out_program: Interface<'info, TokenInterface>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+
+    /// Pressure state and configured source/destination custody.
+    /// A separate `try_accounts` frame keeps validation within the SBF stack limit.
+    pub custody: TakeOfferCustodyAccounts<'info>,
+
+    /// CHECK: Canonical intermediary PDA, required only by permissionless offers.
+    /// Its address and token authorities are checked before execution.
+    pub permissionless_authority: Option<UncheckedAccount<'info>>,
+
+    #[account(
+        init_if_needed,
+        payer = user,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = permissionless_authority,
+        associated_token::token_program = token_in_program
+    )]
+    pub permissionless_token_in: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
+
+    #[account(
+        init_if_needed,
+        payer = user,
+        associated_token::mint = token_out_mint,
+        associated_token::authority = permissionless_authority,
+        associated_token::token_program = token_out_program
+    )]
+    pub permissionless_token_out: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
+}
+
+/// Contiguous `TakeOffer` accounts, flattened in place on the wire.
+#[derive(Accounts)]
+pub struct TakeOfferBufferAccounts<'info> {
+    /// CHECK: Always required at the canonical `["buffer", managed_mint]` address,
+    /// ONyc included. A substitute cannot bypass initialized accrual.
+    #[account(mut)]
+    pub buffer_state: UncheckedAccount<'info>,
+
+    /// Canonical USD instance-zero Pricer, required for initialized per-mint BUFFER,
+    /// and for token-wide liquidity targets or market stats when the offer selects
+    /// another Pricer. The offer's selected Pricer does not control token-wide values.
+    pub buffer_pricer: Option<Box<Account<'info, Pricer>>>,
+
+    /// CHECK: Must equal `ManagedTokenConfig::market_stats` when one is selected;
+    /// ignored otherwise.
+    #[account(mut)]
+    pub market_stats: UncheckedAccount<'info>,
+
+    /// CHECK: ONyc refresh and targets validate the canonical excluded-balance cache;
+    /// other mints ignore it.
+    pub circulating_supply_excluded_balance: UncheckedAccount<'info>,
+
+    /// CHECK: When BUFFER is active, its expected reserve ATA is validated in the handler.
+    #[account(mut)]
+    pub buffer_reserve_token: UncheckedAccount<'info>,
+
+    /// CHECK: When BUFFER is active, its expected management-fee ATA is validated.
+    #[account(mut)]
+    pub buffer_management_token: UncheckedAccount<'info>,
+
+    /// CHECK: When BUFFER is active, its expected performance-fee ATA is validated.
+    #[account(mut)]
+    pub buffer_performance_token: UncheckedAccount<'info>,
+}
+
+/// Contiguous `TakeOffer` accounts, flattened in place on the wire.
+#[derive(Accounts)]
+pub struct TakeOfferCustodyAccounts<'info> {
+    /// Required exactly when OfferConfig.pressure_state is configured, including
+    /// linked NAV offers. Validated against the stored reference and mint pair.
+    #[account(mut)]
+    pub prop_amm_state: Option<Box<Account<'info, PropAmmState>>>,
+
+    /// CHECK: Exact configured output custody; validates identity and signing seeds.
+    pub source_vault: Option<UncheckedAccount<'info>>,
+
+    /// CHECK: Canonical output-mint ATA of source_vault; empty means no inventory.
+    #[account(mut)]
+    pub source_token_out: Option<UncheckedAccount<'info>>,
+
+    /// CHECK: Exact configured input custody; validates identity and refill policy.
+    pub destination_vault: Option<UncheckedAccount<'info>>,
+
+    /// CHECK: Canonical input-mint ATA of destination_vault, initialized on deposit.
+    #[account(mut)]
+    pub destination_token_in: Option<UncheckedAccount<'info>>,
+}
+
+/// Contiguous `TakeOffer` accounts, flattened in place on the wire.
+#[derive(Accounts)]
+pub struct TakeOfferConfigAccounts<'info> {
     #[account(
         seeds = [
             OFFER_CONFIG,
-            token_in_mint.key().as_ref(),
-            token_out_mint.key().as_ref(),
+            offer_config.token_in_mint.as_ref(),
+            offer_config.token_out_mint.as_ref(),
             &[offer_config.flow as u8]
         ],
         bump = offer_config.bump,
@@ -72,161 +243,11 @@ pub struct TakeOffer<'info> {
         constraint = fee_vault.kind == VaultKind::Fee @ OnreError::InvalidConfigurableVaultKind
     )]
     pub fee_vault: Box<Account<'info, VaultConfig>>,
-
-    #[account(
-        mut,
-        address = offer_config.token_in_mint @ OnreError::InvalidTokenInMint,
-        mint::token_program = token_in_program
-    )]
-    pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
-
-    #[account(
-        mut,
-        address = offer_config.token_out_mint @ OnreError::InvalidTokenOutMint,
-        mint::token_program = token_out_program
-    )]
-    pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
-
-    #[account(
-        mut,
-        associated_token::mint = token_in_mint,
-        associated_token::authority = user,
-        associated_token::token_program = token_in_program
-    )]
-    pub user_token_in: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    #[account(
-        init_if_needed,
-        payer = user,
-        associated_token::mint = token_out_mint,
-        associated_token::authority = user,
-        associated_token::token_program = token_out_program
-    )]
-    pub user_token_out: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    #[account(
-        init_if_needed,
-        payer = user,
-        associated_token::mint = token_in_mint,
-        associated_token::authority = proceeds_vault,
-        associated_token::token_program = token_in_program
-    )]
-    pub proceeds_token_in: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
-
-    #[account(
-        init_if_needed,
-        payer = user,
-        associated_token::mint = token_in_mint,
-        associated_token::authority = fee_vault,
-        associated_token::token_program = token_in_program
-    )]
-    pub fee_token_in: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    /// CHECK: Canonical program mint authority; mint authority is checked in the handler.
-    #[account(
-        seeds = [seeds::MINT_AUTHORITY],
-        bump
-    )]
-    pub mint_authority: UncheckedAccount<'info>,
-
-    #[account(
-        seeds = [seeds::STATE],
-        bump = state.bump,
-        constraint = !state.is_killed @ OnreError::KillSwitchActivated
-    )]
-    pub state: Box<Account<'info, State>>,
-
-    /// CHECK: Always required at the address selected by global state. ONyc uses
-    /// legacy state until explicit cutover, then per-mint state; other mints use
-    /// per-mint state. A substitute cannot bypass initialized accrual.
-    #[account(mut)]
-    pub buffer_state: UncheckedAccount<'info>,
-
-    /// Canonical USD instance-zero Pricer, required for initialized per-mint BUFFER
-    /// and token-wide liquidity targets when the offer selects another Pricer.
-    /// The offer's independently selected Pricer does not control token-wide accrual.
-    pub buffer_pricer: Option<Box<Account<'info, Pricer>>>,
-
-    /// CHECK: Required for ONyc during coexistence; checked against State::main_offer.
-    /// After cutover canonical buffer_pricer supplies valuation, so this may be omitted.
-    pub main_offer: Option<UncheckedAccount<'info>>,
-
-    /// CHECK: ONyc execution validates and refreshes the legacy canonical snapshot.
-    #[account(mut)]
-    pub market_stats: UncheckedAccount<'info>,
-
-    /// CHECK: ONyc refresh validates the canonical excluded-balance cache.
-    pub circulating_supply_excluded_balance: UncheckedAccount<'info>,
-
-    /// CHECK: When BUFFER is active, its expected reserve ATA is validated in the handler.
-    #[account(mut)]
-    pub buffer_reserve_token: UncheckedAccount<'info>,
-
-    /// CHECK: When BUFFER is active, its expected management-fee ATA is validated.
-    #[account(mut)]
-    pub buffer_management_token: UncheckedAccount<'info>,
-
-    /// CHECK: When BUFFER is active, its expected performance-fee ATA is validated.
-    #[account(mut)]
-    pub buffer_performance_token: UncheckedAccount<'info>,
-
-    /// CHECK: Ed25519 approval verification reads the canonical instructions sysvar.
-    #[account(address = INSTRUCTIONS_SYSVAR_ID @ OnreError::InvalidInstructionsSysvar)]
-    pub instructions_sysvar: UncheckedAccount<'info>,
-
-    #[account(mut)]
-    pub user: Signer<'info>,
-
-    pub token_in_program: Interface<'info, TokenInterface>,
-    pub token_out_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-    pub system_program: Program<'info, System>,
-
-    /// Required exactly when OfferConfig.pressure_state is configured, including
-    /// linked NAV offers. Validated against the stored reference and mint pair.
-    #[account(mut)]
-    pub prop_amm_state: Option<Box<Account<'info, PropAmmState>>>,
-
-    /// CHECK: Exact configured output custody; validates identity and signing seeds.
-    pub source_vault: Option<UncheckedAccount<'info>>,
-
-    /// CHECK: Canonical output-mint ATA of source_vault; empty means no inventory.
-    #[account(mut)]
-    pub source_token_out: Option<UncheckedAccount<'info>>,
-
-    /// CHECK: Exact configured input custody; validates identity and refill policy.
-    pub destination_vault: Option<UncheckedAccount<'info>>,
-
-    /// CHECK: Canonical input-mint ATA of destination_vault, initialized on deposit.
-    #[account(mut)]
-    pub destination_token_in: Option<UncheckedAccount<'info>>,
-
-    /// CHECK: Canonical intermediary PDA, required only by permissionless offers.
-    /// Its address and token authorities are checked before execution.
-    pub permissionless_authority: Option<UncheckedAccount<'info>>,
-
-    #[account(
-        init_if_needed,
-        payer = user,
-        associated_token::mint = token_in_mint,
-        associated_token::authority = permissionless_authority,
-        associated_token::token_program = token_in_program
-    )]
-    pub permissionless_token_in: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
-
-    #[account(
-        init_if_needed,
-        payer = user,
-        associated_token::mint = token_out_mint,
-        associated_token::authority = permissionless_authority,
-        associated_token::token_program = token_out_program
-    )]
-    pub permissionless_token_out: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
 }
 
 impl<'info> TakeOffer<'info> {
     pub(super) fn reload_managed_mint(&mut self) -> Result<()> {
-        match self.offer_config.direction {
+        match self.config.offer_config.direction {
             OfferDirection::AssetToManaged => self.token_out_mint.reload(),
             OfferDirection::ManagedToAsset => self.token_in_mint.reload(),
         }
@@ -234,21 +255,21 @@ impl<'info> TakeOffer<'info> {
 
     /// Resolve the managed side from persisted configuration, never caller input.
     pub(super) fn managed_mint(&self) -> &InterfaceAccount<'info, Mint> {
-        match self.offer_config.direction {
+        match self.config.offer_config.direction {
             OfferDirection::AssetToManaged => &self.token_out_mint,
             OfferDirection::ManagedToAsset => &self.token_in_mint,
         }
     }
 
     pub(super) fn managed_program(&self) -> &Interface<'info, TokenInterface> {
-        match self.offer_config.direction {
+        match self.config.offer_config.direction {
             OfferDirection::AssetToManaged => &self.token_out_program,
             OfferDirection::ManagedToAsset => &self.token_in_program,
         }
     }
 
     pub(super) fn asset_mint(&self) -> &InterfaceAccount<'info, Mint> {
-        match self.offer_config.direction {
+        match self.config.offer_config.direction {
             OfferDirection::AssetToManaged => &self.token_in_mint,
             OfferDirection::ManagedToAsset => &self.token_out_mint,
         }

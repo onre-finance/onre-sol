@@ -1,34 +1,30 @@
 use crate::{
     constants::seeds,
     instructions::{
-        buffer::{
-            accrue_buffer::accrue_buffer, calculate_buffer_fee_split,
-            calculate_gross_buffer_accrual, validate_buffer_onyc_vault_accounts, BufferState,
-        },
-        market_info::load_main_offer,
+        buffer::{calculate_buffer_fee_split, calculate_gross_buffer_accrual},
+        market_info::MarketValuation,
     },
-    model::{seeds as model_seeds, BufferSettings, ManagedTokenBufferState, PricingDenomination},
+    model::{seeds as model_seeds, BufferSettings, ManagedTokenBufferState, Pricer},
     utils::{
-        load_pda_account, mint_tokens, pricing::get_active_vector_and_current_price,
-        store_pda_account, validate_max_supply,
+        load_pda_account, managed_token::validate_canonical_usd_pricer, mint_tokens,
+        pricing::get_active_vector_and_current_price, store_pda_account, validate_max_supply,
     },
-    OnreError, ID,
+    OnreError,
 };
 use anchor_lang::prelude::*;
-use anchor_spl::associated_token::get_associated_token_address_with_program_id;
-
-use crate::{model::Pricer, state::State};
-use anchor_spl::token_interface::{Mint, TokenInterface};
+use anchor_spl::{
+    associated_token::get_associated_token_address_with_program_id,
+    token_interface::{Mint, TokenInterface},
+};
 
 /// Shared account view for modular trades and standalone BUFFER operations.
-/// ONyc resolves to the legacy singleton during coexistence.
+/// Every managed mint, ONyc included, uses its own `["buffer", mint]` state,
+/// independent of the legacy singleton BUFFER.
 pub(crate) struct BufferContext<'a, 'info> {
-    pub state: &'a Account<'info, State>,
     pub managed_mint: &'a InterfaceAccount<'info, Mint>,
     pub managed_program: &'a Interface<'info, TokenInterface>,
     pub buffer_state: &'a UncheckedAccount<'info>,
     pub buffer_pricer: Option<&'a Account<'info, Pricer>>,
-    pub main_offer: Option<&'a UncheckedAccount<'info>>,
     pub reserve_token: &'a UncheckedAccount<'info>,
     pub management_token: &'a UncheckedAccount<'info>,
     pub performance_token: &'a UncheckedAccount<'info>,
@@ -50,9 +46,8 @@ pub struct ManagedTokenBufferAccruedEvent {
     pub timestamp: i64,
 }
 
-/// ONyc always uses the existing baseline while V2 remains enabled. Other mints
-/// use their per-mint account. Even an absent BUFFER must be supplied at its
-/// canonical address so omission cannot bypass an existing accrual engine.
+/// Even an absent BUFFER must be supplied at its canonical address so omission
+/// cannot bypass an existing accrual engine. Returns whether BUFFER is initialized.
 pub(crate) fn accrue(
     program_id: &Pubkey,
     a: &BufferContext,
@@ -61,7 +56,7 @@ pub(crate) fn accrue(
     max_supply: u64,
     max_mint: u64,
 ) -> Result<bool> {
-    let legacy = uses_legacy(program_id, a)?;
+    require_canonical_buffer_state(program_id, a)?;
     if a.buffer_state.data_is_empty() {
         require_keys_eq!(
             *a.buffer_state.owner,
@@ -70,90 +65,13 @@ pub(crate) fn accrue(
         );
         return Ok(false);
     }
-    if legacy {
-        let mut buffer: BufferState = load_pda_account(
-            &a.buffer_state,
-            program_id,
-            OnreError::InvalidBufferStateAccount.into(),
-            OnreError::InvalidBufferStateAccount.into(),
-        )?;
-        let main_offer = a.main_offer.ok_or(OnreError::InvalidMainOffer)?;
-        let offer = load_main_offer(program_id, main_offer, &a.state)?;
-        validate_buffer_onyc_vault_accounts(
-            program_id,
-            &buffer,
-            &a.reserve_token,
-            &a.management_token,
-            &a.performance_token,
-            a.managed_mint,
-            a.managed_program,
-        )?;
-        let result = accrue_buffer(
-            &a.state,
-            &mut buffer,
-            &offer,
-            a.managed_mint,
-            a.reserve_token.to_account_info(),
-            a.management_token.to_account_info(),
-            a.performance_token.to_account_info(),
-            a.mint_authority.to_account_info(),
-            authority_bump,
-            a.managed_program,
-            now,
-        )?;
-        validate_max_supply(a.managed_mint.supply, result.buffer_mint_amount, max_supply)?;
-        require!(
-            max_mint == 0 || result.buffer_mint_amount <= max_mint,
-            OnreError::MaxMintAmountExceeded
-        );
-        store_pda_account(&a.buffer_state, &buffer)?;
-    } else {
-        accrue_managed_buffer(program_id, a, authority_bump, now, max_supply, max_mint)?;
-    }
-    Ok(true)
-}
-
-fn accrue_managed_buffer(
-    program_id: &Pubkey,
-    a: &BufferContext,
-    authority_bump: u8,
-    now: i64,
-    max_supply: u64,
-    max_mint: u64,
-) -> Result<()> {
-    let mut buffer: ManagedTokenBufferState = load_pda_account(
-        &a.buffer_state,
-        program_id,
-        OnreError::InvalidBufferStateAccount.into(),
-        OnreError::InvalidBufferStateAccount.into(),
-    )?;
-    require_keys_eq!(
-        buffer.managed_mint,
-        a.managed_mint.key(),
-        OnreError::InvalidMint
-    );
+    let mut buffer = load_buffer(program_id, a)?;
     require!(
         now >= buffer.last_accrual_timestamp,
         OnreError::InvalidTimestamp
     );
     let pricer = a.buffer_pricer.ok_or(OnreError::IncompatiblePricer)?;
-    let canonical = Pubkey::find_program_address(
-        &[
-            model_seeds::PRICER,
-            buffer.managed_mint.as_ref(),
-            &[PricingDenomination::Usd as u8],
-            &0_u64.to_le_bytes(),
-        ],
-        program_id,
-    )
-    .0;
-    require!(
-        pricer.key() == canonical
-            && pricer.managed_mint == buffer.managed_mint
-            && pricer.denomination == PricingDenomination::Usd
-            && pricer.enabled,
-        OnreError::IncompatiblePricer
-    );
+    validate_canonical_usd_pricer(program_id, &buffer.managed_mint, pricer)?;
     for (token, authority) in [
         (&a.reserve_token, buffer.reserve_vault),
         (&a.management_token, buffer.management_fee_vault),
@@ -221,7 +139,7 @@ fn accrue_managed_buffer(
         .checked_add(amount)
         .ok_or(OnreError::MathOverflow)?;
     buffer.last_accrual_timestamp = now;
-    store_pda_account(&a.buffer_state, &buffer)?;
+    store_pda_account(a.buffer_state, &buffer)?;
     emit!(ManagedTokenBufferAccruedEvent {
         buffer_state: a.buffer_state.key(),
         managed_mint: buffer.managed_mint,
@@ -235,65 +153,26 @@ fn accrue_managed_buffer(
         performance_fee_high_watermark: buffer.performance_fee_high_watermark,
         timestamp: now,
     });
-    Ok(())
+    Ok(true)
 }
 
-pub(crate) fn store_post_supply(a: &BufferContext, now: i64) -> Result<()> {
-    if uses_legacy(&ID, a)? {
-        let mut buffer: BufferState = load_pda_account(
-            &a.buffer_state,
-            &ID,
-            OnreError::InvalidBufferStateAccount.into(),
-            OnreError::InvalidBufferStateAccount.into(),
-        )?;
-        buffer.previous_supply = a.managed_mint.supply;
-        buffer.last_accrual_timestamp = now;
-        store_pda_account(&a.buffer_state, &buffer)
-    } else {
-        let mut buffer: ManagedTokenBufferState = load_pda_account(
-            &a.buffer_state,
-            &ID,
-            OnreError::InvalidBufferStateAccount.into(),
-            OnreError::InvalidBufferStateAccount.into(),
-        )?;
-        buffer.previous_supply = a.managed_mint.supply;
-        buffer.last_accrual_timestamp = now;
-        store_pda_account(&a.buffer_state, &buffer)
-    }
+pub(crate) fn store_post_supply(program_id: &Pubkey, a: &BufferContext, now: i64) -> Result<()> {
+    let mut buffer = load_buffer(program_id, a)?;
+    buffer.previous_supply = a.managed_mint.supply;
+    buffer.last_accrual_timestamp = now;
+    store_pda_account(a.buffer_state, &buffer)
 }
 
-/// Settings are read from the authoritative state, never from an inactive ONyc
-/// per-mint draft. Account identity is checked even for configuration-only reads.
+/// Account identity is checked even for configuration-only reads.
 pub(crate) fn read_settings(program_id: &Pubkey, a: &BufferContext) -> Result<BufferSettings> {
-    if uses_legacy(program_id, a)? {
-        let b: BufferState = load_pda_account(
-            a.buffer_state,
-            program_id,
-            OnreError::InvalidBufferStateAccount.into(),
-            OnreError::InvalidBufferStateAccount.into(),
-        )?;
-        require_keys_eq!(b.onyc_mint, a.managed_mint.key(), OnreError::InvalidMint);
-        Ok(BufferSettings {
-            gross_apr: b.gross_apr,
-            management_fee_basis_points: b.management_fee_basis_points,
-            performance_fee_basis_points: b.performance_fee_basis_points,
-            performance_fee_high_watermark_enabled: b.performance_fee_high_watermark_enabled,
-        })
-    } else {
-        let b: ManagedTokenBufferState = load_pda_account(
-            a.buffer_state,
-            program_id,
-            OnreError::InvalidBufferStateAccount.into(),
-            OnreError::InvalidBufferStateAccount.into(),
-        )?;
-        require_keys_eq!(b.managed_mint, a.managed_mint.key(), OnreError::InvalidMint);
-        Ok(BufferSettings {
-            gross_apr: b.gross_apr,
-            management_fee_basis_points: b.management_fee_basis_points,
-            performance_fee_basis_points: b.performance_fee_basis_points,
-            performance_fee_high_watermark_enabled: b.performance_fee_high_watermark_enabled,
-        })
-    }
+    require_canonical_buffer_state(program_id, a)?;
+    let b = load_buffer(program_id, a)?;
+    Ok(BufferSettings {
+        gross_apr: b.gross_apr,
+        management_fee_basis_points: b.management_fee_basis_points,
+        performance_fee_basis_points: b.performance_fee_basis_points,
+        performance_fee_high_watermark_enabled: b.performance_fee_high_watermark_enabled,
+    })
 }
 
 /// Call only after accruing under the old settings. Preserve the newly committed
@@ -303,103 +182,48 @@ pub(crate) fn write_settings(
     a: &BufferContext,
     settings: BufferSettings,
 ) -> Result<()> {
-    read_settings(program_id, a)?;
-    if uses_legacy(program_id, a)? {
-        let mut b: BufferState = load_pda_account(
-            a.buffer_state,
-            program_id,
-            OnreError::InvalidBufferStateAccount.into(),
-            OnreError::InvalidBufferStateAccount.into(),
-        )?;
-        b.gross_apr = settings.gross_apr;
-        b.management_fee_basis_points = settings.management_fee_basis_points;
-        b.performance_fee_basis_points = settings.performance_fee_basis_points;
-        b.performance_fee_high_watermark_enabled = settings.performance_fee_high_watermark_enabled;
-        store_pda_account(a.buffer_state, &b)
-    } else {
-        let mut b: ManagedTokenBufferState = load_pda_account(
-            a.buffer_state,
-            program_id,
-            OnreError::InvalidBufferStateAccount.into(),
-            OnreError::InvalidBufferStateAccount.into(),
-        )?;
-        b.gross_apr = settings.gross_apr;
-        b.management_fee_basis_points = settings.management_fee_basis_points;
-        b.performance_fee_basis_points = settings.performance_fee_basis_points;
-        b.performance_fee_high_watermark_enabled = settings.performance_fee_high_watermark_enabled;
-        store_pda_account(a.buffer_state, &b)
-    }
+    let mut b = load_buffer(program_id, a)?;
+    b.gross_apr = settings.gross_apr;
+    b.management_fee_basis_points = settings.management_fee_basis_points;
+    b.performance_fee_basis_points = settings.performance_fee_basis_points;
+    b.performance_fee_high_watermark_enabled = settings.performance_fee_high_watermark_enabled;
+    store_pda_account(a.buffer_state, &b)
 }
 
-/// Global canonical state selects the ONyc route; supplying another account can
-/// never choose an inactive clock or bypass an initialized BUFFER.
-fn uses_legacy(program_id: &Pubkey, a: &BufferContext) -> Result<bool> {
-    let onyc = a.managed_mint.key() == a.state.onyc_mint;
-    let legacy = onyc && !a.state.modular_buffer_active();
-    let expected = if legacy {
-        Pubkey::find_program_address(&[seeds::BUFFER_STATE], program_id).0
-    } else {
-        Pubkey::find_program_address(
-            &[model_seeds::BUFFER, a.managed_mint.key().as_ref()],
-            program_id,
-        )
-        .0
-    };
+/// Token-wide valuation always comes from the canonical USD instance-zero Pricer.
+pub(crate) fn canonical_market_valuation(
+    program_id: &Pubkey,
+    a: &BufferContext,
+) -> Result<MarketValuation> {
+    let pricer = a.buffer_pricer.ok_or(OnreError::IncompatiblePricer)?;
+    validate_canonical_usd_pricer(program_id, &a.managed_mint.key(), pricer)?;
+    Ok(MarketValuation::from(&**pricer))
+}
+
+fn require_canonical_buffer_state(program_id: &Pubkey, a: &BufferContext) -> Result<()> {
+    let (expected, _) = Pubkey::find_program_address(
+        &[model_seeds::BUFFER, a.managed_mint.key().as_ref()],
+        program_id,
+    );
     require_keys_eq!(
         a.buffer_state.key(),
         expected,
         OnreError::InvalidBufferStateAccount
     );
-    if onyc && !legacy {
-        require!(
-            !a.buffer_state.data_is_empty(),
-            OnreError::InvalidBufferStateAccount
-        );
-    }
-    Ok(legacy)
+    Ok(())
 }
 
-/// Reporting and TVL use State.main_offer during coexistence. After cutover,
-/// adapt canonical Pricer vectors in memory to reuse the exact existing metric
-/// calculations without writing or mutating the legacy Offer account.
-pub(crate) fn canonical_market_offer(
-    program_id: &Pubkey,
-    a: &BufferContext,
-) -> Result<crate::instructions::Offer> {
-    require_keys_eq!(
-        a.managed_mint.key(),
-        a.state.onyc_mint,
-        OnreError::InvalidOnycMint
-    );
-    if uses_legacy(program_id, a)? {
-        return load_main_offer(
-            program_id,
-            a.main_offer.ok_or(OnreError::InvalidMainOffer)?,
-            a.state,
-        );
-    }
-    let pricer = a.buffer_pricer.ok_or(OnreError::IncompatiblePricer)?;
-    let canonical = Pubkey::find_program_address(
-        &[
-            model_seeds::PRICER,
-            a.managed_mint.key().as_ref(),
-            &[PricingDenomination::Usd as u8],
-            &0_u64.to_le_bytes(),
-        ],
+fn load_buffer(program_id: &Pubkey, a: &BufferContext) -> Result<ManagedTokenBufferState> {
+    let buffer: ManagedTokenBufferState = load_pda_account(
+        a.buffer_state,
         program_id,
-    )
-    .0;
-    require!(
-        pricer.key() == canonical
-            && pricer.enabled
-            && pricer.managed_mint == a.managed_mint.key()
-            && pricer.denomination == PricingDenomination::Usd,
-        OnreError::IncompatiblePricer
+        OnreError::InvalidBufferStateAccount.into(),
+        OnreError::InvalidBufferStateAccount.into(),
+    )?;
+    require_keys_eq!(
+        buffer.managed_mint,
+        a.managed_mint.key(),
+        OnreError::InvalidMint
     );
-    // Pure in-memory valuation adapter. No legacy offer account, authority or
-    // custody is read after cutover; metrics consume only the mint and vectors.
-    let mut offer: crate::instructions::Offer = bytemuck::Zeroable::zeroed();
-    offer.token_out_mint = a.managed_mint.key();
-    offer.vectors = pricer.vectors.map(Into::into);
-    Ok(offer)
+    Ok(buffer)
 }

@@ -12,4 +12,8 @@ pub struct ManagedTokenConfig {
     pub max_supply: u64,
     pub max_mint_amount: u64,
     pub bump: u8,
+    /// Program-owned MarketStats account refreshed by modular operations on this mint.
+    /// Any MarketStats address is allowed (e.g. the legacy `["market_stats"]` singleton
+    /// for ONyc); default means modular reporting is disabled.
+    pub market_stats: Pubkey,
 }

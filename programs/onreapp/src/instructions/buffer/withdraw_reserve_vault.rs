@@ -56,7 +56,6 @@ pub struct WithdrawReserveVault<'info> {
 }
 
 pub fn withdraw_reserve_vault(ctx: Context<WithdrawReserveVault>, amount: u64) -> Result<()> {
-    ctx.accounts.state.require_legacy_buffer_active()?;
     require!(
         !has_transfer_fee(&ctx.accounts.onyc_mint)?,
         crate::OnreError::TransferFeeNotSupported

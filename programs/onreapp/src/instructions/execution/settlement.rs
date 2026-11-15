@@ -144,7 +144,7 @@ fn settle_collected_input<'info>(
                 route.signer_seeds,
                 quote.net_input_amount - quote.liquidity_refill_amount,
             )?;
-            if a.offer_config.source_vault != Pubkey::default() {
+            if a.config.offer_config.source_vault != Pubkey::default() {
                 liquidity::consume(a, quote.amount_out, route.output)?;
             } else {
                 mint_tokens(
@@ -160,7 +160,7 @@ fn settle_collected_input<'info>(
             }
         }
         OfferDirection::ManagedToAsset => {
-            if a.offer_config.destination_vault != Pubkey::default() {
+            if a.config.offer_config.destination_vault != Pubkey::default() {
                 liquidity::deposit_destination(
                     a,
                     route.input,

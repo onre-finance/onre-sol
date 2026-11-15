@@ -7,15 +7,13 @@ pub use modular_accrual::ManagedTokenBufferAccruedEvent;
 
 fn context<'a, 'info>(a: &'a TakeOffer<'info>) -> BufferContext<'a, 'info> {
     BufferContext {
-        state: &a.state,
         managed_mint: a.managed_mint(),
         managed_program: a.managed_program(),
-        buffer_state: &a.buffer_state,
-        buffer_pricer: a.buffer_pricer.as_deref(),
-        main_offer: a.main_offer.as_ref(),
-        reserve_token: &a.buffer_reserve_token,
-        management_token: &a.buffer_management_token,
-        performance_token: &a.buffer_performance_token,
+        buffer_state: &a.buffer.buffer_state,
+        buffer_pricer: a.buffer.buffer_pricer.as_deref(),
+        reserve_token: &a.buffer.buffer_reserve_token,
+        management_token: &a.buffer.buffer_management_token,
+        performance_token: &a.buffer.buffer_performance_token,
         mint_authority: &a.mint_authority,
     }
 }
@@ -38,13 +36,10 @@ pub(super) fn accrue_before_execution(
     )
 }
 
-pub(super) fn store_post_execution_supply(a: &TakeOffer, now: i64) -> Result<()> {
-    modular_accrual::store_post_supply(&context(a), now)
-}
-
-pub(super) fn canonical_market_offer(
+pub(super) fn store_post_execution_supply(
     program_id: &Pubkey,
     a: &TakeOffer,
-) -> Result<crate::instructions::Offer> {
-    modular_accrual::canonical_market_offer(program_id, &context(a))
+    now: i64,
+) -> Result<()> {
+    modular_accrual::store_post_supply(program_id, &context(a), now)
 }

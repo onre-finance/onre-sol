@@ -33,26 +33,8 @@ pub struct State {
     pub max_mint_amount: u64,
     /// Main offer account used for market operations and price discovery
     pub main_offer: Pubkey,
-    /// Set only by the atomic ONyc BUFFER cutover; false keeps legacy BUFFER authoritative.
-    /// Occupies the first formerly reserved byte without changing account size.
-    pub onyc_buffer_cutover_completed: bool,
     /// Reserved space for future program state extensions
-    pub reserved: [u8; 55],
-}
-
-impl State {
-    /// Native per-mint ONyc BUFFER becomes authoritative only after explicit cutover.
-    pub(crate) fn modular_buffer_active(&self) -> bool {
-        self.onyc_buffer_cutover_completed
-    }
-
-    pub(crate) fn require_legacy_buffer_active(&self) -> Result<()> {
-        require!(
-            !self.modular_buffer_active(),
-            crate::OnreError::LegacyBufferRetired
-        );
-        Ok(())
-    }
+    pub reserved: [u8; 56],
 }
 
 /// Program-derived authority for permissionless token routing operations

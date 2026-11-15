@@ -108,7 +108,6 @@ pub fn initialize_buffer(ctx: Context<InitializeBuffer>) -> Result<()> {
     buffer_state.performance_fee_high_watermark_enabled = true;
     buffer_state.last_accrual_timestamp = now;
     buffer_state.bump = ctx.bumps.buffer_state;
-    buffer_state.retired = false;
 
     init_fee_vault(
         &mut ctx.accounts.management_fee_vault,

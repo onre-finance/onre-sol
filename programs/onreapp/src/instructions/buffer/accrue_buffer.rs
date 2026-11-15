@@ -43,8 +43,6 @@ pub(crate) fn accrue_buffer<'info>(
     token_program: &Interface<'info, TokenInterface>,
     now: i64,
 ) -> Result<BufferAccrualResult> {
-    state.require_legacy_buffer_active()?;
-    buffer_state.require_active()?;
     require!(
         now >= buffer_state.last_accrual_timestamp,
         crate::OnreError::InvalidTimestamp
@@ -236,7 +234,6 @@ pub(crate) fn store_buffer_post_supply(
     now: i64,
 ) -> Result<()> {
     let mut buffer_state = buffer_accounts.load_buffer_state()?;
-    buffer_state.require_active()?;
     set_buffer_baseline_after_supply_change(&mut buffer_state, post_change_supply, now);
     buffer_accounts.store_buffer_state(&buffer_state)
 }

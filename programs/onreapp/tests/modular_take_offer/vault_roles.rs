@@ -81,12 +81,9 @@ fn nav_buys_independently_select_inventory_and_destination_refill() {
                         let event =
                             executed_event(&execute(&mut f, 2_000_000, 990_000_000).unwrap());
                         let deposited = if destination_target == Some(1000) {
-                            // ONyc's canonical main NAV is 1, other managed mints NAV is 2.
-                            if onyc {
-                                1_000_000
-                            } else {
-                                1_980_000
-                            }
+                            // Every managed mint, ONyc included, uses canonical Pricer NAV 2,
+                            // so the target exceeds the whole 1.98 net input.
+                            1_980_000
                         } else {
                             0
                         };
@@ -385,17 +382,33 @@ fn failed_source_payout_rolls_back_retained_input_fees_and_destination_creation(
 }
 
 #[test]
-fn buy_inventory_includes_buffer_accrual_into_the_selected_legacy_fee_vault() {
+fn buy_inventory_from_a_legacy_fee_vault_excludes_per_mint_buffer_accrual() {
     let mut f = Fixture::new(true, false);
     f.seed_tokens(f.mint, f.boss.pubkey(), 10_000_000_000);
     modular_prop_amm::init_buffer(&mut f);
     let buffer = f.buffer();
-    edit::<onreapp::instructions::BufferState>(&mut f.svm, buffer, |b| {
+    edit::<ManagedTokenBufferState>(&mut f.svm, buffer, |b| {
         b.gross_apr = 100_000;
         b.management_fee_basis_points = 100;
         b.previous_supply = 10_000_000_000;
     });
+    // The legacy management-fee vault holds pre-existing inventory. Modular ONyc
+    // accrues only into its per-mint BUFFER vaults, never into this legacy vault.
+    f.initialize_legacy_main_offer();
+    send_tx(
+        &mut f.svm,
+        &[build_initialize_buffer_ix(
+            &f.boss.pubkey(),
+            &find_offer_pda(&f.asset, &f.mint).0,
+            &f.mint,
+        )],
+        &[&f.boss],
+    )
+    .unwrap();
+    let legacy_buffer = find_buffer_state_pda().0;
+    let legacy_before = f.svm.get_account(&legacy_buffer).unwrap().data;
     let source = find_management_fee_vault_pda().0;
+    f.seed_tokens(f.mint, source, 100_000_000);
     f.create_route_with_vaults(
         OfferDirection::AssetToManaged,
         OfferFlow::Permissionless,
@@ -403,14 +416,29 @@ fn buy_inventory_includes_buffer_accrual_into_the_selected_legacy_fee_vault() {
         Some(source),
         None,
     );
+    let buffer_balances = |f: &Fixture| {
+        f.buffer_vaults()
+            .map(|owner| f.balance(f.mint, owner, f.token_program))
+            .iter()
+            .sum::<u64>()
+    };
+    let supply_before = get_mint_supply(&f.svm, &f.mint);
+    let accrued_before = buffer_balances(&f);
     advance_clock_by(&mut f.svm, 31_536_000);
     let event = executed_event(&execute(&mut f, 100_000, 49_500_000).unwrap());
     assert_eq!(event.source_amount, 49_500_000);
     assert_eq!(f.balance(f.mint, source, f.token_program), 50_500_000);
-    // Only BUFFER issues supply; transferring inventory to the user issues none.
-    assert_eq!(get_mint_supply(&f.svm, &f.mint), 11_000_000_000);
+    // Only the per-mint BUFFER issues supply; inventory payout issues none.
+    let accrued = buffer_balances(&f) - accrued_before;
+    assert!(accrued > 0);
+    let supply = get_mint_supply(&f.svm, &f.mint);
+    assert_eq!(supply, supply_before + accrued);
     assert_eq!(
-        read::<onreapp::instructions::BufferState>(&f.svm, buffer).previous_supply,
-        11_000_000_000
+        read::<ManagedTokenBufferState>(&f.svm, buffer).previous_supply,
+        supply
+    );
+    assert_eq!(
+        f.svm.get_account(&legacy_buffer).unwrap().data,
+        legacy_before
     );
 }

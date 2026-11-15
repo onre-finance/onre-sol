@@ -20,20 +20,5 @@ pub struct BufferState {
     pub performance_fee_high_watermark_enabled: bool,
     pub last_accrual_timestamp: i64,
     pub bump: u8,
-    /// Set only by atomic cutover; retired legacy accounting remains a frozen record.
-    /// Occupies the first formerly reserved byte without changing account size.
-    pub retired: bool,
-    pub reserved: [u8; 134],
-}
-
-impl BufferState {
-    /// Only a successful atomic cutover retires the legacy BUFFER.
-    pub(crate) fn is_retired(&self) -> bool {
-        self.retired
-    }
-
-    pub(crate) fn require_active(&self) -> Result<()> {
-        require!(!self.is_retired(), crate::OnreError::LegacyBufferRetired);
-        Ok(())
-    }
+    pub reserved: [u8; 135],
 }

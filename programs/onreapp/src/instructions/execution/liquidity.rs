@@ -25,24 +25,24 @@ pub(super) struct LiquidityContext {
 /// inventory never falls back to minting; only an absent buy source permits minting.
 pub(super) fn validate(program_id: &Pubkey, a: &TakeOffer) -> Result<LiquidityContext> {
     require!(
-        a.offer_config.direction != OfferDirection::ManagedToAsset
-            || a.offer_config.source_vault != Pubkey::default(),
+        a.config.offer_config.direction != OfferDirection::ManagedToAsset
+            || a.config.offer_config.source_vault != Pubkey::default(),
         OnreError::LiquidityVaultRequired
     );
     Ok(LiquidityContext {
         source: validate_role(
             program_id,
-            a.offer_config.source_vault,
-            a.source_vault.as_ref(),
-            a.source_token_out.as_ref(),
+            a.config.offer_config.source_vault,
+            a.custody.source_vault.as_ref(),
+            a.custody.source_token_out.as_ref(),
             a.token_out_mint.key(),
             a.token_out_program.key(),
         )?,
         destination: validate_role(
             program_id,
-            a.offer_config.destination_vault,
-            a.destination_vault.as_ref(),
-            a.destination_token_in.as_ref(),
+            a.config.offer_config.destination_vault,
+            a.custody.destination_vault.as_ref(),
+            a.custody.destination_token_in.as_ref(),
             a.token_in_mint.key(),
             a.token_in_program.key(),
         )?,
@@ -113,10 +113,12 @@ pub(super) fn consume<'info>(
     destination: &InterfaceAccount<'info, TokenAccount>,
 ) -> Result<()> {
     let vault = a
+        .custody
         .source_vault
         .as_ref()
         .ok_or(OnreError::LiquidityVaultRequired)?;
     let token = a
+        .custody
         .source_token_out
         .as_ref()
         .ok_or(OnreError::InvalidConfigurableVaultTokenAccount)?;
@@ -159,10 +161,12 @@ pub(super) fn deposit_destination<'info>(
         return Ok(());
     }
     let vault = a
+        .custody
         .destination_vault
         .as_ref()
         .ok_or(OnreError::LiquidityVaultRequired)?;
     let token = a
+        .custody
         .destination_token_in
         .as_ref()
         .ok_or(OnreError::InvalidConfigurableVaultTokenAccount)?;

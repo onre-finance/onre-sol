@@ -841,8 +841,7 @@ fn buffer_initialization_is_per_mint_and_preserves_legacy_state() {
         performance_fee_high_watermark_enabled: true,
         last_accrual_timestamp: 100,
         bump: 1,
-        retired: false,
-        reserved: [0; 134],
+        reserved: [0; 135],
     };
     let mut data = Vec::new();
     legacy.try_serialize(&mut data).unwrap();

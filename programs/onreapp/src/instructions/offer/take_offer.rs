@@ -178,7 +178,6 @@ pub fn take_offer_v2<'info>(
     token_in_amount: u64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
-    ctx.accounts.state.require_legacy_buffer_active()?;
     execute_take_offer_v2(ctx, token_in_amount, approval_message)
 }
 pub fn execute_take_offer_v2<'info>(
