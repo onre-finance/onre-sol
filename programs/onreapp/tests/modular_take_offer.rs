@@ -3,6 +3,8 @@ mod admin_updates;
 #[path = "modular_take_offer/buffer_independence.rs"]
 mod buffer_independence;
 mod common;
+#[path = "modular_take_offer/market_stats_refresh.rs"]
+mod market_stats_refresh;
 #[path = "modular_take_offer/mint_limits.rs"]
 mod mint_limits;
 #[path = "modular_take_offer/mint_multisig.rs"]

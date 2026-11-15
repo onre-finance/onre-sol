@@ -250,6 +250,14 @@ same rule with the same required `legacy_market_stats` account, but have no paye
 they refresh the singleton only once it exists.
 The optional legacy offer and reporting accounts do not affect other mints.
 
+Between trades, anyone can call `refresh_managed_token_market_stats` to recompute
+the selected MarketStats from current supply and the canonical Pricer, so NAV, APY
+and TVL do not go stale when no trade or settlement occurs. It applies the same
+rules, including the ONyc legacy singleton (created on first use at the caller's
+expense), requires the managed token to be enabled, fails with
+`MarketStatsNotSelected` when there is nothing to refresh, emits
+`ManagedTokenMarketStatsRefreshedEvent`, and is not blocked by the kill switch.
+
 ## Minting authority
 
 Modular minting (`take_offer` output and every BUFFER accrual, including

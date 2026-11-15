@@ -150,7 +150,8 @@ export const OnreappErrorCode = {
   MintMultisigRequired: 6147,
   UnexpectedMintMultisig: 6148,
   InvalidMintMultisig: 6149,
-  MaxSupplyBelowCurrentSupply: 6150
+  MaxSupplyBelowCurrentSupply: 6150,
+  MarketStatsNotSelected: 6151
 };
 
 export type OnreappErrorName = keyof typeof OnreappErrorCode;
