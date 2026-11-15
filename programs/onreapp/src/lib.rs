@@ -262,6 +262,16 @@ pub mod onreapp {
         configuration::set_managed_token_market_stats(ctx)
     }
 
+    /// Sets the managed token's issuance limits for program mints (zero disables a
+    /// limit; a nonzero max supply must cover current supply); boss only.
+    pub fn set_managed_token_mint_limits(
+        ctx: Context<SetManagedTokenMintLimits>,
+        max_supply: u64,
+        max_mint_amount: u64,
+    ) -> Result<()> {
+        configuration::set_managed_token_mint_limits(ctx, max_supply, max_mint_amount)
+    }
+
     /// Switches the managed token's modular minting to a 1-of-N SPL multisig that already
     /// holds mint authority and includes the program mint-authority PDA; boss only.
     /// Legacy instructions keep minting directly.

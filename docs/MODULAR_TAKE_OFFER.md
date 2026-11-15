@@ -210,8 +210,13 @@ settings while preserving the just-settled baseline, timestamp, and watermark.
 An unchanged policy fails with `NoChange`. Both instructions honor the kill
 switch, canonical account and mint checks, program mint authority, and issuance
 caps. For ONyc the stricter nonzero of the global and per-mint caps applies;
-other mints use their per-mint caps, which default to zero (uncapped); no
-instruction sets them yet. Both require initialized state, and positive
+other mints use their per-mint caps. Per-mint caps default to zero (uncapped)
+and are set with the boss-only `set_managed_token_mint_limits(max_supply,
+max_mint_amount)`: zero disables a cap, a nonzero `max_supply` must be at least
+the current supply (`MaxSupplyBelowCurrentSupply`), identical values fail with
+`NoChange`, and `ManagedTokenMintLimitsSetEvent` records old and new values. The
+caps bind program mints only; other members of a mint multisig (e.g. a CCIP pool)
+mint outside them. Both require initialized state, and positive
 accrual requires initialized vault ATAs; neither instruction creates them.
 
 ## Market stats

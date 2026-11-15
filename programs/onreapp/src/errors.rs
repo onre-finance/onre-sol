@@ -302,4 +302,6 @@ pub enum OnreError {
     UnexpectedMintMultisig,
     #[msg("Mint multisig must be the configured initialized 1-of-N multisig containing the program mint authority")]
     InvalidMintMultisig,
+    #[msg("A nonzero max supply must be at least the current supply")]
+    MaxSupplyBelowCurrentSupply,
 }
