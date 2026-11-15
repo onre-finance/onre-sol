@@ -9,6 +9,7 @@ pub mod create_quoter;
 pub mod create_vault_config;
 pub mod initialize_managed_token_buffer;
 pub mod managed_token_market_stats;
+pub mod managed_token_mint_multisig;
 pub mod register_managed_token;
 pub mod set_offer_pressure_state;
 
@@ -21,6 +22,7 @@ pub use create_quoter::*;
 pub use create_vault_config::*;
 pub use initialize_managed_token_buffer::*;
 pub use managed_token_market_stats::*;
+pub use managed_token_mint_multisig::*;
 pub use register_managed_token::*;
 
 pub use set_offer_pressure_state::*;

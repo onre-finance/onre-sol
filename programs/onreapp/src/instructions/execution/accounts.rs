@@ -6,6 +6,7 @@ use crate::{
         PropAmmState, Quoter, VaultConfig, VaultKind,
     },
     state::State,
+    utils::program_minter::ProgramMinter,
     OnreError,
 };
 use anchor_lang::prelude::*;
@@ -172,6 +173,10 @@ pub struct TakeOfferBufferAccounts<'info> {
     /// CHECK: When BUFFER is active, its expected performance-fee ATA is validated.
     #[account(mut)]
     pub buffer_performance_token: UncheckedAccount<'info>,
+
+    /// CHECK: Required exactly when `ManagedTokenConfig::mint_multisig` is set and must
+    /// equal it; omitted for direct PDA minting. See `utils::program_minter`.
+    pub mint_multisig: Option<UncheckedAccount<'info>>,
 }
 
 /// Contiguous `TakeOffer` accounts, flattened in place on the wire.
@@ -253,6 +258,17 @@ pub struct TakeOfferConfigAccounts<'info> {
 }
 
 impl<'info> TakeOffer<'info> {
+    /// Program minting path for the managed mint in its configured mode.
+    pub(super) fn minter(&self, authority_bump: u8) -> Result<ProgramMinter<'_, 'info>> {
+        ProgramMinter::resolve(
+            self.config.managed_token.mint_multisig,
+            self.managed_mint(),
+            self.mint_authority.as_ref(),
+            authority_bump,
+            self.buffer.mint_multisig.as_ref().map(AsRef::as_ref),
+        )
+    }
+
     pub(super) fn reload_managed_mint(&mut self) -> Result<()> {
         match self.config.offer_config.direction {
             OfferDirection::AssetToManaged => self.token_out_mint.reload(),

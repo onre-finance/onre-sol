@@ -3,7 +3,6 @@ use crate::{
     instructions::buffer::modular_accrual::BufferContext,
     model::{seeds::MANAGED_TOKEN, ManagedTokenConfig, Pricer},
     state::State,
-    utils::program_controls_mint,
     OnreError,
 };
 use anchor_lang::prelude::*;
@@ -29,20 +28,20 @@ pub struct ManagedBufferAccounts<'info> {
     )]
     pub managed_token: Box<Account<'info, ManagedTokenConfig>>,
 
-    #[account(
-        mut,
-        mint::token_program = token_program,
-        constraint = program_controls_mint(&managed_mint, &mint_authority)
-            @ OnreError::ProgramNotMintAuthority,
-    )]
+    /// Program control in the configured direct or multisig mode is checked before accrual.
+    #[account(mut, mint::token_program = token_program)]
     pub managed_mint: Box<InterfaceAccount<'info, Mint>>,
 
-    /// CHECK: Canonical mint signing identity; mint authority checked above.
+    /// CHECK: Canonical mint signing identity, validated by seeds.
     #[account(
         seeds = [seeds::MINT_AUTHORITY],
         bump,
     )]
     pub mint_authority: UncheckedAccount<'info>,
+
+    /// CHECK: Required exactly when `ManagedTokenConfig::mint_multisig` is set and must
+    /// equal it; omitted for direct PDA minting. See `utils::program_minter`.
+    pub mint_multisig: Option<UncheckedAccount<'info>>,
 
     pub token_program: Interface<'info, TokenInterface>,
 
@@ -78,6 +77,8 @@ impl<'info> ManagedBufferAccounts<'info> {
             management_token: &self.management_token,
             performance_token: &self.performance_token,
             mint_authority: &self.mint_authority,
+            configured_mint_multisig: self.managed_token.mint_multisig,
+            mint_multisig: self.mint_multisig.as_ref(),
         }
     }
 }

@@ -32,6 +32,8 @@ fn accrue_and_refresh<'info>(
         !a.buffer_state.data_is_empty(),
         OnreError::InvalidBufferStateAccount
     );
+    // Validate configured mint control even when this accrual mints nothing.
+    a.context().minter(bump)?;
     let (max_supply, max_mint) = effective_mint_limits(&a.state, &a.managed_token);
     modular_accrual::accrue(program_id, &a.context(), bump, now, max_supply, max_mint)?;
     a.managed_mint.reload()?;

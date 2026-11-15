@@ -16,4 +16,8 @@ pub struct ManagedTokenConfig {
     /// Any MarketStats address is allowed (e.g. the legacy `["market_stats"]` singleton
     /// for ONyc); default means modular reporting is disabled.
     pub market_stats: Pubkey,
+    /// 1-of-N SPL multisig used as mint authority for modular minting, with the program
+    /// mint-authority PDA as one signer. Default means the PDA mints directly. Legacy
+    /// instructions always mint directly. See `utils::program_minter`.
+    pub mint_multisig: Pubkey,
 }

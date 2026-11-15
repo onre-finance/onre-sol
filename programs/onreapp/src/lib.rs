@@ -243,6 +243,23 @@ pub mod onreapp {
         configuration::set_managed_token_market_stats(ctx)
     }
 
+    /// Switches the managed token's modular minting to a 1-of-N SPL multisig that already
+    /// holds mint authority and includes the program mint-authority PDA; boss only.
+    /// Legacy instructions keep minting directly.
+    pub fn enable_managed_token_mint_multisig(
+        ctx: Context<SetManagedTokenMintMultisig>,
+    ) -> Result<()> {
+        configuration::enable_managed_token_mint_multisig(ctx)
+    }
+
+    /// Restores direct PDA minting, reclaiming mint authority from the configured
+    /// multisig if it still holds it; boss only.
+    pub fn disable_managed_token_mint_multisig(
+        ctx: Context<SetManagedTokenMintMultisig>,
+    ) -> Result<()> {
+        configuration::disable_managed_token_mint_multisig(ctx)
+    }
+
     /// Initializes the program state and authority accounts.
     ///
     /// Delegates to `initialize::initialize` to set the initial boss in the state account.

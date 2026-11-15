@@ -1,6 +1,8 @@
 #[path = "modular_take_offer/buffer_independence.rs"]
 mod buffer_independence;
 mod common;
+#[path = "modular_take_offer/mint_multisig.rs"]
+mod mint_multisig;
 #[path = "modular_take_offer/prop_amm.rs"]
 mod modular_prop_amm;
 #[path = "modular_take_offer/permissionless.rs"]
@@ -462,7 +464,20 @@ impl Fixture {
             expiry_unix: get_clock_time(&self.svm) + 1000,
         }
     }
+    /// The configured mint multisig, required exactly in multisig minting mode.
+    fn mint_multisig(&self) -> Option<Pubkey> {
+        let configured = read::<ManagedTokenConfig>(&self.svm, managed(self.mint)).mint_multisig;
+        (configured != Pubkey::default()).then_some(configured)
+    }
     fn take(&self, gross: u64, minimum: u64) -> Instruction {
+        self.take_with_mint_multisig(gross, minimum, self.mint_multisig())
+    }
+    fn take_with_mint_multisig(
+        &self,
+        gross: u64,
+        minimum: u64,
+        mint_multisig: Option<Pubkey>,
+    ) -> Instruction {
         let config: OfferConfig = read(&self.svm, self.offer);
         let direction = config.direction;
         let (token_in, token_out, in_program, out_program) = match direction {
@@ -519,6 +534,7 @@ impl Fixture {
                     buffer_reserve_token: reserve,
                     buffer_management_token: management,
                     buffer_performance_token: performance,
+                    mint_multisig,
                 },
                 instructions_sysvar: SYSVAR_INSTRUCTIONS_ID,
                 user: self.user.pubkey(),
