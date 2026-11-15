@@ -1,7 +1,7 @@
 import { LOCAL_RPC_URL, STUDIO_URL } from "./constants";
 import { createRuntime, resolveAuthorityPath } from "./runtime";
 import { anchorBuild, regressionFlag, requireSurfpoolRunning, setProgramAuthority, solanaProgramDeploy } from "./surfpool";
-import { assertMainnetMarketsExist, assertTokenPrograms, ensureMainOffer, ensureMarketStats, overrideForkGovernance } from "./setup";
+import { assertMainnetMarketsExist, assertTokenPrograms, ensureMainOffer, ensureMarketStats, overrideForkGovernance, syncForkRent } from "./setup";
 
 async function main() {
     const authorityPath = resolveAuthorityPath();
@@ -11,6 +11,7 @@ async function main() {
     console.log(`Authority: ${authorityPath}`);
 
     await requireSurfpoolRunning(Number(process.env.SURFPOOL_REGRESSION_WAIT_MS ?? "90000"));
+    await syncForkRent();
     anchorBuild();
 
     const runtime = createRuntime(authorityPath);

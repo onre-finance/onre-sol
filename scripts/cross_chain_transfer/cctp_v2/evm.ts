@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
+import { bs58 } from "@anchor-lang/core/dist/cjs/utils/bytes";
 import { ethers, hexlify, ZeroHash } from "ethers";
 
 const APPROVE_EVM_ABI = [

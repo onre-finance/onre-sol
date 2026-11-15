@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, Program, Wallet } from "@coral-xyz/anchor";
+import anchor from "@anchor-lang/core";
+import { AnchorProvider, Program } from "@anchor-lang/core";
 import BN from "bn.js";
 
 import * as fs from "node:fs";
@@ -16,6 +16,10 @@ import "./load-env";
 // Import network configuration
 import { getNetworkConfig, NETWORK_CONFIGS, NetworkConfig, printConfigSummary } from "./network-config";
 import chalk from "chalk";
+
+// Native ESM cannot discover Anchor's CommonJS Wallet re-export.
+const { Wallet } = anchor;
+type Wallet = anchor.Wallet;
 
 // ============================================================
 // ACTIVE CONFIGURATION

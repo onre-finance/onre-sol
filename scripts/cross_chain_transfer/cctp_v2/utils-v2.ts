@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import { MessageTransmitterV2 } from "./types/message_transmitter_v2";
 import { TokenMessengerMinterV2 } from "./types/token_messenger_minter_v2";
 import MESSAGE_TRANSMITTER_V2_IDL from "./idl/message_transmitter_v2.json";
