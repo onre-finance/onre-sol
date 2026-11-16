@@ -7,8 +7,9 @@ The first modular execution path, `take_offer`, and boss-authorized
 `add_pricer_vector` are described in [`MODULAR_TAKE_OFFER.md`](MODULAR_TAKE_OFFER.md).
 V2 account lists and legacy trading behavior stay unchanged. Permissioned and
 permissionless NAV execution supports both directions; payouts use only the
-selected liquidity vault. Every managed mint, ONyc included, uses its per-mint
-BUFFER when initialized; ONyc's accrues independently of the legacy singleton.
+selected liquidity vault. Every managed mint uses its per-mint BUFFER when
+initialized; ONyc accrues its legacy singleton until a one-way switch makes its
+per-mint BUFFER the only active one.
 Modular market stats are opt-in per mint. Permissionless Prop AMM execution and
 optional buy-side liquidity refill are implemented in
 [`MODULAR_PROP_AMM.md`](MODULAR_PROP_AMM.md). Modular BUFFER worker
@@ -177,6 +178,7 @@ repeat creation; shared accounts are not implicitly initialized or overwritten b
 | `update_vault_config` | Boss-only replacement of withdrawal destination and refill target with the creation rules; kind and instance unchanged. Also applies to BUFFER vaults, whose destination is the boss at initialization. |
 | `update_prop_amm_config` | Boss-only replacement of curve, cadence, epoch and wall settings with the creation limits; the bound pair and accumulated pressure are kept. |
 | `unset_managed_token_market_stats` | Boss-only reset of the MarketStats selection to default (reporting disabled); the MarketStats account is untouched. |
+| `switch_onyc_buffer_to_per_mint` | Boss-only, one-way: accrues the ONyc legacy singleton BUFFER up to now, has the initialized per-mint BUFFER take over its settings and watermark from the current supply, and makes it the only active ONyc BUFFER. |
 | `burn_managed_token_for_nav_increase` | Boss-only burn of per-mint BUFFER reserve tokens that keeps the canonical NAV after removing an asset adjustment; accrues first and refreshes market stats. |
 | `refresh_managed_token_market_stats` | Permissionless recomputation of the selected MarketStats (and the ONyc legacy singleton) from current supply and the canonical USD Pricer, between trades. |
 | `set_managed_token_mint_limits` | Boss-only per-mint `max_supply` / `max_mint_amount` for program mints; zero disables a limit and a nonzero max supply must cover current supply. ONyc combines them with the global `State` limits (stricter nonzero wins). |
@@ -313,10 +315,11 @@ starts enabled. All three vault destinations initially point to the current boss
 Initialization creates no ATAs, moves no funds, and does not accrue or mint.
 
 The legacy `initialize_buffer` and `settle_buffer` still use the singleton
-`["buffer_state"]`, `State::onyc_mint`, and legacy vaults. Modular instructions
-never touch the singleton: every managed mint, ONyc included, accrues only its
-initialized per-mint BUFFER in modular execution and standalone settlement, and
-there is no cutover between the two. Ordinary mint
+`["buffer_state"]`, `State::onyc_mint`, and legacy vaults. Exactly one ONyc BUFFER
+is active: the legacy singleton until the boss's one-way
+`switch_onyc_buffer_to_per_mint`, accrued then by modular ONyc execution as well,
+and the per-mint BUFFER afterwards (see MODULAR_TAKE_OFFER.md, "ONyc: one active
+BUFFER and the one-way switch"). Ordinary mint
 and burn paths need explicit supply reconciliation: SPL mints do not provide
 the EVM ManagedToken supply-change callback. Issuance limits therefore live in
 ManagedTokenConfig and constrain program-controlled paths only.
@@ -362,9 +365,9 @@ references. Existing clients and accounts for those four paths remain valid.
 Later compatibility work must define how legacy instructions resolve the shared
 model while keeping existing account lists, custody, and pending claims valid.
 The target ATA representation above is not permission to move existing vault funds.
-Legacy and modular records are independent rather than mirrored: ONyc's modular
-BUFFER has its own baseline, policy, clock and vaults, valued at the canonical
-Pricer, while the legacy singleton keeps using `State::main_offer`. Liquidity is scoped
+ONyc's per-mint BUFFER has its own baseline, policy, clock and vaults, valued at
+the canonical Pricer, and takes over the legacy singleton's policy and watermark at
+the one-way switch. Liquidity is scoped
 to the vault selected by the offer; old redemption liquidity is not automatically
 included. Modular Prop AMM state is independent of the legacy pressure tracker.
 Permissionless NAV uses the existing intermediary PDA and its mint-specific ATAs.

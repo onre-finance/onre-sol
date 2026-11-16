@@ -110,6 +110,11 @@ impl Fixture {
             let mut a = svm.get_account(&legacy_mint).unwrap();
             a.data[4..36].copy_from_slice(authority.as_ref());
             svm.set_account(legacy_mint, a).unwrap();
+            // Most ONyc tests exercise its per-mint BUFFER, which is active only after
+            // the one-way switch; tests of the switch itself reset the flag.
+            edit::<GlobalState>(&mut svm, find_state_pda().0, |s| {
+                s.onyc_per_mint_buffer_active = true
+            });
             legacy_mint
         } else if token_2022 {
             create_mint_2022(&mut svm, &boss, 9, &authority)
@@ -446,10 +451,45 @@ impl Fixture {
         }
     }
 
+    /// ONyc before the one-way switch accrues its legacy singleton BUFFER.
+    fn onyc_legacy_buffer(&self) -> bool {
+        let state: GlobalState = read(&self.svm, find_state_pda().0);
+        state.onyc_mint == self.mint && !state.onyc_per_mint_buffer_active
+    }
+    fn set_onyc_per_mint_buffer_active(&mut self, active: bool) {
+        edit::<GlobalState>(&mut self.svm, find_state_pda().0, |s| {
+            s.onyc_per_mint_buffer_active = active
+        });
+    }
+    /// Creates the legacy singleton BUFFER, which only exists before the switch,
+    /// then restores the switch flag.
+    fn initialize_legacy_buffer(&mut self) {
+        let active = !self.onyc_legacy_buffer();
+        self.set_onyc_per_mint_buffer_active(false);
+        let instruction = build_initialize_buffer_ix(
+            &self.boss.pubkey(),
+            &find_offer_pda(&self.asset, &self.mint).0,
+            &self.mint,
+        );
+        send_tx(&mut self.svm, &[instruction], &[&self.boss]).unwrap();
+        self.set_onyc_per_mint_buffer_active(active);
+    }
+    /// The active BUFFER state: legacy singleton for ONyc before the switch.
     fn buffer(&self) -> Pubkey {
+        if self.onyc_legacy_buffer() {
+            return find_buffer_state_pda().0;
+        }
         pda(&[b"buffer", self.mint.as_ref()])
     }
+    /// Owners of the active BUFFER's reserve, management and performance vaults.
     fn buffer_vaults(&self) -> [Pubkey; 3] {
+        if self.onyc_legacy_buffer() {
+            return [
+                find_reserve_vault_authority_pda().0,
+                find_management_fee_vault_pda().0,
+                find_performance_fee_vault_pda().0,
+            ];
+        }
         [
             pda(&[b"buffer_reserve", self.mint.as_ref()]),
             pda(&[b"buffer_management", self.mint.as_ref()]),
@@ -957,20 +997,11 @@ fn per_mint_buffer_accrues_before_execution_and_tracks_actual_supply() {
 }
 
 #[test]
-fn onyc_modular_and_legacy_buffers_accrue_independently() {
+fn after_the_switch_onyc_accrues_only_its_per_mint_buffer() {
+    // The fixture's ONyc already switched to its per-mint BUFFER.
     let mut f = Fixture::new(true, false);
     f.initialize_legacy_main_offer();
-    let legacy_offer = find_offer_pda(&f.asset, &f.mint).0;
-    send_tx(
-        &mut f.svm,
-        &[build_initialize_buffer_ix(
-            &f.boss.pubkey(),
-            &legacy_offer,
-            &f.mint,
-        )],
-        &[&f.boss],
-    )
-    .unwrap();
+    f.initialize_legacy_buffer();
     f.initialize_managed_buffer();
     let legacy = find_buffer_state_pda().0;
     let legacy_before = f.svm.get_account(&legacy).unwrap().data;
@@ -991,7 +1022,7 @@ fn onyc_modular_and_legacy_buffers_accrue_independently() {
         99_000_000
     );
     assert_eq!(f.svm.get_account(&legacy).unwrap().data, legacy_before);
-    // Legacy execution settles only the legacy singleton; the per-mint state is untouched.
+    // Legacy execution still trades but accrues neither BUFFER after the switch.
     let per_mint_before = f.svm.get_account(&buffer).unwrap().data;
     let authority = find_offer_vault_authority_pda().0;
     create_token_account(&mut f.svm, &f.asset, &authority, 0);
@@ -1007,8 +1038,7 @@ fn onyc_modular_and_legacy_buffers_accrue_independently() {
         &TOKEN_PROGRAM_ID,
     );
     send_tx(&mut f.svm, &[instruction], &[&f.user]).unwrap();
-    let legacy_after: onreapp::instructions::BufferState = read(&f.svm, legacy);
-    assert_eq!(legacy_after.previous_supply, 4_079_000_000);
+    assert_eq!(f.svm.get_account(&legacy).unwrap().data, legacy_before);
     assert_eq!(f.svm.get_account(&buffer).unwrap().data, per_mint_before);
 }
 
@@ -1264,16 +1294,7 @@ fn onyc_uses_only_selected_liquidity_and_leaves_the_legacy_buffer_untouched() {
         let mut f = Fixture::new(true, false);
         f.initialize_legacy_main_offer();
         f.seed_tokens(f.mint, f.user.pubkey(), 1_000_000_000);
-        send_tx(
-            &mut f.svm,
-            &[build_initialize_buffer_ix(
-                &f.boss.pubkey(),
-                &find_offer_pda(&f.asset, &f.mint).0,
-                &f.mint,
-            )],
-            &[&f.boss],
-        )
-        .unwrap();
+        f.initialize_legacy_buffer();
         f.create_route(
             OfferDirection::ManagedToAsset,
             OfferFlow::Permissioned,

@@ -246,6 +246,12 @@ pub mod onreapp {
         managed_buffer::set_managed_token_buffer_settings(ctx, settings)
     }
 
+    /// Boss-only, one-way switch of ONyc's active BUFFER from the legacy singleton to
+    /// its per-mint BUFFER; afterwards only the per-mint BUFFER accrues ONyc.
+    pub fn switch_onyc_buffer_to_per_mint(ctx: Context<SwitchOnycBufferToPerMint>) -> Result<()> {
+        managed_buffer::switch_onyc_buffer_to_per_mint(ctx)
+    }
+
     /// Boss-only burn of per-mint BUFFER reserve tokens that keeps the canonical
     /// NAV after removing `asset_adjustment_amount` from the asset base.
     pub fn burn_managed_token_for_nav_increase(

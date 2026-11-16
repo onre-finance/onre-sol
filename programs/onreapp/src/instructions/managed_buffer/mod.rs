@@ -3,10 +3,12 @@ mod accounts;
 mod burn_for_nav;
 mod set_settings;
 mod settle;
+mod switch_onyc_buffer;
 pub use accounts::*;
 pub use burn_for_nav::*;
 pub use set_settings::*;
 pub use settle::*;
+pub use switch_onyc_buffer::*;
 
 use crate::{
     instructions::{buffer::modular_accrual, market_info::refresh_modular_market_stats},
@@ -27,6 +29,12 @@ fn accrue(program_id: &Pubkey, a: &mut ManagedBufferAccounts, bump: u8, now: i64
     require!(
         !a.buffer_state.data_is_empty(),
         OnreError::InvalidBufferStateAccount
+    );
+    // ONyc settles its per-mint BUFFER only after the one-way switch; before it,
+    // the legacy BUFFER instructions settle the active singleton.
+    require!(
+        !a.context().uses_onyc_legacy_buffer(),
+        OnreError::PerMintBufferInactive
     );
     // Validate configured mint control even when this accrual mints nothing.
     a.context().minter(bump)?;

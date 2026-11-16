@@ -309,17 +309,7 @@ fn managed_to_asset_burns_from_the_intermediary_and_routes_liquidity_output_back
 fn usdc_and_usdg_share_the_onyc_per_mint_buffer_independent_of_legacy_execution() {
     let mut f = Fixture::new(true, false);
     f.initialize_legacy_main_offer();
-    let main_offer = find_offer_pda(&f.asset, &f.mint).0;
-    send_tx(
-        &mut f.svm,
-        &[build_initialize_buffer_ix(
-            &f.boss.pubkey(),
-            &main_offer,
-            &f.mint,
-        )],
-        &[&f.boss],
-    )
-    .unwrap();
+    f.initialize_legacy_buffer();
     f.initialize_managed_buffer();
     let usdc = f.asset;
     permissionless_buy(&mut f);
@@ -349,8 +339,9 @@ fn usdc_and_usdg_share_the_onyc_per_mint_buffer_independent_of_legacy_execution(
         99_000_000
     );
 
-    // Legacy execution settles only the legacy singleton BUFFER.
+    // After the one-way switch, legacy execution accrues neither BUFFER.
     let per_mint_before = f.svm.get_account(&buffer).unwrap().data;
+    let legacy_before = f.svm.get_account(&find_buffer_state_pda().0).unwrap().data;
     let vault = find_offer_vault_authority_pda().0;
     f.seed_tokens(usdc, vault, 0);
     f.seed_tokens(f.mint, vault, 0);
@@ -365,8 +356,10 @@ fn usdc_and_usdg_share_the_onyc_per_mint_buffer_independent_of_legacy_execution(
         &f.token_program,
     );
     send_tx(&mut f.svm, &[instruction], &[&f.user]).unwrap();
-    let legacy = read::<onreapp::instructions::BufferState>(&f.svm, find_buffer_state_pda().0);
-    assert_eq!(legacy.previous_supply, 4_079_000_000);
+    assert_eq!(
+        f.svm.get_account(&find_buffer_state_pda().0).unwrap().data,
+        legacy_before
+    );
     assert_eq!(f.svm.get_account(&buffer).unwrap().data, per_mint_before);
     assert_eq!(
         f.balance(f.mint, f.buffer_vaults()[0], f.token_program),

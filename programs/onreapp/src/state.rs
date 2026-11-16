@@ -33,8 +33,29 @@ pub struct State {
     pub max_mint_amount: u64,
     /// Main offer account used for market operations and price discovery
     pub main_offer: Pubkey,
+    /// One-way ONyc BUFFER switch: false keeps the legacy singleton BUFFER active (also
+    /// accrued by modular ONyc execution); true makes the per-mint BUFFER the only
+    /// active one. Set by `switch_onyc_buffer_to_per_mint`; occupies the first
+    /// formerly reserved byte, zero on every deployment.
+    pub onyc_per_mint_buffer_active: bool,
     /// Reserved space for future program state extensions
-    pub reserved: [u8; 56],
+    pub reserved: [u8; 55],
+}
+
+impl State {
+    /// Whether ONyc BUFFER accrual uses the legacy singleton.
+    pub(crate) fn onyc_legacy_buffer_active(&self) -> bool {
+        !self.onyc_per_mint_buffer_active
+    }
+
+    /// Legacy-only BUFFER operations are rejected once ONyc switched to per-mint.
+    pub(crate) fn require_onyc_legacy_buffer_active(&self) -> Result<()> {
+        require!(
+            self.onyc_legacy_buffer_active(),
+            crate::OnreError::LegacyBufferRetired
+        );
+        Ok(())
+    }
 }
 
 /// Program-derived authority for permissionless token routing operations

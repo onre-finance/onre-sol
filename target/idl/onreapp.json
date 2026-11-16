@@ -10788,6 +10788,146 @@
       "args": []
     },
     {
+      "name": "switch_onyc_buffer_to_per_mint",
+      "docs": [
+        "Boss-only, one-way switch of ONyc's active BUFFER from the legacy singleton to",
+        "its per-mint BUFFER; afterwards only the per-mint BUFFER accrues ONyc."
+      ],
+      "discriminator": [
+        101,
+        76,
+        82,
+        107,
+        123,
+        235,
+        14,
+        86
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "managed_token",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "onyc_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "onyc_mint",
+          "writable": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "mint_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint_multisig",
+          "optional": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "buffer_pricer",
+          "docs": [
+            "Canonical USD instance-zero ONyc Pricer valuing the final legacy accrual."
+          ]
+        },
+        {
+          "name": "legacy_buffer_state",
+          "writable": true
+        },
+        {
+          "name": "legacy_reserve_token",
+          "writable": true
+        },
+        {
+          "name": "legacy_management_token",
+          "writable": true
+        },
+        {
+          "name": "legacy_performance_token",
+          "writable": true
+        },
+        {
+          "name": "buffer_state",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "take_offer",
       "docs": [
         "Execute an offer using reusable model accounts.",
@@ -15125,6 +15265,19 @@
       ]
     },
     {
+      "name": "OnycBufferSwitchedToPerMintEvent",
+      "discriminator": [
+        121,
+        213,
+        211,
+        15,
+        233,
+        153,
+        221,
+        208
+      ]
+    },
+    {
       "name": "OnycTokensMintedEvent",
       "discriminator": [
         241,
@@ -16262,6 +16415,16 @@
       "code": 6151,
       "name": "MarketStatsNotSelected",
       "msg": "The managed token has no MarketStats selected to refresh"
+    },
+    {
+      "code": 6152,
+      "name": "LegacyBufferRetired",
+      "msg": "ONyc uses the per-mint BUFFER; the legacy BUFFER is retired"
+    },
+    {
+      "code": 6153,
+      "name": "PerMintBufferInactive",
+      "msg": "ONyc uses the legacy BUFFER until the one-way switch to per-mint"
     }
   ],
   "types": [
@@ -18906,6 +19069,57 @@
       }
     },
     {
+      "name": "OnycBufferSwitchedToPerMintEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "legacy_buffer_state",
+            "type": "pubkey"
+          },
+          {
+            "name": "buffer_state",
+            "type": "pubkey"
+          },
+          {
+            "name": "supply",
+            "docs": [
+              "Supply both engines agree on at the switch; the per-mint BUFFER starts here."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "gross_apr",
+            "type": "u64"
+          },
+          {
+            "name": "management_fee_basis_points",
+            "type": "u16"
+          },
+          {
+            "name": "performance_fee_basis_points",
+            "type": "u16"
+          },
+          {
+            "name": "performance_fee_high_watermark",
+            "type": "u64"
+          },
+          {
+            "name": "performance_fee_high_watermark_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "OnycTokensMintedEvent",
       "docs": [
         "Event emitted when ONyc tokens are successfully minted to the boss account",
@@ -20379,6 +20593,16 @@
             "type": "pubkey"
           },
           {
+            "name": "onyc_per_mint_buffer_active",
+            "docs": [
+              "One-way ONyc BUFFER switch: false keeps the legacy singleton BUFFER active (also",
+              "accrued by modular ONyc execution); true makes the per-mint BUFFER the only",
+              "active one. Set by `switch_onyc_buffer_to_per_mint`; occupies the first",
+              "formerly reserved byte, zero on every deployment."
+            ],
+            "type": "bool"
+          },
+          {
             "name": "reserved",
             "docs": [
               "Reserved space for future program state extensions"
@@ -20386,7 +20610,7 @@
             "type": {
               "array": [
                 "u8",
-                56
+                55
               ]
             }
           }

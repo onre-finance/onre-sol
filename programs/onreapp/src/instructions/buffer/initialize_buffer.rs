@@ -94,6 +94,7 @@ pub struct InitializeBuffer<'info> {
 }
 
 pub fn initialize_buffer(ctx: Context<InitializeBuffer>) -> Result<()> {
+    ctx.accounts.state.require_onyc_legacy_buffer_active()?;
     let buffer_state = &mut ctx.accounts.buffer_state;
     let now = Clock::get()?.unix_timestamp;
     let main_offer = ctx.accounts.offer.key();

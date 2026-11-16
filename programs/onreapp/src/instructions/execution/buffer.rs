@@ -7,6 +7,7 @@ pub use modular_accrual::ManagedTokenBufferAccruedEvent;
 
 fn context<'a, 'info>(a: &'a TakeOffer<'info>) -> BufferContext<'a, 'info> {
     BufferContext {
+        state: &a.state,
         managed_mint: a.managed_mint(),
         managed_program: a.managed_program(),
         buffer_state: &a.buffer.buffer_state,

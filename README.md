@@ -63,9 +63,9 @@ Sources pay output inventory; destinations receive net input. NAV buys can mint
 without a source and route input to Proceeds without a destination. Sells require
 an asset source and burn managed input only when no destination is configured.
 Both roles accept modular Liquidity, legacy ConfigurableVault or redemption custody.
-Every managed mint, ONyc included, uses its per-mint BUFFER if initialized, valued
-at its canonical USD Pricer. ONyc's modular BUFFER accrues independently of the
-legacy singleton BUFFER, which V2 and other legacy paths keep using unchanged.
+Every managed mint uses its per-mint BUFFER if initialized, valued at its canonical
+USD Pricer. ONyc has exactly one active BUFFER: the legacy singleton (also accrued by
+modular execution) until a boss's one-way switch, then its per-mint BUFFER.
 Modular market stats are opt-in per mint. Standalone settlement/settings and
 market-stats selection are documented in
 [MODULAR_TAKE_OFFER.md](docs/MODULAR_TAKE_OFFER.md#per-mint-buffer).

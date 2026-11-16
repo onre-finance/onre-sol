@@ -328,7 +328,8 @@ pub(crate) fn execute_take_offer_permissionless<'info>(
         fee_basis_points_override.unwrap_or(offer.fee_basis_points),
     )?;
     let buffer_is_initialized = if let Some(accounts) = buffer_accounts {
-        accounts.check_is_initialized(program_id)?
+        // After the one-way ONyc BUFFER switch, legacy trades no longer accrue.
+        accounts.check_is_initialized(program_id)? && state.onyc_legacy_buffer_active()
     } else {
         false
     };

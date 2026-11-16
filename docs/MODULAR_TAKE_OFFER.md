@@ -172,8 +172,10 @@ fee, output, price, actual liquidity refill, remaining proceeds, output inventor
 
 ## Per-mint BUFFER
 
-Every managed mint, ONyc included, uses its own `["buffer", managed_mint]` state.
-`buffer_state` is mandatory at that canonical address even when uninitialized;
+Every managed mint uses its own `["buffer", managed_mint]` state, except ONyc
+before its one-way switch (below), whose active BUFFER is the legacy
+`["buffer_state"]` singleton. `buffer_state` is mandatory at the active BUFFER's
+canonical address even when uninitialized;
 supplying an empty substitute cannot bypass an initialized BUFFER. When it is
 initialized, `buffer_pricer` must be the enabled canonical USD instance-zero
 Pricer, and the three BUFFER token accounts must be the ATAs of the vaults
@@ -183,14 +185,32 @@ the existing gross-accrual and fee-split math and emits
 `ManagedTokenBufferAccruedEvent` with mint, state, canonical Pricer, mint splits,
 old/new supply, watermark, and timestamp.
 
-The modular ONyc BUFFER is independent of the legacy `["buffer_state"]` singleton.
-Legacy V2 trades, `settle_buffer`, and other legacy BUFFER-aware paths keep
-accruing the legacy state into the legacy vaults from `State::main_offer`; modular
-execution and the instructions below accrue only the per-mint state into its own
-vaults from the canonical Pricer. Each engine keeps its own policy, supply
-baseline, watermark, and clock. Both read the actual mint supply, so tokens minted
-by one engine join the other's baseline at its next settlement. Configure both
-policies with that in mind; there is no cutover or retirement step.
+### ONyc: one active BUFFER and the one-way switch
+
+ONyc has two BUFFER engines, the legacy singleton and its per-mint BUFFER, and both
+would accrue the same supply. Exactly one is active, selected by the one-way
+`State::onyc_per_mint_buffer_active` flag (zero, i.e. legacy, on every deployment):
+
+- **Before the switch** the legacy singleton is active. Legacy instructions accrue
+  it as before (valued at `State::main_offer`). Modular ONyc `take_offer` accrues it
+  too: `buffer_state` and the three BUFFER token accounts must then be the legacy
+  singleton and its reserve, management-fee and performance-fee vault ATAs, valued
+  at the canonical Pricer and minted through the configured program minter under
+  the effective issuance limits. Every ONyc supply change is therefore accrued
+  exactly. Per-mint standalone settlement, settings and burn-for-NAV fail with
+  `PerMintBufferInactive`.
+- **`switch_onyc_buffer_to_per_mint`** (boss only, blocked by the kill switch)
+  accrues the legacy singleton up to now, has the initialized per-mint BUFFER take
+  over its gross APR, fee rates and high-water mark from the current supply and
+  timestamp, and sets the flag. It cannot be undone. Vault balances stay in the
+  legacy vaults and are moved manually. `OnycBufferSwitchedToPerMintEvent` records
+  the hand-over.
+- **After the switch** only the per-mint BUFFER accrues. Legacy `settle_buffer`,
+  `set_buffer_gross_apr`, `set_buffer_fee_config`, `burn_for_nav_increase` and
+  `initialize_buffer` fail with `LegacyBufferRetired`; legacy reserve deposits and
+  withdrawals keep working. Legacy trades still execute but no longer accrue: their
+  mints are under-accrued and their burns over-accrued for the interval until the
+  next per-mint accrual.
 
 ### Standalone settlement and policy
 
@@ -229,7 +249,8 @@ current canonical NAV: `total_assets = floor(circulating × NAV / 1e9)`,
 adjustment, an adjustment above total assets, a zero burn and an insufficient
 reserve are rejected; the kill switch blocks it. The BUFFER baseline and market
 stats follow the burn, and `ManagedTokenBurnedForNavEvent` records it. For ONyc it
-burns the per-mint reserve; the legacy instruction still burns the singleton reserve.
+is available only after the one-way switch; before it, the legacy
+`burn_for_nav_increase` burns the singleton reserve.
 
 ## Market stats
 
