@@ -61,6 +61,7 @@ pub struct SetBufferGrossYield<'info> {
 }
 
 pub fn set_buffer_gross_apr(ctx: Context<SetBufferGrossYield>, gross_yield: u64) -> Result<()> {
+    ctx.accounts.state.require_onyc_legacy_buffer_active()?;
     require!(
         gross_yield <= MAX_BUFFER_GROSS_APR,
         crate::OnreError::InvalidAPR

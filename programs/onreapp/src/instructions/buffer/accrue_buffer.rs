@@ -43,14 +43,64 @@ pub(crate) fn accrue_buffer<'info>(
     token_program: &Interface<'info, TokenInterface>,
     now: i64,
 ) -> Result<BufferAccrualResult> {
+    let (active_vector, current_nav) = get_active_vector_and_current_price(offer, now as u64)?;
+    let bump = [mint_authority_bump];
+    let signer: &[&[u8]] = &[seeds::MINT_AUTHORITY, &bump];
+    accrue_buffer_core(
+        buffer_state,
+        active_vector.apr,
+        current_nav,
+        offer.token_in_mint,
+        onyc_mint,
+        reserve_vault_onyc_account,
+        management_fee_vault_onyc_account,
+        performance_fee_vault_onyc_account,
+        token_program,
+        state.max_supply,
+        state.max_mint_amount,
+        now,
+        &mut |destination, amount| {
+            mint_tokens(
+                token_program,
+                onyc_mint,
+                destination,
+                &mint_authority,
+                &[signer],
+                amount,
+                state.max_supply,
+                state.max_mint_amount,
+            )
+        },
+    )
+}
+
+/// Legacy singleton accrual with the APR, NAV and minting supplied by the caller:
+/// legacy instructions use the main offer and direct PDA minting; modular ONyc
+/// execution, before the one-way switch, uses the canonical Pricer and the
+/// configured program minter.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn accrue_buffer_core<'info>(
+    buffer_state: &mut BufferState,
+    active_apr: u64,
+    current_nav: u64,
+    event_token_in_mint: Pubkey,
+    onyc_mint: &InterfaceAccount<'info, Mint>,
+    reserve_vault_onyc_account: AccountInfo<'info>,
+    management_fee_vault_onyc_account: AccountInfo<'info>,
+    performance_fee_vault_onyc_account: AccountInfo<'info>,
+    token_program: &Interface<'info, TokenInterface>,
+    max_supply: u64,
+    max_mint_amount: u64,
+    now: i64,
+    mint: &mut dyn FnMut(&AccountInfo<'info>, u64) -> Result<()>,
+) -> Result<BufferAccrualResult> {
     require!(
         now >= buffer_state.last_accrual_timestamp,
         crate::OnreError::InvalidTimestamp
     );
 
-    let (active_vector, current_nav) = get_active_vector_and_current_price(offer, now as u64)?;
     let seconds_elapsed = (now - buffer_state.last_accrual_timestamp) as u64;
-    let apr_delta = buffer_state.gross_apr.saturating_sub(active_vector.apr);
+    let apr_delta = buffer_state.gross_apr.saturating_sub(active_apr);
     let old_previous_supply = buffer_state.previous_supply;
     let current_supply_before_mint = onyc_mint.supply;
     let reserve_vault_balance_before_mint =
@@ -77,7 +127,7 @@ pub(crate) fn accrue_buffer<'info>(
             post_accrual_supply: buffer_state.previous_supply,
             reserve_vault_balance_after_accrual: reserve_vault_balance_before_mint,
         };
-        emit_buffer_accrued_event(offer, onyc_mint, &result);
+        emit_buffer_accrued_event(event_token_in_mint, onyc_mint, &result);
 
         return Ok(result);
     }
@@ -85,7 +135,7 @@ pub(crate) fn accrue_buffer<'info>(
     let buffer_mint_amount = calculate_gross_buffer_accrual(
         old_previous_supply,
         buffer_state.gross_apr,
-        active_vector.apr,
+        active_apr,
         seconds_elapsed,
     )?;
     let fee_split = calculate_buffer_fee_split(
@@ -99,20 +149,13 @@ pub(crate) fn accrue_buffer<'info>(
     )?;
 
     if buffer_mint_amount > 0 {
-        validate_max_supply(
-            current_supply_before_mint,
-            buffer_mint_amount,
-            state.max_supply,
-        )?;
-        if state.max_mint_amount > 0 {
+        validate_max_supply(current_supply_before_mint, buffer_mint_amount, max_supply)?;
+        if max_mint_amount > 0 {
             require!(
-                buffer_mint_amount <= state.max_mint_amount,
+                buffer_mint_amount <= max_mint_amount,
                 crate::OnreError::MaxMintAmountExceeded
             );
         }
-
-        let mint_authority_seeds = &[seeds::MINT_AUTHORITY, &[mint_authority_bump]];
-        let mint_authority_signer_seeds = &[mint_authority_seeds.as_slice()];
 
         for (destination, amount) in [
             (&reserve_vault_onyc_account, fee_split.reserve_mint_amount),
@@ -126,16 +169,7 @@ pub(crate) fn accrue_buffer<'info>(
             ),
         ] {
             if amount > 0 {
-                mint_tokens(
-                    token_program,
-                    onyc_mint,
-                    destination,
-                    &mint_authority,
-                    mint_authority_signer_seeds,
-                    amount,
-                    state.max_supply,
-                    state.max_mint_amount,
-                )?;
+                mint(destination, amount)?;
             }
         }
     }
@@ -166,7 +200,7 @@ pub(crate) fn accrue_buffer<'info>(
         post_accrual_supply,
         reserve_vault_balance_after_accrual,
     };
-    emit_buffer_accrued_event(offer, onyc_mint, &result);
+    emit_buffer_accrued_event(event_token_in_mint, onyc_mint, &result);
 
     Ok(result)
 }
@@ -239,12 +273,12 @@ pub(crate) fn store_buffer_post_supply(
 }
 
 fn emit_buffer_accrued_event(
-    offer: &Offer,
+    token_in_mint: Pubkey,
     onyc_mint: &InterfaceAccount<'_, Mint>,
     result: &BufferAccrualResult,
 ) {
     emit!(BufferAccruedEvent {
-        token_in_mint: offer.token_in_mint,
+        token_in_mint,
         onyc_mint: onyc_mint.key(),
         seconds_elapsed: result.seconds_elapsed,
         apr_delta: result.apr_delta,

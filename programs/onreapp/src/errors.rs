@@ -306,4 +306,10 @@ pub enum OnreError {
     MaxSupplyBelowCurrentSupply,
     #[msg("The managed token has no MarketStats selected to refresh")]
     MarketStatsNotSelected,
+    #[msg("ONyc uses the per-mint BUFFER; the legacy BUFFER is retired")]
+    LegacyBufferRetired,
+    #[msg("ONyc uses the legacy BUFFER until the one-way switch to per-mint")]
+    PerMintBufferInactive,
+    #[msg("ONyc before the one-way BUFFER switch requires the legacy BUFFER accounts")]
+    LegacyBufferAccountsRequired,
 }

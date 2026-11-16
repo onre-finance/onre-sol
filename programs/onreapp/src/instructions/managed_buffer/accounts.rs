@@ -69,6 +69,7 @@ pub struct ManagedBufferAccounts<'info> {
 impl<'info> ManagedBufferAccounts<'info> {
     pub(super) fn context(&self) -> BufferContext<'_, 'info> {
         BufferContext {
+            state: &self.state,
             managed_mint: &self.managed_mint,
             managed_program: &self.token_program,
             buffer_state: &self.buffer_state,

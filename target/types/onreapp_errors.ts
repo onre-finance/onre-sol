@@ -151,7 +151,10 @@ export const OnreappErrorCode = {
   UnexpectedMintMultisig: 6148,
   InvalidMintMultisig: 6149,
   MaxSupplyBelowCurrentSupply: 6150,
-  MarketStatsNotSelected: 6151
+  MarketStatsNotSelected: 6151,
+  LegacyBufferRetired: 6152,
+  PerMintBufferInactive: 6153,
+  LegacyBufferAccountsRequired: 6154
 };
 
 export type OnreappErrorName = keyof typeof OnreappErrorCode;

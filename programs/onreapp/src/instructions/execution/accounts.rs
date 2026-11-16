@@ -136,8 +136,9 @@ pub struct TakeOffer<'info> {
 /// Contiguous `TakeOffer` accounts, flattened in place on the wire.
 #[derive(Accounts)]
 pub struct TakeOfferBufferAccounts<'info> {
-    /// CHECK: Always required at the canonical `["buffer", managed_mint]` address,
-    /// ONyc included. A substitute cannot bypass initialized accrual.
+    /// CHECK: Always the canonical `["buffer", managed_mint]` address, ONyc included;
+    /// used whenever it is the active BUFFER. A substitute cannot bypass initialized
+    /// accrual. ONyc before the one-way switch accrues the legacy accounts below.
     #[account(mut)]
     pub buffer_state: UncheckedAccount<'info>,
 
@@ -177,6 +178,25 @@ pub struct TakeOfferBufferAccounts<'info> {
     /// CHECK: Required exactly when `ManagedTokenConfig::mint_multisig` is set and must
     /// equal it; omitted for direct PDA minting. See `utils::program_minter`.
     pub mint_multisig: Option<UncheckedAccount<'info>>,
+
+    /// CHECK: Legacy ONyc `["buffer_state"]` singleton. Required for ONyc before the
+    /// one-way BUFFER switch, which it then accrues; ignored afterwards and for other
+    /// mints. Clients can supply it alongside the per-mint BUFFER accounts at all
+    /// times, so the switch needs no account changes.
+    #[account(mut)]
+    pub legacy_buffer_state: Option<UncheckedAccount<'info>>,
+
+    /// CHECK: Legacy reserve vault's ONyc ATA; same rule as `legacy_buffer_state`.
+    #[account(mut)]
+    pub legacy_buffer_reserve_token: Option<UncheckedAccount<'info>>,
+
+    /// CHECK: Legacy management-fee vault's ONyc ATA; same rule as `legacy_buffer_state`.
+    #[account(mut)]
+    pub legacy_buffer_management_token: Option<UncheckedAccount<'info>>,
+
+    /// CHECK: Legacy performance-fee vault's ONyc ATA; same rule as `legacy_buffer_state`.
+    #[account(mut)]
+    pub legacy_buffer_performance_token: Option<UncheckedAccount<'info>>,
 }
 
 /// Contiguous `TakeOffer` accounts, flattened in place on the wire.

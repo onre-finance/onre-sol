@@ -395,16 +395,7 @@ fn buy_inventory_from_a_legacy_fee_vault_excludes_per_mint_buffer_accrual() {
     // The legacy management-fee vault holds pre-existing inventory. Modular ONyc
     // accrues only into its per-mint BUFFER vaults, never into this legacy vault.
     f.initialize_legacy_main_offer();
-    send_tx(
-        &mut f.svm,
-        &[build_initialize_buffer_ix(
-            &f.boss.pubkey(),
-            &find_offer_pda(&f.asset, &f.mint).0,
-            &f.mint,
-        )],
-        &[&f.boss],
-    )
-    .unwrap();
+    f.initialize_legacy_buffer();
     let legacy_buffer = find_buffer_state_pda().0;
     let legacy_before = f.svm.get_account(&legacy_buffer).unwrap().data;
     let source = find_management_fee_vault_pda().0;

@@ -120,13 +120,20 @@ fn state_deserializes_legacy_master_layout() {
     assert_eq!(state.max_mint_amount, 0);
     assert_eq!(state.main_offer, Pubkey::default());
 
-    // The current State's reserve begins after max_mint_amount (8 bytes) and
-    // main_offer (32 bytes) in the original master's 96-byte reserve.
-    legacy.reserved[40..].fill(0xa5);
+    // max_mint_amount (8 bytes), main_offer (32 bytes) and the one-way ONyc BUFFER
+    // switch flag (1 byte) occupy the start of the original master's 96-byte
+    // reserve. Deployed reserves are zero, so the flag reads as legacy active.
+    assert!(!state.onyc_per_mint_buffer_active);
+    legacy.reserved[41..].fill(0xa5);
     let data = account_bytes(State::DISCRIMINATOR, &legacy);
     let state = State::try_deserialize(&mut data.as_slice()).unwrap();
-    assert_eq!(state.reserved, [0xa5; 56]);
+    assert!(!state.onyc_per_mint_buffer_active);
+    assert_eq!(state.reserved, [0xa5; 55]);
     assert_eq!(account_bytes(State::DISCRIMINATOR, &state), data);
+    legacy.reserved[40] = 1;
+    let data = account_bytes(State::DISCRIMINATOR, &legacy);
+    let state = State::try_deserialize(&mut data.as_slice()).unwrap();
+    assert!(state.onyc_per_mint_buffer_active);
 }
 
 #[test]

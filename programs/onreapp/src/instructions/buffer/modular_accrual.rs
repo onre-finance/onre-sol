@@ -1,9 +1,15 @@
 use crate::{
+    constants::seeds,
     instructions::{
-        buffer::{calculate_buffer_fee_split, calculate_gross_buffer_accrual},
+        buffer::{
+            accrue_buffer::{accrue_buffer_core, set_buffer_baseline_after_supply_change},
+            calculate_buffer_fee_split, calculate_gross_buffer_accrual,
+            validate_buffer_onyc_vault_accounts, BufferState,
+        },
         market_info::MarketValuation,
     },
     model::{seeds as model_seeds, BufferSettings, ManagedTokenBufferState, Pricer},
+    state::State,
     utils::{
         load_pda_account, managed_token::validate_canonical_usd_pricer,
         pricing::get_active_vector_and_current_price, program_minter::ProgramMinter,
@@ -18,9 +24,11 @@ use anchor_spl::{
 };
 
 /// Shared account view for modular trades and standalone BUFFER operations.
-/// Every managed mint, ONyc included, uses its own `["buffer", mint]` state,
-/// independent of the legacy singleton BUFFER.
+/// Every managed mint uses its own `["buffer", mint]` state, except ONyc before the
+/// one-way switch, whose active BUFFER is the legacy `["buffer_state"]` singleton
+/// with its legacy vault token accounts in the same account slots.
 pub(crate) struct BufferContext<'a, 'info> {
+    pub state: &'a State,
     pub managed_mint: &'a InterfaceAccount<'info, Mint>,
     pub managed_program: &'a Interface<'info, TokenInterface>,
     pub buffer_state: &'a UncheckedAccount<'info>,
@@ -35,6 +43,11 @@ pub(crate) struct BufferContext<'a, 'info> {
 }
 
 impl<'a, 'info> BufferContext<'a, 'info> {
+    /// Whether this ONyc context accrues the legacy singleton (before the switch).
+    pub(crate) fn uses_onyc_legacy_buffer(&self) -> bool {
+        self.managed_mint.key() == self.state.onyc_mint && self.state.onyc_legacy_buffer_active()
+    }
+
     /// Program minting path for the managed mint in its configured mode.
     pub(crate) fn minter(&self, authority_bump: u8) -> Result<ProgramMinter<'a, 'info>> {
         ProgramMinter::resolve(
@@ -72,6 +85,9 @@ pub(crate) fn accrue(
     max_supply: u64,
     max_mint: u64,
 ) -> Result<bool> {
+    if a.uses_onyc_legacy_buffer() {
+        return accrue_onyc_legacy(program_id, a, authority_bump, now, max_supply, max_mint);
+    }
     require_canonical_buffer_state(program_id, a)?;
     if a.buffer_state.data_is_empty() {
         require_keys_eq!(
@@ -172,9 +188,119 @@ pub(crate) fn accrue(
 }
 
 pub(crate) fn store_post_supply(program_id: &Pubkey, a: &BufferContext, now: i64) -> Result<()> {
+    if a.uses_onyc_legacy_buffer() {
+        let mut buffer = load_onyc_legacy_buffer(program_id, a)?;
+        set_buffer_baseline_after_supply_change(&mut buffer, a.managed_mint.supply, now);
+        return store_pda_account(a.buffer_state, &buffer);
+    }
     let mut buffer = load_buffer(program_id, a)?;
     buffer.previous_supply = a.managed_mint.supply;
     buffer.last_accrual_timestamp = now;
+    store_pda_account(a.buffer_state, &buffer)
+}
+
+/// ONyc before the switch: accrue the legacy singleton with the canonical Pricer's
+/// APR and NAV and the configured program minter, under the effective issuance
+/// limits. An uninitialized singleton must be the empty canonical account.
+fn accrue_onyc_legacy(
+    program_id: &Pubkey,
+    a: &BufferContext,
+    authority_bump: u8,
+    now: i64,
+    max_supply: u64,
+    max_mint: u64,
+) -> Result<bool> {
+    require_onyc_legacy_buffer_address(program_id, a)?;
+    if a.buffer_state.data_is_empty() {
+        require_keys_eq!(
+            *a.buffer_state.owner,
+            System::id(),
+            OnreError::InvalidBufferStateAccount
+        );
+        return Ok(false);
+    }
+    let mut buffer = load_onyc_legacy_buffer(program_id, a)?;
+    validate_buffer_onyc_vault_accounts(
+        program_id,
+        &buffer,
+        a.reserve_token,
+        a.management_token,
+        a.performance_token,
+        a.managed_mint,
+        a.managed_program,
+    )?;
+    let minter = a.minter(authority_bump)?;
+    let valuation = canonical_market_valuation(program_id, a)?;
+    let (vector, nav) = get_active_vector_and_current_price(valuation.vectors, now as u64)?;
+    accrue_buffer_core(
+        &mut buffer,
+        vector.apr,
+        nav,
+        Pubkey::default(),
+        a.managed_mint,
+        a.reserve_token.to_account_info(),
+        a.management_token.to_account_info(),
+        a.performance_token.to_account_info(),
+        a.managed_program,
+        max_supply,
+        max_mint,
+        now,
+        &mut |destination, amount| {
+            minter.mint(
+                a.managed_program,
+                a.managed_mint,
+                destination,
+                amount,
+                max_supply,
+                max_mint,
+            )
+        },
+    )?;
+    store_pda_account(a.buffer_state, &buffer)?;
+    Ok(true)
+}
+
+fn require_onyc_legacy_buffer_address(program_id: &Pubkey, a: &BufferContext) -> Result<()> {
+    let (expected, _) = Pubkey::find_program_address(&[seeds::BUFFER_STATE], program_id);
+    require_keys_eq!(
+        a.buffer_state.key(),
+        expected,
+        OnreError::InvalidBufferStateAccount
+    );
+    Ok(())
+}
+
+pub(crate) fn load_onyc_legacy_buffer(
+    program_id: &Pubkey,
+    a: &BufferContext,
+) -> Result<BufferState> {
+    require_onyc_legacy_buffer_address(program_id, a)?;
+    load_pda_account(
+        a.buffer_state,
+        program_id,
+        OnreError::InvalidBufferStateAccount.into(),
+        OnreError::InvalidBufferStateAccount.into(),
+    )
+}
+
+/// One-way ONyc switch: the initialized per-mint BUFFER takes over the legacy
+/// singleton's settings and high-water mark and starts accruing from the current
+/// supply and `now`, so neither engine accrues the same interval twice.
+pub(crate) fn take_over_onyc_legacy_buffer(
+    program_id: &Pubkey,
+    a: &BufferContext,
+    legacy: &BufferState,
+    now: i64,
+) -> Result<()> {
+    require_canonical_buffer_state(program_id, a)?;
+    let mut buffer = load_buffer(program_id, a)?;
+    buffer.previous_supply = a.managed_mint.supply;
+    buffer.last_accrual_timestamp = now;
+    buffer.gross_apr = legacy.gross_apr;
+    buffer.management_fee_basis_points = legacy.management_fee_basis_points;
+    buffer.performance_fee_basis_points = legacy.performance_fee_basis_points;
+    buffer.performance_fee_high_watermark = legacy.performance_fee_high_watermark;
+    buffer.performance_fee_high_watermark_enabled = legacy.performance_fee_high_watermark_enabled;
     store_pda_account(a.buffer_state, &buffer)
 }
 

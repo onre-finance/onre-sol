@@ -73,4 +73,4 @@ through either execution path reduces the funds available to the other. It does
 not merge quote parameters or Prop AMM pressure state. Both NAV and modular Prop
 AMM payouts can use this custody adapter. Buy-side refill targets are supported on
 generic Liquidity VaultConfig instances; legacy custody has no modular target.
-See [modular Prop AMM](MODULAR_PROP_AMM.md) for pricing and pressure accounting. Modular ONyc execution uses its per-mint BUFFER accounts; legacy instructions keep the singleton.
+See [modular Prop AMM](MODULAR_PROP_AMM.md) for pricing and pressure accounting. ONyc accrues its legacy singleton BUFFER until the one-way switch to its per-mint BUFFER.

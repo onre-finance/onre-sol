@@ -127,60 +127,150 @@ fn selected_stats(f: &Fixture) -> Pubkey {
     read::<ManagedTokenConfig>(&f.svm, managed(f.mint)).market_stats
 }
 
+fn switch_ix(f: &Fixture, boss: Pubkey) -> Instruction {
+    let [reserve, management, performance] = [
+        find_reserve_vault_authority_pda().0,
+        find_management_fee_vault_pda().0,
+        find_performance_fee_vault_pda().0,
+    ]
+    .map(|owner| derive_ata(&owner, &f.mint, &f.token_program));
+    ix(
+        accounts::SwitchOnycBufferToPerMint {
+            state: find_state_pda().0,
+            boss,
+            managed_token: managed(f.mint),
+            onyc_mint: f.mint,
+            mint_authority: find_mint_authority_pda().0,
+            mint_multisig: f.mint_multisig(),
+            token_program: f.token_program,
+            buffer_pricer: price(f.mint, 0),
+            legacy_buffer_state: find_buffer_state_pda().0,
+            legacy_reserve_token: reserve,
+            legacy_management_token: management,
+            legacy_performance_token: performance,
+            buffer_state: pda(&[b"buffer", f.mint.as_ref()]),
+        },
+        instruction::SwitchOnycBufferToPerMint {},
+    )
+}
+
+/// `supply × rate × elapsed / (year × 1e6)` with a zero Pricer APR.
+fn accrual(supply: u64, rate: u64, elapsed: u64) -> u64 {
+    (supply as u128 * rate as u128 * elapsed as u128 / 31_536_000_000_000) as u64
+}
+
 #[test]
-fn legacy_and_modular_onyc_buffers_settle_independently() {
+fn onyc_switches_once_from_the_legacy_to_the_per_mint_buffer() {
+    // Per-mint ONyc BUFFER initialized at 10%; go back to before the switch with an
+    // active legacy singleton at 5%.
     let mut f = setup(true, false);
+    f.set_onyc_per_mint_buffer_active(false);
     f.initialize_legacy_main_offer();
-    let main = read::<GlobalState>(&f.svm, find_state_pda().0).main_offer;
+    let main = find_offer_pda(&f.asset, &f.mint).0;
+    let boss = f.boss.pubkey();
     for instruction in [
-        build_initialize_buffer_ix(&f.boss.pubkey(), &main, &f.mint),
-        build_set_buffer_gross_yield_ix(&f.boss.pubkey(), &main, &f.mint, 50_000),
+        build_initialize_buffer_ix(&boss, &main, &f.mint),
+        build_set_buffer_gross_yield_ix(&boss, &main, &f.mint, 50_000),
     ] {
         send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
     }
     let legacy = find_buffer_state_pda().0;
-    let legacy_before = f.svm.get_account(&legacy).unwrap().data;
-    advance_clock_by(&mut f.svm, 3_153_600);
+    let per_mint = pda(&[b"buffer", f.mint.as_ref()]);
+    let per_mint_before = f.svm.get_account(&per_mint).unwrap().data;
 
-    // Modular settlement accrues 10% * 0.1y on its own baseline only.
-    settle(&mut f);
-    assert_eq!(get_mint_supply(&f.svm, &f.mint), 10_100_000_000);
-    assert_eq!(f.svm.get_account(&legacy).unwrap().data, legacy_before);
-    let [reserve, management, performance] = f.buffer_vaults();
-    assert_eq!(f.balance(f.mint, reserve, f.token_program), 88_200_000);
-    assert_eq!(f.balance(f.mint, management, f.token_program), 10_000_000);
-    assert_eq!(f.balance(f.mint, performance, f.token_program), 1_800_000);
-
-    // Legacy settlement independently accrues 5% * 0.1y on its own baseline,
-    // into its own vaults, without touching the per-mint state.
-    let per_mint_before = f.svm.get_account(&f.buffer()).unwrap().data;
-    let instruction = build_settle_buffer_ix(&f.boss.pubkey(), &main, &f.mint);
-    send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
-    assert_eq!(get_mint_supply(&f.svm, &f.mint), 10_150_000_000);
-    assert_eq!(
-        f.svm.get_account(&f.buffer()).unwrap().data,
-        per_mint_before
+    // Before the switch the per-mint BUFFER cannot settle, and modular execution
+    // accrues the active legacy singleton.
+    let instruction = settle_ix(&f, boss);
+    check_error(
+        send(&mut f.svm, &[instruction], &[&f.boss]),
+        OnreError::PerMintBufferInactive,
     );
-    let legacy_state: BufferState = read(&f.svm, legacy);
+    let start = get_mint_supply(&f.svm, &f.mint);
+    advance_clock_by(&mut f.svm, 3_153_600);
+    // Before the switch ONyc trades must supply the legacy BUFFER accounts.
+    let mut instruction = f.take(2_000_000, 990_000_000);
+    for meta in instruction
+        .accounts
+        .iter_mut()
+        .filter(|meta| meta.pubkey == legacy)
+    {
+        *meta = AccountMeta::new_readonly(PROGRAM_ID, false);
+    }
+    assert_error(f.send(instruction), OnreError::LegacyBufferAccountsRequired);
+    let instruction = f.take(2_000_000, 990_000_000);
+    f.send(instruction).unwrap();
+    let accrued = accrual(start, 50_000, 3_153_600);
     assert_eq!(
-        legacy_state.last_accrual_timestamp,
+        get_mint_supply(&f.svm, &f.mint),
+        start + accrued + 990_000_000
+    );
+    let state: BufferState = read(&f.svm, legacy);
+    assert_eq!(state.previous_supply, get_mint_supply(&f.svm, &f.mint));
+    assert_eq!(f.svm.get_account(&per_mint).unwrap().data, per_mint_before);
+
+    // Only the boss switches; the legacy singleton accrues up to the switch and the
+    // per-mint BUFFER takes over its settings from the current supply.
+    let rogue = Keypair::new();
+    f.svm.airdrop(&rogue.pubkey(), INITIAL_LAMPORTS).unwrap();
+    let instruction = switch_ix(&f, rogue.pubkey());
+    check_error(
+        send(&mut f.svm, &[instruction], &[&rogue]),
+        OnreError::InvalidBoss,
+    );
+    advance_clock_by(&mut f.svm, 3_153_600);
+    // A trade prepared before the switch, with both BUFFER account sets.
+    let prepared = f.take(2_000_000, 990_000_000);
+    let before_switch = get_mint_supply(&f.svm, &f.mint);
+    let instruction = switch_ix(&f, boss);
+    send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    let switched = get_mint_supply(&f.svm, &f.mint);
+    assert_eq!(
+        switched,
+        before_switch + accrual(before_switch, 50_000, 3_153_600)
+    );
+    assert!(read::<GlobalState>(&f.svm, find_state_pda().0).onyc_per_mint_buffer_active);
+    let state: BufferState = read(&f.svm, legacy);
+    assert_eq!(state.previous_supply, switched);
+    let taken_over: ManagedTokenBufferState = read(&f.svm, per_mint);
+    assert_eq!(taken_over.previous_supply, switched);
+    assert_eq!(taken_over.gross_apr, 50_000);
+    assert_eq!(
+        taken_over.last_accrual_timestamp,
         get_clock_time(&f.svm) as i64
     );
-    let legacy_vaults = [
-        find_reserve_vault_authority_pda().0,
-        find_management_fee_vault_pda().0,
-        find_performance_fee_vault_pda().0,
-    ];
-    let legacy_minted: u64 = legacy_vaults
-        .iter()
-        .map(|vault| f.balance(f.mint, *vault, f.token_program))
-        .sum();
-    assert_eq!(legacy_minted, 50_000_000);
-    assert_eq!(f.balance(f.mint, reserve, f.token_program), 88_200_000);
 
-    // Both settle again at the same timestamp without accruing twice.
+    // The prepared trade executes unchanged after the switch and moves only the
+    // per-mint baseline; the legacy accounts it supplies are ignored.
+    let legacy_at_switch = f.svm.get_account(&legacy).unwrap().data;
+    f.send(prepared).unwrap();
+    let switched = get_mint_supply(&f.svm, &f.mint);
+    assert_eq!(
+        read::<ManagedTokenBufferState>(&f.svm, per_mint).previous_supply,
+        switched
+    );
+    assert_eq!(f.svm.get_account(&legacy).unwrap().data, legacy_at_switch);
+
+    // One way: no second switch, no more legacy settlement.
+    let instruction = switch_ix(&f, boss);
+    check_error(
+        send(&mut f.svm, &[instruction], &[&f.boss]),
+        OnreError::LegacyBufferRetired,
+    );
+    let instruction = build_settle_buffer_ix(&boss, &main, &f.mint);
+    check_error(
+        send(&mut f.svm, &[instruction], &[&f.boss]),
+        OnreError::LegacyBufferRetired,
+    );
+
+    // Afterwards only the per-mint BUFFER accrues, at the taken-over 5%.
+    let legacy_before = f.svm.get_account(&legacy).unwrap().data;
+    advance_clock_by(&mut f.svm, 3_153_600);
     settle(&mut f);
-    assert_eq!(get_mint_supply(&f.svm, &f.mint), 10_150_000_000);
+    assert_eq!(
+        get_mint_supply(&f.svm, &f.mint),
+        switched + accrual(switched, 50_000, 3_153_600)
+    );
+    assert_eq!(f.svm.get_account(&legacy).unwrap().data, legacy_before);
 }
 
 #[test]

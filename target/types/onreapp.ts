@@ -10794,6 +10794,146 @@ export type Onreapp = {
       "args": []
     },
     {
+      "name": "switchOnycBufferToPerMint",
+      "docs": [
+        "Boss-only, one-way switch of ONyc's active BUFFER from the legacy singleton to",
+        "its per-mint BUFFER; afterwards only the per-mint BUFFER accrues ONyc."
+      ],
+      "discriminator": [
+        101,
+        76,
+        82,
+        107,
+        123,
+        235,
+        14,
+        86
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "managedToken",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "onycMint",
+          "writable": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "mintAuthority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mintMultisig",
+          "optional": true
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "bufferPricer",
+          "docs": [
+            "Canonical USD instance-zero ONyc Pricer valuing the final legacy accrual."
+          ]
+        },
+        {
+          "name": "legacyBufferState",
+          "writable": true
+        },
+        {
+          "name": "legacyReserveToken",
+          "writable": true
+        },
+        {
+          "name": "legacyManagementToken",
+          "writable": true
+        },
+        {
+          "name": "legacyPerformanceToken",
+          "writable": true
+        },
+        {
+          "name": "bufferState",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "takeOffer",
       "docs": [
         "Execute an offer using reusable model accounts.",
@@ -11208,7 +11348,8 @@ export type Onreapp = {
             {
               "name": "bufferState",
               "docs": [
-                "ONyc included. A substitute cannot bypass initialized accrual."
+                "used whenever it is the active BUFFER. A substitute cannot bypass initialized",
+                "accrual. ONyc before the one-way switch accrues the legacy accounts below."
               ],
               "writable": true
             },
@@ -11261,6 +11402,31 @@ export type Onreapp = {
               "docs": [
                 "equal it; omitted for direct PDA minting. See `utils::program_minter`."
               ],
+              "optional": true
+            },
+            {
+              "name": "legacyBufferState",
+              "docs": [
+                "one-way BUFFER switch, which it then accrues; ignored afterwards and for other",
+                "mints. Clients can supply it alongside the per-mint BUFFER accounts at all",
+                "times, so the switch needs no account changes."
+              ],
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "legacyBufferReserveToken",
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "legacyBufferManagementToken",
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "legacyBufferPerformanceToken",
+              "writable": true,
               "optional": true
             }
           ]
@@ -15131,6 +15297,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "onycBufferSwitchedToPerMintEvent",
+      "discriminator": [
+        121,
+        213,
+        211,
+        15,
+        233,
+        153,
+        221,
+        208
+      ]
+    },
+    {
       "name": "onycTokensMintedEvent",
       "discriminator": [
         241,
@@ -16268,6 +16447,21 @@ export type Onreapp = {
       "code": 6151,
       "name": "marketStatsNotSelected",
       "msg": "The managed token has no MarketStats selected to refresh"
+    },
+    {
+      "code": 6152,
+      "name": "legacyBufferRetired",
+      "msg": "ONyc uses the per-mint BUFFER; the legacy BUFFER is retired"
+    },
+    {
+      "code": 6153,
+      "name": "perMintBufferInactive",
+      "msg": "ONyc uses the legacy BUFFER until the one-way switch to per-mint"
+    },
+    {
+      "code": 6154,
+      "name": "legacyBufferAccountsRequired",
+      "msg": "ONyc before the one-way BUFFER switch requires the legacy BUFFER accounts"
     }
   ],
   "types": [
@@ -18912,6 +19106,57 @@ export type Onreapp = {
       }
     },
     {
+      "name": "onycBufferSwitchedToPerMintEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "legacyBufferState",
+            "type": "pubkey"
+          },
+          {
+            "name": "bufferState",
+            "type": "pubkey"
+          },
+          {
+            "name": "supply",
+            "docs": [
+              "Supply both engines agree on at the switch; the per-mint BUFFER starts here."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "grossApr",
+            "type": "u64"
+          },
+          {
+            "name": "managementFeeBasisPoints",
+            "type": "u16"
+          },
+          {
+            "name": "performanceFeeBasisPoints",
+            "type": "u16"
+          },
+          {
+            "name": "performanceFeeHighWatermark",
+            "type": "u64"
+          },
+          {
+            "name": "performanceFeeHighWatermarkEnabled",
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "onycTokensMintedEvent",
       "docs": [
         "Event emitted when ONyc tokens are successfully minted to the boss account",
@@ -20385,6 +20630,16 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
+            "name": "onycPerMintBufferActive",
+            "docs": [
+              "One-way ONyc BUFFER switch: false keeps the legacy singleton BUFFER active (also",
+              "accrued by modular ONyc execution); true makes the per-mint BUFFER the only",
+              "active one. Set by `switch_onyc_buffer_to_per_mint`; occupies the first",
+              "formerly reserved byte, zero on every deployment."
+            ],
+            "type": "bool"
+          },
+          {
             "name": "reserved",
             "docs": [
               "Reserved space for future program state extensions"
@@ -20392,7 +20647,7 @@ export type Onreapp = {
             "type": {
               "array": [
                 "u8",
-                56
+                55
               ]
             }
           }

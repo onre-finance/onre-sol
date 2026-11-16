@@ -1,9 +1,10 @@
 # BUFFER Accrual
 
 This document describes the shared accrual math and legacy ONyc lifecycle.
-Modular execution uses a separate per-mint BUFFER for every managed mint, ONyc
-included, valued at the canonical USD Pricer and accruing independently of the
-legacy singleton described here; see
+Modular execution uses a per-mint BUFFER for every managed mint, valued at the
+canonical USD Pricer. ONyc keeps the legacy singleton described here active (also
+for modular ONyc trades) until a one-way switch hands over to its per-mint BUFFER;
+afterwards the legacy settlement and settings instructions are retired; see
 [MODULAR_TAKE_OFFER.md](MODULAR_TAKE_OFFER.md#per-mint-buffer).
 
 ## Why BUFFER Exists
