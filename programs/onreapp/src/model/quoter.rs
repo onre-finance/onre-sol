@@ -3,7 +3,6 @@ use anchor_lang::prelude::*;
 #[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum QuoterKind {
     Nav,
-    NavPermissionless,
     PropAmm,
 }
 

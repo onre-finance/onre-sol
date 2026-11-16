@@ -91,8 +91,8 @@ later failure rolls back accounting, BUFFER accrual and token movements together
 
 ## Buy-side liquidity refill
 
-Refill works for all supported buy quoters: permissioned `Nav`, permissionless
-`NavPermissionless`, and permissionless `PropAmm`. A NAV buy may omit liquidity;
+Refill works for all supported buy quoters: `Nav` (permissioned or
+permissionless) and permissionless `PropAmm`. A NAV buy may omit liquidity;
 a PropAmm buy must select a destination from the [supported custody authorities](VAULT_CONFIG_OPERATIONS.md).
 Only a generic Liquidity VaultConfig has a modular `refill_target_bps`; legacy
 configurable vaults and redemption custody use zero, which disables refill.

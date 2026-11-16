@@ -259,7 +259,7 @@ fn request_access_follows_the_offer_and_ids_are_unique_per_open_request() {
     f.create_route(
         OfferDirection::ManagedToAsset,
         OfferMode::WorkerPermissionless,
-        QuoterKind::NavPermissionless,
+        QuoterKind::Nav,
         true,
     );
     let instruction = create_ix(&f, 1, 1_000_000, Some(f.approval()));
@@ -440,7 +440,7 @@ fn a_fill_executes_exactly_like_take_offer_with_the_offers_quoter_fee_and_custod
         let kinds: &[QuoterKind] = if instant == OfferMode::Permissioned {
             &[QuoterKind::Nav]
         } else {
-            &[QuoterKind::NavPermissionless, QuoterKind::PropAmm]
+            &[QuoterKind::Nav, QuoterKind::PropAmm]
         };
         for &kind in kinds {
             for direction in [

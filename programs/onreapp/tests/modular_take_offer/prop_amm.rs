@@ -117,7 +117,7 @@ fn buys_refill_only_the_selected_vault_before_mint_and_route_excess_to_proceeds(
     for token_2022 in [false, true] {
         for (flow, kind) in [
             (OfferMode::Permissioned, QuoterKind::Nav),
-            (OfferMode::Permissionless, QuoterKind::NavPermissionless),
+            (OfferMode::Permissionless, QuoterKind::Nav),
         ] {
             for (existing, expected) in [(0, 1_980_000), (500_000, 1_500_000), (3_000_000, 0)] {
                 let mut f = Fixture::new(false, token_2022);
@@ -166,7 +166,7 @@ fn refill_uses_post_buffer_supply_but_does_not_count_the_pending_user_mint() {
     f.create_route(
         OfferDirection::AssetToManaged,
         OfferMode::Permissionless,
-        QuoterKind::NavPermissionless,
+        QuoterKind::Nav,
         true,
     );
     edit::<VaultConfig>(&mut f.svm, vault(VaultKind::Liquidity), |v| {
@@ -438,7 +438,7 @@ fn onyc_refill_uses_canonical_pricer_nav_and_the_canonical_excluded_balance() {
     f.create_route(
         OfferDirection::AssetToManaged,
         OfferMode::Permissionless,
-        QuoterKind::NavPermissionless,
+        QuoterKind::Nav,
         true,
     );
     edit::<VaultConfig>(&mut f.svm, vault(VaultKind::Liquidity), |v| {

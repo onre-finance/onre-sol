@@ -21,15 +21,14 @@ pub enum OfferExecution {
 }
 
 /// The quoters an access mode supports, checked on configuration and again on
-/// execution: permissioned offers quote NAV; permissionless offers quote
-/// permissionless NAV or Prop AMM. Execution mode and direction do not restrict
-/// the quoter: a Worker fill prices and settles exactly as `take_offer` would.
+/// execution: every offer may quote NAV; only permissionless offers may quote
+/// Prop AMM. Permissioned and permissionless offers can share one NAV quoter and
+/// differ by fee config. Execution mode and direction do not restrict the quoter:
+/// a Worker fill prices and settles exactly as `take_offer` would.
 pub fn quoter_supported(access: OfferAccess, kind: QuoterKind) -> bool {
-    match access {
-        OfferAccess::Permissioned => kind == QuoterKind::Nav,
-        OfferAccess::Permissionless => {
-            matches!(kind, QuoterKind::NavPermissionless | QuoterKind::PropAmm)
-        }
+    match kind {
+        QuoterKind::Nav => true,
+        QuoterKind::PropAmm => access == OfferAccess::Permissionless,
     }
 }
 

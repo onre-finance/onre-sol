@@ -26,7 +26,7 @@ fn permissionless_buy(f: &mut Fixture) {
     f.create_route(
         OfferDirection::AssetToManaged,
         OfferMode::Permissionless,
-        QuoterKind::NavPermissionless,
+        QuoterKind::Nav,
         false,
     );
 }
@@ -282,7 +282,7 @@ fn managed_to_asset_burns_from_the_intermediary_and_routes_liquidity_output_back
     f.create_route(
         OfferDirection::ManagedToAsset,
         OfferMode::Permissionless,
-        QuoterKind::NavPermissionless,
+        QuoterKind::Nav,
         true,
     );
     f.seed_tokens(f.asset, vault(VaultKind::Liquidity), 2_000_000);

@@ -21412,9 +21412,6 @@ export type Onreapp = {
             "name": "nav"
           },
           {
-            "name": "navPermissionless"
-          },
-          {
             "name": "propAmm"
           }
         ]

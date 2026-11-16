@@ -268,7 +268,10 @@ the Worker restriction. Access selects the quoter (`model::quoter_supported`):
 | Access | Direction | Quoter |
 | --- | --- | --- |
 | Permissioned | Either | Nav |
-| Permissionless | Either | NavPermissionless or pair-matching PropAmm |
+| Permissionless | Either | Nav or pair-matching PropAmm |
+
+Both access modes can share one `Nav` quoter; fees differ through each offer's
+FeeConfig.
 
 Each Prop AMM quoter binds one immutable asset/managed pair. Multiple quoters may
 bind the same pair with independent parameters and pressure. The two directed

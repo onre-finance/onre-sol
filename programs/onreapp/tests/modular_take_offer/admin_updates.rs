@@ -338,9 +338,9 @@ fn boss_replaces_offer_components_including_the_pricer_instance() {
     let boss = f.boss.pubkey();
     let pricer = price(f.mint, 1);
     let fee = pda(&[b"fee_config", &1_u64.to_le_bytes()]);
-    let permissionless = pda(&[
+    let prop_amm = pda(&[
         b"quoter",
-        &[QuoterKind::NavPermissionless as u8],
+        &[QuoterKind::PropAmm as u8],
         &0_u64.to_le_bytes(),
     ]);
     for instruction in [
@@ -389,13 +389,13 @@ fn boss_replaces_offer_components_including_the_pricer_instance() {
         ),
         ix(
             accounts::CreateQuoter {
-                quoter: permissionless,
+                quoter: prop_amm,
                 state,
                 boss,
                 system_program: SYSTEM_PROGRAM_ID,
             },
             instruction::CreateQuoter {
-                kind: QuoterKind::NavPermissionless,
+                kind: QuoterKind::PropAmm,
                 instance_id: 0,
             },
         ),
@@ -430,8 +430,8 @@ fn boss_replaces_offer_components_including_the_pricer_instance() {
     );
     let instruction = update(&f, boss, price(f.mint, 0), f.quoter, f.fee);
     expect_error(boss_send(&mut f, instruction), OnreError::NoChange);
-    // A permissioned offer still needs a Nav quoter.
-    let instruction = update(&f, boss, pricer, permissionless, fee);
+    // A permissioned offer cannot use a Prop AMM quoter.
+    let instruction = update(&f, boss, pricer, prop_amm, fee);
     expect_error(
         boss_send(&mut f, instruction),
         OnreError::IncompatibleQuoter,

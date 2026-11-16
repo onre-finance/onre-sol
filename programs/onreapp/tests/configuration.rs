@@ -739,15 +739,27 @@ fn offer_requires_compatible_pricer_and_enabled_dependencies() {
 #[test]
 fn offer_checks_modes_and_optional_liquidity() {
     let mut f = Fixture::new();
-    // Access selects the quoter for both execution modes: the selected Nav quoter
-    // suits only permissioned offers.
-    for mode in [OfferMode::Permissionless, OfferMode::WorkerPermissionless] {
+    // Access alone restricts the quoter, for both execution modes: Prop AMM
+    // quotes only permissionless offers.
+    send_tx(
+        &mut f.svm,
+        &[create_quoter(
+            f.boss.pubkey(),
+            model::QuoterKind::PropAmm,
+            0,
+        )],
+        &[&f.boss],
+    )
+    .unwrap();
+    f.selected_quoter = quoter(model::QuoterKind::PropAmm, 0);
+    for mode in [OfferMode::Permissioned, OfferMode::Worker] {
         let instruction = f.offer_ix(mode, false);
         assert_error(
             send_tx(&mut f.svm, &[instruction], &[&f.boss]),
             OnreError::IncompatibleQuoter,
         );
     }
+    f.selected_quoter = quoter(model::QuoterKind::Nav, 0);
     f.liquidity = None;
     let instruction = f.offer_ix(OfferMode::Worker, true);
     assert_error(
@@ -761,17 +773,7 @@ fn offer_checks_modes_and_optional_liquidity() {
     f.liquidity = Some(vault(model::VaultKind::Liquidity, 0));
     let instruction = f.offer_ix(OfferMode::Worker, true);
     send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
-    send_tx(
-        &mut f.svm,
-        &[create_quoter(
-            f.boss.pubkey(),
-            model::QuoterKind::NavPermissionless,
-            0,
-        )],
-        &[&f.boss],
-    )
-    .unwrap();
-    f.selected_quoter = quoter(model::QuoterKind::NavPermissionless, 0);
+    // Permissionless offers share the permissioned offers' Nav quoter.
     for mode in [OfferMode::Permissionless, OfferMode::WorkerPermissionless] {
         for reverse in [false, true] {
             let instruction = f.offer_ix(mode, reverse);

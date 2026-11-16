@@ -1589,7 +1589,7 @@ fn offers_can_share_a_preexisting_modular_or_legacy_liquidity_vault() {
             // the same vault. No rebinding or migration is needed.
             for (flow, quoter) in [
                 (OfferMode::Permissioned, QuoterKind::Nav),
-                (OfferMode::Permissionless, QuoterKind::NavPermissionless),
+                (OfferMode::Permissionless, QuoterKind::Nav),
             ] {
                 f.create_route_with_vault(
                     OfferDirection::ManagedToAsset,
@@ -1635,7 +1635,7 @@ fn modular_offers_can_explicitly_share_the_old_redemption_vault() {
         // The redemption authority itself is a stateless PDA. Its ATA is custody.
         for (flow, quoter) in [
             (OfferMode::Permissioned, QuoterKind::Nav),
-            (OfferMode::Permissionless, QuoterKind::NavPermissionless),
+            (OfferMode::Permissionless, QuoterKind::Nav),
         ] {
             f.create_route_with_vault(OfferDirection::ManagedToAsset, flow, quoter, Some(selected));
             let instruction = f.take(500_000_000, 990_000);
