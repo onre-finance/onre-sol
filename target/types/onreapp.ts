@@ -876,6 +876,179 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "burnManagedTokenForNavIncrease",
+      "docs": [
+        "Boss-only burn of per-mint BUFFER reserve tokens that keeps the canonical",
+        "NAV after removing `asset_adjustment_amount` from the asset base."
+      ],
+      "discriminator": [
+        242,
+        44,
+        110,
+        199,
+        83,
+        167,
+        47,
+        136
+      ],
+      "accounts": [
+        {
+          "name": "bufferAccounts",
+          "accounts": [
+            {
+              "name": "state",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      115,
+                      116,
+                      97,
+                      116,
+                      101
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "name": "managedToken",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      109,
+                      97,
+                      110,
+                      97,
+                      103,
+                      101,
+                      100,
+                      95,
+                      116,
+                      111,
+                      107,
+                      101,
+                      110
+                    ]
+                  },
+                  {
+                    "kind": "account",
+                    "path": "managedMint"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "managedMint",
+              "docs": [
+                "Program control in the configured direct or multisig mode is checked before accrual."
+              ],
+              "writable": true
+            },
+            {
+              "name": "mintAuthority",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      109,
+                      105,
+                      110,
+                      116,
+                      95,
+                      97,
+                      117,
+                      116,
+                      104,
+                      111,
+                      114,
+                      105,
+                      116,
+                      121
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "name": "mintMultisig",
+              "docs": [
+                "equal it; omitted for direct PDA minting. See `utils::program_minter`."
+              ],
+              "optional": true
+            },
+            {
+              "name": "tokenProgram"
+            },
+            {
+              "name": "bufferState",
+              "docs": [
+                "and embedded mint. Standalone operations require initialized state."
+              ],
+              "writable": true
+            },
+            {
+              "name": "bufferPricer",
+              "docs": [
+                "Canonical USD instance-zero Pricer driving accrual and reporting valuation."
+              ],
+              "optional": true
+            },
+            {
+              "name": "reserveToken",
+              "writable": true
+            },
+            {
+              "name": "managementToken",
+              "writable": true
+            },
+            {
+              "name": "performanceToken",
+              "writable": true
+            }
+          ]
+        },
+        {
+          "name": "boss",
+          "signer": true
+        },
+        {
+          "name": "reserveVault",
+          "docs": [
+            "its reserve ATA; must equal the reserve vault stored in the BUFFER state."
+          ]
+        },
+        {
+          "name": "marketStats",
+          "docs": [
+            "ignored otherwise."
+          ],
+          "writable": true
+        },
+        {
+          "name": "legacyMarketStats",
+          "docs": [
+            "mint is ONyc and refreshed once it exists; ignored for other mints."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "circulatingSupplyExcludedBalance"
+        }
+      ],
+      "args": [
+        {
+          "name": "assetAdjustmentAmount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "cancelRedemptionRequest",
       "docs": [
         "Cancels a redemption request.",
@@ -14581,6 +14754,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "managedTokenBurnedForNavEvent",
+      "discriminator": [
+        235,
+        222,
+        153,
+        173,
+        27,
+        34,
+        62,
+        35
+      ]
+    },
+    {
       "name": "managedTokenEnabledSetEvent",
       "discriminator": [
         124,
@@ -17219,6 +17405,51 @@ export type Onreapp = {
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "managedTokenBurnedForNavEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "managedMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "burnAmount",
+            "type": "u64"
+          },
+          {
+            "name": "assetAdjustmentAmount",
+            "docs": [
+              "USD value removed from the asset base, in managed-mint base units (scale of TVL)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "totalAssets",
+            "docs": [
+              "Circulating supply × NAV before the burn."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "nav",
+            "docs": [
+              "NAV preserved by the burn, scale 9."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
