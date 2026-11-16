@@ -178,6 +178,12 @@ pub(crate) fn store_post_supply(program_id: &Pubkey, a: &BufferContext, now: i64
     store_pda_account(a.buffer_state, &buffer)
 }
 
+/// The initialized BUFFER's reserve vault, after canonical identity checks.
+pub(crate) fn reserve_vault(program_id: &Pubkey, a: &BufferContext) -> Result<Pubkey> {
+    require_canonical_buffer_state(program_id, a)?;
+    Ok(load_buffer(program_id, a)?.reserve_vault)
+}
+
 /// Account identity is checked even for configuration-only reads.
 pub(crate) fn read_settings(program_id: &Pubkey, a: &BufferContext) -> Result<BufferSettings> {
     require_canonical_buffer_state(program_id, a)?;

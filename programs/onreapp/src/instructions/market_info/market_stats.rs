@@ -295,14 +295,12 @@ fn refresh_selected_market_stats<'info>(
         OnreError::InvalidMarketStatsOwner.into(),
         OnreError::InvalidMarketStatsData.into(),
     )?;
-    let excluded_balance_amount = if managed_mint.key() == state.onyc_mint {
-        super::load_circulating_supply_excluded_balance_amount(
-            program_id,
-            excluded_balance_account,
-        )?
-    } else {
-        0
-    };
+    let excluded_balance_amount = excluded_supply_amount(
+        program_id,
+        state,
+        &managed_mint.key(),
+        excluded_balance_account,
+    )?;
     let snapshot = recompute_market_stats_from_valuation(
         &valuation()?,
         managed_mint,
@@ -310,6 +308,21 @@ fn refresh_selected_market_stats<'info>(
     )?;
     update_market_stats_account(&mut market_stats, snapshot)?;
     store_pda_account(market_stats_account, &market_stats)
+}
+
+/// Supply excluded from a managed mint's circulating supply: ONyc's cached
+/// excluded balance; other mints have no exclusions yet.
+pub(crate) fn excluded_supply_amount(
+    program_id: &Pubkey,
+    state: &State,
+    managed_mint: &Pubkey,
+    excluded_balance_account: &AccountInfo,
+) -> Result<u64> {
+    if *managed_mint == state.onyc_mint {
+        super::load_circulating_supply_excluded_balance_amount(program_id, excluded_balance_account)
+    } else {
+        Ok(0)
+    }
 }
 
 pub fn load_main_offer(

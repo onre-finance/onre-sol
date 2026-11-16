@@ -225,7 +225,7 @@ pub fn burn_for_nav_increase(
     Ok(())
 }
 
-fn calculate_burn_amount(
+pub(crate) fn calculate_burn_amount(
     circulating_supply: u64,
     asset_adjustment_amount: u64,
     nav_before_adjustment: u64,

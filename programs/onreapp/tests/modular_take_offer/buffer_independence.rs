@@ -672,3 +672,82 @@ fn buffer_operations_mint_directly_or_through_the_multisig_as_configured() {
         assert_eq!(get_mint_authority_pubkey(&f.svm, &f.mint), Some(pda));
     }
 }
+
+fn burn_for_nav_ix(
+    f: &Fixture,
+    boss: Pubkey,
+    reserve_vault: Pubkey,
+    adjustment: u64,
+) -> Instruction {
+    ix(
+        accounts::BurnManagedTokenForNavIncrease {
+            buffer_accounts: parts(f),
+            boss,
+            reserve_vault,
+            market_stats: f.market_stats(),
+            legacy_market_stats: f.legacy_market_stats(),
+            circulating_supply_excluded_balance: find_circulating_supply_excluded_balance_pda().0,
+        },
+        instruction::BurnManagedTokenForNavIncrease {
+            asset_adjustment_amount: adjustment,
+        },
+    )
+}
+
+#[test]
+fn boss_burns_buffer_reserve_to_keep_nav_after_an_asset_adjustment() {
+    for (onyc, token_2022) in [(false, false), (false, true), (true, false)] {
+        let mut f = setup(onyc, token_2022);
+        let instruction = init_stats_ix(&f, f.boss.pubkey());
+        send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+        advance_clock_by(&mut f.svm, 3_153_600);
+        settle(&mut f);
+        let [reserve_vault, management_vault, _] = f.buffer_vaults();
+        let reserve_token = derive_ata(&reserve_vault, &f.mint, &f.token_program);
+        let reserve = get_token_balance(&f.svm, &reserve_token);
+        let supply = get_mint_supply(&f.svm, &f.mint);
+        assert!(reserve > 0);
+
+        // Rejections: boss only, nonzero adjustment within total assets, enough
+        // reserve, and the BUFFER's own reserve vault.
+        let rogue = Keypair::new();
+        f.svm.airdrop(&rogue.pubkey(), INITIAL_LAMPORTS).unwrap();
+        let instruction = burn_for_nav_ix(&f, rogue.pubkey(), reserve_vault, 20_000_000);
+        check_error(
+            send(&mut f.svm, &[instruction], &[&rogue]),
+            OnreError::InvalidBoss,
+        );
+        for (adjustment, error) in [
+            (0, OnreError::InvalidAssetAdjustmentAmount),
+            (supply * 2 + 1, OnreError::InvalidAssetAdjustmentAmount),
+            (supply, OnreError::InsufficientCacheBalance),
+        ] {
+            let instruction = burn_for_nav_ix(&f, f.boss.pubkey(), reserve_vault, adjustment);
+            check_error(send(&mut f.svm, &[instruction], &[&f.boss]), error);
+        }
+        let instruction = burn_for_nav_ix(&f, f.boss.pubkey(), management_vault, 20_000_000);
+        check_error(
+            send(&mut f.svm, &[instruction], &[&f.boss]),
+            OnreError::InvalidConfigurableVault,
+        );
+
+        // NAV 2: removing 0.02 of assets (20_000_000 in 9-decimal units) burns
+        // ceil-adjusted supply worth exactly that at the unchanged NAV.
+        let total_assets = supply as u128 * 2;
+        let required = (total_assets - 20_000_000).div_ceil(2) as u64;
+        let expected_burn = supply - required;
+        let instruction = burn_for_nav_ix(&f, f.boss.pubkey(), reserve_vault, 20_000_000);
+        send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+        assert_eq!(expected_burn, 10_000_000);
+        assert_eq!(get_mint_supply(&f.svm, &f.mint), supply - expected_burn);
+        assert_eq!(
+            get_token_balance(&f.svm, &reserve_token),
+            reserve - expected_burn
+        );
+        let state: ManagedTokenBufferState = read(&f.svm, f.buffer());
+        assert_eq!(state.previous_supply, supply - expected_burn);
+        let stats: MarketStats = read(&f.svm, per_mint_stats(&f));
+        assert_eq!(stats.nav, 2_000_000_000);
+        assert_eq!(stats.circulating_supply, supply - expected_burn);
+    }
+}

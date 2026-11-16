@@ -870,6 +870,179 @@
       ]
     },
     {
+      "name": "burn_managed_token_for_nav_increase",
+      "docs": [
+        "Boss-only burn of per-mint BUFFER reserve tokens that keeps the canonical",
+        "NAV after removing `asset_adjustment_amount` from the asset base."
+      ],
+      "discriminator": [
+        242,
+        44,
+        110,
+        199,
+        83,
+        167,
+        47,
+        136
+      ],
+      "accounts": [
+        {
+          "name": "buffer_accounts",
+          "accounts": [
+            {
+              "name": "state",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      115,
+                      116,
+                      97,
+                      116,
+                      101
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "name": "managed_token",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      109,
+                      97,
+                      110,
+                      97,
+                      103,
+                      101,
+                      100,
+                      95,
+                      116,
+                      111,
+                      107,
+                      101,
+                      110
+                    ]
+                  },
+                  {
+                    "kind": "account",
+                    "path": "managed_mint"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "managed_mint",
+              "docs": [
+                "Program control in the configured direct or multisig mode is checked before accrual."
+              ],
+              "writable": true
+            },
+            {
+              "name": "mint_authority",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      109,
+                      105,
+                      110,
+                      116,
+                      95,
+                      97,
+                      117,
+                      116,
+                      104,
+                      111,
+                      114,
+                      105,
+                      116,
+                      121
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "name": "mint_multisig",
+              "docs": [
+                "equal it; omitted for direct PDA minting. See `utils::program_minter`."
+              ],
+              "optional": true
+            },
+            {
+              "name": "token_program"
+            },
+            {
+              "name": "buffer_state",
+              "docs": [
+                "and embedded mint. Standalone operations require initialized state."
+              ],
+              "writable": true
+            },
+            {
+              "name": "buffer_pricer",
+              "docs": [
+                "Canonical USD instance-zero Pricer driving accrual and reporting valuation."
+              ],
+              "optional": true
+            },
+            {
+              "name": "reserve_token",
+              "writable": true
+            },
+            {
+              "name": "management_token",
+              "writable": true
+            },
+            {
+              "name": "performance_token",
+              "writable": true
+            }
+          ]
+        },
+        {
+          "name": "boss",
+          "signer": true
+        },
+        {
+          "name": "reserve_vault",
+          "docs": [
+            "its reserve ATA; must equal the reserve vault stored in the BUFFER state."
+          ]
+        },
+        {
+          "name": "market_stats",
+          "docs": [
+            "ignored otherwise."
+          ],
+          "writable": true
+        },
+        {
+          "name": "legacy_market_stats",
+          "docs": [
+            "mint is ONyc and refreshed once it exists; ignored for other mints."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "circulating_supply_excluded_balance"
+        }
+      ],
+      "args": [
+        {
+          "name": "asset_adjustment_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "cancel_redemption_request",
       "docs": [
         "Cancels a redemption request.",
@@ -14575,6 +14748,19 @@
       ]
     },
     {
+      "name": "ManagedTokenBurnedForNavEvent",
+      "discriminator": [
+        235,
+        222,
+        153,
+        173,
+        27,
+        34,
+        62,
+        35
+      ]
+    },
+    {
       "name": "ManagedTokenEnabledSetEvent",
       "discriminator": [
         124,
@@ -17213,6 +17399,51 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ManagedTokenBurnedForNavEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "managed_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "burn_amount",
+            "type": "u64"
+          },
+          {
+            "name": "asset_adjustment_amount",
+            "docs": [
+              "USD value removed from the asset base, in managed-mint base units (scale of TVL)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "total_assets",
+            "docs": [
+              "Circulating supply × NAV before the burn."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "nav",
+            "docs": [
+              "NAV preserved by the burn, scale 9."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }

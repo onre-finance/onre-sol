@@ -246,6 +246,15 @@ pub mod onreapp {
         managed_buffer::set_managed_token_buffer_settings(ctx, settings)
     }
 
+    /// Boss-only burn of per-mint BUFFER reserve tokens that keeps the canonical
+    /// NAV after removing `asset_adjustment_amount` from the asset base.
+    pub fn burn_managed_token_for_nav_increase(
+        ctx: Context<BurnManagedTokenForNavIncrease>,
+        asset_adjustment_amount: u64,
+    ) -> Result<()> {
+        managed_buffer::burn_managed_token_for_nav_increase(ctx, asset_adjustment_amount)
+    }
+
     /// Creates per-managed-mint BUFFER state and dedicated vault configurations; boss only.
     /// Existing singleton BUFFER settlement remains unchanged.
     pub fn initialize_managed_token_buffer(

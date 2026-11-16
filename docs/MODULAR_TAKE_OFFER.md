@@ -219,6 +219,18 @@ caps bind program mints only; other members of a mint multisig (e.g. a CCIP pool
 mint outside them. Both require initialized state, and positive
 accrual requires initialized vault ATAs; neither instruction creates them.
 
+`burn_managed_token_for_nav_increase(asset_adjustment_amount)` is the boss-only
+per-mint port of the legacy ONyc `burn_for_nav_increase` and EVM
+`burnForNavIncrease`. It accrues the BUFFER first, then burns reserve tokens so the
+asset base reduced by the adjustment (USD, in managed-mint base units) keeps the
+current canonical NAV: `total_assets = floor(circulating × NAV / 1e9)`,
+`required = ceil((total_assets − adjustment) × 1e9 / NAV)`,
+`burn = circulating − required`. The reserve vault signs the burn of its ATA. A zero
+adjustment, an adjustment above total assets, a zero burn and an insufficient
+reserve are rejected; the kill switch blocks it. The BUFFER baseline and market
+stats follow the burn, and `ManagedTokenBurnedForNavEvent` records it. For ONyc it
+burns the per-mint reserve; the legacy instruction still burns the singleton reserve.
+
 ## Market stats
 
 Modular reporting is opt-in per managed mint through
