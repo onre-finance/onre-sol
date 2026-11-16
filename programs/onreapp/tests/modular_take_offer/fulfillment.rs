@@ -259,7 +259,7 @@ fn request_access_follows_the_offer_and_ids_are_unique_per_open_request() {
     f.create_route(
         OfferDirection::ManagedToAsset,
         OfferMode::WorkerPermissionless,
-        QuoterKind::NavPermissionless,
+        QuoterKind::Nav,
         true,
     );
     let instruction = create_ix(&f, 1, 1_000_000, Some(f.approval()));
@@ -369,6 +369,15 @@ fn execute_once(mode: OfferMode, direction: OfferDirection, kind: QuoterKind) ->
     let mut f = Fixture::new(false, false);
     f.seed_tokens(f.mint, f.user.pubkey(), 1_000_000_000);
     f.create_route(direction, mode, kind, true);
+    let offer: OfferConfig = read(&f.svm, f.offer);
+    assert_eq!(
+        (offer.quoter, offer.access, offer.execution),
+        (
+            pda(&[b"quoter", &[kind as u8], &0_u64.to_le_bytes()]),
+            mode.access(),
+            mode.execution()
+        )
+    );
     f.seed_tokens(f.asset, vault(VaultKind::Liquidity), 10_000_000);
     let gross = match direction {
         OfferDirection::AssetToManaged => 2_000_000,
@@ -437,12 +446,8 @@ fn a_fill_executes_exactly_like_take_offer_with_the_offers_quoter_fee_and_custod
         (OfferMode::Permissioned, OfferMode::Worker),
         (OfferMode::Permissionless, OfferMode::WorkerPermissionless),
     ] {
-        let kinds: &[QuoterKind] = if instant == OfferMode::Permissioned {
-            &[QuoterKind::Nav]
-        } else {
-            &[QuoterKind::NavPermissionless, QuoterKind::PropAmm]
-        };
-        for &kind in kinds {
+        // Access and quoter are independent: both modes quote NAV and Prop AMM.
+        for kind in [QuoterKind::Nav, QuoterKind::PropAmm] {
             for direction in [
                 OfferDirection::AssetToManaged,
                 OfferDirection::ManagedToAsset,

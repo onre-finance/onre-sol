@@ -17690,7 +17690,7 @@ export type Onreapp = {
     {
       "code": 6141,
       "name": "incompatibleQuoter",
-      "msg": "Quoter is incompatible with the offer access mode or pair"
+      "msg": "Quoter is incompatible with the offer pair or pressure state"
     },
     {
       "code": 6142,
@@ -21410,9 +21410,6 @@ export type Onreapp = {
         "variants": [
           {
             "name": "nav"
-          },
-          {
-            "name": "navPermissionless"
           },
           {
             "name": "propAmm"

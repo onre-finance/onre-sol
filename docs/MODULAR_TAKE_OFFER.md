@@ -2,8 +2,8 @@
 
 `take_offer(gross_input_amount, minimum_amount_out, deadline, approval_message)`
 executes the [reusable model](MODULAR_MODEL.md) through one public instruction.
-It supports permissioned (`Nav`) and permissionless (`NavPermissionless`) NAV,
-plus permissionless [`PropAmm`](MODULAR_PROP_AMM.md), in both directions.
+It supports `Nav` and [`PropAmm`](MODULAR_PROP_AMM.md) quoters for permissioned and
+permissionless offers, in both directions.
 Offers independently select [source and destination vaults](OFFER_VAULT_ROLES.md).
 NAV buys allow both absent; sells require a source and PropAmm buys require a
 destination. It executes Instant offers only; Worker offers execute through
@@ -30,8 +30,9 @@ invalid. The CLI still calls V2. Generated IDL/types expose the new instructions
 
 Register the managed mint, create its Pricer, append a vector with
 `add_pricer_vector`, create the appropriate Quoter, Fee and Proceeds vaults,
-a FeeConfig, and an OfferConfig. Permissioned offers select `Nav`; permissionless
-offers select `NavPermissionless` or a pair-configured `PropAmm` quoter.
+a FeeConfig, and an OfferConfig. Any offer selects `Nav` or a pair-configured
+`PropAmm` quoter; access does not restrict the quoter. Permissioned and
+permissionless offers can share one quoter and differ by FeeConfig.
 Buy sources optionally supply managed inventory; buy destinations optionally receive
 asset refill. Sells require an asset source and optionally transfer net managed
 input to a destination instead of burning. PropAmm buys require asset destinations

@@ -411,11 +411,14 @@ impl Fixture {
             send_tx(&mut self.svm, &[instruction], &[&self.boss]).unwrap();
         }
         // The initial permissioned buy already exists. Its creation used the same
-        // handler; changing a component here only prepares an unsupported-path test.
+        // handler; rebinding its components here also prepares unsupported-path tests.
         if offer == self.offer {
             edit::<OfferConfig>(&mut self.svm, offer, |c| {
+                c.quoter = quoter;
+                c.pressure_state = prop_amm_state.unwrap_or_default();
                 c.source_vault = source.unwrap_or_default();
                 c.destination_vault = destination.unwrap_or_default();
+                c.haircut_vault = haircut.unwrap_or_default();
             });
         } else {
             let instruction = ix(
@@ -1589,7 +1592,7 @@ fn offers_can_share_a_preexisting_modular_or_legacy_liquidity_vault() {
             // the same vault. No rebinding or migration is needed.
             for (flow, quoter) in [
                 (OfferMode::Permissioned, QuoterKind::Nav),
-                (OfferMode::Permissionless, QuoterKind::NavPermissionless),
+                (OfferMode::Permissionless, QuoterKind::Nav),
             ] {
                 f.create_route_with_vault(
                     OfferDirection::ManagedToAsset,
@@ -1635,7 +1638,7 @@ fn modular_offers_can_explicitly_share_the_old_redemption_vault() {
         // The redemption authority itself is a stateless PDA. Its ATA is custody.
         for (flow, quoter) in [
             (OfferMode::Permissioned, QuoterKind::Nav),
-            (OfferMode::Permissionless, QuoterKind::NavPermissionless),
+            (OfferMode::Permissionless, QuoterKind::Nav),
         ] {
             f.create_route_with_vault(OfferDirection::ManagedToAsset, flow, quoter, Some(selected));
             let instruction = f.take(500_000_000, 990_000);

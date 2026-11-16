@@ -6,7 +6,7 @@ Legacy offer execution uses `take_offer_v2` and `take_offer_permissionless_v2`.
 Both route fees and proceeds through configurable accounting vaults. The V1
 instructions that routed payments to the boss remain removed. The new
 [`take_offer`](MODULAR_TAKE_OFFER.md) uses reusable OfferConfig components for
-permissioned and permissionless NAV and permissionless Prop AMM execution in both
+NAV and Prop AMM execution, permissioned or permissionless, in both
 directions, with a different ABI from V1. Buys can split net asset input between
 selected liquidity refill and proceeds before minting. Prop AMM uses the liquidity curve for both buys
 and sells. NAV offers can explicitly link the matching pair tracker for relief accounting.

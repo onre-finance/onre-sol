@@ -1,4 +1,3 @@
-use super::QuoterKind;
 use anchor_lang::prelude::*;
 
 /// Who may trade: approver-signed users only, or anyone.
@@ -18,19 +17,6 @@ pub enum OfferAccess {
 pub enum OfferExecution {
     Instant,
     Worker,
-}
-
-/// The quoters an access mode supports, checked on configuration and again on
-/// execution: permissioned offers quote NAV; permissionless offers quote
-/// permissionless NAV or Prop AMM. Execution mode and direction do not restrict
-/// the quoter: a Worker fill prices and settles exactly as `take_offer` would.
-pub fn quoter_supported(access: OfferAccess, kind: QuoterKind) -> bool {
-    match access {
-        OfferAccess::Permissioned => kind == QuoterKind::Nav,
-        OfferAccess::Permissionless => {
-            matches!(kind, QuoterKind::NavPermissionless | QuoterKind::PropAmm)
-        }
-    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Clone, Copy, Debug, PartialEq, Eq)]

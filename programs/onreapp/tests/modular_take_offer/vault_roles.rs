@@ -31,13 +31,6 @@ fn execute(
         f.send_without_approval(instruction)
     }
 }
-fn kind(flow: OfferMode) -> QuoterKind {
-    if flow == OfferMode::Permissioned {
-        QuoterKind::Nav
-    } else {
-        QuoterKind::NavPermissionless
-    }
-}
 
 #[test]
 fn nav_buys_independently_select_inventory_and_destination_refill() {
@@ -67,7 +60,7 @@ fn nav_buys_independently_select_inventory_and_destination_refill() {
                         f.create_route_with_vaults(
                             OfferDirection::AssetToManaged,
                             flow,
-                            kind(flow),
+                            QuoterKind::Nav,
                             source,
                             destination,
                         );
@@ -150,7 +143,7 @@ fn sell_destination_receives_all_net_managed_input_instead_of_burning() {
                     f.create_route_with_vaults(
                         OfferDirection::ManagedToAsset,
                         flow,
-                        kind(flow),
+                        QuoterKind::Nav,
                         Some(source),
                         destination,
                     );
@@ -203,7 +196,7 @@ fn managed_inventory_signs_for_modular_legacy_and_redemption_custody() {
             f.create_route_with_vaults(
                 OfferDirection::AssetToManaged,
                 OfferMode::Permissionless,
-                QuoterKind::NavPermissionless,
+                QuoterKind::Nav,
                 Some(source),
                 Some(asset_custody),
             );
@@ -212,7 +205,7 @@ fn managed_inventory_signs_for_modular_legacy_and_redemption_custody() {
             f.create_route_with_vaults(
                 OfferDirection::ManagedToAsset,
                 OfferMode::Permissionless,
-                QuoterKind::NavPermissionless,
+                QuoterKind::Nav,
                 Some(asset_custody),
                 Some(source),
             );
@@ -232,7 +225,7 @@ fn configured_inventory_cannot_fall_back_to_minting_and_bad_roles_roll_back() {
     f.create_route_with_vaults(
         OfferDirection::AssetToManaged,
         OfferMode::Permissionless,
-        QuoterKind::NavPermissionless,
+        QuoterKind::Nav,
         Some(source),
         Some(destination),
     );
@@ -348,7 +341,7 @@ fn failed_source_payout_rolls_back_retained_input_fees_and_destination_creation(
     f.create_route_with_vaults(
         OfferDirection::ManagedToAsset,
         OfferMode::Permissionless,
-        QuoterKind::NavPermissionless,
+        QuoterKind::Nav,
         Some(source),
         Some(destination),
     );
@@ -403,7 +396,7 @@ fn buy_inventory_from_a_legacy_fee_vault_excludes_per_mint_buffer_accrual() {
     f.create_route_with_vaults(
         OfferDirection::AssetToManaged,
         OfferMode::Permissionless,
-        QuoterKind::NavPermissionless,
+        QuoterKind::Nav,
         Some(source),
         None,
     );
