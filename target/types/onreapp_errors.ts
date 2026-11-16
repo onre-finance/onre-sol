@@ -153,7 +153,8 @@ export const OnreappErrorCode = {
   MaxSupplyBelowCurrentSupply: 6150,
   MarketStatsNotSelected: 6151,
   LegacyBufferRetired: 6152,
-  PerMintBufferInactive: 6153
+  PerMintBufferInactive: 6153,
+  LegacyBufferAccountsRequired: 6154
 };
 
 export type OnreappErrorName = keyof typeof OnreappErrorCode;

@@ -11348,7 +11348,8 @@ export type Onreapp = {
             {
               "name": "bufferState",
               "docs": [
-                "ONyc included. A substitute cannot bypass initialized accrual."
+                "used whenever it is the active BUFFER. A substitute cannot bypass initialized",
+                "accrual. ONyc before the one-way switch accrues the legacy accounts below."
               ],
               "writable": true
             },
@@ -11401,6 +11402,31 @@ export type Onreapp = {
               "docs": [
                 "equal it; omitted for direct PDA minting. See `utils::program_minter`."
               ],
+              "optional": true
+            },
+            {
+              "name": "legacyBufferState",
+              "docs": [
+                "one-way BUFFER switch, which it then accrues; ignored afterwards and for other",
+                "mints. Clients can supply it alongside the per-mint BUFFER accounts at all",
+                "times, so the switch needs no account changes."
+              ],
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "legacyBufferReserveToken",
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "legacyBufferManagementToken",
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "legacyBufferPerformanceToken",
+              "writable": true,
               "optional": true
             }
           ]
@@ -16431,6 +16457,11 @@ export type Onreapp = {
       "code": 6153,
       "name": "perMintBufferInactive",
       "msg": "ONyc uses the legacy BUFFER until the one-way switch to per-mint"
+    },
+    {
+      "code": 6154,
+      "name": "legacyBufferAccountsRequired",
+      "msg": "ONyc before the one-way BUFFER switch requires the legacy BUFFER accounts"
     }
   ],
   "types": [

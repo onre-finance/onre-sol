@@ -1,24 +1,52 @@
 //! Offer adapter over the shared modular BUFFER engine.
 use super::TakeOffer;
-use crate::instructions::buffer::modular_accrual::{self, BufferContext};
+use crate::{
+    instructions::buffer::modular_accrual::{self, BufferContext},
+    OnreError,
+};
 use anchor_lang::prelude::*;
 
 pub use modular_accrual::ManagedTokenBufferAccruedEvent;
 
-fn context<'a, 'info>(a: &'a TakeOffer<'info>) -> BufferContext<'a, 'info> {
-    BufferContext {
+/// The active BUFFER's accounts: the legacy singleton set for ONyc before the
+/// one-way switch, the per-mint set otherwise.
+fn context<'a, 'info>(a: &'a TakeOffer<'info>) -> Result<BufferContext<'a, 'info>> {
+    let b = &a.buffer;
+    let onyc_legacy =
+        a.managed_mint().key() == a.state.onyc_mint && a.state.onyc_legacy_buffer_active();
+    let (buffer_state, reserve_token, management_token, performance_token) = if onyc_legacy {
+        let required = |account: &'a Option<UncheckedAccount<'info>>| {
+            account
+                .as_ref()
+                .ok_or_else(|| error!(OnreError::LegacyBufferAccountsRequired))
+        };
+        (
+            required(&b.legacy_buffer_state)?,
+            required(&b.legacy_buffer_reserve_token)?,
+            required(&b.legacy_buffer_management_token)?,
+            required(&b.legacy_buffer_performance_token)?,
+        )
+    } else {
+        (
+            &b.buffer_state,
+            &b.buffer_reserve_token,
+            &b.buffer_management_token,
+            &b.buffer_performance_token,
+        )
+    };
+    Ok(BufferContext {
         state: &a.state,
         managed_mint: a.managed_mint(),
         managed_program: a.managed_program(),
-        buffer_state: &a.buffer.buffer_state,
-        buffer_pricer: a.buffer.buffer_pricer.as_deref(),
-        reserve_token: &a.buffer.buffer_reserve_token,
-        management_token: &a.buffer.buffer_management_token,
-        performance_token: &a.buffer.buffer_performance_token,
+        buffer_state,
+        buffer_pricer: b.buffer_pricer.as_deref(),
+        reserve_token,
+        management_token,
+        performance_token,
         mint_authority: &a.mint_authority,
         configured_mint_multisig: a.config.managed_token.mint_multisig,
-        mint_multisig: a.buffer.mint_multisig.as_ref(),
-    }
+        mint_multisig: b.mint_multisig.as_ref(),
+    })
 }
 
 pub(super) fn accrue_before_execution(
@@ -31,7 +59,7 @@ pub(super) fn accrue_before_execution(
 ) -> Result<bool> {
     modular_accrual::accrue(
         program_id,
-        &context(a),
+        &context(a)?,
         authority_bump,
         now,
         max_supply,
@@ -44,5 +72,5 @@ pub(super) fn store_post_execution_supply(
     a: &TakeOffer,
     now: i64,
 ) -> Result<()> {
-    modular_accrual::store_post_supply(program_id, &context(a), now)
+    modular_accrual::store_post_supply(program_id, &context(a)?, now)
 }

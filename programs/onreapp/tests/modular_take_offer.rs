@@ -474,22 +474,26 @@ impl Fixture {
         send_tx(&mut self.svm, &[instruction], &[&self.boss]).unwrap();
         self.set_onyc_per_mint_buffer_active(active);
     }
-    /// The active BUFFER state: legacy singleton for ONyc before the switch.
     fn buffer(&self) -> Pubkey {
-        if self.onyc_legacy_buffer() {
-            return find_buffer_state_pda().0;
-        }
         pda(&[b"buffer", self.mint.as_ref()])
     }
-    /// Owners of the active BUFFER's reserve, management and performance vaults.
+    /// Legacy ONyc singleton BUFFER state and its vault ATAs, supplied with every
+    /// ONyc trade like a partner would, so the one-way switch needs no changes.
+    fn legacy_buffer_accounts(&self) -> Option<(Pubkey, [Pubkey; 3])> {
+        let state: GlobalState = read(&self.svm, find_state_pda().0);
+        (state.onyc_mint == self.mint).then(|| {
+            (
+                find_buffer_state_pda().0,
+                [
+                    find_reserve_vault_authority_pda().0,
+                    find_management_fee_vault_pda().0,
+                    find_performance_fee_vault_pda().0,
+                ]
+                .map(|owner| derive_ata(&owner, &self.mint, &self.token_program)),
+            )
+        })
+    }
     fn buffer_vaults(&self) -> [Pubkey; 3] {
-        if self.onyc_legacy_buffer() {
-            return [
-                find_reserve_vault_authority_pda().0,
-                find_management_fee_vault_pda().0,
-                find_performance_fee_vault_pda().0,
-            ];
-        }
         [
             pda(&[b"buffer_reserve", self.mint.as_ref()]),
             pda(&[b"buffer_management", self.mint.as_ref()]),
@@ -548,6 +552,7 @@ impl Fixture {
         };
         let has_source = config.source_vault != Pubkey::default();
         let has_destination = config.destination_vault != Pubkey::default();
+        let legacy = self.legacy_buffer_accounts();
         let [reserve, management, performance] = self
             .buffer_vaults()
             .map(|v| derive_ata(&v, &self.mint, &self.token_program));
@@ -587,6 +592,10 @@ impl Fixture {
                     buffer_management_token: management,
                     buffer_performance_token: performance,
                     mint_multisig,
+                    legacy_buffer_state: legacy.map(|(state, _)| state),
+                    legacy_buffer_reserve_token: legacy.map(|(_, tokens)| tokens[0]),
+                    legacy_buffer_management_token: legacy.map(|(_, tokens)| tokens[1]),
+                    legacy_buffer_performance_token: legacy.map(|(_, tokens)| tokens[2]),
                 },
                 instructions_sysvar: SYSVAR_INSTRUCTIONS_ID,
                 user: self.user.pubkey(),

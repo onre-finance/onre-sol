@@ -11342,7 +11342,8 @@
             {
               "name": "buffer_state",
               "docs": [
-                "ONyc included. A substitute cannot bypass initialized accrual."
+                "used whenever it is the active BUFFER. A substitute cannot bypass initialized",
+                "accrual. ONyc before the one-way switch accrues the legacy accounts below."
               ],
               "writable": true
             },
@@ -11395,6 +11396,31 @@
               "docs": [
                 "equal it; omitted for direct PDA minting. See `utils::program_minter`."
               ],
+              "optional": true
+            },
+            {
+              "name": "legacy_buffer_state",
+              "docs": [
+                "one-way BUFFER switch, which it then accrues; ignored afterwards and for other",
+                "mints. Clients can supply it alongside the per-mint BUFFER accounts at all",
+                "times, so the switch needs no account changes."
+              ],
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "legacy_buffer_reserve_token",
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "legacy_buffer_management_token",
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "legacy_buffer_performance_token",
+              "writable": true,
               "optional": true
             }
           ]
@@ -16425,6 +16451,11 @@
       "code": 6153,
       "name": "PerMintBufferInactive",
       "msg": "ONyc uses the legacy BUFFER until the one-way switch to per-mint"
+    },
+    {
+      "code": 6154,
+      "name": "LegacyBufferAccountsRequired",
+      "msg": "ONyc before the one-way BUFFER switch requires the legacy BUFFER accounts"
     }
   ],
   "types": [

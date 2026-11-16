@@ -310,4 +310,6 @@ pub enum OnreError {
     LegacyBufferRetired,
     #[msg("ONyc uses the legacy BUFFER until the one-way switch to per-mint")]
     PerMintBufferInactive,
+    #[msg("ONyc before the one-way BUFFER switch requires the legacy BUFFER accounts")]
+    LegacyBufferAccountsRequired,
 }

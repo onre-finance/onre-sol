@@ -187,6 +187,16 @@ fn onyc_switches_once_from_the_legacy_to_the_per_mint_buffer() {
     );
     let start = get_mint_supply(&f.svm, &f.mint);
     advance_clock_by(&mut f.svm, 3_153_600);
+    // Before the switch ONyc trades must supply the legacy BUFFER accounts.
+    let mut instruction = f.take(2_000_000, 990_000_000);
+    for meta in instruction
+        .accounts
+        .iter_mut()
+        .filter(|meta| meta.pubkey == legacy)
+    {
+        *meta = AccountMeta::new_readonly(PROGRAM_ID, false);
+    }
+    assert_error(f.send(instruction), OnreError::LegacyBufferAccountsRequired);
     let instruction = f.take(2_000_000, 990_000_000);
     f.send(instruction).unwrap();
     let accrued = accrual(start, 50_000, 3_153_600);
@@ -208,6 +218,8 @@ fn onyc_switches_once_from_the_legacy_to_the_per_mint_buffer() {
         OnreError::InvalidBoss,
     );
     advance_clock_by(&mut f.svm, 3_153_600);
+    // A trade prepared before the switch, with both BUFFER account sets.
+    let prepared = f.take(2_000_000, 990_000_000);
     let before_switch = get_mint_supply(&f.svm, &f.mint);
     let instruction = switch_ix(&f, boss);
     send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
@@ -226,6 +238,17 @@ fn onyc_switches_once_from_the_legacy_to_the_per_mint_buffer() {
         taken_over.last_accrual_timestamp,
         get_clock_time(&f.svm) as i64
     );
+
+    // The prepared trade executes unchanged after the switch and moves only the
+    // per-mint baseline; the legacy accounts it supplies are ignored.
+    let legacy_at_switch = f.svm.get_account(&legacy).unwrap().data;
+    f.send(prepared).unwrap();
+    let switched = get_mint_supply(&f.svm, &f.mint);
+    assert_eq!(
+        read::<ManagedTokenBufferState>(&f.svm, per_mint).previous_supply,
+        switched
+    );
+    assert_eq!(f.svm.get_account(&legacy).unwrap().data, legacy_at_switch);
 
     // One way: no second switch, no more legacy settlement.
     let instruction = switch_ix(&f, boss);
