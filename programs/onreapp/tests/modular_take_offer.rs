@@ -411,11 +411,14 @@ impl Fixture {
             send_tx(&mut self.svm, &[instruction], &[&self.boss]).unwrap();
         }
         // The initial permissioned buy already exists. Its creation used the same
-        // handler; changing a component here only prepares an unsupported-path test.
+        // handler; rebinding its components here also prepares unsupported-path tests.
         if offer == self.offer {
             edit::<OfferConfig>(&mut self.svm, offer, |c| {
+                c.quoter = quoter;
+                c.pressure_state = prop_amm_state.unwrap_or_default();
                 c.source_vault = source.unwrap_or_default();
                 c.destination_vault = destination.unwrap_or_default();
+                c.haircut_vault = haircut.unwrap_or_default();
             });
         } else {
             let instruction = ix(

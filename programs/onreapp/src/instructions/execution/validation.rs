@@ -1,5 +1,5 @@
 use crate::{
-    model::{quoter_supported, OfferConfig, OfferDirection, QuoterKind},
+    model::{OfferConfig, OfferDirection, QuoterKind},
     utils::{has_transfer_fee, pressure_link::validate_pressure_link},
     OnreError,
 };
@@ -17,18 +17,13 @@ pub(super) struct ExecutionPlan {
     pub curve_target_bps: u16,
 }
 
-/// The route must suit the offer's stored access and execution modes, and the
-/// quoter its access mode. Checked before quoting and again at settlement, so a future
-/// dispatch change cannot execute another quoter through NAV settlement.
+/// The route must suit the offer's stored access and execution modes. Checked
+/// before quoting and again at settlement. Any quoter suits any mode.
 pub(super) fn require_supported(a: &Execution) -> Result<()> {
     let offer: &OfferConfig = &a.config.offer_config;
     require!(
         a.route.supports(offer),
         OnreError::UnsupportedOfferExecution
-    );
-    require!(
-        quoter_supported(offer.access, a.config.quoter.kind),
-        OnreError::IncompatibleQuoter
     );
     Ok(())
 }

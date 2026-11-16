@@ -78,7 +78,6 @@ pub fn update_offer_config(ctx: Context<UpdateOfferConfig>) -> Result<()> {
     let destination_vault = a.destination_vault.as_ref().map(|v| v.to_account_info());
     let pressure_state = validate_offer_components(
         ctx.program_id,
-        previous.access,
         previous.direction,
         previous.token_in_mint,
         previous.token_out_mint,

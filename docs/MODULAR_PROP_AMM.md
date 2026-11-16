@@ -1,6 +1,7 @@
 # Modular Prop AMM execution
 
-The permissionless `PropAmm` quoter supports both directions through `take_offer`.
+The `PropAmm` quoter supports both directions through `take_offer`, for permissioned
+and permissionless offers.
 Each direction has its own OfferConfig, fees, and vault references. Both offers
 can select the same quoter and its pair-bound PropAmmState to share pressure.
 A reverse offer is optional: a standalone Prop AMM sell or buy offer can execute
@@ -9,8 +10,9 @@ through the normal epoch decay; opposite-flow relief occurs only when a matching
 offer exists and explicitly uses that tracker. Creation and execution do not
 require a counterpart account.
 Separate quoter instances have separate accounting even if they use the same
-custody. Permissioned offers still require `Nav`, so Prop AMM offers are
-permissionless, with Instant or Worker execution. Legacy Prop AMM accounts, tracker math and execution are unchanged.
+custody. Prop AMM offers may use either access mode and either execution mode;
+a permissioned and a permissionless offer can share one quoter and its pressure,
+with different fee configs. Legacy Prop AMM accounts, tracker math and execution are unchanged.
 
 ## Pressure link and symmetric pricing
 
@@ -91,8 +93,7 @@ later failure rolls back accounting, BUFFER accrual and token movements together
 
 ## Buy-side liquidity refill
 
-Refill works for all supported buy quoters: `Nav` (permissioned or
-permissionless) and permissionless `PropAmm`. A NAV buy may omit liquidity;
+Refill works for both buy quoters, `Nav` and `PropAmm`, in either access mode. A NAV buy may omit liquidity;
 a PropAmm buy must select a destination from the [supported custody authorities](VAULT_CONFIG_OPERATIONS.md).
 Only a generic Liquidity VaultConfig has a modular `refill_target_bps`; legacy
 configurable vaults and redemption custody use zero, which disables refill.

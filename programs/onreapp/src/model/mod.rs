@@ -19,7 +19,7 @@ pub use buffer::{BufferSettings, ManagedTokenBufferState};
 pub use fee::FeeConfig;
 pub use fulfillment::FulfillmentRequest;
 pub use managed_token::ManagedTokenConfig;
-pub use offer::{quoter_supported, OfferAccess, OfferConfig, OfferDirection, OfferExecution};
+pub use offer::{OfferAccess, OfferConfig, OfferDirection, OfferExecution};
 pub use pricer::{Pricer, PricingDenomination, PricingVector};
 pub use prop_amm::{PropAmmConfig, PropAmmState};
 pub use quoter::{Quoter, QuoterKind};

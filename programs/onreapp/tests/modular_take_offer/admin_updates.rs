@@ -430,7 +430,7 @@ fn boss_replaces_offer_components_including_the_pricer_instance() {
     );
     let instruction = update(&f, boss, price(f.mint, 0), f.quoter, f.fee);
     expect_error(boss_send(&mut f, instruction), OnreError::NoChange);
-    // A permissioned offer cannot use a Prop AMM quoter.
+    // A Prop AMM quoter needs its pair's pressure state.
     let instruction = update(&f, boss, pricer, prop_amm, fee);
     expect_error(
         boss_send(&mut f, instruction),

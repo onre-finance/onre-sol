@@ -17684,7 +17684,7 @@
     {
       "code": 6141,
       "name": "IncompatibleQuoter",
-      "msg": "Quoter is incompatible with the offer access mode or pair"
+      "msg": "Quoter is incompatible with the offer pair or pressure state"
     },
     {
       "code": 6142,

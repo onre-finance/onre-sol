@@ -171,7 +171,7 @@ repeat creation; shared accounts are not implicitly initialized or overwritten b
 | `create_vault_config` | Creates a vault authority/config with a nonzero destination; creates no ATA. Refill targets are allowed only for Liquidity and cannot exceed 10,000 bps. |
 | `create_fee_config` | Requires an existing Fee vault; percentage fees are capped at 1,000 bps and the input-token minimum is stored in base units. |
 | `create_prop_amm_state` | Requires an enabled PropAmm quoter, a registered managed mint, and a boss-selected external mint. Validates curve/cadence/epoch settings and creates zero pressure with the current timestamp. Repeat creation cannot rebind the pair. |
-| `create_offer_config` | Takes a boss-chosen `instance_id` that, with the mint pair, derives the offer address. Requires exactly one registered managed mint and a Pricer for it. The boss chooses the external mint in the Pricer's denomination. Validates mint decimals, enabled components, mode/quoter compatibility, Prop AMM pair binding, and vault kinds. |
+| `create_offer_config` | Takes a boss-chosen `instance_id` that, with the mint pair, derives the offer address. Requires exactly one registered managed mint and a Pricer for it. The boss chooses the external mint in the Pricer's denomination. Validates mint decimals, enabled components, Prop AMM pair binding, and vault kinds. |
 | `set_managed_token_enabled` / `set_pricer_enabled` / `set_quoter_enabled` / `set_fee_config_enabled` / `set_offer_config_enabled` | Boss-only enable/disable of a component (`NoChange` on a no-op, one event per kind). A disabled component fails execution and creation checks that require it; nothing else changes. |
 | `update_offer_config` | Boss-only replacement of an offer's Pricer (any enabled instance of its managed mint), quoter, pressure link, fee config, proceeds vault and source/destination vaults with the creation rules. Mints, instance ID, access, execution and direction stay immutable. |
 | `update_fee_config` | Boss-only replacement of basis points, minimum fee and Fee-kind vault with the creation rules; instance and enabled flag unchanged. |
@@ -263,19 +263,13 @@ fulfillment requests that the worker fills. Execution changes only how a trade
 settles: a fill uses the offer's quoter, fee, direction and custody exactly as
 `take_offer` would. EVM's single `OfferFlow` enum maps to (Permissioned, Instant),
 (Permissionless, Instant) and (Permissioned, Worker, NAV sells only); Solana lifts
-the Worker restriction. Access selects the quoter (`model::quoter_supported`):
-
-| Access | Direction | Quoter |
-| --- | --- | --- |
-| Permissioned | Either | Nav |
-| Permissionless | Either | Nav or pair-matching PropAmm |
-
-Both access modes can share one `Nav` quoter; fees differ through each offer's
-FeeConfig.
+the Worker restriction. Neither mode restricts the quoter: any offer may select
+`Nav` or a pair-matching `PropAmm`, and offers of different modes can share one
+quoter while their fees differ through each offer's FeeConfig.
 
 Each Prop AMM quoter binds one immutable asset/managed pair. Multiple quoters may
 bind the same pair with independent parameters and pressure. The two directed
-permissionless offers can share one quoter so buys relieve its sell pressure.
+offers can share one quoter so buys relieve its sell pressure.
 NAV kinds may link the same pair state for trade accounting without curve pricing.
 Only the exact asset/managed mint pair can link; sharing custody is insufficient.
 `set_offer_pressure_state` is boss-only, validates pair and canonical state identity,
