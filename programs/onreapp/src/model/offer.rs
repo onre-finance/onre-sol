@@ -44,6 +44,10 @@ pub struct OfferConfig {
     /// transferred here instead of burned. Default means absent. PropAmm buys
     /// require it as their funded asset-side curve liquidity.
     pub destination_vault: Pubkey,
+    /// Haircut custody for Prop AMM sells without a destination: the haircut share of
+    /// the net managed input is transferred here and only the paid share is burned.
+    /// Required for those offers and default (absent) for every other offer.
+    pub haircut_vault: Pubkey,
     pub token_in_decimals: u8,
     pub token_out_decimals: u8,
     pub enabled: bool,

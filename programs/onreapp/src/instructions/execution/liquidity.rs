@@ -157,19 +157,52 @@ pub(super) fn deposit_destination<'info>(
     input_seeds: Option<&[&[&[u8]]]>,
     amount: u64,
 ) -> Result<()> {
+    deposit_input(
+        a,
+        a.custody.destination_vault.as_ref(),
+        a.custody.destination_token_in.as_ref(),
+        input,
+        input_authority,
+        input_seeds,
+        amount,
+    )
+}
+
+/// Deposit the retained haircut share of a Prop AMM sell into the offer's Haircut vault.
+pub(super) fn deposit_haircut<'info>(
+    a: &TakeOffer<'info>,
+    input: &InterfaceAccount<'info, TokenAccount>,
+    input_authority: &AccountInfo<'info>,
+    input_seeds: Option<&[&[&[u8]]]>,
+    amount: u64,
+) -> Result<()> {
+    deposit_input(
+        a,
+        a.custody.haircut_vault.as_ref(),
+        a.custody.haircut_token_in.as_ref(),
+        input,
+        input_authority,
+        input_seeds,
+        amount,
+    )
+}
+
+/// Transfer input-mint tokens into a validated vault's canonical ATA, creating it at
+/// the user's expense on first use.
+fn deposit_input<'info>(
+    a: &TakeOffer<'info>,
+    vault: Option<&UncheckedAccount<'info>>,
+    token: Option<&UncheckedAccount<'info>>,
+    input: &InterfaceAccount<'info, TokenAccount>,
+    input_authority: &AccountInfo<'info>,
+    input_seeds: Option<&[&[&[u8]]]>,
+    amount: u64,
+) -> Result<()> {
     if amount == 0 {
         return Ok(());
     }
-    let vault = a
-        .custody
-        .destination_vault
-        .as_ref()
-        .ok_or(OnreError::LiquidityVaultRequired)?;
-    let token = a
-        .custody
-        .destination_token_in
-        .as_ref()
-        .ok_or(OnreError::InvalidConfigurableVaultTokenAccount)?;
+    let vault = vault.ok_or(OnreError::LiquidityVaultRequired)?;
+    let token = token.ok_or(OnreError::InvalidConfigurableVaultTokenAccount)?;
     if *token.owner == System::id() {
         anchor_spl::associated_token::create_idempotent(CpiContext::new(
             a.associated_token_program.key(),
@@ -197,4 +230,39 @@ pub(super) fn deposit_destination<'info>(
         amount,
         a.token_in_mint.decimals,
     )
+}
+
+/// The configured Haircut vault must be supplied exactly, with its canonical
+/// input-mint ATA; offers without one must omit both accounts.
+pub(super) fn validate_haircut(program_id: &Pubkey, a: &TakeOffer) -> Result<()> {
+    let reference = a.config.offer_config.haircut_vault;
+    let (vault, token) = (
+        a.custody.haircut_vault.as_ref(),
+        a.custody.haircut_token_in.as_ref(),
+    );
+    if reference == Pubkey::default() {
+        require!(
+            vault.is_none() && token.is_none(),
+            OnreError::UnexpectedHaircutVault
+        );
+        return Ok(());
+    }
+    let vault = vault.ok_or(OnreError::HaircutVaultRequired)?;
+    require_keys_eq!(vault.key(), reference, OnreError::InvalidConfigurableVault);
+    require_keys_eq!(
+        *vault.owner,
+        *program_id,
+        OnreError::InvalidConfigurableVault
+    );
+    let token = token.ok_or(OnreError::InvalidConfigurableVaultTokenAccount)?;
+    require_keys_eq!(
+        token.key(),
+        get_associated_token_address_with_program_id(
+            &reference,
+            &a.token_in_mint.key(),
+            &a.token_in_program.key()
+        ),
+        OnreError::InvalidConfigurableVaultTokenAccount
+    );
+    Ok(())
 }

@@ -78,8 +78,10 @@ equal that pair.
   other flows. The token accounts are the authority's canonical input/output ATAs
   under each mint's token program and are created lazily at the user's expense.
 - Optional `prop_amm_state`, plus independently configured `source_vault` /
-  `source_token_out` and `destination_vault` / `destination_token_in`.
-  Each vault token account is the canonical ATA for that role's mint.
+  `source_token_out`, `destination_vault` / `destination_token_in`, and
+  `haircut_vault` / `haircut_token_in` (Prop AMM sells without a destination; see
+  [OFFER_VAULT_ROLES.md](OFFER_VAULT_ROLES.md)). Each vault token account is the
+  canonical ATA for that role's mint.
 
 The managed mint and its token program are selected from the input or output side
 according to the stored direction. Both mints are writable because either may be

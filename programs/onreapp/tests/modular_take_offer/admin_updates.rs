@@ -413,6 +413,7 @@ fn boss_replaces_offer_components_including_the_pricer_instance() {
                 proceeds_vault: vault(VaultKind::Proceeds),
                 source_vault: None,
                 destination_vault: None,
+                haircut_vault: None,
                 state: find_state_pda().0,
                 boss,
             },

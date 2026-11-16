@@ -33,6 +33,7 @@ over the vault. A caller cannot redirect a withdrawal to another owner.
 | Proceeds | Any signer |
 | Liquidity | Current `State::boss` |
 | BufferReserve | Current `State::boss` |
+| Haircut | Current `State::boss` |
 
 The caller pays for creating the destination ATA when needed. A positive amount
 withdraws exactly that amount; zero withdraws the whole current balance. Empty

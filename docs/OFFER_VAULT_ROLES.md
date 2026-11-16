@@ -7,9 +7,19 @@ references as optional accounts and validates their custody identities.
 | Direction | Source vault: output-mint ATA | Destination vault: input-mint ATA |
 | --- | --- | --- |
 | Asset -> managed | Optional; transfer managed inventory from it. Without a source, mint managed output. | Optional for NAV; refill asset liquidity up to its configured TVL percentage. Zero percentage sends all net input to Proceeds. |
-| Managed -> asset | Required; pay asset output from it. | Optional; transfer all net managed input here. Without a destination, burn that net input. |
+| Managed -> asset | Required; pay asset output from it. | Optional; transfer all net managed input here. Without a destination, burn the net input; Prop AMM sells burn only the paid share and retain the haircut (below). |
 
 Input fees always go to the configured Fee vault before net-input settlement.
+
+A Prop AMM sell without a destination burns only the share of the net managed
+input `N` it paid for: with raw NAV output `R` and paid output `P`, it burns
+`ceil(N × P / R)` and transfers the remaining haircut share to the offer's
+`haircut_vault`, a `Haircut`-kind VaultConfig, into its canonical managed-mint ATA
+(created at the user's expense on first use). Exactly these offers require a
+haircut vault (`HaircutVaultRequired`); every other offer must omit it
+(`UnexpectedHaircutVault`). Retained tokens stay in supply, so they count in
+circulating supply and TVL and accrue BUFFER yield. `OfferExecutedEvent` reports
+the retained amount as `haircut_amount`.
 An explicitly configured source must cover the final quoted output. An empty or
 insufficient source fails atomically; it never falls back to minting. Mint limits
 apply to actual issuance, including BUFFER accrual, not inventory transfers.

@@ -766,3 +766,95 @@ fn production_usdg_profile_matches_mainnet_simulation_vectors() {
         assert_eq!(state.current_buy_value_stable, 0);
     }
 }
+
+#[test]
+fn prop_amm_sell_burns_only_the_paid_share_and_retains_the_haircut() {
+    use super::mint_multisig::{expect_error, send};
+    for token_2022 in [false, true] {
+        let mut f = Fixture::new(false, token_2022);
+        f.seed_tokens(f.mint, f.user.pubkey(), 1_000_000_000);
+        let (buy, sell, selected) = routes(&mut f, 0);
+        f.offer = sell;
+        let haircut = vault(VaultKind::Haircut);
+        let config: OfferConfig = read(&f.svm, sell);
+        assert_eq!(config.haircut_vault, haircut);
+        f.seed_tokens(f.asset, selected, 10_000_000);
+        let supply_before = get_mint_supply(&f.svm, &f.mint);
+
+        let instruction = f.take(1_000_000_000, 1);
+        let event = executed_event(&f.send_without_approval(instruction).unwrap());
+        // Raw NAV output at NAV 2: net × 2 / 1_000 asset units; the curve pays less.
+        let net = event.net_input_amount as u128;
+        let raw = net * 2 / 1_000;
+        let paid = event.amount_out as u128;
+        assert!(paid < raw);
+        let burned = (net * paid).div_ceil(raw) as u64;
+        let retained = event.net_input_amount - burned;
+        assert!(retained > 0);
+        assert_eq!(event.haircut_amount, retained);
+        assert_eq!(f.balance(f.mint, haircut, f.token_program), retained);
+        assert_eq!(get_mint_supply(&f.svm, &f.mint), supply_before - burned);
+        assert_eq!(
+            f.balance(f.mint, vault(VaultKind::Fee), f.token_program),
+            event.fee_amount
+        );
+
+        // A haircut vault belongs only on Prop AMM sells without a destination.
+        let buy_config: OfferConfig = read(&f.svm, buy);
+        let role = |key: Pubkey| (key != Pubkey::default()).then_some(key);
+        let instruction = ix(
+            accounts::UpdateOfferConfig {
+                offer_config: buy,
+                pricer: buy_config.pricer,
+                quoter: buy_config.quoter,
+                prop_amm_state: role(buy_config.pressure_state),
+                fee_config: buy_config.fee_config,
+                proceeds_vault: buy_config.proceeds_vault,
+                source_vault: role(buy_config.source_vault),
+                destination_vault: role(buy_config.destination_vault),
+                haircut_vault: Some(haircut),
+                state: find_state_pda().0,
+                boss: f.boss.pubkey(),
+            },
+            instruction::UpdateOfferConfig {},
+        );
+        let boss = f.boss.insecure_clone();
+        expect_error(
+            send(&mut f.svm, &[instruction], &[&boss]),
+            OnreError::UnexpectedHaircutVault,
+        );
+
+        // Retained haircut tokens are withdrawn by the boss only.
+        let rogue = Keypair::new();
+        f.svm.airdrop(&rogue.pubkey(), INITIAL_LAMPORTS).unwrap();
+        let withdraw = |caller: Pubkey| {
+            ix(
+                accounts::WithdrawVaultConfig {
+                    vault: haircut,
+                    mint: f.mint,
+                    vault_token_account: derive_ata(&haircut, &f.mint, &f.token_program),
+                    destination: f.boss.pubkey(),
+                    destination_token_account: derive_ata(
+                        &f.boss.pubkey(),
+                        &f.mint,
+                        &f.token_program,
+                    ),
+                    caller,
+                    state: find_state_pda().0,
+                    token_program: f.token_program,
+                    associated_token_program: ATA_PROGRAM_ID,
+                    system_program: SYSTEM_PROGRAM_ID,
+                },
+                instruction::WithdrawVaultConfig { amount: 0 },
+            )
+        };
+        let instruction = withdraw(rogue.pubkey());
+        expect_error(
+            send(&mut f.svm, &[instruction], &[&rogue]),
+            OnreError::InvalidBoss,
+        );
+        let instruction = withdraw(f.boss.pubkey());
+        send(&mut f.svm, &[instruction], &[&boss]).unwrap();
+        assert_eq!(f.balance(f.mint, haircut, f.token_program), 0);
+    }
+}

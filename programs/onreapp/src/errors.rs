@@ -312,4 +312,8 @@ pub enum OnreError {
     PerMintBufferInactive,
     #[msg("ONyc before the one-way BUFFER switch requires the legacy BUFFER accounts")]
     LegacyBufferAccountsRequired,
+    #[msg("Prop AMM sells without a destination require a Haircut-kind vault")]
+    HaircutVaultRequired,
+    #[msg("A haircut vault is only allowed on Prop AMM sells without a destination")]
+    UnexpectedHaircutVault,
 }

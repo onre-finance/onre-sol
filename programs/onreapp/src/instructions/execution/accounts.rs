@@ -220,6 +220,13 @@ pub struct TakeOfferCustodyAccounts<'info> {
     /// CHECK: Canonical input-mint ATA of destination_vault, initialized on deposit.
     #[account(mut)]
     pub destination_token_in: Option<UncheckedAccount<'info>>,
+
+    /// CHECK: Exact configured Haircut vault; required exactly when the offer has one.
+    pub haircut_vault: Option<UncheckedAccount<'info>>,
+
+    /// CHECK: Canonical input-mint ATA of haircut_vault, initialized on first deposit.
+    #[account(mut)]
+    pub haircut_token_in: Option<UncheckedAccount<'info>>,
 }
 
 /// Contiguous `TakeOffer` accounts, flattened in place on the wire.

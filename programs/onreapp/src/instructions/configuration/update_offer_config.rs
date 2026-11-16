@@ -62,6 +62,9 @@ pub struct UpdateOfferConfig<'info> {
     /// CHECK: Validated as supported input custody; required for PropAmm buys.
     pub destination_vault: Option<UncheckedAccount<'info>>,
 
+    /// Haircut-kind vault; required exactly for Prop AMM sells without a destination.
+    pub haircut_vault: Option<Box<Account<'info, VaultConfig>>>,
+
     #[account(seeds = [STATE], bump = state.bump, has_one = boss @ OnreError::InvalidBoss)]
     pub state: Box<Account<'info, State>>,
 
@@ -90,6 +93,7 @@ pub fn update_offer_config(ctx: Context<UpdateOfferConfig>) -> Result<()> {
             prop_amm_state: a.prop_amm_state.as_deref(),
             source_vault: source_vault.clone(),
             destination_vault: destination_vault.clone(),
+            haircut_vault: a.haircut_vault.as_deref(),
         },
     )?;
     let next = OfferConfig {
@@ -100,6 +104,11 @@ pub fn update_offer_config(ctx: Context<UpdateOfferConfig>) -> Result<()> {
         proceeds_vault: a.proceeds_vault.key(),
         source_vault: source_vault.map(|v| v.key()).unwrap_or_default(),
         destination_vault: destination_vault.map(|v| v.key()).unwrap_or_default(),
+        haircut_vault: a
+            .haircut_vault
+            .as_ref()
+            .map(|v| v.key())
+            .unwrap_or_default(),
         ..previous.clone()
     };
     require!(
@@ -111,6 +120,7 @@ pub fn update_offer_config(ctx: Context<UpdateOfferConfig>) -> Result<()> {
             next.proceeds_vault,
             next.source_vault,
             next.destination_vault,
+            next.haircut_vault,
         ) != (
             previous.pricer,
             previous.quoter,
@@ -119,6 +129,7 @@ pub fn update_offer_config(ctx: Context<UpdateOfferConfig>) -> Result<()> {
             previous.proceeds_vault,
             previous.source_vault,
             previous.destination_vault,
+            previous.haircut_vault,
         ),
         OnreError::NoChange
     );
