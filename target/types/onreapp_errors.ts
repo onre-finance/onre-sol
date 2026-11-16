@@ -154,7 +154,9 @@ export const OnreappErrorCode = {
   MarketStatsNotSelected: 6151,
   LegacyBufferRetired: 6152,
   PerMintBufferInactive: 6153,
-  LegacyBufferAccountsRequired: 6154
+  LegacyBufferAccountsRequired: 6154,
+  HaircutVaultRequired: 6155,
+  UnexpectedHaircutVault: 6156
 };
 
 export type OnreappErrorName = keyof typeof OnreappErrorCode;

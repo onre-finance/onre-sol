@@ -7,6 +7,8 @@ pub enum VaultKind {
     Proceeds,
     Liquidity,
     BufferReserve,
+    /// Managed tokens retained from Prop AMM sell haircuts instead of being burned.
+    Haircut,
 }
 
 /// EVM ConfigurableVault equivalent; distinct name preserves the legacy discriminator.

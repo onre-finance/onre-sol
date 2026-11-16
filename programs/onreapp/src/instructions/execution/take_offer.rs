@@ -30,6 +30,8 @@ pub struct OfferExecutedEvent {
     pub source_amount: u64,
     /// Net input deposited into destination custody, in input mint base units.
     pub destination_amount: u64,
+    /// Managed input retained in the Haircut vault instead of burned (Prop AMM sells).
+    pub haircut_amount: u64,
     pub timestamp: i64,
 }
 
@@ -160,6 +162,7 @@ pub fn take_offer(
                 quote.net_input_amount,
             _ => 0,
         },
+        haircut_amount: settlement::retained_haircut(&a.config.offer_config, &quote)?,
         timestamp: now,
     });
     Ok(())

@@ -70,6 +70,9 @@ pub struct CreateOfferConfig<'info> {
     /// CHECK: Handler validates input custody; required for PropAmm buys.
     pub destination_vault: Option<UncheckedAccount<'info>>,
 
+    /// Haircut-kind vault; required exactly for Prop AMM sells without a destination.
+    pub haircut_vault: Option<Box<Account<'info, VaultConfig>>>,
+
     #[account(
         init,
         payer = boss,
@@ -144,6 +147,7 @@ pub fn create_offer_config(
             prop_amm_state: a.prop_amm_state.as_deref(),
             source_vault: a.source_vault.as_ref().map(|v| v.to_account_info()),
             destination_vault: a.destination_vault.as_ref().map(|v| v.to_account_info()),
+            haircut_vault: a.haircut_vault.as_deref(),
         },
     )?;
     let offer = OfferConfig {
@@ -160,6 +164,11 @@ pub fn create_offer_config(
         source_vault: a.source_vault.as_ref().map(|v| v.key()).unwrap_or_default(),
         destination_vault: a
             .destination_vault
+            .as_ref()
+            .map(|v| v.key())
+            .unwrap_or_default(),
+        haircut_vault: a
+            .haircut_vault
             .as_ref()
             .map(|v| v.key())
             .unwrap_or_default(),
@@ -185,12 +194,14 @@ pub(crate) struct OfferComponents<'a, 'info> {
     pub prop_amm_state: Option<&'a Account<'info, PropAmmState>>,
     pub source_vault: Option<AccountInfo<'info>>,
     pub destination_vault: Option<AccountInfo<'info>>,
+    pub haircut_vault: Option<&'a Account<'info, VaultConfig>>,
 }
 
 /// Rules shared by `create_offer_config` and `update_offer_config`: the Pricer
 /// belongs to the managed mint, the quoter suits the flow, the pressure link is
 /// valid, custody roles are supported vaults, managed-to-asset offers have a
-/// source, and PropAmm buys have a destination. Returns the pressure link.
+/// source, PropAmm buys have a destination, and exactly the PropAmm sells without
+/// a destination have a Haircut-kind vault. Returns the pressure link.
 pub(crate) fn validate_offer_components(
     program_id: &Pubkey,
     flow: OfferFlow,
@@ -240,5 +251,17 @@ pub(crate) fn validate_offer_components(
             || c.destination_vault.is_some(),
         OnreError::LiquidityVaultRequired
     );
+    let retains_haircut = direction == OfferDirection::ManagedToAsset
+        && c.quoter.kind == QuoterKind::PropAmm
+        && c.destination_vault.is_none();
+    match (retains_haircut, c.haircut_vault) {
+        (true, None) => return err!(OnreError::HaircutVaultRequired),
+        (false, Some(_)) => return err!(OnreError::UnexpectedHaircutVault),
+        (true, Some(vault)) => require!(
+            vault.kind == VaultKind::Haircut,
+            OnreError::InvalidConfigurableVaultKind
+        ),
+        (false, None) => {}
+    }
     Ok(pressure_state)
 }

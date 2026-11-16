@@ -1886,6 +1886,13 @@ export type Onreapp = {
           "optional": true
         },
         {
+          "name": "haircutVault",
+          "docs": [
+            "Haircut-kind vault; required exactly for Prop AMM sells without a destination."
+          ],
+          "optional": true
+        },
+        {
           "name": "offerConfig",
           "writable": true,
           "pda": {
@@ -11483,6 +11490,15 @@ export type Onreapp = {
               "name": "destinationTokenIn",
               "writable": true,
               "optional": true
+            },
+            {
+              "name": "haircutVault",
+              "optional": true
+            },
+            {
+              "name": "haircutTokenIn",
+              "writable": true,
+              "optional": true
             }
           ]
         },
@@ -13029,6 +13045,13 @@ export type Onreapp = {
         },
         {
           "name": "destinationVault",
+          "optional": true
+        },
+        {
+          "name": "haircutVault",
+          "docs": [
+            "Haircut-kind vault; required exactly for Prop AMM sells without a destination."
+          ],
           "optional": true
         },
         {
@@ -16462,6 +16485,16 @@ export type Onreapp = {
       "code": 6154,
       "name": "legacyBufferAccountsRequired",
       "msg": "ONyc before the one-way BUFFER switch requires the legacy BUFFER accounts"
+    },
+    {
+      "code": 6155,
+      "name": "haircutVaultRequired",
+      "msg": "Prop AMM sells without a destination require a Haircut-kind vault"
+    },
+    {
+      "code": 6156,
+      "name": "unexpectedHaircutVault",
+      "msg": "A haircut vault is only allowed on Prop AMM sells without a destination"
     }
   ],
   "types": [
@@ -18353,6 +18386,15 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
+            "name": "haircutVault",
+            "docs": [
+              "Haircut custody for Prop AMM sells without a destination: the haircut share of",
+              "the net managed input is transferred here and only the paid share is burned.",
+              "Required for those offers and default (absent) for every other offer."
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "tokenInDecimals",
             "type": "u8"
           },
@@ -18573,6 +18615,13 @@ export type Onreapp = {
             "name": "destinationAmount",
             "docs": [
               "Net input deposited into destination custody, in input mint base units."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "haircutAmount",
+            "docs": [
+              "Managed input retained in the Haircut vault instead of burned (Prop AMM sells)."
             ],
             "type": "u64"
           },
@@ -20864,6 +20913,9 @@ export type Onreapp = {
           },
           {
             "name": "bufferReserve"
+          },
+          {
+            "name": "haircut"
           }
         ]
       }

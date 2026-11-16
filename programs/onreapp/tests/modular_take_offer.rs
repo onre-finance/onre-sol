@@ -232,6 +232,7 @@ impl Fixture {
                 proceeds_vault: vault(VaultKind::Proceeds),
                 source_vault: None,
                 destination_vault: None,
+                haircut_vault: None,
                 offer_config: offer,
                 state: find_state_pda().0,
                 boss: key,
@@ -384,6 +385,28 @@ impl Fixture {
             token_out_mint.as_ref(),
             &(flow as u64).to_le_bytes(),
         ]);
+        // Prop AMM sells without a destination retain the haircut in a Haircut vault.
+        let haircut = (kind == QuoterKind::PropAmm
+            && direction == OfferDirection::ManagedToAsset
+            && destination.is_none())
+        .then(|| vault(VaultKind::Haircut));
+        if let Some(haircut) = haircut.filter(|h| self.svm.get_account(h).is_none()) {
+            let instruction = ix(
+                accounts::CreateVaultConfig {
+                    vault: haircut,
+                    state: find_state_pda().0,
+                    boss: self.boss.pubkey(),
+                    system_program: SYSTEM_PROGRAM_ID,
+                },
+                instruction::CreateVaultConfig {
+                    kind: VaultKind::Haircut,
+                    instance_id: 0,
+                    withdrawal_destination: self.boss.pubkey(),
+                    refill_target_bps: 0,
+                },
+            );
+            send_tx(&mut self.svm, &[instruction], &[&self.boss]).unwrap();
+        }
         // The initial permissioned buy already exists. Its creation used the same
         // handler; changing a component here only prepares an unsupported-path test.
         if offer == self.offer {
@@ -405,6 +428,7 @@ impl Fixture {
                     proceeds_vault: vault(VaultKind::Proceeds),
                     source_vault: source,
                     destination_vault: destination,
+                    haircut_vault: haircut,
                     offer_config: offer,
                     state: find_state_pda().0,
                     boss: self.boss.pubkey(),
@@ -552,6 +576,7 @@ impl Fixture {
         };
         let has_source = config.source_vault != Pubkey::default();
         let has_destination = config.destination_vault != Pubkey::default();
+        let has_haircut = config.haircut_vault != Pubkey::default();
         let legacy = self.legacy_buffer_accounts();
         let [reserve, management, performance] = self
             .buffer_vaults()
@@ -612,6 +637,9 @@ impl Fixture {
                     destination_vault: has_destination.then_some(config.destination_vault),
                     destination_token_in: has_destination
                         .then(|| derive_ata(&config.destination_vault, &token_in, &in_program)),
+                    haircut_vault: has_haircut.then_some(config.haircut_vault),
+                    haircut_token_in: has_haircut
+                        .then(|| derive_ata(&config.haircut_vault, &token_in, &in_program)),
                 },
                 permissionless_authority: (config.flow == OfferFlow::Permissionless)
                     .then(|| find_permissionless_authority_pda().0),
@@ -786,6 +814,7 @@ fn offers_are_identified_by_pair_and_instance_not_flow() {
                 proceeds_vault: vault(VaultKind::Proceeds),
                 source_vault: None,
                 destination_vault: None,
+                haircut_vault: None,
                 offer_config: offer_pda(f.asset, f.mint, address),
                 state: find_state_pda().0,
                 boss: f.boss.pubkey(),

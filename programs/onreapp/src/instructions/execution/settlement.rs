@@ -1,7 +1,7 @@
 use crate::{
     constants::seeds,
-    model::{OfferDirection, OfferFlow},
-    utils::{burn_tokens, transfer_tokens},
+    model::{OfferConfig, OfferDirection, OfferFlow},
+    utils::{burn_tokens, ceil_div_u128, transfer_tokens},
     OnreError, ID,
 };
 use anchor_lang::prelude::*;
@@ -167,17 +167,49 @@ fn settle_collected_input<'info>(
                     quote.net_input_amount,
                 )?;
             } else {
+                // Burn only the share the seller was paid for; a Prop AMM haircut
+                // share is retained in the offer's Haircut vault.
+                let retained = retained_haircut(&a.config.offer_config, quote)?;
                 burn_tokens(
                     &a.token_in_program,
                     &a.token_in_mint,
                     route.input,
                     &route.authority,
                     route.signer_seeds.unwrap_or(&[]),
-                    quote.net_input_amount,
+                    quote.net_input_amount - retained,
+                )?;
+                liquidity::deposit_haircut(
+                    a,
+                    route.input,
+                    &route.authority,
+                    route.signer_seeds,
+                    retained,
                 )?;
             }
             liquidity::consume(a, quote.amount_out, route.output)?;
         }
     }
     Ok(())
+}
+
+/// Managed input retained by a sell's Prop AMM haircut: the net input minus the
+/// share paid for, `ceil(net × paid / raw)`, so the program never burns less than
+/// it paid out. Zero without a haircut vault, with a destination (which receives the
+/// whole net input), or when nothing was withheld.
+pub(super) fn retained_haircut(offer: &OfferConfig, quote: &OfferQuote) -> Result<u64> {
+    if offer.direction != OfferDirection::ManagedToAsset
+        || offer.destination_vault != Pubkey::default()
+        || offer.haircut_vault == Pubkey::default()
+        || quote.amount_out >= quote.raw_amount_out
+    {
+        return Ok(0);
+    }
+    let paid = ceil_div_u128(
+        (quote.net_input_amount as u128)
+            .checked_mul(quote.amount_out as u128)
+            .ok_or(OnreError::MathOverflow)?,
+        quote.raw_amount_out as u128,
+    )
+    .ok_or(OnreError::MathOverflow)?;
+    Ok(quote.net_input_amount - paid as u64)
 }

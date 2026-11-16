@@ -83,6 +83,7 @@ pub(super) fn validate(
     }
     validate_prop_amm(program_id, a)?;
     let liquidity = liquidity::validate(program_id, a)?;
+    liquidity::validate_haircut(program_id, a)?;
     Ok(ExecutionPlan {
         direction: a.config.offer_config.direction,
         kind: a.config.quoter.kind,

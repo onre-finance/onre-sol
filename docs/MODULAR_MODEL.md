@@ -81,7 +81,7 @@ the domain paths such as `model::pricer::Pricer`.
 | FeeConfig | 52 | 60 |
 | VaultConfig | 44 | 52 |
 | ManagedTokenBufferState | 166 | 174 |
-| OfferConfig | 302 | 310 |
+| OfferConfig | 334 | 342 |
 | FulfillmentRequest | 89 | 97 |
 | ManagedTokenSupplyExclusions | 674 | 682 |
 
@@ -286,12 +286,13 @@ floor is input-token-denominated, so sharing a FeeConfig across different input
 mints requires an appropriate policy. EVM's minimum input fee replaces the legacy
 Prop AMM-specific minimum ONyc haircut in this target model only.
 
-Vault kinds are `Fee`, `Proceeds`, `Liquidity`, and `BufferReserve`. The proposed
+Vault kinds are `Fee`, `Proceeds`, `Liquidity`, `BufferReserve`, and `Haircut`
+(managed tokens retained from Prop AMM sell haircuts). The proposed
 physical representation is the vault PDA's ATA per mint; the SPL account balance
 is authoritative, replacing the EVM `(vaultId, token)` logical-balance mapping.
 Withdrawal destinations are token-account owners; payouts use their ATA for the
 selected mint. The implemented withdrawal policy is permissionless for Fee and Proceeds,
-and boss-controlled for Liquidity and BufferReserve, always to that destination.
+and boss-controlled for Liquidity, BufferReserve and Haircut, always to that destination.
 Liquidity refill targets live on the Liquidity vault, with zero disabling refill.
 Sharing a Liquidity vault across managed tokens also shares actual asset liquidity;
 separate instances are needed when each token must have independent liquidity.

@@ -21,7 +21,7 @@ pub struct VaultConfigWithdrawnEvent {
 }
 
 /// Withdraw only to the configured destination. Fee/Proceeds allow any caller;
-/// Liquidity/BufferReserve additionally require State::boss. Zero withdraws all.
+/// Liquidity/BufferReserve/Haircut additionally require State::boss. Zero withdraws all.
 /// BUFFER vaults use the managed mint's role-specific seeds, not generic vault seeds.
 #[derive(Accounts)]
 pub struct WithdrawVaultConfig<'info> {
@@ -64,7 +64,7 @@ pub fn withdraw_vault_config(ctx: Context<WithdrawVaultConfig>, amount: u64) -> 
     let authority = validate_vault_config(&a.vault.key(), &a.vault, &a.mint.key(), ctx.program_id)?;
     if matches!(
         a.vault.kind,
-        VaultKind::Liquidity | VaultKind::BufferReserve
+        VaultKind::Liquidity | VaultKind::BufferReserve | VaultKind::Haircut
     ) {
         require_keys_eq!(a.caller.key(), a.state.boss, OnreError::InvalidBoss);
     }

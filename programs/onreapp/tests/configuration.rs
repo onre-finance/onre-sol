@@ -260,6 +260,8 @@ struct Fixture {
     selected_quoter: Pubkey,
     pair: Option<Pubkey>,
     liquidity: Option<Pubkey>,
+    /// Haircut vault for Prop AMM sells without a destination.
+    haircut: Option<Pubkey>,
 }
 
 impl Fixture {
@@ -287,6 +289,7 @@ impl Fixture {
             selected_quoter: quoter(model::QuoterKind::Nav, 0),
             pair: None,
             liquidity: Some(vault(model::VaultKind::Liquidity, 0)),
+            haircut: None,
         }
     }
 
@@ -323,6 +326,7 @@ impl Fixture {
                 proceeds_vault: vault(model::VaultKind::Proceeds, 0),
                 source_vault: reverse.then_some(self.liquidity).flatten(),
                 destination_vault: (!reverse).then_some(self.liquidity).flatten(),
+                haircut_vault: reverse.then_some(self.haircut).flatten(),
                 offer_config: self.offer_key(flow, reverse),
                 state: find_state_pda().0,
                 boss: self.boss.pubkey(),
@@ -814,6 +818,21 @@ fn prop_amm_requires_initialized_pair_and_cannot_be_rebound() {
         boss,
     );
     f.pair = Some(pda(&[b"prop_amm", f.selected_quoter.as_ref()]));
+    // A Prop AMM sell without a destination needs a Haircut-kind vault.
+    let instruction = f.offer_ix(model::OfferFlow::Permissionless, true);
+    assert_error(
+        send_tx(&mut f.svm, &[instruction], &[&f.boss]),
+        OnreError::HaircutVaultRequired,
+    );
+    f.haircut = Some(vault(model::VaultKind::Liquidity, 0));
+    let instruction = f.offer_ix(model::OfferFlow::Permissionless, true);
+    assert_error(
+        send_tx(&mut f.svm, &[instruction], &[&f.boss]),
+        OnreError::InvalidConfigurableVaultKind,
+    );
+    let instruction = create_vault(boss, model::VaultKind::Haircut, 0, 0);
+    send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    f.haircut = Some(vault(model::VaultKind::Haircut, 0));
     for reverse in [false, true] {
         let instruction = f.offer_ix(model::OfferFlow::Permissionless, reverse);
         send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();

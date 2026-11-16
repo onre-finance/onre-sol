@@ -1880,6 +1880,13 @@
           "optional": true
         },
         {
+          "name": "haircut_vault",
+          "docs": [
+            "Haircut-kind vault; required exactly for Prop AMM sells without a destination."
+          ],
+          "optional": true
+        },
+        {
           "name": "offer_config",
           "writable": true,
           "pda": {
@@ -11477,6 +11484,15 @@
               "name": "destination_token_in",
               "writable": true,
               "optional": true
+            },
+            {
+              "name": "haircut_vault",
+              "optional": true
+            },
+            {
+              "name": "haircut_token_in",
+              "writable": true,
+              "optional": true
             }
           ]
         },
@@ -13023,6 +13039,13 @@
         },
         {
           "name": "destination_vault",
+          "optional": true
+        },
+        {
+          "name": "haircut_vault",
+          "docs": [
+            "Haircut-kind vault; required exactly for Prop AMM sells without a destination."
+          ],
           "optional": true
         },
         {
@@ -16456,6 +16479,16 @@
       "code": 6154,
       "name": "LegacyBufferAccountsRequired",
       "msg": "ONyc before the one-way BUFFER switch requires the legacy BUFFER accounts"
+    },
+    {
+      "code": 6155,
+      "name": "HaircutVaultRequired",
+      "msg": "Prop AMM sells without a destination require a Haircut-kind vault"
+    },
+    {
+      "code": 6156,
+      "name": "UnexpectedHaircutVault",
+      "msg": "A haircut vault is only allowed on Prop AMM sells without a destination"
     }
   ],
   "types": [
@@ -18347,6 +18380,15 @@
             "type": "pubkey"
           },
           {
+            "name": "haircut_vault",
+            "docs": [
+              "Haircut custody for Prop AMM sells without a destination: the haircut share of",
+              "the net managed input is transferred here and only the paid share is burned.",
+              "Required for those offers and default (absent) for every other offer."
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "token_in_decimals",
             "type": "u8"
           },
@@ -18567,6 +18609,13 @@
             "name": "destination_amount",
             "docs": [
               "Net input deposited into destination custody, in input mint base units."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "haircut_amount",
+            "docs": [
+              "Managed input retained in the Haircut vault instead of burned (Prop AMM sells)."
             ],
             "type": "u64"
           },
@@ -20858,6 +20907,9 @@
           },
           {
             "name": "BufferReserve"
+          },
+          {
+            "name": "Haircut"
           }
         ]
       }
