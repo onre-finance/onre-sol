@@ -4,8 +4,8 @@
 use anchor_lang::prelude::*;
 use instructions::*;
 use model::{
-    BufferSettings, OfferFlow, PricingDenomination, PricingVector, PropAmmConfig, QuoterKind,
-    VaultKind,
+    BufferSettings, OfferAccess, OfferExecution, PricingDenomination, PricingVector, PropAmmConfig,
+    QuoterKind, VaultKind,
 };
 use state::ConfigurableVaultKind;
 use utils::ApprovalMessage;
@@ -105,7 +105,8 @@ pub mod onreapp {
     /// Permissionless execution routes through the canonical intermediary PDA.
     /// Permissionless Prop AMM uses symmetric curve pricing; NAV offers may link pair pressure.
     /// Buys use inventory or mint; sells retain input in a destination or burn it.
-    /// Buy destinations can refill configured TVL targets. Worker execution remains unsupported.
+    /// Buy destinations can refill configured TVL targets. Instant offers only; Worker
+    /// offers execute through fulfillment requests.
     /// V2 entrypoints and their account lists remain unchanged.
     pub fn take_offer(
         ctx: Context<TakeOffer>,
@@ -121,6 +122,32 @@ pub mod onreapp {
             deadline,
             approval_message,
         )
+    }
+
+    /// Escrows input for a Worker-execution offer under a user-chosen `request_id`;
+    /// permissioned offers require an approval. Blocked by the kill switch.
+    pub fn create_fulfillment_request(
+        ctx: Context<CreateFulfillmentRequest>,
+        request_id: u64,
+        input_amount: u64,
+        approval_message: Option<ApprovalMessage>,
+    ) -> Result<()> {
+        fulfillment::create_fulfillment_request(ctx, request_id, input_amount, approval_message)
+    }
+
+    /// Worker fill of part or all of a request's unfilled input at the current price
+    /// and fee; a full fill closes the request. Blocked by the kill switch.
+    pub fn fulfill_fulfillment_request(
+        ctx: Context<FulfillFulfillmentRequest>,
+        input_amount: u64,
+    ) -> Result<()> {
+        fulfillment::fulfill_fulfillment_request(ctx, input_amount)
+    }
+
+    /// Returns a request's unfilled escrow to its user and closes it; by the user or
+    /// the worker, also while the kill switch is active.
+    pub fn cancel_fulfillment_request(ctx: Context<CancelFulfillmentRequest>) -> Result<()> {
+        fulfillment::cancel_fulfillment_request(ctx)
     }
 
     /// Appends a Pricer vector after evicting vectors older than the previously
@@ -212,17 +239,18 @@ pub mod onreapp {
     }
 
     /// Creates a directed offer referencing compatible existing components; boss only.
-    /// Identified by the mint pair and a boss-chosen `instance_id`, not by its flow.
+    /// Identified by the mint pair and a boss-chosen `instance_id`, not by its modes.
     pub fn create_offer_config(
         ctx: Context<CreateOfferConfig>,
         instance_id: u64,
-        flow: OfferFlow,
+        access: OfferAccess,
+        execution: OfferExecution,
     ) -> Result<()> {
-        configuration::create_offer_config(ctx, instance_id, flow)
+        configuration::create_offer_config(ctx, instance_id, access, execution)
     }
 
     /// Replaces an offer's Pricer, quoter, pressure link, fee config and vaults with
-    /// the creation rules; mints, instance ID and flow stay immutable. Boss only.
+    /// the creation rules; mints, instance ID, access and execution stay immutable. Boss only.
     pub fn update_offer_config(ctx: Context<UpdateOfferConfig>) -> Result<()> {
         configuration::update_offer_config(ctx)
     }

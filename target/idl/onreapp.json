@@ -1043,6 +1043,245 @@
       ]
     },
     {
+      "name": "cancel_fulfillment_request",
+      "docs": [
+        "Returns a request's unfilled escrow to its user and closes it; by the user or",
+        "the worker, also while the kill switch is active."
+      ],
+      "discriminator": [
+        66,
+        17,
+        11,
+        224,
+        38,
+        54,
+        21,
+        18
+      ],
+      "accounts": [
+        {
+          "name": "fulfillment_request",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  117,
+                  108,
+                  102,
+                  105,
+                  108,
+                  108,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  114,
+                  101,
+                  113,
+                  117,
+                  101,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "fulfillment_request.offer_config",
+                "account": "FulfillmentRequest"
+              },
+              {
+                "kind": "account",
+                "path": "fulfillment_request.user",
+                "account": "FulfillmentRequest"
+              },
+              {
+                "kind": "account",
+                "path": "fulfillment_request.request_id",
+                "account": "FulfillmentRequest"
+              }
+            ]
+          }
+        },
+        {
+          "name": "offer_config",
+          "docs": [
+            "The request's offer, which fixes the escrowed mint. Need not be enabled."
+          ],
+          "relations": [
+            "fulfillment_request"
+          ]
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "relations": [
+            "fulfillment_request"
+          ]
+        },
+        {
+          "name": "signer",
+          "docs": [
+            "The request's user or the worker."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_in_mint"
+        },
+        {
+          "name": "escrow_token_in",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "fulfillment_request"
+              },
+              {
+                "kind": "account",
+                "path": "token_in_program"
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "user_token_in",
+          "docs": [
+            "Recreated at the signer's expense if the user closed it."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "token_in_program"
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_in_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "cancel_redemption_request",
       "docs": [
         "Cancels a redemption request.",
@@ -1824,10 +2063,361 @@
       ]
     },
     {
+      "name": "create_fulfillment_request",
+      "docs": [
+        "Escrows input for a Worker-execution offer under a user-chosen `request_id`;",
+        "permissioned offers require an approval. Blocked by the kill switch."
+      ],
+      "discriminator": [
+        216,
+        30,
+        11,
+        86,
+        255,
+        55,
+        153,
+        17
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "accounts": [
+            {
+              "name": "offer_config",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      111,
+                      102,
+                      102,
+                      101,
+                      114,
+                      95,
+                      99,
+                      111,
+                      110,
+                      102,
+                      105,
+                      103
+                    ]
+                  },
+                  {
+                    "kind": "account",
+                    "path": "offer_config.token_in_mint",
+                    "account": "OfferConfig"
+                  },
+                  {
+                    "kind": "account",
+                    "path": "offer_config.token_out_mint",
+                    "account": "OfferConfig"
+                  },
+                  {
+                    "kind": "account",
+                    "path": "offer_config.instance_id",
+                    "account": "OfferConfig"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "managed_token",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      109,
+                      97,
+                      110,
+                      97,
+                      103,
+                      101,
+                      100,
+                      95,
+                      116,
+                      111,
+                      107,
+                      101,
+                      110
+                    ]
+                  },
+                  {
+                    "kind": "account",
+                    "path": "managed_token.managed_mint",
+                    "account": "ManagedTokenConfig"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "pricer",
+              "relations": [
+                "offer_config"
+              ]
+            },
+            {
+              "name": "quoter",
+              "relations": [
+                "offer_config"
+              ]
+            },
+            {
+              "name": "fee_config",
+              "relations": [
+                "offer_config"
+              ]
+            },
+            {
+              "name": "proceeds_vault",
+              "relations": [
+                "offer_config"
+              ]
+            },
+            {
+              "name": "fee_vault",
+              "relations": [
+                "fee_config"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "token_in_mint"
+        },
+        {
+          "name": "user_token_in",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "token_in_program"
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "fulfillment_request",
+          "docs": [
+            "Fails if the user already has an open request with this ID on this offer."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  117,
+                  108,
+                  102,
+                  105,
+                  108,
+                  108,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  114,
+                  101,
+                  113,
+                  117,
+                  101,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.offer_config",
+                "account": "TakeOfferConfigAccounts"
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "arg",
+                "path": "request_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow_token_in",
+          "docs": [
+            "The request's input-mint ATA, holding the escrowed input until filled."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "fulfillment_request"
+              },
+              {
+                "kind": "account",
+                "path": "token_in_program"
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "instructions_sysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "user",
+          "docs": [
+            "Pays the request and escrow rent, refunded when the request closes."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_in_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "request_id",
+          "type": "u64"
+        },
+        {
+          "name": "input_amount",
+          "type": "u64"
+        },
+        {
+          "name": "approval_message",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "ApprovalMessage"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "create_offer_config",
       "docs": [
         "Creates a directed offer referencing compatible existing components; boss only.",
-        "Identified by the mint pair and a boss-chosen `instance_id`, not by its flow."
+        "Identified by the mint pair and a boss-chosen `instance_id`, not by its modes."
       ],
       "discriminator": [
         55,
@@ -1959,10 +2549,18 @@
           "type": "u64"
         },
         {
-          "name": "flow",
+          "name": "access",
           "type": {
             "defined": {
-              "name": "OfferFlow"
+              "name": "OfferAccess"
+            }
+          }
+        },
+        {
+          "name": "execution",
+          "type": {
+            "defined": {
+              "name": "OfferExecution"
             }
           }
         }
@@ -3577,6 +4175,564 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "fulfill_fulfillment_request",
+      "docs": [
+        "Worker fill of part or all of a request's unfilled input at the current price",
+        "and fee; a full fill closes the request. Blocked by the kill switch."
+      ],
+      "discriminator": [
+        102,
+        30,
+        192,
+        128,
+        103,
+        156,
+        164,
+        75
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "accounts": [
+            {
+              "name": "offer_config",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      111,
+                      102,
+                      102,
+                      101,
+                      114,
+                      95,
+                      99,
+                      111,
+                      110,
+                      102,
+                      105,
+                      103
+                    ]
+                  },
+                  {
+                    "kind": "account",
+                    "path": "offer_config.token_in_mint",
+                    "account": "OfferConfig"
+                  },
+                  {
+                    "kind": "account",
+                    "path": "offer_config.token_out_mint",
+                    "account": "OfferConfig"
+                  },
+                  {
+                    "kind": "account",
+                    "path": "offer_config.instance_id",
+                    "account": "OfferConfig"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "managed_token",
+              "pda": {
+                "seeds": [
+                  {
+                    "kind": "const",
+                    "value": [
+                      109,
+                      97,
+                      110,
+                      97,
+                      103,
+                      101,
+                      100,
+                      95,
+                      116,
+                      111,
+                      107,
+                      101,
+                      110
+                    ]
+                  },
+                  {
+                    "kind": "account",
+                    "path": "managed_token.managed_mint",
+                    "account": "ManagedTokenConfig"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "pricer",
+              "relations": [
+                "offer_config"
+              ]
+            },
+            {
+              "name": "quoter",
+              "relations": [
+                "offer_config"
+              ]
+            },
+            {
+              "name": "fee_config",
+              "relations": [
+                "offer_config"
+              ]
+            },
+            {
+              "name": "proceeds_vault",
+              "relations": [
+                "offer_config"
+              ]
+            },
+            {
+              "name": "fee_vault",
+              "relations": [
+                "fee_config"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "fulfillment_request",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  117,
+                  108,
+                  102,
+                  105,
+                  108,
+                  108,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  114,
+                  101,
+                  113,
+                  117,
+                  101,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "fulfillment_request.offer_config",
+                "account": "FulfillmentRequest"
+              },
+              {
+                "kind": "account",
+                "path": "fulfillment_request.user",
+                "account": "FulfillmentRequest"
+              },
+              {
+                "kind": "account",
+                "path": "fulfillment_request.request_id",
+                "account": "FulfillmentRequest"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "docs": [
+            "request closes, its rent."
+          ],
+          "writable": true,
+          "relations": [
+            "fulfillment_request"
+          ]
+        },
+        {
+          "name": "escrow_token_in",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "fulfillment_request"
+              },
+              {
+                "kind": "account",
+                "path": "token_in_program"
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_in_mint",
+          "writable": true
+        },
+        {
+          "name": "token_out_mint",
+          "writable": true
+        },
+        {
+          "name": "user_token_out",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_program"
+              },
+              {
+                "kind": "account",
+                "path": "token_out_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "fee_token_in",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "config.fee_vault",
+                "account": "TakeOfferConfigAccounts"
+              },
+              {
+                "kind": "account",
+                "path": "token_in_program"
+              },
+              {
+                "kind": "account",
+                "path": "token_in_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "mint_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "buffer",
+          "accounts": [
+            {
+              "name": "buffer_state",
+              "docs": [
+                "used whenever it is the active BUFFER. A substitute cannot bypass initialized",
+                "accrual. ONyc before the one-way switch accrues the legacy accounts below."
+              ],
+              "writable": true
+            },
+            {
+              "name": "buffer_pricer",
+              "docs": [
+                "Canonical USD instance-zero Pricer, required for initialized per-mint BUFFER,",
+                "and for token-wide liquidity targets or market stats when the offer selects",
+                "another Pricer. The offer's selected Pricer does not control token-wide values."
+              ],
+              "optional": true
+            },
+            {
+              "name": "market_stats",
+              "docs": [
+                "ignored otherwise."
+              ],
+              "writable": true
+            },
+            {
+              "name": "legacy_market_stats",
+              "docs": [
+                "when the managed mint is ONyc, which always refreshes it from the canonical",
+                "Pricer (address validated in the handler, created on first use with `user`",
+                "paying); ignored for other mints."
+              ],
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "circulating_supply_excluded_balance",
+              "docs": [
+                "other mints ignore it."
+              ]
+            },
+            {
+              "name": "buffer_reserve_token",
+              "writable": true
+            },
+            {
+              "name": "buffer_management_token",
+              "writable": true
+            },
+            {
+              "name": "buffer_performance_token",
+              "writable": true
+            },
+            {
+              "name": "mint_multisig",
+              "docs": [
+                "equal it; omitted for direct PDA minting. See `utils::program_minter`."
+              ],
+              "optional": true
+            },
+            {
+              "name": "legacy_buffer_state",
+              "docs": [
+                "one-way BUFFER switch, which it then accrues; ignored afterwards and for other",
+                "mints. Clients can supply it alongside the per-mint BUFFER accounts at all",
+                "times, so the switch needs no account changes."
+              ],
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "legacy_buffer_reserve_token",
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "legacy_buffer_management_token",
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "legacy_buffer_performance_token",
+              "writable": true,
+              "optional": true
+            }
+          ]
+        },
+        {
+          "name": "worker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_in_program"
+        },
+        {
+          "name": "token_out_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "custody",
+          "accounts": [
+            {
+              "name": "prop_amm_state",
+              "docs": [
+                "Required exactly when OfferConfig.pressure_state is configured, including",
+                "linked NAV offers. Validated against the stored reference and mint pair."
+              ],
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "source_vault",
+              "optional": true
+            },
+            {
+              "name": "source_token_out",
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "destination_vault",
+              "optional": true
+            },
+            {
+              "name": "destination_token_in",
+              "writable": true,
+              "optional": true
+            },
+            {
+              "name": "haircut_vault",
+              "optional": true
+            },
+            {
+              "name": "haircut_token_in",
+              "writable": true,
+              "optional": true
+            }
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "input_amount",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "fulfill_redemption_request",
@@ -10943,7 +12099,8 @@
         "Permissionless execution routes through the canonical intermediary PDA.",
         "Permissionless Prop AMM uses symmetric curve pricing; NAV offers may link pair pressure.",
         "Buys use inventory or mint; sells retain input in a destination or burn it.",
-        "Buy destinations can refill configured TVL targets. Worker execution remains unsupported.",
+        "Buy destinations can refill configured TVL targets. Instant offers only; Worker",
+        "offers execute through fulfillment requests.",
         "V2 entrypoints and their account lists remain unchanged."
       ],
       "discriminator": [
@@ -12961,7 +14118,7 @@
       "name": "update_offer_config",
       "docs": [
         "Replaces an offer's Pricer, quoter, pressure link, fee config and vaults with",
-        "the creation rules; mints, instance ID and flow stay immutable. Boss only."
+        "the creation rules; mints, instance ID, access and execution stay immutable. Boss only."
       ],
       "discriminator": [
         122,
@@ -14415,6 +15572,19 @@
       ]
     },
     {
+      "name": "FulfillmentRequest",
+      "discriminator": [
+        135,
+        168,
+        111,
+        197,
+        190,
+        176,
+        114,
+        158
+      ]
+    },
+    {
       "name": "ManagedTokenBufferState",
       "discriminator": [
         160,
@@ -14869,6 +16039,45 @@
         55,
         95,
         201
+      ]
+    },
+    {
+      "name": "FulfillmentRequestCancelledEvent",
+      "discriminator": [
+        57,
+        90,
+        174,
+        41,
+        129,
+        38,
+        167,
+        214
+      ]
+    },
+    {
+      "name": "FulfillmentRequestFilledEvent",
+      "discriminator": [
+        72,
+        90,
+        9,
+        71,
+        130,
+        201,
+        233,
+        92
+      ]
+    },
+    {
+      "name": "FulfillmentRequestedEvent",
+      "discriminator": [
+        177,
+        25,
+        49,
+        181,
+        163,
+        13,
+        121,
+        114
       ]
     },
     {
@@ -16428,7 +17637,7 @@
     {
       "code": 6144,
       "name": "UnsupportedOfferExecution",
-      "msg": "This offer flow, direction or liquidity routing is not implemented by take_offer yet"
+      "msg": "The offer's access or execution mode does not support this instruction"
     },
     {
       "code": 6145,
@@ -16489,6 +17698,16 @@
       "code": 6156,
       "name": "UnexpectedHaircutVault",
       "msg": "A haircut vault is only allowed on Prop AMM sells without a destination"
+    },
+    {
+      "code": 6157,
+      "name": "FulfillmentAmountExceedsRemaining",
+      "msg": "Fill amount exceeds the fulfillment request's unfilled input"
+    },
+    {
+      "code": 6158,
+      "name": "FulfillmentRequestMismatch",
+      "msg": "Account does not match the fulfillment request"
     }
   ],
   "types": [
@@ -17403,6 +18622,181 @@
       }
     },
     {
+      "name": "FulfillmentRequest",
+      "docs": [
+        "Escrowed input of a Worker-execution offer, filled by the worker at the price",
+        "and fee current at each fill. PDA `[\"fulfillment_request\", offer_config, user,",
+        "request_id_le]`; the escrow is the request's canonical ATA of the input mint.",
+        "Closed, with its escrow, once fully filled or cancelled; rent returns to `user`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offer_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "request_id",
+            "docs": [
+              "User-chosen identifier, unique per offer and user among open requests."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "input_amount",
+            "docs": [
+              "Gross input escrowed at creation, in input mint base units."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "fulfilled_input_amount",
+            "docs": [
+              "Gross input already filled; the remainder stays escrowed."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FulfillmentRequestCancelledEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "fulfillment_request",
+            "type": "pubkey"
+          },
+          {
+            "name": "offer_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "returned_amount",
+            "docs": [
+              "Escrow balance returned to the user: the unfilled remainder, plus any",
+              "unsolicited surplus."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "cancelled_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FulfillmentRequestFilledEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "fulfillment_request",
+            "type": "pubkey"
+          },
+          {
+            "name": "offer_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "input_amount",
+            "docs": [
+              "Gross input filled by this fill."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "fulfilled_input_amount",
+            "docs": [
+              "Gross input filled so far, this fill included."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "fee_amount",
+            "type": "u64"
+          },
+          {
+            "name": "amount_out",
+            "type": "u64"
+          },
+          {
+            "name": "price",
+            "docs": [
+              "Offer Pricer's USD price applied to this fill, scale 9."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "fully_fulfilled",
+            "docs": [
+              "The request and its escrow were closed."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FulfillmentRequestedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "fulfillment_request",
+            "type": "pubkey"
+          },
+          {
+            "name": "offer_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "request_id",
+            "type": "u64"
+          },
+          {
+            "name": "input_amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "KillSwitchToggledEvent",
       "docs": [
         "Event emitted when the kill switch state is changed",
@@ -18291,9 +19685,27 @@
       }
     },
     {
+      "name": "OfferAccess",
+      "docs": [
+        "Who may trade: approver-signed users only, or anyone."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Permissioned"
+          },
+          {
+            "name": "Permissionless"
+          }
+        ]
+      }
+    },
+    {
       "name": "OfferConfig",
       "docs": [
-        "One immutable directed mint pair and flow, with replaceable component references.",
+        "One immutable directed mint pair, access and execution mode, with replaceable",
+        "component references.",
         "",
         "The boss selects the external asset. Pricer replacements must match the managed",
         "mint and the currently selected Pricer's denomination."
@@ -18314,15 +19726,23 @@
             "docs": [
               "Boss-chosen identity within the directed pair: the PDA is",
               "`[\"offer_config\", token_in_mint, token_out_mint, instance_id_le]`, so any number",
-              "of offers, with any flows, can exist per pair."
+              "of offers, with any access and execution modes, can exist per pair."
             ],
             "type": "u64"
           },
           {
-            "name": "flow",
+            "name": "access",
             "type": {
               "defined": {
-                "name": "OfferFlow"
+                "name": "OfferAccess"
+              }
+            }
+          },
+          {
+            "name": "execution",
+            "type": {
+              "defined": {
+                "name": "OfferExecution"
               }
             }
           },
@@ -18549,10 +19969,18 @@
             "type": "pubkey"
           },
           {
-            "name": "flow",
+            "name": "access",
             "type": {
               "defined": {
-                "name": "OfferFlow"
+                "name": "OfferAccess"
+              }
+            }
+          },
+          {
+            "name": "execution",
+            "type": {
+              "defined": {
+                "name": "OfferExecution"
               }
             }
           },
@@ -18627,6 +20055,24 @@
       }
     },
     {
+      "name": "OfferExecution",
+      "docs": [
+        "How a trade settles: atomically in `take_offer`, or as an escrowed request that",
+        "the worker fills, possibly partially, at the price and fee current at each fill."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Instant"
+          },
+          {
+            "name": "Worker"
+          }
+        ]
+      }
+    },
+    {
       "name": "OfferFeeUpdatedEvent",
       "docs": [
         "Event emitted when an offer's fee is successfully updated",
@@ -18663,23 +20109,6 @@
               "The boss account that authorized the fee update"
             ],
             "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "OfferFlow",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Permissioned"
-          },
-          {
-            "name": "Permissionless"
-          },
-          {
-            "name": "Worker"
           }
         ]
       }

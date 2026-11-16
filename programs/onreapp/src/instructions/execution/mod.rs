@@ -13,4 +13,5 @@ mod validation;
 
 pub use accounts::*;
 pub use buffer::ManagedTokenBufferAccruedEvent;
+pub(crate) use permissions::authorize;
 pub use take_offer::*;

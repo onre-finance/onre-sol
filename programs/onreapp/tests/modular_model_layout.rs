@@ -24,7 +24,7 @@ fn model_account_wire_sizes_are_fixed() {
     check_layout::<model::FeeConfig>(52);
     check_layout::<model::VaultConfig>(44);
     check_layout::<model::ManagedTokenBufferState>(166);
-    check_layout::<model::OfferConfig>(334);
+    check_layout::<model::OfferConfig>(335);
     check_layout::<model::FulfillmentRequest>(89);
     check_layout::<model::ManagedTokenSupplyExclusions>(674);
 }
@@ -69,12 +69,13 @@ fn encode(value: impl AnchorSerialize) -> Vec<u8> {
 }
 
 #[test]
-fn enum_ordinals_match_evm_and_remain_stable_for_pda_seeds() {
+fn enum_ordinals_remain_stable_for_pda_seeds_and_clients() {
     let cases = [
         (encode(model::PricingDenomination::Usd), 0),
-        (encode(model::OfferFlow::Permissioned), 0),
-        (encode(model::OfferFlow::Permissionless), 1),
-        (encode(model::OfferFlow::Worker), 2),
+        (encode(model::OfferAccess::Permissioned), 0),
+        (encode(model::OfferAccess::Permissionless), 1),
+        (encode(model::OfferExecution::Instant), 0),
+        (encode(model::OfferExecution::Worker), 1),
         (encode(model::OfferDirection::AssetToManaged), 0),
         (encode(model::OfferDirection::ManagedToAsset), 1),
         (encode(model::QuoterKind::Nav), 0),
@@ -121,7 +122,8 @@ fn configuration_seed_layouts_are_disjoint() {
         layout(new::PROP_AMM, 32),
         layout(new::FEE_CONFIG, 8),
         layout(new::VAULT, 1 + 8),
-        layout(new::OFFER_CONFIG, 32 + 32 + 1),
+        layout(new::OFFER_CONFIG, 32 + 32 + 8),
+        layout(new::FULFILLMENT_REQUEST, 32 + 32 + 8),
         layout(new::BUFFER, 32),
         layout(new::BUFFER_RESERVE, 32),
         layout(new::BUFFER_MANAGEMENT, 32),

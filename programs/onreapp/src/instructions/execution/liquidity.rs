@@ -1,4 +1,4 @@
-use super::TakeOffer;
+use super::Execution;
 use crate::{
     model::{OfferDirection, VaultConfig},
     utils::vault_authority::validate_liquidity_vault,
@@ -23,7 +23,7 @@ pub(super) struct LiquidityContext {
 
 /// Validate each configured role against its own mint and canonical ATA. Missing
 /// inventory never falls back to minting; only an absent buy source permits minting.
-pub(super) fn validate(program_id: &Pubkey, a: &TakeOffer) -> Result<LiquidityContext> {
+pub(super) fn validate(program_id: &Pubkey, a: &Execution) -> Result<LiquidityContext> {
     require!(
         a.config.offer_config.direction != OfferDirection::ManagedToAsset
             || a.config.offer_config.source_vault != Pubkey::default(),
@@ -108,7 +108,7 @@ fn validate_role(
 
 /// Pay output exclusively from the configured source, using its validated seeds.
 pub(super) fn consume<'info>(
-    a: &TakeOffer<'info>,
+    a: &Execution<'_, 'info>,
     amount: u64,
     destination: &InterfaceAccount<'info, TokenAccount>,
 ) -> Result<()> {
@@ -151,7 +151,7 @@ pub(super) fn consume<'info>(
 /// Deposit input into the exact configured destination. Buys call with the TVL
 /// refill deficit; sells call with the full net managed input instead of burning.
 pub(super) fn deposit_destination<'info>(
-    a: &TakeOffer<'info>,
+    a: &Execution<'_, 'info>,
     input: &InterfaceAccount<'info, TokenAccount>,
     input_authority: &AccountInfo<'info>,
     input_seeds: Option<&[&[&[u8]]]>,
@@ -170,7 +170,7 @@ pub(super) fn deposit_destination<'info>(
 
 /// Deposit the retained haircut share of a Prop AMM sell into the offer's Haircut vault.
 pub(super) fn deposit_haircut<'info>(
-    a: &TakeOffer<'info>,
+    a: &Execution<'_, 'info>,
     input: &InterfaceAccount<'info, TokenAccount>,
     input_authority: &AccountInfo<'info>,
     input_seeds: Option<&[&[&[u8]]]>,
@@ -190,7 +190,7 @@ pub(super) fn deposit_haircut<'info>(
 /// Transfer input-mint tokens into a validated vault's canonical ATA, creating it at
 /// the user's expense on first use.
 fn deposit_input<'info>(
-    a: &TakeOffer<'info>,
+    a: &Execution<'_, 'info>,
     vault: Option<&UncheckedAccount<'info>>,
     token: Option<&UncheckedAccount<'info>>,
     input: &InterfaceAccount<'info, TokenAccount>,
@@ -207,7 +207,7 @@ fn deposit_input<'info>(
         anchor_spl::associated_token::create_idempotent(CpiContext::new(
             a.associated_token_program.key(),
             anchor_spl::associated_token::Create {
-                payer: a.user.to_account_info(),
+                payer: a.payer.clone(),
                 associated_token: token.to_account_info(),
                 authority: vault.to_account_info(),
                 mint: a.token_in_mint.to_account_info(),
@@ -234,7 +234,7 @@ fn deposit_input<'info>(
 
 /// The configured Haircut vault must be supplied exactly, with its canonical
 /// input-mint ATA; offers without one must omit both accounts.
-pub(super) fn validate_haircut(program_id: &Pubkey, a: &TakeOffer) -> Result<()> {
+pub(super) fn validate_haircut(program_id: &Pubkey, a: &Execution) -> Result<()> {
     let reference = a.config.offer_config.haircut_vault;
     let (vault, token) = (
         a.custody.haircut_vault.as_ref(),

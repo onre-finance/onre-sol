@@ -2,8 +2,9 @@ use crate::{
     constants::seeds,
     model::{
         seeds::{MANAGED_TOKEN, OFFER_CONFIG},
-        FeeConfig, ManagedTokenConfig, OfferConfig, OfferDirection, Pricer, PricingDenomination,
-        PropAmmState, Quoter, VaultConfig, VaultKind,
+        FeeConfig, FulfillmentRequest, ManagedTokenConfig, OfferAccess, OfferConfig,
+        OfferDirection, OfferExecution, Pricer, PricingDenomination, PropAmmState, Quoter,
+        VaultConfig, VaultKind,
     },
     state::State,
     utils::program_minter::ProgramMinter,
@@ -284,9 +285,86 @@ pub struct TakeOfferConfigAccounts<'info> {
     pub fee_vault: Box<Account<'info, VaultConfig>>,
 }
 
-impl<'info> TakeOffer<'info> {
+/// Borrowed view of everything one offer execution needs. `take_offer` and
+/// `fulfill_fulfillment_request` build it from their own accounts, so both share
+/// validation, quoting, BUFFER accrual, settlement and reporting.
+pub(crate) struct Execution<'a, 'info> {
+    pub config: &'a TakeOfferConfigAccounts<'info>,
+    pub token_in_mint: &'a InterfaceAccount<'info, Mint>,
+    pub token_out_mint: &'a InterfaceAccount<'info, Mint>,
+    pub proceeds_token_in: Option<&'a InterfaceAccount<'info, TokenAccount>>,
+    pub fee_token_in: &'a InterfaceAccount<'info, TokenAccount>,
+    pub mint_authority: &'a UncheckedAccount<'info>,
+    pub state: &'a Account<'info, State>,
+    pub buffer: &'a TakeOfferBufferAccounts<'info>,
+    pub custody: &'a TakeOfferCustodyAccounts<'info>,
+    pub token_in_program: &'a Interface<'info, TokenInterface>,
+    pub token_out_program: &'a Interface<'info, TokenInterface>,
+    pub associated_token_program: &'a Program<'info, AssociatedToken>,
+    pub system_program: &'a Program<'info, System>,
+    /// Pays for accounts created during execution: the trading user on
+    /// `take_offer`, the worker on a fill.
+    pub payer: &'a AccountInfo<'info>,
+    /// Trader credited with the output and reported in events.
+    pub user: Pubkey,
+    pub route: Route<'a, 'info>,
+}
+
+/// Where the gross input comes from and the output goes, by execution mode.
+#[derive(Clone, Copy)]
+pub(crate) enum Route<'a, 'info> {
+    /// Permissioned instant: the signing user's own ATAs.
+    Direct {
+        input: &'a InterfaceAccount<'info, TokenAccount>,
+        output: &'a InterfaceAccount<'info, TokenAccount>,
+        user: &'a AccountInfo<'info>,
+    },
+    /// Permissionless instant: through the program's intermediary ATAs.
+    Intermediary {
+        user_input: &'a InterfaceAccount<'info, TokenAccount>,
+        user_output: &'a InterfaceAccount<'info, TokenAccount>,
+        user: &'a AccountInfo<'info>,
+        authority: &'a AccountInfo<'info>,
+        input: &'a InterfaceAccount<'info, TokenAccount>,
+        output: &'a InterfaceAccount<'info, TokenAccount>,
+    },
+    /// Worker: the fulfillment request signs for its escrow; output goes to the
+    /// request user's ATA.
+    Escrow {
+        request: &'a Account<'info, FulfillmentRequest>,
+        input: &'a InterfaceAccount<'info, TokenAccount>,
+        output: &'a InterfaceAccount<'info, TokenAccount>,
+    },
+}
+
+impl Route<'_, '_> {
+    /// The only offer modes each route may execute.
+    pub fn supports(&self, offer: &OfferConfig) -> bool {
+        match self {
+            Route::Direct { .. } => {
+                (offer.execution, offer.access)
+                    == (OfferExecution::Instant, OfferAccess::Permissioned)
+            }
+            Route::Intermediary { .. } => {
+                (offer.execution, offer.access)
+                    == (OfferExecution::Instant, OfferAccess::Permissionless)
+            }
+            Route::Escrow { .. } => offer.execution == OfferExecution::Worker,
+        }
+    }
+}
+
+/// Accounts structs that can run an offer execution.
+pub(crate) trait ExecutionAccounts<'info> {
+    fn execution(&self) -> Result<Execution<'_, 'info>>;
+    fn prop_amm_state_mut(&mut self) -> Option<&mut Account<'info, PropAmmState>>;
+    /// Re-reads the managed mint after CPIs changed its supply.
+    fn reload_managed_mint(&mut self) -> Result<()>;
+}
+
+impl<'a, 'info> Execution<'a, 'info> {
     /// Program minting path for the managed mint in its configured mode.
-    pub(super) fn minter(&self, authority_bump: u8) -> Result<ProgramMinter<'_, 'info>> {
+    pub(super) fn minter(&self, authority_bump: u8) -> Result<ProgramMinter<'a, 'info>> {
         ProgramMinter::resolve(
             self.config.managed_token.mint_multisig,
             self.managed_mint(),
@@ -296,32 +374,111 @@ impl<'info> TakeOffer<'info> {
         )
     }
 
-    pub(super) fn reload_managed_mint(&mut self) -> Result<()> {
-        match self.config.offer_config.direction {
-            OfferDirection::AssetToManaged => self.token_out_mint.reload(),
-            OfferDirection::ManagedToAsset => self.token_in_mint.reload(),
-        }
-    }
-
     /// Resolve the managed side from persisted configuration, never caller input.
-    pub(super) fn managed_mint(&self) -> &InterfaceAccount<'info, Mint> {
+    pub(super) fn managed_mint(&self) -> &'a InterfaceAccount<'info, Mint> {
         match self.config.offer_config.direction {
-            OfferDirection::AssetToManaged => &self.token_out_mint,
-            OfferDirection::ManagedToAsset => &self.token_in_mint,
+            OfferDirection::AssetToManaged => self.token_out_mint,
+            OfferDirection::ManagedToAsset => self.token_in_mint,
         }
     }
 
-    pub(super) fn managed_program(&self) -> &Interface<'info, TokenInterface> {
+    pub(super) fn managed_program(&self) -> &'a Interface<'info, TokenInterface> {
         match self.config.offer_config.direction {
-            OfferDirection::AssetToManaged => &self.token_out_program,
-            OfferDirection::ManagedToAsset => &self.token_in_program,
+            OfferDirection::AssetToManaged => self.token_out_program,
+            OfferDirection::ManagedToAsset => self.token_in_program,
         }
     }
 
-    pub(super) fn asset_mint(&self) -> &InterfaceAccount<'info, Mint> {
+    pub(super) fn asset_mint(&self) -> &'a InterfaceAccount<'info, Mint> {
         match self.config.offer_config.direction {
-            OfferDirection::AssetToManaged => &self.token_in_mint,
-            OfferDirection::ManagedToAsset => &self.token_out_mint,
+            OfferDirection::AssetToManaged => self.token_in_mint,
+            OfferDirection::ManagedToAsset => self.token_out_mint,
         }
+    }
+}
+
+/// Reloads whichever of the two mints the offer manages.
+pub(crate) fn reload_managed_mint<'info>(
+    offer: &OfferConfig,
+    token_in_mint: &mut InterfaceAccount<'info, Mint>,
+    token_out_mint: &mut InterfaceAccount<'info, Mint>,
+) -> Result<()> {
+    match offer.direction {
+        OfferDirection::AssetToManaged => token_out_mint.reload(),
+        OfferDirection::ManagedToAsset => token_in_mint.reload(),
+    }
+}
+
+impl<'info> ExecutionAccounts<'info> for TakeOffer<'info> {
+    fn execution(&self) -> Result<Execution<'_, 'info>> {
+        Ok(Execution {
+            config: &self.config,
+            token_in_mint: &self.token_in_mint,
+            token_out_mint: &self.token_out_mint,
+            proceeds_token_in: self.proceeds_token_in.as_deref(),
+            fee_token_in: &self.fee_token_in,
+            mint_authority: &self.mint_authority,
+            state: &self.state,
+            buffer: &self.buffer,
+            custody: &self.custody,
+            token_in_program: &self.token_in_program,
+            token_out_program: &self.token_out_program,
+            associated_token_program: &self.associated_token_program,
+            system_program: &self.system_program,
+            payer: self.user.as_ref(),
+            user: self.user.key(),
+            route: self.route()?,
+        })
+    }
+
+    fn prop_amm_state_mut(&mut self) -> Option<&mut Account<'info, PropAmmState>> {
+        self.custody.prop_amm_state.as_deref_mut()
+    }
+
+    fn reload_managed_mint(&mut self) -> Result<()> {
+        reload_managed_mint(
+            &self.config.offer_config,
+            &mut self.token_in_mint,
+            &mut self.token_out_mint,
+        )
+    }
+}
+
+impl<'info> TakeOffer<'info> {
+    /// The stored access mode selects the route; caller-supplied accounts cannot
+    /// switch it. Permissionless offers require the intermediary and its ATAs
+    /// (validated by `validate_intermediary`); every other offer must omit them.
+    fn route(&self) -> Result<Route<'_, 'info>> {
+        if self.config.offer_config.access != OfferAccess::Permissionless {
+            require!(
+                self.permissionless_authority.is_none()
+                    && self.permissionless_token_in.is_none()
+                    && self.permissionless_token_out.is_none(),
+                OnreError::PermissionlessNotAllowed
+            );
+            return Ok(Route::Direct {
+                input: &self.user_token_in,
+                output: &self.user_token_out,
+                user: self.user.as_ref(),
+            });
+        }
+        Ok(Route::Intermediary {
+            user_input: &self.user_token_in,
+            user_output: &self.user_token_out,
+            user: self.user.as_ref(),
+            authority: self
+                .permissionless_authority
+                .as_ref()
+                .ok_or(OnreError::WrongAuthority)?
+                .as_ref(),
+            input: self
+                .permissionless_token_in
+                .as_deref()
+                .ok_or(OnreError::InvalidVaultTokenInAccount)?,
+            output: self
+                .permissionless_token_out
+                .as_deref()
+                .ok_or(OnreError::InvalidPermissionlessTokenOutAccount)?,
+        })
     }
 }

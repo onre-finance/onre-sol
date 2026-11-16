@@ -3,6 +3,8 @@ mod admin_updates;
 #[path = "modular_take_offer/buffer_independence.rs"]
 mod buffer_independence;
 mod common;
+#[path = "modular_take_offer/fulfillment.rs"]
+mod fulfillment;
 #[path = "modular_take_offer/market_stats_refresh.rs"]
 mod market_stats_refresh;
 #[path = "modular_take_offer/mint_limits.rs"]
@@ -134,7 +136,7 @@ impl Fixture {
             b"offer_config",
             asset.as_ref(),
             mint.as_ref(),
-            &(OfferFlow::Permissioned as u64).to_le_bytes(),
+            &(OfferMode::Permissioned as u64).to_le_bytes(),
         ]);
         let now = get_clock_time(&svm);
         let vector = PricingVector {
@@ -239,8 +241,9 @@ impl Fixture {
                 system_program: SYSTEM_PROGRAM_ID,
             },
             instruction::CreateOfferConfig {
-                instance_id: OfferFlow::Permissioned as u64,
-                flow: OfferFlow::Permissioned,
+                instance_id: OfferMode::Permissioned as u64,
+                access: OfferMode::Permissioned.access(),
+                execution: OfferMode::Permissioned.execution(),
             },
         ));
         for instruction in instructions {
@@ -286,7 +289,7 @@ impl Fixture {
     fn create_route(
         &mut self,
         direction: OfferDirection,
-        flow: OfferFlow,
+        flow: OfferMode,
         kind: QuoterKind,
         with_liquidity: bool,
     ) {
@@ -314,7 +317,7 @@ impl Fixture {
     fn create_route_with_vault(
         &mut self,
         direction: OfferDirection,
-        flow: OfferFlow,
+        flow: OfferMode,
         kind: QuoterKind,
         liquidity: Option<Pubkey>,
     ) {
@@ -328,7 +331,7 @@ impl Fixture {
     fn create_route_with_vaults(
         &mut self,
         direction: OfferDirection,
-        flow: OfferFlow,
+        flow: OfferMode,
         kind: QuoterKind,
         source: Option<Pubkey>,
         destination: Option<Pubkey>,
@@ -436,7 +439,8 @@ impl Fixture {
                 },
                 instruction::CreateOfferConfig {
                     instance_id: flow as u64,
-                    flow,
+                    access: flow.access(),
+                    execution: flow.execution(),
                 },
             );
             send_tx(&mut self.svm, &[instruction], &[&self.boss]).unwrap();
@@ -549,18 +553,65 @@ impl Fixture {
         let configured = read::<ManagedTokenConfig>(&self.svm, managed(self.mint)).mint_multisig;
         (configured != Pubkey::default()).then_some(configured)
     }
-    fn take(&self, gross: u64, minimum: u64) -> Instruction {
-        self.take_with_mint_multisig(gross, minimum, self.mint_multisig())
-    }
-    fn take_with_mint_multisig(
-        &self,
-        gross: u64,
-        minimum: u64,
-        mint_multisig: Option<Pubkey>,
-    ) -> Instruction {
+    /// The selected offer's component accounts.
+    fn config_accounts(&self) -> accounts::TakeOfferConfigAccounts {
         let config: OfferConfig = read(&self.svm, self.offer);
-        let direction = config.direction;
-        let (token_in, token_out, in_program, out_program) = match direction {
+        accounts::TakeOfferConfigAccounts {
+            offer_config: self.offer,
+            managed_token: managed(self.mint),
+            pricer: price(self.mint, 0),
+            quoter: config.quoter,
+            fee_config: self.fee,
+            proceeds_vault: vault(VaultKind::Proceeds),
+            fee_vault: vault(VaultKind::Fee),
+        }
+    }
+    /// Per-mint BUFFER, reporting and minting accounts, plus the legacy ONyc BUFFER.
+    fn buffer_accounts(&self, mint_multisig: Option<Pubkey>) -> accounts::TakeOfferBufferAccounts {
+        let legacy = self.legacy_buffer_accounts();
+        let [reserve, management, performance] = self
+            .buffer_vaults()
+            .map(|v| derive_ata(&v, &self.mint, &self.token_program));
+        accounts::TakeOfferBufferAccounts {
+            buffer_state: self.buffer(),
+            buffer_pricer: Some(price(self.mint, 0)),
+            market_stats: self.market_stats(),
+            legacy_market_stats: self.legacy_market_stats(),
+            circulating_supply_excluded_balance: find_circulating_supply_excluded_balance_pda().0,
+            buffer_reserve_token: reserve,
+            buffer_management_token: management,
+            buffer_performance_token: performance,
+            mint_multisig,
+            legacy_buffer_state: legacy.map(|(state, _)| state),
+            legacy_buffer_reserve_token: legacy.map(|(_, tokens)| tokens[0]),
+            legacy_buffer_management_token: legacy.map(|(_, tokens)| tokens[1]),
+            legacy_buffer_performance_token: legacy.map(|(_, tokens)| tokens[2]),
+        }
+    }
+    /// The selected offer's pressure state and custody accounts.
+    fn custody_accounts(&self) -> accounts::TakeOfferCustodyAccounts {
+        let config: OfferConfig = read(&self.svm, self.offer);
+        let (token_in, token_out, in_program, out_program) = self.pair(config.direction);
+        let has_source = config.source_vault != Pubkey::default();
+        let has_destination = config.destination_vault != Pubkey::default();
+        let has_haircut = config.haircut_vault != Pubkey::default();
+        accounts::TakeOfferCustodyAccounts {
+            prop_amm_state: (config.pressure_state != Pubkey::default())
+                .then_some(config.pressure_state),
+            source_vault: has_source.then_some(config.source_vault),
+            source_token_out: has_source
+                .then(|| derive_ata(&config.source_vault, &token_out, &out_program)),
+            destination_vault: has_destination.then_some(config.destination_vault),
+            destination_token_in: has_destination
+                .then(|| derive_ata(&config.destination_vault, &token_in, &in_program)),
+            haircut_vault: has_haircut.then_some(config.haircut_vault),
+            haircut_token_in: has_haircut
+                .then(|| derive_ata(&config.haircut_vault, &token_in, &in_program)),
+        }
+    }
+    /// `(token_in, token_out, token_in_program, token_out_program)` for a direction.
+    fn pair(&self, direction: OfferDirection) -> (Pubkey, Pubkey, Pubkey, Pubkey) {
+        match direction {
             OfferDirection::AssetToManaged => (
                 self.asset,
                 self.mint,
@@ -573,25 +624,23 @@ impl Fixture {
                 self.token_program,
                 self.asset_program,
             ),
-        };
-        let has_source = config.source_vault != Pubkey::default();
-        let has_destination = config.destination_vault != Pubkey::default();
-        let has_haircut = config.haircut_vault != Pubkey::default();
-        let legacy = self.legacy_buffer_accounts();
-        let [reserve, management, performance] = self
-            .buffer_vaults()
-            .map(|v| derive_ata(&v, &self.mint, &self.token_program));
+        }
+    }
+    fn take(&self, gross: u64, minimum: u64) -> Instruction {
+        self.take_with_mint_multisig(gross, minimum, self.mint_multisig())
+    }
+    fn take_with_mint_multisig(
+        &self,
+        gross: u64,
+        minimum: u64,
+        mint_multisig: Option<Pubkey>,
+    ) -> Instruction {
+        let config: OfferConfig = read(&self.svm, self.offer);
+        let direction = config.direction;
+        let (token_in, token_out, in_program, out_program) = self.pair(direction);
         ix(
             accounts::TakeOffer {
-                config: accounts::TakeOfferConfigAccounts {
-                    offer_config: self.offer,
-                    managed_token: managed(self.mint),
-                    pricer: price(self.mint, 0),
-                    quoter: config.quoter,
-                    fee_config: self.fee,
-                    proceeds_vault: vault(VaultKind::Proceeds),
-                    fee_vault: vault(VaultKind::Fee),
-                },
+                config: self.config_accounts(),
                 token_in_mint: token_in,
                 token_out_mint: token_out,
                 user_token_in: derive_ata(&self.user.pubkey(), &token_in, &in_program),
@@ -606,63 +655,41 @@ impl Fixture {
                 fee_token_in: derive_ata(&vault(VaultKind::Fee), &token_in, &in_program),
                 mint_authority: find_mint_authority_pda().0,
                 state: find_state_pda().0,
-                buffer: accounts::TakeOfferBufferAccounts {
-                    buffer_state: self.buffer(),
-                    buffer_pricer: Some(price(self.mint, 0)),
-                    market_stats: self.market_stats(),
-                    legacy_market_stats: self.legacy_market_stats(),
-                    circulating_supply_excluded_balance:
-                        find_circulating_supply_excluded_balance_pda().0,
-                    buffer_reserve_token: reserve,
-                    buffer_management_token: management,
-                    buffer_performance_token: performance,
-                    mint_multisig,
-                    legacy_buffer_state: legacy.map(|(state, _)| state),
-                    legacy_buffer_reserve_token: legacy.map(|(_, tokens)| tokens[0]),
-                    legacy_buffer_management_token: legacy.map(|(_, tokens)| tokens[1]),
-                    legacy_buffer_performance_token: legacy.map(|(_, tokens)| tokens[2]),
-                },
+                buffer: self.buffer_accounts(mint_multisig),
                 instructions_sysvar: SYSVAR_INSTRUCTIONS_ID,
                 user: self.user.pubkey(),
                 token_in_program: in_program,
                 token_out_program: out_program,
                 associated_token_program: ATA_PROGRAM_ID,
                 system_program: SYSTEM_PROGRAM_ID,
-                custody: accounts::TakeOfferCustodyAccounts {
-                    prop_amm_state: (config.pressure_state != Pubkey::default())
-                        .then_some(config.pressure_state),
-                    source_vault: has_source.then_some(config.source_vault),
-                    source_token_out: has_source
-                        .then(|| derive_ata(&config.source_vault, &token_out, &out_program)),
-                    destination_vault: has_destination.then_some(config.destination_vault),
-                    destination_token_in: has_destination
-                        .then(|| derive_ata(&config.destination_vault, &token_in, &in_program)),
-                    haircut_vault: has_haircut.then_some(config.haircut_vault),
-                    haircut_token_in: has_haircut
-                        .then(|| derive_ata(&config.haircut_vault, &token_in, &in_program)),
-                },
-                permissionless_authority: (config.flow == OfferFlow::Permissionless)
+                custody: self.custody_accounts(),
+                permissionless_authority: (config.access == OfferAccess::Permissionless)
                     .then(|| find_permissionless_authority_pda().0),
-                permissionless_token_in: (config.flow == OfferFlow::Permissionless).then(|| {
-                    derive_ata(
-                        &find_permissionless_authority_pda().0,
-                        &token_in,
-                        &in_program,
-                    )
-                }),
-                permissionless_token_out: (config.flow == OfferFlow::Permissionless).then(|| {
-                    derive_ata(
-                        &find_permissionless_authority_pda().0,
-                        &token_out,
-                        &out_program,
-                    )
-                }),
+                permissionless_token_in: (config.access == OfferAccess::Permissionless).then(
+                    || {
+                        derive_ata(
+                            &find_permissionless_authority_pda().0,
+                            &token_in,
+                            &in_program,
+                        )
+                    },
+                ),
+                permissionless_token_out: (config.access == OfferAccess::Permissionless).then(
+                    || {
+                        derive_ata(
+                            &find_permissionless_authority_pda().0,
+                            &token_out,
+                            &out_program,
+                        )
+                    },
+                ),
             },
             instruction::TakeOffer {
                 gross_input_amount: gross,
                 minimum_amount_out: minimum,
                 deadline: get_clock_time(&self.svm) + 100,
-                approval_message: (config.flow == OfferFlow::Permissioned).then(|| self.approval()),
+                approval_message: (config.access == OfferAccess::Permissioned)
+                    .then(|| self.approval()),
             },
         )
     }
@@ -690,6 +717,17 @@ impl Fixture {
         &mut self,
         instruction: Instruction,
         verify: Option<Instruction>,
+    ) -> Result<TransactionMetadata, FailedTransactionMetadata> {
+        let user = self.user.insecure_clone();
+        self.send_v0_signed(instruction, verify, &user)
+    }
+
+    /// `send_v0` with `signer` as the fee payer and only signer.
+    fn send_v0_signed(
+        &mut self,
+        instruction: Instruction,
+        verify: Option<Instruction>,
+        signer: &Keypair,
     ) -> Result<TransactionMetadata, FailedTransactionMetadata> {
         // v0 with lookup tables is the supported integration baseline. Execute
         // that wire format and enforce its limits without depending on v1.
@@ -735,7 +773,7 @@ impl Fixture {
         instructions.push(instruction);
         let message = VersionedMessage::V0(
             v0::Message::try_compile(
-                &self.user.pubkey(),
+                &signer.pubkey(),
                 &instructions,
                 &[lookup],
                 self.svm.latest_blockhash(),
@@ -752,7 +790,7 @@ impl Fixture {
                 .sum();
             assert!(compiled.account_keys.len() + lookup_accounts <= 64);
         }
-        let transaction = VersionedTransaction::try_new(message, &[&self.user]).unwrap();
+        let transaction = VersionedTransaction::try_new(message, &[signer]).unwrap();
         self.svm.send_transaction(transaction)
     }
     fn balance(&self, mint: Pubkey, owner: Pubkey, program: Pubkey) -> u64 {
@@ -797,7 +835,7 @@ fn offers_are_identified_by_pair_and_instance_not_flow() {
     let first = f.offer;
     assert_eq!(
         first,
-        offer_pda(f.asset, f.mint, OfferFlow::Permissioned as u64)
+        offer_pda(f.asset, f.mint, OfferMode::Permissioned as u64)
     );
     // `address` is the PDA supplied; `instance_id` the instruction argument.
     let create = |f: &Fixture, address: u64, instance_id: u64| {
@@ -822,7 +860,8 @@ fn offers_are_identified_by_pair_and_instance_not_flow() {
             },
             instruction::CreateOfferConfig {
                 instance_id,
-                flow: OfferFlow::Permissioned,
+                access: OfferMode::Permissioned.access(),
+                execution: OfferMode::Permissioned.execution(),
             },
         )
     };
@@ -833,8 +872,8 @@ fn offers_are_identified_by_pair_and_instance_not_flow() {
     send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
     let config: OfferConfig = read(&f.svm, second);
     assert_eq!(
-        (config.instance_id, config.flow),
-        (7, OfferFlow::Permissioned)
+        (config.instance_id, OfferMode::of(&config)),
+        (7, OfferMode::Permissioned)
     );
 
     // An instance id cannot be reused, and the address must match the argument.
@@ -893,7 +932,8 @@ fn executes_created_configuration_and_emits_accounting_for_spl_and_token_2022() 
         let event = OfferExecutedEvent::deserialize(&mut &data[8..]).unwrap();
         assert_eq!(event.offer_config, f.offer);
         assert_eq!(event.user, f.user.pubkey());
-        assert_eq!(event.flow, OfferFlow::Permissioned);
+        assert_eq!(event.access, OfferAccess::Permissioned);
+        assert_eq!(event.execution, OfferExecution::Instant);
         assert_eq!(event.gross_input_amount, 2_000_000);
         assert_eq!(event.net_input_amount, 1_980_000);
         assert_eq!(event.fee_amount, 20_000);
@@ -983,7 +1023,7 @@ fn unsupported_routes_and_global_kill_fail_closed() {
     let mut f = Fixture::new(false, false);
     f.create_route(
         OfferDirection::AssetToManaged,
-        OfferFlow::Permissioned,
+        OfferMode::Permissioned,
         QuoterKind::Nav,
         true,
     );
@@ -994,7 +1034,7 @@ fn unsupported_routes_and_global_kill_fail_closed() {
     f.seed_tokens(f.mint, f.user.pubkey(), 1_000_000_000);
     f.create_route(
         OfferDirection::ManagedToAsset,
-        OfferFlow::Worker,
+        OfferMode::Worker,
         QuoterKind::Nav,
         true,
     );
@@ -1241,17 +1281,19 @@ fn execution_failure_rolls_back_buffer_and_fee_splits() {
 }
 
 fn executed_event(meta: &TransactionMetadata) -> OfferExecutedEvent {
-    use anchor_lang::{
-        __private::base64::{engine::general_purpose::STANDARD, Engine},
-        Discriminator,
-    };
+    emitted(meta)
+}
+
+/// The first event of type `T` emitted by the transaction.
+fn emitted<T: AnchorDeserialize + anchor_lang::Discriminator>(meta: &TransactionMetadata) -> T {
+    use anchor_lang::__private::base64::{engine::general_purpose::STANDARD, Engine};
     meta.logs
         .iter()
         .filter_map(|log| log.strip_prefix("Program data: "))
         .filter_map(|data| STANDARD.decode(data).ok())
         .find_map(|data| {
-            data.strip_prefix(OfferExecutedEvent::DISCRIMINATOR)
-                .map(|data| OfferExecutedEvent::deserialize(&mut &data[..]).unwrap())
+            data.strip_prefix(T::DISCRIMINATOR)
+                .map(|data| T::deserialize(&mut &data[..]).unwrap())
         })
         .unwrap()
 }
@@ -1277,7 +1319,7 @@ fn one_entrypoint_executes_both_directions_and_buffer_tracks_the_managed_input()
         edit::<ManagedTokenBufferState>(&mut f.svm, buffer, |b| b.gross_apr = 100_000);
         f.create_route(
             OfferDirection::ManagedToAsset,
-            OfferFlow::Permissioned,
+            OfferMode::Permissioned,
             QuoterKind::Nav,
             true,
         );
@@ -1335,7 +1377,7 @@ fn onyc_uses_only_selected_liquidity_and_leaves_the_legacy_buffer_untouched() {
         f.initialize_legacy_buffer();
         f.create_route(
             OfferDirection::ManagedToAsset,
-            OfferFlow::Permissioned,
+            OfferMode::Permissioned,
             QuoterKind::Nav,
             true,
         );
@@ -1394,7 +1436,7 @@ fn insufficient_selected_liquidity_rolls_back_accrual_fees_and_burn() {
     edit::<ManagedTokenBufferState>(&mut f.svm, buffer, |b| b.gross_apr = 100_000);
     f.create_route(
         OfferDirection::ManagedToAsset,
-        OfferFlow::Permissioned,
+        OfferMode::Permissioned,
         QuoterKind::Nav,
         true,
     );
@@ -1431,7 +1473,7 @@ fn cannot_omit_or_substitute_selected_liquidity() {
     f.seed_tokens(f.mint, f.user.pubkey(), 1_000_000_000);
     f.create_route(
         OfferDirection::ManagedToAsset,
-        OfferFlow::Permissioned,
+        OfferMode::Permissioned,
         QuoterKind::Nav,
         true,
     );
@@ -1475,7 +1517,7 @@ fn prop_amm_requires_only_its_selected_pair_before_dispatch() {
         f.seed_tokens(f.mint, f.user.pubkey(), 1_000_000_000);
         f.create_route(
             OfferDirection::ManagedToAsset,
-            OfferFlow::Permissionless,
+            OfferMode::Permissionless,
             QuoterKind::PropAmm,
             true,
         );
@@ -1546,8 +1588,8 @@ fn offers_can_share_a_preexisting_modular_or_legacy_liquidity_vault() {
             // These are two actual boss-authorized offer creations referencing
             // the same vault. No rebinding or migration is needed.
             for (flow, quoter) in [
-                (OfferFlow::Permissioned, QuoterKind::Nav),
-                (OfferFlow::Permissionless, QuoterKind::NavPermissionless),
+                (OfferMode::Permissioned, QuoterKind::Nav),
+                (OfferMode::Permissionless, QuoterKind::NavPermissionless),
             ] {
                 f.create_route_with_vault(
                     OfferDirection::ManagedToAsset,
@@ -1556,7 +1598,7 @@ fn offers_can_share_a_preexisting_modular_or_legacy_liquidity_vault() {
                     Some(selected),
                 );
                 let instruction = f.take(500_000_000, 990_000);
-                let result = if flow == OfferFlow::Permissioned {
+                let result = if flow == OfferMode::Permissioned {
                     f.send(instruction)
                 } else {
                     f.send_without_approval(instruction)
@@ -1592,12 +1634,12 @@ fn modular_offers_can_explicitly_share_the_old_redemption_vault() {
         f.seed_tokens(f.asset, selected, 3_000_000);
         // The redemption authority itself is a stateless PDA. Its ATA is custody.
         for (flow, quoter) in [
-            (OfferFlow::Permissioned, QuoterKind::Nav),
-            (OfferFlow::Permissionless, QuoterKind::NavPermissionless),
+            (OfferMode::Permissioned, QuoterKind::Nav),
+            (OfferMode::Permissionless, QuoterKind::NavPermissionless),
         ] {
             f.create_route_with_vault(OfferDirection::ManagedToAsset, flow, quoter, Some(selected));
             let instruction = f.take(500_000_000, 990_000);
-            let result = if flow == OfferFlow::Permissioned {
+            let result = if flow == OfferMode::Permissioned {
                 f.send(instruction)
             } else {
                 f.send_without_approval(instruction)
