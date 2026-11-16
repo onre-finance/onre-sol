@@ -43,6 +43,8 @@ pub struct FulfillmentRequestFilledEvent {
 
 /// `TakeOffer`'s execution accounts, with the request escrow as input and the
 /// request user's ATA as output; the worker signs and pays for created accounts.
+/// Permissionless offers settle directly from the escrow, which is already a
+/// program account, so no intermediary is involved.
 #[derive(Accounts)]
 pub struct FulfillFulfillmentRequest<'info> {
     /// Offer components; must be the request's offer, enabled with its components.
@@ -99,6 +101,16 @@ pub struct FulfillFulfillmentRequest<'info> {
     )]
     pub user_token_out: Box<InterfaceAccount<'info, TokenAccount>>,
 
+    /// Required exactly for asset-to-managed offers, as on `take_offer`.
+    #[account(
+        init_if_needed,
+        payer = worker,
+        associated_token::mint = token_in_mint,
+        associated_token::authority = config.proceeds_vault,
+        associated_token::token_program = token_in_program
+    )]
+    pub proceeds_token_in: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
+
     #[account(
         init_if_needed,
         payer = worker,
@@ -140,7 +152,7 @@ impl<'info> ExecutionAccounts<'info> for FulfillFulfillmentRequest<'info> {
             config: &self.config,
             token_in_mint: &self.token_in_mint,
             token_out_mint: &self.token_out_mint,
-            proceeds_token_in: None,
+            proceeds_token_in: self.proceeds_token_in.as_deref(),
             fee_token_in: &self.fee_token_in,
             mint_authority: &self.mint_authority,
             state: &self.state,
@@ -174,12 +186,11 @@ impl<'info> ExecutionAccounts<'info> for FulfillFulfillmentRequest<'info> {
 }
 
 /// Worker-only. Executes `input_amount` of the request's unfilled gross input
-/// against its Worker offer at the current price and fee, exactly as `take_offer`
-/// would for that input: the fee goes to the fee vault, the net input is burned or
-/// deposited per the destination role, and the asset is paid from the source vault
-/// to the request user. A full fill closes the request and its escrow, refunding
-/// rent to the user; any unsolicited escrow surplus goes to the fee vault. Blocked
-/// by the kill switch.
+/// against its Worker offer exactly as `take_offer` would for that input: the
+/// offer's quoter (NAV or Prop AMM) at the current price, its fee, and its
+/// direction and custody roles, with the request user receiving the output. A full
+/// fill closes the request and its escrow, refunding rent to the user; any
+/// unsolicited escrow surplus goes to the fee vault. Blocked by the kill switch.
 pub fn fulfill_fulfillment_request(
     ctx: Context<FulfillFulfillmentRequest>,
     input_amount: u64,

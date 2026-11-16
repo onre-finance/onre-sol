@@ -739,21 +739,14 @@ fn offer_requires_compatible_pricer_and_enabled_dependencies() {
 #[test]
 fn offer_checks_modes_and_optional_liquidity() {
     let mut f = Fixture::new();
-    for (flow, reverse, error) in [
-        (OfferMode::Worker, false, OnreError::IncompatibleQuoter),
-        (
-            OfferMode::WorkerPermissionless,
-            false,
+    // Access selects the quoter for both execution modes: the selected Nav quoter
+    // suits only permissioned offers.
+    for mode in [OfferMode::Permissionless, OfferMode::WorkerPermissionless] {
+        let instruction = f.offer_ix(mode, false);
+        assert_error(
+            send_tx(&mut f.svm, &[instruction], &[&f.boss]),
             OnreError::IncompatibleQuoter,
-        ),
-        (
-            OfferMode::Permissionless,
-            false,
-            OnreError::IncompatibleQuoter,
-        ),
-    ] {
-        let instruction = f.offer_ix(flow, reverse);
-        assert_error(send_tx(&mut f.svm, &[instruction], &[&f.boss]), error);
+        );
     }
     f.liquidity = None;
     let instruction = f.offer_ix(OfferMode::Worker, true);
@@ -761,19 +754,13 @@ fn offer_checks_modes_and_optional_liquidity() {
         send_tx(&mut f.svm, &[instruction], &[&f.boss]),
         OnreError::LiquidityVaultRequired,
     );
-    let instruction = f.offer_ix(OfferMode::Permissioned, false);
-    send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
-    f.liquidity = Some(vault(model::VaultKind::Liquidity, 0));
-    // Worker offers are NAV sells with either access mode.
-    for mode in [OfferMode::Worker, OfferMode::WorkerPermissionless] {
-        let instruction = f.offer_ix(mode, true);
+    for mode in [OfferMode::Permissioned, OfferMode::Worker] {
+        let instruction = f.offer_ix(mode, false);
         send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
-        let offer: model::OfferConfig = read(&f.svm, f.offer_key(mode, true));
-        assert_eq!(
-            (offer.access, offer.execution),
-            (mode.access(), mode.execution())
-        );
     }
+    f.liquidity = Some(vault(model::VaultKind::Liquidity, 0));
+    let instruction = f.offer_ix(OfferMode::Worker, true);
+    send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
     send_tx(
         &mut f.svm,
         &[create_quoter(
@@ -785,9 +772,16 @@ fn offer_checks_modes_and_optional_liquidity() {
     )
     .unwrap();
     f.selected_quoter = quoter(model::QuoterKind::NavPermissionless, 0);
-    for reverse in [false, true] {
-        let instruction = f.offer_ix(OfferMode::Permissionless, reverse);
-        send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    for mode in [OfferMode::Permissionless, OfferMode::WorkerPermissionless] {
+        for reverse in [false, true] {
+            let instruction = f.offer_ix(mode, reverse);
+            send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+            let offer: model::OfferConfig = read(&f.svm, f.offer_key(mode, reverse));
+            assert_eq!(
+                (offer.access, offer.execution),
+                (mode.access(), mode.execution())
+            );
+        }
     }
 }
 

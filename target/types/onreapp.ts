@@ -4483,6 +4483,68 @@ export type Onreapp = {
           }
         },
         {
+          "name": "proceedsTokenIn",
+          "docs": [
+            "Required exactly for asset-to-managed offers, as on `take_offer`."
+          ],
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "config.proceedsVault",
+                "account": "takeOfferConfigAccounts"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
           "name": "feeTokenIn",
           "writable": true,
           "pda": {
@@ -17628,7 +17690,7 @@ export type Onreapp = {
     {
       "code": 6141,
       "name": "incompatibleQuoter",
-      "msg": "Quoter is incompatible with the offer flow or pair"
+      "msg": "Quoter is incompatible with the offer access mode or pair"
     },
     {
       "code": 6142,
@@ -20064,7 +20126,8 @@ export type Onreapp = {
       "name": "offerExecution",
       "docs": [
         "How a trade settles: atomically in `take_offer`, or as an escrowed request that",
-        "the worker fills, possibly partially, at the price and fee current at each fill."
+        "the worker fills, possibly partially. Each fill uses the offer's quoter, fee and",
+        "custody exactly as `take_offer` would, at the price current at that fill."
       ],
       "type": {
         "kind": "enum",

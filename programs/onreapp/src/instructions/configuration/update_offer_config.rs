@@ -79,7 +79,6 @@ pub fn update_offer_config(ctx: Context<UpdateOfferConfig>) -> Result<()> {
     let pressure_state = validate_offer_components(
         ctx.program_id,
         previous.access,
-        previous.execution,
         previous.direction,
         previous.token_in_mint,
         previous.token_out_mint,

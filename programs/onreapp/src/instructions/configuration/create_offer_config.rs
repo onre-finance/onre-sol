@@ -139,7 +139,6 @@ pub fn create_offer_config(
     let pressure_state = validate_offer_components(
         ctx.program_id,
         access,
-        execution,
         direction,
         a.token_in_mint.key(),
         a.token_out_mint.key(),
@@ -201,14 +200,13 @@ pub(crate) struct OfferComponents<'a, 'info> {
 }
 
 /// Rules shared by `create_offer_config` and `update_offer_config`: the Pricer
-/// belongs to the managed mint, the quoter suits the access and execution modes, the pressure link is
+/// belongs to the managed mint, the quoter suits the access mode, the pressure link is
 /// valid, custody roles are supported vaults, managed-to-asset offers have a
 /// source, PropAmm buys have a destination, and exactly the PropAmm sells without
 /// a destination have a Haircut-kind vault. Returns the pressure link.
 pub(crate) fn validate_offer_components(
     program_id: &Pubkey,
     access: OfferAccess,
-    execution: OfferExecution,
     direction: OfferDirection,
     token_in_mint: Pubkey,
     token_out_mint: Pubkey,
@@ -223,7 +221,7 @@ pub(crate) fn validate_offer_components(
         OnreError::IncompatiblePricer
     );
     require!(
-        quoter_supported(access, execution, direction, c.quoter.kind),
+        quoter_supported(access, c.quoter.kind),
         OnreError::IncompatibleQuoter
     );
     let pressure_state = validate_pressure_link(

@@ -284,7 +284,7 @@ pub enum OnreError {
     TokenRoleConflict,
     #[msg("Pricer does not match the managed mint or pricing denomination")]
     IncompatiblePricer,
-    #[msg("Quoter is incompatible with the offer flow or pair")]
+    #[msg("Quoter is incompatible with the offer access mode or pair")]
     IncompatibleQuoter,
     #[msg("Offer direction is invalid for the registered mints or flow")]
     InvalidOfferDirection,

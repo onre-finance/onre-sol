@@ -28,8 +28,15 @@ fn request_pda(f: &Fixture, request_id: u64) -> Pubkey {
     ])
 }
 
+/// The offer's input mint and its token program.
+fn input(f: &Fixture) -> (Pubkey, Pubkey) {
+    let (token_in, _, program, _) = f.pair(read::<OfferConfig>(&f.svm, f.offer).direction);
+    (token_in, program)
+}
+
 fn escrow(f: &Fixture, request: Pubkey) -> Pubkey {
-    derive_ata(&request, &f.mint, &f.token_program)
+    let (mint, program) = input(f);
+    derive_ata(&request, &mint, &program)
 }
 
 fn create_ix(
@@ -39,17 +46,18 @@ fn create_ix(
     approval: Option<ApprovalMessage>,
 ) -> Instruction {
     let request = request_pda(f, request_id);
+    let (mint, program) = input(f);
     ix(
         accounts::CreateFulfillmentRequest {
             config: f.config_accounts(),
-            token_in_mint: f.mint,
-            user_token_in: derive_ata(&f.user.pubkey(), &f.mint, &f.token_program),
+            token_in_mint: mint,
+            user_token_in: derive_ata(&f.user.pubkey(), &mint, &program),
             fulfillment_request: request,
             escrow_token_in: escrow(f, request),
             state: find_state_pda().0,
             instructions_sysvar: SYSVAR_INSTRUCTIONS_ID,
             user: f.user.pubkey(),
-            token_in_program: f.token_program,
+            token_in_program: program,
             associated_token_program: ATA_PROGRAM_ID,
             system_program: SYSTEM_PROGRAM_ID,
         },
@@ -69,7 +77,8 @@ fn create(f: &mut Fixture, request_id: u64, input_amount: u64) -> Pubkey {
 }
 
 fn fill_ix(f: &Fixture, worker: Pubkey, request: Pubkey, input_amount: u64) -> Instruction {
-    let (token_in, token_out, in_program, out_program) = f.pair(OfferDirection::ManagedToAsset);
+    let direction = read::<OfferConfig>(&f.svm, f.offer).direction;
+    let (token_in, token_out, in_program, out_program) = f.pair(direction);
     ix(
         accounts::FulfillFulfillmentRequest {
             config: f.config_accounts(),
@@ -79,6 +88,8 @@ fn fill_ix(f: &Fixture, worker: Pubkey, request: Pubkey, input_amount: u64) -> I
             token_in_mint: token_in,
             token_out_mint: token_out,
             user_token_out: derive_ata(&f.user.pubkey(), &token_out, &out_program),
+            proceeds_token_in: (direction == OfferDirection::AssetToManaged)
+                .then(|| derive_ata(&vault(VaultKind::Proceeds), &token_in, &in_program)),
             fee_token_in: derive_ata(&vault(VaultKind::Fee), &token_in, &in_program),
             mint_authority: find_mint_authority_pda().0,
             state: find_state_pda().0,
@@ -105,6 +116,7 @@ fn fill(
 }
 
 fn cancel_ix(f: &Fixture, signer: Pubkey, request: Pubkey) -> Instruction {
+    let (mint, program) = input(f);
     ix(
         accounts::CancelFulfillmentRequest {
             fulfillment_request: request,
@@ -112,10 +124,10 @@ fn cancel_ix(f: &Fixture, signer: Pubkey, request: Pubkey) -> Instruction {
             user: f.user.pubkey(),
             signer,
             state: find_state_pda().0,
-            token_in_mint: f.mint,
+            token_in_mint: mint,
             escrow_token_in: escrow(f, request),
-            user_token_in: derive_ata(&f.user.pubkey(), &f.mint, &f.token_program),
-            token_in_program: f.token_program,
+            user_token_in: derive_ata(&f.user.pubkey(), &mint, &program),
+            token_in_program: program,
             associated_token_program: ATA_PROGRAM_ID,
             system_program: SYSTEM_PROGRAM_ID,
         },
@@ -247,7 +259,7 @@ fn request_access_follows_the_offer_and_ids_are_unique_per_open_request() {
     f.create_route(
         OfferDirection::ManagedToAsset,
         OfferMode::WorkerPermissionless,
-        QuoterKind::Nav,
+        QuoterKind::NavPermissionless,
         true,
     );
     let instruction = create_ix(&f, 1, 1_000_000, Some(f.approval()));
@@ -342,4 +354,107 @@ fn the_user_cancels_and_a_full_fill_sweeps_unsolicited_escrow_surplus_to_the_fee
         f.balance(f.mint, vault(VaultKind::Fee), f.token_program),
         1_000_000 + 1_000
     );
+}
+
+/// Balances and accounting after one execution of `gross` against a fresh offer.
+#[derive(Debug, PartialEq)]
+struct Outcome {
+    direction: OfferDirection,
+    access: OfferAccess,
+    accounting: [u64; 10],
+    balances: [u64; 5],
+}
+
+fn execute_once(mode: OfferMode, direction: OfferDirection, kind: QuoterKind) -> Outcome {
+    let mut f = Fixture::new(false, false);
+    f.seed_tokens(f.mint, f.user.pubkey(), 1_000_000_000);
+    f.create_route(direction, mode, kind, true);
+    f.seed_tokens(f.asset, vault(VaultKind::Liquidity), 10_000_000);
+    let gross = match direction {
+        OfferDirection::AssetToManaged => 2_000_000,
+        OfferDirection::ManagedToAsset => 500_000_000,
+    };
+    let permissioned = mode.access() == OfferAccess::Permissioned;
+    let result = if mode.execution() == OfferExecution::Worker {
+        let worker = Keypair::new();
+        f.svm.airdrop(&worker.pubkey(), INITIAL_LAMPORTS).unwrap();
+        let instruction = build_set_worker_ix(&f.boss.pubkey(), &worker.pubkey());
+        send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+        let instruction = create_ix(&f, 1, gross, permissioned.then(|| f.approval()));
+        if permissioned {
+            f.send(instruction)
+        } else {
+            f.send_without_approval(instruction)
+        }
+        .unwrap();
+        let request = request_pda(&f, 1);
+        fill(&mut f, &worker, request, gross).unwrap()
+    } else {
+        let instruction = f.take(gross, 0);
+        if permissioned {
+            f.send(instruction)
+        } else {
+            f.send_without_approval(instruction)
+        }
+        .unwrap()
+    };
+    let e = executed_event(&result);
+    let (token_in, token_out, in_program, out_program) = f.pair(direction);
+    let balance = |mint: Pubkey, owner: Pubkey, program: Pubkey| {
+        let account = derive_ata(&owner, &mint, &program);
+        f.svm
+            .get_account(&account)
+            .map_or(0, |_| get_token_balance(&f.svm, &account))
+    };
+    Outcome {
+        direction: e.direction,
+        access: e.access,
+        accounting: [
+            e.gross_input_amount,
+            e.fee_amount,
+            e.net_input_amount,
+            e.amount_out,
+            e.price,
+            e.liquidity_refill_amount,
+            e.proceeds_amount,
+            e.source_amount,
+            e.destination_amount,
+            e.haircut_amount,
+        ],
+        balances: [
+            balance(token_out, f.user.pubkey(), out_program),
+            balance(token_in, vault(VaultKind::Fee), in_program),
+            balance(f.asset, vault(VaultKind::Liquidity), f.asset_program),
+            balance(f.mint, vault(VaultKind::Haircut), f.token_program),
+            get_mint_supply(&f.svm, &f.mint),
+        ],
+    }
+}
+
+#[test]
+fn a_fill_executes_exactly_like_take_offer_with_the_offers_quoter_fee_and_custody() {
+    for (instant, worker) in [
+        (OfferMode::Permissioned, OfferMode::Worker),
+        (OfferMode::Permissionless, OfferMode::WorkerPermissionless),
+    ] {
+        let kinds: &[QuoterKind] = if instant == OfferMode::Permissioned {
+            &[QuoterKind::Nav]
+        } else {
+            &[QuoterKind::NavPermissionless, QuoterKind::PropAmm]
+        };
+        for &kind in kinds {
+            for direction in [
+                OfferDirection::AssetToManaged,
+                OfferDirection::ManagedToAsset,
+            ] {
+                let expected = execute_once(instant, direction, kind);
+                assert!(expected.accounting[3] > 0);
+                assert_eq!(
+                    execute_once(worker, direction, kind),
+                    expected,
+                    "{worker:?} {kind:?} {direction:?}"
+                );
+            }
+        }
+    }
 }

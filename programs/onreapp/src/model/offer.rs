@@ -12,30 +12,23 @@ pub enum OfferAccess {
 }
 
 /// How a trade settles: atomically in `take_offer`, or as an escrowed request that
-/// the worker fills, possibly partially, at the price and fee current at each fill.
+/// the worker fills, possibly partially. Each fill uses the offer's quoter, fee and
+/// custody exactly as `take_offer` would, at the price current at that fill.
 #[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OfferExecution {
     Instant,
     Worker,
 }
 
-/// The quoters each mode supports, checked on configuration and again on execution:
-/// permissioned instant offers quote NAV; permissionless instant offers quote
-/// permissionless NAV or Prop AMM; Worker offers are NAV sells (managed to asset)
-/// with either access.
-pub fn quoter_supported(
-    access: OfferAccess,
-    execution: OfferExecution,
-    direction: OfferDirection,
-    kind: QuoterKind,
-) -> bool {
-    match (execution, access) {
-        (OfferExecution::Instant, OfferAccess::Permissioned) => kind == QuoterKind::Nav,
-        (OfferExecution::Instant, OfferAccess::Permissionless) => {
+/// The quoters an access mode supports, checked on configuration and again on
+/// execution: permissioned offers quote NAV; permissionless offers quote
+/// permissionless NAV or Prop AMM. Execution mode and direction do not restrict
+/// the quoter: a Worker fill prices and settles exactly as `take_offer` would.
+pub fn quoter_supported(access: OfferAccess, kind: QuoterKind) -> bool {
+    match access {
+        OfferAccess::Permissioned => kind == QuoterKind::Nav,
+        OfferAccess::Permissionless => {
             matches!(kind, QuoterKind::NavPermissionless | QuoterKind::PropAmm)
-        }
-        (OfferExecution::Worker, _) => {
-            direction == OfferDirection::ManagedToAsset && kind == QuoterKind::Nav
         }
     }
 }

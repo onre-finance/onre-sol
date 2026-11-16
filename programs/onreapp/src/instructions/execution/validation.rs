@@ -18,7 +18,7 @@ pub(super) struct ExecutionPlan {
 }
 
 /// The route must suit the offer's stored access and execution modes, and the
-/// quoter those modes. Checked before quoting and again at settlement, so a future
+/// quoter its access mode. Checked before quoting and again at settlement, so a future
 /// dispatch change cannot execute another quoter through NAV settlement.
 pub(super) fn require_supported(a: &Execution) -> Result<()> {
     let offer: &OfferConfig = &a.config.offer_config;
@@ -27,12 +27,7 @@ pub(super) fn require_supported(a: &Execution) -> Result<()> {
         OnreError::UnsupportedOfferExecution
     );
     require!(
-        quoter_supported(
-            offer.access,
-            offer.execution,
-            offer.direction,
-            a.config.quoter.kind
-        ),
+        quoter_supported(offer.access, a.config.quoter.kind),
         OnreError::IncompatibleQuoter
     );
     Ok(())

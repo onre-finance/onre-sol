@@ -259,16 +259,16 @@ choices; changing the reference does not change the offer ID.
 An offer has two independent modes. `access` decides who may trade:
 `Permissioned` users with an approver-signed approval, or `Permissionless` anyone.
 `execution` decides how: `Instant` in `take_offer`, or `Worker` through escrowed
-fulfillment requests that the worker fills. EVM's single `OfferFlow` enum maps to
-(Permissioned, Instant), (Permissionless, Instant) and (Permissioned, Worker);
-Solana adds permissionless Worker offers. The shared rule is
-`model::quoter_supported`:
+fulfillment requests that the worker fills. Execution changes only how a trade
+settles: a fill uses the offer's quoter, fee, direction and custody exactly as
+`take_offer` would. EVM's single `OfferFlow` enum maps to (Permissioned, Instant),
+(Permissionless, Instant) and (Permissioned, Worker, NAV sells only); Solana lifts
+the Worker restriction. Access selects the quoter (`model::quoter_supported`):
 
-| Execution | Access | Direction | Quoter |
-| --- | --- | --- | --- |
-| Instant | Permissioned | Either | Nav |
-| Instant | Permissionless | Either | NavPermissionless or pair-matching PropAmm |
-| Worker | Either | ManagedToAsset | Nav |
+| Access | Direction | Quoter |
+| --- | --- | --- |
+| Permissioned | Either | Nav |
+| Permissionless | Either | NavPermissionless or pair-matching PropAmm |
 
 Each Prop AMM quoter binds one immutable asset/managed pair. Multiple quoters may
 bind the same pair with independent parameters and pressure. The two directed

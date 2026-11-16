@@ -394,9 +394,10 @@ configuration changes, vector management remains available during the kill switc
 
 ## Worker fulfillment requests
 
-Worker offers (`execution = Worker`) are NAV sells, managed to asset, with either
-access mode. They port EVM `LibOnReFulfillment`: the user escrows the input, the
-worker fills it, and either can cancel the rest.
+Worker offers (`execution = Worker`) take any direction and quoter their access
+mode allows, like Instant offers; execution changes only how a trade settles. They
+port EVM `LibOnReFulfillment` (where workers are limited to NAV sells): the user
+escrows the input, the worker fills it, and either can cancel the rest.
 
 - `create_fulfillment_request(request_id, input_amount, approval_message)`, by the
   user. Requires the offer and every component it uses to be enabled, and the kill
@@ -408,11 +409,14 @@ worker fills it, and either can cancel the rest.
 - `fulfill_fulfillment_request(input_amount)`, by `State.worker`. Any amount up to
   the unfilled remainder (`FulfillmentAmountExceedsRemaining` otherwise). Each fill
   runs the shared `take_offer` pipeline on that gross input, with the escrow as
-  input and the request user's ATA as output: current price and fee (the fee
-  minimum applies per fill), BUFFER accrual, pressure link, burn or destination
-  deposit, source vault payout and market stats. It takes the same BUFFER,
-  reporting and custody accounts as `take_offer`; the worker pays for created
-  accounts. Emits `OfferExecutedEvent` (user = request user) and
+  input and the request user's ATA as output: the offer's quoter (NAV or Prop AMM
+  curve, with its pressure recording) at the current price, its fee (the minimum
+  applies per fill), BUFFER accrual, refill targets, proceeds, mint or source
+  payout, burn, destination or haircut custody, and market stats. A fill and a
+  `take_offer` of the same input on the same configuration settle identically.
+  It takes the same accounts as `take_offer` except the user's input ATA and the
+  permissionless intermediary (the escrow is already a program account); the
+  worker pays for created accounts. Emits `OfferExecutedEvent` (user = request user) and
   `FulfillmentRequestFilledEvent`. A full fill closes the request and escrow,
   refunding their rent to the user; any unsolicited escrow surplus goes to the
   fee vault so it cannot block the close. Blocked by the kill switch.

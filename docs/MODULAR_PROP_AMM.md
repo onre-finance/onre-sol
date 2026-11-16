@@ -9,8 +9,8 @@ through the normal epoch decay; opposite-flow relief occurs only when a matching
 offer exists and explicitly uses that tracker. Creation and execution do not
 require a counterpart account.
 Separate quoter instances have separate accounting even if they use the same
-custody. Permissioned offers still require `Nav`, and Worker offers are NAV sells,
-so Prop AMM is Instant and permissionless only. Legacy Prop AMM accounts, tracker math and execution are unchanged.
+custody. Permissioned offers still require `Nav`, so Prop AMM offers are
+permissionless, with Instant or Worker execution. Legacy Prop AMM accounts, tracker math and execution are unchanged.
 
 ## Pressure link and symmetric pricing
 
