@@ -1,63 +1,56 @@
+use super::{Execution, Route};
 use crate::{
     constants::seeds,
-    model::OfferFlow,
+    model::OfferAccess,
+    state::State,
     utils::{approver::approver_utils::verify_approval_message_generic, ApprovalMessage},
     OnreError,
 };
 use anchor_lang::prelude::*;
 
-use super::TakeOffer;
-
-/// The stored flow selects authorization; caller-supplied accounts cannot switch it.
-pub(super) fn authorize(
+/// The offer's stored access mode selects authorization: permissioned offers need
+/// an approver-signed approval for `user`, permissionless offers reject one. Used
+/// by `take_offer` and by `create_fulfillment_request`.
+pub(crate) fn authorize(
     program_id: &Pubkey,
-    a: &TakeOffer,
+    access: OfferAccess,
+    user: &Pubkey,
+    state: &State,
+    instructions_sysvar: &UncheckedAccount,
     approval: Option<&ApprovalMessage>,
 ) -> Result<()> {
-    match a.config.offer_config.flow {
-        OfferFlow::Permissioned => verify_approval_message_generic(
+    match access {
+        OfferAccess::Permissioned => verify_approval_message_generic(
             program_id,
-            &a.user.key(),
-            &a.state.approver1,
-            &a.state.approver2,
-            &a.instructions_sysvar,
+            user,
+            &state.approver1,
+            &state.approver2,
+            instructions_sysvar,
             approval.ok_or(OnreError::ApprovalRequired)?,
         ),
-        OfferFlow::Permissionless => {
+        OfferAccess::Permissionless => {
             require!(approval.is_none(), OnreError::UnexpectedApproval);
             Ok(())
         }
-        OfferFlow::Worker => err!(OnreError::UnsupportedOfferExecution),
     }
 }
 
-pub(super) fn validate_accounts(program_id: &Pubkey, a: &TakeOffer) -> Result<()> {
-    if a.config.offer_config.flow != OfferFlow::Permissionless {
-        require!(
-            a.permissionless_authority.is_none()
-                && a.permissionless_token_in.is_none()
-                && a.permissionless_token_out.is_none(),
-            OnreError::PermissionlessNotAllowed
-        );
+/// A permissionless route's intermediary must be the canonical PDA. Anchor
+/// validates its canonical ATA addresses and mint-specific token programs; also
+/// check stored token authorities, since init_if_needed's existing-account path
+/// must not accept an ATA whose SPL owner was changed after creation.
+pub(super) fn validate_intermediary(a: &Execution) -> Result<()> {
+    let Route::Intermediary {
+        authority,
+        input,
+        output,
+        ..
+    } = a.route
+    else {
         return Ok(());
-    }
-    let authority = a
-        .permissionless_authority
-        .as_ref()
-        .ok_or(OnreError::WrongAuthority)?;
-    let expected = Pubkey::find_program_address(&[seeds::PERMISSIONLESS_AUTHORITY], program_id).0;
+    };
+    let expected = Pubkey::find_program_address(&[seeds::PERMISSIONLESS_AUTHORITY], &crate::ID).0;
     require_keys_eq!(authority.key(), expected, OnreError::WrongAuthority);
-    let input = a
-        .permissionless_token_in
-        .as_ref()
-        .ok_or(OnreError::InvalidVaultTokenInAccount)?;
-    let output = a
-        .permissionless_token_out
-        .as_ref()
-        .ok_or(OnreError::InvalidPermissionlessTokenOutAccount)?;
-    // Anchor validates canonical ATA addresses and mint-specific token programs.
-    // Also check stored token authorities: init_if_needed's existing-account path
-    // must not accept an ATA whose SPL owner was changed after creation.
     require!(
         input.owner == expected && input.mint == a.token_in_mint.key(),
         OnreError::InvalidVaultTokenInAccount

@@ -1,17 +1,19 @@
 use crate::{
     constants::seeds,
-    model::{OfferConfig, OfferDirection, OfferFlow},
+    model::{OfferConfig, OfferDirection},
     utils::{burn_tokens, ceil_div_u128, transfer_tokens},
     OnreError, ID,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::TokenAccount;
 
-use super::{liquidity, quote::OfferQuote, validation::ExecutionPlan, TakeOffer};
+use super::{
+    liquidity, quote::OfferQuote, validation, validation::ExecutionPlan, Execution, Route,
+};
 
 /// Transfer input fees, then settle the configured direction atomically.
 pub(super) fn settle(
-    a: &TakeOffer,
+    a: &Execution,
     plan: &ExecutionPlan,
     quote: &OfferQuote,
     authority_bump: u8,
@@ -20,14 +22,18 @@ pub(super) fn settle(
 ) -> Result<()> {
     // Keep the same guard at settlement so a future dispatch change cannot
     // accidentally execute another quoter through NAV settlement.
-    plan.require_supported()?;
-    match plan.flow {
-        OfferFlow::Permissioned => settle_collected_input(
+    validation::require_supported(a)?;
+    match a.route {
+        Route::Direct {
+            input,
+            output,
+            user,
+        } => settle_collected_input(
             a,
             SettlementRoute {
-                input: &a.user_token_in,
-                output: &a.user_token_out,
-                authority: a.user.to_account_info(),
+                input,
+                output,
+                authority: user.clone(),
                 signer_seeds: None,
             },
             plan,
@@ -36,29 +42,24 @@ pub(super) fn settle(
             max_supply,
             max_mint,
         ),
-        OfferFlow::Permissionless => {
-            let authority = a
-                .permissionless_authority
-                .as_ref()
-                .ok_or(OnreError::WrongAuthority)?;
-            let input = a
-                .permissionless_token_in
-                .as_ref()
-                .ok_or(OnreError::InvalidVaultTokenInAccount)?;
-            let output = a
-                .permissionless_token_out
-                .as_ref()
-                .ok_or(OnreError::InvalidPermissionlessTokenOutAccount)?;
+        Route::Intermediary {
+            user_input,
+            user_output,
+            user,
+            authority,
+            input,
+            output,
+        } => {
             let gross = quote
                 .net_input_amount
                 .checked_add(quote.fee_amount)
                 .ok_or(OnreError::MathOverflow)?;
             transfer_tokens(
-                &a.token_in_mint,
-                &a.token_in_program,
-                &a.user_token_in,
+                a.token_in_mint,
+                a.token_in_program,
+                user_input,
                 input,
-                &a.user.to_account_info(),
+                user,
                 None,
                 gross,
             )?;
@@ -70,7 +71,7 @@ pub(super) fn settle(
                 SettlementRoute {
                     input,
                     output,
-                    authority: authority.to_account_info(),
+                    authority: authority.clone(),
                     signer_seeds: Some(signer_seeds),
                 },
                 plan,
@@ -82,16 +83,35 @@ pub(super) fn settle(
             // Transfer exactly this execution's output. Existing intermediary
             // balances are never swept into the user's payout.
             transfer_tokens(
-                &a.token_out_mint,
-                &a.token_out_program,
+                a.token_out_mint,
+                a.token_out_program,
                 output,
-                &a.user_token_out,
-                &authority.to_account_info(),
+                user_output,
+                authority,
                 Some(signer_seeds),
                 quote.amount_out,
             )
         }
-        OfferFlow::Worker => err!(OnreError::UnsupportedOfferExecution),
+        Route::Escrow {
+            request,
+            input,
+            output,
+        } => request.with_signer_seeds(|request_seeds| {
+            settle_collected_input(
+                a,
+                SettlementRoute {
+                    input,
+                    output,
+                    authority: request.to_account_info(),
+                    signer_seeds: Some(&[request_seeds]),
+                },
+                plan,
+                quote,
+                authority_bump,
+                max_supply,
+                max_mint,
+            )
+        }),
     }
 }
 
@@ -103,7 +123,7 @@ struct SettlementRoute<'a, 'info> {
 }
 
 fn settle_collected_input<'info>(
-    a: &TakeOffer<'info>,
+    a: &Execution<'_, 'info>,
     route: SettlementRoute<'_, 'info>,
     plan: &ExecutionPlan,
     quote: &OfferQuote,
@@ -113,10 +133,10 @@ fn settle_collected_input<'info>(
 ) -> Result<()> {
     if quote.fee_amount > 0 {
         transfer_tokens(
-            &a.token_in_mint,
-            &a.token_in_program,
+            a.token_in_mint,
+            a.token_in_program,
             route.input,
-            &a.fee_token_in,
+            a.fee_token_in,
             &route.authority,
             route.signer_seeds,
             quote.fee_amount,
@@ -126,7 +146,6 @@ fn settle_collected_input<'info>(
         OfferDirection::AssetToManaged => {
             let proceeds = a
                 .proceeds_token_in
-                .as_ref()
                 .ok_or(OnreError::InvalidConfigurableVaultTokenAccount)?;
             liquidity::deposit_destination(
                 a,
@@ -136,8 +155,8 @@ fn settle_collected_input<'info>(
                 quote.liquidity_refill_amount,
             )?;
             transfer_tokens(
-                &a.token_in_mint,
-                &a.token_in_program,
+                a.token_in_mint,
+                a.token_in_program,
                 route.input,
                 proceeds,
                 &route.authority,
@@ -148,8 +167,8 @@ fn settle_collected_input<'info>(
                 liquidity::consume(a, quote.amount_out, route.output)?;
             } else {
                 a.minter(authority_bump)?.mint(
-                    &a.token_out_program,
-                    &a.token_out_mint,
+                    a.token_out_program,
+                    a.token_out_mint,
                     &route.output.to_account_info(),
                     quote.amount_out,
                     max_supply,
@@ -171,8 +190,8 @@ fn settle_collected_input<'info>(
                 // share is retained in the offer's Haircut vault.
                 let retained = retained_haircut(&a.config.offer_config, quote)?;
                 burn_tokens(
-                    &a.token_in_program,
-                    &a.token_in_mint,
+                    a.token_in_program,
+                    a.token_in_mint,
                     route.input,
                     &route.authority,
                     route.signer_seeds.unwrap_or(&[]),

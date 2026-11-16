@@ -25,14 +25,14 @@ fn execute(
     minimum: u64,
 ) -> Result<TransactionMetadata, FailedTransactionMetadata> {
     let instruction = f.take(gross, minimum);
-    if read::<OfferConfig>(&f.svm, f.offer).flow == OfferFlow::Permissioned {
+    if read::<OfferConfig>(&f.svm, f.offer).access == OfferAccess::Permissioned {
         f.send(instruction)
     } else {
         f.send_without_approval(instruction)
     }
 }
-fn kind(flow: OfferFlow) -> QuoterKind {
-    if flow == OfferFlow::Permissioned {
+fn kind(flow: OfferMode) -> QuoterKind {
+    if flow == OfferMode::Permissioned {
         QuoterKind::Nav
     } else {
         QuoterKind::NavPermissionless
@@ -43,7 +43,7 @@ fn kind(flow: OfferFlow) -> QuoterKind {
 fn nav_buys_independently_select_inventory_and_destination_refill() {
     for onyc in [false, true] {
         for token_2022 in [false, true] {
-            for flow in [OfferFlow::Permissioned, OfferFlow::Permissionless] {
+            for flow in [OfferMode::Permissioned, OfferMode::Permissionless] {
                 for inventory in [false, true] {
                     for destination_target in [None, Some(0), Some(1000)] {
                         let mut f = Fixture::new(onyc, token_2022);
@@ -139,7 +139,7 @@ fn nav_buys_independently_select_inventory_and_destination_refill() {
 fn sell_destination_receives_all_net_managed_input_instead_of_burning() {
     for onyc in [false, true] {
         for token_2022 in [false, true] {
-            for flow in [OfferFlow::Permissioned, OfferFlow::Permissionless] {
+            for flow in [OfferMode::Permissioned, OfferMode::Permissionless] {
                 for retain in [false, true] {
                     let mut f = Fixture::new(onyc, token_2022);
                     modular_prop_amm::init_buffer(&mut f);
@@ -202,7 +202,7 @@ fn managed_inventory_signs_for_modular_legacy_and_redemption_custody() {
             f.seed_tokens(f.mint, source, 2_000_000_000);
             f.create_route_with_vaults(
                 OfferDirection::AssetToManaged,
-                OfferFlow::Permissionless,
+                OfferMode::Permissionless,
                 QuoterKind::NavPermissionless,
                 Some(source),
                 Some(asset_custody),
@@ -211,7 +211,7 @@ fn managed_inventory_signs_for_modular_legacy_and_redemption_custody() {
             execute(&mut f, 2_000_000, 990_000_000).unwrap();
             f.create_route_with_vaults(
                 OfferDirection::ManagedToAsset,
-                OfferFlow::Permissionless,
+                OfferMode::Permissionless,
                 QuoterKind::NavPermissionless,
                 Some(asset_custody),
                 Some(source),
@@ -231,7 +231,7 @@ fn configured_inventory_cannot_fall_back_to_minting_and_bad_roles_roll_back() {
     let destination = liquidity_vault(&mut f, 2, 1000);
     f.create_route_with_vaults(
         OfferDirection::AssetToManaged,
-        OfferFlow::Permissionless,
+        OfferMode::Permissionless,
         QuoterKind::NavPermissionless,
         Some(source),
         Some(destination),
@@ -294,7 +294,7 @@ fn prop_curve_uses_asset_side_vault_and_inventory_only_controls_settlement() {
         f.seed_tokens(f.asset, assets, 20_000_000);
         f.create_route_with_vaults(
             OfferDirection::AssetToManaged,
-            OfferFlow::Permissionless,
+            OfferMode::Permissionless,
             QuoterKind::PropAmm,
             Some(inventory),
             Some(assets),
@@ -316,7 +316,7 @@ fn prop_curve_uses_asset_side_vault_and_inventory_only_controls_settlement() {
         );
         f.create_route_with_vaults(
             OfferDirection::ManagedToAsset,
-            OfferFlow::Permissionless,
+            OfferMode::Permissionless,
             QuoterKind::PropAmm,
             Some(assets),
             Some(inventory),
@@ -347,7 +347,7 @@ fn failed_source_payout_rolls_back_retained_input_fees_and_destination_creation(
     f.seed_tokens(f.asset, source, 1_000_000);
     f.create_route_with_vaults(
         OfferDirection::ManagedToAsset,
-        OfferFlow::Permissionless,
+        OfferMode::Permissionless,
         QuoterKind::NavPermissionless,
         Some(source),
         Some(destination),
@@ -402,7 +402,7 @@ fn buy_inventory_from_a_legacy_fee_vault_excludes_per_mint_buffer_accrual() {
     f.seed_tokens(f.mint, source, 100_000_000);
     f.create_route_with_vaults(
         OfferDirection::AssetToManaged,
-        OfferFlow::Permissionless,
+        OfferMode::Permissionless,
         QuoterKind::NavPermissionless,
         Some(source),
         None,

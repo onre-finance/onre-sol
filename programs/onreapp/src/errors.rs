@@ -284,13 +284,13 @@ pub enum OnreError {
     TokenRoleConflict,
     #[msg("Pricer does not match the managed mint or pricing denomination")]
     IncompatiblePricer,
-    #[msg("Quoter is incompatible with the offer flow or pair")]
+    #[msg("Quoter is incompatible with the offer access mode or pair")]
     IncompatibleQuoter,
     #[msg("Offer direction is invalid for the registered mints or flow")]
     InvalidOfferDirection,
     #[msg("A liquidity vault is required for managed-to-asset offers")]
     LiquidityVaultRequired,
-    #[msg("This offer flow, direction or liquidity routing is not implemented by take_offer yet")]
+    #[msg("The offer's access or execution mode does not support this instruction")]
     UnsupportedOfferExecution,
     #[msg("Permissionless execution requires approval_message to be absent")]
     UnexpectedApproval,
@@ -316,4 +316,8 @@ pub enum OnreError {
     HaircutVaultRequired,
     #[msg("A haircut vault is only allowed on Prop AMM sells without a destination")]
     UnexpectedHaircutVault,
+    #[msg("Fill amount exceeds the fulfillment request's unfilled input")]
+    FulfillmentAmountExceedsRemaining,
+    #[msg("Account does not match the fulfillment request")]
+    FulfillmentRequestMismatch,
 }

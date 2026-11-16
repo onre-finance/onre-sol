@@ -11,3 +11,4 @@ pub const BUFFER: &[u8] = b"buffer";
 pub const BUFFER_RESERVE: &[u8] = b"buffer_reserve";
 pub const BUFFER_MANAGEMENT: &[u8] = b"buffer_management";
 pub const BUFFER_PERFORMANCE: &[u8] = b"buffer_performance";
+pub const FULFILLMENT_REQUEST: &[u8] = b"fulfillment_request";

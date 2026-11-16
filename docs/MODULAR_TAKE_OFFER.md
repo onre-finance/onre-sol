@@ -6,14 +6,18 @@ It supports permissioned (`Nav`) and permissionless (`NavPermissionless`) NAV,
 plus permissionless [`PropAmm`](MODULAR_PROP_AMM.md), in both directions.
 Offers independently select [source and destination vaults](OFFER_VAULT_ROLES.md).
 NAV buys allow both absent; sells require a source and PropAmm buys require a
-destination. Worker flows remain unsupported. The global kill switch guards execution.
+destination. It executes Instant offers only; Worker offers execute through
+[fulfillment requests](#worker-fulfillment-requests). The global kill switch guards execution.
 
-Direction and permissions come from OfferConfig; the pricing algorithm comes from
-Quoter. The shared account context lives in `execution/accounts.rs`, validation and
-dispatch in `validation.rs`, authorization in `permissions.rs`, vector quoting
+Direction, access (`Permissioned` or `Permissionless`) and execution (`Instant` or
+`Worker`) come from OfferConfig; the pricing algorithm comes from Quoter. The shared
+account context lives in `execution/accounts.rs`: `take_offer` and the worker fill
+each expose their accounts as one `Execution` view with a `Route` (direct,
+intermediary or request escrow), so both run the same pipeline. Validation and
+dispatch live in `validation.rs`, authorization in `permissions.rs`, vector quoting
 in `quote.rs`, symmetric curve/accounting in `prop_amm.rs`, liquidity targets in
 `liquidity_target.rs`, mint/burn settlement in `settlement.rs`, selected-vault liquidity custody in `liquidity.rs`, and accrual in `buffer.rs`.
-`take_offer.rs` orchestrates these modules and emits the execution event.
+`take_offer.rs` orchestrates these modules in the shared `execute` and emits the execution event.
 Configured extension accounts are validated before dispatch; supplying them does
 not enable unfinished paths.
 
@@ -86,7 +90,7 @@ equal that pair.
 The managed mint and its token program are selected from the input or output side
 according to the stored direction. Both mints are writable because either may be
 the managed supply changed by accrual or settlement. Offer PDA seeds use the stored
-flow rather than a hardcoded permissioned tag. Anchor optional accounts retain
+instance ID rather than a hardcoded tag. Anchor optional accounts retain
 fixed positions, using this program's address as the `None` placeholder.
 
 All linked components must be enabled and match the offer's stored references.
@@ -99,8 +103,8 @@ before `take_offer`, carrying the existing ApprovalMessage format signed by eith
 existing approver for this program, user, and an unexpired timestamp.
 Permissionless execution requires `approval_message = None`; no Ed25519
 verification instruction is needed. A supplied approval fails with `UnexpectedApproval`. The offer's
-stored flow controls authorization; supplying intermediary accounts cannot bypass
-permissioned approval. The trade deadline is inclusive for both flows.
+stored access mode controls authorization; supplying intermediary accounts cannot bypass
+permissioned approval. The trade deadline is inclusive for both access modes.
 
 ## Permissionless settlement
 
@@ -118,8 +122,8 @@ trade's amount out to the user. Preexisting balances in either intermediary ATA
 are not swept, used as extra input, or included in the user's payout.
 
 The boss-selected target markets are USDC -> ONyc and USDG -> ONyc. These are
-configured by mint address; symbols are not an on-chain allowlist. A directed pair
-and flow have one OfferConfig, so its selected Quoter determines the algorithm.
+configured by mint address; symbols are not an on-chain allowlist. Each OfferConfig
+selects one Quoter, which determines the algorithm.
 Prop AMM buy and sell offers may select the same quoter/state to share pressure.
 Both directions apply the liquidity curve and their directional cadence haircut.
 NAV offers may explicitly link to the same pair tracker for relief accounting while
@@ -172,7 +176,7 @@ the stricter nonzero global limits. Gross BUFFER accrual is checked as one
 operation before splitting across fee destinations. Every step, including lazy
 ATA creation, rolls back if the transaction fails.
 
-`OfferExecutedEvent` records the offer, user, flow, direction, gross/net input,
+`OfferExecutedEvent` records the offer, user, access, execution, direction, gross/net input,
 fee, output, price, actual liquidity refill, remaining proceeds, output inventory
 `source_amount`, input deposit `destination_amount`, and timestamp. Managed-to-asset proceeds are zero.
 
@@ -357,8 +361,8 @@ pair tracker through `OfferConfig.pressure_state` without changing their NAV quo
 Both mints must match the tracker, regardless of quote kind. Execution requires
 exactly the stored state; an omitted, substituted, or unsolicited tracker fails.
 Prop AMM execution uses curve pricing in both directions, recording both against
-that shared state. Worker execution remains unsupported;
-supplying an approval cannot enable it.
+that shared state. `take_offer` rejects Worker offers with
+`UnsupportedOfferExecution`; supplying an approval cannot enable them.
 
 The fresh modular account list uses independent source and destination custody
 positions. New modular clients use the generated IDL/types; existing V2 and swap
@@ -388,9 +392,42 @@ then fails with `NoActiveVector` until a new vector is added. Both are boss-only
 and emit `PricerVectorDeletedEvent` / `AllPricerVectorsDeletedEvent`. Like other
 configuration changes, vector management remains available during the kill switch.
 
+## Worker fulfillment requests
+
+Worker offers (`execution = Worker`) take any direction and quoter their access
+mode allows, like Instant offers; execution changes only how a trade settles. They
+port EVM `LibOnReFulfillment` (where workers are limited to NAV sells): the user
+escrows the input, the worker fills it, and either can cancel the rest.
+
+- `create_fulfillment_request(request_id, input_amount, approval_message)`, by the
+  user. Requires the offer and every component it uses to be enabled, and the kill
+  switch off. Permissioned offers need the same Ed25519 approval as `take_offer`;
+  permissionless offers reject one. Escrows the gross input in the request PDA
+  `["fulfillment_request", offer_config, user, request_id_le]`'s input-mint ATA.
+  Locks no price or fee. The user pays both accounts' rent; an ID can be reused
+  once its request closes.
+- `fulfill_fulfillment_request(input_amount)`, by `State.worker`. Any amount up to
+  the unfilled remainder (`FulfillmentAmountExceedsRemaining` otherwise). Each fill
+  runs the shared `take_offer` pipeline on that gross input, with the escrow as
+  input and the request user's ATA as output: the offer's quoter (NAV or Prop AMM
+  curve, with its pressure recording) at the current price, its fee (the minimum
+  applies per fill), BUFFER accrual, refill targets, proceeds, mint or source
+  payout, burn, destination or haircut custody, and market stats. A fill and a
+  `take_offer` of the same input on the same configuration settle identically.
+  It takes the same accounts as `take_offer` except the user's input ATA and the
+  permissionless intermediary (the escrow is already a program account); the
+  worker pays for created accounts. Emits `OfferExecutedEvent` (user = request user) and
+  `FulfillmentRequestFilledEvent`. A full fill closes the request and escrow,
+  refunding their rent to the user; any unsolicited escrow surplus goes to the
+  fee vault so it cannot block the close. Blocked by the kill switch.
+- `cancel_fulfillment_request()`, by the request user or the worker. Returns the
+  whole escrow balance to the user (recreating their ATA at the signer's expense
+  if needed) and closes the request and escrow, refunding rent to the user. Works
+  while the kill switch is active.
+
 ## Next layers
 
-Worker fulfillment remains separate work. Legacy execution
+Legacy execution
 paths stay available alongside modular execution. This instruction adds no automatic offer binding or bulk custody
 migration. Existing liquidity is used only when explicitly selected for settlement
 or moved separately.

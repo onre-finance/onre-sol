@@ -25,7 +25,7 @@ fn replace_account(instruction: &mut Instruction, from: Pubkey, to: Pubkey) {
 fn permissionless_buy(f: &mut Fixture) {
     f.create_route(
         OfferDirection::AssetToManaged,
-        OfferFlow::Permissionless,
+        OfferMode::Permissionless,
         QuoterKind::NavPermissionless,
         false,
     );
@@ -64,7 +64,8 @@ fn nav_requires_no_approval_and_lazily_creates_intermediary_atas_for_both_token_
             assert_eq!(f.balance(f.asset, authority, f.asset_program), 0);
             assert_eq!(f.balance(f.mint, authority, f.token_program), 0);
             let event = executed_event(&result);
-            assert_eq!(event.flow, OfferFlow::Permissionless);
+            assert_eq!(event.access, OfferAccess::Permissionless);
+            assert_eq!(event.execution, OfferExecution::Instant);
             assert_eq!(event.direction, OfferDirection::AssetToManaged);
             assert_eq!(event.amount_out, output);
             assert_eq!(event.fee_amount, fee);
@@ -280,7 +281,7 @@ fn managed_to_asset_burns_from_the_intermediary_and_routes_liquidity_output_back
     f.initialize_managed_buffer();
     f.create_route(
         OfferDirection::ManagedToAsset,
-        OfferFlow::Permissionless,
+        OfferMode::Permissionless,
         QuoterKind::NavPermissionless,
         true,
     );

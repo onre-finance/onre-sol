@@ -1,10 +1,36 @@
+use super::QuoterKind;
 use anchor_lang::prelude::*;
 
+/// Who may trade: approver-signed users only, or anyone.
 #[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Clone, Copy, Debug, PartialEq, Eq)]
-pub enum OfferFlow {
+pub enum OfferAccess {
+    /// Requires an approver-signed approval for the trading user: on `take_offer`,
+    /// or on `create_fulfillment_request` for Worker execution.
     Permissioned,
+    /// No approval. Instant execution settles through the permissionless intermediary.
     Permissionless,
+}
+
+/// How a trade settles: atomically in `take_offer`, or as an escrowed request that
+/// the worker fills, possibly partially. Each fill uses the offer's quoter, fee and
+/// custody exactly as `take_offer` would, at the price current at that fill.
+#[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OfferExecution {
+    Instant,
     Worker,
+}
+
+/// The quoters an access mode supports, checked on configuration and again on
+/// execution: permissioned offers quote NAV; permissionless offers quote
+/// permissionless NAV or Prop AMM. Execution mode and direction do not restrict
+/// the quoter: a Worker fill prices and settles exactly as `take_offer` would.
+pub fn quoter_supported(access: OfferAccess, kind: QuoterKind) -> bool {
+    match access {
+        OfferAccess::Permissioned => kind == QuoterKind::Nav,
+        OfferAccess::Permissionless => {
+            matches!(kind, QuoterKind::NavPermissionless | QuoterKind::PropAmm)
+        }
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Clone, Copy, Debug, PartialEq, Eq)]
@@ -13,7 +39,8 @@ pub enum OfferDirection {
     ManagedToAsset,
 }
 
-/// One immutable directed mint pair and flow, with replaceable component references.
+/// One immutable directed mint pair, access and execution mode, with replaceable
+/// component references.
 ///
 /// The boss selects the external asset. Pricer replacements must match the managed
 /// mint and the currently selected Pricer's denomination.
@@ -24,9 +51,10 @@ pub struct OfferConfig {
     pub token_out_mint: Pubkey,
     /// Boss-chosen identity within the directed pair: the PDA is
     /// `["offer_config", token_in_mint, token_out_mint, instance_id_le]`, so any number
-    /// of offers, with any flows, can exist per pair.
+    /// of offers, with any access and execution modes, can exist per pair.
     pub instance_id: u64,
-    pub flow: OfferFlow,
+    pub access: OfferAccess,
+    pub execution: OfferExecution,
     pub direction: OfferDirection,
     /// Explicit price source, validated against this offer's mint pair on assignment.
     pub pricer: Pubkey,

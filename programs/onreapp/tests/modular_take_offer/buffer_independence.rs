@@ -506,7 +506,7 @@ fn onyc_prop_amm_uses_canonical_pricer_nav_for_refill_curve_caps_and_reporting()
         // Canonical token-wide NAV is 2, offer quote NAV is 4.
         f.create_route(
             direction,
-            OfferFlow::Permissionless,
+            OfferMode::Permissionless,
             QuoterKind::PropAmm,
             true,
         );

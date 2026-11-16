@@ -1,5 +1,5 @@
 //! Token-wide valuation for refill and symmetric curve hard-wall targets.
-use super::TakeOffer;
+use super::Execution;
 use crate::{
     constants::{MAX_BASIS_POINTS, PRICE_DECIMALS},
     instructions::market_info::{
@@ -17,7 +17,7 @@ use anchor_lang::prelude::*;
 /// The offer's Pricer when it is the canonical USD instance zero, otherwise the
 /// separately supplied `buffer_pricer`. Derives the canonical address once.
 pub(super) fn canonical_pricer<'a, 'info>(
-    a: &'a TakeOffer<'info>,
+    a: &Execution<'a, 'info>,
 ) -> Result<&'a Account<'info, Pricer>> {
     let mint = a.managed_mint().key();
     let canonical = canonical_usd_pricer_address(&ID, &mint);
@@ -37,7 +37,7 @@ pub(super) fn canonical_pricer<'a, 'info>(
 /// Asset base units. Uses actual mint supply at the time of invocation and the
 /// canonical token-wide NAV. ONyc subtracts its existing cached excluded balance;
 /// other managed mints have no executable exclusion configuration and use full supply.
-pub(super) fn target(a: &TakeOffer, bps: u16, now: u64) -> Result<u128> {
+pub(super) fn target(a: &Execution, bps: u16, now: u64) -> Result<u128> {
     require!(bps <= MAX_BASIS_POINTS, OnreError::InvalidAmount);
     if bps == 0 {
         return Ok(0);

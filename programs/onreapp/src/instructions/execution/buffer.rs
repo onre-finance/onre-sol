@@ -1,5 +1,5 @@
 //! Offer adapter over the shared modular BUFFER engine.
-use super::TakeOffer;
+use super::Execution;
 use crate::{
     instructions::buffer::modular_accrual::{self, BufferContext},
     OnreError,
@@ -10,8 +10,8 @@ pub use modular_accrual::ManagedTokenBufferAccruedEvent;
 
 /// The active BUFFER's accounts: the legacy singleton set for ONyc before the
 /// one-way switch, the per-mint set otherwise.
-fn context<'a, 'info>(a: &'a TakeOffer<'info>) -> Result<BufferContext<'a, 'info>> {
-    let b = &a.buffer;
+fn context<'a, 'info>(a: &Execution<'a, 'info>) -> Result<BufferContext<'a, 'info>> {
+    let b = a.buffer;
     let onyc_legacy =
         a.managed_mint().key() == a.state.onyc_mint && a.state.onyc_legacy_buffer_active();
     let (buffer_state, reserve_token, management_token, performance_token) = if onyc_legacy {
@@ -35,7 +35,7 @@ fn context<'a, 'info>(a: &'a TakeOffer<'info>) -> Result<BufferContext<'a, 'info
         )
     };
     Ok(BufferContext {
-        state: &a.state,
+        state: a.state,
         managed_mint: a.managed_mint(),
         managed_program: a.managed_program(),
         buffer_state,
@@ -43,7 +43,7 @@ fn context<'a, 'info>(a: &'a TakeOffer<'info>) -> Result<BufferContext<'a, 'info
         reserve_token,
         management_token,
         performance_token,
-        mint_authority: &a.mint_authority,
+        mint_authority: a.mint_authority,
         configured_mint_multisig: a.config.managed_token.mint_multisig,
         mint_multisig: b.mint_multisig.as_ref(),
     })
@@ -51,7 +51,7 @@ fn context<'a, 'info>(a: &'a TakeOffer<'info>) -> Result<BufferContext<'a, 'info
 
 pub(super) fn accrue_before_execution(
     program_id: &Pubkey,
-    a: &TakeOffer,
+    a: &Execution,
     authority_bump: u8,
     now: i64,
     max_supply: u64,
@@ -69,7 +69,7 @@ pub(super) fn accrue_before_execution(
 
 pub(super) fn store_post_execution_supply(
     program_id: &Pubkey,
-    a: &TakeOffer,
+    a: &Execution,
     now: i64,
 ) -> Result<()> {
     modular_accrual::store_post_supply(program_id, &context(a)?, now)

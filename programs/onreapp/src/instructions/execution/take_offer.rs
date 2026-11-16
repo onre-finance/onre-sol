@@ -1,10 +1,11 @@
 use super::{
-    buffer, liquidity_target, permissions, prop_amm, quote::quote_offer, settlement, validation,
-    TakeOffer,
+    buffer, liquidity_target, permissions, prop_amm,
+    quote::{quote_offer, OfferQuote},
+    settlement, validation, Execution, ExecutionAccounts, TakeOffer,
 };
 use crate::{
     instructions::market_info::{refresh_modular_market_stats, MarketValuation},
-    model::{OfferDirection, OfferFlow, QuoterKind},
+    model::{OfferAccess, OfferDirection, OfferExecution, QuoterKind},
     utils::{managed_token::effective_mint_limits, ApprovalMessage},
     OnreError,
 };
@@ -15,7 +16,8 @@ use anchor_lang::prelude::*;
 pub struct OfferExecutedEvent {
     pub offer_config: Pubkey,
     pub user: Pubkey,
-    pub flow: OfferFlow,
+    pub access: OfferAccess,
+    pub execution: OfferExecution,
     pub direction: OfferDirection,
     pub gross_input_amount: u64,
     pub fee_amount: u64,
@@ -35,6 +37,8 @@ pub struct OfferExecutedEvent {
     pub timestamp: i64,
 }
 
+/// Executes a permissioned or permissionless Instant offer atomically for the
+/// signing user. Worker offers execute only through fulfillment requests.
 pub fn take_offer(
     ctx: Context<TakeOffer>,
     gross_input_amount: u64,
@@ -42,75 +46,115 @@ pub fn take_offer(
     deadline: u64,
     approval_message: Option<ApprovalMessage>,
 ) -> Result<()> {
-    let now = Clock::get()?.unix_timestamp;
-    let time = u64::try_from(now).map_err(|_| OnreError::InvalidTimestamp)?;
+    let time =
+        u64::try_from(Clock::get()?.unix_timestamp).map_err(|_| OnreError::InvalidTimestamp)?;
     require!(time <= deadline, OnreError::Expired);
+    let program_id = ctx.program_id;
     let a = ctx.accounts;
-    let route = validation::validate(ctx.program_id, a, ctx.bumps.mint_authority)?;
-    // Validate every configured component before dispatch. Future paths must not
-    // fall through to NAV minting or silently omit required accounting.
-    route.require_supported()?;
-    permissions::authorize(ctx.program_id, a, approval_message.as_ref())?;
-    let mut quote = quote_offer(
-        &a.config.pricer,
-        &a.config.fee_config,
-        gross_input_amount,
-        route.direction,
-        a.token_in_mint.decimals,
-        a.token_out_mint.decimals,
-        time,
-    )?;
-    if route.kind == QuoterKind::PropAmm {
-        let cap = if route.curve_target_bps == 0 {
-            route.curve_balance
-        } else {
-            liquidity_target::target(a, route.curve_target_bps, time)?
-                .min(route.curve_balance as u128) as u64
-        };
-        quote.amount_out = prop_amm::quote(
-            a.custody
-                .prop_amm_state
-                .as_ref()
-                .ok_or(OnreError::IncompatibleQuoter)?,
-            route.direction,
-            if route.direction == OfferDirection::AssetToManaged {
-                quote.net_input_amount
-            } else {
-                quote.raw_amount_out
-            },
-            quote.raw_amount_out,
-            route.curve_balance,
-            cap,
-            now,
-        )?;
-    }
-    require!(
-        quote.amount_out >= minimum_amount_out,
-        OnreError::MinimumOutNotMet
-    );
-
-    let (max_supply, max_mint) = effective_mint_limits(&a.state, &a.config.managed_token);
-    let buffer_active = buffer::accrue_before_execution(
-        ctx.program_id,
+    let sysvar = a.instructions_sysvar.clone();
+    execute(
+        program_id,
         a,
         ctx.bumps.mint_authority,
-        now,
-        max_supply,
-        max_mint,
+        gross_input_amount,
+        minimum_amount_out,
+        |e| {
+            permissions::authorize(
+                program_id,
+                e.config.offer_config.access,
+                &e.user,
+                e.state,
+                &sysvar,
+                approval_message.as_ref(),
+            )
+        },
     )?;
+    Ok(())
+}
+
+/// One offer execution, shared by `take_offer` and worker fills: validates the
+/// configuration against the route, authorizes, quotes at the current price and
+/// fee, accrues the active BUFFER, records pressure, settles, then refreshes
+/// BUFFER supply and market stats. Returns the executed quote.
+pub(crate) fn execute<'info, A: ExecutionAccounts<'info>>(
+    program_id: &Pubkey,
+    a: &mut A,
+    authority_bump: u8,
+    gross_input_amount: u64,
+    minimum_amount_out: u64,
+    authorize: impl FnOnce(&Execution) -> Result<()>,
+) -> Result<OfferQuote> {
+    let now = Clock::get()?.unix_timestamp;
+    let time = u64::try_from(now).map_err(|_| OnreError::InvalidTimestamp)?;
+    let (route, mut quote, max_supply, max_mint, buffer_active) = {
+        let e = a.execution()?;
+        let route = validation::validate(program_id, &e, authority_bump)?;
+        authorize(&e)?;
+        let mut quote = quote_offer(
+            &e.config.pricer,
+            &e.config.fee_config,
+            gross_input_amount,
+            route.direction,
+            e.token_in_mint.decimals,
+            e.token_out_mint.decimals,
+            time,
+        )?;
+        if route.kind == QuoterKind::PropAmm {
+            let cap = if route.curve_target_bps == 0 {
+                route.curve_balance
+            } else {
+                liquidity_target::target(&e, route.curve_target_bps, time)?
+                    .min(route.curve_balance as u128) as u64
+            };
+            quote.amount_out = prop_amm::quote(
+                e.custody
+                    .prop_amm_state
+                    .as_ref()
+                    .ok_or(OnreError::IncompatibleQuoter)?,
+                route.direction,
+                if route.direction == OfferDirection::AssetToManaged {
+                    quote.net_input_amount
+                } else {
+                    quote.raw_amount_out
+                },
+                quote.raw_amount_out,
+                route.curve_balance,
+                cap,
+                now,
+            )?;
+        }
+        require!(
+            quote.amount_out >= minimum_amount_out,
+            OnreError::MinimumOutNotMet
+        );
+
+        let (max_supply, max_mint) = effective_mint_limits(e.state, &e.config.managed_token);
+        let buffer_active = buffer::accrue_before_execution(
+            program_id,
+            &e,
+            authority_bump,
+            now,
+            max_supply,
+            max_mint,
+        )?;
+        (route, quote, max_supply, max_mint, buffer_active)
+    };
     a.reload_managed_mint()?;
 
-    if route.direction == OfferDirection::AssetToManaged && route.destination_target_bps > 0 {
-        let target = liquidity_target::target(a, route.destination_target_bps, time)?;
-        quote.liquidity_refill_amount = target
-            .saturating_sub(route.destination_balance as u128)
-            .min(quote.net_input_amount as u128) as u64;
-    }
-    if a.config.offer_config.pressure_state != Pubkey::default() {
+    let pressure_linked = {
+        let e = a.execution()?;
+        if route.direction == OfferDirection::AssetToManaged && route.destination_target_bps > 0 {
+            let target = liquidity_target::target(&e, route.destination_target_bps, time)?;
+            quote.liquidity_refill_amount = target
+                .saturating_sub(route.destination_balance as u128)
+                .min(quote.net_input_amount as u128)
+                as u64;
+        }
+        e.config.offer_config.pressure_state != Pubkey::default()
+    };
+    if pressure_linked {
         prop_amm::record(
-            a.custody
-                .prop_amm_state
-                .as_mut()
+            a.prop_amm_state_mut()
                 .ok_or(OnreError::IncompatibleQuoter)?,
             route.direction,
             if route.direction == OfferDirection::AssetToManaged {
@@ -122,22 +166,25 @@ pub fn take_offer(
         )?;
     }
     settlement::settle(
-        a,
+        &a.execution()?,
         &route,
         &quote,
-        ctx.bumps.mint_authority,
+        authority_bump,
         max_supply,
         max_mint,
     )?;
     a.reload_managed_mint()?;
+    let e = a.execution()?;
     if buffer_active {
-        buffer::store_post_execution_supply(ctx.program_id, a, now)?;
+        buffer::store_post_execution_supply(program_id, &e, now)?;
     }
-    refresh_market_stats(ctx.program_id, a)?;
+    refresh_market_stats(program_id, &e)?;
+    let offer = &e.config.offer_config;
     emit!(OfferExecutedEvent {
-        offer_config: a.config.offer_config.key(),
-        user: a.user.key(),
-        flow: a.config.offer_config.flow,
+        offer_config: offer.key(),
+        user: e.user,
+        access: offer.access,
+        execution: offer.execution,
         direction: route.direction,
         gross_input_amount,
         fee_amount: quote.fee_amount,
@@ -150,25 +197,25 @@ pub fn take_offer(
         } else {
             0
         },
-        source_amount: if a.config.offer_config.source_vault != Pubkey::default() {
+        source_amount: if offer.source_vault != Pubkey::default() {
             quote.amount_out
         } else {
             0
         },
         destination_amount: match route.direction {
             OfferDirection::AssetToManaged => quote.liquidity_refill_amount,
-            OfferDirection::ManagedToAsset
-                if a.config.offer_config.destination_vault != Pubkey::default() =>
-                quote.net_input_amount,
+            OfferDirection::ManagedToAsset if offer.destination_vault != Pubkey::default() => {
+                quote.net_input_amount
+            }
             _ => 0,
         },
-        haircut_amount: settlement::retained_haircut(&a.config.offer_config, &quote)?,
+        haircut_amount: settlement::retained_haircut(offer, &quote)?,
         timestamp: now,
     });
-    Ok(())
+    Ok(quote)
 }
 
-fn refresh_market_stats<'info>(program_id: &Pubkey, a: &TakeOffer<'info>) -> Result<()> {
+fn refresh_market_stats(program_id: &Pubkey, a: &Execution) -> Result<()> {
     let legacy = a
         .buffer
         .legacy_market_stats
@@ -176,16 +223,13 @@ fn refresh_market_stats<'info>(program_id: &Pubkey, a: &TakeOffer<'info>) -> Res
         .map(|account| account.to_account_info());
     refresh_modular_market_stats(
         program_id,
-        &a.state,
+        a.state,
         &a.config.managed_token,
         a.managed_mint(),
         &a.buffer.circulating_supply_excluded_balance,
         &a.buffer.market_stats,
         legacy.as_ref(),
-        Some((
-            &a.user.to_account_info(),
-            &a.system_program.to_account_info(),
-        )),
+        Some((a.payer, &a.system_program.to_account_info())),
         || liquidity_target::canonical_pricer(a).map(|p| MarketValuation::from(&**p)),
     )
 }

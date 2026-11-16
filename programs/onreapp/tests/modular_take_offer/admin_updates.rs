@@ -466,7 +466,7 @@ fn boss_replaces_offer_components_including_the_pricer_instance() {
     boss_send(&mut f, instruction).unwrap();
     let config: OfferConfig = read(&f.svm, f.offer);
     assert_eq!((config.pricer, config.fee_config), (pricer, fee));
-    assert_eq!(config.flow, OfferFlow::Permissioned);
+    assert_eq!(OfferMode::of(&config), OfferMode::Permissioned);
     // 1_000_000 gross, 30_000 fee, 970_000 net at NAV 4. The offer's Pricer is the
     // first canonical-Pricer account in the take instruction; the BUFFER Pricer
     // later in the list stays canonical.

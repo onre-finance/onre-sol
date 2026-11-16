@@ -24,7 +24,8 @@ Output is paid from source inventory, or minted for buys without a source. The P
 the user's output ATA. Preexisting intermediary balances remain unchanged. Both
 intermediary ATAs can be created lazily at the user's expense. The common
 `approval_message` argument must be `None`; permissioned execution still requires
-an approver signature. The stored flow and Quoter control which route is allowed.
+an approver signature. The stored access and execution modes and the Quoter
+control which route is allowed.
 
 ## Kill Switch
 

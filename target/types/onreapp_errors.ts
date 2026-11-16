@@ -156,7 +156,9 @@ export const OnreappErrorCode = {
   PerMintBufferInactive: 6153,
   LegacyBufferAccountsRequired: 6154,
   HaircutVaultRequired: 6155,
-  UnexpectedHaircutVault: 6156
+  UnexpectedHaircutVault: 6156,
+  FulfillmentAmountExceedsRemaining: 6157,
+  FulfillmentRequestMismatch: 6158
 };
 
 export type OnreappErrorName = keyof typeof OnreappErrorCode;

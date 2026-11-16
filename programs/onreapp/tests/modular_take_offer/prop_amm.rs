@@ -10,7 +10,7 @@ fn routes(f: &mut Fixture, source: usize) -> (Pubkey, Pubkey, Pubkey) {
         0 => {
             f.create_route(
                 OfferDirection::ManagedToAsset,
-                OfferFlow::Permissionless,
+                OfferMode::Permissionless,
                 QuoterKind::PropAmm,
                 true,
             );
@@ -27,7 +27,7 @@ fn routes(f: &mut Fixture, source: usize) -> (Pubkey, Pubkey, Pubkey) {
             send_tx(&mut f.svm, &[setup], &[&f.boss]).unwrap();
             f.create_route_with_vault(
                 OfferDirection::ManagedToAsset,
-                OfferFlow::Permissionless,
+                OfferMode::Permissionless,
                 QuoterKind::PropAmm,
                 Some(selected),
             );
@@ -37,7 +37,7 @@ fn routes(f: &mut Fixture, source: usize) -> (Pubkey, Pubkey, Pubkey) {
             let selected = find_redemption_vault_authority_pda().0;
             f.create_route_with_vault(
                 OfferDirection::ManagedToAsset,
-                OfferFlow::Permissionless,
+                OfferMode::Permissionless,
                 QuoterKind::PropAmm,
                 Some(selected),
             );
@@ -47,7 +47,7 @@ fn routes(f: &mut Fixture, source: usize) -> (Pubkey, Pubkey, Pubkey) {
     let sell = f.offer;
     f.create_route_with_vault(
         OfferDirection::AssetToManaged,
-        OfferFlow::Permissionless,
+        OfferMode::Permissionless,
         QuoterKind::PropAmm,
         Some(selected),
     );
@@ -116,8 +116,8 @@ fn one_prop_quoter_prices_both_directions_on_curve_from_every_custody_type() {
 fn buys_refill_only_the_selected_vault_before_mint_and_route_excess_to_proceeds() {
     for token_2022 in [false, true] {
         for (flow, kind) in [
-            (OfferFlow::Permissioned, QuoterKind::Nav),
-            (OfferFlow::Permissionless, QuoterKind::NavPermissionless),
+            (OfferMode::Permissioned, QuoterKind::Nav),
+            (OfferMode::Permissionless, QuoterKind::NavPermissionless),
         ] {
             for (existing, expected) in [(0, 1_980_000), (500_000, 1_500_000), (3_000_000, 0)] {
                 let mut f = Fixture::new(false, token_2022);
@@ -130,7 +130,7 @@ fn buys_refill_only_the_selected_vault_before_mint_and_route_excess_to_proceeds(
                     f.seed_tokens(f.asset, vault(VaultKind::Liquidity), existing);
                 }
                 let instruction = f.take(2_000_000, 990_000_000);
-                let result = if flow == OfferFlow::Permissioned {
+                let result = if flow == OfferMode::Permissioned {
                     f.send(instruction)
                 } else {
                     f.send_without_approval(instruction)
@@ -165,7 +165,7 @@ fn refill_uses_post_buffer_supply_but_does_not_count_the_pending_user_mint() {
     edit::<ManagedTokenBufferState>(&mut f.svm, buffer, |b| b.gross_apr = 100_000);
     f.create_route(
         OfferDirection::AssetToManaged,
-        OfferFlow::Permissionless,
+        OfferMode::Permissionless,
         QuoterKind::NavPermissionless,
         true,
     );
@@ -196,7 +196,7 @@ fn failed_prop_execution_rolls_back_pressure_buffer_and_refill() {
     edit::<ManagedTokenBufferState>(&mut f.svm, buffer, |b| b.gross_apr = 100_000);
     f.create_route(
         OfferDirection::AssetToManaged,
-        OfferFlow::Permissionless,
+        OfferMode::Permissionless,
         QuoterKind::PropAmm,
         true,
     );
@@ -369,11 +369,11 @@ fn canonical_nav_controls_refill_and_sell_cap_independently_of_offer_nav() {
         b"offer_config",
         f.asset.as_ref(),
         f.mint.as_ref(),
-        &(OfferFlow::Permissioned as u64).to_le_bytes(),
+        &(OfferMode::Permissioned as u64).to_le_bytes(),
     ]);
     f.create_route(
         OfferDirection::AssetToManaged,
-        OfferFlow::Permissioned,
+        OfferMode::Permissioned,
         QuoterKind::Nav,
         true,
     );
@@ -437,7 +437,7 @@ fn onyc_refill_uses_canonical_pricer_nav_and_the_canonical_excluded_balance() {
     send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
     f.create_route(
         OfferDirection::AssetToManaged,
-        OfferFlow::Permissionless,
+        OfferMode::Permissionless,
         QuoterKind::NavPermissionless,
         true,
     );
@@ -490,7 +490,7 @@ fn nav_link_is_explicit_mandatory_and_relieves_the_configured_curve() {
         b"offer_config",
         f.asset.as_ref(),
         f.mint.as_ref(),
-        &(OfferFlow::Permissioned as u64).to_le_bytes(),
+        &(OfferMode::Permissioned as u64).to_le_bytes(),
     ]);
     let instruction = f.take(2_000_000, 990_000_000);
     let snapshot = f.svm.get_account(&tracker).unwrap().data;
@@ -654,7 +654,7 @@ fn standalone_prop_offer_executes_and_pressure_expires_without_reverse_offer() {
         f.seed_tokens(f.asset, f.user.pubkey(), 10_000_000);
         f.create_route(
             direction,
-            OfferFlow::Permissionless,
+            OfferMode::Permissionless,
             QuoterKind::PropAmm,
             true,
         );
@@ -668,9 +668,9 @@ fn standalone_prop_offer_executes_and_pressure_expires_without_reverse_offer() {
             }
         };
         for flow in [
-            OfferFlow::Permissioned,
-            OfferFlow::Permissionless,
-            OfferFlow::Worker,
+            OfferMode::Permissioned,
+            OfferMode::Permissionless,
+            OfferMode::Worker,
         ] {
             let reverse = pda(&[
                 b"offer_config",

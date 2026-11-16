@@ -293,7 +293,7 @@ impl Fixture {
         }
     }
 
-    fn offer_key(&self, flow: model::OfferFlow, reverse: bool) -> Pubkey {
+    fn offer_key(&self, flow: OfferMode, reverse: bool) -> Pubkey {
         let (input, output) = if reverse {
             (self.mint, self.asset)
         } else {
@@ -307,7 +307,7 @@ impl Fixture {
         ])
     }
 
-    fn offer_ix(&self, flow: model::OfferFlow, reverse: bool) -> Instruction {
+    fn offer_ix(&self, flow: OfferMode, reverse: bool) -> Instruction {
         let (token_in_mint, token_out_mint) = if reverse {
             (self.mint, self.asset)
         } else {
@@ -334,7 +334,8 @@ impl Fixture {
             },
             instruction::CreateOfferConfig {
                 instance_id: flow as u64,
-                flow,
+                access: flow.access(),
+                execution: flow.execution(),
             },
         )
     }
@@ -369,18 +370,17 @@ fn creates_reusable_components_and_both_nav_directions() {
     assert!(price.enabled);
     assert!(price.vectors.iter().all(|vector| vector.start_time == 0));
     for reverse in [false, true] {
-        let instruction = f.offer_ix(model::OfferFlow::Permissioned, reverse);
+        let instruction = f.offer_ix(OfferMode::Permissioned, reverse);
         let meta = send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
         let events = creation_events(&meta);
         assert_eq!(events.len(), 1);
         assert_creation_event::<OfferConfigCreatedEvent, model::OfferConfig>(
             &f.svm,
             &events[0],
-            f.offer_key(model::OfferFlow::Permissioned, reverse),
+            f.offer_key(OfferMode::Permissioned, reverse),
             f.boss.pubkey(),
         );
-        let offer: model::OfferConfig =
-            read(&f.svm, f.offer_key(model::OfferFlow::Permissioned, reverse));
+        let offer: model::OfferConfig = read(&f.svm, f.offer_key(OfferMode::Permissioned, reverse));
         assert_eq!(offer.pricer, f.selected_pricer);
         assert_eq!(offer.quoter, f.selected_quoter);
         assert_eq!(
@@ -409,7 +409,7 @@ fn offers_reject_two_managed_mints_and_spoofed_registration_pdas() {
     let boss = f.boss.pubkey();
     send_tx(&mut f.svm, &[register_managed(boss, f.asset)], &[&f.boss]).unwrap();
     for reverse in [false, true] {
-        let instruction = f.offer_ix(model::OfferFlow::Permissioned, reverse);
+        let instruction = f.offer_ix(OfferMode::Permissioned, reverse);
         assert_error(
             send_tx(&mut f.svm, &[instruction.clone()], &[&f.boss]),
             OnreError::TokenRoleConflict,
@@ -426,7 +426,7 @@ fn offers_reject_two_managed_mints_and_spoofed_registration_pdas() {
         );
         assert!(f
             .svm
-            .get_account(&f.offer_key(model::OfferFlow::Permissioned, reverse))
+            .get_account(&f.offer_key(OfferMode::Permissioned, reverse))
             .is_none());
     }
 }
@@ -435,14 +435,14 @@ fn offers_reject_two_managed_mints_and_spoofed_registration_pdas() {
 fn offer_rejects_a_self_pair() {
     let mut f = Fixture::new();
     f.asset = f.mint;
-    let instruction = f.offer_ix(model::OfferFlow::Permissioned, false);
+    let instruction = f.offer_ix(OfferMode::Permissioned, false);
     assert_error(
         send_tx(&mut f.svm, &[instruction], &[&f.boss]),
         OnreError::InvalidOfferDirection,
     );
     assert!(f
         .svm
-        .get_account(&f.offer_key(model::OfferFlow::Permissioned, false))
+        .get_account(&f.offer_key(OfferMode::Permissioned, false))
         .is_none());
 }
 
@@ -452,7 +452,7 @@ fn offer_requires_the_selected_managed_mint_in_the_pair() {
     let boss = f.boss.pubkey();
     let other = create_mint(&mut f.svm, &f.boss, 9, &boss);
     send_tx(&mut f.svm, &[register_managed(boss, other)], &[&f.boss]).unwrap();
-    let mut instruction = f.offer_ix(model::OfferFlow::Permissioned, false);
+    let mut instruction = f.offer_ix(OfferMode::Permissioned, false);
     for account in &mut instruction.accounts {
         if account.pubkey == managed(f.mint) {
             account.pubkey = managed(other);
@@ -469,7 +469,7 @@ fn offer_validates_external_mint_decimals_without_registration() {
     let mut f = Fixture::new();
     f.asset = create_mint(&mut f.svm, &f.boss, 19, &f.boss.pubkey());
     for reverse in [false, true] {
-        let instruction = f.offer_ix(model::OfferFlow::Permissioned, reverse);
+        let instruction = f.offer_ix(OfferMode::Permissioned, reverse);
         assert_error(
             send_tx(&mut f.svm, &[instruction], &[&f.boss]),
             OnreError::DecimalsExceedMax,
@@ -482,18 +482,17 @@ fn boss_can_choose_an_unregistered_token_2022_asset_in_both_directions() {
     let mut f = Fixture::new();
     f.asset = create_mint_2022(&mut f.svm, &f.boss, 6, &f.boss.pubkey());
     for reverse in [false, true] {
-        let instruction = f.offer_ix(model::OfferFlow::Permissioned, reverse);
+        let instruction = f.offer_ix(OfferMode::Permissioned, reverse);
         let meta = send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
         let events = creation_events(&meta);
         assert_eq!(events.len(), 1);
         assert_creation_event::<OfferConfigCreatedEvent, model::OfferConfig>(
             &f.svm,
             &events[0],
-            f.offer_key(model::OfferFlow::Permissioned, reverse),
+            f.offer_key(OfferMode::Permissioned, reverse),
             f.boss.pubkey(),
         );
-        let offer: model::OfferConfig =
-            read(&f.svm, f.offer_key(model::OfferFlow::Permissioned, reverse));
+        let offer: model::OfferConfig = read(&f.svm, f.offer_key(OfferMode::Permissioned, reverse));
         let price: model::Pricer = read(&f.svm, offer.pricer);
         assert_eq!(price.denomination, model::PricingDenomination::Usd);
     }
@@ -525,7 +524,7 @@ fn every_creator_requires_boss_and_rolls_back_allocations() {
         create_vault(rogue.pubkey(), model::VaultKind::Fee, 90, 0),
         create_fee(rogue.pubkey(), 90, vault(model::VaultKind::Fee, 0), 10),
         f.pair_ix(curve_key, f.asset, base_curve()),
-        f.offer_ix(model::OfferFlow::Permissioned, false),
+        f.offer_ix(OfferMode::Permissioned, false),
         initialize_buffer(rogue.pubkey(), f.mint),
     ];
     for mut instruction in instructions {
@@ -715,7 +714,7 @@ fn offer_requires_compatible_pricer_and_enabled_dependencies() {
     send_tx(&mut f.svm, &[register_managed(boss, other)], &[&f.boss]).unwrap();
     send_tx(&mut f.svm, &[create_pricer(boss, other, 0)], &[&f.boss]).unwrap();
     f.selected_pricer = pricer(other, 0);
-    let instruction = f.offer_ix(model::OfferFlow::Permissioned, false);
+    let instruction = f.offer_ix(OfferMode::Permissioned, false);
     assert_error(
         send_tx(&mut f.svm, &[instruction], &[&f.boss]),
         OnreError::IncompatiblePricer,
@@ -724,48 +723,43 @@ fn offer_requires_compatible_pricer_and_enabled_dependencies() {
     let mut price: model::Pricer = read(&f.svm, f.selected_pricer);
     price.enabled = false;
     write(&mut f.svm, f.selected_pricer, &price);
-    let instruction = f.offer_ix(model::OfferFlow::Permissioned, false);
+    let instruction = f.offer_ix(OfferMode::Permissioned, false);
     assert_error(
         send_tx(&mut f.svm, &[instruction], &[&f.boss]),
         OnreError::ConfigurationDisabled,
     );
     send_tx(&mut f.svm, &[create_pricer(boss, f.mint, 1)], &[&f.boss]).unwrap();
     f.selected_pricer = pricer(f.mint, 1);
-    let instruction = f.offer_ix(model::OfferFlow::Permissioned, false);
+    let instruction = f.offer_ix(OfferMode::Permissioned, false);
     send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
-    let offer: model::OfferConfig =
-        read(&f.svm, f.offer_key(model::OfferFlow::Permissioned, false));
+    let offer: model::OfferConfig = read(&f.svm, f.offer_key(OfferMode::Permissioned, false));
     assert_eq!(offer.pricer, pricer(f.mint, 1));
 }
 
 #[test]
-fn offer_checks_flow_and_optional_liquidity() {
+fn offer_checks_modes_and_optional_liquidity() {
     let mut f = Fixture::new();
-    for (flow, reverse, error) in [
-        (
-            model::OfferFlow::Worker,
-            false,
+    // Access selects the quoter for both execution modes: the selected Nav quoter
+    // suits only permissioned offers.
+    for mode in [OfferMode::Permissionless, OfferMode::WorkerPermissionless] {
+        let instruction = f.offer_ix(mode, false);
+        assert_error(
+            send_tx(&mut f.svm, &[instruction], &[&f.boss]),
             OnreError::IncompatibleQuoter,
-        ),
-        (
-            model::OfferFlow::Permissionless,
-            false,
-            OnreError::IncompatibleQuoter,
-        ),
-    ] {
-        let instruction = f.offer_ix(flow, reverse);
-        assert_error(send_tx(&mut f.svm, &[instruction], &[&f.boss]), error);
+        );
     }
     f.liquidity = None;
-    let instruction = f.offer_ix(model::OfferFlow::Worker, true);
+    let instruction = f.offer_ix(OfferMode::Worker, true);
     assert_error(
         send_tx(&mut f.svm, &[instruction], &[&f.boss]),
         OnreError::LiquidityVaultRequired,
     );
-    let instruction = f.offer_ix(model::OfferFlow::Permissioned, false);
-    send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    for mode in [OfferMode::Permissioned, OfferMode::Worker] {
+        let instruction = f.offer_ix(mode, false);
+        send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    }
     f.liquidity = Some(vault(model::VaultKind::Liquidity, 0));
-    let instruction = f.offer_ix(model::OfferFlow::Worker, true);
+    let instruction = f.offer_ix(OfferMode::Worker, true);
     send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
     send_tx(
         &mut f.svm,
@@ -778,9 +772,16 @@ fn offer_checks_flow_and_optional_liquidity() {
     )
     .unwrap();
     f.selected_quoter = quoter(model::QuoterKind::NavPermissionless, 0);
-    for reverse in [false, true] {
-        let instruction = f.offer_ix(model::OfferFlow::Permissionless, reverse);
-        send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    for mode in [OfferMode::Permissionless, OfferMode::WorkerPermissionless] {
+        for reverse in [false, true] {
+            let instruction = f.offer_ix(mode, reverse);
+            send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+            let offer: model::OfferConfig = read(&f.svm, f.offer_key(mode, reverse));
+            assert_eq!(
+                (offer.access, offer.execution),
+                (mode.access(), mode.execution())
+            );
+        }
     }
 }
 
@@ -795,7 +796,7 @@ fn prop_amm_requires_initialized_pair_and_cannot_be_rebound() {
         &[&f.boss],
     )
     .unwrap();
-    let instruction = f.offer_ix(model::OfferFlow::Permissionless, false);
+    let instruction = f.offer_ix(OfferMode::Permissionless, false);
     assert_error(
         send_tx(&mut f.svm, &[instruction], &[&f.boss]),
         OnreError::IncompatibleQuoter,
@@ -819,13 +820,13 @@ fn prop_amm_requires_initialized_pair_and_cannot_be_rebound() {
     );
     f.pair = Some(pda(&[b"prop_amm", f.selected_quoter.as_ref()]));
     // A Prop AMM sell without a destination needs a Haircut-kind vault.
-    let instruction = f.offer_ix(model::OfferFlow::Permissionless, true);
+    let instruction = f.offer_ix(OfferMode::Permissionless, true);
     assert_error(
         send_tx(&mut f.svm, &[instruction], &[&f.boss]),
         OnreError::HaircutVaultRequired,
     );
     f.haircut = Some(vault(model::VaultKind::Liquidity, 0));
-    let instruction = f.offer_ix(model::OfferFlow::Permissionless, true);
+    let instruction = f.offer_ix(OfferMode::Permissionless, true);
     assert_error(
         send_tx(&mut f.svm, &[instruction], &[&f.boss]),
         OnreError::InvalidConfigurableVaultKind,
@@ -834,14 +835,14 @@ fn prop_amm_requires_initialized_pair_and_cannot_be_rebound() {
     send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
     f.haircut = Some(vault(model::VaultKind::Haircut, 0));
     for reverse in [false, true] {
-        let instruction = f.offer_ix(model::OfferFlow::Permissionless, reverse);
+        let instruction = f.offer_ix(OfferMode::Permissionless, reverse);
         send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
     }
     let other = create_mint(&mut f.svm, &f.boss, 6, &boss);
     let instruction = f.pair_ix(f.selected_quoter, other, base_curve());
     assert!(send_tx(&mut f.svm, &[instruction], &[&f.boss]).is_err());
     f.asset = other;
-    let instruction = f.offer_ix(model::OfferFlow::Permissionless, false);
+    let instruction = f.offer_ix(OfferMode::Permissionless, false);
     assert_error(
         send_tx(&mut f.svm, &[instruction], &[&f.boss]),
         OnreError::IncompatibleQuoter,
@@ -989,14 +990,14 @@ fn offer_creation_validates_legacy_liquidity_identity() {
         }
         f.svm.set_account(selected, account).unwrap();
         f.svm.expire_blockhash();
-        let instruction = f.offer_ix(model::OfferFlow::Permissioned, true);
+        let instruction = f.offer_ix(OfferMode::Permissioned, true);
         assert_error(send_tx(&mut f.svm, &[instruction], &[&f.boss]), expected);
     }
     f.svm.set_account(selected, original).unwrap();
     f.svm.expire_blockhash();
-    let instruction = f.offer_ix(model::OfferFlow::Permissioned, true);
+    let instruction = f.offer_ix(OfferMode::Permissioned, true);
     send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
-    let offer: model::OfferConfig = read(&f.svm, f.offer_key(model::OfferFlow::Permissioned, true));
+    let offer: model::OfferConfig = read(&f.svm, f.offer_key(OfferMode::Permissioned, true));
     assert_eq!(offer.source_vault, selected);
 }
 
@@ -1014,9 +1015,9 @@ fn pressure_links_are_boss_configured_pair_bound_and_independent_of_nav() {
     }
     // NAV may bind at creation without selecting PropAmm pricing.
     f.pair = Some(pair);
-    let instruction = f.offer_ix(model::OfferFlow::Permissioned, false);
+    let instruction = f.offer_ix(OfferMode::Permissioned, false);
     send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
-    let offer = f.offer_key(model::OfferFlow::Permissioned, false);
+    let offer = f.offer_key(OfferMode::Permissioned, false);
     assert_eq!(
         read::<model::OfferConfig>(&f.svm, offer).pressure_state,
         pair
@@ -1073,18 +1074,18 @@ fn pressure_links_are_boss_configured_pair_bound_and_independent_of_nav() {
     f.selected_quoter = prop;
     f.liquidity = None;
     for reverse in [false, true] {
-        let instruction = f.offer_ix(model::OfferFlow::Permissionless, reverse);
+        let instruction = f.offer_ix(OfferMode::Permissionless, reverse);
         assert_error(
             send_tx(&mut f.svm, &[instruction], &[&f.boss]),
             OnreError::LiquidityVaultRequired,
         );
     }
     f.liquidity = Some(vault(model::VaultKind::Liquidity, 0));
-    let instruction = f.offer_ix(model::OfferFlow::Permissionless, false);
+    let instruction = f.offer_ix(OfferMode::Permissionless, false);
     send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
     let instruction = ix(
         accounts::SetOfferPressureState {
-            offer_config: f.offer_key(model::OfferFlow::Permissionless, false),
+            offer_config: f.offer_key(OfferMode::Permissionless, false),
             quoter: prop,
             prop_amm_state: None,
             state: find_state_pda().0,
@@ -1123,16 +1124,16 @@ fn cross_asset_and_cross_managed_pressure_links_fail_in_both_directions() {
         f.asset = original_asset;
         for reverse in [false, true] {
             f.pair = Some(tracker);
-            let instruction = f.offer_ix(model::OfferFlow::Permissioned, reverse);
+            let instruction = f.offer_ix(OfferMode::Permissioned, reverse);
             assert_error(
                 send_tx(&mut f.svm, &[instruction], &[&f.boss]),
                 OnreError::IncompatibleQuoter,
             );
             f.pair = None;
             f.svm.expire_blockhash();
-            let instruction = f.offer_ix(model::OfferFlow::Permissioned, reverse);
+            let instruction = f.offer_ix(OfferMode::Permissioned, reverse);
             send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
-            let offer = f.offer_key(model::OfferFlow::Permissioned, reverse);
+            let offer = f.offer_key(OfferMode::Permissioned, reverse);
             let instruction = ix(
                 accounts::SetOfferPressureState {
                     offer_config: offer,

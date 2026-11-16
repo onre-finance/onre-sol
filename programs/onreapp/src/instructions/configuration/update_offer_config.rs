@@ -1,12 +1,12 @@
 //! Boss-only replacement of an offer's components after creation, matching EVM
-//! `updateOfferConfigReferences`. Mints, instance ID, flow and direction stay
+//! `updateOfferConfigReferences`. Mints, instance ID, access, execution and direction stay
 //! immutable; every component is revalidated with the creation rules.
 use super::create_offer_config::{validate_offer_components, OfferComponents};
 use crate::{
     constants::seeds::STATE,
     model::{
-        seeds::OFFER_CONFIG, FeeConfig, OfferConfig, OfferDirection, Pricer, PropAmmState, Quoter,
-        VaultConfig, VaultKind,
+        seeds::OFFER_CONFIG, FeeConfig, OfferConfig, Pricer, PropAmmState, Quoter, VaultConfig,
+        VaultKind,
     },
     state::State,
     OnreError,
@@ -74,17 +74,12 @@ pub struct UpdateOfferConfig<'info> {
 pub fn update_offer_config(ctx: Context<UpdateOfferConfig>) -> Result<()> {
     let a = &ctx.accounts;
     let previous = (**a.offer_config).clone();
-    let managed_mint = match previous.direction {
-        OfferDirection::AssetToManaged => previous.token_out_mint,
-        OfferDirection::ManagedToAsset => previous.token_in_mint,
-    };
     let source_vault = a.source_vault.as_ref().map(|v| v.to_account_info());
     let destination_vault = a.destination_vault.as_ref().map(|v| v.to_account_info());
     let pressure_state = validate_offer_components(
         ctx.program_id,
-        previous.flow,
+        previous.access,
         previous.direction,
-        managed_mint,
         previous.token_in_mint,
         previous.token_out_mint,
         &OfferComponents {

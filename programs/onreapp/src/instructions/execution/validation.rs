@@ -1,46 +1,44 @@
 use crate::{
-    model::{OfferDirection, OfferFlow, QuoterKind},
+    model::{quoter_supported, OfferConfig, OfferDirection, QuoterKind},
     utils::{has_transfer_fee, pressure_link::validate_pressure_link},
     OnreError,
 };
 use anchor_lang::prelude::*;
 
-use super::{liquidity, permissions, TakeOffer};
+use super::{liquidity, permissions, Execution};
 
 /// Validated dispatch data, shared by quoting and settlement.
 pub(super) struct ExecutionPlan {
     pub direction: OfferDirection,
     pub kind: QuoterKind,
-    pub flow: OfferFlow,
     pub destination_balance: u64,
     pub destination_target_bps: u16,
     pub curve_balance: u64,
     pub curve_target_bps: u16,
 }
 
-impl ExecutionPlan {
-    /// Enable paths only after their pricing, accounting and settlement exist.
-    pub fn require_supported(&self) -> Result<()> {
-        require!(
-            matches!(
-                (self.flow, self.kind),
-                (OfferFlow::Permissioned, QuoterKind::Nav)
-                    | (
-                        OfferFlow::Permissionless,
-                        QuoterKind::NavPermissionless | QuoterKind::PropAmm
-                    )
-            ),
-            OnreError::UnsupportedOfferExecution
-        );
-        Ok(())
-    }
+/// The route must suit the offer's stored access and execution modes, and the
+/// quoter its access mode. Checked before quoting and again at settlement, so a future
+/// dispatch change cannot execute another quoter through NAV settlement.
+pub(super) fn require_supported(a: &Execution) -> Result<()> {
+    let offer: &OfferConfig = &a.config.offer_config;
+    require!(
+        a.route.supports(offer),
+        OnreError::UnsupportedOfferExecution
+    );
+    require!(
+        quoter_supported(offer.access, a.config.quoter.kind),
+        OnreError::IncompatibleQuoter
+    );
+    Ok(())
 }
 
 pub(super) fn validate(
     program_id: &Pubkey,
-    a: &TakeOffer,
+    a: &Execution,
     authority_bump: u8,
 ) -> Result<ExecutionPlan> {
+    require_supported(a)?;
     require!(
         a.managed_mint().key() == a.config.managed_token.managed_mint
             && a.asset_mint().key() != a.config.managed_token.managed_mint,
@@ -55,22 +53,10 @@ pub(super) fn validate(
     // Direct or multisig control, exactly as configured, even when no mint occurs.
     a.minter(authority_bump)?;
     require!(
-        !has_transfer_fee(&a.token_in_mint)? && !has_transfer_fee(&a.token_out_mint)?,
+        !has_transfer_fee(a.token_in_mint)? && !has_transfer_fee(a.token_out_mint)?,
         OnreError::TransferFeeNotSupported
     );
-    let compatible = match a.config.offer_config.flow {
-        OfferFlow::Permissioned => a.config.quoter.kind == QuoterKind::Nav,
-        OfferFlow::Permissionless => matches!(
-            a.config.quoter.kind,
-            QuoterKind::NavPermissionless | QuoterKind::PropAmm
-        ),
-        OfferFlow::Worker => {
-            a.config.offer_config.direction == OfferDirection::ManagedToAsset
-                && a.config.quoter.kind == QuoterKind::Nav
-        }
-    };
-    require!(compatible, OnreError::IncompatibleQuoter);
-    permissions::validate_accounts(program_id, a)?;
+    permissions::validate_intermediary(a)?;
     match a.config.offer_config.direction {
         OfferDirection::AssetToManaged => require!(
             a.proceeds_token_in.is_some(),
@@ -87,7 +73,6 @@ pub(super) fn validate(
     Ok(ExecutionPlan {
         direction: a.config.offer_config.direction,
         kind: a.config.quoter.kind,
-        flow: a.config.offer_config.flow,
         destination_balance: liquidity.destination.balance,
         destination_target_bps: liquidity.destination.refill_target_bps,
         curve_balance: match a.config.offer_config.direction {
@@ -101,7 +86,7 @@ pub(super) fn validate(
     })
 }
 
-fn validate_prop_amm(program_id: &Pubkey, a: &TakeOffer) -> Result<()> {
+fn validate_prop_amm(program_id: &Pubkey, a: &Execution) -> Result<()> {
     let state = validate_pressure_link(
         program_id,
         a.config.quoter.key(),

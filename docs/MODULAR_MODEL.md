@@ -39,7 +39,7 @@ flowchart TD
     Token --> Exclusions[ManagedTokenSupplyExclusions]
     Token -. optional selection .-> Stats[MarketStats account]
     Pricer -. USD instance zero .-> Stats
-    Offer[OfferConfig: directed pair + flow] --> Quoter
+    Offer[OfferConfig: directed pair + access + execution] --> Quoter
     Offer --> Fee[FeeConfig]
     Fee --> FeeVault[VaultConfig: Fee]
     Offer --> Proceeds[VaultConfig: Proceeds]
@@ -81,7 +81,7 @@ the domain paths such as `model::pricer::Pricer`.
 | FeeConfig | 52 | 60 |
 | VaultConfig | 44 | 52 |
 | ManagedTokenBufferState | 166 | 174 |
-| OfferConfig | 334 | 342 |
+| OfferConfig | 335 | 343 |
 | FulfillmentRequest | 89 | 97 |
 | ManagedTokenSupplyExclusions | 674 | 682 |
 
@@ -95,7 +95,7 @@ the domain paths such as `model::pricer::Pricer`.
 | FeeConfig | FeeConfig | Instance ID, Fee vault reference, basis points, minimum input fee, enabled, bump. |
 | ConfigurableVault | VaultConfig | Kind, instance ID, withdrawal destination, refill target, bump. |
 | BufferState | ManagedTokenBufferState | Managed mint, three vault references, supply baseline, watermark, accrual time, APR, fee settings, bump. |
-| OfferConfig | OfferConfig | Directed mint pair, instance ID, flow, direction, pricer/quoter/pressure-state/fee/proceeds/source/destination references, decimals, enabled, bump. |
+| OfferConfig | OfferConfig | Directed mint pair, instance ID, access, execution, direction, pricer/quoter/pressure-state/fee/proceeds/source/destination references, decimals, enabled, bump. |
 | FulfillmentRequest | FulfillmentRequest | Offer, user, numeric request ID, gross input, fulfilled gross input, bump. |
 | Excluded-supply mappings | ManagedTokenSupplyExclusions | Managed mint, up to 20 token-account addresses, active count, bump. |
 | MarketStats | Existing `state::MarketStats` account, selected per mint by `ManagedTokenConfig::market_stats` | APY, circulating supply, NAV, NAV adjustment, TVL, timestamp, slot, bump. |
@@ -135,7 +135,7 @@ numeric instance and request IDs use eight-byte little-endian encoding.
 | BUFFER performance Fee VaultConfig | `"buffer_performance", managed_mint` |
 | ManagedTokenBufferState | `"buffer", managed_mint` |
 | OfferConfig | `"offer_config", token_in_mint, token_out_mint, instance_id` (u64 LE) |
-| FulfillmentRequest | `"fulfillment", offer_config, user, request_id` |
+| FulfillmentRequest | `"fulfillment_request", offer_config, user, request_id` (u64 LE) |
 | ManagedTokenSupplyExclusions | `"supply_exclusions", managed_mint` |
 | Per-mint MarketStats (optional) | `"market_stats", managed_mint` |
 
@@ -144,8 +144,8 @@ reserve, 1 for management fees, and 2 for performance fees in their account bodi
 Those dedicated identities do not occupy the ordinary vault instance namespace.
 
 Offers are identified by their directed mint pair and a boss-chosen `u64`
-`instance_id`, not by flow, so a pair can have any number of offers with the same
-or different flows. Its mints, instance ID, flow, and derived direction are
+`instance_id`, not by mode, so a pair can have any number of offers with the same
+or different modes. Its mints, instance ID, access, execution and derived direction are
 immutable. The boss replaces component references with `update_offer_config`:
 Pricer (any enabled instance of the managed mint), quoter, pressure link, fee
 config, proceeds vault and source/destination vaults, revalidated with the same
@@ -171,9 +171,9 @@ repeat creation; shared accounts are not implicitly initialized or overwritten b
 | `create_vault_config` | Creates a vault authority/config with a nonzero destination; creates no ATA. Refill targets are allowed only for Liquidity and cannot exceed 10,000 bps. |
 | `create_fee_config` | Requires an existing Fee vault; percentage fees are capped at 1,000 bps and the input-token minimum is stored in base units. |
 | `create_prop_amm_state` | Requires an enabled PropAmm quoter, a registered managed mint, and a boss-selected external mint. Validates curve/cadence/epoch settings and creates zero pressure with the current timestamp. Repeat creation cannot rebind the pair. |
-| `create_offer_config` | Takes a boss-chosen `instance_id` that, with the mint pair, derives the offer address. Requires exactly one registered managed mint and a Pricer for it. The boss chooses the external mint in the Pricer's denomination. Validates mint decimals, enabled components, flow/quoter compatibility, Prop AMM pair binding, and vault kinds. |
+| `create_offer_config` | Takes a boss-chosen `instance_id` that, with the mint pair, derives the offer address. Requires exactly one registered managed mint and a Pricer for it. The boss chooses the external mint in the Pricer's denomination. Validates mint decimals, enabled components, mode/quoter compatibility, Prop AMM pair binding, and vault kinds. |
 | `set_managed_token_enabled` / `set_pricer_enabled` / `set_quoter_enabled` / `set_fee_config_enabled` / `set_offer_config_enabled` | Boss-only enable/disable of a component (`NoChange` on a no-op, one event per kind). A disabled component fails execution and creation checks that require it; nothing else changes. |
-| `update_offer_config` | Boss-only replacement of an offer's Pricer (any enabled instance of its managed mint), quoter, pressure link, fee config, proceeds vault and source/destination vaults with the creation rules. Mints, instance ID, flow and direction stay immutable. |
+| `update_offer_config` | Boss-only replacement of an offer's Pricer (any enabled instance of its managed mint), quoter, pressure link, fee config, proceeds vault and source/destination vaults with the creation rules. Mints, instance ID, access, execution and direction stay immutable. |
 | `update_fee_config` | Boss-only replacement of basis points, minimum fee and Fee-kind vault with the creation rules; instance and enabled flag unchanged. |
 | `update_vault_config` | Boss-only replacement of withdrawal destination and refill target with the creation rules; kind and instance unchanged. Also applies to BUFFER vaults, whose destination is the boss at initialization. |
 | `update_prop_amm_config` | Boss-only replacement of curve, cadence, epoch and wall settings with the creation limits; the bound pair and accumulated pressure are kept. |
@@ -256,11 +256,19 @@ Future execution must also check that the selected Pricer remains enabled.
 Multiple instances with the same compatible mint and denomination are valid
 choices; changing the reference does not change the offer ID.
 
-| Flow | Direction | Quoter |
+An offer has two independent modes. `access` decides who may trade:
+`Permissioned` users with an approver-signed approval, or `Permissionless` anyone.
+`execution` decides how: `Instant` in `take_offer`, or `Worker` through escrowed
+fulfillment requests that the worker fills. Execution changes only how a trade
+settles: a fill uses the offer's quoter, fee, direction and custody exactly as
+`take_offer` would. EVM's single `OfferFlow` enum maps to (Permissioned, Instant),
+(Permissionless, Instant) and (Permissioned, Worker, NAV sells only); Solana lifts
+the Worker restriction. Access selects the quoter (`model::quoter_supported`):
+
+| Access | Direction | Quoter |
 | --- | --- | --- |
 | Permissioned | Either | Nav |
 | Permissionless | Either | NavPermissionless or pair-matching PropAmm |
-| Worker | ManagedToAsset | Nav |
 
 Each Prop AMM quoter binds one immutable asset/managed pair. Multiple quoters may
 bind the same pair with independent parameters and pressure. The two directed
@@ -326,10 +334,11 @@ the EVM ManagedToken supply-change callback. Issuance limits therefore live in
 ManagedTokenConfig and constrain program-controlled paths only.
 
 Worker requests refer directly to their worker OfferConfig; no separate redemption
-offer exists in the target model. Each request escrows gross input, supports
-partial fulfillment, and resolves current price and fees at each fill. Its `u64`
-ID matches EVM; legacy UUID request IDs remain unchanged. The exact escrow account
-constraints and rent/closure behavior belong to the instruction stage.
+offer exists in the target model. Each request escrows gross input in its own ATA,
+supports partial fulfillment, and resolves current price and fees at each fill.
+Its `u64` ID matches EVM; legacy UUID request IDs remain unchanged. The user pays
+the request and escrow rent and gets it back when the request closes (fully filled
+or cancelled). See MODULAR_TAKE_OFFER.md, "Worker fulfillment requests".
 
 Supply exclusions are explicit SPL token accounts, each unique and holding the
 configured managed mint, rather than the legacy owner-to-ATA convention. All
@@ -354,7 +363,7 @@ Legacy account layouts, discriminators, PDA seeds, instruction data, account
 ordering, program IDs, vault authorities, and token accounts remain unchanged.
 No modular configuration accounts have been created yet; the layouts above define
 their initial representation. There is no modular-account migration requirement.
-New modular clients use the generated IDL/types. OfferConfig has a 294-byte body,
+New modular clients use the generated IDL/types. OfferConfig has a 335-byte body,
 PropAmmState a 203-byte body, and Pricer a 443-byte body (451 with discriminator).
 
 The existing `take_offer_v2`, `take_offer_permissionless_v2`, `open_swap_buy`, and
@@ -372,5 +381,5 @@ the one-way switch. Liquidity is scoped
 to the vault selected by the offer; old redemption liquidity is not automatically
 included. Modular Prop AMM state is independent of the legacy pressure tracker.
 Permissionless NAV uses the existing intermediary PDA and its mint-specific ATAs.
-Modular Prop AMM, buy-side refill and per-mint BUFFER settlement are implemented.
-Worker redemption settlement and CLI changes remain deferred.
+Modular Prop AMM, buy-side refill, per-mint BUFFER settlement and worker
+fulfillment requests are implemented. CLI changes remain deferred.
