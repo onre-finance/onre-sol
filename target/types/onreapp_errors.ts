@@ -158,7 +158,8 @@ export const OnreappErrorCode = {
   HaircutVaultRequired: 6155,
   UnexpectedHaircutVault: 6156,
   FulfillmentAmountExceedsRemaining: 6157,
-  FulfillmentRequestMismatch: 6158
+  FulfillmentRequestMismatch: 6158,
+  FeeConfigDecimalsMismatch: 6159
 };
 
 export type OnreappErrorName = keyof typeof OnreappErrorCode;

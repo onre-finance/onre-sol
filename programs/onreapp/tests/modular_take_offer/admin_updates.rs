@@ -383,6 +383,7 @@ fn boss_replaces_offer_components_including_the_pricer_instance() {
             },
             instruction::CreateFeeConfig {
                 instance_id: 1,
+                token_decimals: 6,
                 basis_points: 300,
                 minimum_fee_amount: 5,
             },
@@ -493,4 +494,92 @@ fn boss_replaces_offer_components_including_the_pricer_instance() {
         f.balance(f.asset, vault(VaultKind::Fee), f.asset_program),
         30_000
     );
+}
+
+#[test]
+fn fee_configs_bind_input_decimals_and_are_shared_across_mints() {
+    let mut f = Fixture::new(false, false);
+    let boss = f.boss.pubkey();
+    let state = find_state_pda().0;
+    let buy_fee = f.fee;
+    let create_fee = |id: u64, token_decimals: u8| {
+        ix(
+            accounts::CreateFeeConfig {
+                fee_vault: vault(VaultKind::Fee),
+                fee_config: pda(&[b"fee_config", &id.to_le_bytes()]),
+                state,
+                boss,
+                system_program: SYSTEM_PROGRAM_ID,
+            },
+            instruction::CreateFeeConfig {
+                instance_id: id,
+                token_decimals,
+                basis_points: 100,
+                minimum_fee_amount: 5,
+            },
+        )
+    };
+    let instruction = create_fee(40, 19);
+    expect_error(boss_send(&mut f, instruction), OnreError::DecimalsExceedMax);
+    // A 9-decimal fee config, as a managed-token sell would use.
+    let instruction = create_fee(41, 9);
+    boss_send(&mut f, instruction).unwrap();
+    let sell_fee = pda(&[b"fee_config", &41_u64.to_le_bytes()]);
+    assert_eq!(read::<FeeConfig>(&f.svm, buy_fee).token_decimals, 6);
+    assert_eq!(read::<FeeConfig>(&f.svm, sell_fee).token_decimals, 9);
+
+    // The 6-decimal buy cannot switch to the 9-decimal fee config.
+    let update = |f: &Fixture, fee_config: Pubkey| {
+        ix(
+            accounts::UpdateOfferConfig {
+                offer_config: f.offer,
+                pricer: price(f.mint, 0),
+                quoter: f.quoter,
+                prop_amm_state: None,
+                fee_config,
+                proceeds_vault: vault(VaultKind::Proceeds),
+                source_vault: None,
+                destination_vault: None,
+                haircut_vault: None,
+                state,
+                boss,
+            },
+            instruction::UpdateOfferConfig {},
+        )
+    };
+    let instruction = update(&f, sell_fee);
+    expect_error(
+        boss_send(&mut f, instruction),
+        OnreError::FeeConfigDecimalsMismatch,
+    );
+    // Execution re-checks the binding even if an offer referenced a mismatched
+    // fee config.
+    let original = f.svm.clone();
+    edit::<OfferConfig>(&mut f.svm, f.offer, |c| c.fee_config = sell_fee);
+    f.fee = sell_fee;
+    let instruction = f.take(1_000_000, 0);
+    expect_error(f.send(instruction), OnreError::FeeConfigDecimalsMismatch);
+    f.svm = original;
+    f.fee = buy_fee;
+
+    // USDC and USDG (both 6 decimals) share one fee config and its minimum.
+    let usdc_offer = f.offer;
+    let usdg = create_mint(&mut f.svm, &f.boss, 6, &boss);
+    f.asset = usdg;
+    f.seed_tokens(usdg, f.user.pubkey(), 10_000_000);
+    f.create_route(
+        OfferDirection::AssetToManaged,
+        OfferMode::Permissioned,
+        QuoterKind::Nav,
+        false,
+    );
+    assert_ne!(f.offer, usdc_offer);
+    for offer in [usdc_offer, f.offer] {
+        assert_eq!(read::<OfferConfig>(&f.svm, offer).fee_config, buy_fee);
+    }
+    // 100 gross: the shared 5-unit minimum exceeds 1% of the input.
+    let instruction = f.take(100, 0);
+    let event = executed_event(&f.send(instruction).unwrap());
+    assert_eq!(event.fee_amount, 5);
+    assert_eq!(f.balance(usdg, vault(VaultKind::Fee), f.asset_program), 5);
 }

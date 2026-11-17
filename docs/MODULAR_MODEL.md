@@ -78,7 +78,7 @@ the domain paths such as `model::pricer::Pricer`.
 | Pricer | 443 | 451 |
 | Quoter | 11 | 19 |
 | PropAmmState | 203 | 211 |
-| FeeConfig | 52 | 60 |
+| FeeConfig | 53 | 61 |
 | VaultConfig | 44 | 52 |
 | ManagedTokenBufferState | 166 | 174 |
 | OfferConfig | 335 | 343 |
@@ -92,7 +92,7 @@ the domain paths such as `model::pricer::Pricer`.
 | Pricer | Pricer | Instance ID, managed mint, denomination, 10 vector slots, enabled, bump. |
 | Quoter | Quoter | Kind, instance ID, enabled, bump. |
 | PropAmmState | PropAmmState | Parent quoter, bound asset/managed pair, embedded config, rolling volumes, previous directional net volumes, epoch, buy/sell counts, bump. |
-| FeeConfig | FeeConfig | Instance ID, Fee vault reference, basis points, minimum input fee, enabled, bump. |
+| FeeConfig | FeeConfig | Instance ID, Fee vault reference, input-token decimals, basis points, minimum input fee, enabled, bump. |
 | ConfigurableVault | VaultConfig | Kind, instance ID, withdrawal destination, refill target, bump. |
 | BufferState | ManagedTokenBufferState | Managed mint, three vault references, supply baseline, watermark, accrual time, APR, fee settings, bump. |
 | OfferConfig | OfferConfig | Directed mint pair, instance ID, access, execution, direction, pricer/quoter/pressure-state/fee/proceeds/source/destination references, decimals, enabled, bump. |
@@ -169,12 +169,12 @@ repeat creation; shared accounts are not implicitly initialized or overwritten b
 | `create_pricer` | Creates an enabled instance with zero vectors; `add_pricer_vector` schedules prices. |
 | `create_quoter` | Creates enabled dispatch configuration for one kind and instance ID. |
 | `create_vault_config` | Creates a vault authority/config with a nonzero destination; creates no ATA. Refill targets are allowed only for Liquidity and cannot exceed 10,000 bps. |
-| `create_fee_config` | Requires an existing Fee vault; percentage fees are capped at 1,000 bps and the input-token minimum is stored in base units. |
+| `create_fee_config` | Requires an existing Fee vault and binds the policy to input-token decimals (at most 18, immutable); percentage fees are capped at 1,000 bps and the minimum is stored in base units of a token with those decimals. |
 | `create_prop_amm_state` | Requires an enabled PropAmm quoter, a registered managed mint, and a boss-selected external mint. Validates curve/cadence/epoch settings and creates zero pressure with the current timestamp. Repeat creation cannot rebind the pair. |
 | `create_offer_config` | Takes a boss-chosen `instance_id` that, with the mint pair, derives the offer address. Requires exactly one registered managed mint and a Pricer for it. The boss chooses the external mint in the Pricer's denomination. Validates mint decimals, enabled components, Prop AMM pair binding, and vault kinds. |
 | `set_managed_token_enabled` / `set_pricer_enabled` / `set_quoter_enabled` / `set_fee_config_enabled` / `set_offer_config_enabled` | Boss-only enable/disable of a component (`NoChange` on a no-op, one event per kind). A disabled component fails execution and creation checks that require it; nothing else changes. |
 | `update_offer_config` | Boss-only replacement of an offer's Pricer (any enabled instance of its managed mint), quoter, pressure link, fee config, proceeds vault and source/destination vaults with the creation rules. Mints, instance ID, access, execution and direction stay immutable. |
-| `update_fee_config` | Boss-only replacement of basis points, minimum fee and Fee-kind vault with the creation rules; instance and enabled flag unchanged. |
+| `update_fee_config` | Boss-only replacement of basis points, minimum fee and Fee-kind vault with the creation rules; instance, token decimals and enabled flag unchanged. |
 | `update_vault_config` | Boss-only replacement of withdrawal destination and refill target with the creation rules; kind and instance unchanged. Also applies to BUFFER vaults, whose destination is the boss at initialization. |
 | `update_prop_amm_config` | Boss-only replacement of curve, cadence, epoch and wall settings with the creation limits; the bound pair and accumulated pressure are kept. |
 | `unset_managed_token_market_stats` | Boss-only reset of the MarketStats selection to default (reporting disabled); the MarketStats account is untouched. |
@@ -286,9 +286,15 @@ destination retain net managed input instead of burning. NAV buys allow both
 absent; PropAmm buys require funded asset destinations for the curve. Each role
 supports modular Liquidity, legacy ConfigurableVault or redemption custody.
 See [OFFER_VAULT_ROLES.md](OFFER_VAULT_ROLES.md) for the full routing matrix.
-NAV offers may also omit the pressure link. The fee
-floor is input-token-denominated, so sharing a FeeConfig across different input
-mints requires an appropriate policy. EVM's minimum input fee replaces the legacy
+NAV offers may also omit the pressure link.
+
+A FeeConfig is bound to input-token decimals, not to a mint: its minimum fee is in
+base units of a token with `token_decimals` decimals. `create_offer_config`,
+`update_offer_config` and execution require `fee_config.token_decimals` to equal
+the offer's input decimals (`FeeConfigDecimalsMismatch`), so a minimum always has
+the scale it was set for. Offers on different mints with the same decimals, such
+as USDC and USDG buys, can share one FeeConfig and its absolute minimum; a
+managed-token sell needs a FeeConfig for the managed mint's decimals. EVM's minimum input fee replaces the legacy
 Prop AMM-specific minimum ONyc haircut in this target model only.
 
 Vault kinds are `Fee`, `Proceeds`, `Liquidity`, `BufferReserve`, and `Haircut`

@@ -728,7 +728,8 @@ fn production_usdg_profile_matches_mainnet_simulation_vectors() {
     edit::<Pricer>(&mut f.svm, price(f.mint, 0), |p| {
         p.vectors[0].base_price = 1_164_144_940
     });
-    edit::<FeeConfig>(&mut f.svm, f.fee, |fee| {
+    let sell_fee = read::<OfferConfig>(&f.svm, sell).fee_config;
+    edit::<FeeConfig>(&mut f.svm, sell_fee, |fee| {
         fee.basis_points = 25;
         fee.minimum_fee_amount = 1_500_000_000;
     });

@@ -54,6 +54,7 @@ pub struct CreateOfferConfig<'info> {
 
     pub prop_amm_state: Option<Box<Account<'info, PropAmmState>>>,
 
+    /// Must be for the input token's decimals; checked after the mint pair.
     #[account(
         constraint = fee_config.enabled @ OnreError::ConfigurationDisabled
     )]
@@ -134,6 +135,10 @@ pub fn create_offer_config(
     require!(
         a.asset_managed_registration.data_is_empty(),
         OnreError::TokenRoleConflict
+    );
+    require!(
+        a.fee_config.token_decimals == a.token_in_mint.decimals,
+        OnreError::FeeConfigDecimalsMismatch
     );
     let pressure_state = validate_offer_components(
         ctx.program_id,

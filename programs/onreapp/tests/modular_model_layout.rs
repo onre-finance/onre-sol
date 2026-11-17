@@ -21,7 +21,7 @@ fn model_account_wire_sizes_are_fixed() {
     check_layout::<model::Pricer>(443);
     check_layout::<model::Quoter>(11);
     check_layout::<model::PropAmmState>(203);
-    check_layout::<model::FeeConfig>(52);
+    check_layout::<model::FeeConfig>(53);
     check_layout::<model::VaultConfig>(44);
     check_layout::<model::ManagedTokenBufferState>(166);
     check_layout::<model::OfferConfig>(335);

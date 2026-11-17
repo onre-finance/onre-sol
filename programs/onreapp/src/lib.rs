@@ -220,14 +220,22 @@ pub mod onreapp {
         vault_operations::withdraw_vault_config(ctx, amount)
     }
 
-    /// Creates a reusable input-token fee policy with a Fee vault; boss only.
+    /// Creates a reusable fee policy for input tokens with `token_decimals`
+    /// decimals, with a Fee vault; boss only.
     pub fn create_fee_config(
         ctx: Context<CreateFeeConfig>,
         instance_id: u64,
+        token_decimals: u8,
         basis_points: u16,
         minimum_fee_amount: u64,
     ) -> Result<()> {
-        configuration::create_fee_config(ctx, instance_id, basis_points, minimum_fee_amount)
+        configuration::create_fee_config(
+            ctx,
+            instance_id,
+            token_decimals,
+            basis_points,
+            minimum_fee_amount,
+        )
     }
 
     /// Creates immutable pair binding and initial pressure state for a Prop AMM quoter; boss only.

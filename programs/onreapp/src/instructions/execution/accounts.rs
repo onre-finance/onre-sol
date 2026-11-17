@@ -268,8 +268,12 @@ pub struct TakeOfferConfigAccounts<'info> {
     )]
     pub quoter: Box<Account<'info, Quoter>>,
 
+    /// Re-checked against the offer's input decimals, which execution also checks
+    /// against the input mint.
     #[account(
         constraint = fee_config.enabled @ OnreError::ConfigurationDisabled,
+        constraint = fee_config.token_decimals == offer_config.token_in_decimals
+            @ OnreError::FeeConfigDecimalsMismatch,
         has_one = fee_vault @ OnreError::InvalidConfigurableVault
     )]
     pub fee_config: Box<Account<'info, FeeConfig>>,

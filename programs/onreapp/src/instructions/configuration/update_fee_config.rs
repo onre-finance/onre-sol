@@ -1,5 +1,6 @@
 //! Boss-only update of a FeeConfig after creation, matching EVM `updateFeeConfig`.
-//! Re-applies the creation rules; the instance and enabled flag are unchanged.
+//! Re-applies the creation rules; the instance, token decimals and enabled flag are
+//! unchanged.
 use crate::{
     constants::{seeds::STATE, MAX_ALLOWED_FEE_BPS},
     model::{seeds::FEE_CONFIG, FeeConfig, VaultConfig, VaultKind},
@@ -37,8 +38,8 @@ pub struct UpdateFeeConfig<'info> {
     pub boss: Signer<'info>,
 }
 
-/// Replaces the fee rate, minimum fee and Fee-kind vault; instance and enabled
-/// flag are unchanged.
+/// Replaces the fee rate, minimum fee and Fee-kind vault; instance, token decimals
+/// and enabled flag are unchanged.
 pub fn update_fee_config(
     ctx: Context<UpdateFeeConfig>,
     basis_points: u16,
