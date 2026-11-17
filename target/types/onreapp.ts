@@ -1980,7 +1980,8 @@ export type Onreapp = {
     {
       "name": "createFeeConfig",
       "docs": [
-        "Creates a reusable input-token fee policy with a Fee vault; boss only."
+        "Creates a reusable fee policy for input tokens with `token_decimals`",
+        "decimals, with a Fee vault; boss only."
       ],
       "discriminator": [
         214,
@@ -2057,6 +2058,10 @@ export type Onreapp = {
         {
           "name": "instanceId",
           "type": "u64"
+        },
+        {
+          "name": "tokenDecimals",
+          "type": "u8"
         },
         {
           "name": "basisPoints",
@@ -2171,6 +2176,10 @@ export type Onreapp = {
             },
             {
               "name": "feeConfig",
+              "docs": [
+                "Re-checked against the offer's input decimals, which execution also checks",
+                "against the input mint."
+              ],
               "relations": [
                 "offerConfig"
               ]
@@ -2462,7 +2471,10 @@ export type Onreapp = {
           "optional": true
         },
         {
-          "name": "feeConfig"
+          "name": "feeConfig",
+          "docs": [
+            "Must be for the input token's decimals; checked after the mint pair."
+          ]
         },
         {
           "name": "proceedsVault"
@@ -4285,6 +4297,10 @@ export type Onreapp = {
             },
             {
               "name": "feeConfig",
+              "docs": [
+                "Re-checked against the offer's input decimals, which execution also checks",
+                "against the input mint."
+              ],
               "relations": [
                 "offerConfig"
               ]
@@ -12268,6 +12284,10 @@ export type Onreapp = {
             },
             {
               "name": "feeConfig",
+              "docs": [
+                "Re-checked against the offer's input decimals, which execution also checks",
+                "against the input mint."
+              ],
               "relations": [
                 "offerConfig"
               ]
@@ -14253,7 +14273,10 @@ export type Onreapp = {
           "optional": true
         },
         {
-          "name": "feeConfig"
+          "name": "feeConfig",
+          "docs": [
+            "Must be for the offer's input token decimals."
+          ]
         },
         {
           "name": "proceedsVault"
@@ -17776,6 +17799,11 @@ export type Onreapp = {
       "code": 6158,
       "name": "fulfillmentRequestMismatch",
       "msg": "Account does not match the fulfillment request"
+    },
+    {
+      "code": 6159,
+      "name": "feeConfigDecimalsMismatch",
+      "msg": "Fee config decimals must match the offer's input token decimals"
     }
   ],
   "types": [
@@ -18563,7 +18591,11 @@ export type Onreapp = {
     {
       "name": "feeConfig",
       "docs": [
-        "Reusable input-token fee policy, with a reference to a Fee-kind VaultConfig."
+        "Reusable input-token fee policy, with a reference to a Fee-kind VaultConfig.",
+        "",
+        "Bound to input-token decimals rather than a mint: any offer whose input token",
+        "has `token_decimals` decimals may use it, so e.g. USDC and USDG offers (both 6",
+        "decimals) can share one fee policy with the same absolute minimum."
       ],
       "type": {
         "kind": "struct",
@@ -18577,13 +18609,20 @@ export type Onreapp = {
             "type": "pubkey"
           },
           {
+            "name": "tokenDecimals",
+            "docs": [
+              "Decimals of every consuming offer's input token; immutable."
+            ],
+            "type": "u8"
+          },
+          {
             "name": "basisPoints",
             "type": "u16"
           },
           {
             "name": "minimumFeeAmount",
             "docs": [
-              "Absolute fee floor in the consuming offer's input mint base units."
+              "Absolute fee floor in base units of a `token_decimals`-decimal input token."
             ],
             "type": "u64"
           },

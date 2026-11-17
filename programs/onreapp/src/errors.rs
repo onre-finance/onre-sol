@@ -320,4 +320,6 @@ pub enum OnreError {
     FulfillmentAmountExceedsRemaining,
     #[msg("Account does not match the fulfillment request")]
     FulfillmentRequestMismatch,
+    #[msg("Fee config decimals must match the offer's input token decimals")]
+    FeeConfigDecimalsMismatch,
 }

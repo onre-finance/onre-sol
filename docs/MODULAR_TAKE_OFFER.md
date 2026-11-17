@@ -30,7 +30,7 @@ invalid. The CLI still calls V2. Generated IDL/types expose the new instructions
 
 Register the managed mint, create its Pricer, append a vector with
 `add_pricer_vector`, create the appropriate Quoter, Fee and Proceeds vaults,
-a FeeConfig, and an OfferConfig. Any offer selects `Nav` or a pair-configured
+a FeeConfig for the input token's decimals, and an OfferConfig. Any offer selects `Nav` or a pair-configured
 `PropAmm` quoter; access does not restrict the quoter. Permissioned and
 permissionless offers can share one quoter and differ by FeeConfig.
 Buy sources optionally supply managed inventory; buy destinations optionally receive
@@ -158,7 +158,9 @@ managed input by NAV for sells, adjusting decimals and rounding output down.
 Prop AMM buys and sells then apply the curve/cadence haircut described in
 [`MODULAR_PROP_AMM.md`](MODULAR_PROP_AMM.md).
 Percentage fees round up in input
-base units; the charged fee is `max(percentage_fee, minimum_fee_amount)`. Zero
+base units; the charged fee is `max(percentage_fee, minimum_fee_amount)`. The
+FeeConfig's `token_decimals` must equal the input token's decimals, so the minimum
+is always in the scale it was configured for. Zero
 input, a fee consuming all input, zero rounded output, and output below
 `minimum_amount_out` all fail.
 

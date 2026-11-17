@@ -206,6 +206,16 @@ fn create_vault(boss: Pubkey, kind: model::VaultKind, id: u64, target: u16) -> I
 }
 
 fn create_fee(boss: Pubkey, id: u64, fee_vault: Pubkey, bps: u16) -> Instruction {
+    create_fee_for(boss, id, fee_vault, bps, 6)
+}
+
+fn create_fee_for(
+    boss: Pubkey,
+    id: u64,
+    fee_vault: Pubkey,
+    bps: u16,
+    token_decimals: u8,
+) -> Instruction {
     ix(
         accounts::CreateFeeConfig {
             fee_vault,
@@ -216,6 +226,7 @@ fn create_fee(boss: Pubkey, id: u64, fee_vault: Pubkey, bps: u16) -> Instruction
         },
         instruction::CreateFeeConfig {
             instance_id: id,
+            token_decimals,
             basis_points: bps,
             minimum_fee_amount: 5,
         },
@@ -277,6 +288,8 @@ impl Fixture {
             create_vault(key, model::VaultKind::Proceeds, 0, 0),
             create_vault(key, model::VaultKind::Liquidity, 0, 500),
             create_fee(key, 0, vault(model::VaultKind::Fee, 0), 30),
+            // Sells take the fee in the 9-decimal managed mint.
+            create_fee_for(key, 1, vault(model::VaultKind::Fee, 0), 30, 9),
         ] {
             send_tx(&mut svm, &[instruction], &[&boss]).unwrap();
         }
@@ -322,7 +335,7 @@ impl Fixture {
                 pricer: self.selected_pricer,
                 quoter: self.selected_quoter,
                 prop_amm_state: self.pair,
-                fee_config: fee(0),
+                fee_config: fee(reverse as u64),
                 proceeds_vault: vault(model::VaultKind::Proceeds, 0),
                 source_vault: reverse.then_some(self.liquidity).flatten(),
                 destination_vault: (!reverse).then_some(self.liquidity).flatten(),

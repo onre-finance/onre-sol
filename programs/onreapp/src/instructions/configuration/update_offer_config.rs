@@ -48,7 +48,12 @@ pub struct UpdateOfferConfig<'info> {
 
     pub prop_amm_state: Option<Box<Account<'info, PropAmmState>>>,
 
-    #[account(constraint = fee_config.enabled @ OnreError::ConfigurationDisabled)]
+    /// Must be for the offer's input token decimals.
+    #[account(
+        constraint = fee_config.enabled @ OnreError::ConfigurationDisabled,
+        constraint = fee_config.token_decimals == offer_config.token_in_decimals
+            @ OnreError::FeeConfigDecimalsMismatch
+    )]
     pub fee_config: Box<Account<'info, FeeConfig>>,
 
     #[account(

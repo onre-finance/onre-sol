@@ -217,6 +217,7 @@ impl Fixture {
             },
             instruction::CreateFeeConfig {
                 instance_id: 0,
+                token_decimals: 6,
                 basis_points: 100,
                 minimum_fee_amount: 5,
             },
@@ -410,6 +411,9 @@ impl Fixture {
             );
             send_tx(&mut self.svm, &[instruction], &[&self.boss]).unwrap();
         }
+        // FeeConfigs are bound to input decimals: instance 0 serves the 6-decimal
+        // asset; other decimals get the same 1%/5 policy at instance `decimals`.
+        self.fee = self.fee_for(token_in_mint);
         // The initial permissioned buy already exists. Its creation used the same
         // handler; rebinding its components here also prepares unsupported-path tests.
         if offer == self.offer {
@@ -449,6 +453,33 @@ impl Fixture {
             send_tx(&mut self.svm, &[instruction], &[&self.boss]).unwrap();
         }
         self.offer = offer;
+    }
+
+    /// The fixture's 1%, minimum-5 FeeConfig for `input_mint`'s decimals.
+    fn fee_for(&mut self, input_mint: Pubkey) -> Pubkey {
+        // SPL and Token-2022 base mint layout: decimals follow authority and supply.
+        let decimals = self.svm.get_account(&input_mint).unwrap().data[44];
+        let instance = if decimals == 6 { 0 } else { decimals as u64 };
+        let fee = pda(&[b"fee_config", &instance.to_le_bytes()]);
+        if self.svm.get_account(&fee).is_none() {
+            let instruction = ix(
+                accounts::CreateFeeConfig {
+                    fee_vault: vault(VaultKind::Fee),
+                    fee_config: fee,
+                    state: find_state_pda().0,
+                    boss: self.boss.pubkey(),
+                    system_program: SYSTEM_PROGRAM_ID,
+                },
+                instruction::CreateFeeConfig {
+                    instance_id: instance,
+                    token_decimals: decimals,
+                    basis_points: 100,
+                    minimum_fee_amount: 5,
+                },
+            );
+            send_tx(&mut self.svm, &[instruction], &[&self.boss]).unwrap();
+        }
+        fee
     }
 
     fn initialize_legacy_main_offer(&mut self) {
@@ -564,7 +595,7 @@ impl Fixture {
             managed_token: managed(self.mint),
             pricer: price(self.mint, 0),
             quoter: config.quoter,
-            fee_config: self.fee,
+            fee_config: config.fee_config,
             proceeds_vault: vault(VaultKind::Proceeds),
             fee_vault: vault(VaultKind::Fee),
         }

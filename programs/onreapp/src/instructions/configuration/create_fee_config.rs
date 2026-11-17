@@ -2,6 +2,7 @@ use crate::{
     constants::{seeds::STATE, MAX_ALLOWED_FEE_BPS},
     model::{seeds::FEE_CONFIG, FeeConfig, VaultConfig, VaultKind},
     state::State,
+    utils::MAX_TOKEN_DECIMALS,
     OnreError,
 };
 use anchor_lang::prelude::*;
@@ -15,7 +16,8 @@ pub struct FeeConfigCreatedEvent {
     pub timestamp: i64,
 }
 
-/// Creates an input-token fee policy referencing an existing Fee-kind vault.
+/// Creates an input-token fee policy for `token_decimals`-decimal input tokens,
+/// referencing an existing Fee-kind vault.
 #[derive(Accounts)]
 #[instruction(instance_id: u64)]
 pub struct CreateFeeConfig<'info> {
@@ -49,13 +51,19 @@ pub struct CreateFeeConfig<'info> {
 pub fn create_fee_config(
     ctx: Context<CreateFeeConfig>,
     instance_id: u64,
+    token_decimals: u8,
     basis_points: u16,
     minimum_fee_amount: u64,
 ) -> Result<()> {
+    require!(
+        token_decimals <= MAX_TOKEN_DECIMALS,
+        OnreError::DecimalsExceedMax
+    );
     require!(basis_points <= MAX_ALLOWED_FEE_BPS, OnreError::InvalidFee);
     ctx.accounts.fee_config.set_inner(FeeConfig {
         instance_id,
         fee_vault: ctx.accounts.fee_vault.key(),
+        token_decimals,
         basis_points,
         minimum_fee_amount,
         enabled: true,
