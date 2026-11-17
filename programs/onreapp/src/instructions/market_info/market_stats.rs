@@ -197,7 +197,7 @@ pub(crate) fn refresh_modular_market_stats<'info>(
     } else {
         None
     };
-    if legacy.map(|legacy| legacy.key()) != Some(managed_token.market_stats) {
+    if legacy.map(|legacy| legacy.key()) != managed_token.market_stats() {
         refresh_selected_market_stats(
             program_id,
             state,
@@ -281,12 +281,12 @@ fn refresh_selected_market_stats<'info>(
     market_stats_account: &AccountInfo<'info>,
     valuation: impl FnOnce() -> Result<MarketValuation>,
 ) -> Result<()> {
-    if managed_token.market_stats == Pubkey::default() {
+    let Some(selected) = managed_token.market_stats() else {
         return Ok(());
-    }
+    };
     require_keys_eq!(
         market_stats_account.key(),
-        managed_token.market_stats,
+        selected,
         OnreError::InvalidMarketStatsPda
     );
     let mut market_stats: MarketStats = load_pda_account(

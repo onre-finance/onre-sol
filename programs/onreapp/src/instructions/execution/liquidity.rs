@@ -26,13 +26,13 @@ pub(super) struct LiquidityContext {
 pub(super) fn validate(program_id: &Pubkey, a: &Execution) -> Result<LiquidityContext> {
     require!(
         a.config.offer_config.direction != OfferDirection::ManagedToAsset
-            || a.config.offer_config.source_vault != Pubkey::default(),
+            || a.config.offer_config.source_vault().is_some(),
         OnreError::LiquidityVaultRequired
     );
     Ok(LiquidityContext {
         source: validate_role(
             program_id,
-            a.config.offer_config.source_vault,
+            a.config.offer_config.source_vault(),
             a.custody.source_vault.as_ref(),
             a.custody.source_token_out.as_ref(),
             a.token_out_mint.key(),
@@ -40,7 +40,7 @@ pub(super) fn validate(program_id: &Pubkey, a: &Execution) -> Result<LiquidityCo
         )?,
         destination: validate_role(
             program_id,
-            a.config.offer_config.destination_vault,
+            a.config.offer_config.destination_vault(),
             a.custody.destination_vault.as_ref(),
             a.custody.destination_token_in.as_ref(),
             a.token_in_mint.key(),
@@ -51,19 +51,19 @@ pub(super) fn validate(program_id: &Pubkey, a: &Execution) -> Result<LiquidityCo
 
 fn validate_role(
     program_id: &Pubkey,
-    reference: Pubkey,
+    reference: Option<Pubkey>,
     vault: Option<&UncheckedAccount>,
     token: Option<&UncheckedAccount>,
     mint: Pubkey,
     program: Pubkey,
 ) -> Result<VaultContext> {
-    if reference == Pubkey::default() {
+    let Some(reference) = reference else {
         require!(
             vault.is_none() && token.is_none(),
             OnreError::InvalidConfigurableVault
         );
         return Ok(VaultContext::default());
-    }
+    };
     let vault = vault.ok_or(OnreError::LiquidityVaultRequired)?;
     require_keys_eq!(vault.key(), reference, OnreError::InvalidConfigurableVault);
     validate_liquidity_vault(&vault.to_account_info(), program_id)?;
@@ -235,18 +235,17 @@ fn deposit_input<'info>(
 /// The configured Haircut vault must be supplied exactly, with its canonical
 /// input-mint ATA; offers without one must omit both accounts.
 pub(super) fn validate_haircut(program_id: &Pubkey, a: &Execution) -> Result<()> {
-    let reference = a.config.offer_config.haircut_vault;
     let (vault, token) = (
         a.custody.haircut_vault.as_ref(),
         a.custody.haircut_token_in.as_ref(),
     );
-    if reference == Pubkey::default() {
+    let Some(reference) = a.config.offer_config.haircut_vault() else {
         require!(
             vault.is_none() && token.is_none(),
             OnreError::UnexpectedHaircutVault
         );
         return Ok(());
-    }
+    };
     let vault = vault.ok_or(OnreError::HaircutVaultRequired)?;
     require_keys_eq!(vault.key(), reference, OnreError::InvalidConfigurableVault);
     require_keys_eq!(

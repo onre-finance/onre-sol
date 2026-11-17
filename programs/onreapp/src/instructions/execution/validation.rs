@@ -91,16 +91,15 @@ fn validate_prop_amm(program_id: &Pubkey, a: &Execution) -> Result<()> {
         a.config.offer_config.token_out_mint,
         a.custody.prop_amm_state.as_deref(),
     )?;
-    require_keys_eq!(
-        state,
-        a.config.offer_config.pressure_state,
+    require!(
+        state == a.config.offer_config.pressure_state(),
         OnreError::IncompatibleQuoter
     );
     if a.config.quoter.kind == QuoterKind::PropAmm
         && a.config.offer_config.direction == OfferDirection::AssetToManaged
     {
         require!(
-            a.config.offer_config.destination_vault != Pubkey::default(),
+            a.config.offer_config.destination_vault().is_some(),
             OnreError::LiquidityVaultRequired
         );
     }

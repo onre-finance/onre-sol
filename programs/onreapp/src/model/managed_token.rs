@@ -21,3 +21,13 @@ pub struct ManagedTokenConfig {
     /// instructions always mint directly. See `utils::program_minter`.
     pub mint_multisig: Pubkey,
 }
+
+/// Optional references, `None` when stored as `Pubkey::default()`.
+impl ManagedTokenConfig {
+    pub fn market_stats(&self) -> Option<Pubkey> {
+        super::optional(self.market_stats)
+    }
+    pub fn mint_multisig(&self) -> Option<Pubkey> {
+        super::optional(self.mint_multisig)
+    }
+}

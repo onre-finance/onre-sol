@@ -163,7 +163,7 @@ fn settle_collected_input<'info>(
                 route.signer_seeds,
                 quote.net_input_amount - quote.liquidity_refill_amount,
             )?;
-            if a.config.offer_config.source_vault != Pubkey::default() {
+            if a.config.offer_config.source_vault().is_some() {
                 liquidity::consume(a, quote.amount_out, route.output)?;
             } else {
                 a.minter(authority_bump)?.mint(
@@ -177,7 +177,7 @@ fn settle_collected_input<'info>(
             }
         }
         OfferDirection::ManagedToAsset => {
-            if a.config.offer_config.destination_vault != Pubkey::default() {
+            if a.config.offer_config.destination_vault().is_some() {
                 liquidity::deposit_destination(
                     a,
                     route.input,
@@ -217,8 +217,8 @@ fn settle_collected_input<'info>(
 /// whole net input), or when nothing was withheld.
 pub(super) fn retained_haircut(offer: &OfferConfig, quote: &OfferQuote) -> Result<u64> {
     if offer.direction != OfferDirection::ManagedToAsset
-        || offer.destination_vault != Pubkey::default()
-        || offer.haircut_vault == Pubkey::default()
+        || offer.destination_vault().is_some()
+        || offer.haircut_vault().is_none()
         || quote.amount_out >= quote.raw_amount_out
     {
         return Ok(0);

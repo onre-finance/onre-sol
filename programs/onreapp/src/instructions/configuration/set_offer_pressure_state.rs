@@ -49,7 +49,8 @@ pub fn set_offer_pressure_state(ctx: Context<SetOfferPressureState>) -> Result<(
         a.offer_config.token_in_mint,
         a.offer_config.token_out_mint,
         a.prop_amm_state.as_deref(),
-    )?;
+    )?
+    .unwrap_or_default();
     let previous_state = a.offer_config.pressure_state;
     require_keys_neq!(pressure_state, previous_state, OnreError::NoChange);
     a.offer_config.pressure_state = pressure_state;

@@ -67,6 +67,15 @@ All accounts use normal Anchor/Borsh serialization, not `repr(C)` or zero-copy.
 Field order in each domain module defines the proposed serialized layout. `INIT_SPACE`
 excludes the eight-byte account discriminator. There is no implicit padding.
 
+Optional references in stored accounts (OfferConfig's pressure state and
+source/destination/haircut vaults, ManagedTokenConfig's market stats and mint
+multisig) are plain `Pubkey` fields with `Pubkey::default()` meaning absent, never
+`Option<Pubkey>`: every layout stays fixed, so field offsets are stable for
+`memcmp` filters, matching EVM's `address(0)`. Program code reads them through
+`Option`-returning accessors (`offer.source_vault()`, `managed_token.mint_multisig()`,
+built on `model::optional`) and writes them with `unwrap_or_default()`. Instructions
+take them as optional accounts, so clients pass `null`/omit them.
+
 The model is split into `pricer`, `quoter`, `prop_amm`, `fee`, `vault`, `offer`,
 `buffer`, `fulfillment`, `managed_token`, and `supply_exclusions` modules. Each module owns its domain's account and supporting types. `model/mod.rs`
 re-exports the types, preserving existing `model::Pricer`-style imports alongside

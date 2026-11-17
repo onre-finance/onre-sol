@@ -150,7 +150,7 @@ pub(crate) fn execute<'info, A: ExecutionAccounts<'info>>(
                 .min(quote.net_input_amount as u128)
                 as u64;
         }
-        e.config.offer_config.pressure_state != Pubkey::default()
+        e.config.offer_config.pressure_state().is_some()
     };
     if pressure_linked {
         prop_amm::record(
@@ -197,14 +197,14 @@ pub(crate) fn execute<'info, A: ExecutionAccounts<'info>>(
         } else {
             0
         },
-        source_amount: if offer.source_vault != Pubkey::default() {
+        source_amount: if offer.source_vault().is_some() {
             quote.amount_out
         } else {
             0
         },
         destination_amount: match route.direction {
             OfferDirection::AssetToManaged => quote.liquidity_refill_amount,
-            OfferDirection::ManagedToAsset if offer.destination_vault != Pubkey::default() => {
+            OfferDirection::ManagedToAsset if offer.destination_vault().is_some() => {
                 quote.net_input_amount
             }
             _ => 0,
