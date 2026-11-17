@@ -370,7 +370,7 @@ impl<'a, 'info> Execution<'a, 'info> {
     /// Program minting path for the managed mint in its configured mode.
     pub(super) fn minter(&self, authority_bump: u8) -> Result<ProgramMinter<'a, 'info>> {
         ProgramMinter::resolve(
-            self.config.managed_token.mint_multisig,
+            self.config.managed_token.mint_multisig(),
             self.managed_mint(),
             self.mint_authority.as_ref(),
             authority_bump,

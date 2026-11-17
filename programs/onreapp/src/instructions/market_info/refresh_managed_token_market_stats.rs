@@ -71,7 +71,7 @@ pub fn refresh_managed_token_market_stats(
     validate_canonical_usd_pricer(ctx.program_id, &mint, &a.pricer)?;
     let onyc = mint == a.state.onyc_mint;
     require!(
-        onyc || a.managed_token.market_stats != Pubkey::default(),
+        onyc || a.managed_token.market_stats().is_some(),
         OnreError::MarketStatsNotSelected
     );
     let legacy = a

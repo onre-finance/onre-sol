@@ -98,7 +98,7 @@ pub fn update_offer_config(ctx: Context<UpdateOfferConfig>) -> Result<()> {
     let next = OfferConfig {
         pricer: a.pricer.key(),
         quoter: a.quoter.key(),
-        pressure_state,
+        pressure_state: pressure_state.unwrap_or_default(),
         fee_config: a.fee_config.key(),
         proceeds_vault: a.proceeds_vault.key(),
         source_vault: source_vault.map(|v| v.key()).unwrap_or_default(),

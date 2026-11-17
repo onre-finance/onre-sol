@@ -5,7 +5,8 @@ use crate::{
 use anchor_lang::prelude::*;
 
 /// One optional tracker per offer. The selected quote algorithm and its accounting
-/// link are separate; a PropAmm quoter must use its own state for both.
+/// link are separate; a PropAmm quoter must use its own state for both. Returns the
+/// validated link, `None` for an untracked NAV offer.
 pub(crate) fn validate_pressure_link(
     program_id: &Pubkey,
     quoter: Pubkey,
@@ -14,10 +15,10 @@ pub(crate) fn validate_pressure_link(
     token_in: Pubkey,
     token_out: Pubkey,
     state: Option<&Account<PropAmmState>>,
-) -> Result<Pubkey> {
+) -> Result<Option<Pubkey>> {
     let Some(state) = state else {
         require!(kind != QuoterKind::PropAmm, OnreError::IncompatibleQuoter);
-        return Ok(Pubkey::default());
+        return Ok(None);
     };
     let (expected, bump) =
         Pubkey::find_program_address(&[PROP_AMM, state.quoter.as_ref()], program_id);
@@ -35,5 +36,5 @@ pub(crate) fn validate_pressure_link(
     if kind == QuoterKind::PropAmm {
         require_keys_eq!(state.quoter, quoter, OnreError::IncompatibleQuoter);
     }
-    Ok(state.key())
+    Ok(Some(state.key()))
 }

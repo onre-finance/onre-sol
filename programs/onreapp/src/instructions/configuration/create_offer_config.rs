@@ -163,7 +163,7 @@ pub fn create_offer_config(
         direction,
         pricer: a.pricer.key(),
         quoter: a.quoter.key(),
-        pressure_state,
+        pressure_state: pressure_state.unwrap_or_default(),
         fee_config: a.fee_config.key(),
         proceeds_vault: a.proceeds_vault.key(),
         source_vault: a.source_vault.as_ref().map(|v| v.key()).unwrap_or_default(),
@@ -213,7 +213,7 @@ pub(crate) fn validate_offer_components(
     token_in_mint: Pubkey,
     token_out_mint: Pubkey,
     c: &OfferComponents,
-) -> Result<Pubkey> {
+) -> Result<Option<Pubkey>> {
     let managed_mint = match direction {
         OfferDirection::AssetToManaged => token_out_mint,
         OfferDirection::ManagedToAsset => token_in_mint,

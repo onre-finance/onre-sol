@@ -31,23 +31,26 @@ impl<'a, 'info> ProgramMinter<'a, 'info> {
     /// authority. Multisig contents are validated when the mode is enabled; SPL
     /// accounts cannot change their signer set afterwards.
     pub(crate) fn resolve(
-        configured_multisig: Pubkey,
+        configured_multisig: Option<Pubkey>,
         mint: &InterfaceAccount<'info, Mint>,
         mint_authority: &'a AccountInfo<'info>,
         bump: u8,
         multisig: Option<&'a AccountInfo<'info>>,
     ) -> Result<Self> {
-        let authority = if configured_multisig == Pubkey::default() {
-            require!(multisig.is_none(), OnreError::UnexpectedMintMultisig);
-            mint_authority.key()
-        } else {
-            let multisig = multisig.ok_or(OnreError::MintMultisigRequired)?;
-            require_keys_eq!(
-                multisig.key(),
-                configured_multisig,
-                OnreError::InvalidMintMultisig
-            );
-            configured_multisig
+        let authority = match configured_multisig {
+            None => {
+                require!(multisig.is_none(), OnreError::UnexpectedMintMultisig);
+                mint_authority.key()
+            }
+            Some(configured_multisig) => {
+                let multisig = multisig.ok_or(OnreError::MintMultisigRequired)?;
+                require_keys_eq!(
+                    multisig.key(),
+                    configured_multisig,
+                    OnreError::InvalidMintMultisig
+                );
+                configured_multisig
+            }
         };
         require!(
             mint.mint_authority == COption::Some(authority),

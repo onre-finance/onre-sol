@@ -103,7 +103,7 @@ pub fn switch_onyc_buffer_to_per_mint(ctx: Context<SwitchOnycBufferToPerMint>) -
             management_token: &a.legacy_management_token,
             performance_token: &a.legacy_performance_token,
             mint_authority: &a.mint_authority,
-            configured_mint_multisig: a.managed_token.mint_multisig,
+            configured_mint_multisig: a.managed_token.mint_multisig(),
             mint_multisig: a.mint_multisig.as_ref(),
         };
         require!(
@@ -131,7 +131,7 @@ pub fn switch_onyc_buffer_to_per_mint(ctx: Context<SwitchOnycBufferToPerMint>) -
         management_token: &a.legacy_management_token,
         performance_token: &a.legacy_performance_token,
         mint_authority: &a.mint_authority,
-        configured_mint_multisig: a.managed_token.mint_multisig,
+        configured_mint_multisig: a.managed_token.mint_multisig(),
         mint_multisig: a.mint_multisig.as_ref(),
     };
     modular_accrual::take_over_onyc_legacy_buffer(program_id, &per_mint, &settings, now)?;

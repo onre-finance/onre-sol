@@ -67,3 +67,19 @@ pub struct OfferConfig {
     pub enabled: bool,
     pub bump: u8,
 }
+
+/// Optional references, `None` when stored as `Pubkey::default()`.
+impl OfferConfig {
+    pub fn pressure_state(&self) -> Option<Pubkey> {
+        super::optional(self.pressure_state)
+    }
+    pub fn source_vault(&self) -> Option<Pubkey> {
+        super::optional(self.source_vault)
+    }
+    pub fn destination_vault(&self) -> Option<Pubkey> {
+        super::optional(self.destination_vault)
+    }
+    pub fn haircut_vault(&self) -> Option<Pubkey> {
+        super::optional(self.haircut_vault)
+    }
+}

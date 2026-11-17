@@ -81,8 +81,7 @@ pub fn disable_managed_token_mint_multisig(
     ctx: Context<SetManagedTokenMintMultisig>,
 ) -> Result<()> {
     let a = ctx.accounts;
-    let configured = a.managed_token.mint_multisig;
-    require_keys_neq!(configured, Pubkey::default(), OnreError::NoChange);
+    let configured = a.managed_token.mint_multisig().ok_or(OnreError::NoChange)?;
     require_keys_eq!(
         a.mint_multisig.key(),
         configured,

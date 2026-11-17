@@ -584,8 +584,7 @@ impl Fixture {
     }
     /// The configured mint multisig, required exactly in multisig minting mode.
     fn mint_multisig(&self) -> Option<Pubkey> {
-        let configured = read::<ManagedTokenConfig>(&self.svm, managed(self.mint)).mint_multisig;
-        (configured != Pubkey::default()).then_some(configured)
+        read::<ManagedTokenConfig>(&self.svm, managed(self.mint)).mint_multisig()
     }
     /// The selected offer's component accounts.
     fn config_accounts(&self) -> accounts::TakeOfferConfigAccounts {

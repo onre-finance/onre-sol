@@ -38,7 +38,7 @@ pub(crate) struct BufferContext<'a, 'info> {
     pub performance_token: &'a UncheckedAccount<'info>,
     pub mint_authority: &'a UncheckedAccount<'info>,
     /// Configured `ManagedTokenConfig::mint_multisig` and the supplied account.
-    pub configured_mint_multisig: Pubkey,
+    pub configured_mint_multisig: Option<Pubkey>,
     pub mint_multisig: Option<&'a UncheckedAccount<'info>>,
 }
 

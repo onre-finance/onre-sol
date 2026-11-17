@@ -44,7 +44,7 @@ fn context<'a, 'info>(a: &Execution<'a, 'info>) -> Result<BufferContext<'a, 'inf
         management_token,
         performance_token,
         mint_authority: a.mint_authority,
-        configured_mint_multisig: a.config.managed_token.mint_multisig,
+        configured_mint_multisig: a.config.managed_token.mint_multisig(),
         mint_multisig: b.mint_multisig.as_ref(),
     })
 }

@@ -802,17 +802,16 @@ fn prop_amm_sell_burns_only_the_paid_share_and_retains_the_haircut() {
 
         // A haircut vault belongs only on Prop AMM sells without a destination.
         let buy_config: OfferConfig = read(&f.svm, buy);
-        let role = |key: Pubkey| (key != Pubkey::default()).then_some(key);
         let instruction = ix(
             accounts::UpdateOfferConfig {
                 offer_config: buy,
                 pricer: buy_config.pricer,
                 quoter: buy_config.quoter,
-                prop_amm_state: role(buy_config.pressure_state),
+                prop_amm_state: buy_config.pressure_state(),
                 fee_config: buy_config.fee_config,
                 proceeds_vault: buy_config.proceeds_vault,
-                source_vault: role(buy_config.source_vault),
-                destination_vault: role(buy_config.destination_vault),
+                source_vault: buy_config.source_vault(),
+                destination_vault: buy_config.destination_vault(),
                 haircut_vault: Some(haircut),
                 state: find_state_pda().0,
                 boss: f.boss.pubkey(),

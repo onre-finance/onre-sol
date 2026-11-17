@@ -78,7 +78,7 @@ impl<'info> ManagedBufferAccounts<'info> {
             management_token: &self.management_token,
             performance_token: &self.performance_token,
             mint_authority: &self.mint_authority,
-            configured_mint_multisig: self.managed_token.mint_multisig,
+            configured_mint_multisig: self.managed_token.mint_multisig(),
             mint_multisig: self.mint_multisig.as_ref(),
         }
     }
