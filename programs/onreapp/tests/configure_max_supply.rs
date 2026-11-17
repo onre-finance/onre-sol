@@ -397,7 +397,7 @@ fn test_take_offer_cannot_exceed_max_supply() {
     create_token_account(&mut svm, &usdc_mint, &boss, 0);
 
     // Try to take 2 USDC at price 1.0 = 2 ONyc - exceeds 1 token cap
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &user.pubkey(),
         &boss,
         &usdc_mint,
@@ -465,7 +465,7 @@ fn test_take_offer_can_take_within_cap() {
     create_token_account(&mut svm, &usdc_mint, &boss, 0);
 
     // 1 USDC at price 1.0 = 1 ONyc - within 10 token cap
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &user.pubkey(),
         &boss,
         &usdc_mint,
@@ -536,7 +536,7 @@ fn test_take_offer_multiple_users_until_cap() {
     svm.airdrop(&user1.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
     create_token_account(&mut svm, &usdc_mint, &user1.pubkey(), 10_000_000_000);
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &user1.pubkey(),
         &boss,
         &usdc_mint,
@@ -554,7 +554,7 @@ fn test_take_offer_multiple_users_until_cap() {
     svm.airdrop(&user2.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
     create_token_account(&mut svm, &usdc_mint, &user2.pubkey(), 10_000_000_000);
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &user2.pubkey(),
         &boss,
         &usdc_mint,
@@ -572,7 +572,7 @@ fn test_take_offer_multiple_users_until_cap() {
     svm.airdrop(&user3.pubkey(), 10 * INITIAL_LAMPORTS).unwrap();
     create_token_account(&mut svm, &usdc_mint, &user3.pubkey(), 10_000_000_000);
 
-    let ix = build_take_offer_ix(
+    let ix = build_take_offer_v2_ix(
         &user3.pubkey(),
         &boss,
         &usdc_mint,
@@ -675,13 +675,12 @@ fn test_take_offer_permissionless_cannot_exceed_max_supply() {
     create_token_account(&mut svm, &onyc_mint, &user.pubkey(), 0);
 
     // 2 USDC at price 1.0 = 2 ONyc > 1 token cap
-    let ix = build_take_offer_permissionless_ix(
+    let ix = build_take_offer_permissionless_v2_ix(
         &user.pubkey(),
         &boss,
         &usdc_mint,
         &onyc_mint,
         2_000_000,
-        None,
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
@@ -750,13 +749,12 @@ fn test_take_offer_permissionless_respects_cumulative_supply() {
     create_token_account(&mut svm, &usdc_mint, &user1.pubkey(), 10_000_000_000);
     create_token_account(&mut svm, &onyc_mint, &user1.pubkey(), 0);
 
-    let ix = build_take_offer_permissionless_ix(
+    let ix = build_take_offer_permissionless_v2_ix(
         &user1.pubkey(),
         &boss,
         &usdc_mint,
         &onyc_mint,
         1_000_000,
-        None,
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );
@@ -769,13 +767,12 @@ fn test_take_offer_permissionless_respects_cumulative_supply() {
     create_token_account(&mut svm, &usdc_mint, &user2.pubkey(), 10_000_000_000);
     create_token_account(&mut svm, &onyc_mint, &user2.pubkey(), 0);
 
-    let ix = build_take_offer_permissionless_ix(
+    let ix = build_take_offer_permissionless_v2_ix(
         &user2.pubkey(),
         &boss,
         &usdc_mint,
         &onyc_mint,
         1_500_000,
-        None,
         &TOKEN_PROGRAM_ID,
         &TOKEN_PROGRAM_ID,
     );

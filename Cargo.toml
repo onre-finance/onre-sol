@@ -5,7 +5,7 @@ members = [
 resolver = "2"
 
 [workspace.metadata.solana]
-tools-version = "v1.54"
+tools-version = "v1.57"
 
 [profile.release]
 overflow-checks = true

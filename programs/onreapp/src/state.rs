@@ -33,8 +33,29 @@ pub struct State {
     pub max_mint_amount: u64,
     /// Main offer account used for market operations and price discovery
     pub main_offer: Pubkey,
+    /// One-way ONyc BUFFER switch: false keeps the legacy singleton BUFFER active (also
+    /// accrued by modular ONyc execution); true makes the per-mint BUFFER the only
+    /// active one. Set by `switch_onyc_buffer_to_per_mint`; occupies the first
+    /// formerly reserved byte, zero on every deployment.
+    pub onyc_per_mint_buffer_active: bool,
     /// Reserved space for future program state extensions
-    pub reserved: [u8; 56],
+    pub reserved: [u8; 55],
+}
+
+impl State {
+    /// Whether ONyc BUFFER accrual uses the legacy singleton.
+    pub(crate) fn onyc_legacy_buffer_active(&self) -> bool {
+        !self.onyc_per_mint_buffer_active
+    }
+
+    /// Legacy-only BUFFER operations are rejected once ONyc switched to per-mint.
+    pub(crate) fn require_onyc_legacy_buffer_active(&self) -> Result<()> {
+        require!(
+            self.onyc_legacy_buffer_active(),
+            crate::OnreError::LegacyBufferRetired
+        );
+        Ok(())
+    }
 }
 
 /// Program-derived authority for permissionless token routing operations
@@ -51,18 +72,21 @@ pub struct PermissionlessAuthority {
 
 /// Global market statistics PDA holding the canonical protocol-wide metrics.
 ///
-/// This account is intended to be updated by purchase and refresh instructions so
-/// off-chain clients can fetch the latest derived market values from one PDA.
+/// Derived from `["market_stats"]` and recomputed from `State::main_offer` by
+/// legacy purchase and refresh instructions, and from the canonical ONyc Pricer by
+/// modular ONyc `take_offer`. The same layout backs per-mint modular reports. RPC reads return the stored snapshot without
+/// recalculation; clients must check the timestamp and slot for freshness. Supply
+/// uses the separately cached excluded balance, which may need its own refresh.
 #[account]
 #[derive(InitSpace)]
 pub struct MarketStats {
-    /// Latest APY scaled with the program's existing market-info precision.
+    /// Latest APY, scale 6 (1_000_000 = 100%).
     pub apy: u64,
     /// Total circulating ONyc supply at the most recent refresh.
     pub circulating_supply: u64,
-    /// Latest NAV value using the market-info precision.
+    /// Latest main-offer NAV, scale 9 (1_000_000_000 = 1).
     pub nav: u64,
-    /// Latest signed NAV adjustment value using the market-info precision.
+    /// Latest signed NAV adjustment, scale 9.
     pub nav_adjustment: i64,
     /// Latest TVL computed as circulating ONyc supply multiplied by NAV, divided by the price scale.
     pub tvl: u64,

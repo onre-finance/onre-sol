@@ -1,0 +1,63 @@
+use super::{Execution, Route};
+use crate::{
+    constants::seeds,
+    model::OfferAccess,
+    state::State,
+    utils::{approver::approver_utils::verify_approval_message_generic, ApprovalMessage},
+    OnreError,
+};
+use anchor_lang::prelude::*;
+
+/// The offer's stored access mode selects authorization: permissioned offers need
+/// an approver-signed approval for `user`, permissionless offers reject one. Used
+/// by `take_offer` and by `create_fulfillment_request`.
+pub(crate) fn authorize(
+    program_id: &Pubkey,
+    access: OfferAccess,
+    user: &Pubkey,
+    state: &State,
+    instructions_sysvar: &UncheckedAccount,
+    approval: Option<&ApprovalMessage>,
+) -> Result<()> {
+    match access {
+        OfferAccess::Permissioned => verify_approval_message_generic(
+            program_id,
+            user,
+            &state.approver1,
+            &state.approver2,
+            instructions_sysvar,
+            approval.ok_or(OnreError::ApprovalRequired)?,
+        ),
+        OfferAccess::Permissionless => {
+            require!(approval.is_none(), OnreError::UnexpectedApproval);
+            Ok(())
+        }
+    }
+}
+
+/// A permissionless route's intermediary must be the canonical PDA. Anchor
+/// validates its canonical ATA addresses and mint-specific token programs; also
+/// check stored token authorities, since init_if_needed's existing-account path
+/// must not accept an ATA whose SPL owner was changed after creation.
+pub(super) fn validate_intermediary(a: &Execution) -> Result<()> {
+    let Route::Intermediary {
+        authority,
+        input,
+        output,
+        ..
+    } = a.route
+    else {
+        return Ok(());
+    };
+    let expected = Pubkey::find_program_address(&[seeds::PERMISSIONLESS_AUTHORITY], &crate::ID).0;
+    require_keys_eq!(authority.key(), expected, OnreError::WrongAuthority);
+    require!(
+        input.owner == expected && input.mint == a.token_in_mint.key(),
+        OnreError::InvalidVaultTokenInAccount
+    );
+    require!(
+        output.owner == expected && output.mint == a.token_out_mint.key(),
+        OnreError::InvalidPermissionlessTokenOutAccount
+    );
+    Ok(())
+}

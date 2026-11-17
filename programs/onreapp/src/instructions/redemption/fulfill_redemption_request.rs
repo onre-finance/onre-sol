@@ -457,7 +457,9 @@ fn execute_fulfill_redemption_request(
         None
     };
     let buffer_is_initialized = if let Some(accounts) = params.buffer_accounts {
+        // After the one-way ONyc BUFFER switch, legacy redemptions no longer accrue.
         accounts.check_is_initialized(params.program_id)?
+            && params.state.onyc_legacy_buffer_active()
     } else {
         false
     };

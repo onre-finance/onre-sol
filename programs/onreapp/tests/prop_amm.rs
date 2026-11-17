@@ -6,8 +6,8 @@ use onreapp::instructions::prop_amm::{
     apply_hard_wall_liquidity_factor_at_time, apply_hard_wall_reserve_curve_with_params,
     cadence_wave_target_haircut_scaled, cadence_wave_y_for_quote_scaled,
     dynamic_wall_liquidity_at_time, dynamic_wall_position, hard_wall_reserve_from_tvl,
-    preview_effective_sell_volume, roll_prop_amm_volume_tracker, PropAmmPairState, SwapQuote,
-    HARD_WALL_SCALE,
+    preview_effective_sell_volume, record_prop_amm_sell, roll_prop_amm_volume_tracker,
+    PropAmmPairState, SwapQuote, HARD_WALL_SCALE,
 };
 use onreapp::state::ConfigurableVaultKind;
 use solana_sdk::account::Account;
@@ -558,6 +558,51 @@ fn test_prop_amm_volume_tracker_rolls_and_resets_epochs() {
     assert_eq!(state.prev_net_sell_value_stable, 0);
     assert_eq!(state.curr_sell_value_stable, 0);
     assert_eq!(state.curr_buy_value_stable, 0);
+    assert_eq!(state.curr_sell_trade_count, 0);
+}
+
+#[test]
+fn test_prop_amm_volume_tracker_uses_fixed_epoch_boundaries() {
+    // Same rules as the modular tracker and the EVM Prop AMM: D=100, net sells of
+    // 100 during [100, 200). Solana treats epoch_start 0 as unstarted, so the EVM
+    // example's timeline is shifted by 100.
+    let mut state = PropAmmPairState {
+        cadence_threshold: 10,
+        cadence_wave_scaled: 10_000,
+        epoch_duration_seconds: 100,
+        epoch_start: 100,
+        curr_sell_value_stable: 100,
+        curr_sell_trade_count: 5,
+        ..Default::default()
+    };
+    // Previous-epoch pressure decays from the scheduled boundary, without a roll.
+    for (now, expected) in [(200, 100), (250, 50), (299, 1), (300, 0)] {
+        assert_eq!(
+            preview_effective_sell_volume(&state, 0, now).unwrap(),
+            expected
+        );
+    }
+    assert_eq!(preview_effective_sell_volume(&state, 20, 299).unwrap(), 21);
+    // Cadence counts expire at the same boundary.
+    assert!(cadence_wave_y_for_quote_scaled(&state, 199).unwrap() > 0);
+    assert_eq!(cadence_wave_y_for_quote_scaled(&state, 200).unwrap(), 0);
+
+    // A late sell keeps the epoch aligned at 200 instead of restarting at 299.
+    record_prop_amm_sell(&mut state, 20, 299).unwrap();
+    assert_eq!(state.epoch_start, 200);
+    assert_eq!(state.prev_net_sell_value_stable, 100);
+    assert_eq!(state.curr_sell_value_stable, 20);
+    assert_eq!(state.curr_sell_trade_count, 1);
+    assert_eq!(preview_effective_sell_volume(&state, 0, 299).unwrap(), 21);
+    // The old 100 is gone at 300; the new 20 then starts its own decay.
+    assert_eq!(preview_effective_sell_volume(&state, 0, 300).unwrap(), 20);
+    assert_eq!(preview_effective_sell_volume(&state, 0, 350).unwrap(), 10);
+
+    // After two or more elapsed epochs history expires but alignment is preserved.
+    roll_prop_amm_volume_tracker(&mut state, 1_234).unwrap();
+    assert_eq!(state.epoch_start, 1_200);
+    assert_eq!(state.prev_net_sell_value_stable, 0);
+    assert_eq!(state.curr_sell_value_stable, 0);
     assert_eq!(state.curr_sell_trade_count, 0);
 }
 

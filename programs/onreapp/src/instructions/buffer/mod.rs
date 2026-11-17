@@ -5,6 +5,7 @@ pub mod burn_for_nav_increase;
 pub mod deposit_reserve_vault;
 pub mod events;
 pub mod initialize_buffer;
+pub(crate) mod modular_accrual;
 pub mod set_buffer_fee_config;
 pub mod set_buffer_gross_apr;
 pub mod settle_buffer;

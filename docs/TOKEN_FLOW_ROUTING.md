@@ -2,7 +2,30 @@
 
 This page shows where tokens move for the main V2 offer, redemption, and Prop AMM flows. It focuses on accounting destinations: fee vaults, proceeds vaults, redemption vault liquidity, burns, mints, and user payouts.
 
-Legacy `take_offer` and legacy `take_offer_permissionless` do not use configurable accounting vaults or redemption-vault refill routing. If the program controls the token-in mint, net token-in is burned and fee token-in routes to the boss token-in ATA; otherwise both net token-in and fee token-in route to the boss token-in ATA.
+Legacy offer execution uses `take_offer_v2` and `take_offer_permissionless_v2`.
+Both route fees and proceeds through configurable accounting vaults. The V1
+instructions that routed payments to the boss remain removed. The new
+[`take_offer`](MODULAR_TAKE_OFFER.md) uses reusable OfferConfig components for
+NAV and Prop AMM execution, permissioned or permissionless, in both
+directions, with a different ABI from V1. Buys can split net asset input between
+selected liquidity refill and proceeds before minting. Prop AMM uses the liquidity curve for both buys
+and sells. NAV offers can explicitly link the matching pair tracker for relief accounting.
+Managed-to-asset pays asset output from its source and transfers net managed input
+to its optional destination, otherwise burning it. Asset-to-managed takes managed
+inventory from its optional source, otherwise minting. Buy refill goes to its
+optional destination. See [OFFER_VAULT_ROLES.md](OFFER_VAULT_ROLES.md). Old redemption liquidity is included only when its authority is explicitly selected. Fees
+and proceeds remain separate. See the linked execution document for conditional accounts
+and paths that are not enabled yet.
+
+For modular permissionless NAV, the user transfers gross input to the canonical
+`permissionless-1` input ATA. That PDA transfers input fees and net proceeds, or
+deposits net managed input into its configured destination or burns it when absent.
+Output is paid from source inventory, or minted for buys without a source. The PDA then transfers exactly the quoted output to
+the user's output ATA. Preexisting intermediary balances remain unchanged. Both
+intermediary ATAs can be created lazily at the user's expense. The common
+`approval_message` argument must be `None`; permissioned execution still requires
+an approver signature. The stored access and execution modes and the Quoter
+control which route is allowed.
 
 ## Kill Switch
 

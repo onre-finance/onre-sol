@@ -310,7 +310,8 @@ fn execute_open_swap_buy<'info>(
     let buffer_is_initialized = ctx
         .accounts
         .buffer_accounts
-        .check_is_initialized(ctx.program_id)?;
+        .check_is_initialized(ctx.program_id)?
+        && ctx.accounts.state.onyc_legacy_buffer_active();
     let should_accrue = should_accrue_onyc_mint(
         &ctx.accounts.state,
         &ctx.accounts.token_out_mint,

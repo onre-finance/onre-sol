@@ -1,7 +1,7 @@
 import { LOCAL_RPC_URL, STUDIO_URL } from "./constants";
 import { createRuntime, resolveAuthorityPath } from "./runtime";
 import { anchorBuild, regressionFlag, requireSurfpoolRunning, setProgramAuthority, solanaProgramDeploy } from "./surfpool";
-import { assertMainnetMarketsExist, assertTokenPrograms, ensureMainOffer, ensureMarketStats, fundUserStableBalances, overrideForkGovernance } from "./setup";
+import { assertMainnetMarketsExist, assertTokenPrograms, ensureMainOffer, ensureMarketStats, fundUserStableBalances, overrideForkGovernance, syncForkRent } from "./setup";
 import { configureBufferSmoke } from "./scenarios/buffer";
 import { configureVaultRecipientsSmoke, withdrawNonZeroVaultsSmoke } from "./scenarios/configurable-vaults";
 import { runOfferSmoke, runRedemptionSmoke } from "./scenarios/offers-redemptions";
@@ -15,6 +15,7 @@ async function main() {
     console.log(`Authority: ${authorityPath}`);
 
     await requireSurfpoolRunning();
+    await syncForkRent();
     anchorBuild();
 
     const runtime = createRuntime(authorityPath);

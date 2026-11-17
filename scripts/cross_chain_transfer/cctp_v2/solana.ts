@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { BN } from "@coral-xyz/anchor";
+import BN from "bn.js";
 import * as spl from "@solana/spl-token";
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import { getBytes } from "ethers";
@@ -25,7 +25,7 @@ import {
   getAnchorConnection,
 } from "../cctp_v1/utils";
 import { decodeEventNonceFromMessageV2, getDepositForBurnPdasV2, getMessageTransmitterAccount, getProgramsV2, getReceiveMessagePdasV2 } from "./utils-v2";
-import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
+import { bs58 } from "@anchor-lang/core/dist/cjs/utils/bytes";
 
 const destinationCaller = new PublicKey(
   process.env.DESTINATION_CALLER ?? PublicKey.default.toString()

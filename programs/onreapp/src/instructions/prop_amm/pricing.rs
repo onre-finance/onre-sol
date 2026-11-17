@@ -3,6 +3,8 @@ use crate::instructions::market_info::read_market_stats_account;
 use crate::instructions::redemption::load_optional_checked_redemption_offer;
 use anchor_lang::prelude::*;
 
+use super::epoch::Epoch;
+
 use super::config::{
     PropAmmPairState, CADENCE_WAVE_CAP_DIVISOR, CADENCE_WAVE_EASE, CADENCE_WAVE_SCALE,
     CADENCE_WAVE_STEP, DEFAULT_CADENCE_THRESHOLD, MAX_CADENCE_WAVE_SCALED, WALL_SENSITIVITY_SCALE,
@@ -204,41 +206,39 @@ pub fn apply_hard_wall_liquidity_factor_at_time(
     Ok(dampened_amount as u64)
 }
 
+/// Legacy volume epochs follow the shared fixed-boundary rules in `epoch`.
+fn volume_epoch(prop_amm_pair_state: &PropAmmPairState, now: i64) -> Result<(Epoch, u64)> {
+    let duration = u64::try_from(prop_amm_pair_state.epoch_duration_seconds)
+        .map_err(|_| crate::OnreError::InvalidAmount)?;
+    Ok((
+        Epoch::at(prop_amm_pair_state.epoch_start, duration, now)?,
+        duration,
+    ))
+}
+
+fn current_net_sell_value_stable(prop_amm_pair_state: &PropAmmPairState) -> u64 {
+    prop_amm_pair_state
+        .curr_sell_value_stable
+        .saturating_sub(prop_amm_pair_state.curr_buy_value_stable)
+}
+
 pub fn roll_prop_amm_volume_tracker(
     prop_amm_pair_state: &mut PropAmmPairState,
     now: i64,
 ) -> Result<()> {
-    let epoch_duration = prop_amm_pair_state.epoch_duration_seconds;
-    require!(epoch_duration > 0, crate::OnreError::InvalidAmount);
-
-    if prop_amm_pair_state.epoch_start == 0 || now < prop_amm_pair_state.epoch_start {
-        prop_amm_pair_state.epoch_start = now;
-        prop_amm_pair_state.prev_net_sell_value_stable = 0;
-        prop_amm_pair_state.curr_sell_value_stable = 0;
-        prop_amm_pair_state.curr_buy_value_stable = 0;
-        prop_amm_pair_state.curr_sell_trade_count = 0;
+    let (epoch, duration) = volume_epoch(prop_amm_pair_state, now)?;
+    let Some(rollover) = epoch.rollover(duration, now) else {
         return Ok(());
-    }
-
-    let elapsed = now
-        .checked_sub(prop_amm_pair_state.epoch_start)
-        .ok_or(crate::OnreError::ArithmeticUnderflow)?;
-    if elapsed >= epoch_duration.saturating_mul(2) {
-        prop_amm_pair_state.prev_net_sell_value_stable = 0;
-        prop_amm_pair_state.curr_sell_value_stable = 0;
-        prop_amm_pair_state.curr_buy_value_stable = 0;
-        prop_amm_pair_state.curr_sell_trade_count = 0;
-        prop_amm_pair_state.epoch_start = now;
-    } else if elapsed >= epoch_duration {
-        prop_amm_pair_state.prev_net_sell_value_stable = prop_amm_pair_state
-            .curr_sell_value_stable
-            .saturating_sub(prop_amm_pair_state.curr_buy_value_stable);
-        prop_amm_pair_state.curr_sell_value_stable = 0;
-        prop_amm_pair_state.curr_buy_value_stable = 0;
-        prop_amm_pair_state.curr_sell_trade_count = 0;
-        prop_amm_pair_state.epoch_start = now;
-    }
-
+    };
+    prop_amm_pair_state.prev_net_sell_value_stable = if rollover.carry_current_net {
+        current_net_sell_value_stable(prop_amm_pair_state)
+    } else {
+        0
+    };
+    prop_amm_pair_state.curr_sell_value_stable = 0;
+    prop_amm_pair_state.curr_buy_value_stable = 0;
+    prop_amm_pair_state.curr_sell_trade_count = 0;
+    prop_amm_pair_state.epoch_start = rollover.start;
     Ok(())
 }
 
@@ -277,49 +277,14 @@ pub fn preview_effective_sell_volume(
     current_sell_value_stable: u64,
     now: i64,
 ) -> Result<u64> {
-    let epoch_duration = prop_amm_pair_state.epoch_duration_seconds;
-    require!(epoch_duration > 0, crate::OnreError::InvalidAmount);
-
-    let current_net = prop_amm_pair_state
-        .curr_sell_value_stable
-        .saturating_sub(prop_amm_pair_state.curr_buy_value_stable);
-    let (prev_net, curr_net, elapsed) =
-        if prop_amm_pair_state.epoch_start == 0 || now < prop_amm_pair_state.epoch_start {
-            (0_u64, 0_u64, 0_i64)
-        } else {
-            let elapsed = now
-                .checked_sub(prop_amm_pair_state.epoch_start)
-                .ok_or(crate::OnreError::ArithmeticUnderflow)?;
-            if elapsed >= epoch_duration.saturating_mul(2) {
-                (0, 0, 0)
-            } else if elapsed >= epoch_duration {
-                (current_net, 0, 0)
-            } else {
-                (
-                    prop_amm_pair_state.prev_net_sell_value_stable,
-                    current_net,
-                    elapsed,
-                )
-            }
-        };
-
-    let remaining = epoch_duration
-        .checked_sub(elapsed)
-        .ok_or(crate::OnreError::ArithmeticUnderflow)?;
-    let decayed_prev = (prev_net as u128)
-        .checked_mul(remaining as u128)
-        .ok_or(crate::OnreError::MathOverflow)?
-        .checked_div(epoch_duration as u128)
-        .ok_or(crate::OnreError::DivByZero)?;
-    let effective = decayed_prev
-        .checked_add(curr_net as u128)
-        .and_then(|value| value.checked_add(current_sell_value_stable as u128))
-        .ok_or(crate::OnreError::MathOverflow)?;
-    require!(
-        effective <= u64::MAX as u128,
-        crate::OnreError::MathOverflow
-    );
-    Ok(effective as u64)
+    let (epoch, duration) = volume_epoch(prop_amm_pair_state, now)?;
+    let effective = epoch.effective_volume(
+        duration,
+        prop_amm_pair_state.prev_net_sell_value_stable as u128,
+        current_net_sell_value_stable(prop_amm_pair_state) as u128,
+        current_sell_value_stable as u128,
+    )?;
+    u64::try_from(effective).map_err(|_| crate::OnreError::MathOverflow.into())
 }
 
 pub fn dynamic_wall_position(
@@ -454,7 +419,7 @@ pub fn hard_wall_reserve_from_tvl(
     Ok(target as u64)
 }
 
-fn redemption_haircut_scaled(
+pub(crate) fn redemption_haircut_scaled(
     u: u128,
     curve_peg_haircut_bps: u16,
     curve_exponent_scaled: u32,
@@ -550,17 +515,10 @@ fn preview_current_sell_trade_count(
     prop_amm_pair_state: &PropAmmPairState,
     now: i64,
 ) -> Result<u32> {
-    let epoch_duration = prop_amm_pair_state.epoch_duration_seconds;
-    require!(epoch_duration > 0, crate::OnreError::InvalidAmount);
-
-    if prop_amm_pair_state.epoch_start == 0 || now < prop_amm_pair_state.epoch_start {
-        return Ok(0);
-    }
-    let elapsed = now
-        .checked_sub(prop_amm_pair_state.epoch_start)
-        .ok_or(crate::OnreError::ArithmeticUnderflow)?;
-    if elapsed >= epoch_duration {
-        return Ok(0);
-    }
-    Ok(prop_amm_pair_state.curr_sell_trade_count)
+    let (epoch, _) = volume_epoch(prop_amm_pair_state, now)?;
+    Ok(if epoch.is_current() {
+        prop_amm_pair_state.curr_sell_trade_count
+    } else {
+        0
+    })
 }

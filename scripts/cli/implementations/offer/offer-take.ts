@@ -19,33 +19,6 @@ export async function executeOfferTake(opts: GlobalOptions & Record<string, any>
                 const tokenInProgram = getTokenProgramId(params.tokenIn);
                 const tokenOutProgram = getTokenProgramId(params.tokenOut);
 
-                if (params.legacy) {
-                    const boss = await helper.getBoss();
-                    if (user.equals(boss)) {
-                        throw new Error("Legacy take_offer cannot use the boss wallet as taker because user and boss token-in accounts are the same. Use --wallet with a non-boss keypair.");
-                    }
-
-                    if (params.permissionless) {
-                        return await helper.buildTakeOfferPermissionlessLegacyIxs({
-                            tokenInAmount: params.amount,
-                            tokenInMint: params.tokenIn,
-                            tokenOutMint: params.tokenOut,
-                            user,
-                            tokenInProgram,
-                            tokenOutProgram,
-                        });
-                    }
-
-                    return await helper.buildTakeOfferLegacyIxs({
-                        tokenInAmount: params.amount,
-                        tokenInMint: params.tokenIn,
-                        tokenOutMint: params.tokenOut,
-                        user,
-                        tokenInProgram,
-                        tokenOutProgram,
-                    });
-                }
-
                 // Choose between regular and permissionless V2 flow
                 if (params.permissionless) {
                     return await helper.buildTakeOfferPermissionlessIx({
@@ -76,7 +49,7 @@ export async function executeOfferTake(opts: GlobalOptions & Record<string, any>
                     tokenIn: params.tokenIn,
                     tokenOut: params.tokenOut,
                     amount: params.amount,
-                    version: params.legacy ? "Legacy" : "V2",
+                    version: "V2",
                     permissionless: params.permissionless,
                 },
             },

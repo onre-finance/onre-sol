@@ -236,3 +236,45 @@ pub fn test_redemption_request_id(request_id: impl ToString) -> String {
     assert!(request_id.is_ascii() && request_id.len() <= 32);
     format!("{request_id:0>32}")
 }
+
+/// Test shorthand for an offer's access and execution modes. Fixtures also use it
+/// as the offer's `instance_id`, so each mode gets its own offer per pair.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OfferMode {
+    Permissioned,
+    Permissionless,
+    Worker,
+    WorkerPermissionless,
+}
+
+impl OfferMode {
+    pub fn access(self) -> onreapp::model::OfferAccess {
+        use onreapp::model::OfferAccess;
+        match self {
+            OfferMode::Permissioned | OfferMode::Worker => OfferAccess::Permissioned,
+            OfferMode::Permissionless | OfferMode::WorkerPermissionless => {
+                OfferAccess::Permissionless
+            }
+        }
+    }
+
+    pub fn execution(self) -> onreapp::model::OfferExecution {
+        use onreapp::model::OfferExecution;
+        match self {
+            OfferMode::Permissioned | OfferMode::Permissionless => OfferExecution::Instant,
+            OfferMode::Worker | OfferMode::WorkerPermissionless => OfferExecution::Worker,
+        }
+    }
+
+    pub fn of(config: &onreapp::model::OfferConfig) -> Self {
+        [
+            OfferMode::Permissioned,
+            OfferMode::Permissionless,
+            OfferMode::Worker,
+            OfferMode::WorkerPermissionless,
+        ]
+        .into_iter()
+        .find(|mode| (mode.access(), mode.execution()) == (config.access, config.execution))
+        .unwrap()
+    }
+}

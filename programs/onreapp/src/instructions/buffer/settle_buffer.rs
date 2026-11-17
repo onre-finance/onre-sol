@@ -65,6 +65,7 @@ pub struct SettleBuffer<'info> {
 /// Only the configured worker may call this instruction. It provides an explicit
 /// operational settlement path without requiring a trade or an unrelated mint.
 pub fn settle_buffer(ctx: Context<SettleBuffer>) -> Result<()> {
+    ctx.accounts.state.require_onyc_legacy_buffer_active()?;
     let offer = load_main_offer(
         ctx.program_id,
         &ctx.accounts.main_offer.to_account_info(),

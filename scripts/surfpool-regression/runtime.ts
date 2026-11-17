@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, Program, Wallet } from "@coral-xyz/anchor";
+import anchor from "@anchor-lang/core";
+import { AnchorProvider, Program } from "@anchor-lang/core";
 import BN from "bn.js";
 import {
     AddressLookupTableAccount,
@@ -21,6 +21,10 @@ import * as path from "node:path";
 import idl from "../../target/idl/onreapp.json";
 import { Onreapp } from "../../target/types/onreapp";
 import { LOCAL_RPC_URL, PROGRAM_ID } from "./constants";
+
+// Native ESM cannot discover Anchor's CommonJS Wallet re-export.
+const { Wallet } = anchor;
+type Wallet = anchor.Wallet;
 
 export interface SmokeRuntime {
     connection: Connection;

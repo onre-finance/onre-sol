@@ -101,6 +101,8 @@ curr_net = max(0, curr_sell_value_stable - curr_buy_value_stable)
 effective_volume = decayed_prev_net + curr_net + raw_sell_value_stable
 ```
 
+Epochs keep fixed boundaries aligned to the stored start: previous pressure decays linearly from the scheduled boundary, trades roll the start by whole epochs, and history expires after two elapsed epochs. The legacy and modular Prop AMM share these rules.
+
 The current ONYC sell's own raw pair-asset value is included in `effective_volume`, so the sell pays against the pressure it creates. ONYC buys add their net pair-asset input to `curr_buy_value_stable`, which can reduce current-epoch pressure but cannot create negative pressure. The code uses field names ending in `_stable`, but the stored unit is the canonical pair asset's base units.
 
 ---

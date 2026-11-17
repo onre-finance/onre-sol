@@ -1,5 +1,6 @@
-use crate::instructions::offer::offer_utils::{calculate_step_price_at, find_active_vector_at};
+use crate::instructions::offer::offer_utils::calculate_step_price_at;
 use crate::instructions::{Offer, OfferVector};
+use crate::{model::PricingVector, utils::pricing};
 use anchor_lang::prelude::*;
 
 pub struct OfferValuationSnapshot {
@@ -8,26 +9,18 @@ pub struct OfferValuationSnapshot {
     pub next_price_change_timestamp: u64,
 }
 
-pub struct NavAdjustmentSnapshot {
-    pub current_price: u64,
-    pub previous_price: Option<u64>,
-    pub adjustment: i64,
-}
+pub use pricing::{compute_signed_price_delta, NavAdjustmentSnapshot};
 
 pub fn get_active_vector_and_current_price(
     offer: &Offer,
     current_time: u64,
 ) -> Result<(OfferVector, u64)> {
-    let active_vector = find_active_vector_at(offer, current_time)?;
-    let current_price = calculate_step_price_at(
-        active_vector.apr,
-        active_vector.base_price,
-        active_vector.base_time,
-        active_vector.price_fix_duration,
+    let (active_vector, current_price) = pricing::get_active_vector_and_current_price(
+        offer.vectors.iter().map(PricingVector::from),
         current_time,
     )?;
 
-    Ok((active_vector, current_price))
+    Ok((active_vector.into(), current_price))
 }
 
 pub fn get_offer_valuation_snapshot(
@@ -60,39 +53,14 @@ pub fn compute_vector_price_at_time(vector: &OfferVector, at_time: u64) -> Resul
     )
 }
 
-pub fn compute_signed_price_delta(current_price: u64, previous_price: u64) -> Result<i64> {
-    let current = current_price as i128;
-    let previous = previous_price as i128;
-    let delta = current
-        .checked_sub(previous)
-        .ok_or(crate::OnreError::OverflowError)?;
-
-    i64::try_from(delta).map_err(|_| error!(crate::OnreError::OverflowError))
-}
-
 pub fn get_nav_adjustment_snapshot(
     offer: &Offer,
     active_vector: &OfferVector,
 ) -> Result<NavAdjustmentSnapshot> {
-    let current_price = compute_vector_price_at_time(active_vector, active_vector.start_time)?;
-
-    let (previous_price, adjustment) =
-        if let Some(previous_vector) = find_previous_vector(offer, active_vector.start_time) {
-            let previous_price =
-                compute_vector_price_at_time(&previous_vector, active_vector.start_time)?;
-            let adjustment = compute_signed_price_delta(current_price, previous_price)?;
-            (Some(previous_price), adjustment)
-        } else {
-            let adjustment = i64::try_from(current_price)
-                .map_err(|_| error!(crate::OnreError::OverflowError))?;
-            (None, adjustment)
-        };
-
-    Ok(NavAdjustmentSnapshot {
-        current_price,
-        previous_price,
-        adjustment,
-    })
+    pricing::nav_adjustment_snapshot(
+        offer.vectors.iter().map(PricingVector::from),
+        &PricingVector::from(active_vector),
+    )
 }
 
 fn compute_next_price_change_timestamp(

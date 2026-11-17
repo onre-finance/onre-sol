@@ -1,5 +1,12 @@
 # Domain Model
 
+This page describes the legacy runtime model used by V2 trading and ONyc BUFFER
+settlement. The EVM-aligned account layouts and their creation instructions are
+documented in [`MODULAR_MODEL.md`](MODULAR_MODEL.md). Modular
+[`take_offer`](MODULAR_TAKE_OFFER.md) uses its selected liquidity vault, keeps
+ONyc's existing BUFFER accounts, and uses per-mint BUFFER accounts for other
+managed tokens.
+
 This page explains the protocol objects in business terms first, then maps them to PDAs. It is meant for product, accounting, integration, and architecture discussions. Instruction-level token flow diagrams live in [`TOKEN_FLOW_ROUTING.md`](TOKEN_FLOW_ROUTING.md).
 
 The structure follows two simple modeling rules:

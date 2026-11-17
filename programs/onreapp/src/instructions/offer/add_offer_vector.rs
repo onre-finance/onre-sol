@@ -1,7 +1,9 @@
 use super::offer_state::{Offer, OfferVector};
 use crate::constants::seeds;
-use crate::instructions::{find_active_vector_at, find_vector_index_by_start_time};
+use crate::instructions::find_vector_index_by_start_time;
+use crate::model::PricingVector;
 use crate::state::State;
+use crate::utils::pricing;
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::Mint;
 use std::cmp::max;
@@ -236,36 +238,17 @@ fn validate_inputs(
 /// # Returns
 /// * `Ok(())` - If cleanup completes successfully or no active vector exists
 fn clean_old_vectors(offer: &mut Offer, new_vector: &OfferVector, current_time: u64) -> Result<()> {
-    // Find currently active vector
-    let active_vector = if new_vector.start_time == current_time {
-        Ok(*new_vector)
-    } else {
-        find_active_vector_at(offer, current_time)
+    // Same retention rule as modular Pricers: keep the active vector, the one
+    // before it, and all future vectors.
+    let Some(retention) = pricing::vector_retention(
+        offer.vectors.iter().map(PricingVector::from),
+        new_vector.start_time,
+        current_time,
+    ) else {
+        return Ok(()); // No active vector found, nothing to clean
     };
-
-    let active_vector_start_time = match active_vector {
-        Ok(vector) => vector.start_time,
-        Err(_) => return Ok(()), // No active vector found, nothing to clean
-    };
-
-    // Find previously active vector (closest smaller vector_start_timestamp)
-    let prev_vector = find_active_vector_at(offer, active_vector?.start_time - 1);
-
-    let prev_vector_start_time = match prev_vector {
-        Ok(vector) => vector.start_time,
-        Err(_) => 0, // If no previous vector exists, use 0
-    };
-
-    // Clear all vectors except active and previous
     for vector in offer.vectors.iter_mut() {
-        if vector.start_time != 0 // Don't touch already empty slots
-            // Keep active vector
-            && vector.start_time != active_vector_start_time
-            // Keep previous vector
-            && vector.start_time != prev_vector_start_time
-            // Keep all future vectors
-            && vector.start_time < active_vector_start_time
-        {
+        if pricing::is_evicted(vector.start_time, retention) {
             emit!(OfferVectorEvictedEvent {
                 offer_token_in_mint: offer.token_in_mint,
                 offer_token_out_mint: offer.token_out_mint,
@@ -274,6 +257,5 @@ fn clean_old_vectors(offer: &mut Offer, new_vector: &OfferVector, current_time: 
             *vector = OfferVector::default(); // Clear the vector
         }
     }
-
     Ok(())
 }
