@@ -47,15 +47,6 @@ impl State {
     pub(crate) fn onyc_legacy_buffer_active(&self) -> bool {
         !self.onyc_per_mint_buffer_active
     }
-
-    /// Legacy-only BUFFER operations are rejected once ONyc switched to per-mint.
-    pub(crate) fn require_onyc_legacy_buffer_active(&self) -> Result<()> {
-        require!(
-            self.onyc_legacy_buffer_active(),
-            crate::OnreError::LegacyBufferRetired
-        );
-        Ok(())
-    }
 }
 
 /// Program-derived authority for permissionless token routing operations

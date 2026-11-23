@@ -1,6 +1,5 @@
 use super::{Execution, Route};
 use crate::{
-    constants::seeds,
     model::OfferAccess,
     state::State,
     utils::{approver::approver_utils::verify_approval_message_generic, ApprovalMessage},
@@ -35,10 +34,10 @@ pub(crate) fn authorize(
     }
 }
 
-/// A permissionless route's intermediary must be the canonical PDA. Anchor
-/// validates its canonical ATA addresses and mint-specific token programs; also
-/// check stored token authorities, since init_if_needed's existing-account path
-/// must not accept an ATA whose SPL owner was changed after creation.
+/// A permissionless route's intermediary is the seed-validated canonical PDA, and
+/// Anchor validates its canonical ATA addresses and mint-specific token programs;
+/// also check stored token authorities, since init_if_needed's existing-account
+/// path must not accept an ATA whose SPL owner was changed after creation.
 pub(super) fn validate_intermediary(a: &Execution) -> Result<()> {
     let Route::Intermediary {
         authority,
@@ -49,8 +48,7 @@ pub(super) fn validate_intermediary(a: &Execution) -> Result<()> {
     else {
         return Ok(());
     };
-    let expected = Pubkey::find_program_address(&[seeds::PERMISSIONLESS_AUTHORITY], &crate::ID).0;
-    require_keys_eq!(authority.key(), expected, OnreError::WrongAuthority);
+    let expected = authority.key();
     require!(
         input.owner == expected && input.mint == a.token_in_mint.key(),
         OnreError::InvalidVaultTokenInAccount

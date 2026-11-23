@@ -1019,8 +1019,36 @@ export type Onreapp = {
         {
           "name": "reserveVault",
           "docs": [
-            "its reserve ATA; must equal the reserve vault stored in the BUFFER state."
-          ]
+            "its reserve ATA; must also equal the reserve vault stored in the BUFFER state."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  114,
+                  101,
+                  115,
+                  101,
+                  114,
+                  118,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "bufferAccounts.managedMint",
+                "account": "managedBufferAccounts"
+              }
+            ]
+          }
         },
         {
           "name": "marketStats",
@@ -2474,10 +2502,7 @@ export type Onreapp = {
           "optional": true
         },
         {
-          "name": "feeConfig",
-          "docs": [
-            "Must be for the input token's decimals; checked after the mint pair."
-          ]
+          "name": "feeConfig"
         },
         {
           "name": "proceedsVault"
@@ -9532,7 +9557,8 @@ export type Onreapp = {
           "name": "pricer",
           "docs": [
             "Canonical USD instance-zero Pricer of the managed mint, the token-wide",
-            "valuation source also used by trades and BUFFER settlement."
+            "valuation source also used by trades and BUFFER settlement. Its address",
+            "binds the mint and USD denomination."
           ]
         },
         {
@@ -9646,11 +9672,43 @@ export type Onreapp = {
         {
           "name": "legacyExcludedBalance",
           "docs": [
-            "written with the same amount; ignored for other mints. Address validated in",
-            "the handler; created on first use."
+            "written with the same amount; ignored for other mints. Created on first use."
           ],
           "writable": true,
-          "optional": true
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  95,
+                  115,
+                  117,
+                  112,
+                  112,
+                  108,
+                  121,
+                  95,
+                  101,
+                  120,
+                  99,
+                  108,
+                  95,
+                  98,
+                  97,
+                  108,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "payer",
@@ -11369,11 +11427,43 @@ export type Onreapp = {
         {
           "name": "legacyExcludedBalance",
           "docs": [
-            "written with the same amount; ignored for other mints. Address validated in",
-            "the handler; created on first use."
+            "written with the same amount; ignored for other mints. Created on first use."
           ],
           "writable": true,
-          "optional": true
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  95,
+                  115,
+                  117,
+                  112,
+                  112,
+                  108,
+                  121,
+                  95,
+                  101,
+                  120,
+                  99,
+                  108,
+                  95,
+                  98,
+                  97,
+                  108,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "state",
@@ -12977,9 +13067,34 @@ export type Onreapp = {
         {
           "name": "permissionlessAuthority",
           "docs": [
-            "Its address and token authorities are checked before execution."
+            "(required by them); its ATAs' stored authorities are checked before execution."
           ],
-          "optional": true
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  108,
+                  101,
+                  115,
+                  115,
+                  45,
+                  49
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "permissionlessTokenIn",

@@ -4,10 +4,20 @@ fn assert_permissionless_error(
     result: Result<TransactionMetadata, FailedTransactionMetadata>,
     expected: OnreError,
 ) {
+    assert_permissionless_code(result, 6000 + expected as u32);
+}
+
+/// Anchor `ConstraintSeeds`.
+const CONSTRAINT_SEEDS: u32 = 2006;
+
+fn assert_permissionless_code(
+    result: Result<TransactionMetadata, FailedTransactionMetadata>,
+    code: u32,
+) {
     let failure = result.unwrap_err();
     assert_eq!(
         failure.err,
-        TransactionError::InstructionError(1, InstructionError::Custom(6000 + expected as u32)),
+        TransactionError::InstructionError(1, InstructionError::Custom(code)),
         "{:?}",
         failure.meta.logs
     );
@@ -128,10 +138,8 @@ fn permissionless_accounts_cannot_be_omitted_or_redirected() {
         output,
         derive_ata(&impostor, &f.mint, &f.token_program),
     );
-    assert_permissionless_error(
-        f.send_without_approval(instruction),
-        OnreError::WrongAuthority,
-    );
+    // The intermediary is seed-constrained to the canonical PDA.
+    assert_permissionless_code(f.send_without_approval(instruction), CONSTRAINT_SEEDS);
     assert_eq!(
         f.balance(f.asset, f.user.pubkey(), f.asset_program),
         10_000_000

@@ -35,6 +35,7 @@ pub struct SwitchOnycBufferToPerMint<'info> {
         has_one = boss @ OnreError::InvalidBoss,
         has_one = onyc_mint @ OnreError::InvalidOnycMint,
         constraint = !state.is_killed @ OnreError::KillSwitchActivated,
+        constraint = state.onyc_legacy_buffer_active() @ OnreError::LegacyBufferRetired,
     )]
     pub state: Box<Account<'info, State>>,
 
@@ -90,7 +91,6 @@ pub fn switch_onyc_buffer_to_per_mint(ctx: Context<SwitchOnycBufferToPerMint>) -
     let now = Clock::get()?.unix_timestamp;
     let program_id = ctx.program_id;
     let a = ctx.accounts;
-    a.state.require_onyc_legacy_buffer_active()?;
     let (max_supply, max_mint) = effective_mint_limits(&a.state, &a.managed_token);
     let settings = {
         let legacy = BufferContext {
