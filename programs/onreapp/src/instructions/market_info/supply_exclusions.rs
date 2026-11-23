@@ -6,7 +6,6 @@
 //! readers use only that cached amount. For ONyc the same amount is also written to
 //! the legacy `CirculatingSupplyExcludedBalance` cache that legacy paths read.
 use crate::{
-    constants::seeds::CIRCULATING_SUPPLY_EXCLUDED_BALANCE,
     model::{seeds::SUPPLY_EXCLUSIONS, ManagedTokenSupplyExclusions},
     state::{CirculatingSupplyExcludedBalance, State},
     utils::{load_optional_pda_account, load_or_init_pda_account, store_pda_account},
@@ -100,14 +99,15 @@ pub(crate) fn sum_balances(
 
 /// Stores `excluded_amount` with the current time, mirrors it into the legacy
 /// ONyc cache when the mint is ONyc (creating it with `payer` if absent), and emits
-/// the update event.
+/// the update event. `legacy_excluded_balance` is the seed-validated legacy cache
+/// and its bump; callers' constraints require it for ONyc.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn record<'info>(
     program_id: &Pubkey,
     state: &State,
     exclusions: &mut ManagedTokenSupplyExclusions,
     excluded_amount: u64,
-    legacy_excluded_balance: Option<&AccountInfo<'info>>,
+    legacy_excluded_balance: Option<(AccountInfo<'info>, u8)>,
     payer: &AccountInfo<'info>,
     system_program: &AccountInfo<'info>,
     updater: Pubkey,
@@ -118,17 +118,10 @@ pub(crate) fn record<'info>(
     exclusions.last_updated_slot = clock.slot;
 
     let legacy = if exclusions.managed_mint == state.onyc_mint {
-        let legacy =
+        let (legacy, bump) =
             legacy_excluded_balance.ok_or(OnreError::InvalidCirculatingSupplyExcludedBalance)?;
-        let (expected, bump) =
-            Pubkey::find_program_address(&[CIRCULATING_SUPPLY_EXCLUDED_BALANCE], program_id);
-        require_keys_eq!(
-            legacy.key(),
-            expected,
-            OnreError::InvalidCirculatingSupplyExcludedBalance
-        );
         let mut cache = load_or_init_pda_account::<CirculatingSupplyExcludedBalance>(
-            legacy,
+            &legacy,
             payer,
             system_program,
             program_id,
@@ -138,8 +131,8 @@ pub(crate) fn record<'info>(
         cache.last_updated_at = clock.unix_timestamp;
         cache.last_updated_slot = clock.slot;
         cache.bump = bump;
-        store_pda_account(legacy, &cache)?;
-        expected
+        store_pda_account(&legacy, &cache)?;
+        legacy.key()
     } else {
         Pubkey::default()
     };

@@ -815,11 +815,9 @@ fn boss_burns_buffer_reserve_to_keep_nav_after_an_asset_adjustment() {
             let instruction = burn_for_nav_ix(&f, f.boss.pubkey(), reserve_vault, adjustment);
             check_error(send(&mut f.svm, &[instruction], &[&f.boss]), error);
         }
+        // The reserve vault is seed-constrained (Anchor `ConstraintSeeds`).
         let instruction = burn_for_nav_ix(&f, f.boss.pubkey(), management_vault, 20_000_000);
-        check_error(
-            send(&mut f.svm, &[instruction], &[&f.boss]),
-            OnreError::InvalidConfigurableVault,
-        );
+        check_code(send(&mut f.svm, &[instruction], &[&f.boss]), 2006);
 
         // NAV 2: removing 0.02 of assets (20_000_000 in 9-decimal units) burns
         // ceil-adjusted supply worth exactly that at the unchanged NAV.

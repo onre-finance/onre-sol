@@ -111,8 +111,13 @@ pub struct TakeOffer<'info> {
     /// A separate `try_accounts` frame keeps validation within the SBF stack limit.
     pub custody: TakeOfferCustodyAccounts<'info>,
 
-    /// CHECK: Canonical intermediary PDA, required only by permissionless offers.
-    /// Its address and token authorities are checked before execution.
+    /// CHECK: Canonical intermediary PDA, supplied only for permissionless offers
+    /// (required by them); its ATAs' stored authorities are checked before execution.
+    #[account(
+        seeds = [seeds::PERMISSIONLESS_AUTHORITY],
+        bump,
+        constraint = config.offer_config.access == OfferAccess::Permissionless @ OnreError::PermissionlessNotAllowed
+    )]
     pub permissionless_authority: Option<UncheckedAccount<'info>>,
 
     #[account(
@@ -120,7 +125,8 @@ pub struct TakeOffer<'info> {
         payer = user,
         associated_token::mint = token_in_mint,
         associated_token::authority = permissionless_authority,
-        associated_token::token_program = token_in_program
+        associated_token::token_program = token_in_program,
+        constraint = config.offer_config.access == OfferAccess::Permissionless @ OnreError::PermissionlessNotAllowed
     )]
     pub permissionless_token_in: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
 
@@ -129,7 +135,8 @@ pub struct TakeOffer<'info> {
         payer = user,
         associated_token::mint = token_out_mint,
         associated_token::authority = permissionless_authority,
-        associated_token::token_program = token_out_program
+        associated_token::token_program = token_out_program,
+        constraint = config.offer_config.access == OfferAccess::Permissionless @ OnreError::PermissionlessNotAllowed
     )]
     pub permissionless_token_out: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
 }
@@ -451,15 +458,10 @@ impl<'info> ExecutionAccounts<'info> for TakeOffer<'info> {
 impl<'info> TakeOffer<'info> {
     /// The stored access mode selects the route; caller-supplied accounts cannot
     /// switch it. Permissionless offers require the intermediary and its ATAs
-    /// (validated by `validate_intermediary`); every other offer must omit them.
+    /// (validated by `validate_intermediary`); constraints reject them for every
+    /// other offer.
     fn route(&self) -> Result<Route<'_, 'info>> {
         if self.config.offer_config.access != OfferAccess::Permissionless {
-            require!(
-                self.permissionless_authority.is_none()
-                    && self.permissionless_token_in.is_none()
-                    && self.permissionless_token_out.is_none(),
-                OnreError::PermissionlessNotAllowed
-            );
             return Ok(Route::Direct {
                 input: &self.user_token_in,
                 output: &self.user_token_out,

@@ -72,6 +72,9 @@ pub struct SetManagedTokenMarketStats<'info> {
     )]
     pub managed_token: Box<Account<'info, ManagedTokenConfig>>,
 
+    #[account(
+        constraint = market_stats.key() != managed_token.market_stats @ OnreError::NoChange
+    )]
     pub market_stats: Box<Account<'info, MarketStats>>,
 
     #[account(
@@ -100,6 +103,7 @@ pub struct UnsetManagedTokenMarketStats<'info> {
         mut,
         seeds = [MANAGED_TOKEN, managed_token.managed_mint.as_ref()],
         bump = managed_token.bump,
+        constraint = managed_token.market_stats().is_some() @ OnreError::NoChange,
     )]
     pub managed_token: Box<Account<'info, ManagedTokenConfig>>,
 
@@ -126,8 +130,8 @@ fn select(
     market_stats: Pubkey,
     boss: Pubkey,
 ) -> Result<()> {
+    // Callers' constraints reject a no-op; a freshly created account cannot be selected.
     let previous = managed_token.market_stats;
-    require_keys_neq!(previous, market_stats, OnreError::NoChange);
     managed_token.market_stats = market_stats;
     emit!(ManagedTokenMarketStatsSetEvent {
         boss,

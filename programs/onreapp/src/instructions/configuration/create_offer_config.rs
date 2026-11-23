@@ -29,8 +29,15 @@ pub struct OfferConfigCreatedEvent {
 #[derive(Accounts)]
 #[instruction(instance_id: u64)]
 pub struct CreateOfferConfig<'info> {
+    #[account(
+        constraint = token_in_mint.decimals <= MAX_TOKEN_DECIMALS @ OnreError::DecimalsExceedMax,
+    )]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
 
+    #[account(
+        constraint = token_out_mint.key() != token_in_mint.key() @ OnreError::InvalidOfferDirection,
+        constraint = token_out_mint.decimals <= MAX_TOKEN_DECIMALS @ OnreError::DecimalsExceedMax,
+    )]
     pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
@@ -54,9 +61,9 @@ pub struct CreateOfferConfig<'info> {
 
     pub prop_amm_state: Option<Box<Account<'info, PropAmmState>>>,
 
-    /// Must be for the input token's decimals; checked after the mint pair.
     #[account(
-        constraint = fee_config.enabled @ OnreError::ConfigurationDisabled
+        constraint = fee_config.enabled @ OnreError::ConfigurationDisabled,
+        constraint = fee_config.token_decimals == token_in_mint.decimals @ OnreError::FeeConfigDecimalsMismatch
     )]
     pub fee_config: Box<Account<'info, FeeConfig>>,
 
@@ -108,16 +115,6 @@ pub fn create_offer_config(
     execution: OfferExecution,
 ) -> Result<()> {
     let a = &ctx.accounts;
-    require!(
-        a.token_in_mint.decimals <= MAX_TOKEN_DECIMALS
-            && a.token_out_mint.decimals <= MAX_TOKEN_DECIMALS,
-        OnreError::DecimalsExceedMax
-    );
-    require_keys_neq!(
-        a.token_in_mint.key(),
-        a.token_out_mint.key(),
-        OnreError::InvalidOfferDirection
-    );
     let (direction, asset_mint) = if a.token_in_mint.key() == a.managed_token.managed_mint {
         (OfferDirection::ManagedToAsset, a.token_out_mint.key())
     } else if a.token_out_mint.key() == a.managed_token.managed_mint {
@@ -135,10 +132,6 @@ pub fn create_offer_config(
     require!(
         a.asset_managed_registration.data_is_empty(),
         OnreError::TokenRoleConflict
-    );
-    require!(
-        a.fee_config.token_decimals == a.token_in_mint.decimals,
-        OnreError::FeeConfigDecimalsMismatch
     );
     let pressure_state = validate_offer_components(
         ctx.program_id,

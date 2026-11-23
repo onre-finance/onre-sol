@@ -24,6 +24,7 @@ pub struct BurnForNavIncrease<'info> {
         has_one = boss,
         has_one = onyc_mint,
         constraint = !state.is_killed @ crate::OnreError::KillSwitchActivated,
+        constraint = state.onyc_legacy_buffer_active() @ crate::OnreError::LegacyBufferRetired,
     )]
     pub state: Box<Account<'info, State>>,
 
@@ -110,7 +111,6 @@ pub fn burn_for_nav_increase(
     ctx: Context<BurnForNavIncrease>,
     asset_adjustment_amount: u64,
 ) -> Result<()> {
-    ctx.accounts.state.require_onyc_legacy_buffer_active()?;
     let now = Clock::get()?.unix_timestamp;
     require_keys_eq!(
         ctx.accounts.main_offer.key(),

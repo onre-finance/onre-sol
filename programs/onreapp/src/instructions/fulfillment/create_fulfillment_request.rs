@@ -36,7 +36,8 @@ pub struct CreateFulfillmentRequest<'info> {
 
     #[account(
         address = config.offer_config.token_in_mint @ OnreError::InvalidTokenInMint,
-        mint::token_program = token_in_program
+        mint::token_program = token_in_program,
+        constraint = config.offer_config.execution == OfferExecution::Worker @ OnreError::UnsupportedOfferExecution
     )]
     pub token_in_mint: Box<InterfaceAccount<'info, Mint>>,
 
@@ -104,10 +105,6 @@ pub fn create_fulfillment_request(
 ) -> Result<()> {
     let a = ctx.accounts;
     let offer_config = a.config.offer_config.key();
-    require!(
-        a.config.offer_config.execution == OfferExecution::Worker,
-        OnreError::UnsupportedOfferExecution
-    );
     require!(input_amount > 0, OnreError::InvalidAmount);
     require!(
         !has_transfer_fee(&a.token_in_mint)?,

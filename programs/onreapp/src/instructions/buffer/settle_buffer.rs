@@ -19,7 +19,8 @@ pub struct SettleBuffer<'info> {
         has_one = worker @ crate::OnreError::InvalidWorker,
         has_one = onyc_mint,
         constraint = !state.is_killed @ crate::OnreError::KillSwitchActivated,
-        constraint = state.main_offer != Pubkey::default() @ crate::OnreError::InvalidMainOffer
+        constraint = state.main_offer != Pubkey::default() @ crate::OnreError::InvalidMainOffer,
+        constraint = state.onyc_legacy_buffer_active() @ crate::OnreError::LegacyBufferRetired,
     )]
     pub state: Box<Account<'info, State>>,
 
@@ -65,7 +66,6 @@ pub struct SettleBuffer<'info> {
 /// Only the configured worker may call this instruction. It provides an explicit
 /// operational settlement path without requiring a trade or an unrelated mint.
 pub fn settle_buffer(ctx: Context<SettleBuffer>) -> Result<()> {
-    ctx.accounts.state.require_onyc_legacy_buffer_active()?;
     let offer = load_main_offer(
         ctx.program_id,
         &ctx.accounts.main_offer.to_account_info(),

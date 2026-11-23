@@ -20,7 +20,8 @@ pub struct SetBufferFeeConfig<'info> {
         bump = state.bump,
         has_one = boss,
         has_one = onyc_mint,
-        constraint = !state.is_killed @ crate::OnreError::KillSwitchActivated
+        constraint = !state.is_killed @ crate::OnreError::KillSwitchActivated,
+        constraint = state.onyc_legacy_buffer_active() @ crate::OnreError::LegacyBufferRetired,
     )]
     pub state: Box<Account<'info, State>>,
 
@@ -65,7 +66,6 @@ pub fn set_buffer_fee_config(
     performance_fee_basis_points: u16,
     performance_fee_high_watermark_enabled: bool,
 ) -> Result<()> {
-    ctx.accounts.state.require_onyc_legacy_buffer_active()?;
     require!(
         management_fee_basis_points <= MAX_BASIS_POINTS,
         crate::OnreError::InvalidFee

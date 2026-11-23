@@ -39,7 +39,8 @@ pub struct BurnManagedTokenForNavIncrease<'info> {
     pub boss: Signer<'info>,
 
     /// CHECK: The BUFFER's `["buffer_reserve", mint]` vault, which signs the burn of
-    /// its reserve ATA; must equal the reserve vault stored in the BUFFER state.
+    /// its reserve ATA; must also equal the reserve vault stored in the BUFFER state.
+    #[account(seeds = [BUFFER_RESERVE, buffer_accounts.managed_mint.key().as_ref()], bump)]
     pub reserve_vault: UncheckedAccount<'info>,
 
     /// CHECK: Must equal `ManagedTokenConfig::market_stats` when one is selected;
@@ -89,16 +90,10 @@ pub fn burn_managed_token_for_nav_increase(
 
     let b = &a.buffer_accounts;
     let mint = b.managed_mint.key();
-    let (reserve_vault, reserve_bump) =
-        Pubkey::find_program_address(&[BUFFER_RESERVE, mint.as_ref()], program_id);
+    let reserve_bump = ctx.bumps.reserve_vault;
     require_keys_eq!(
         modular_accrual::reserve_vault(program_id, &b.context())?,
-        reserve_vault,
-        OnreError::InvalidConfigurableVault
-    );
-    require_keys_eq!(
         a.reserve_vault.key(),
-        reserve_vault,
         OnreError::InvalidConfigurableVault
     );
 

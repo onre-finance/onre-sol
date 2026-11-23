@@ -20,6 +20,9 @@ pub struct ManagedTokenRegisteredEvent {
 /// Registers an existing SPL mint for the new model. Does not change mint authority.
 #[derive(Accounts)]
 pub struct RegisterManagedToken<'info> {
+    #[account(
+        constraint = managed_mint.decimals <= MAX_TOKEN_DECIMALS @ OnreError::DecimalsExceedMax
+    )]
     pub managed_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
@@ -45,10 +48,6 @@ pub struct RegisterManagedToken<'info> {
 }
 
 pub fn register_managed_token(ctx: Context<RegisterManagedToken>) -> Result<()> {
-    require!(
-        ctx.accounts.managed_mint.decimals <= MAX_TOKEN_DECIMALS,
-        OnreError::DecimalsExceedMax
-    );
     ctx.accounts.managed_token.set_inner(ManagedTokenConfig {
         managed_mint: ctx.accounts.managed_mint.key(),
         decimals: ctx.accounts.managed_mint.decimals,

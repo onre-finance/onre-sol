@@ -1,5 +1,8 @@
 use crate::{
-    constants::{seeds::STATE, MAX_CIRCULATING_SUPPLY_EXCLUDED_ACCOUNTS},
+    constants::{
+        seeds::{CIRCULATING_SUPPLY_EXCLUDED_BALANCE, STATE},
+        MAX_CIRCULATING_SUPPLY_EXCLUDED_ACCOUNTS,
+    },
     instructions::market_info::supply_exclusions::{record, sum_balances},
     model::{
         seeds::{MANAGED_TOKEN, SUPPLY_EXCLUSIONS},
@@ -21,6 +24,10 @@ pub struct SetManagedTokenSupplyExclusions<'info> {
     )]
     pub managed_token: Box<Account<'info, ManagedTokenConfig>>,
 
+    #[account(
+        constraint = managed_mint.key() != state.onyc_mint
+            || legacy_excluded_balance.is_some() @ OnreError::InvalidCirculatingSupplyExcludedBalance
+    )]
     pub managed_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
@@ -33,9 +40,8 @@ pub struct SetManagedTokenSupplyExclusions<'info> {
     pub supply_exclusions: Box<Account<'info, ManagedTokenSupplyExclusions>>,
 
     /// CHECK: Legacy ONyc `["circ_supply_excl_balance"]` cache, required for ONyc and
-    /// written with the same amount; ignored for other mints. Address validated in
-    /// the handler; created on first use.
-    #[account(mut)]
+    /// written with the same amount; ignored for other mints. Created on first use.
+    #[account(mut, seeds = [CIRCULATING_SUPPLY_EXCLUDED_BALANCE], bump)]
     pub legacy_excluded_balance: Option<UncheckedAccount<'info>>,
 
     #[account(
@@ -83,13 +89,14 @@ pub fn set_managed_token_supply_exclusions(
     let legacy = a
         .legacy_excluded_balance
         .as_ref()
-        .map(|account| account.to_account_info());
+        .map(|account| account.to_account_info())
+        .zip(ctx.bumps.legacy_excluded_balance);
     record(
         ctx.program_id,
         &a.state,
         exclusions,
         excluded_amount,
-        legacy.as_ref(),
+        legacy,
         &a.boss.to_account_info(),
         &a.system_program.to_account_info(),
         a.boss.key(),

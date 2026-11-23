@@ -21,7 +21,8 @@ pub struct SetBufferGrossYield<'info> {
         bump = state.bump,
         has_one = boss,
         has_one = onyc_mint,
-        constraint = !state.is_killed @ crate::OnreError::KillSwitchActivated
+        constraint = !state.is_killed @ crate::OnreError::KillSwitchActivated,
+        constraint = state.onyc_legacy_buffer_active() @ crate::OnreError::LegacyBufferRetired,
     )]
     pub state: Box<Account<'info, State>>,
 
@@ -61,7 +62,6 @@ pub struct SetBufferGrossYield<'info> {
 }
 
 pub fn set_buffer_gross_apr(ctx: Context<SetBufferGrossYield>, gross_yield: u64) -> Result<()> {
-    ctx.accounts.state.require_onyc_legacy_buffer_active()?;
     require!(
         gross_yield <= MAX_BUFFER_GROSS_APR,
         crate::OnreError::InvalidAPR

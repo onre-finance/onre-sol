@@ -4,7 +4,7 @@ use crate::{
     instructions::market_info::{refresh_modular_market_stats, MarketValuation},
     model::{seeds::MANAGED_TOKEN, ManagedTokenConfig, Pricer},
     state::State,
-    utils::managed_token::validate_canonical_usd_pricer,
+    utils::managed_token::canonical_usd_pricer_address,
     OnreError,
 };
 use anchor_lang::prelude::*;
@@ -30,13 +30,20 @@ pub struct RefreshManagedTokenMarketStats<'info> {
         seeds = [MANAGED_TOKEN, managed_mint.key().as_ref()],
         bump = managed_token.bump,
         constraint = managed_token.enabled @ OnreError::ConfigurationDisabled,
+        constraint = managed_mint.key() == state.onyc_mint
+            || managed_token.market_stats().is_some() @ OnreError::MarketStatsNotSelected,
     )]
     pub managed_token: Box<Account<'info, ManagedTokenConfig>>,
 
     pub managed_mint: Box<InterfaceAccount<'info, Mint>>,
 
     /// Canonical USD instance-zero Pricer of the managed mint, the token-wide
-    /// valuation source also used by trades and BUFFER settlement.
+    /// valuation source also used by trades and BUFFER settlement. Its address
+    /// binds the mint and USD denomination.
+    #[account(
+        address = canonical_usd_pricer_address(&crate::ID, &managed_mint.key()) @ OnreError::IncompatiblePricer,
+        constraint = pricer.enabled @ OnreError::IncompatiblePricer,
+    )]
     pub pricer: Box<Account<'info, Pricer>>,
 
     /// CHECK: Must equal `ManagedTokenConfig::market_stats` when one is selected;
@@ -69,12 +76,7 @@ pub fn refresh_managed_token_market_stats(
 ) -> Result<()> {
     let a = &ctx.accounts;
     let mint = a.managed_mint.key();
-    validate_canonical_usd_pricer(ctx.program_id, &mint, &a.pricer)?;
     let onyc = mint == a.state.onyc_mint;
-    require!(
-        onyc || a.managed_token.market_stats().is_some(),
-        OnreError::MarketStatsNotSelected
-    );
     let legacy = a
         .legacy_market_stats
         .as_ref()

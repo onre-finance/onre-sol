@@ -34,6 +34,9 @@ pub struct CreatePropAmmState<'info> {
     )]
     pub managed_token: Box<Account<'info, ManagedTokenConfig>>,
 
+    #[account(
+        constraint = asset_mint.key() != managed_token.managed_mint @ OnreError::InvalidSwapPair
+    )]
     pub asset_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
@@ -63,11 +66,6 @@ pub fn create_prop_amm_state(
     config: PropAmmConfig,
 ) -> Result<()> {
     validate_prop_amm_config(&config)?;
-    require_keys_neq!(
-        ctx.accounts.managed_token.managed_mint,
-        ctx.accounts.asset_mint.key(),
-        OnreError::InvalidSwapPair
-    );
     ctx.accounts.prop_amm_state.set_inner(PropAmmState {
         quoter: ctx.accounts.quoter.key(),
         asset_mint: ctx.accounts.asset_mint.key(),
