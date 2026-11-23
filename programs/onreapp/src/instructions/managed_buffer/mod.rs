@@ -50,7 +50,7 @@ fn refresh_market_stats<'info>(
     a: &ManagedBufferAccounts<'info>,
     market_stats: AccountInfo<'info>,
     legacy_market_stats: Option<AccountInfo<'info>>,
-    excluded: AccountInfo<'info>,
+    supply_exclusions: AccountInfo<'info>,
 ) -> Result<()> {
     // No payer here: an ONyc legacy singleton not yet created is skipped.
     refresh_modular_market_stats(
@@ -58,7 +58,7 @@ fn refresh_market_stats<'info>(
         &a.state,
         &a.managed_token,
         &a.managed_mint,
-        &excluded,
+        &supply_exclusions,
         &market_stats,
         legacy_market_stats.as_ref(),
         None,
@@ -73,8 +73,14 @@ fn accrue_and_refresh<'info>(
     now: i64,
     market_stats: AccountInfo<'info>,
     legacy_market_stats: Option<AccountInfo<'info>>,
-    excluded: AccountInfo<'info>,
+    supply_exclusions: AccountInfo<'info>,
 ) -> Result<()> {
     accrue(program_id, a, bump, now)?;
-    refresh_market_stats(program_id, a, market_stats, legacy_market_stats, excluded)
+    refresh_market_stats(
+        program_id,
+        a,
+        market_stats,
+        legacy_market_stats,
+        supply_exclusions,
+    )
 }

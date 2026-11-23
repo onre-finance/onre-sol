@@ -1032,7 +1032,10 @@
           "optional": true
         },
         {
-          "name": "circulating_supply_excluded_balance"
+          "name": "supply_exclusions",
+          "docs": [
+            "may be absent except for ONyc."
+          ]
         }
       ],
       "args": [
@@ -4693,9 +4696,9 @@
               "optional": true
             },
             {
-              "name": "circulating_supply_excluded_balance",
+              "name": "supply_exclusions",
               "docs": [
-                "other mints ignore it."
+                "(liquidity targets and market stats); may be absent except for ONyc."
               ]
             },
             {
@@ -9542,12 +9545,111 @@
           "optional": true
         },
         {
-          "name": "circulating_supply_excluded_balance"
+          "name": "supply_exclusions",
+          "docs": [
+            "may be absent except for ONyc."
+          ]
         },
         {
           "name": "payer",
           "docs": [
             "Any signer; pays only if the ONyc legacy singleton must be created."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "refresh_managed_token_supply_exclusions",
+      "docs": [
+        "Permissionlessly re-caches a managed token's excluded supply from its stored",
+        "token accounts, supplied in order as remaining accounts; for ONyc also writes",
+        "the legacy cache."
+      ],
+      "discriminator": [
+        60,
+        69,
+        226,
+        202,
+        76,
+        89,
+        87,
+        69
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "managed_mint"
+        },
+        {
+          "name": "supply_exclusions",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  117,
+                  112,
+                  112,
+                  108,
+                  121,
+                  95,
+                  101,
+                  120,
+                  99,
+                  108,
+                  117,
+                  115,
+                  105,
+                  111,
+                  110,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managed_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "legacy_excluded_balance",
+          "docs": [
+            "written with the same amount; ignored for other mints. Address validated in",
+            "the handler; created on first use."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "Any signer; pays only if the ONyc legacy cache must be created."
           ],
           "writable": true,
           "signer": true
@@ -10911,7 +11013,10 @@
           "optional": true
         },
         {
-          "name": "circulating_supply_excluded_balance"
+          "name": "supply_exclusions",
+          "docs": [
+            "may be absent except for ONyc."
+          ]
         }
       ],
       "args": [
@@ -11170,6 +11275,131 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "set_managed_token_supply_exclusions",
+      "docs": [
+        "Replaces the managed token's circulating-supply exclusions with the remaining",
+        "token accounts (≤ 20, unique, of the managed mint) and caches their summed",
+        "balance; for ONyc also writes the legacy cache. Boss only."
+      ],
+      "discriminator": [
+        71,
+        63,
+        9,
+        25,
+        246,
+        135,
+        238,
+        190
+      ],
+      "accounts": [
+        {
+          "name": "managed_token",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managed_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "managed_mint"
+        },
+        {
+          "name": "supply_exclusions",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  117,
+                  112,
+                  112,
+                  108,
+                  121,
+                  95,
+                  101,
+                  120,
+                  99,
+                  108,
+                  117,
+                  115,
+                  105,
+                  111,
+                  110,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managed_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "legacy_excluded_balance",
+          "docs": [
+            "written with the same amount; ignored for other mints. Address validated in",
+            "the handler; created on first use."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     },
     {
       "name": "set_offer_config_enabled",
@@ -12023,7 +12253,10 @@
           "optional": true
         },
         {
-          "name": "circulating_supply_excluded_balance"
+          "name": "supply_exclusions",
+          "docs": [
+            "may be absent except for ONyc."
+          ]
         }
       ],
       "args": []
@@ -12620,9 +12853,9 @@
               "optional": true
             },
             {
-              "name": "circulating_supply_excluded_balance",
+              "name": "supply_exclusions",
               "docs": [
-                "other mints ignore it."
+                "(liquidity targets and market stats); may be absent except for ONyc."
               ]
             },
             {
@@ -15696,6 +15929,19 @@
       ]
     },
     {
+      "name": "ManagedTokenSupplyExclusions",
+      "discriminator": [
+        66,
+        169,
+        63,
+        254,
+        229,
+        135,
+        85,
+        27
+      ]
+    },
+    {
       "name": "MarketStats",
       "discriminator": [
         240,
@@ -16319,6 +16565,19 @@
         193,
         71,
         240
+      ]
+    },
+    {
+      "name": "ManagedTokenSupplyExclusionsUpdatedEvent",
+      "discriminator": [
+        182,
+        3,
+        104,
+        234,
+        186,
+        206,
+        19,
+        77
       ]
     },
     {
@@ -17798,6 +18057,16 @@
       "code": 6159,
       "name": "FeeConfigDecimalsMismatch",
       "msg": "Fee config decimals must match the offer's input token decimals"
+    },
+    {
+      "code": 6160,
+      "name": "DuplicateExcludedTokenAccount",
+      "msg": "Duplicate excluded token account"
+    },
+    {
+      "code": 6161,
+      "name": "SupplyExclusionsRequired",
+      "msg": "ONyc supply exclusions must be set before modular use"
     }
   ],
   "types": [
@@ -19407,6 +19676,106 @@
           {
             "name": "timestamp",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ManagedTokenSupplyExclusions",
+      "docs": [
+        "Per-managed-mint supply exclusions at `[\"supply_exclusions\", managed_mint]`.",
+        "",
+        "Solana cannot read the excluded balances when circulating supply is needed",
+        "(every account would have to be supplied), so their summed balance is cached",
+        "here: computed when the boss sets the list and on each permissionless refresh.",
+        "Readers use only `excluded_amount`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "managed_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_accounts",
+            "docs": [
+              "Token accounts of `managed_mint`; only the first `count` entries are active",
+              "and they are unique. Refreshes must supply exactly these, in order."
+            ],
+            "type": {
+              "array": [
+                "pubkey",
+                20
+              ]
+            }
+          },
+          {
+            "name": "count",
+            "type": "u8"
+          },
+          {
+            "name": "excluded_amount",
+            "docs": [
+              "Summed balance of the active token accounts at the last set or refresh."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_updated_at",
+            "type": "i64"
+          },
+          {
+            "name": "last_updated_slot",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ManagedTokenSupplyExclusionsUpdatedEvent",
+      "docs": [
+        "Emitted whenever the cached excluded amount is recomputed (set or refresh)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "managed_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_accounts",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "excluded_amount",
+            "type": "u64"
+          },
+          {
+            "name": "legacy_excluded_balance",
+            "docs": [
+              "Legacy ONyc cache written with the same amount; default for other mints."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "updater",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
           }
         ]
       }

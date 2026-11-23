@@ -2,7 +2,11 @@ use super::MarketValuation;
 use crate::{
     constants::{seeds, PRICE_DECIMALS},
     instructions::{
-        market_info::offer_valuation_utils::get_nav_adjustment_snapshot, Offer, OfferVector,
+        market_info::{
+            offer_valuation_utils::get_nav_adjustment_snapshot,
+            supply_exclusions::excluded_supply_amount,
+        },
+        Offer, OfferVector,
     },
     model::ManagedTokenConfig,
     state::{MarketStats, State},
@@ -186,7 +190,7 @@ pub(crate) fn refresh_modular_market_stats<'info>(
     state: &State,
     managed_token: &ManagedTokenConfig,
     managed_mint: &InterfaceAccount<'info, Mint>,
-    excluded_balance_account: &AccountInfo<'info>,
+    supply_exclusions: &AccountInfo<'info>,
     market_stats_account: &AccountInfo<'info>,
     legacy_market_stats_account: Option<&AccountInfo<'info>>,
     init: Option<LegacyMarketStatsInit<'_, 'info>>,
@@ -203,7 +207,7 @@ pub(crate) fn refresh_modular_market_stats<'info>(
             state,
             managed_token,
             managed_mint,
-            excluded_balance_account,
+            supply_exclusions,
             market_stats_account,
             &valuation,
         )?;
@@ -215,10 +219,8 @@ pub(crate) fn refresh_modular_market_stats<'info>(
     if init.is_none() && legacy.data_is_empty() {
         return Ok(());
     }
-    let excluded_balance_amount = super::load_circulating_supply_excluded_balance_amount(
-        program_id,
-        excluded_balance_account,
-    )?;
+    let excluded_balance_amount =
+        excluded_supply_amount(program_id, state, managed_mint, supply_exclusions)?;
     let snapshot = recompute_market_stats_from_valuation(
         &valuation()?,
         managed_mint,
@@ -270,14 +272,14 @@ fn store_legacy_market_stats<'info>(
 /// Refreshes the MarketStats account selected by `ManagedTokenConfig::market_stats`.
 /// Any program-owned MarketStats account may be selected, so identity is the stored
 /// key and the account must deserialize as MarketStats. An unset selection skips
-/// reporting without evaluating `valuation`. Only ONyc has an excluded-balance cache;
-/// other mints report their full supply.
+/// reporting without evaluating `valuation`. Supply excludes the mint's cached
+/// `supply_exclusions` amount.
 fn refresh_selected_market_stats<'info>(
     program_id: &Pubkey,
     state: &State,
     managed_token: &ManagedTokenConfig,
     managed_mint: &InterfaceAccount<'info, Mint>,
-    excluded_balance_account: &AccountInfo<'info>,
+    supply_exclusions: &AccountInfo<'info>,
     market_stats_account: &AccountInfo<'info>,
     valuation: impl FnOnce() -> Result<MarketValuation>,
 ) -> Result<()> {
@@ -295,12 +297,8 @@ fn refresh_selected_market_stats<'info>(
         OnreError::InvalidMarketStatsOwner.into(),
         OnreError::InvalidMarketStatsData.into(),
     )?;
-    let excluded_balance_amount = excluded_supply_amount(
-        program_id,
-        state,
-        &managed_mint.key(),
-        excluded_balance_account,
-    )?;
+    let excluded_balance_amount =
+        excluded_supply_amount(program_id, state, managed_mint, supply_exclusions)?;
     let snapshot = recompute_market_stats_from_valuation(
         &valuation()?,
         managed_mint,
@@ -308,21 +306,6 @@ fn refresh_selected_market_stats<'info>(
     )?;
     update_market_stats_account(&mut market_stats, snapshot)?;
     store_pda_account(market_stats_account, &market_stats)
-}
-
-/// Supply excluded from a managed mint's circulating supply: ONyc's cached
-/// excluded balance; other mints have no exclusions yet.
-pub(crate) fn excluded_supply_amount(
-    program_id: &Pubkey,
-    state: &State,
-    managed_mint: &Pubkey,
-    excluded_balance_account: &AccountInfo,
-) -> Result<u64> {
-    if *managed_mint == state.onyc_mint {
-        super::load_circulating_supply_excluded_balance_amount(program_id, excluded_balance_account)
-    } else {
-        Ok(0)
-    }
 }
 
 pub fn load_main_offer(

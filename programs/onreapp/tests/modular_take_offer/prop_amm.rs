@@ -419,21 +419,14 @@ fn canonical_nav_controls_refill_and_sell_cap_independently_of_offer_nav() {
 }
 
 #[test]
-fn onyc_refill_uses_canonical_pricer_nav_and_the_canonical_excluded_balance() {
+fn onyc_refill_uses_canonical_pricer_nav_and_its_per_mint_excluded_supply() {
     let mut f = Fixture::new(true, false);
     f.initialize_legacy_main_offer(); // legacy main NAV 1 is ignored; canonical Pricer NAV 2
     let excluded = Pubkey::new_unique();
     f.seed_tokens(f.mint, f.boss.pubkey(), 8_000_000_000);
     f.seed_tokens(f.mint, excluded, 2_000_000_000);
-    let instruction =
-        build_set_circulating_supply_excluded_accounts_ix(&f.boss.pubkey(), &[excluded]);
-    send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
-    let instruction = build_update_circulating_supply_excluded_balance_ix(
-        &f.boss.pubkey(),
-        &f.mint,
-        &[derive_ata(&excluded, &f.mint, &f.token_program)],
-        &f.token_program,
-    );
+    let token_account = derive_ata(&excluded, &f.mint, &f.token_program);
+    let instruction = set_exclusions_ix(&f.svm, f.boss.pubkey(), f.mint, &[token_account]);
     send_tx(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
     f.create_route(
         OfferDirection::AssetToManaged,

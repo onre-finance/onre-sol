@@ -92,7 +92,7 @@ the domain paths such as `model::pricer::Pricer`.
 | ManagedTokenBufferState | 166 | 174 |
 | OfferConfig | 335 | 343 |
 | FulfillmentRequest | 89 | 97 |
-| ManagedTokenSupplyExclusions | 674 | 682 |
+| ManagedTokenSupplyExclusions | 698 | 706 |
 
 | EVM object | Solana model | Contents |
 | --- | --- | --- |
@@ -106,7 +106,7 @@ the domain paths such as `model::pricer::Pricer`.
 | BufferState | ManagedTokenBufferState | Managed mint, three vault references, supply baseline, watermark, accrual time, APR, fee settings, bump. |
 | OfferConfig | OfferConfig | Directed mint pair, instance ID, access, execution, direction, pricer/quoter/pressure-state/fee/proceeds/source/destination references, decimals, enabled, bump. |
 | FulfillmentRequest | FulfillmentRequest | Offer, user, numeric request ID, gross input, fulfilled gross input, bump. |
-| Excluded-supply mappings | ManagedTokenSupplyExclusions | Managed mint, up to 20 token-account addresses, active count, bump. |
+| Excluded-supply mappings | ManagedTokenSupplyExclusions | Managed mint, up to 20 token-account addresses, active count, cached excluded amount with update time and slot, bump. EVM reads balances live; Solana caches them (see [Supply exclusions](MODULAR_TAKE_OFFER.md#supply-exclusions)). |
 | MarketStats | Existing `state::MarketStats` account, selected per mint by `ManagedTokenConfig::market_stats` | APY, circulating supply, NAV, NAV adjustment, TVL, timestamp, slot, bump. |
 
 `VaultConfig` and `ManagedTokenBufferState` deliberately have different Rust names
@@ -190,6 +190,8 @@ repeat creation; shared accounts are not implicitly initialized or overwritten b
 | `switch_onyc_buffer_to_per_mint` | Boss-only, one-way: accrues the ONyc legacy singleton BUFFER up to now, has the initialized per-mint BUFFER take over its settings and watermark from the current supply, and makes it the only active ONyc BUFFER. |
 | `burn_managed_token_for_nav_increase` | Boss-only burn of per-mint BUFFER reserve tokens that keeps the canonical NAV after removing an asset adjustment; accrues first and refreshes market stats. |
 | `refresh_managed_token_market_stats` | Permissionless recomputation of the selected MarketStats (and the ONyc legacy singleton) from current supply and the canonical USD Pricer, between trades. |
+| `set_managed_token_supply_exclusions` | Boss-only replacement of the mint's excluded token accounts (≤ 20, unique), creating `["supply_exclusions", mint]` on first use and caching their summed balance; ONyc also writes the legacy cache. |
+| `refresh_managed_token_supply_exclusions` | Permissionless re-sum of the stored excluded token accounts, supplied exactly in stored order; ONyc also writes the legacy cache. |
 | `set_managed_token_mint_limits` | Boss-only per-mint `max_supply` / `max_mint_amount` for program mints; zero disables a limit and a nonzero max supply must cover current supply. ONyc combines them with the global `State` limits (stricter nonzero wins). |
 | `enable_managed_token_mint_multisig` / `disable_managed_token_mint_multisig` | Boss-only switch of modular minting between the program PDA and a 1-of-N SPL multisig that includes it; see [MODULAR_TAKE_OFFER.md](MODULAR_TAKE_OFFER.md#minting-authority). |
 | `initialize_managed_token_buffer` | Creates independent per-mint accounting and three dedicated vault configs, using the token's enabled USD Pricer instance zero. |

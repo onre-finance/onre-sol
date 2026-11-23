@@ -52,8 +52,9 @@ pub struct BurnManagedTokenForNavIncrease<'info> {
     #[account(mut)]
     pub legacy_market_stats: Option<UncheckedAccount<'info>>,
 
-    /// CHECK: ONyc subtracts the canonical cached excluded balance; other mints ignore it.
-    pub circulating_supply_excluded_balance: UncheckedAccount<'info>,
+    /// CHECK: The mint's `["supply_exclusions", mint]` cache, validated where read;
+    /// may be absent except for ONyc.
+    pub supply_exclusions: UncheckedAccount<'info>,
 }
 
 /// Accrues the BUFFER, then burns reserve tokens so that the asset base reduced by
@@ -103,12 +104,8 @@ pub fn burn_managed_token_for_nav_increase(
 
     let valuation = modular_accrual::canonical_market_valuation(program_id, &b.context())?;
     let nav = get_active_vector_and_current_price(valuation.vectors, now as u64)?.1;
-    let excluded = excluded_supply_amount(
-        program_id,
-        &b.state,
-        &mint,
-        &a.circulating_supply_excluded_balance,
-    )?;
+    let excluded =
+        excluded_supply_amount(program_id, &b.state, &b.managed_mint, &a.supply_exclusions)?;
     let circulating = calculate_circulating_supply(b.managed_mint.supply, excluded)?;
     let total_assets = calculate_tvl(circulating, nav)?;
     let burn_amount = calculate_burn_amount(circulating, asset_adjustment_amount, nav, nav)?;
@@ -140,7 +137,7 @@ pub fn burn_managed_token_for_nav_increase(
         a.legacy_market_stats
             .as_ref()
             .map(|account| account.to_account_info()),
-        a.circulating_supply_excluded_balance.to_account_info(),
+        a.supply_exclusions.to_account_info(),
     )?;
     emit!(ManagedTokenBurnedForNavEvent {
         boss: a.boss.key(),

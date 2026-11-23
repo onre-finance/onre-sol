@@ -111,10 +111,8 @@ proceeds = net_asset_input - refill
 
 TVL here is in managed-token base units before asset decimal conversion.
 Every managed mint, ONyc included, values supply at its enabled canonical USD
-instance-zero Pricer; `State::main_offer` is not used. ONyc subtracts the
-canonical cached excluded balance under the existing cache freshness assumptions.
-Other managed mints use full mint supply; per-mint supply-exclusion
-configuration is not implemented. When the offer selects another Pricer, supply
+instance-zero Pricer; `State::main_offer` is not used. Supply excludes the mint's
+cached [supply exclusions](MODULAR_TAKE_OFFER.md#supply-exclusions). When the offer selects another Pricer, supply
 `buffer_pricer` as the canonical instance-zero Pricer even if BUFFER is absent.
 An initialized per-mint BUFFER retains its existing canonical Pricer requirement.
 

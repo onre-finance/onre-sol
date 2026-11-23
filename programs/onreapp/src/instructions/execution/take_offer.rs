@@ -226,7 +226,7 @@ fn refresh_market_stats(program_id: &Pubkey, a: &Execution) -> Result<()> {
         a.state,
         &a.config.managed_token,
         a.managed_mint(),
-        &a.buffer.circulating_supply_excluded_balance,
+        &a.buffer.supply_exclusions,
         &a.buffer.market_stats,
         legacy.as_ref(),
         Some((a.payer, &a.system_program.to_account_info())),

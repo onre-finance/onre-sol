@@ -49,8 +49,9 @@ pub struct RefreshManagedTokenMarketStats<'info> {
     #[account(mut)]
     pub legacy_market_stats: Option<UncheckedAccount<'info>>,
 
-    /// CHECK: ONyc subtracts the canonical cached excluded balance; other mints ignore it.
-    pub circulating_supply_excluded_balance: UncheckedAccount<'info>,
+    /// CHECK: The mint's `["supply_exclusions", mint]` cache, validated where read;
+    /// may be absent except for ONyc.
+    pub supply_exclusions: UncheckedAccount<'info>,
 
     /// Any signer; pays only if the ONyc legacy singleton must be created.
     #[account(mut)]
@@ -83,7 +84,7 @@ pub fn refresh_managed_token_market_stats(
         &a.state,
         &a.managed_token,
         &a.managed_mint,
-        &a.circulating_supply_excluded_balance,
+        &a.supply_exclusions,
         &a.market_stats,
         legacy.as_ref(),
         Some((

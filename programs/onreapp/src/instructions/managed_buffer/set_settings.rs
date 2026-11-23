@@ -40,8 +40,9 @@ pub struct SetManagedTokenBufferSettings<'info> {
     #[account(mut)]
     pub legacy_market_stats: Option<UncheckedAccount<'info>>,
 
-    /// CHECK: ONyc refresh validates the canonical excluded-balance cache; other mints ignore it.
-    pub circulating_supply_excluded_balance: UncheckedAccount<'info>,
+    /// CHECK: The mint's `["supply_exclusions", mint]` cache, validated where read;
+    /// may be absent except for ONyc.
+    pub supply_exclusions: UncheckedAccount<'info>,
 }
 
 pub fn set_managed_token_buffer_settings(
@@ -70,7 +71,7 @@ pub fn set_managed_token_buffer_settings(
         a.legacy_market_stats
             .as_ref()
             .map(|account| account.to_account_info()),
-        a.circulating_supply_excluded_balance.to_account_info(),
+        a.supply_exclusions.to_account_info(),
     )?;
     modular_accrual::write_settings(ctx.program_id, &a.buffer_accounts.context(), settings)?;
     emit!(ManagedTokenBufferSettingsSetEvent {
