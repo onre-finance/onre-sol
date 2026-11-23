@@ -48,7 +48,7 @@ are nested account groups, each with its own `try_accounts` stack frame so accou
 validation stays within the 4 KiB SBF frame limit: `config`
 (`TakeOfferConfigAccounts`: offer, managed token, Pricer, Quoter, FeeConfig and the
 Proceeds/Fee vaults), `buffer` (`TakeOfferBufferAccounts`: BUFFER state/Pricer,
-market stats, excluded-balance cache and the three BUFFER ATAs), and `custody`
+market stats, supply-exclusions cache and the three BUFFER ATAs), and `custody`
 (`TakeOfferCustodyAccounts`: pressure state and source/destination vaults/ATAs).
 Groups flatten in place, so the transaction's account order is unchanged; Rust and
 TypeScript clients pass each group as a nested object. `offer_config` is verified
@@ -74,8 +74,9 @@ equal that pair.
 - Canonical `buffer_state`, optional canonical `buffer_pricer`, and the
   reserve, management-fee, and performance-fee BUFFER token accounts, as below.
 - `market_stats`, which must be the account selected by `ManagedTokenConfig`
-  when one is selected and is ignored otherwise, and
-  `circulating_supply_excluded_balance`, used by ONyc targets and reporting.
+  when one is selected and is ignored otherwise, and `supply_exclusions`, the
+  mint's `["supply_exclusions", mint]` cache used by targets and reporting (see
+  Supply exclusions).
 - Optional `legacy_market_stats`: the `["market_stats"]` singleton, required when
   the managed mint is ONyc and ignored otherwise (see Market stats).
 - Optional `permissionless_authority`, `permissionless_token_in`, and
@@ -283,9 +284,8 @@ The boss selects an account with either instruction:
   reporting without modifying the MarketStats account.
 
 Once selected, the supplied `market_stats` must equal the selection. Each refresh
-values the mint at its canonical USD instance-zero Pricer. ONyc subtracts the
-canonical cached excluded balance (freshness policy unchanged); other mints report
-full supply. ONyc execution additionally always refreshes the legacy `["market_stats"]`
+values the mint at its canonical USD instance-zero Pricer and subtracts the mint's
+cached excluded supply (see Supply exclusions). ONyc execution additionally always refreshes the legacy `["market_stats"]`
 singleton that integrators read, so it is never stale after a modular trade.
 `take_offer` requires it as `legacy_market_stats` for ONyc (missing:
 `LegacyMarketStatsRequired`; wrong address: `InvalidMarketStatsOwner`), creates it
@@ -306,6 +306,43 @@ rules, including the ONyc legacy singleton (created on first use at the caller's
 expense), requires the managed token to be enabled, fails with
 `MarketStatsNotSelected` when there is nothing to refresh, emits
 `ManagedTokenMarketStatsRefreshedEvent`, and is not blocked by the kill switch.
+
+## Supply exclusions
+
+Circulating supply is mint supply minus the balance of up to 20 excluded token
+accounts per managed mint (treasury, reserves). A Solana instruction cannot read
+those balances without receiving every account, so their sum is cached in
+`ManagedTokenSupplyExclusions` at `["supply_exclusions", mint]` and readers use
+only the cached `excluded_amount`:
+
+- `set_managed_token_supply_exclusions` (boss) replaces the list with the
+  remaining accounts, in order: at most 20 unique, initialized token accounts of
+  the managed mint under its token program. It creates the account on first use and
+  caches their summed balance immediately. An empty list excludes nothing.
+- `refresh_managed_token_supply_exclusions` (anyone, not blocked by the kill
+  switch) re-sums the stored accounts. They must be supplied exactly and in stored
+  order, so a caller cannot omit one to raise circulating supply
+  (`MissingExcludedTokenAccount`, `TooManyExcludedTokenAccounts`,
+  `InvalidExcludedTokenAccount`). A closed account counts as zero.
+
+Both emit `ManagedTokenSupplyExclusionsUpdatedEvent` and stamp the time and slot.
+There is no on-chain staleness bound: balances moved since the last set or refresh
+are not reflected. Operators refresh on a schedule, ideally in the same transaction
+as `refresh_managed_token_market_stats`.
+
+Market stats, the buy refill target and the Prop AMM hard wall, and
+`burn_managed_token_for_nav_increase` subtract the cached amount, capped at current
+supply so a stale cache floors circulating supply at zero. BUFFER accrual
+and issuance limits use full supply. A mint without the account excludes nothing.
+
+For ONyc, set and refresh also write the same amount into the legacy
+`["circ_supply_excl_balance"]` cache, supplied as `legacy_excluded_balance`
+(required for ONyc, created on first use), so legacy instructions and the legacy
+market stats singleton agree with modular paths. Modular paths read only the
+per-mint cache, and ONyc's must exist (`SupplyExclusionsRequired`) so that the
+legacy singleton is never written with unexcluded supply. The legacy owner-list
+instructions remain available and also write the legacy cache; if both are used,
+keep the two lists identical.
 
 ## Minting authority
 

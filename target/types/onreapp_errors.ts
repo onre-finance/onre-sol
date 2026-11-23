@@ -159,7 +159,9 @@ export const OnreappErrorCode = {
   UnexpectedHaircutVault: 6156,
   FulfillmentAmountExceedsRemaining: 6157,
   FulfillmentRequestMismatch: 6158,
-  FeeConfigDecimalsMismatch: 6159
+  FeeConfigDecimalsMismatch: 6159,
+  DuplicateExcludedTokenAccount: 6160,
+  SupplyExclusionsRequired: 6161
 };
 
 export type OnreappErrorName = keyof typeof OnreappErrorCode;

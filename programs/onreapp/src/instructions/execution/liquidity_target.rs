@@ -2,9 +2,7 @@
 use super::Execution;
 use crate::{
     constants::{MAX_BASIS_POINTS, PRICE_DECIMALS},
-    instructions::market_info::{
-        calculate_circulating_supply, load_circulating_supply_excluded_balance_amount,
-    },
+    instructions::market_info::{calculate_circulating_supply, excluded_supply_amount},
     model::Pricer,
     utils::{
         managed_token::{canonical_usd_pricer_address, require_usd_pricer_for},
@@ -35,8 +33,7 @@ pub(super) fn canonical_pricer<'a, 'info>(
 }
 
 /// Asset base units. Uses actual mint supply at the time of invocation and the
-/// canonical token-wide NAV. ONyc subtracts its existing cached excluded balance;
-/// other managed mints have no executable exclusion configuration and use full supply.
+/// canonical token-wide NAV, minus the mint's cached `supply_exclusions` amount.
 pub(super) fn target(a: &Execution, bps: u16, now: u64) -> Result<u128> {
     require!(bps <= MAX_BASIS_POINTS, OnreError::InvalidAmount);
     if bps == 0 {
@@ -44,17 +41,13 @@ pub(super) fn target(a: &Execution, bps: u16, now: u64) -> Result<u128> {
     }
     let nav =
         get_active_vector_and_current_price(canonical_pricer(a)?.vectors.iter().copied(), now)?.1;
-    let supply = if a.managed_mint().key() == a.state.onyc_mint {
-        let excluded = load_circulating_supply_excluded_balance_amount(
-            &ID,
-            &a.buffer
-                .circulating_supply_excluded_balance
-                .to_account_info(),
-        )?;
-        calculate_circulating_supply(a.managed_mint().supply, excluded)?
-    } else {
-        a.managed_mint().supply
-    };
+    let excluded = excluded_supply_amount(
+        &ID,
+        a.state,
+        a.managed_mint(),
+        &a.buffer.supply_exclusions.to_account_info(),
+    )?;
+    let supply = calculate_circulating_supply(a.managed_mint().supply, excluded)?;
     asset_target(
         supply,
         nav,

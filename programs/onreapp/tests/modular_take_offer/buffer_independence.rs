@@ -36,7 +36,7 @@ fn settle_with_stats_ix(f: &Fixture, worker: Pubkey, market_stats: Pubkey) -> In
             worker,
             market_stats,
             legacy_market_stats: f.legacy_market_stats(),
-            circulating_supply_excluded_balance: find_circulating_supply_excluded_balance_pda().0,
+            supply_exclusions: exclusions(f.mint),
         },
         instruction::SettleManagedTokenBuffer {},
     )
@@ -51,7 +51,7 @@ fn configure_ix(f: &Fixture, boss: Pubkey, settings: BufferSettings) -> Instruct
             boss,
             market_stats: f.market_stats(),
             legacy_market_stats: f.legacy_market_stats(),
-            circulating_supply_excluded_balance: find_circulating_supply_excluded_balance_pda().0,
+            supply_exclusions: exclusions(f.mint),
         },
         instruction::SetManagedTokenBufferSettings { settings },
     )
@@ -372,7 +372,7 @@ fn onyc_can_select_the_legacy_market_stats_shared_with_legacy_refresh() {
     );
 
     // Modular settlement writes the shared account from the canonical Pricer and the
-    // ONyc excluded-balance cache; the legacy refresh later writes it from main offer.
+    // ONyc per-mint excluded supply; the legacy refresh later writes it from main offer.
     advance_clock_by(&mut f.svm, 3_153_600);
     settle(&mut f);
     let stats = read_market_stats(&f.svm);
@@ -706,7 +706,7 @@ fn settle_with_mint_multisig_ix(f: &Fixture, mint_multisig: Option<Pubkey>) -> I
             worker: f.boss.pubkey(),
             market_stats: f.market_stats(),
             legacy_market_stats: f.legacy_market_stats(),
-            circulating_supply_excluded_balance: find_circulating_supply_excluded_balance_pda().0,
+            supply_exclusions: exclusions(f.mint),
         },
         instruction::SettleManagedTokenBuffer {},
     )
@@ -776,7 +776,7 @@ fn burn_for_nav_ix(
             reserve_vault,
             market_stats: f.market_stats(),
             legacy_market_stats: f.legacy_market_stats(),
-            circulating_supply_excluded_balance: find_circulating_supply_excluded_balance_pda().0,
+            supply_exclusions: exclusions(f.mint),
         },
         instruction::BurnManagedTokenForNavIncrease {
             asset_adjustment_amount: adjustment,

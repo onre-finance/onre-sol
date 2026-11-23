@@ -322,4 +322,8 @@ pub enum OnreError {
     FulfillmentRequestMismatch,
     #[msg("Fee config decimals must match the offer's input token decimals")]
     FeeConfigDecimalsMismatch,
+    #[msg("Duplicate excluded token account")]
+    DuplicateExcludedTokenAccount,
+    #[msg("ONyc supply exclusions must be set before modular use")]
+    SupplyExclusionsRequired,
 }

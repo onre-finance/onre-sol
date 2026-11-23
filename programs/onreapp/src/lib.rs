@@ -319,6 +319,15 @@ pub mod onreapp {
         configuration::set_managed_token_market_stats(ctx)
     }
 
+    /// Replaces the managed token's circulating-supply exclusions with the remaining
+    /// token accounts (≤ 20, unique, of the managed mint) and caches their summed
+    /// balance; for ONyc also writes the legacy cache. Boss only.
+    pub fn set_managed_token_supply_exclusions(
+        ctx: Context<SetManagedTokenSupplyExclusions>,
+    ) -> Result<()> {
+        configuration::set_managed_token_supply_exclusions(ctx)
+    }
+
     /// Sets the managed token's issuance limits for program mints (zero disables a
     /// limit; a nonzero max supply must cover current supply); boss only.
     pub fn set_managed_token_mint_limits(
@@ -392,6 +401,15 @@ pub mod onreapp {
         ctx: Context<UnsetManagedTokenMarketStats>,
     ) -> Result<()> {
         configuration::unset_managed_token_market_stats(ctx)
+    }
+
+    /// Permissionlessly re-caches a managed token's excluded supply from its stored
+    /// token accounts, supplied in order as remaining accounts; for ONyc also writes
+    /// the legacy cache.
+    pub fn refresh_managed_token_supply_exclusions(
+        ctx: Context<RefreshManagedTokenSupplyExclusions>,
+    ) -> Result<()> {
+        market_info::refresh_managed_token_supply_exclusions(ctx)
     }
 
     /// Permissionlessly recomputes a managed token's selected MarketStats (and the

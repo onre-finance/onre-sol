@@ -160,9 +160,9 @@ pub struct TakeOfferBufferAccounts<'info> {
     #[account(mut)]
     pub legacy_market_stats: Option<UncheckedAccount<'info>>,
 
-    /// CHECK: ONyc refresh and targets validate the canonical excluded-balance cache;
-    /// other mints ignore it.
-    pub circulating_supply_excluded_balance: UncheckedAccount<'info>,
+    /// CHECK: The mint's `["supply_exclusions", mint]` cache, validated where read
+    /// (liquidity targets and market stats); may be absent except for ONyc.
+    pub supply_exclusions: UncheckedAccount<'info>,
 
     /// CHECK: When BUFFER is active, its expected reserve ATA is validated in the handler.
     #[account(mut)]

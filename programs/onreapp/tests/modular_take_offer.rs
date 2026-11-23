@@ -17,6 +17,8 @@ mod modular_prop_amm;
 mod permissionless;
 #[path = "modular_take_offer/pricer_vectors.rs"]
 mod pricer_vectors;
+#[path = "modular_take_offer/supply_exclusions.rs"]
+mod supply_exclusions;
 #[path = "modular_take_offer/vault_roles.rs"]
 mod vault_roles;
 
@@ -34,7 +36,7 @@ use onreapp::{
 };
 use solana_sdk::{
     account::Account,
-    instruction::{Instruction, InstructionError},
+    instruction::{AccountMeta, Instruction, InstructionError},
     message::{v0, AddressLookupTableAccount, VersionedMessage},
     pubkey::Pubkey,
     signature::Keypair,
@@ -54,6 +56,37 @@ fn ix(a: impl ToAccountMetas, d: impl InstructionData) -> Instruction {
 }
 fn managed(mint: Pubkey) -> Pubkey {
     pda(&[b"managed_token", mint.as_ref()])
+}
+fn exclusions(mint: Pubkey) -> Pubkey {
+    pda(&[b"supply_exclusions", mint.as_ref()])
+}
+/// Boss replacement of `mint`'s excluded token accounts; ONyc also mirrors into
+/// the legacy cache.
+fn set_exclusions_ix(
+    svm: &LiteSVM,
+    boss: Pubkey,
+    mint: Pubkey,
+    accounts: &[Pubkey],
+) -> Instruction {
+    let onyc = read_state(svm).onyc_mint == mint;
+    let mut instruction = ix(
+        accounts::SetManagedTokenSupplyExclusions {
+            managed_token: managed(mint),
+            managed_mint: mint,
+            supply_exclusions: exclusions(mint),
+            legacy_excluded_balance: onyc.then(|| find_circulating_supply_excluded_balance_pda().0),
+            state: find_state_pda().0,
+            boss,
+            system_program: SYSTEM_PROGRAM_ID,
+        },
+        instruction::SetManagedTokenSupplyExclusions {},
+    );
+    instruction.accounts.extend(
+        accounts
+            .iter()
+            .map(|key| AccountMeta::new_readonly(*key, false)),
+    );
+    instruction
 }
 fn price(mint: Pubkey, id: u64) -> Pubkey {
     pda(&[b"pricer", mint.as_ref(), &[0], &id.to_le_bytes()])
@@ -247,6 +280,10 @@ impl Fixture {
                 execution: OfferMode::Permissioned.execution(),
             },
         ));
+        if onyc {
+            // ONyc's modular paths require its exclusions; an empty list excludes nothing.
+            instructions.push(set_exclusions_ix(&svm, key, mint, &[]));
+        }
         for instruction in instructions {
             send_tx(&mut svm, &[instruction], &[&boss]).unwrap();
         }
@@ -610,7 +647,7 @@ impl Fixture {
             buffer_pricer: Some(price(self.mint, 0)),
             market_stats: self.market_stats(),
             legacy_market_stats: self.legacy_market_stats(),
-            circulating_supply_excluded_balance: find_circulating_supply_excluded_balance_pda().0,
+            supply_exclusions: exclusions(self.mint),
             buffer_reserve_token: reserve,
             buffer_management_token: management,
             buffer_performance_token: performance,

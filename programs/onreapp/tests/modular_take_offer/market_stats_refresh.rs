@@ -3,7 +3,7 @@ use super::admin_updates::boss_send;
 use super::mint_multisig::{expect_error, send};
 use super::*;
 
-fn refresh_ix(
+pub(super) fn refresh_ix(
     f: &Fixture,
     payer: Pubkey,
     pricer: Pubkey,
@@ -18,7 +18,7 @@ fn refresh_ix(
             pricer,
             market_stats,
             legacy_market_stats,
-            circulating_supply_excluded_balance: find_circulating_supply_excluded_balance_pda().0,
+            supply_exclusions: exclusions(f.mint),
             payer,
             system_program: SYSTEM_PROGRAM_ID,
         },
@@ -26,7 +26,7 @@ fn refresh_ix(
     )
 }
 
-fn per_mint_stats(f: &Fixture) -> Pubkey {
+pub(super) fn per_mint_stats(f: &Fixture) -> Pubkey {
     pda(&[b"market_stats", f.mint.as_ref()])
 }
 
