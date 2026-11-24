@@ -161,7 +161,8 @@ export const OnreappErrorCode = {
   FulfillmentRequestMismatch: 6158,
   FeeConfigDecimalsMismatch: 6159,
   DuplicateExcludedTokenAccount: 6160,
-  SupplyExclusionsRequired: 6161
+  SupplyExclusionsRequired: 6161,
+  PermissionRequired: 6162
 };
 
 export type OnreappErrorName = keyof typeof OnreappErrorCode;

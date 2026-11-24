@@ -326,4 +326,6 @@ pub enum OnreError {
     DuplicateExcludedTokenAccount,
     #[msg("ONyc supply exclusions must be set before modular use")]
     SupplyExclusionsRequired,
+    #[msg("Allowlisted offers require the user's offer permission account")]
+    PermissionRequired,
 }

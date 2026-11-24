@@ -8,6 +8,20 @@ pub enum OfferAccess {
     Permissioned,
     /// No approval. Instant execution settles through the permissionless intermediary.
     Permissionless,
+    /// Requires the trading user's boss-granted `OfferPermission` for this offer;
+    /// approvals do not grant access. Instant execution only.
+    Allowlisted,
+}
+
+/// One user's standing access to one Allowlisted offer. PDA
+/// `["offer_permission", offer_config, user]`: the boss creates it to grant and
+/// closes it to revoke. `user` is whoever signs `take_offer`, wallet or PDA.
+#[account]
+#[derive(InitSpace)]
+pub struct OfferPermission {
+    pub offer_config: Pubkey,
+    pub user: Pubkey,
+    pub bump: u8,
 }
 
 /// How a trade settles: atomically in `take_offer`, or as an escrowed request that

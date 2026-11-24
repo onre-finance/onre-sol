@@ -257,6 +257,16 @@ pub mod onreapp {
         configuration::create_offer_config(ctx, instance_id, access, execution)
     }
 
+    /// Grants `user` access to an Allowlisted offer by creating its `OfferPermission`; boss only.
+    pub fn grant_offer_permission(ctx: Context<GrantOfferPermission>, user: Pubkey) -> Result<()> {
+        configuration::grant_offer_permission(ctx, user)
+    }
+
+    /// Revokes an `OfferPermission` by closing it; boss only.
+    pub fn revoke_offer_permission(ctx: Context<RevokeOfferPermission>) -> Result<()> {
+        configuration::revoke_offer_permission(ctx)
+    }
+
     /// Replaces an offer's Pricer, quoter, pressure link, fee config and vaults with
     /// the creation rules; mints, instance ID, access and execution stay immutable. Boss only.
     pub fn update_offer_config(ctx: Context<UpdateOfferConfig>) -> Result<()> {

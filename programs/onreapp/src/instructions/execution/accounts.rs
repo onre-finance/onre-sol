@@ -324,7 +324,7 @@ pub(crate) struct Execution<'a, 'info> {
 /// Where the gross input comes from and the output goes, by execution mode.
 #[derive(Clone, Copy)]
 pub(crate) enum Route<'a, 'info> {
-    /// Permissioned instant: the signing user's own ATAs.
+    /// Permissioned or allowlisted instant: the signing user's own ATAs.
     Direct {
         input: &'a InterfaceAccount<'info, TokenAccount>,
         output: &'a InterfaceAccount<'info, TokenAccount>,
@@ -353,8 +353,8 @@ impl Route<'_, '_> {
     pub fn supports(&self, offer: &OfferConfig) -> bool {
         match self {
             Route::Direct { .. } => {
-                (offer.execution, offer.access)
-                    == (OfferExecution::Instant, OfferAccess::Permissioned)
+                offer.execution == OfferExecution::Instant
+                    && offer.access != OfferAccess::Permissionless
             }
             Route::Intermediary { .. } => {
                 (offer.execution, offer.access)
