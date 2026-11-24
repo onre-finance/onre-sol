@@ -8,7 +8,9 @@ pub struct ManagedTokenConfig {
     pub decimals: u8,
     pub enabled: bool,
     /// Program-controlled issuance limits in mint base units; zero disables a limit.
-    /// SPL mints cannot enforce these limits on other mint authorities.
+    /// Modular instructions read only these, for every mint including ONyc; the
+    /// global `State` limits bind only the legacy ONyc instructions. SPL mints
+    /// cannot enforce these limits on other mint authorities.
     pub max_supply: u64,
     pub max_mint_amount: u64,
     pub bump: u8,
@@ -29,5 +31,9 @@ impl ManagedTokenConfig {
     }
     pub fn mint_multisig(&self) -> Option<Pubkey> {
         super::optional(self.mint_multisig)
+    }
+    /// `(max_supply, max_mint_amount)` enforced by modular mints.
+    pub fn mint_limits(&self) -> (u64, u64) {
+        (self.max_supply, self.max_mint_amount)
     }
 }

@@ -1,7 +1,6 @@
 //! Token-wide validation shared by trading, BUFFER settlement and reporting.
 use crate::{
-    model::{seeds::PRICER, ManagedTokenConfig, Pricer, PricingDenomination},
-    state::State,
+    model::{seeds::PRICER, Pricer, PricingDenomination},
     OnreError,
 };
 use anchor_lang::prelude::*;
@@ -41,20 +40,4 @@ pub(crate) fn require_usd_pricer_for(mint: &Pubkey, pricer: &Pricer) -> Result<(
         OnreError::IncompatiblePricer
     );
     Ok(())
-}
-
-/// Zero disables a cap. ONyc retains the stricter nonzero global/per-mint cap.
-pub(crate) fn effective_mint_limits(state: &State, managed: &ManagedTokenConfig) -> (u64, u64) {
-    let onyc = managed.managed_mint == state.onyc_mint;
-    let stricter = |a: u64, b: u64| match (a, b) {
-        (0, x) | (x, 0) => x,
-        (a, b) => a.min(b),
-    };
-    (
-        stricter(managed.max_supply, if onyc { state.max_supply } else { 0 }),
-        stricter(
-            managed.max_mint_amount,
-            if onyc { state.max_mint_amount } else { 0 },
-        ),
-    )
 }

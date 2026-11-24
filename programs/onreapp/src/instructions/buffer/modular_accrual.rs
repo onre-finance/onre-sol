@@ -138,11 +138,15 @@ pub(crate) fn accrue(
         buffer.performance_fee_high_watermark,
         buffer.performance_fee_high_watermark_enabled,
     )?;
-    validate_max_supply(a.managed_mint.supply, amount, max_supply)?;
-    require!(
-        max_mint == 0 || amount <= max_mint,
-        OnreError::MaxMintAmountExceeded
-    );
+    // Gross accrual is one logical mint; nothing minted means nothing to cap, so
+    // trades and settlement keep working at or above a cap (legacy parity).
+    if amount > 0 {
+        validate_max_supply(a.managed_mint.supply, amount, max_supply)?;
+        require!(
+            max_mint == 0 || amount <= max_mint,
+            OnreError::MaxMintAmountExceeded
+        );
+    }
     for (token, amount) in [
         (&a.reserve_token, split.reserve_mint_amount),
         (&a.management_token, split.management_fee_mint_amount),

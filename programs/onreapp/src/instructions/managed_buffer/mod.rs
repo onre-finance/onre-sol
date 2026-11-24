@@ -12,7 +12,7 @@ pub use switch_onyc_buffer::*;
 
 use crate::{
     instructions::{buffer::modular_accrual, market_info::refresh_modular_market_stats},
-    utils::{has_transfer_fee, managed_token::effective_mint_limits},
+    utils::has_transfer_fee,
     OnreError,
 };
 use anchor_lang::prelude::*;
@@ -38,7 +38,7 @@ fn accrue(program_id: &Pubkey, a: &mut ManagedBufferAccounts, bump: u8, now: i64
     );
     // Validate configured mint control even when this accrual mints nothing.
     a.context().minter(bump)?;
-    let (max_supply, max_mint) = effective_mint_limits(&a.state, &a.managed_token);
+    let (max_supply, max_mint) = a.managed_token.mint_limits();
     modular_accrual::accrue(program_id, &a.context(), bump, now, max_supply, max_mint)?;
     a.managed_mint.reload()?;
     Ok(())

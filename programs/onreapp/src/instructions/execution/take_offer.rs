@@ -6,7 +6,7 @@ use super::{
 use crate::{
     instructions::market_info::{refresh_modular_market_stats, MarketValuation},
     model::{OfferAccess, OfferDirection, OfferExecution, QuoterKind},
-    utils::{managed_token::effective_mint_limits, ApprovalMessage},
+    utils::ApprovalMessage,
     OnreError,
 };
 use anchor_lang::prelude::*;
@@ -128,7 +128,7 @@ pub(crate) fn execute<'info, A: ExecutionAccounts<'info>>(
             OnreError::MinimumOutNotMet
         );
 
-        let (max_supply, max_mint) = effective_mint_limits(e.state, &e.config.managed_token);
+        let (max_supply, max_mint) = e.config.managed_token.mint_limits();
         let buffer_active = buffer::accrue_before_execution(
             program_id,
             &e,

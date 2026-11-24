@@ -115,7 +115,7 @@ pub(crate) fn recompute_market_stats_from_valuation(
         .adjustment;
 
     let circulating_supply =
-        calculate_circulating_supply(managed_mint.supply, excluded_balance_amount)?;
+        calculate_circulating_supply(managed_mint.supply, excluded_balance_amount);
     let tvl = calculate_tvl(circulating_supply, nav)?;
 
     Ok(MarketStatsSnapshot {
@@ -373,10 +373,10 @@ pub fn calculate_tvl(circulating_supply: u64, nav: u64) -> Result<u64> {
         .ok_or_else(|| error!(OnreError::Overflow))
 }
 
-pub fn calculate_circulating_supply(total_supply: u64, excluded_supply: u64) -> Result<u64> {
-    total_supply
-        .checked_sub(excluded_supply)
-        .ok_or_else(|| error!(OnreError::ArithmeticUnderflow))
+/// Supply minus excluded supply, floored at zero: a stale excluded-balance cache
+/// (excluded tokens burned since its last refresh) must not fail every reader.
+pub fn calculate_circulating_supply(total_supply: u64, excluded_supply: u64) -> u64 {
+    total_supply.saturating_sub(excluded_supply)
 }
 
 /// Converts Annual Percentage Rate (APR) to Annual Percentage Yield (APY) using daily compounding
@@ -635,13 +635,13 @@ mod tests {
 
     #[test]
     fn circulating_supply_matches_programv4_subtraction() {
-        let circulating_supply = calculate_circulating_supply(1_000_000_000, 250_000_000).unwrap();
+        let circulating_supply = calculate_circulating_supply(1_000_000_000, 250_000_000);
         assert_eq!(circulating_supply, 750_000_000);
     }
 
     #[test]
     fn circulating_supply_subtracts_cached_excluded_balance() {
-        let circulating_supply = calculate_circulating_supply(1_000_000_000, 350_000_000).unwrap();
+        let circulating_supply = calculate_circulating_supply(1_000_000_000, 350_000_000);
         assert_eq!(circulating_supply, 650_000_000);
     }
 
@@ -654,16 +654,16 @@ mod tests {
             (u64::MAX, 20, u64::MAX - 20),
         ] {
             assert_eq!(
-                calculate_circulating_supply(total_supply, excluded_amount).unwrap(),
+                calculate_circulating_supply(total_supply, excluded_amount),
                 expected
             );
         }
     }
 
     #[test]
-    fn circulating_supply_rejects_excluded_supply_underflow() {
-        let err = calculate_circulating_supply(1, 2).unwrap_err();
-        assert_eq!(err, error!(OnreError::ArithmeticUnderflow));
+    fn circulating_supply_floors_stale_excluded_supply_at_zero() {
+        assert_eq!(calculate_circulating_supply(1, 2), 0);
+        assert_eq!(calculate_circulating_supply(5, 2), 3);
     }
 
     #[test]

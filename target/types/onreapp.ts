@@ -19584,7 +19584,9 @@ export type Onreapp = {
             "name": "maxSupply",
             "docs": [
               "Program-controlled issuance limits in mint base units; zero disables a limit.",
-              "SPL mints cannot enforce these limits on other mint authorities."
+              "Modular instructions read only these, for every mint including ONyc; the",
+              "global `State` limits bind only the legacy ONyc instructions. SPL mints",
+              "cannot enforce these limits on other mint authorities."
             ],
             "type": "u64"
           },
