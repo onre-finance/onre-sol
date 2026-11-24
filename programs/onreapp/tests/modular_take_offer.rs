@@ -13,6 +13,8 @@ mod mint_limits;
 mod mint_multisig;
 #[path = "modular_take_offer/prop_amm.rs"]
 mod modular_prop_amm;
+#[path = "modular_take_offer/offer_permission.rs"]
+mod offer_permission;
 #[path = "modular_take_offer/permissionless.rs"]
 mod permissionless;
 #[path = "modular_take_offer/pricer_vectors.rs"]

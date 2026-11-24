@@ -13,3 +13,4 @@ pub const BUFFER_MANAGEMENT: &[u8] = b"buffer_management";
 pub const BUFFER_PERFORMANCE: &[u8] = b"buffer_performance";
 pub const FULFILLMENT_REQUEST: &[u8] = b"fulfillment_request";
 pub const SUPPLY_EXCLUSIONS: &[u8] = b"supply_exclusions";
+pub const OFFER_PERMISSION: &[u8] = b"offer_permission";

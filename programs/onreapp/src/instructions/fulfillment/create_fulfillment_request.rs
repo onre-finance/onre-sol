@@ -117,6 +117,9 @@ pub fn create_fulfillment_request(
         &a.state,
         &a.instructions_sysvar,
         approval_message.as_ref(),
+        // shortcut: Allowlisted Worker offers fail closed here; add the optional
+        // `permission` account as on `take_offer` when one is needed.
+        false,
     )?;
     transfer_tokens(
         &a.token_in_mint,

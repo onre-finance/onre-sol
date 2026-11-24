@@ -52,6 +52,11 @@ pub fn take_offer(
     let program_id = ctx.program_id;
     let a = ctx.accounts;
     let sysvar = a.instructions_sysvar.clone();
+    let has_permission = permissions::holds_permission(
+        ctx.remaining_accounts.first(),
+        &a.config.offer_config.key(),
+        a.user.key,
+    );
     execute(
         program_id,
         a,
@@ -66,6 +71,7 @@ pub fn take_offer(
                 e.state,
                 &sysvar,
                 approval_message.as_ref(),
+                has_permission,
             )
         },
     )?;

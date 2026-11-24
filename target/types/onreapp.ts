@@ -5263,6 +5263,99 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "grantOfferPermission",
+      "docs": [
+        "Grants `user` access to an Allowlisted offer by creating its `OfferPermission`; boss only."
+      ],
+      "discriminator": [
+        30,
+        143,
+        137,
+        190,
+        165,
+        189,
+        156,
+        216
+      ],
+      "accounts": [
+        {
+          "name": "offerConfig"
+        },
+        {
+          "name": "permission",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "offerConfig"
+              },
+              {
+                "kind": "arg",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "user",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "initialize",
       "docs": [
         "Initializes the program state and authority accounts.",
@@ -10069,6 +10162,54 @@ export type Onreapp = {
           "type": "pubkey"
         }
       ]
+    },
+    {
+      "name": "revokeOfferPermission",
+      "docs": [
+        "Revokes an `OfferPermission` by closing it; boss only."
+      ],
+      "discriminator": [
+        47,
+        32,
+        11,
+        193,
+        8,
+        13,
+        206,
+        83
+      ],
+      "accounts": [
+        {
+          "name": "permission",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": []
     },
     {
       "name": "setBufferFeeConfig",
@@ -16102,6 +16243,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "offerPermission",
+      "discriminator": [
+        123,
+        172,
+        58,
+        17,
+        252,
+        38,
+        192,
+        159
+      ]
+    },
+    {
       "name": "permissionlessAuthority",
       "discriminator": [
         241,
@@ -18188,6 +18342,11 @@ export type Onreapp = {
       "code": 6161,
       "name": "supplyExclusionsRequired",
       "msg": "ONyc supply exclusions must be set before modular use"
+    },
+    {
+      "code": 6162,
+      "name": "permissionRequired",
+      "msg": "Allowlisted offers require the user's offer permission account"
     }
   ],
   "types": [
@@ -20288,6 +20447,9 @@ export type Onreapp = {
           },
           {
             "name": "permissionless"
+          },
+          {
+            "name": "allowlisted"
           }
         ]
       }
@@ -20763,6 +20925,31 @@ export type Onreapp = {
               "Whether the offer allows permissionless operations"
             ],
             "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "offerPermission",
+      "docs": [
+        "One user's standing access to one Allowlisted offer. PDA",
+        "`[\"offer_permission\", offer_config, user]`: the boss creates it to grant and",
+        "closes it to revoke. `user` is whoever signs `take_offer`, wallet or PDA."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offerConfig",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
