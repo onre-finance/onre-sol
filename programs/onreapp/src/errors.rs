@@ -326,4 +326,6 @@ pub enum OnreError {
     DuplicateExcludedTokenAccount,
     #[msg("ONyc supply exclusions must be set before modular use")]
     SupplyExclusionsRequired,
+    #[msg("ONyc after the one-way BUFFER switch requires the per-mint BUFFER accounts")]
+    PerMintBufferAccountsRequired,
 }

@@ -230,6 +230,23 @@ would accrue the same supply. Exactly one is active, selected by the one-way
   withdrawals keep working. Legacy trades still execute but no longer accrue: their
   mints are under-accrued and their burns over-accrued for the interval until the
   next per-mint accrual.
+- **Retiring the legacy offers.** After the switch the boss deletes the legacy
+  offers' vectors. Every legacy trade path prices from them (`take_offer_v2`,
+  `take_offer_permissionless_v2`, Prop AMM buy and sell, redemption fulfillment), so
+  none of them can change ONyc supply without accruing.
+- **`mint_to` follows the switch.** Before it, `mint_to` accrues the legacy singleton,
+  mints directly with the program PDA under the `State` caps and refreshes market
+  stats from `State::main_offer`, as before. After it, `mint_to` behaves like a
+  modular path: it accrues the per-mint BUFFER, mints through the configured program
+  minter (direct or mint multisig) under ONyc's `ManagedTokenConfig` caps, stores
+  the post-mint supply as the per-mint baseline, and refreshes the legacy singleton
+  and ONyc's selected market stats from the canonical Pricer and per-mint supply
+  exclusions. It therefore keeps working once the main offer has no vectors. Its nine
+  trailing optional accounts (`managed_token`, `mint_multisig`,
+  `per_mint_buffer_state`, `buffer_pricer`, the three per-mint vault ATAs,
+  `managed_market_stats`, `supply_exclusions`) are `None` before the switch and
+  required after it (`PerMintBufferAccountsRequired`; `managed_market_stats` only
+  when ONyc selected a market stats account other than the singleton).
 
 ### Standalone settlement and policy
 

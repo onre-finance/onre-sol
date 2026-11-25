@@ -6956,7 +6956,9 @@
             "Program-derived account that serves as the mint authority",
             "",
             "This PDA must be the current mint authority for the ONyc token.",
-            "Validated to ensure the program has permission to mint tokens."
+            "Validated to ensure the program has permission to mint tokens.",
+            "Before the ONyc BUFFER switch it must be the direct mint authority; after it,",
+            "the configured program minter (direct or mint multisig) is checked in the handler."
           ],
           "pda": {
             "seeds": [
@@ -7053,6 +7055,88 @@
         },
         {
           "name": "circulating_supply_excluded_balance"
+        },
+        {
+          "name": "managed_token",
+          "docs": [
+            "ONyc's `ManagedTokenConfig`: per-mint caps and the configured mint multisig."
+          ],
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "onyc_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint_multisig",
+          "docs": [
+            "equal it. See `utils::program_minter`."
+          ],
+          "optional": true
+        },
+        {
+          "name": "per_mint_buffer_state",
+          "docs": [
+            "owner, discriminator and embedded mint."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "buffer_pricer",
+          "docs": [
+            "Canonical USD instance-zero Pricer driving the per-mint BUFFER."
+          ],
+          "optional": true
+        },
+        {
+          "name": "per_mint_reserve_token",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "per_mint_management_token",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "per_mint_performance_token",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "managed_market_stats",
+          "docs": [
+            "refresh; `None` when nothing or the legacy singleton is selected."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "supply_exclusions",
+          "optional": true
         }
       ],
       "args": [
@@ -18182,6 +18266,11 @@
       "code": 6161,
       "name": "SupplyExclusionsRequired",
       "msg": "ONyc supply exclusions must be set before modular use"
+    },
+    {
+      "code": 6162,
+      "name": "PerMintBufferAccountsRequired",
+      "msg": "ONyc after the one-way BUFFER switch requires the per-mint BUFFER accounts"
     }
   ],
   "types": [

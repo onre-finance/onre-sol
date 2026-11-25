@@ -1200,6 +1200,45 @@ export class ScriptHelper {
         const onycMint = state.onycMint as PublicKey;
         const offer = (state.mainOffer as PublicKey).equals(PublicKey.default) ? PublicKey.default : (state.mainOffer as PublicKey);
 
+        // After the one-way ONyc BUFFER switch, mint_to accrues the per-mint
+        // ["buffer", mint] BUFFER and refreshes stats from the canonical Pricer, so it
+        // needs the per-mint accounts; before the switch they stay null.
+        const programId = this.program.programId;
+        const pda = (...seeds: Buffer[]) => PublicKey.findProgramAddressSync(seeds, programId)[0];
+        const perMintAta = (seed: string) =>
+            getAssociatedTokenAddressSync(onycMint, pda(Buffer.from(seed), onycMint.toBuffer()), true, TOKEN_PROGRAM_ID);
+        const managedToken = pda(Buffer.from("managed_token"), onycMint.toBuffer());
+        const config = state.onycPerMintBufferActive ? await this.program.account.managedTokenConfig.fetch(managedToken) : null;
+        const mintMultisig = (config?.mintMultisig as PublicKey | undefined) ?? PublicKey.default;
+        const selectedStats = (config?.marketStats as PublicKey | undefined) ?? PublicKey.default;
+        const perMint = state.onycPerMintBufferActive
+            ? {
+                  managedToken,
+                  // Required exactly when multisig minting is configured.
+                  mintMultisig: mintMultisig.equals(PublicKey.default) ? null : mintMultisig,
+                  perMintBufferState: pda(Buffer.from("buffer"), onycMint.toBuffer()),
+                  // Canonical USD (denomination 0) instance-zero Pricer.
+                  bufferPricer: pda(Buffer.from("pricer"), onycMint.toBuffer(), Buffer.from([0]), Buffer.alloc(8)),
+                  perMintReserveToken: perMintAta("buffer_reserve"),
+                  perMintManagementToken: perMintAta("buffer_management"),
+                  perMintPerformanceToken: perMintAta("buffer_performance"),
+                  // Market stats come from the canonical Pricer after the switch.
+                  managedMarketStats:
+                      selectedStats.equals(PublicKey.default) || selectedStats.equals(this.pdas.marketStatsPda) ? null : selectedStats,
+                  supplyExclusions: pda(Buffer.from("supply_exclusions"), onycMint.toBuffer()),
+              }
+            : {
+                  managedToken: null,
+                  mintMultisig: null,
+                  perMintBufferState: null,
+                  bufferPricer: null,
+                  perMintReserveToken: null,
+                  perMintManagementToken: null,
+                  perMintPerformanceToken: null,
+                  managedMarketStats: null,
+                  supplyExclusions: null,
+              };
+
         return await this.program.methods
             .mintTo(new BN(params.amount))
             .accountsPartial({
@@ -1213,6 +1252,7 @@ export class ScriptHelper {
                 },
                 marketStats: this.pdas.marketStatsPda,
                 circulatingSupplyExcludedBalance: this.pdas.circulatingSupplyExcludedBalancePda,
+                ...perMint,
             })
             .instruction();
     }
