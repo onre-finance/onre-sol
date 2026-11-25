@@ -851,14 +851,14 @@ fn buffer_operations_mint_directly_or_through_the_multisig_as_configured() {
             assert!(get_mint_supply(&f.svm, &f.mint) > before);
         };
 
-        // Direct: the PDA mints accrual, and a supplied multisig is rejected.
-        let instruction = settle_with_mint_multisig_ix(&f, Some(multisig));
-        expect_error(
-            send(&mut f.svm, &[instruction], &[&f.boss]),
-            OnreError::UnexpectedMintMultisig,
-        );
-        accrue(&mut f, &|f| settle(f));
+        // Direct: the PDA mints accrual and a supplied, not yet enabled multisig is
+        // ignored.
+        accrue(&mut f, &|f| {
+            let instruction = settle_with_mint_multisig_ix(f, Some(multisig));
+            send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+        });
         assert_eq!(get_mint_authority_pubkey(&f.svm, &f.mint), Some(pda));
+        accrue(&mut f, &|f| settle(f));
 
         // Multisig: settlement and settings changes mint through the configured multisig,
         // which must be supplied.

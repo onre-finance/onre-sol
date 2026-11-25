@@ -26,10 +26,11 @@ pub(crate) struct ProgramMinter<'a, 'info> {
 
 impl<'a, 'info> ProgramMinter<'a, 'info> {
     /// Requires the program to control `mint` in the configured mode. Direct mode
-    /// requires the PDA as mint authority and no multisig account. Multisig mode
-    /// requires the configured multisig as both the supplied account and the mint
-    /// authority. Multisig contents are validated when the mode is enabled; SPL
-    /// accounts cannot change their signer set afterwards.
+    /// requires the PDA as mint authority and ignores any supplied multisig account,
+    /// so clients can pass a prepared multisig before it is enabled and keep working
+    /// across the switch. Multisig mode requires the configured multisig as both the
+    /// supplied account and the mint authority. Multisig contents are validated when
+    /// the mode is enabled; SPL accounts cannot change their signer set afterwards.
     pub(crate) fn resolve(
         configured_multisig: Option<Pubkey>,
         mint: &InterfaceAccount<'info, Mint>,
@@ -37,11 +38,8 @@ impl<'a, 'info> ProgramMinter<'a, 'info> {
         bump: u8,
         multisig: Option<&'a AccountInfo<'info>>,
     ) -> Result<Self> {
-        let authority = match configured_multisig {
-            None => {
-                require!(multisig.is_none(), OnreError::UnexpectedMintMultisig);
-                mint_authority.key()
-            }
+        let (authority, multisig) = match configured_multisig {
+            None => (mint_authority.key(), None),
             Some(configured_multisig) => {
                 let multisig = multisig.ok_or(OnreError::MintMultisigRequired)?;
                 require_keys_eq!(
@@ -49,7 +47,7 @@ impl<'a, 'info> ProgramMinter<'a, 'info> {
                     configured_multisig,
                     OnreError::InvalidMintMultisig
                 );
-                configured_multisig
+                (configured_multisig, Some(multisig))
             }
         };
         require!(

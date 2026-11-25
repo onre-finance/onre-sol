@@ -134,9 +134,13 @@ fn program_and_second_minter_share_the_multisig_and_boss_can_revert() {
         f.svm.airdrop(&ccip.pubkey(), INITIAL_LAMPORTS).unwrap();
         let multisig = create_multisig(f.token_program, &mut f, 1, &[pda, ccip.pubkey()]);
 
-        // Direct mode rejects a supplied multisig rather than ignoring it.
-        let instruction = f.take_with_mint_multisig(2_000_000, 0, Some(multisig));
-        assert_error(f.send(instruction), OnreError::UnexpectedMintMultisig);
+        // Direct mode ignores a supplied multisig and mints as the PDA, so clients can
+        // pass the prepared multisig before it is enabled.
+        let instruction = f.take_with_mint_multisig(1_000_000, 1, Some(multisig));
+        f.send(instruction).unwrap();
+        assert_eq!(get_mint_authority_pubkey(&f.svm, &f.mint), Some(pda));
+        let direct = f.balance(f.mint, f.user.pubkey(), f.token_program);
+        assert!(direct > 0);
 
         switch_to_multisig(&mut f, multisig).unwrap();
         assert_eq!(configured(&f), multisig);
@@ -147,7 +151,7 @@ fn program_and_second_minter_share_the_multisig_and_boss_can_revert() {
         f.send(instruction).unwrap();
         assert_eq!(
             f.balance(f.mint, f.user.pubkey(), f.token_program),
-            990_000_000
+            direct + 990_000_000
         );
 
         // The configured multisig cannot be omitted or substituted.
@@ -161,7 +165,7 @@ fn program_and_second_minter_share_the_multisig_and_boss_can_revert() {
         second_minter_mint(&mut f, &ccip, multisig, 5).unwrap();
         assert_eq!(
             f.balance(f.mint, f.user.pubkey(), f.token_program),
-            990_000_005
+            direct + 990_000_005
         );
 
         // Disabling reclaims mint authority to the program and restores direct minting.
@@ -173,7 +177,7 @@ fn program_and_second_minter_share_the_multisig_and_boss_can_revert() {
         f.send(instruction).unwrap();
         assert_eq!(
             f.balance(f.mint, f.user.pubkey(), f.token_program),
-            1_980_000_005
+            direct + 1_980_000_005
         );
         assert!(second_minter_mint(&mut f, &ccip, multisig, 5).is_err());
     }

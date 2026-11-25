@@ -68,9 +68,10 @@ equal that pair.
   `legacy_buffer_management_token` and `legacy_buffer_performance_token`: the legacy
   ONyc BUFFER, required for ONyc before the one-way BUFFER switch and ignored
   otherwise (see Per-mint BUFFER).
-- Optional `mint_multisig`: required exactly when the managed token mints through a
-  multisig and must equal `ManagedTokenConfig::mint_multisig`; omitted for direct
-  minting (see Minting authority).
+- Optional `mint_multisig`: required when the managed token mints through a
+  multisig and must equal `ManagedTokenConfig::mint_multisig`; ignored for direct
+  minting, so clients can pass a prepared multisig before it is enabled (see
+  Minting authority).
 - Canonical `buffer_state`, optional canonical `buffer_pricer`, and the
   reserve, management-fee, and performance-fee BUFFER token accounts, as below.
 - `market_stats`, which must be the account selected by `ManagedTokenConfig`
@@ -371,8 +372,9 @@ Modular minting (`take_offer` output and every BUFFER accrual, including
 paths, selected per managed mint by `ManagedTokenConfig::mint_multisig`:
 
 - **Direct** (default): the program's `["mint_authority"]` PDA is the mint
-  authority and signs mints itself. No `mint_multisig` account may be supplied
-  (`UnexpectedMintMultisig`).
+  authority and signs mints itself. A supplied `mint_multisig` account is ignored,
+  so clients can pass the prepared multisig from day one and need no change when it
+  is enabled.
 - **Multisig**: the mint authority is a 1-of-N SPL multisig of the mint's token
   program whose signers include the PDA. The program mints by passing the multisig
   as authority and signing as the PDA member, so other members, such as a CCIP token

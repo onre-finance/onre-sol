@@ -298,6 +298,8 @@ pub enum OnreError {
     LegacyMarketStatsRequired,
     #[msg("Multisig minting is enabled: the configured mint multisig is required")]
     MintMultisigRequired,
+    /// No longer raised: direct minting ignores a supplied multisig. Kept so later
+    /// error codes do not shift.
     #[msg("Direct minting is enabled: no mint multisig account may be supplied")]
     UnexpectedMintMultisig,
     #[msg("Mint multisig must be the configured initialized 1-of-N multisig containing the program mint authority")]
