@@ -6,7 +6,7 @@ Do the steps in order. Details are in [MODULAR_TAKE_OFFER.md](MODULAR_TAKE_OFFER
 
 - The legacy offers stay live until every partner has moved. Partners move one at a time, whenever they are ready.
 - While both systems run, old and new give the same price, fees and caps, so a partner can switch at any moment and nobody can arbitrage between them.
-- Clients build ONyc transactions from on-chain config (the switch flag and `ManagedTokenConfig::mint_multisig`), never from hardcoded account lists. Then no switch needs a client release.
+- Clients ship once, with every account they will ever need: both BUFFER account sets and the prepared mint multisig. The program ignores what it does not use yet, so neither the BUFFER switch nor the multisig flip needs a client release.
 - Every step that changes who can mint or which BUFFER accrues is **one** Squads transaction. If any instruction fails, nothing changes.
 - Do not turn on the kill switch during the transition; it stops both systems.
 
@@ -23,6 +23,11 @@ Do the steps in order. Details are in [MODULAR_TAKE_OFFER.md](MODULAR_TAKE_OFFER
 6. `set_managed_token_supply_exclusions` with the same accounts as the legacy exclusion list. It writes the legacy cache too. From now on, change exclusions only through this instruction.
 7. Select ONyc's market stats: `set_managed_token_market_stats` with the legacy `["market_stats"]` singleton, or `initialize_managed_token_market_stats` for a per-mint account.
 8. `initialize_managed_token_buffer` for ONyc, and create the ATAs of the vaults it references. It stays inactive until step 18.
+8a. Create the SPL mint multisig now, even if CCIP comes much later (system `create_account` + `InitializeMultisig` under ONyc's token program):
+    - `m = 1`;
+    - signers: the program's `["mint_authority"]` PDA, the CCIP BurnMint pool's signer PDA and any other minter you want.
+
+    The signer set cannot change later, so include every future minter. Creating it changes nothing: the PDA stays mint authority, and the program ignores the multisig while minting is direct.
 
 ## C. Run both side by side (partners move at their own pace)
 
@@ -36,7 +41,7 @@ Do the steps in order. Details are in [MODULAR_TAKE_OFFER.md](MODULAR_TAKE_OFFER
     - same approvers and `ApprovalMessage` for permissioned offers;
     - the same `["permissionless-1"]` intermediary for permissionless offers;
     - for ONyc, always pass **both** the legacy and the per-mint BUFFER accounts plus `legacy_market_stats`, so the step 18 switch needs no client change;
-    - pass `mint_multisig` from `ManagedTokenConfig` (`None` while it is unset), so step F needs no client change.
+    - always pass the step 8a multisig as `mint_multisig`, so step F needs no client change.
 12. Test a small buy, sell and worker redemption (`create_fulfillment_request` → `fulfill_fulfillment_request`) on mainnet.
 13. Move your own frontend first, then each partner whenever they are ready. Old and new quote the same price, so nobody sees a gap.
 14. Until step 18, change both systems in the **same** transaction:
@@ -83,12 +88,9 @@ Do the steps in order. Details are in [MODULAR_TAKE_OFFER.md](MODULAR_TAKE_OFFER
 Not before step 18: legacy instructions only mint directly, so with a multisig they would fail or silently stop minting and burning.
 
 25. Prepare. None of this changes who can mint:
-    1. Create an SPL multisig under ONyc's token program (system `create_account` + `InitializeMultisig`) with `m = 1` and these signers:
-       - the program's `["mint_authority"]` PDA;
-       - the CCIP BurnMint pool's signer PDA;
-       - any other minter you want.
+    1. Use the step 8a multisig.
     2. Set up the CCIP token pool for ONyc on the Chainlink side.
-    3. Check that every client passes `mint_multisig` from `ManagedTokenConfig` (step 11).
+    3. Check that every client already passes the multisig (step 11). Saved `mint_to` Squads transactions must pass it too.
 26. Make the switch in **one** Squads transaction, in this order:
     1. `transfer_mint_authority_to_boss`: PDA → boss (the Squads vault).
     2. SPL Token `set_authority` (`MintTokens`), signed by the boss: boss → multisig.
@@ -97,5 +99,5 @@ Not before step 18: legacy instructions only mint directly, so with a multisig t
     Never execute instruction 1 on its own, because then the program cannot mint at all.
 27. Verify a modular `take_offer`, `mint_to` and `settle_managed_token_buffer`.
     - Rollback: `disable_managed_token_mint_multisig` alone. It reclaims mint authority to the PDA by signing as the multisig member.
-    - From now on, every ONyc instruction that mints must pass the multisig. Before the flip it must be `None` (`UnexpectedMintMultisig`), and after it, it is required (`MintMultisigRequired`). A transaction built just before the flip that lands just after it fails once and must be rebuilt.
+    - Clients that always pass the multisig are not affected: the program ignored it before the flip and mints through it afterwards. A client that does not pass it fails with `MintMultisigRequired` from the flip on.
     - CCIP mints are outside ONyc's per-mint caps. The BUFFER accrues on them only from the next settle or trade.
