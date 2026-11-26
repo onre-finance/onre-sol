@@ -907,6 +907,36 @@ fn test_market_info_uses_cached_excluded_balance() {
 }
 
 #[test]
+fn test_refresh_market_stats_floors_stale_excluded_balance_at_zero() {
+    let (mut svm, payer, token_in, onyc_mint) =
+        setup_onyc_offer_with_supply(0, 1_000_000_000, 86_400, 1_000_000_000_000, 0);
+    let boss = payer.pubkey();
+    let owner = Pubkey::new_unique();
+    let mut owners = [Pubkey::default(); 20];
+    owners[0] = owner;
+    let set_ix = build_set_circulating_supply_excluded_accounts_ix(&boss, &owners);
+    send_tx(&mut svm, &[set_ix], &[&payer]).unwrap();
+    let excluded_ata = create_token_account(&mut svm, &onyc_mint, &owner, 800_000_000_000);
+    set_mint_supply(&mut svm, &onyc_mint, 1_000_000_000_000);
+    let update_ix = build_update_circulating_supply_excluded_balance_ix(
+        &boss,
+        &onyc_mint,
+        &[excluded_ata],
+        &TOKEN_PROGRAM_ID,
+    );
+    send_tx(&mut svm, &[update_ix], &[&payer]).unwrap();
+
+    // Excluded tokens burned since the last cache update: the cached excluded
+    // balance now exceeds supply, and circulating supply floors at zero.
+    set_mint_supply(&mut svm, &onyc_mint, 500_000_000_000);
+    let refresh_ix = build_refresh_market_stats_ix(&boss, &token_in, &onyc_mint);
+    send_tx(&mut svm, &[refresh_ix], &[&payer]).unwrap();
+    let market_stats = read_market_stats(&svm);
+    assert_eq!(market_stats.circulating_supply, 0);
+    assert_eq!(market_stats.tvl, 0);
+}
+
+#[test]
 fn test_refresh_market_stats_nav_multiple_vectors_uses_most_recent() {
     let (mut svm, payer, onyc_mint) = setup_initialized();
     let boss = payer.pubkey();

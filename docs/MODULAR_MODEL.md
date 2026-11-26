@@ -192,7 +192,7 @@ repeat creation; shared accounts are not implicitly initialized or overwritten b
 | `refresh_managed_token_market_stats` | Permissionless recomputation of the selected MarketStats (and the ONyc legacy singleton) from current supply and the canonical USD Pricer, between trades. |
 | `set_managed_token_supply_exclusions` | Boss-only replacement of the mint's excluded token accounts (≤ 20, unique), creating `["supply_exclusions", mint]` on first use and caching their summed balance; ONyc also writes the legacy cache. |
 | `refresh_managed_token_supply_exclusions` | Permissionless re-sum of the stored excluded token accounts, supplied exactly in stored order; ONyc also writes the legacy cache. |
-| `set_managed_token_mint_limits` | Boss-only per-mint `max_supply` / `max_mint_amount` for program mints; zero disables a limit and a nonzero max supply must cover current supply. ONyc combines them with the global `State` limits (stricter nonzero wins). |
+| `set_managed_token_mint_limits` | Boss-only per-mint `max_supply` / `max_mint_amount` for program mints; zero disables a limit and a nonzero max supply must cover current supply. They bind every modular mint, ONyc included; the global `State` limits bind only legacy ONyc instructions. |
 | `enable_managed_token_mint_multisig` / `disable_managed_token_mint_multisig` | Boss-only switch of modular minting between the program PDA and a 1-of-N SPL multisig that includes it; see [MODULAR_TAKE_OFFER.md](MODULAR_TAKE_OFFER.md#minting-authority). |
 | `initialize_managed_token_buffer` | Creates independent per-mint accounting and three dedicated vault configs, using the token's enabled USD Pricer instance zero. |
 

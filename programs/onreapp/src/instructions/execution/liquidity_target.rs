@@ -47,7 +47,7 @@ pub(super) fn target(a: &Execution, bps: u16, now: u64) -> Result<u128> {
         a.managed_mint(),
         &a.buffer.supply_exclusions.to_account_info(),
     )?;
-    let supply = calculate_circulating_supply(a.managed_mint().supply, excluded)?;
+    let supply = calculate_circulating_supply(a.managed_mint().supply, excluded);
     asset_target(
         supply,
         nav,

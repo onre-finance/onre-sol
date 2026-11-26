@@ -174,10 +174,12 @@ mints if no source is configured. Managed-to-asset transfers fees to the Fee ATA
 then transfers all net managed input to its destination or burns it if absent,
 and pays asset output from its required source
 to the route recipient. It then records the actual post-execution managed mint supply as the BUFFER
-baseline. Managed-token supply and issuance limits apply to both BUFFER accrual
-and user issuance. ONyc additionally retains
-the stricter nonzero global limits. Gross BUFFER accrual is checked as one
-operation before splitting across fee destinations. Every step, including lazy
+baseline. The managed token's per-mint supply and issuance limits apply to both
+BUFFER accrual and user issuance, for ONyc too; the global `State` limits bind
+only the legacy ONyc instructions. Gross BUFFER accrual is checked as one
+operation before splitting across fee destinations, and only when it mints
+something, so a trade or settlement at or above a cap still works when the
+accrual is zero. Every step, including lazy
 ATA creation, rolls back if the transaction fails.
 
 `OfferExecutedEvent` records the offer, user, access, execution, direction, gross/net input,
@@ -246,8 +248,9 @@ It first accrues under the existing policy, then applies the next interval's
 settings while preserving the just-settled baseline, timestamp, and watermark.
 An unchanged policy fails with `NoChange`. Both instructions honor the kill
 switch, canonical account and mint checks, program mint authority, and issuance
-caps. For ONyc the stricter nonzero of the global and per-mint caps applies;
-other mints use their per-mint caps. Per-mint caps default to zero (uncapped)
+caps. Every mint, ONyc included, uses its per-mint caps; the global `State`
+caps bind only the legacy ONyc instructions, so while both paths mint ONyc keep
+the two sets equal. Per-mint caps default to zero (uncapped)
 and are set with the boss-only `set_managed_token_mint_limits(max_supply,
 max_mint_amount)`: zero disables a cap, a nonzero `max_supply` must be at least
 the current supply (`MaxSupplyBelowCurrentSupply`), identical values fail with

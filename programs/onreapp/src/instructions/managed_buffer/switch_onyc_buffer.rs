@@ -5,7 +5,6 @@ use crate::{
     instructions::buffer::modular_accrual::{self, BufferContext},
     model::{seeds::MANAGED_TOKEN, ManagedTokenConfig, Pricer},
     state::State,
-    utils::managed_token::effective_mint_limits,
     OnreError,
 };
 use anchor_lang::prelude::*;
@@ -91,7 +90,7 @@ pub fn switch_onyc_buffer_to_per_mint(ctx: Context<SwitchOnycBufferToPerMint>) -
     let now = Clock::get()?.unix_timestamp;
     let program_id = ctx.program_id;
     let a = ctx.accounts;
-    let (max_supply, max_mint) = effective_mint_limits(&a.state, &a.managed_token);
+    let (max_supply, max_mint) = a.managed_token.mint_limits();
     let settings = {
         let legacy = BufferContext {
             state: &a.state,

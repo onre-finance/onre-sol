@@ -43,9 +43,10 @@ pub struct SetManagedTokenMintLimits<'info> {
 
 /// Sets the managed token's issuance limits in mint base units; zero disables a
 /// limit. A nonzero `max_supply` must be at least the current supply, as on EVM.
-/// The limits bind program mints (offer output and BUFFER accrual); for ONyc the
-/// stricter nonzero of these and the global `State` limits applies. Mints by other
-/// members of a mint multisig (e.g. a CCIP pool) are not limited by the program.
+/// The limits bind modular program mints (offer output and BUFFER accrual) of every
+/// mint, ONyc included; the global `State` limits bind only legacy ONyc
+/// instructions. Mints by other members of a mint multisig (e.g. a CCIP pool) are
+/// not limited by the program.
 pub fn set_managed_token_mint_limits(
     ctx: Context<SetManagedTokenMintLimits>,
     max_supply: u64,

@@ -101,7 +101,7 @@ pub fn burn_managed_token_for_nav_increase(
     let nav = get_active_vector_and_current_price(valuation.vectors, now as u64)?.1;
     let excluded =
         excluded_supply_amount(program_id, &b.state, &b.managed_mint, &a.supply_exclusions)?;
-    let circulating = calculate_circulating_supply(b.managed_mint.supply, excluded)?;
+    let circulating = calculate_circulating_supply(b.managed_mint.supply, excluded);
     let total_assets = calculate_tvl(circulating, nav)?;
     let burn_amount = calculate_burn_amount(circulating, asset_adjustment_amount, nav, nav)?;
     // The reserve ATA was validated against the stored reserve vault during accrual.
