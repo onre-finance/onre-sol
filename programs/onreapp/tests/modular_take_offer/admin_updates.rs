@@ -134,6 +134,34 @@ fn boss_updates_fee_config_for_subsequent_trades() {
         boss_send(&mut f, instruction),
         OnreError::InvalidConfigurableVaultKind,
     );
+    // A BUFFER fee vault is Fee-kind but withdraws only its managed mint, so trade
+    // fees in other tokens would be stuck: only generic Fee vaults are accepted.
+    f.initialize_managed_buffer();
+    let buffer_fee_vault = f.buffer_vaults()[1];
+    let instruction = update_fee_ix(&f, f.boss.pubkey(), buffer_fee_vault, 200, 5);
+    expect_error(
+        boss_send(&mut f, instruction),
+        OnreError::InvalidConfigurableVault,
+    );
+    let instruction = ix(
+        accounts::CreateFeeConfig {
+            fee_vault: buffer_fee_vault,
+            fee_config: pda(&[b"fee_config", &9_u64.to_le_bytes()]),
+            state: find_state_pda().0,
+            boss: f.boss.pubkey(),
+            system_program: SYSTEM_PROGRAM_ID,
+        },
+        instruction::CreateFeeConfig {
+            instance_id: 9,
+            token_decimals: 6,
+            basis_points: 100,
+            minimum_fee_amount: 0,
+        },
+    );
+    expect_error(
+        boss_send(&mut f, instruction),
+        OnreError::InvalidConfigurableVault,
+    );
 
     let instruction = update_fee_ix(&f, f.boss.pubkey(), fee_vault, 200, 5);
     boss_send(&mut f, instruction).unwrap();

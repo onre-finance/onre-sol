@@ -27,3 +27,20 @@ pub struct VaultConfig {
     pub refill_target_bps: u16,
     pub bump: u8,
 }
+
+impl VaultConfig {
+    /// Whether `key` is this vault's generic `["vault", kind, instance_id]` address,
+    /// as opposed to a token-specific BUFFER vault, which can only hold its own mint.
+    pub fn is_generic(&self, key: &Pubkey, program_id: &Pubkey) -> bool {
+        Pubkey::create_program_address(
+            &[
+                super::seeds::VAULT,
+                &[self.kind as u8],
+                &self.instance_id.to_le_bytes(),
+                &[self.bump],
+            ],
+            program_id,
+        )
+        .is_ok_and(|address| address == *key)
+    }
+}
