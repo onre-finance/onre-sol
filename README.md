@@ -170,7 +170,7 @@ refresh ordering, and differences from legacy per-offer views.
 
 **Initialization**: `initialize`, `initialize_permissionless_authority`
 
-**Reusable configuration**: `register_managed_token`, `create_pricer`, `add_pricer_vector`, `create_quoter`, `create_vault_config`, `create_fee_config`, `create_prop_amm_state`, `create_offer_config`, `initialize_managed_token_buffer`
+**Reusable configuration**: `register_managed_token`, `unregister_managed_token`, `create_pricer`, `add_pricer_vector`, `create_quoter`, `create_vault_config`, `create_fee_config`, `create_prop_amm_state`, `create_offer_config`, `initialize_managed_token_buffer`
 
 **BUFFER**: `initialize_buffer`, `settle_buffer`, `set_buffer_gross_apr`, `set_buffer_fee_config`, `burn_for_nav_increase`, `deposit_reserve_vault`, `withdraw_reserve_vault`
 

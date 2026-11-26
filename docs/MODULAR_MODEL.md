@@ -175,6 +175,7 @@ repeat creation; shared accounts are not implicitly initialized or overwritten b
 | Instruction | Behavior |
 | --- | --- |
 | `register_managed_token` | Registers an existing SPL mint, records decimals, enables it, sets issuance limits to zero. Does not acquire mint authority. |
+| `unregister_managed_token` | Closes the registration of a token that never went live (disabled, no per-mint BUFFER, no market stats selected; never ONyc) and refunds its rent to the boss, so a wrongly registered mint can be used as an offer asset again. Offers that still reference it stop executing; its Pricers, Quoters and supply exclusions stay. Emits `ManagedTokenUnregisteredEvent`. |
 | `create_pricer` | Creates an enabled instance with zero vectors; `add_pricer_vector` schedules prices. |
 | `create_quoter` | Creates enabled dispatch configuration for one kind and instance ID. |
 | `create_vault_config` | Creates a vault authority/config with a nonzero destination; creates no ATA. Refill targets are allowed only for Liquidity and cannot exceed 10,000 bps. |

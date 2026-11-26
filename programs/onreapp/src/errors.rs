@@ -340,4 +340,8 @@ pub enum OnreError {
         "The BUFFER reserve is excluded from circulating supply; burning it would not raise NAV"
     )]
     BufferReserveExcludedFromSupply,
+    #[msg("ONyc cannot be unregistered")]
+    CannotUnregisterOnyc,
+    #[msg("Managed token must be disabled, with no per-mint BUFFER and no market stats selected")]
+    ManagedTokenStillInUse,
 }

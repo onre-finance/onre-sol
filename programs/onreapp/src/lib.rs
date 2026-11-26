@@ -174,6 +174,12 @@ pub mod onreapp {
         configuration::register_managed_token(ctx)
     }
 
+    /// Removes a disabled managed-token registration that has no per-mint BUFFER and
+    /// no market stats selected, refunding its rent; ONyc cannot be removed. Boss only.
+    pub fn unregister_managed_token(ctx: Context<UnregisterManagedToken>) -> Result<()> {
+        configuration::unregister_managed_token(ctx)
+    }
+
     /// Creates an independent Pricer with no pricing vectors; boss only.
     pub fn create_pricer(
         ctx: Context<CreatePricer>,
