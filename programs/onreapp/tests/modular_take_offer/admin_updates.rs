@@ -134,6 +134,34 @@ fn boss_updates_fee_config_for_subsequent_trades() {
         boss_send(&mut f, instruction),
         OnreError::InvalidConfigurableVaultKind,
     );
+    // A BUFFER fee vault is Fee-kind but withdraws only its managed mint, so trade
+    // fees in other tokens would be stuck: only generic Fee vaults are accepted.
+    f.initialize_managed_buffer();
+    let buffer_fee_vault = f.buffer_vaults()[1];
+    let instruction = update_fee_ix(&f, f.boss.pubkey(), buffer_fee_vault, 200, 5);
+    expect_error(
+        boss_send(&mut f, instruction),
+        OnreError::InvalidConfigurableVault,
+    );
+    let instruction = ix(
+        accounts::CreateFeeConfig {
+            fee_vault: buffer_fee_vault,
+            fee_config: pda(&[b"fee_config", &9_u64.to_le_bytes()]),
+            state: find_state_pda().0,
+            boss: f.boss.pubkey(),
+            system_program: SYSTEM_PROGRAM_ID,
+        },
+        instruction::CreateFeeConfig {
+            instance_id: 9,
+            token_decimals: 6,
+            basis_points: 100,
+            minimum_fee_amount: 0,
+        },
+    );
+    expect_error(
+        boss_send(&mut f, instruction),
+        OnreError::InvalidConfigurableVault,
+    );
 
     let instruction = update_fee_ix(&f, f.boss.pubkey(), fee_vault, 200, 5);
     boss_send(&mut f, instruction).unwrap();
@@ -582,4 +610,113 @@ fn fee_configs_bind_input_decimals_and_are_shared_across_mints() {
     let event = executed_event(&f.send(instruction).unwrap());
     assert_eq!(event.fee_amount, 5);
     assert_eq!(f.balance(usdg, vault(VaultKind::Fee), f.asset_program), 5);
+}
+
+fn unregister_ix(f: &Fixture, boss: Pubkey) -> Instruction {
+    ix(
+        accounts::UnregisterManagedToken {
+            managed_token: managed(f.mint),
+            buffer_state: pda(&[b"buffer", f.mint.as_ref()]),
+            state: find_state_pda().0,
+            boss,
+        },
+        instruction::UnregisterManagedToken {},
+    )
+}
+
+fn disable_managed_token(f: &mut Fixture) {
+    let instruction = toggle_ix(f, "managed_token", f.boss.pubkey(), false);
+    let boss = f.boss.insecure_clone();
+    send(&mut f.svm, &[instruction], &[&boss]).unwrap();
+}
+
+#[test]
+fn boss_unregisters_a_disabled_token_that_never_went_live() {
+    let mut f = Fixture::new(false, false);
+    let state = find_state_pda().0;
+    let boss = f.boss.pubkey();
+
+    // Enabled, or with market stats selected: still in use.
+    let instruction = unregister_ix(&f, f.boss.pubkey());
+    expect_error(
+        boss_send(&mut f, instruction),
+        OnreError::ManagedTokenStillInUse,
+    );
+    disable_managed_token(&mut f);
+    let instruction = ix(
+        accounts::InitializeManagedTokenMarketStats {
+            managed_token: managed(f.mint),
+            market_stats: pda(&[b"market_stats", f.mint.as_ref()]),
+            state,
+            boss,
+            system_program: SYSTEM_PROGRAM_ID,
+        },
+        instruction::InitializeManagedTokenMarketStats {},
+    );
+    send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    let instruction = unregister_ix(&f, f.boss.pubkey());
+    expect_error(
+        boss_send(&mut f, instruction),
+        OnreError::ManagedTokenStillInUse,
+    );
+    let instruction = ix(
+        accounts::UnsetManagedTokenMarketStats {
+            managed_token: managed(f.mint),
+            state,
+            boss,
+        },
+        instruction::UnsetManagedTokenMarketStats {},
+    );
+    send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+
+    // Boss only; then the registration closes and its rent goes to the boss.
+    let rogue = Keypair::new();
+    f.svm.airdrop(&rogue.pubkey(), INITIAL_LAMPORTS).unwrap();
+    let instruction = unregister_ix(&f, rogue.pubkey());
+    expect_error(
+        send(&mut f.svm, &[instruction], &[&rogue]),
+        OnreError::InvalidBoss,
+    );
+    let rent = f.svm.get_account(&managed(f.mint)).unwrap().lamports;
+    let before = f.svm.get_account(&boss).unwrap().lamports;
+    let instruction = unregister_ix(&f, f.boss.pubkey());
+    boss_send(&mut f, instruction).unwrap();
+    assert!(f
+        .svm
+        .get_account(&managed(f.mint))
+        .is_none_or(|a| a.lamports == 0));
+    assert!(f.svm.get_account(&boss).unwrap().lamports + 10_000 >= before + rent);
+
+    // The mint can be registered again.
+    let instruction = ix(
+        accounts::RegisterManagedToken {
+            managed_mint: f.mint,
+            managed_token: managed(f.mint),
+            state,
+            boss,
+            system_program: SYSTEM_PROGRAM_ID,
+        },
+        instruction::RegisterManagedToken {},
+    );
+    send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+}
+
+#[test]
+fn a_token_with_a_buffer_and_onyc_cannot_be_unregistered() {
+    let mut f = Fixture::new(false, false);
+    super::modular_prop_amm::init_buffer(&mut f);
+    disable_managed_token(&mut f);
+    let instruction = unregister_ix(&f, f.boss.pubkey());
+    expect_error(
+        boss_send(&mut f, instruction),
+        OnreError::ManagedTokenStillInUse,
+    );
+
+    let mut f = Fixture::new(true, false);
+    disable_managed_token(&mut f);
+    let instruction = unregister_ix(&f, f.boss.pubkey());
+    expect_error(
+        boss_send(&mut f, instruction),
+        OnreError::CannotUnregisterOnyc,
+    );
 }

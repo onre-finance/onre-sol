@@ -57,11 +57,17 @@ pub struct SetManagedTokenMintMultisig<'info> {
 /// mint authority (e.g. `transfer_mint_authority_to_boss`, then SPL `set_authority` to
 /// the multisig, then this instruction, all in one transaction). The multisig must be
 /// an initialized 1-of-N multisig of the mint's token program that includes the
-/// program's mint-authority PDA. Legacy instructions remain direct-only.
+/// program's mint-authority PDA. Legacy instructions remain direct-only, so ONyc
+/// requires the one-way BUFFER switch first: before it, legacy instructions would
+/// stop minting and burning ONyc and fall back to vault transfers.
 pub fn enable_managed_token_mint_multisig(ctx: Context<SetManagedTokenMintMultisig>) -> Result<()> {
     let a = ctx.accounts;
     let multisig = a.mint_multisig.key();
     require_keys_neq!(a.managed_token.mint_multisig, multisig, OnreError::NoChange);
+    require!(
+        a.managed_mint.key() != a.state.onyc_mint || !a.state.onyc_legacy_buffer_active(),
+        OnreError::MintMultisigBeforeBufferSwitch
+    );
     validate_mint_multisig(
         &a.mint_multisig.to_account_info(),
         &a.token_program.key(),

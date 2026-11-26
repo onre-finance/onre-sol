@@ -28,7 +28,9 @@ pub struct UpdateFeeConfig<'info> {
     pub fee_config: Box<Account<'info, FeeConfig>>,
 
     #[account(
-        constraint = fee_vault.kind == VaultKind::Fee @ OnreError::InvalidConfigurableVaultKind
+        constraint = fee_vault.kind == VaultKind::Fee @ OnreError::InvalidConfigurableVaultKind,
+        // BUFFER fee vaults withdraw only their managed mint; other fees would be stuck.
+        constraint = fee_vault.is_generic(&fee_vault.key(), &crate::ID) @ OnreError::InvalidConfigurableVault,
     )]
     pub fee_vault: Box<Account<'info, VaultConfig>>,
 

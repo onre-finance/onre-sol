@@ -220,8 +220,10 @@ would accrue the same supply. Exactly one is active, selected by the one-way
 - **`switch_onyc_buffer_to_per_mint`** (boss only, blocked by the kill switch)
   accrues the legacy singleton up to now, has the initialized per-mint BUFFER take
   over its gross APR, fee rates and high-water mark from the current supply and
-  timestamp, and sets the flag. It cannot be undone. Vault balances stay in the
-  legacy vaults and are moved manually. `OnycBufferSwitchedToPerMintEvent` records
+  timestamp, and sets the flag. It cannot be undone. It creates any missing ONyc
+  ATA of the three per-mint BUFFER vaults at the boss's expense, since every ONyc
+  supply change afterwards accrues into them. Vault balances stay in the legacy
+  vaults and are moved manually. `OnycBufferSwitchedToPerMintEvent` records
   the hand-over.
 - **After the switch** only the per-mint BUFFER accrues; `take_offer` ignores the
   legacy BUFFER accounts. Clients can therefore supply both account sets for every
@@ -285,7 +287,9 @@ current canonical NAV: `total_assets = floor(circulating × NAV / 1e9)`,
 `required = ceil((total_assets − adjustment) × 1e9 / NAV)`,
 `burn = circulating − required`. The reserve vault signs the burn of its ATA. A zero
 adjustment, an adjustment above total assets, a zero burn and an insufficient
-reserve are rejected; the kill switch blocks it. The BUFFER baseline and market
+reserve are rejected, and so is a reserve ATA listed in the mint's supply
+exclusions (`BufferReserveExcludedFromSupply`, as on EVM): an excluded reserve is
+not circulating, so burning it could not raise NAV; the kill switch blocks it. The BUFFER baseline and market
 stats follow the burn, and `ManagedTokenBurnedForNavEvent` records it. For ONyc it
 is available only after the one-way switch; before it, the legacy
 `burn_for_nav_increase` burns the singleton reserve.
@@ -299,8 +303,10 @@ The boss selects an account with either instruction:
 
 - `initialize_managed_token_market_stats` creates `["market_stats", mint]` and
   selects it.
-- `set_managed_token_market_stats` selects any existing program-owned
-  MarketStats account, such as the legacy `["market_stats"]` singleton for ONyc.
+- `set_managed_token_market_stats` selects an existing MarketStats account of
+  this token: its own `["market_stats", mint]`, or for ONyc also the legacy
+  `["market_stats"]` singleton. Any other account, such as another token's, fails
+  with `MarketStatsNotForToken`, so one token cannot overwrite another's NAV.
 - `unset_managed_token_market_stats` clears the selection, disabling modular
   reporting without modifying the MarketStats account.
 
@@ -387,6 +393,10 @@ mints nothing, and applies the same issuance limits on both paths. Legacy instru
 remain direct-only: once a mint's authority moves to a multisig they no longer see
 program mint control.
 
+For ONyc, enabling requires the one-way BUFFER switch first
+(`MintMultisigBeforeBufferSwitch`): before it, legacy instructions would stop minting
+and burning ONyc and fall back to vault transfers.
+
 The boss switches with one transaction, after creating the multisig:
 
 1. `transfer_mint_authority_to_boss`;
@@ -437,8 +447,10 @@ two custody roles, replacing the former `liquidity_amount`. V2 instructions and 
 `add_pricer_vector(vector)` requires the existing boss signer and a canonical
 Pricer, and requires the new start time to exceed every stored start time. Start
 time cannot be in the past; base time must be positive and no later than start
-time. Price must be positive and the step duration (`price_fix_duration`) must be
-between 1 second and 1 day, as on EVM.
+time. Price must be positive, the step duration (`price_fix_duration`) must be
+between 1 second and 1 day, as on EVM, and the APR at most 100% (`1_000_000`,
+`PricerAprTooHigh`), since a larger typo could overflow price growth and halt
+every quote of the token.
 
 Before filling a slot it evicts history with the rule shared with legacy offers
 and EVM: it keeps the vector active at the current time (the new one if it starts
@@ -465,9 +477,10 @@ escrows the input, the worker fills it, and either can cancel the rest.
   user. Requires the offer and every component it uses to be enabled, and the kill
   switch off. Permissioned offers need the same Ed25519 approval as `take_offer`;
   permissionless offers reject one. Escrows the gross input in the request PDA
-  `["fulfillment_request", offer_config, user, request_id_le]`'s input-mint ATA.
-  Locks no price or fee. The user pays both accounts' rent; an ID can be reused
-  once its request closes.
+  `["fulfillment_request", offer_config, user, request_id_le]`'s input-mint ATA,
+  accepting that ATA if someone created it first, so its predictable address cannot
+  block an ID. Creates the user's output ATA if missing. Locks no price or fee. The
+  user pays all three accounts' rent; an ID can be reused once its request closes.
 - `fulfill_fulfillment_request(input_amount)`, by `State.worker`. Any amount up to
   the unfilled remainder (`FulfillmentAmountExceedsRemaining` otherwise). Each fill
   runs the shared `take_offer` pipeline on that gross input, with the escrow as
@@ -477,11 +490,14 @@ escrows the input, the worker fills it, and either can cancel the rest.
   payout, burn, destination or haircut custody, and market stats. A fill and a
   `take_offer` of the same input on the same configuration settle identically.
   It takes the same accounts as `take_offer` except the user's input ATA and the
-  permissionless intermediary (the escrow is already a program account); the
-  worker pays for created accounts. Emits `OfferExecutedEvent` (user = request user) and
+  permissionless intermediary (the escrow is already a program account). The
+  user's output ATA must exist: fills never create it, so a user cannot make the
+  worker fund a new account per partial fill by closing it; if it is closed, fills
+  fail and the request can be cancelled. The worker pays only for a missing fee or
+  proceeds vault ATA. Emits `OfferExecutedEvent` (user = request user) and
   `FulfillmentRequestFilledEvent`. A full fill closes the request and escrow,
   refunding their rent to the user; any unsolicited escrow surplus goes to the
-  fee vault so it cannot block the close. Blocked by the kill switch.
+  fee vault so it cannot block the close, reported as `surplus_amount`. Blocked by the kill switch.
 - `cancel_fulfillment_request()`, by the request user or the worker. Returns the
   whole escrow balance to the user (recreating their ATA at the signer's expense
   if needed) and closes the request and escrow, refunding rent to the user. Works

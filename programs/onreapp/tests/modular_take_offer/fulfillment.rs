@@ -47,6 +47,7 @@ fn create_ix(
 ) -> Instruction {
     let request = request_pda(f, request_id);
     let (mint, program) = input(f);
+    let (_, out_mint, _, out_program) = f.pair(read::<OfferConfig>(&f.svm, f.offer).direction);
     ix(
         accounts::CreateFulfillmentRequest {
             config: f.config_accounts(),
@@ -54,10 +55,13 @@ fn create_ix(
             user_token_in: derive_ata(&f.user.pubkey(), &mint, &program),
             fulfillment_request: request,
             escrow_token_in: escrow(f, request),
+            token_out_mint: out_mint,
+            user_token_out: derive_ata(&f.user.pubkey(), &out_mint, &out_program),
             state: find_state_pda().0,
             instructions_sysvar: SYSVAR_INSTRUCTIONS_ID,
             user: f.user.pubkey(),
             token_in_program: program,
+            token_out_program: out_program,
             associated_token_program: ATA_PROGRAM_ID,
             system_program: SYSTEM_PROGRAM_ID,
         },
@@ -347,13 +351,75 @@ fn the_user_cancels_and_a_full_fill_sweeps_unsolicited_escrow_surplus_to_the_fee
     // A donation to the escrow would otherwise block closing it on the final fill.
     let request = create(&mut f, 2, 100_000_000);
     f.seed_tokens(f.mint, request, 100_001_000);
-    fill(&mut f, &worker, request, 100_000_000).unwrap();
+    let result = fill(&mut f, &worker, request, 100_000_000).unwrap();
+    let filled: FulfillmentRequestFilledEvent = emitted(&result);
+    assert_eq!(filled.surplus_amount, 1_000);
     assert!(f.svm.get_account(&request).is_none());
     assert!(f.svm.get_account(&escrow(&f, request)).is_none());
     assert_eq!(
         f.balance(f.mint, vault(VaultKind::Fee), f.token_program),
         1_000_000 + 1_000
     );
+}
+
+#[test]
+fn the_user_funds_their_output_account_and_fills_never_create_it() {
+    let (mut f, worker) = worker_fixture(false, OfferMode::Worker);
+    let user_out = derive_ata(&f.user.pubkey(), &f.asset, &f.asset_program);
+
+    // Creating the request creates the missing output account at the user's expense.
+    f.svm.set_account(user_out, Account::default()).unwrap();
+    let worker_lamports = lamports(&f, worker.pubkey());
+    let request = create(&mut f, 1, 100_000_000);
+    assert_eq!(f.svm.get_account(&user_out).unwrap().owner, f.asset_program);
+
+    // Fills never create it: if the user closes it, the fill fails without costing
+    // the worker rent, and the request can still be cancelled.
+    f.svm.set_account(user_out, Account::default()).unwrap();
+    let failed = fill(&mut f, &worker, request, 50_000_000).unwrap_err();
+    assert!(
+        matches!(
+            failed.err,
+            TransactionError::InstructionError(_, InstructionError::Custom(3012))
+        ),
+        "{:?}",
+        failed.meta.logs
+    );
+    let instruction = cancel_ix(&f, worker.pubkey(), request);
+    send(&mut f.svm, &[instruction], &[&worker]).unwrap();
+    // Only transaction fees, no account rent.
+    assert!(lamports(&f, worker.pubkey()) + 50_000 >= worker_lamports);
+}
+
+/// Idempotent ATA program `Create` of `owner`'s `mint` account, paid by `payer`.
+fn create_ata_ix(payer: Pubkey, owner: Pubkey, mint: Pubkey, program: Pubkey) -> Instruction {
+    Instruction {
+        program_id: ATA_PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new(payer, true),
+            AccountMeta::new(derive_ata(&owner, &mint, &program), false),
+            AccountMeta::new_readonly(owner, false),
+            AccountMeta::new_readonly(mint, false),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+            AccountMeta::new_readonly(program, false),
+        ],
+        data: vec![1],
+    }
+}
+
+#[test]
+fn a_precreated_escrow_account_cannot_block_a_request_id() {
+    let (mut f, worker) = worker_fixture(false, OfferMode::Worker);
+    // Someone creating a request's escrow account first does not block its ID.
+    let stranger = Keypair::new();
+    f.svm.airdrop(&stranger.pubkey(), INITIAL_LAMPORTS).unwrap();
+    let (mint, program) = input(&f);
+    let instruction = create_ata_ix(stranger.pubkey(), request_pda(&f, 1), mint, program);
+    send(&mut f.svm, &[instruction], &[&stranger]).unwrap();
+    let request = create(&mut f, 1, 100_000_000);
+    assert_eq!(get_token_balance(&f.svm, &escrow(&f, request)), 100_000_000);
+    fill(&mut f, &worker, request, 100_000_000).unwrap();
+    assert!(f.svm.get_account(&request).is_none());
 }
 
 /// Balances and accounting after one execution of `gross` against a fresh offer.

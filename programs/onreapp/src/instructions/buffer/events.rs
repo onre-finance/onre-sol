@@ -25,6 +25,8 @@ pub struct BufferFeeConfigUpdatedEvent {
 
 #[event]
 pub struct BufferAccruedEvent {
+    /// Input mint of the legacy offer that valued the accrual; when a modular path
+    /// accrues the legacy singleton before the switch, the canonical Pricer instead.
     pub token_in_mint: Pubkey,
     pub onyc_mint: Pubkey,
     pub seconds_elapsed: u64,

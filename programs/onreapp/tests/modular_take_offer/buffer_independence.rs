@@ -134,6 +134,8 @@ fn switch_ix(f: &Fixture, boss: Pubkey) -> Instruction {
         find_performance_fee_vault_pda().0,
     ]
     .map(|owner| derive_ata(&owner, &f.mint, &f.token_program));
+    let vaults = f.buffer_vaults();
+    let per_mint = vaults.map(|owner| derive_ata(&owner, &f.mint, &f.token_program));
     ix(
         accounts::SwitchOnycBufferToPerMint {
             state: find_state_pda().0,
@@ -149,6 +151,14 @@ fn switch_ix(f: &Fixture, boss: Pubkey) -> Instruction {
             legacy_management_token: management,
             legacy_performance_token: performance,
             buffer_state: pda(&[b"buffer", f.mint.as_ref()]),
+            reserve_vault: vaults[0],
+            management_fee_vault: vaults[1],
+            performance_fee_vault: vaults[2],
+            reserve_token: per_mint[0],
+            management_token: per_mint[1],
+            performance_token: per_mint[2],
+            associated_token_program: ATA_PROGRAM_ID,
+            system_program: SYSTEM_PROGRAM_ID,
         },
         instruction::SwitchOnycBufferToPerMint {},
     )
@@ -217,12 +227,44 @@ fn onyc_switches_once_from_the_legacy_to_the_per_mint_buffer() {
         send(&mut f.svm, &[instruction], &[&rogue]),
         OnreError::InvalidBoss,
     );
+    // ONyc multisig minting cannot be enabled before the switch: legacy instructions
+    // mint only directly. The whole boss transaction rolls back.
+    {
+        use super::mint_multisig::{create_multisig, expect_error, switch_to_multisig};
+        let multisig = create_multisig(
+            f.token_program,
+            &mut f,
+            1,
+            &[find_mint_authority_pda().0, Pubkey::new_unique()],
+        );
+        expect_error(
+            switch_to_multisig(&mut f, multisig),
+            OnreError::MintMultisigBeforeBufferSwitch,
+        );
+        assert_eq!(
+            get_mint_authority_pubkey(&f.svm, &f.mint),
+            Some(find_mint_authority_pda().0)
+        );
+    }
+
     advance_clock_by(&mut f.svm, 3_153_600);
     // A trade prepared before the switch, with both BUFFER account sets.
     let prepared = f.take(2_000_000, 990_000_000);
     let before_switch = get_mint_supply(&f.svm, &f.mint);
+    // The switch creates any missing per-mint BUFFER vault ATA at the boss's expense,
+    // so the first per-mint accrual cannot fail on a missing account.
+    let per_mint_atas = f
+        .buffer_vaults()
+        .map(|owner| derive_ata(&owner, &f.mint, &f.token_program));
+    for ata in per_mint_atas {
+        assert_eq!(get_token_balance(&f.svm, &ata), 0);
+        f.svm.set_account(ata, Account::default()).unwrap();
+    }
     let instruction = switch_ix(&f, boss);
     send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    for ata in per_mint_atas {
+        assert_eq!(f.svm.get_account(&ata).unwrap().owner, f.token_program);
+    }
     let switched = get_mint_supply(&f.svm, &f.mint);
     assert_eq!(
         switched,
@@ -466,11 +508,32 @@ fn per_mint_market_stats_are_opt_in_and_bound_to_the_selected_account() {
 }
 
 #[test]
+fn a_token_selects_only_its_own_market_stats() {
+    let mut f = setup(false, false);
+    let instruction = init_stats_ix(&f, f.boss.pubkey());
+    send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    let own = f.svm.get_account(&per_mint_stats(&f)).unwrap();
+
+    // Valid MarketStats accounts of another token, and the ONyc legacy singleton,
+    // are rejected for a non-ONyc token.
+    let other_token = pda(&[b"market_stats", Pubkey::new_unique().as_ref()]);
+    for foreign in [other_token, find_market_stats_pda().0] {
+        f.svm.set_account(foreign, own.clone()).unwrap();
+        let instruction = select_stats_ix(&f, f.boss.pubkey(), foreign);
+        check_error(
+            send(&mut f.svm, &[instruction], &[&f.boss]),
+            OnreError::MarketStatsNotForToken,
+        );
+    }
+    assert_eq!(selected_stats(&f), per_mint_stats(&f));
+}
+
+#[test]
 fn onyc_can_select_the_legacy_market_stats_shared_with_legacy_refresh() {
     let mut f = setup(true, false);
     f.initialize_legacy_main_offer(); // legacy NAV 1; canonical modular Pricer NAV 2
     let legacy_stats = find_market_stats_pda().0;
-    // Any address works, but it must already deserialize as MarketStats.
+    // ONyc may select the singleton, but it must already deserialize as MarketStats.
     let instruction = select_stats_ix(&f, f.boss.pubkey(), legacy_stats);
     check_code(send(&mut f.svm, &[instruction], &[&f.boss]), 3012);
     let instruction = select_stats_ix(&f, f.boss.pubkey(), price(f.mint, 0));
@@ -943,6 +1006,22 @@ fn boss_burns_buffer_reserve_to_keep_nav_after_an_asset_adjustment() {
         // The reserve vault is seed-constrained (Anchor `ConstraintSeeds`).
         let instruction = burn_for_nav_ix(&f, f.boss.pubkey(), management_vault, 20_000_000);
         check_code(send(&mut f.svm, &[instruction], &[&f.boss]), 2006);
+        // An excluded reserve is not circulating, so burning it could not raise NAV
+        // (EVM parity). Restoring the empty exclusion list allows the burn again.
+        for (list, result) in [
+            (
+                vec![reserve_token],
+                Some(OnreError::BufferReserveExcludedFromSupply),
+            ),
+            (vec![], None),
+        ] {
+            let instruction = set_exclusions_ix(&f.svm, f.boss.pubkey(), f.mint, &list);
+            send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+            if let Some(error) = result {
+                let instruction = burn_for_nav_ix(&f, f.boss.pubkey(), reserve_vault, 20_000_000);
+                check_error(send(&mut f.svm, &[instruction], &[&f.boss]), error);
+            }
+        }
 
         // NAV 2: removing 0.02 of assets (20_000_000 in 9-decimal units) burns
         // ceil-adjusted supply worth exactly that at the unchanged NAV.

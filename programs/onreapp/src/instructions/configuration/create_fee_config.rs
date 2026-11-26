@@ -17,12 +17,14 @@ pub struct FeeConfigCreatedEvent {
 }
 
 /// Creates an input-token fee policy for `token_decimals`-decimal input tokens,
-/// referencing an existing Fee-kind vault.
+/// referencing an existing generic `["vault", Fee, id]` vault.
 #[derive(Accounts)]
 #[instruction(instance_id: u64)]
 pub struct CreateFeeConfig<'info> {
     #[account(
-        constraint = fee_vault.kind == VaultKind::Fee @ OnreError::InvalidConfigurableVaultKind
+        constraint = fee_vault.kind == VaultKind::Fee @ OnreError::InvalidConfigurableVaultKind,
+        // BUFFER fee vaults withdraw only their managed mint; other fees would be stuck.
+        constraint = fee_vault.is_generic(&fee_vault.key(), &crate::ID) @ OnreError::InvalidConfigurableVault,
     )]
     pub fee_vault: Box<Account<'info, VaultConfig>>,
 

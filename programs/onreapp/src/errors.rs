@@ -330,4 +330,18 @@ pub enum OnreError {
     SupplyExclusionsRequired,
     #[msg("ONyc after the one-way BUFFER switch requires the per-mint BUFFER accounts")]
     PerMintBufferAccountsRequired,
+    #[msg("ONyc multisig minting requires the one-way BUFFER switch first")]
+    MintMultisigBeforeBufferSwitch,
+    #[msg("Market stats account does not belong to this managed token")]
+    MarketStatsNotForToken,
+    #[msg("Pricer vector APR exceeds the maximum (100%)")]
+    PricerAprTooHigh,
+    #[msg(
+        "The BUFFER reserve is excluded from circulating supply; burning it would not raise NAV"
+    )]
+    BufferReserveExcludedFromSupply,
+    #[msg("ONyc cannot be unregistered")]
+    CannotUnregisterOnyc,
+    #[msg("Managed token must be disabled, with no per-mint BUFFER and no market stats selected")]
+    ManagedTokenStillInUse,
 }

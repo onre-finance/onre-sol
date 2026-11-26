@@ -162,7 +162,13 @@ export const OnreappErrorCode = {
   FeeConfigDecimalsMismatch: 6159,
   DuplicateExcludedTokenAccount: 6160,
   SupplyExclusionsRequired: 6161,
-  PerMintBufferAccountsRequired: 6162
+  PerMintBufferAccountsRequired: 6162,
+  MintMultisigBeforeBufferSwitch: 6163,
+  MarketStatsNotForToken: 6164,
+  PricerAprTooHigh: 6165,
+  BufferReserveExcludedFromSupply: 6166,
+  CannotUnregisterOnyc: 6167,
+  ManagedTokenStillInUse: 6168
 };
 
 export type OnreappErrorName = keyof typeof OnreappErrorCode;

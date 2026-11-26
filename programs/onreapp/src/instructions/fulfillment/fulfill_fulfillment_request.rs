@@ -38,11 +38,15 @@ pub struct FulfillmentRequestFilledEvent {
     pub price: u64,
     /// The request and its escrow were closed.
     pub fully_fulfilled: bool,
+    /// Unsolicited input found in the escrow at the final fill and swept to the fee
+    /// vault; zero otherwise.
+    pub surplus_amount: u64,
     pub timestamp: i64,
 }
 
 /// `TakeOffer`'s execution accounts, with the request escrow as input and the
-/// request user's ATA as output; the worker signs and pays for created accounts.
+/// request user's ATA as output; the worker signs and pays for any missing fee or
+/// proceeds vault ATA.
 /// Permissionless offers settle directly from the escrow, which is already a
 /// program account, so no intermediary is involved.
 #[derive(Accounts)]
@@ -92,9 +96,11 @@ pub struct FulfillFulfillmentRequest<'info> {
     )]
     pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
 
+    /// The user's output ATA, created at request creation. Never created here, so the
+    /// worker cannot be made to fund it; if the user closed it, the fill fails and the
+    /// request can be cancelled.
     #[account(
-        init_if_needed,
-        payer = worker,
+        mut,
         associated_token::mint = token_out_mint,
         associated_token::authority = user,
         associated_token::token_program = token_out_program
@@ -209,9 +215,15 @@ pub fn fulfill_fulfillment_request(
         0,
         |_| Ok(()),
     )?;
-    let request = &mut a.fulfillment_request;
-    request.fulfilled_input_amount += input_amount;
-    let fully_fulfilled = request.remaining_input_amount() == 0;
+    a.fulfillment_request.fulfilled_input_amount += input_amount;
+    let fully_fulfilled = a.fulfillment_request.remaining_input_amount() == 0;
+    let surplus = if fully_fulfilled {
+        a.escrow_token_in.reload()?;
+        a.escrow_token_in.amount
+    } else {
+        0
+    };
+    let request = &a.fulfillment_request;
     emit!(FulfillmentRequestFilledEvent {
         fulfillment_request: request.key(),
         offer_config: request.offer_config,
@@ -222,11 +234,10 @@ pub fn fulfill_fulfillment_request(
         amount_out: quote.amount_out,
         price: quote.price,
         fully_fulfilled,
+        surplus_amount: surplus,
         timestamp: Clock::get()?.unix_timestamp,
     });
     if fully_fulfilled {
-        a.escrow_token_in.reload()?;
-        let surplus = a.escrow_token_in.amount;
         if surplus > 0 {
             a.fulfillment_request.with_signer_seeds(|seeds| {
                 transfer_tokens(

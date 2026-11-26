@@ -1,5 +1,5 @@
 use crate::{
-    constants::{seeds::STATE, MAX_PRICE_FIX_DURATION},
+    constants::{seeds::STATE, MAX_PRICER_APR, MAX_PRICE_FIX_DURATION},
     model::{seeds::PRICER, Pricer, PricingVector},
     state::State,
     utils::pricing,
@@ -64,6 +64,7 @@ pub fn add_pricer_vector(ctx: Context<AddPricerVector>, vector: PricingVector) -
         vector.price_fix_duration > 0 && vector.price_fix_duration <= MAX_PRICE_FIX_DURATION,
         OnreError::InvalidPriceFixDuration
     );
+    require!(vector.apr <= MAX_PRICER_APR, OnreError::PricerAprTooHigh);
     let pricer_key = ctx.accounts.pricer.key();
     let pricer = &mut ctx.accounts.pricer;
     if let Some(latest) = pricer
