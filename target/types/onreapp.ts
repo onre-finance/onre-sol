@@ -6962,7 +6962,9 @@ export type Onreapp = {
             "Program-derived account that serves as the mint authority",
             "",
             "This PDA must be the current mint authority for the ONyc token.",
-            "Validated to ensure the program has permission to mint tokens."
+            "Validated to ensure the program has permission to mint tokens.",
+            "Before the ONyc BUFFER switch it must be the direct mint authority; after it,",
+            "the configured program minter (direct or mint multisig) is checked in the handler."
           ],
           "pda": {
             "seeds": [
@@ -7059,6 +7061,88 @@ export type Onreapp = {
         },
         {
           "name": "circulatingSupplyExcludedBalance"
+        },
+        {
+          "name": "managedToken",
+          "docs": [
+            "ONyc's `ManagedTokenConfig`: per-mint caps and the configured mint multisig."
+          ],
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mintMultisig",
+          "docs": [
+            "equal it. See `utils::program_minter`."
+          ],
+          "optional": true
+        },
+        {
+          "name": "perMintBufferState",
+          "docs": [
+            "owner, discriminator and embedded mint."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "bufferPricer",
+          "docs": [
+            "Canonical USD instance-zero Pricer driving the per-mint BUFFER."
+          ],
+          "optional": true
+        },
+        {
+          "name": "perMintReserveToken",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "perMintManagementToken",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "perMintPerformanceToken",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "managedMarketStats",
+          "docs": [
+            "refresh; `None` when nothing or the legacy singleton is selected."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "supplyExclusions",
+          "optional": true
         }
       ],
       "args": [
@@ -18188,6 +18272,11 @@ export type Onreapp = {
       "code": 6161,
       "name": "supplyExclusionsRequired",
       "msg": "ONyc supply exclusions must be set before modular use"
+    },
+    {
+      "code": 6162,
+      "name": "perMintBufferAccountsRequired",
+      "msg": "ONyc after the one-way BUFFER switch requires the per-mint BUFFER accounts"
     }
   ],
   "types": [

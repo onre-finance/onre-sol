@@ -144,7 +144,8 @@ accrual timestamp as the next baseline.
 This currently applies when the buffer is initialized and the program controls
 the ONyc mint, for:
 
-- `mint_to`, which requires `State.main_offer` to be set
+- `mint_to`, which requires `State.main_offer` to be set; after the ONyc BUFFER
+  switch it accrues the per-mint BUFFER instead (see `MODULAR_TAKE_OFFER.md`)
 - Modular permissioned and permissionless `take_offer` before minting or burning a
   managed token; the post-trade
   mint supply is stored using the managed side selected by OfferConfig.

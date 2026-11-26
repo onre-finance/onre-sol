@@ -298,6 +298,8 @@ pub enum OnreError {
     LegacyMarketStatsRequired,
     #[msg("Multisig minting is enabled: the configured mint multisig is required")]
     MintMultisigRequired,
+    /// No longer raised: direct minting ignores a supplied multisig. Kept so later
+    /// error codes do not shift.
     #[msg("Direct minting is enabled: no mint multisig account may be supplied")]
     UnexpectedMintMultisig,
     #[msg("Mint multisig must be the configured initialized 1-of-N multisig containing the program mint authority")]
@@ -326,4 +328,6 @@ pub enum OnreError {
     DuplicateExcludedTokenAccount,
     #[msg("ONyc supply exclusions must be set before modular use")]
     SupplyExclusionsRequired,
+    #[msg("ONyc after the one-way BUFFER switch requires the per-mint BUFFER accounts")]
+    PerMintBufferAccountsRequired,
 }

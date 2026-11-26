@@ -427,6 +427,18 @@ pub fn build_mint_to_ix_for_offer(
             AccountMeta::new(performance_fee_vault_onyc, false),
             AccountMeta::new(market_stats_pda, false),
             AccountMeta::new_readonly(excluded_balance_pda, false),
+            // Per-mint accounts, `None` until the ONyc BUFFER switch: managed token,
+            // mint multisig, BUFFER state, Pricer, reserve/management/performance ATAs,
+            // selected market stats, supply exclusions.
+            AccountMeta::new_readonly(PROGRAM_ID, false),
+            AccountMeta::new_readonly(PROGRAM_ID, false),
+            AccountMeta::new_readonly(PROGRAM_ID, false),
+            AccountMeta::new_readonly(PROGRAM_ID, false),
+            AccountMeta::new_readonly(PROGRAM_ID, false),
+            AccountMeta::new_readonly(PROGRAM_ID, false),
+            AccountMeta::new_readonly(PROGRAM_ID, false),
+            AccountMeta::new_readonly(PROGRAM_ID, false),
+            AccountMeta::new_readonly(PROGRAM_ID, false),
         ],
         data,
     }

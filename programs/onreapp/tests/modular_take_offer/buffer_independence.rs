@@ -273,6 +273,131 @@ fn onyc_switches_once_from_the_legacy_to_the_per_mint_buffer() {
     assert_eq!(f.svm.get_account(&legacy).unwrap().data, legacy_before);
 }
 
+/// `mint_to` for the fixture's ONyc, optionally with the per-mint BUFFER accounts
+/// in place of the trailing `None` placeholders.
+fn mint_to_ix(f: &Fixture, amount: u64, per_mint: Option<Pubkey>) -> Instruction {
+    let main = find_offer_pda(&f.asset, &f.mint).0;
+    let mut instruction =
+        build_mint_to_ix_for_offer(&f.boss.pubkey(), &f.mint, amount, &f.token_program, &main);
+    if let Some(buffer_state) = per_mint {
+        let [reserve, management, performance] = f.buffer_vaults();
+        let len = instruction.accounts.len();
+        instruction.accounts.truncate(len - 9);
+        let multisig = f.mint_multisig().unwrap_or(PROGRAM_ID);
+        instruction.accounts.extend([
+            AccountMeta::new_readonly(managed(f.mint), false),
+            AccountMeta::new_readonly(multisig, false),
+            AccountMeta::new(buffer_state, false),
+            AccountMeta::new_readonly(price(f.mint, 0), false),
+            AccountMeta::new(derive_ata(&reserve, &f.mint, &f.token_program), false),
+            AccountMeta::new(derive_ata(&management, &f.mint, &f.token_program), false),
+            AccountMeta::new(derive_ata(&performance, &f.mint, &f.token_program), false),
+            AccountMeta::new(f.market_stats(), false),
+            AccountMeta::new_readonly(exclusions(f.mint), false),
+        ]);
+    }
+    instruction
+}
+
+#[test]
+fn mint_to_accrues_the_active_onyc_buffer_and_mints_like_a_modular_path_after_the_switch() {
+    // Legacy singleton at 5% before the switch, as in the switch test.
+    let mut f = setup(true, false);
+    f.set_onyc_per_mint_buffer_active(false);
+    f.initialize_legacy_main_offer();
+    let main = find_offer_pda(&f.asset, &f.mint).0;
+    let boss = f.boss.pubkey();
+    for instruction in [
+        build_initialize_buffer_ix(&boss, &main, &f.mint),
+        build_set_buffer_gross_yield_ix(&boss, &main, &f.mint, 50_000),
+    ] {
+        send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    }
+    let legacy = find_buffer_state_pda().0;
+    let per_mint = f.buffer();
+    let amount = 1_000_000_000;
+
+    // Before the switch: the legacy singleton accrues, the per-mint BUFFER is untouched,
+    // and the old account list (no per-mint accounts) still works.
+    let per_mint_before = f.svm.get_account(&per_mint).unwrap().data;
+    let start = get_mint_supply(&f.svm, &f.mint);
+    advance_clock_by(&mut f.svm, 3_153_600);
+    let instruction = mint_to_ix(&f, amount, None);
+    send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    let minted = get_mint_supply(&f.svm, &f.mint);
+    assert_eq!(minted, start + accrual(start, 50_000, 3_153_600) + amount);
+    assert_eq!(read::<BufferState>(&f.svm, legacy).previous_supply, minted);
+    assert_eq!(f.svm.get_account(&per_mint).unwrap().data, per_mint_before);
+
+    let instruction = switch_ix(&f, boss);
+    send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    let legacy_at_switch = f.svm.get_account(&legacy).unwrap().data;
+    // The legacy offers are retired by deleting their vectors; `mint_to` no longer
+    // prices from the main offer after the switch.
+    let instruction = build_delete_all_offer_vectors_ix(&boss, &f.asset, &f.mint);
+    send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    advance_clock_by(&mut f.svm, 3_153_600);
+
+    // After the switch the per-mint accounts are required and must be canonical.
+    let instruction = mint_to_ix(&f, amount, None);
+    check_error(
+        send(&mut f.svm, &[instruction], &[&f.boss]),
+        OnreError::PerMintBufferAccountsRequired,
+    );
+    let instruction = mint_to_ix(&f, amount, Some(legacy));
+    check_error(
+        send(&mut f.svm, &[instruction], &[&f.boss]),
+        OnreError::InvalidBufferStateAccount,
+    );
+
+    // After the switch the per-mint caps bind `mint_to`, not the State caps.
+    edit::<GlobalState>(&mut f.svm, find_state_pda().0, |s| s.max_mint_amount = 1);
+    edit::<ManagedTokenConfig>(&mut f.svm, managed(f.mint), |c| {
+        c.max_mint_amount = amount - 1
+    });
+    let instruction = mint_to_ix(&f, amount, Some(per_mint));
+    check_error(
+        send(&mut f.svm, &[instruction], &[&f.boss]),
+        OnreError::MaxMintAmountExceeded,
+    );
+    edit::<ManagedTokenConfig>(&mut f.svm, managed(f.mint), |c| c.max_mint_amount = 0);
+
+    // The per-mint BUFFER accrues up to now, then its baseline moves to the post-mint
+    // supply; the retired singleton stays as it was at the switch.
+    let before = get_mint_supply(&f.svm, &f.mint);
+    let instruction = mint_to_ix(&f, amount, Some(per_mint));
+    send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    let minted = get_mint_supply(&f.svm, &f.mint);
+    assert_eq!(minted, before + accrual(before, 50_000, 3_153_600) + amount);
+    let buffer: ManagedTokenBufferState = read(&f.svm, per_mint);
+    assert_eq!(buffer.previous_supply, minted);
+    assert_eq!(buffer.last_accrual_timestamp, get_clock_time(&f.svm) as i64);
+    assert_eq!(f.svm.get_account(&legacy).unwrap().data, legacy_at_switch);
+    // The legacy market stats report the canonical Pricer's NAV, not the main offer's.
+    let stats: MarketStats = read(&f.svm, find_market_stats_pda().0);
+    assert_eq!(stats.nav, 2_000_000_000);
+    assert_eq!(stats.last_updated_at, get_clock_time(&f.svm) as i64);
+
+    // Nothing is accrued twice: settling right after the mint mints nothing.
+    settle(&mut f);
+    assert_eq!(get_mint_supply(&f.svm, &f.mint), minted);
+
+    // With multisig minting enabled, `mint_to` mints through the configured multisig.
+    let pda = find_mint_authority_pda().0;
+    let multisig = mint_multisig::create_multisig(f.token_program, &mut f, 1, &[pda]);
+    mint_multisig::switch_to_multisig(&mut f, multisig).unwrap();
+    advance_clock_by(&mut f.svm, 3_153_600);
+    let before = get_mint_supply(&f.svm, &f.mint);
+    let instruction = mint_to_ix(&f, amount, Some(per_mint));
+    send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    let minted = get_mint_supply(&f.svm, &f.mint);
+    assert_eq!(minted, before + accrual(before, 50_000, 3_153_600) + amount);
+    assert_eq!(
+        read::<ManagedTokenBufferState>(&f.svm, per_mint).previous_supply,
+        minted
+    );
+}
+
 #[test]
 fn native_buffer_settlement_and_policy_changes_preserve_supply_and_watermark() {
     for token_2022 in [false, true] {
@@ -726,14 +851,14 @@ fn buffer_operations_mint_directly_or_through_the_multisig_as_configured() {
             assert!(get_mint_supply(&f.svm, &f.mint) > before);
         };
 
-        // Direct: the PDA mints accrual, and a supplied multisig is rejected.
-        let instruction = settle_with_mint_multisig_ix(&f, Some(multisig));
-        expect_error(
-            send(&mut f.svm, &[instruction], &[&f.boss]),
-            OnreError::UnexpectedMintMultisig,
-        );
-        accrue(&mut f, &|f| settle(f));
+        // Direct: the PDA mints accrual and a supplied, not yet enabled multisig is
+        // ignored.
+        accrue(&mut f, &|f| {
+            let instruction = settle_with_mint_multisig_ix(f, Some(multisig));
+            send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+        });
         assert_eq!(get_mint_authority_pubkey(&f.svm, &f.mint), Some(pda));
+        accrue(&mut f, &|f| settle(f));
 
         // Multisig: settlement and settings changes mint through the configured multisig,
         // which must be supplied.
