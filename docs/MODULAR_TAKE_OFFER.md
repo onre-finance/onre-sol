@@ -497,7 +497,7 @@ escrows the input, the worker fills it, and either can cancel the rest.
   proceeds vault ATA. Emits `OfferExecutedEvent` (user = request user) and
   `FulfillmentRequestFilledEvent`. A full fill closes the request and escrow,
   refunding their rent to the user; any unsolicited escrow surplus goes to the
-  fee vault so it cannot block the close. Blocked by the kill switch.
+  fee vault so it cannot block the close, reported as `surplus_amount`. Blocked by the kill switch.
 - `cancel_fulfillment_request()`, by the request user or the worker. Returns the
   whole escrow balance to the user (recreating their ATA at the signer's expense
   if needed) and closes the request and escrow, refunding rent to the user. Works

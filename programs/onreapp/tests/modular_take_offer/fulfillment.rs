@@ -351,7 +351,9 @@ fn the_user_cancels_and_a_full_fill_sweeps_unsolicited_escrow_surplus_to_the_fee
     // A donation to the escrow would otherwise block closing it on the final fill.
     let request = create(&mut f, 2, 100_000_000);
     f.seed_tokens(f.mint, request, 100_001_000);
-    fill(&mut f, &worker, request, 100_000_000).unwrap();
+    let result = fill(&mut f, &worker, request, 100_000_000).unwrap();
+    let filled: FulfillmentRequestFilledEvent = emitted(&result);
+    assert_eq!(filled.surplus_amount, 1_000);
     assert!(f.svm.get_account(&request).is_none());
     assert!(f.svm.get_account(&escrow(&f, request)).is_none());
     assert_eq!(

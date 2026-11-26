@@ -240,7 +240,10 @@ fn accrue_onyc_legacy(
         &mut buffer,
         vector.apr,
         nav,
-        Pubkey::default(),
+        // Valued at the canonical Pricer rather than a legacy offer's input mint.
+        a.buffer_pricer
+            .map(|pricer| pricer.key())
+            .unwrap_or_default(),
         a.managed_mint,
         a.reserve_token.to_account_info(),
         a.management_token.to_account_info(),
