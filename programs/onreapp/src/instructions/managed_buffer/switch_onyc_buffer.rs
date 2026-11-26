@@ -3,12 +3,18 @@
 use crate::{
     constants::seeds::{MINT_AUTHORITY, STATE},
     instructions::buffer::modular_accrual::{self, BufferContext},
-    model::{seeds::MANAGED_TOKEN, ManagedTokenConfig, Pricer},
+    model::{
+        seeds::{BUFFER_MANAGEMENT, BUFFER_PERFORMANCE, BUFFER_RESERVE, MANAGED_TOKEN},
+        ManagedTokenConfig, Pricer,
+    },
     state::State,
     OnreError,
 };
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{Mint, TokenInterface};
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token_interface::{Mint, TokenAccount, TokenInterface},
+};
 
 #[event]
 pub struct OnycBufferSwitchedToPerMintEvent {
@@ -38,6 +44,8 @@ pub struct SwitchOnycBufferToPerMint<'info> {
     )]
     pub state: Box<Account<'info, State>>,
 
+    /// Pays for any per-mint BUFFER vault ATA that does not exist yet.
+    #[account(mut)]
     pub boss: Signer<'info>,
 
     #[account(
@@ -80,6 +88,50 @@ pub struct SwitchOnycBufferToPerMint<'info> {
     /// CHECK: Canonical `["buffer", onyc_mint]` per-mint BUFFER; must be initialized.
     #[account(mut)]
     pub buffer_state: UncheckedAccount<'info>,
+
+    /// CHECK: Per-mint `["buffer_reserve", onyc_mint]` vault, owner of the reserve ATA.
+    #[account(seeds = [BUFFER_RESERVE, onyc_mint.key().as_ref()], bump)]
+    pub reserve_vault: UncheckedAccount<'info>,
+
+    /// CHECK: Per-mint `["buffer_management", onyc_mint]` vault, owner of its ATA.
+    #[account(seeds = [BUFFER_MANAGEMENT, onyc_mint.key().as_ref()], bump)]
+    pub management_fee_vault: UncheckedAccount<'info>,
+
+    /// CHECK: Per-mint `["buffer_performance", onyc_mint]` vault, owner of its ATA.
+    #[account(seeds = [BUFFER_PERFORMANCE, onyc_mint.key().as_ref()], bump)]
+    pub performance_fee_vault: UncheckedAccount<'info>,
+
+    /// The per-mint BUFFER vaults' ONyc ATAs, created at the boss's expense when
+    /// missing: every ONyc supply change after the switch accrues into them.
+    #[account(
+        init_if_needed,
+        payer = boss,
+        associated_token::mint = onyc_mint,
+        associated_token::authority = reserve_vault,
+        associated_token::token_program = token_program,
+    )]
+    pub reserve_token: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        init_if_needed,
+        payer = boss,
+        associated_token::mint = onyc_mint,
+        associated_token::authority = management_fee_vault,
+        associated_token::token_program = token_program,
+    )]
+    pub management_token: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        init_if_needed,
+        payer = boss,
+        associated_token::mint = onyc_mint,
+        associated_token::authority = performance_fee_vault,
+        associated_token::token_program = token_program,
+    )]
+    pub performance_token: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
 }
 
 /// Accrues the legacy singleton up to now, has the per-mint BUFFER take over its

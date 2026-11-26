@@ -134,6 +134,8 @@ fn switch_ix(f: &Fixture, boss: Pubkey) -> Instruction {
         find_performance_fee_vault_pda().0,
     ]
     .map(|owner| derive_ata(&owner, &f.mint, &f.token_program));
+    let vaults = f.buffer_vaults();
+    let per_mint = vaults.map(|owner| derive_ata(&owner, &f.mint, &f.token_program));
     ix(
         accounts::SwitchOnycBufferToPerMint {
             state: find_state_pda().0,
@@ -149,6 +151,14 @@ fn switch_ix(f: &Fixture, boss: Pubkey) -> Instruction {
             legacy_management_token: management,
             legacy_performance_token: performance,
             buffer_state: pda(&[b"buffer", f.mint.as_ref()]),
+            reserve_vault: vaults[0],
+            management_fee_vault: vaults[1],
+            performance_fee_vault: vaults[2],
+            reserve_token: per_mint[0],
+            management_token: per_mint[1],
+            performance_token: per_mint[2],
+            associated_token_program: ATA_PROGRAM_ID,
+            system_program: SYSTEM_PROGRAM_ID,
         },
         instruction::SwitchOnycBufferToPerMint {},
     )
@@ -241,8 +251,20 @@ fn onyc_switches_once_from_the_legacy_to_the_per_mint_buffer() {
     // A trade prepared before the switch, with both BUFFER account sets.
     let prepared = f.take(2_000_000, 990_000_000);
     let before_switch = get_mint_supply(&f.svm, &f.mint);
+    // The switch creates any missing per-mint BUFFER vault ATA at the boss's expense,
+    // so the first per-mint accrual cannot fail on a missing account.
+    let per_mint_atas = f
+        .buffer_vaults()
+        .map(|owner| derive_ata(&owner, &f.mint, &f.token_program));
+    for ata in per_mint_atas {
+        assert_eq!(get_token_balance(&f.svm, &ata), 0);
+        f.svm.set_account(ata, Account::default()).unwrap();
+    }
     let instruction = switch_ix(&f, boss);
     send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    for ata in per_mint_atas {
+        assert_eq!(f.svm.get_account(&ata).unwrap().owner, f.token_program);
+    }
     let switched = get_mint_supply(&f.svm, &f.mint);
     assert_eq!(
         switched,

@@ -22,7 +22,7 @@ Do the steps in order. Details are in [MODULAR_TAKE_OFFER.md](MODULAR_TAKE_OFFER
 5. `create_pricer` (USD, instance 0) and `add_pricer_vector` with the **same** vector as the main offer (`base_price`, `apr`, `start_time`, `price_fix_duration`).
 6. `set_managed_token_supply_exclusions` with the same accounts as the legacy exclusion list. It writes the legacy cache too. From now on, change exclusions only through this instruction.
 7. Select ONyc's market stats: `set_managed_token_market_stats` with the legacy `["market_stats"]` singleton, or `initialize_managed_token_market_stats` for a per-mint account.
-8. `initialize_managed_token_buffer` for ONyc, and create the ATAs of the vaults it references. It stays inactive until step 19.
+8. `initialize_managed_token_buffer` for ONyc. It stays inactive until step 19. The switch creates the ONyc ATAs of its three vaults if they are missing.
 9. Create the SPL mint multisig now, even if CCIP comes much later (system `create_account` + `InitializeMultisig` under ONyc's token program):
     - `m = 1`;
     - signers: the program's `["mint_authority"]` PDA, the CCIP BurnMint pool's signer PDA and any other minter you want.

@@ -220,8 +220,10 @@ would accrue the same supply. Exactly one is active, selected by the one-way
 - **`switch_onyc_buffer_to_per_mint`** (boss only, blocked by the kill switch)
   accrues the legacy singleton up to now, has the initialized per-mint BUFFER take
   over its gross APR, fee rates and high-water mark from the current supply and
-  timestamp, and sets the flag. It cannot be undone. Vault balances stay in the
-  legacy vaults and are moved manually. `OnycBufferSwitchedToPerMintEvent` records
+  timestamp, and sets the flag. It cannot be undone. It creates any missing ONyc
+  ATA of the three per-mint BUFFER vaults at the boss's expense, since every ONyc
+  supply change afterwards accrues into them. Vault balances stay in the legacy
+  vaults and are moved manually. `OnycBufferSwitchedToPerMintEvent` records
   the hand-over.
 - **After the switch** only the per-mint BUFFER accrues; `take_offer` ignores the
   legacy BUFFER accounts. Clients can therefore supply both account sets for every
