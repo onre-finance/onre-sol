@@ -336,4 +336,8 @@ pub enum OnreError {
     MarketStatsNotForToken,
     #[msg("Pricer vector APR exceeds the maximum (100%)")]
     PricerAprTooHigh,
+    #[msg(
+        "The BUFFER reserve is excluded from circulating supply; burning it would not raise NAV"
+    )]
+    BufferReserveExcludedFromSupply,
 }

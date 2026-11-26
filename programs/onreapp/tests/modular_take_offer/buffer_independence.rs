@@ -984,6 +984,22 @@ fn boss_burns_buffer_reserve_to_keep_nav_after_an_asset_adjustment() {
         // The reserve vault is seed-constrained (Anchor `ConstraintSeeds`).
         let instruction = burn_for_nav_ix(&f, f.boss.pubkey(), management_vault, 20_000_000);
         check_code(send(&mut f.svm, &[instruction], &[&f.boss]), 2006);
+        // An excluded reserve is not circulating, so burning it could not raise NAV
+        // (EVM parity). Restoring the empty exclusion list allows the burn again.
+        for (list, result) in [
+            (
+                vec![reserve_token],
+                Some(OnreError::BufferReserveExcludedFromSupply),
+            ),
+            (vec![], None),
+        ] {
+            let instruction = set_exclusions_ix(&f.svm, f.boss.pubkey(), f.mint, &list);
+            send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+            if let Some(error) = result {
+                let instruction = burn_for_nav_ix(&f, f.boss.pubkey(), reserve_vault, 20_000_000);
+                check_error(send(&mut f.svm, &[instruction], &[&f.boss]), error);
+            }
+        }
 
         // NAV 2: removing 0.02 of assets (20_000_000 in 9-decimal units) burns
         // ceil-adjusted supply worth exactly that at the unchanged NAV.

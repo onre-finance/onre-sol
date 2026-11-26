@@ -8,7 +8,10 @@ use super::{accrue, refresh_market_stats, ManagedBufferAccounts};
 use crate::{
     instructions::{
         buffer::{burn_for_nav_increase::calculate_burn_amount, modular_accrual},
-        market_info::{calculate_circulating_supply, calculate_tvl, excluded_supply_amount},
+        market_info::{
+            calculate_circulating_supply, calculate_tvl, excluded_supply_amount,
+            is_excluded_token_account,
+        },
     },
     model::seeds::BUFFER_RESERVE,
     utils::{pricing::get_active_vector_and_current_price, read_optional_token_account_amount},
@@ -68,8 +71,8 @@ pub struct BurnManagedTokenForNavIncrease<'info> {
 /// burn         = circulating − required
 /// ```
 ///
-/// Rejects a zero adjustment, an adjustment above total assets, a zero burn and an
-/// insufficient reserve. The BUFFER baseline and market stats follow the burn.
+/// Rejects a zero adjustment, a reserve token account in the supply exclusions, an
+/// adjustment above total assets, a zero burn and an insufficient reserve. The BUFFER baseline and market stats follow the burn.
 pub fn burn_managed_token_for_nav_increase(
     ctx: Context<BurnManagedTokenForNavIncrease>,
     asset_adjustment_amount: u64,
@@ -101,6 +104,11 @@ pub fn burn_managed_token_for_nav_increase(
     let nav = get_active_vector_and_current_price(valuation.vectors, now as u64)?.1;
     let excluded =
         excluded_supply_amount(program_id, &b.state, &b.managed_mint, &a.supply_exclusions)?;
+    // Burning an excluded reserve would leave circulating supply unchanged (EVM parity).
+    require!(
+        !is_excluded_token_account(program_id, &a.supply_exclusions, &b.reserve_token.key())?,
+        OnreError::BufferReserveExcludedFromSupply
+    );
     let circulating = calculate_circulating_supply(b.managed_mint.supply, excluded);
     let total_assets = calculate_tvl(circulating, nav)?;
     let burn_amount = calculate_burn_amount(circulating, asset_adjustment_amount, nav, nav)?;

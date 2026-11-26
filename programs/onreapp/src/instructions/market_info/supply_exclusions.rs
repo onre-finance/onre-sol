@@ -63,6 +63,22 @@ pub(crate) fn excluded_supply_amount(
     }
 }
 
+/// Whether `token_account` is in the mint's exclusion list. The caller has already
+/// validated the `["supply_exclusions", mint]` address (`excluded_supply_amount`).
+pub(crate) fn is_excluded_token_account(
+    program_id: &Pubkey,
+    supply_exclusions: &AccountInfo,
+    token_account: &Pubkey,
+) -> Result<bool> {
+    Ok(load_optional_pda_account::<ManagedTokenSupplyExclusions>(
+        supply_exclusions,
+        program_id,
+        OnreError::InvalidCirculatingSupplyExcludedBalanceOwner.into(),
+        OnreError::InvalidCirculatingSupplyExcludedBalanceData.into(),
+    )?
+    .is_some_and(|exclusions| exclusions.active().contains(token_account)))
+}
+
 /// Sums token accounts of `mint` under its token program. A closed account (empty
 /// and system-owned) counts as zero only when `allow_closed`, so the boss cannot
 /// store a non-token address while a refresh is never blocked by a holder closing

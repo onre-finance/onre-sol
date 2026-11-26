@@ -285,7 +285,9 @@ current canonical NAV: `total_assets = floor(circulating × NAV / 1e9)`,
 `required = ceil((total_assets − adjustment) × 1e9 / NAV)`,
 `burn = circulating − required`. The reserve vault signs the burn of its ATA. A zero
 adjustment, an adjustment above total assets, a zero burn and an insufficient
-reserve are rejected; the kill switch blocks it. The BUFFER baseline and market
+reserve are rejected, and so is a reserve ATA listed in the mint's supply
+exclusions (`BufferReserveExcludedFromSupply`, as on EVM): an excluded reserve is
+not circulating, so burning it could not raise NAV; the kill switch blocks it. The BUFFER baseline and market
 stats follow the burn, and `ManagedTokenBurnedForNavEvent` records it. For ONyc it
 is available only after the one-way switch; before it, the legacy
 `burn_for_nav_increase` burns the singleton reserve.
