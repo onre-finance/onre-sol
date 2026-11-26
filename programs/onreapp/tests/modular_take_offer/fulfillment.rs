@@ -47,6 +47,7 @@ fn create_ix(
 ) -> Instruction {
     let request = request_pda(f, request_id);
     let (mint, program) = input(f);
+    let (_, out_mint, _, out_program) = f.pair(read::<OfferConfig>(&f.svm, f.offer).direction);
     ix(
         accounts::CreateFulfillmentRequest {
             config: f.config_accounts(),
@@ -54,10 +55,13 @@ fn create_ix(
             user_token_in: derive_ata(&f.user.pubkey(), &mint, &program),
             fulfillment_request: request,
             escrow_token_in: escrow(f, request),
+            token_out_mint: out_mint,
+            user_token_out: derive_ata(&f.user.pubkey(), &out_mint, &out_program),
             state: find_state_pda().0,
             instructions_sysvar: SYSVAR_INSTRUCTIONS_ID,
             user: f.user.pubkey(),
             token_in_program: program,
+            token_out_program: out_program,
             associated_token_program: ATA_PROGRAM_ID,
             system_program: SYSTEM_PROGRAM_ID,
         },
@@ -354,6 +358,35 @@ fn the_user_cancels_and_a_full_fill_sweeps_unsolicited_escrow_surplus_to_the_fee
         f.balance(f.mint, vault(VaultKind::Fee), f.token_program),
         1_000_000 + 1_000
     );
+}
+
+#[test]
+fn the_user_funds_their_output_account_and_fills_never_create_it() {
+    let (mut f, worker) = worker_fixture(false, OfferMode::Worker);
+    let user_out = derive_ata(&f.user.pubkey(), &f.asset, &f.asset_program);
+
+    // Creating the request creates the missing output account at the user's expense.
+    f.svm.set_account(user_out, Account::default()).unwrap();
+    let worker_lamports = lamports(&f, worker.pubkey());
+    let request = create(&mut f, 1, 100_000_000);
+    assert_eq!(f.svm.get_account(&user_out).unwrap().owner, f.asset_program);
+
+    // Fills never create it: if the user closes it, the fill fails without costing
+    // the worker rent, and the request can still be cancelled.
+    f.svm.set_account(user_out, Account::default()).unwrap();
+    let failed = fill(&mut f, &worker, request, 50_000_000).unwrap_err();
+    assert!(
+        matches!(
+            failed.err,
+            TransactionError::InstructionError(_, InstructionError::Custom(3012))
+        ),
+        "{:?}",
+        failed.meta.logs
+    );
+    let instruction = cancel_ix(&f, worker.pubkey(), request);
+    send(&mut f.svm, &[instruction], &[&worker]).unwrap();
+    // Only transaction fees, no account rent.
+    assert!(lamports(&f, worker.pubkey()) + 50_000 >= worker_lamports);
 }
 
 /// Balances and accounting after one execution of `gross` against a fresh offer.

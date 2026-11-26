@@ -42,7 +42,8 @@ pub struct FulfillmentRequestFilledEvent {
 }
 
 /// `TakeOffer`'s execution accounts, with the request escrow as input and the
-/// request user's ATA as output; the worker signs and pays for created accounts.
+/// request user's ATA as output; the worker signs and pays for any missing fee or
+/// proceeds vault ATA.
 /// Permissionless offers settle directly from the escrow, which is already a
 /// program account, so no intermediary is involved.
 #[derive(Accounts)]
@@ -92,9 +93,11 @@ pub struct FulfillFulfillmentRequest<'info> {
     )]
     pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
 
+    /// The user's output ATA, created at request creation. Never created here, so the
+    /// worker cannot be made to fund it; if the user closed it, the fill fails and the
+    /// request can be cancelled.
     #[account(
-        init_if_needed,
-        payer = worker,
+        mut,
         associated_token::mint = token_out_mint,
         associated_token::authority = user,
         associated_token::token_program = token_out_program

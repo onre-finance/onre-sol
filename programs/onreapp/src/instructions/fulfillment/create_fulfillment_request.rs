@@ -75,6 +75,24 @@ pub struct CreateFulfillmentRequest<'info> {
     pub escrow_token_in: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
+        address = config.offer_config.token_out_mint @ OnreError::InvalidTokenOutMint,
+        mint::token_program = token_out_program
+    )]
+    pub token_out_mint: Box<InterfaceAccount<'info, Mint>>,
+
+    /// The user's output ATA, created here at the user's expense so fills never pay
+    /// its rent: the worker would otherwise fund a new account on every partial fill
+    /// after the user closes it.
+    #[account(
+        init_if_needed,
+        payer = user,
+        associated_token::mint = token_out_mint,
+        associated_token::authority = user,
+        associated_token::token_program = token_out_program
+    )]
+    pub user_token_out: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
         seeds = [STATE],
         bump = state.bump,
         constraint = !state.is_killed @ OnreError::KillSwitchActivated
@@ -85,11 +103,13 @@ pub struct CreateFulfillmentRequest<'info> {
     #[account(address = INSTRUCTIONS_SYSVAR_ID @ OnreError::InvalidInstructionsSysvar)]
     pub instructions_sysvar: UncheckedAccount<'info>,
 
-    /// Pays the request and escrow rent, refunded when the request closes.
+    /// Pays the request and escrow rent, refunded when the request closes, and the
+    /// output ATA if missing.
     #[account(mut)]
     pub user: Signer<'info>,
 
     pub token_in_program: Interface<'info, TokenInterface>,
+    pub token_out_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }

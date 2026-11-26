@@ -478,8 +478,8 @@ escrows the input, the worker fills it, and either can cancel the rest.
   switch off. Permissioned offers need the same Ed25519 approval as `take_offer`;
   permissionless offers reject one. Escrows the gross input in the request PDA
   `["fulfillment_request", offer_config, user, request_id_le]`'s input-mint ATA.
-  Locks no price or fee. The user pays both accounts' rent; an ID can be reused
-  once its request closes.
+  Creates the user's output ATA if missing. Locks no price or fee. The user pays all
+  three accounts' rent; an ID can be reused once its request closes.
 - `fulfill_fulfillment_request(input_amount)`, by `State.worker`. Any amount up to
   the unfilled remainder (`FulfillmentAmountExceedsRemaining` otherwise). Each fill
   runs the shared `take_offer` pipeline on that gross input, with the escrow as
@@ -489,8 +489,11 @@ escrows the input, the worker fills it, and either can cancel the rest.
   payout, burn, destination or haircut custody, and market stats. A fill and a
   `take_offer` of the same input on the same configuration settle identically.
   It takes the same accounts as `take_offer` except the user's input ATA and the
-  permissionless intermediary (the escrow is already a program account); the
-  worker pays for created accounts. Emits `OfferExecutedEvent` (user = request user) and
+  permissionless intermediary (the escrow is already a program account). The
+  user's output ATA must exist: fills never create it, so a user cannot make the
+  worker fund a new account per partial fill by closing it; if it is closed, fills
+  fail and the request can be cancelled. The worker pays only for a missing fee or
+  proceeds vault ATA. Emits `OfferExecutedEvent` (user = request user) and
   `FulfillmentRequestFilledEvent`. A full fill closes the request and escrow,
   refunding their rent to the user; any unsolicited escrow surplus goes to the
   fee vault so it cannot block the close. Blocked by the kill switch.
