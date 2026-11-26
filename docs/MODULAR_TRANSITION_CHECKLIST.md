@@ -85,7 +85,7 @@ Do the steps in order. Details are in [MODULAR_TAKE_OFFER.md](MODULAR_TAKE_OFFER
 
 ## F. Optional: CCIP mint multisig (any time after step 19)
 
-Not before step 19: legacy instructions only mint directly, so with a multisig they would fail or silently stop minting and burning.
+Not before step 19: legacy instructions only mint directly, so with a multisig they would fail or silently stop minting and burning. The program enforces this: before the switch, `enable_managed_token_mint_multisig` fails for ONyc (`MintMultisigBeforeBufferSwitch`).
 
 26. Prepare. None of this changes who can mint:
     1. Use the step 9 multisig.

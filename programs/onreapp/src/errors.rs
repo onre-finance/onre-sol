@@ -330,4 +330,6 @@ pub enum OnreError {
     SupplyExclusionsRequired,
     #[msg("ONyc after the one-way BUFFER switch requires the per-mint BUFFER accounts")]
     PerMintBufferAccountsRequired,
+    #[msg("ONyc multisig minting requires the one-way BUFFER switch first")]
+    MintMultisigBeforeBufferSwitch,
 }

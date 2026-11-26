@@ -387,6 +387,10 @@ mints nothing, and applies the same issuance limits on both paths. Legacy instru
 remain direct-only: once a mint's authority moves to a multisig they no longer see
 program mint control.
 
+For ONyc, enabling requires the one-way BUFFER switch first
+(`MintMultisigBeforeBufferSwitch`): before it, legacy instructions would stop minting
+and burning ONyc and fall back to vault transfers.
+
 The boss switches with one transaction, after creating the multisig:
 
 1. `transfer_mint_authority_to_boss`;

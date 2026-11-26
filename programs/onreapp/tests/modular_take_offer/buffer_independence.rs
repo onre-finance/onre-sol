@@ -217,6 +217,26 @@ fn onyc_switches_once_from_the_legacy_to_the_per_mint_buffer() {
         send(&mut f.svm, &[instruction], &[&rogue]),
         OnreError::InvalidBoss,
     );
+    // ONyc multisig minting cannot be enabled before the switch: legacy instructions
+    // mint only directly. The whole boss transaction rolls back.
+    {
+        use super::mint_multisig::{create_multisig, expect_error, switch_to_multisig};
+        let multisig = create_multisig(
+            f.token_program,
+            &mut f,
+            1,
+            &[find_mint_authority_pda().0, Pubkey::new_unique()],
+        );
+        expect_error(
+            switch_to_multisig(&mut f, multisig),
+            OnreError::MintMultisigBeforeBufferSwitch,
+        );
+        assert_eq!(
+            get_mint_authority_pubkey(&f.svm, &f.mint),
+            Some(find_mint_authority_pda().0)
+        );
+    }
+
     advance_clock_by(&mut f.svm, 3_153_600);
     // A trade prepared before the switch, with both BUFFER account sets.
     let prepared = f.take(2_000_000, 990_000_000);
