@@ -7,7 +7,7 @@ import { ata, configurableVaultAta, tokenProgramFor } from "../accounts";
 import { ConfigurableVaultName, configurableVaultKinds, configurableVaultPda, PDAS } from "../pdas";
 import { bn, SmokeRuntime, sendIxs } from "../runtime";
 
-const VAULT_KINDS: ConfigurableVaultName[] = ["offerFee", "managementFee", "performanceFee", "propAmmFee", "offerProceeds", "propAmmProceeds"];
+const VAULT_KINDS: ConfigurableVaultName[] = ["offerFee", "permissionlessOfferFee", "redemptionFee", "managementFee", "performanceFee", "propAmmBuyFee", "propAmmSellFee", "offerProceeds", "propAmmProceeds"];
 
 export type VaultRecipients = Record<ConfigurableVaultName, PublicKey>;
 

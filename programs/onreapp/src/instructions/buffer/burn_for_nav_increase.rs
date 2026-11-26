@@ -24,6 +24,7 @@ pub struct BurnForNavIncrease<'info> {
         has_one = boss,
         has_one = onyc_mint,
         constraint = !state.is_killed @ crate::OnreError::KillSwitchActivated,
+        constraint = state.onyc_legacy_buffer_active() @ crate::OnreError::LegacyBufferRetired,
     )]
     pub state: Box<Account<'info, State>>,
 
@@ -166,7 +167,7 @@ pub fn burn_for_nav_increase(
             .circulating_supply_excluded_balance
             .to_account_info(),
     )?;
-    let circulating_supply = calculate_circulating_supply(post_accrual_supply, excluded_amount)?;
+    let circulating_supply = calculate_circulating_supply(post_accrual_supply, excluded_amount);
     // This path burns supply to preserve the current quoted NAV after reducing the
     // effective asset base by `asset_adjustment_amount`.
     let total_assets_before_burn = calculate_tvl(circulating_supply, current_nav)
@@ -225,7 +226,7 @@ pub fn burn_for_nav_increase(
     Ok(())
 }
 
-fn calculate_burn_amount(
+pub(crate) fn calculate_burn_amount(
     circulating_supply: u64,
     asset_adjustment_amount: u64,
     nav_before_adjustment: u64,
@@ -280,7 +281,7 @@ mod tests {
     fn burn_amount_uses_circulating_supply_basis() {
         let total_supply = 1_100;
         let vault_supply = 100;
-        let circulating_supply = calculate_circulating_supply(total_supply, vault_supply).unwrap();
+        let circulating_supply = calculate_circulating_supply(total_supply, vault_supply);
 
         let burn_amount = calculate_burn_amount(circulating_supply, 100, NAV_1_0, NAV_1_1).unwrap();
         let total_supply_based_burn = (total_supply as u128).checked_sub(819).unwrap() as u64;

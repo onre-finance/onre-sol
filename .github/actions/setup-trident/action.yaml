@@ -1,8 +1,0 @@
-name: "Setup Trident"
-
-runs:
-  using: "composite"
-  steps:
-    - name: Install Trident
-      run: cargo install trident-cli@${{ env.TRIDENT_VERSION }}
-      shell: bash

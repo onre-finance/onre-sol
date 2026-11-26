@@ -298,7 +298,8 @@ fn execute_open_swap_sell<'info>(
     let buffer_is_initialized = ctx
         .accounts
         .buffer_accounts
-        .check_is_initialized(ctx.program_id)?;
+        .check_is_initialized(ctx.program_id)?
+        && ctx.accounts.state.onyc_legacy_buffer_active();
     let accrual = if should_refresh_market_stats && buffer_is_initialized {
         Some(accrue_buffer_from_accounts(
             ctx.program_id,

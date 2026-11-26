@@ -278,4 +278,70 @@ pub enum OnreError {
     InvalidBurnTarget,
     #[msg("Invalid Redemption Request ID")]
     InvalidRedemptionRequestId,
+    #[msg("Configuration is disabled")]
+    ConfigurationDisabled,
+    #[msg("The offer's asset mint is registered as a managed token")]
+    TokenRoleConflict,
+    #[msg("Pricer does not match the managed mint or pricing denomination")]
+    IncompatiblePricer,
+    #[msg("Quoter is incompatible with the offer pair or pressure state")]
+    IncompatibleQuoter,
+    #[msg("Offer direction is invalid for the registered mints or flow")]
+    InvalidOfferDirection,
+    #[msg("A liquidity vault is required for managed-to-asset offers")]
+    LiquidityVaultRequired,
+    #[msg("The offer's access or execution mode does not support this instruction")]
+    UnsupportedOfferExecution,
+    #[msg("Permissionless execution requires approval_message to be absent")]
+    UnexpectedApproval,
+    #[msg("ONyc execution requires the legacy market stats singleton")]
+    LegacyMarketStatsRequired,
+    #[msg("Multisig minting is enabled: the configured mint multisig is required")]
+    MintMultisigRequired,
+    /// No longer raised: direct minting ignores a supplied multisig. Kept so later
+    /// error codes do not shift.
+    #[msg("Direct minting is enabled: no mint multisig account may be supplied")]
+    UnexpectedMintMultisig,
+    #[msg("Mint multisig must be the configured initialized 1-of-N multisig containing the program mint authority")]
+    InvalidMintMultisig,
+    #[msg("A nonzero max supply must be at least the current supply")]
+    MaxSupplyBelowCurrentSupply,
+    #[msg("The managed token has no MarketStats selected to refresh")]
+    MarketStatsNotSelected,
+    #[msg("ONyc uses the per-mint BUFFER; the legacy BUFFER is retired")]
+    LegacyBufferRetired,
+    #[msg("ONyc uses the legacy BUFFER until the one-way switch to per-mint")]
+    PerMintBufferInactive,
+    #[msg("ONyc before the one-way BUFFER switch requires the legacy BUFFER accounts")]
+    LegacyBufferAccountsRequired,
+    #[msg("Prop AMM sells without a destination require a Haircut-kind vault")]
+    HaircutVaultRequired,
+    #[msg("A haircut vault is only allowed on Prop AMM sells without a destination")]
+    UnexpectedHaircutVault,
+    #[msg("Fill amount exceeds the fulfillment request's unfilled input")]
+    FulfillmentAmountExceedsRemaining,
+    #[msg("Account does not match the fulfillment request")]
+    FulfillmentRequestMismatch,
+    #[msg("Fee config decimals must match the offer's input token decimals")]
+    FeeConfigDecimalsMismatch,
+    #[msg("Duplicate excluded token account")]
+    DuplicateExcludedTokenAccount,
+    #[msg("ONyc supply exclusions must be set before modular use")]
+    SupplyExclusionsRequired,
+    #[msg("ONyc after the one-way BUFFER switch requires the per-mint BUFFER accounts")]
+    PerMintBufferAccountsRequired,
+    #[msg("ONyc multisig minting requires the one-way BUFFER switch first")]
+    MintMultisigBeforeBufferSwitch,
+    #[msg("Market stats account does not belong to this managed token")]
+    MarketStatsNotForToken,
+    #[msg("Pricer vector APR exceeds the maximum (100%)")]
+    PricerAprTooHigh,
+    #[msg(
+        "The BUFFER reserve is excluded from circulating supply; burning it would not raise NAV"
+    )]
+    BufferReserveExcludedFromSupply,
+    #[msg("ONyc cannot be unregistered")]
+    CannotUnregisterOnyc,
+    #[msg("Managed token must be disabled, with no per-mint BUFFER and no market stats selected")]
+    ManagedTokenStillInUse,
 }

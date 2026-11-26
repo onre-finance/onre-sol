@@ -3,12 +3,17 @@
 
 use anchor_lang::prelude::*;
 use instructions::*;
+use model::{
+    BufferSettings, OfferAccess, OfferExecution, PricingDenomination, PricingVector, PropAmmConfig,
+    QuoterKind, VaultKind,
+};
 use state::ConfigurableVaultKind;
 use utils::ApprovalMessage;
 
 pub mod constants;
 pub mod errors;
 pub mod instructions;
+pub mod model;
 pub mod state;
 pub mod utils;
 
@@ -68,11 +73,12 @@ pub use instructions::mint_authority::mint_to::MintTo;
 ///
 /// Core functionalities include:
 /// - Making offers with dynamic pricing (`make_offer`).
-/// - Taking offers with current market pricing (`take_offer`, `take_offer_permissionless`).
+/// - Taking modular permissioned NAV offers (`take_offer`) and existing offers
+///   (`take_offer_v2`, `take_offer_permissionless_v2`).
 /// - Managing offer vectors for price control (`add_offer_vector`, `delete_offer_vector`).
 /// - Program state initialization and management (`initialize`, `propose_boss`, `accept_boss`, `add_admin`, `remove_admin`).
 /// - Vault operations for token deposits and withdrawals (`offer_vault_deposit`, `offer_vault_withdraw`).
-/// - Market information queries (`get_nav`, `get_apy`, `get_tvl`, `get_circulating_supply`).
+/// - Market-stat snapshots (`refresh_market_stats`), read directly from the `MarketStats` PDA.
 /// - Mint authority management (`transfer_mint_authority_to_program`, `transfer_mint_authority_to_boss`).
 /// - Emergency controls (`set_kill_switch`) and approval mechanisms (`add_approver`, `remove_approver`).
 ///
@@ -92,6 +98,350 @@ pub use instructions::mint_authority::mint_to::MintTo;
 #[program]
 pub mod onreapp {
     use super::*;
+
+    /// Execute an offer using reusable model accounts.
+    /// Supports permissioned and permissionless NAV in both directions, with shared BUFFER accounting
+    /// and independent source/output and destination/input vaults.
+    /// Permissionless execution routes through the canonical intermediary PDA.
+    /// Permissionless Prop AMM uses symmetric curve pricing; NAV offers may link pair pressure.
+    /// Buys use inventory or mint; sells retain input in a destination or burn it.
+    /// Buy destinations can refill configured TVL targets. Instant offers only; Worker
+    /// offers execute through fulfillment requests.
+    /// V2 entrypoints and their account lists remain unchanged.
+    pub fn take_offer(
+        ctx: Context<TakeOffer>,
+        gross_input_amount: u64,
+        minimum_amount_out: u64,
+        deadline: u64,
+        approval_message: Option<ApprovalMessage>,
+    ) -> Result<()> {
+        execution::take_offer(
+            ctx,
+            gross_input_amount,
+            minimum_amount_out,
+            deadline,
+            approval_message,
+        )
+    }
+
+    /// Escrows input for a Worker-execution offer under a user-chosen `request_id`;
+    /// permissioned offers require an approval. Blocked by the kill switch.
+    pub fn create_fulfillment_request(
+        ctx: Context<CreateFulfillmentRequest>,
+        request_id: u64,
+        input_amount: u64,
+        approval_message: Option<ApprovalMessage>,
+    ) -> Result<()> {
+        fulfillment::create_fulfillment_request(ctx, request_id, input_amount, approval_message)
+    }
+
+    /// Worker fill of part or all of a request's unfilled input at the current price
+    /// and fee; a full fill closes the request. Blocked by the kill switch.
+    pub fn fulfill_fulfillment_request(
+        ctx: Context<FulfillFulfillmentRequest>,
+        input_amount: u64,
+    ) -> Result<()> {
+        fulfillment::fulfill_fulfillment_request(ctx, input_amount)
+    }
+
+    /// Returns a request's unfilled escrow to its user and closes it; by the user or
+    /// the worker, also while the kill switch is active.
+    pub fn cancel_fulfillment_request(ctx: Context<CancelFulfillmentRequest>) -> Result<()> {
+        fulfillment::cancel_fulfillment_request(ctx)
+    }
+
+    /// Appends a Pricer vector after evicting vectors older than the previously
+    /// active one (shared rule with legacy offers and EVM); boss only.
+    pub fn add_pricer_vector(ctx: Context<AddPricerVector>, vector: PricingVector) -> Result<()> {
+        configuration::add_pricer_vector(ctx, vector)
+    }
+
+    /// Deletes one Pricer vector that has not started yet; boss only.
+    pub fn delete_pricer_vector(
+        ctx: Context<DeletePricerVector>,
+        vector_start_time: u64,
+    ) -> Result<()> {
+        configuration::delete_pricer_vector(ctx, vector_start_time)
+    }
+
+    /// Deletes every Pricer vector, including the active one; boss only.
+    pub fn delete_all_pricer_vectors(ctx: Context<DeletePricerVector>) -> Result<()> {
+        configuration::delete_all_pricer_vectors(ctx)
+    }
+
+    /// Registers an existing mint in the reusable configuration model; boss only.
+    pub fn register_managed_token(ctx: Context<RegisterManagedToken>) -> Result<()> {
+        configuration::register_managed_token(ctx)
+    }
+
+    /// Removes a disabled managed-token registration that has no per-mint BUFFER and
+    /// no market stats selected, refunding its rent; ONyc cannot be removed. Boss only.
+    pub fn unregister_managed_token(ctx: Context<UnregisterManagedToken>) -> Result<()> {
+        configuration::unregister_managed_token(ctx)
+    }
+
+    /// Creates an independent Pricer with no pricing vectors; boss only.
+    pub fn create_pricer(
+        ctx: Context<CreatePricer>,
+        instance_id: u64,
+        denomination: PricingDenomination,
+    ) -> Result<()> {
+        configuration::create_pricer(ctx, instance_id, denomination)
+    }
+
+    /// Creates a reusable NAV or Prop AMM quoter instance; boss only.
+    pub fn create_quoter(
+        ctx: Context<CreateQuoter>,
+        kind: QuoterKind,
+        instance_id: u64,
+    ) -> Result<()> {
+        configuration::create_quoter(ctx, kind, instance_id)
+    }
+
+    /// Creates a vault configuration without creating ATAs or moving tokens; boss only.
+    pub fn create_vault_config(
+        ctx: Context<CreateVaultConfig>,
+        kind: VaultKind,
+        instance_id: u64,
+        withdrawal_destination: Pubkey,
+        refill_target_bps: u16,
+    ) -> Result<()> {
+        configuration::create_vault_config(
+            ctx,
+            kind,
+            instance_id,
+            withdrawal_destination,
+            refill_target_bps,
+        )
+    }
+
+    /// Deposit into a canonical VaultConfig ATA; any depositor, subject to the kill switch.
+    pub fn deposit_vault_config(ctx: Context<DepositVaultConfig>, amount: u64) -> Result<()> {
+        vault_operations::deposit_vault_config(ctx, amount)
+    }
+
+    /// Withdraw to the configured destination; Liquidity/BufferReserve require the boss.
+    /// Fee/Proceeds permit any caller. Zero amount withdraws the full balance.
+    pub fn withdraw_vault_config(ctx: Context<WithdrawVaultConfig>, amount: u64) -> Result<()> {
+        vault_operations::withdraw_vault_config(ctx, amount)
+    }
+
+    /// Creates a reusable fee policy for input tokens with `token_decimals`
+    /// decimals, with a Fee vault; boss only.
+    pub fn create_fee_config(
+        ctx: Context<CreateFeeConfig>,
+        instance_id: u64,
+        token_decimals: u8,
+        basis_points: u16,
+        minimum_fee_amount: u64,
+    ) -> Result<()> {
+        configuration::create_fee_config(
+            ctx,
+            instance_id,
+            token_decimals,
+            basis_points,
+            minimum_fee_amount,
+        )
+    }
+
+    /// Creates immutable pair binding and initial pressure state for a Prop AMM quoter; boss only.
+    pub fn create_prop_amm_state(
+        ctx: Context<CreatePropAmmState>,
+        config: PropAmmConfig,
+    ) -> Result<()> {
+        configuration::create_prop_amm_state(ctx, config)
+    }
+
+    /// Creates a directed offer referencing compatible existing components; boss only.
+    /// Identified by the mint pair and a boss-chosen `instance_id`, not by its modes.
+    pub fn create_offer_config(
+        ctx: Context<CreateOfferConfig>,
+        instance_id: u64,
+        access: OfferAccess,
+        execution: OfferExecution,
+    ) -> Result<()> {
+        configuration::create_offer_config(ctx, instance_id, access, execution)
+    }
+
+    /// Replaces an offer's Pricer, quoter, pressure link, fee config and vaults with
+    /// the creation rules; mints, instance ID, access and execution stay immutable. Boss only.
+    pub fn update_offer_config(ctx: Context<UpdateOfferConfig>) -> Result<()> {
+        configuration::update_offer_config(ctx)
+    }
+
+    /// Boss-configured pair pressure tracking, independent of NAV/PropAmm quote selection.
+    pub fn set_offer_pressure_state(ctx: Context<SetOfferPressureState>) -> Result<()> {
+        configuration::set_offer_pressure_state(ctx)
+    }
+
+    /// Worker-only per-mint BUFFER settlement for any registered mint, ONyc included.
+    /// Independent of the legacy singleton BUFFER.
+    pub fn settle_managed_token_buffer(ctx: Context<SettleManagedTokenBuffer>) -> Result<()> {
+        managed_buffer::settle_managed_token_buffer(ctx)
+    }
+
+    /// Boss-only per-mint BUFFER policy update after settling the previous settings.
+    pub fn set_managed_token_buffer_settings(
+        ctx: Context<SetManagedTokenBufferSettings>,
+        settings: BufferSettings,
+    ) -> Result<()> {
+        managed_buffer::set_managed_token_buffer_settings(ctx, settings)
+    }
+
+    /// Boss-only, one-way switch of ONyc's active BUFFER from the legacy singleton to
+    /// its per-mint BUFFER; afterwards only the per-mint BUFFER accrues ONyc.
+    pub fn switch_onyc_buffer_to_per_mint(ctx: Context<SwitchOnycBufferToPerMint>) -> Result<()> {
+        managed_buffer::switch_onyc_buffer_to_per_mint(ctx)
+    }
+
+    /// Boss-only burn of per-mint BUFFER reserve tokens that keeps the canonical
+    /// NAV after removing `asset_adjustment_amount` from the asset base.
+    pub fn burn_managed_token_for_nav_increase(
+        ctx: Context<BurnManagedTokenForNavIncrease>,
+        asset_adjustment_amount: u64,
+    ) -> Result<()> {
+        managed_buffer::burn_managed_token_for_nav_increase(ctx, asset_adjustment_amount)
+    }
+
+    /// Creates per-managed-mint BUFFER state and dedicated vault configurations; boss only.
+    /// Existing singleton BUFFER settlement remains unchanged.
+    pub fn initialize_managed_token_buffer(
+        ctx: Context<InitializeManagedTokenBuffer>,
+    ) -> Result<()> {
+        configuration::initialize_managed_token_buffer(ctx)
+    }
+
+    /// Creates a `["market_stats", mint]` MarketStats account and selects it for the
+    /// managed token's modular reporting; boss only.
+    pub fn initialize_managed_token_market_stats(
+        ctx: Context<InitializeManagedTokenMarketStats>,
+    ) -> Result<()> {
+        configuration::initialize_managed_token_market_stats(ctx)
+    }
+
+    /// Selects any existing program-owned MarketStats account, including the legacy
+    /// `["market_stats"]` singleton, for the managed token's modular reporting; boss only.
+    pub fn set_managed_token_market_stats(ctx: Context<SetManagedTokenMarketStats>) -> Result<()> {
+        configuration::set_managed_token_market_stats(ctx)
+    }
+
+    /// Replaces the managed token's circulating-supply exclusions with the remaining
+    /// token accounts (≤ 20, unique, of the managed mint) and caches their summed
+    /// balance; for ONyc also writes the legacy cache. Boss only.
+    pub fn set_managed_token_supply_exclusions(
+        ctx: Context<SetManagedTokenSupplyExclusions>,
+    ) -> Result<()> {
+        configuration::set_managed_token_supply_exclusions(ctx)
+    }
+
+    /// Sets the managed token's issuance limits for program mints (zero disables a
+    /// limit; a nonzero max supply must cover current supply); boss only.
+    pub fn set_managed_token_mint_limits(
+        ctx: Context<SetManagedTokenMintLimits>,
+        max_supply: u64,
+        max_mint_amount: u64,
+    ) -> Result<()> {
+        configuration::set_managed_token_mint_limits(ctx, max_supply, max_mint_amount)
+    }
+
+    /// Enables or disables a managed token for modular use; boss only.
+    pub fn set_managed_token_enabled(
+        ctx: Context<SetManagedTokenEnabled>,
+        enabled: bool,
+    ) -> Result<()> {
+        configuration::set_managed_token_enabled(ctx, enabled)
+    }
+
+    /// Enables or disables a Pricer; boss only.
+    pub fn set_pricer_enabled(ctx: Context<SetPricerEnabled>, enabled: bool) -> Result<()> {
+        configuration::set_pricer_enabled(ctx, enabled)
+    }
+
+    /// Enables or disables a Quoter; boss only.
+    pub fn set_quoter_enabled(ctx: Context<SetQuoterEnabled>, enabled: bool) -> Result<()> {
+        configuration::set_quoter_enabled(ctx, enabled)
+    }
+
+    /// Enables or disables a FeeConfig; boss only.
+    pub fn set_fee_config_enabled(ctx: Context<SetFeeConfigEnabled>, enabled: bool) -> Result<()> {
+        configuration::set_fee_config_enabled(ctx, enabled)
+    }
+
+    /// Enables or disables an OfferConfig; boss only.
+    pub fn set_offer_config_enabled(
+        ctx: Context<SetOfferConfigEnabled>,
+        enabled: bool,
+    ) -> Result<()> {
+        configuration::set_offer_config_enabled(ctx, enabled)
+    }
+
+    /// Updates a FeeConfig's rate, minimum fee and Fee-kind vault; boss only.
+    pub fn update_fee_config(
+        ctx: Context<UpdateFeeConfig>,
+        basis_points: u16,
+        minimum_fee_amount: u64,
+    ) -> Result<()> {
+        configuration::update_fee_config(ctx, basis_points, minimum_fee_amount)
+    }
+
+    /// Updates a VaultConfig's withdrawal destination and refill target; boss only.
+    pub fn update_vault_config(
+        ctx: Context<UpdateVaultConfig>,
+        withdrawal_destination: Pubkey,
+        refill_target_bps: u16,
+    ) -> Result<()> {
+        configuration::update_vault_config(ctx, withdrawal_destination, refill_target_bps)
+    }
+
+    /// Replaces a modular Prop AMM state's configuration, keeping its pair and
+    /// accumulated pressure; boss only.
+    pub fn update_prop_amm_config(
+        ctx: Context<UpdatePropAmmConfig>,
+        config: PropAmmConfig,
+    ) -> Result<()> {
+        configuration::update_prop_amm_config(ctx, config)
+    }
+
+    /// Clears the managed token's MarketStats selection; boss only.
+    pub fn unset_managed_token_market_stats(
+        ctx: Context<UnsetManagedTokenMarketStats>,
+    ) -> Result<()> {
+        configuration::unset_managed_token_market_stats(ctx)
+    }
+
+    /// Permissionlessly re-caches a managed token's excluded supply from its stored
+    /// token accounts, supplied in order as remaining accounts; for ONyc also writes
+    /// the legacy cache.
+    pub fn refresh_managed_token_supply_exclusions(
+        ctx: Context<RefreshManagedTokenSupplyExclusions>,
+    ) -> Result<()> {
+        market_info::refresh_managed_token_supply_exclusions(ctx)
+    }
+
+    /// Permissionlessly recomputes a managed token's selected MarketStats (and the
+    /// legacy singleton for ONyc) from current supply and its canonical Pricer.
+    pub fn refresh_managed_token_market_stats(
+        ctx: Context<RefreshManagedTokenMarketStats>,
+    ) -> Result<()> {
+        market_info::refresh_managed_token_market_stats(ctx)
+    }
+
+    /// Switches the managed token's modular minting to a 1-of-N SPL multisig that already
+    /// holds mint authority and includes the program mint-authority PDA; boss only.
+    /// Legacy instructions keep minting directly.
+    pub fn enable_managed_token_mint_multisig(
+        ctx: Context<SetManagedTokenMintMultisig>,
+    ) -> Result<()> {
+        configuration::enable_managed_token_mint_multisig(ctx)
+    }
+
+    /// Restores direct PDA minting, reclaiming mint authority from the configured
+    /// multisig if it still holds it; boss only.
+    pub fn disable_managed_token_mint_multisig(
+        ctx: Context<SetManagedTokenMintMultisig>,
+    ) -> Result<()> {
+        configuration::disable_managed_token_mint_multisig(ctx)
+    }
 
     /// Initializes the program state and authority accounts.
     ///
@@ -309,23 +659,6 @@ pub mod onreapp {
         offer::set_offer_disabled(ctx, disabled)
     }
 
-    /// Takes an offer.
-    ///
-    /// Delegates to `offer::take_offer`.
-    /// Allows a user to exchange token_in for token_out based on the offer's dynamic price.
-    /// Emits an `OfferTakenEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `TakeOffer`.
-    /// - `token_in_amount`: Amount of token_in to provide.
-    pub fn take_offer<'info>(
-        ctx: Context<'info, TakeOffer<'info>>,
-        token_in_amount: u64,
-        approval_message: Option<ApprovalMessage>,
-    ) -> Result<()> {
-        offer::take_offer(ctx, token_in_amount, approval_message)
-    }
-
     pub fn take_offer_v2<'info>(
         ctx: Context<'info, TakeOfferV2<'info>>,
         token_in_amount: u64,
@@ -358,30 +691,9 @@ pub mod onreapp {
         prop_amm::open_swap_sell(ctx, token_in_amount, minimum_out)
     }
 
-    /// Takes an offer using permissionless flow with intermediary accounts.
-    ///
-    /// Delegates to `offer::take_offer_permissionless`.
-    /// Similar to take_offer but routes token transfers through intermediary accounts
-    /// owned by the program instead of direct user-to-boss and vault-to-user transfers.
-    /// Permissionless execution does not require approval; the approval argument is
-    /// retained only for legacy instruction-data compatibility.
-    /// Emits an `OfferTakenPermissionlessEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `TakeOfferPermissionless`.
-    /// - `token_in_amount`: Amount of token_in to provide.
-    pub fn take_offer_permissionless<'info>(
-        ctx: Context<'info, TakeOfferPermissionless<'info>>,
-        token_in_amount: u64,
-        approval_message: Option<ApprovalMessage>,
-    ) -> Result<()> {
-        offer::take_offer_permissionless(ctx, token_in_amount, approval_message)
-    }
-
     /// Takes an offer through the V2 permissionless route without approval verification.
     ///
-    /// Unlike the legacy permissionless instruction, V2 has no approval-message argument
-    /// or instructions-sysvar account.
+    /// This instruction has no approval-message argument or instructions-sysvar account.
     pub fn take_offer_permissionless_v2<'info>(
         ctx: Context<'info, TakeOfferPermissionlessV2<'info>>,
         token_in_amount: u64,
@@ -625,94 +937,6 @@ pub mod onreapp {
         mint_authority::mint_to(ctx, amount)
     }
 
-    /// Gets the current NAV (price) for a specific offer.
-    ///
-    /// Delegates to `market_info::get_nav`.
-    /// This is a read-only instruction that calculates and returns the current price
-    /// for an offer based on its time vectors and APR parameters.
-    /// Emits a `GetNAVEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `GetNAV`.
-    ///
-    /// # Returns
-    /// - `Ok(current_price)`: The calculated current price (mantissa) for the offer with scale=9
-    pub fn get_nav(ctx: Context<GetNAV>) -> Result<u64> {
-        market_info::get_nav(ctx)
-    }
-
-    /// Gets the current APY (Annual Percentage Yield) for a specific offer.
-    ///
-    /// Delegates to `market_info::get_apy`.
-    /// This is a read-only instruction that calculates and returns the current APY
-    /// by converting the stored APR using daily compounding formula.
-    /// Emits a `GetAPYEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `GetAPY`.
-    ///
-    /// # Returns
-    /// - `Ok(apy)`: The calculated APY scaled by 1_000_000 (returns the mantissa, with scale=6)
-    pub fn get_apy(ctx: Context<GetAPY>) -> Result<u64> {
-        market_info::get_apy(ctx)
-    }
-
-    /// Gets the NAV adjustment (price change) for a specific offer.
-    ///
-    /// Delegates to `market_info::get_nav_adjustment`.
-    /// This is a read-only instruction that calculates the price jump at the
-    /// active vector's start time by comparing the active vector's starting
-    /// price with the previous vector's price at that same transition timestamp.
-    /// Returns a signed integer representing the price change.
-    /// Emits a `GetNavAdjustmentEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `GetNavAdjustment`.
-    ///
-    /// # Returns
-    /// - `Ok(adjustment)`: The calculated price adjustment (current - previous) as a signed integer,
-    /// returns the mantissa with scale=9
-    pub fn get_nav_adjustment(ctx: Context<GetNavAdjustment>) -> Result<i64> {
-        market_info::get_nav_adjustment(ctx)
-    }
-
-    /// Gets the current TVL (Total Value Locked) for an ONyc offer.
-    ///
-    /// Delegates to `market_info::get_tvl`.
-    /// This legacy read-only instruction calculates TVL from circulating ONyc supply:
-    /// total ONyc mint supply minus the offer-vault ONyc ATA balance.
-    /// TVL = circulating_supply * current_NAV / 10^9.
-    /// Emits a `GetTVLEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `GetTVL`.
-    ///
-    /// # Returns
-    /// - `Ok(tvl)`: The calculated TVL in ONyc base units
-    pub fn get_tvl(ctx: Context<GetTVL>) -> Result<u64> {
-        market_info::get_tvl(ctx)
-    }
-
-    /// Delegates to `market_info::get_circulating_supply`.
-    /// This is a read-only instruction that calculates and returns the current circulating supply
-    /// based on total ONyc supply minus the offer-vault ONyc ATA balance.
-    /// circulating_supply = total_supply - vault_amount
-    /// Emits a `GetCirculatingSupplyEvent` upon success.
-    ///
-    /// # Arguments
-    /// - `ctx`: Context for `GetCirculatingSupply`.
-    ///
-    /// # Returns
-    /// - `Ok(circulating_supply)`: The calculated global ONyc circulating supply in base units
-    pub fn get_circulating_supply(ctx: Context<GetCirculatingSupply>) -> Result<u64> {
-        market_info::get_circulating_supply(ctx)
-    }
-
-    /// Gets circulating supply using the cached excluded-balance PDA.
-    pub fn get_circulating_supply_v2(ctx: Context<GetCirculatingSupplyV2>) -> Result<u64> {
-        market_info::get_circulating_supply_v2(ctx)
-    }
-
     /// Refreshes the canonical market-stats PDA using current on-chain state.
     ///
     /// Delegates to `market_info::refresh_market_stats`.
@@ -723,11 +947,6 @@ pub mod onreapp {
     /// - `ctx`: Context for `RefreshMarketStats`.
     pub fn refresh_market_stats(ctx: Context<RefreshMarketStats>) -> Result<()> {
         market_info::refresh_market_stats(ctx)
-    }
-
-    /// Gets ONyc TVL using the cached excluded-balance PDA.
-    pub fn get_tvl_v2(ctx: Context<GetTVLV2>) -> Result<u64> {
-        market_info::get_tvl_v2(ctx)
     }
 
     /// Replaces the owner list whose ONyc ATAs are excluded from circulating supply.

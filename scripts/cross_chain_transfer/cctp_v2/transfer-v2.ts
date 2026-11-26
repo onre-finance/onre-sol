@@ -28,7 +28,7 @@ import {
   depositForBurnEvmWithHook,
   receiveMessageEvm,
 } from "./evm";
-import anchor from "@coral-xyz/anchor";
+import anchor from "@anchor-lang/core";
 import { PublicKey } from "@solana/web3.js";
 
 export const IRIS_API_URL =

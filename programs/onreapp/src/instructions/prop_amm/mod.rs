@@ -1,5 +1,6 @@
 pub mod buy;
 pub mod config;
+pub(crate) mod epoch;
 mod hard_wall_math;
 pub mod pricing;
 pub mod quote;

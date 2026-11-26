@@ -21,7 +21,8 @@ pub struct SetBufferGrossYield<'info> {
         bump = state.bump,
         has_one = boss,
         has_one = onyc_mint,
-        constraint = !state.is_killed @ crate::OnreError::KillSwitchActivated
+        constraint = !state.is_killed @ crate::OnreError::KillSwitchActivated,
+        constraint = state.onyc_legacy_buffer_active() @ crate::OnreError::LegacyBufferRetired,
     )]
     pub state: Box<Account<'info, State>>,
 

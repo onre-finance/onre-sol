@@ -1,5 +1,12 @@
 # Domain Model
 
+This page describes the legacy runtime model used by V2 trading and ONyc BUFFER
+settlement. The EVM-aligned account layouts and their creation instructions are
+documented in [`MODULAR_MODEL.md`](MODULAR_MODEL.md). Modular
+[`take_offer`](MODULAR_TAKE_OFFER.md) uses its selected liquidity vault, keeps
+ONyc's existing BUFFER accounts, and uses per-mint BUFFER accounts for other
+managed tokens.
+
 This page explains the protocol objects in business terms first, then maps them to PDAs. It is meant for product, accounting, integration, and architecture discussions. Instruction-level token flow diagrams live in [`TOKEN_FLOW_ROUTING.md`](TOKEN_FLOW_ROUTING.md).
 
 The structure follows two simple modeling rules:
@@ -317,8 +324,8 @@ The market snapshot is the shared reporting surface for TVL, NAV, NAV adjustment
 | Offer disabled flag | Targeted disable for one offer. |
 | Redemption offer disabled flag | Targeted disable for one redemption market. |
 | Prop AMM pair enabled flag | Enables or disables automated liquidity for one offer pair. |
-| Max supply | Optional global ONYC supply cap. |
-| Max mint amount | Optional cap on one logical ONYC mint operation. Buffer accrual applies it to the total gross accrual before splitting reserve and fee mints. |
+| Max supply | Optional global ONYC supply cap for the legacy instructions. Modular instructions use the managed token's per-mint caps instead. |
+| Max mint amount | Optional cap on one logical ONYC mint operation by a legacy instruction. Buffer accrual applies it to the total gross accrual before splitting reserve and fee mints. |
 | Fee limits | Offer and redemption fees are bounded by program limits. |
 | Approval mode | Regular offer execution can require off-chain approval signatures. |
 | Permissionless mode | Offer execution can be allowed through the permissionless authority path without approval verification. |

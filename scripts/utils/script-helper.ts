@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, Program, Wallet } from "@coral-xyz/anchor";
+import anchor from "@anchor-lang/core";
+import { AnchorProvider, Program } from "@anchor-lang/core";
 import BN from "bn.js";
 
 import * as fs from "node:fs";
@@ -16,6 +16,10 @@ import "./load-env";
 // Import network configuration
 import { getNetworkConfig, NETWORK_CONFIGS, NetworkConfig, printConfigSummary } from "./network-config";
 import chalk from "chalk";
+
+// Native ESM cannot discover Anchor's CommonJS Wallet re-export.
+const { Wallet } = anchor;
+type Wallet = anchor.Wallet;
 
 // ============================================================
 // ACTIVE CONFIGURATION
@@ -394,48 +398,6 @@ export class ScriptHelper {
             .instruction();
     }
 
-    async buildTakeOfferLegacyIxs(params: {
-        tokenInAmount: RawAmount;
-        tokenInMint: PublicKey;
-        tokenOutMint: PublicKey;
-        user: PublicKey;
-        approvalMessage?: any;
-        tokenInProgram?: PublicKey;
-        tokenOutProgram?: PublicKey;
-    }) {
-        const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
-        const tokenOutProgram = params.tokenOutProgram ?? TOKEN_PROGRAM_ID;
-        const boss = await this.getBoss();
-        const bossTokenInAccount = getAssociatedTokenAddressSync(params.tokenInMint, boss, true, tokenInProgram);
-        const createBossTokenInIx = createAssociatedTokenAccountIdempotentInstruction(params.user, bossTokenInAccount, boss, params.tokenInMint, tokenInProgram);
-
-        const takeIx = await this.program.methods
-            .takeOffer(new BN(params.tokenInAmount), params.approvalMessage ?? null)
-            .accountsPartial({
-                offer: this.getOfferPda(params.tokenInMint, params.tokenOutMint),
-                state: this.statePda,
-                boss,
-                vaultAuthority: this.pdas.offerVaultAuthorityPda,
-                vaultTokenInAccount: getAssociatedTokenAddressSync(params.tokenInMint, this.pdas.offerVaultAuthorityPda, true, tokenInProgram),
-                vaultTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, this.pdas.offerVaultAuthorityPda, true, tokenOutProgram),
-                tokenInMint: params.tokenInMint,
-                tokenInProgram,
-                tokenOutMint: params.tokenOutMint,
-                tokenOutProgram,
-                userTokenInAccount: getAssociatedTokenAddressSync(params.tokenInMint, params.user, false, tokenInProgram),
-                userTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, params.user, false, tokenOutProgram),
-                bossTokenInAccount,
-                mintAuthority: this.pdas.mintAuthorityPda,
-                instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
-                user: params.user,
-                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-                systemProgram: anchor.web3.SystemProgram.programId,
-            })
-            .instruction();
-
-        return [createBossTokenInIx, takeIx];
-    }
-
     async buildTakeOfferIx(params: {
         tokenInAmount: RawAmount;
         tokenInMint: PublicKey;
@@ -486,60 +448,6 @@ export class ScriptHelper {
                 mainOffer: state.mainOffer as PublicKey,
             })
             .instruction();
-    }
-
-    async buildTakeOfferPermissionlessLegacyIxs(params: {
-        tokenInAmount: RawAmount;
-        tokenInMint: PublicKey;
-        tokenOutMint: PublicKey;
-        user: PublicKey;
-        approvalMessage?: any;
-        tokenInProgram?: PublicKey;
-        tokenOutProgram?: PublicKey;
-    }) {
-        const vaultAuthority = this.pdas.offerVaultAuthorityPda;
-        const permissionlessAuthority = this.pdas.permissionlessVaultAuthorityPda;
-        const tokenInProgram = params.tokenInProgram ?? TOKEN_PROGRAM_ID;
-        const tokenOutProgram = params.tokenOutProgram ?? TOKEN_PROGRAM_ID;
-        const boss = await this.getBoss();
-        const bossTokenInAccount = getAssociatedTokenAddressSync(params.tokenInMint, boss, true, tokenInProgram);
-        const permissionlessTokenInAccount = getAssociatedTokenAddressSync(params.tokenInMint, permissionlessAuthority, true, tokenInProgram);
-        const permissionlessTokenOutAccount = getAssociatedTokenAddressSync(params.tokenOutMint, permissionlessAuthority, true, tokenOutProgram);
-
-        const setupIxs = [
-            createAssociatedTokenAccountIdempotentInstruction(params.user, bossTokenInAccount, boss, params.tokenInMint, tokenInProgram),
-            createAssociatedTokenAccountIdempotentInstruction(params.user, permissionlessTokenInAccount, permissionlessAuthority, params.tokenInMint, tokenInProgram),
-            createAssociatedTokenAccountIdempotentInstruction(params.user, permissionlessTokenOutAccount, permissionlessAuthority, params.tokenOutMint, tokenOutProgram),
-        ];
-
-        const takeIx = await this.program.methods
-            .takeOfferPermissionless(new BN(params.tokenInAmount), params.approvalMessage ?? null)
-            .accountsPartial({
-                offer: this.getOfferPda(params.tokenInMint, params.tokenOutMint),
-                state: this.statePda,
-                boss,
-                vaultAuthority,
-                vaultTokenInAccount: getAssociatedTokenAddressSync(params.tokenInMint, vaultAuthority, true, tokenInProgram),
-                vaultTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, vaultAuthority, true, tokenOutProgram),
-                permissionlessAuthority,
-                permissionlessTokenInAccount,
-                permissionlessTokenOutAccount,
-                tokenInMint: params.tokenInMint,
-                tokenInProgram,
-                tokenOutMint: params.tokenOutMint,
-                tokenOutProgram,
-                userTokenInAccount: getAssociatedTokenAddressSync(params.tokenInMint, params.user, false, tokenInProgram),
-                userTokenOutAccount: getAssociatedTokenAddressSync(params.tokenOutMint, params.user, false, tokenOutProgram),
-                bossTokenInAccount,
-                mintAuthority: this.pdas.mintAuthorityPda,
-                instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
-                user: params.user,
-                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-                systemProgram: anchor.web3.SystemProgram.programId,
-            })
-            .instruction();
-
-        return [...setupIxs, takeIx];
     }
 
     async buildTakeOfferPermissionlessIx(params: {
@@ -1292,6 +1200,45 @@ export class ScriptHelper {
         const onycMint = state.onycMint as PublicKey;
         const offer = (state.mainOffer as PublicKey).equals(PublicKey.default) ? PublicKey.default : (state.mainOffer as PublicKey);
 
+        // After the one-way ONyc BUFFER switch, mint_to accrues the per-mint
+        // ["buffer", mint] BUFFER and refreshes stats from the canonical Pricer, so it
+        // needs the per-mint accounts; before the switch they stay null.
+        const programId = this.program.programId;
+        const pda = (...seeds: Buffer[]) => PublicKey.findProgramAddressSync(seeds, programId)[0];
+        const perMintAta = (seed: string) =>
+            getAssociatedTokenAddressSync(onycMint, pda(Buffer.from(seed), onycMint.toBuffer()), true, TOKEN_PROGRAM_ID);
+        const managedToken = pda(Buffer.from("managed_token"), onycMint.toBuffer());
+        const config = state.onycPerMintBufferActive ? await this.program.account.managedTokenConfig.fetch(managedToken) : null;
+        const mintMultisig = (config?.mintMultisig as PublicKey | undefined) ?? PublicKey.default;
+        const selectedStats = (config?.marketStats as PublicKey | undefined) ?? PublicKey.default;
+        const perMint = state.onycPerMintBufferActive
+            ? {
+                  managedToken,
+                  // Required exactly when multisig minting is configured.
+                  mintMultisig: mintMultisig.equals(PublicKey.default) ? null : mintMultisig,
+                  perMintBufferState: pda(Buffer.from("buffer"), onycMint.toBuffer()),
+                  // Canonical USD (denomination 0) instance-zero Pricer.
+                  bufferPricer: pda(Buffer.from("pricer"), onycMint.toBuffer(), Buffer.from([0]), Buffer.alloc(8)),
+                  perMintReserveToken: perMintAta("buffer_reserve"),
+                  perMintManagementToken: perMintAta("buffer_management"),
+                  perMintPerformanceToken: perMintAta("buffer_performance"),
+                  // Market stats come from the canonical Pricer after the switch.
+                  managedMarketStats:
+                      selectedStats.equals(PublicKey.default) || selectedStats.equals(this.pdas.marketStatsPda) ? null : selectedStats,
+                  supplyExclusions: pda(Buffer.from("supply_exclusions"), onycMint.toBuffer()),
+              }
+            : {
+                  managedToken: null,
+                  mintMultisig: null,
+                  perMintBufferState: null,
+                  bufferPricer: null,
+                  perMintReserveToken: null,
+                  perMintManagementToken: null,
+                  perMintPerformanceToken: null,
+                  managedMarketStats: null,
+                  supplyExclusions: null,
+              };
+
         return await this.program.methods
             .mintTo(new BN(params.amount))
             .accountsPartial({
@@ -1305,6 +1252,7 @@ export class ScriptHelper {
                 },
                 marketStats: this.pdas.marketStatsPda,
                 circulatingSupplyExcludedBalance: this.pdas.circulatingSupplyExcludedBalancePda,
+                ...perMint,
             })
             .instruction();
     }

@@ -1,6 +1,11 @@
 # BUFFER Accrual
 
-This document describes the BUFFER accrual model and the expected state transitions around ONyc supply changes.
+This document describes the shared accrual math and legacy ONyc lifecycle.
+Modular execution uses a per-mint BUFFER for every managed mint, valued at the
+canonical USD Pricer. ONyc keeps the legacy singleton described here active (also
+for modular ONyc trades) until a one-way switch hands over to its per-mint BUFFER;
+afterwards the legacy settlement and settings instructions are retired; see
+[MODULAR_TAKE_OFFER.md](MODULAR_TAKE_OFFER.md#per-mint-buffer).
 
 ## Why BUFFER Exists
 
@@ -139,16 +144,19 @@ accrual timestamp as the next baseline.
 This currently applies when the buffer is initialized and the program controls
 the ONyc mint, for:
 
-- `mint_to`, which requires `State.main_offer` to be set
+- `mint_to`, which requires `State.main_offer` to be set; after the ONyc BUFFER
+  switch it accrues the per-mint BUFFER instead (see `MODULAR_TAKE_OFFER.md`)
+- Modular permissioned and permissionless `take_offer` before minting or burning a
+  managed token; the post-trade
+  mint supply is stored using the managed side selected by OfferConfig.
 - `take_offer_v2` and `take_offer_permissionless_v2` when token out is ONyc
 - Prop AMM buy when token out is ONyc
 - redemption fulfillment when token in is ONyc and the net amount is burned
 - Prop AMM sell when token in is ONyc and the net amount is burned
 - `burn_for_nav_increase`
 
-Legacy `take_offer` and `take_offer_permissionless` do not update the BUFFER
-baseline, and offer executions that only burn ONyc as token in are not wired
-into the BUFFER baseline path.
+Offer executions that only burn ONyc as token in are not wired into the BUFFER
+baseline path. The V1 offer instructions have been removed.
 
 The baseline update is:
 

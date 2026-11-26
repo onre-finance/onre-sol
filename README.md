@@ -1,5 +1,9 @@
 # OnreApp Solana Program
 
+Program and client package version: **1.0.0**. The Rust crate version is the source
+for generated IDL version metadata. This version bump does not change instruction
+interfaces, account layouts, or the program ID.
+
 A Solana smart contract built with [Anchor](https://www.anchor-lang.com/) that manages tokenized (re)insurance pools. The program enables the creation, management, and redemption of **ONyc tokens**, which represent fractional ownership in a regulated investment pool specializing in (re)insurance underwriting.
 
 ## Quick Start
@@ -25,23 +29,51 @@ local validators must have the SIMD-0312 feature active.
 programs/onreapp/src/
 ├── lib.rs                    # Entry point — all program instructions declared here
 ├── state.rs                  # Global State account (boss, admins, approvers, kill switch)
+├── model/                    # Reusable EVM-aligned configuration account types
 ├── constants.rs              # PDA seeds, limits, decimals
 ├── utils/                    # Token helpers, ed25519 signature parsing, approver verification
 └── instructions/
     ├── initialization/       # initialize, initialize_permissionless_authority
     ├── buffer/               # BUFFER state, accrual, fee accounting, burn support
     ├── configurable_vault/   # Shared accounting vault destinations and withdrawals
+    ├── configuration/        # Create reusable components, offers, and per-mint BUFFER state
+    ├── execution/            # Modular take_offer accounts, validation, quotes, BUFFER and settlement
     ├── offer/                # make/take/disable offers, manage price vectors, fees
     ├── prop_amm/             # Prop AMM configuration, quotes, buy/sell execution
     ├── redemption/           # redemption offers, requests, fulfillment, cancellation
     ├── state_operations/     # Boss transfer, admin/approver management, kill switch, max supply
-    ├── vault_operations/     # Deposit/withdraw tokens to offer and redemption vaults
+    ├── vault_operations/     # Deposit/withdraw tokens to legacy vaults and VaultConfig accounts
     ├── mint_authority/       # Transfer mint authority to/from program PDA, mint_to
-    ├── market_info/          # Market stats refresh, exclusions, and NAV/APY/TVL/supply queries
+    ├── market_info/          # Market stats refresh, exclusions, and shared metric calculations
     └── targeted_disable.rs   # Token-pair targeted disable controls
 ```
 
 ## Key Concepts
+
+The modular account layouts, EVM mapping, and boss-authorized creation instructions
+are documented in [`MODULAR_MODEL.md`](docs/MODULAR_MODEL.md). The new `take_offer`
+provides [modular offer execution](docs/MODULAR_TAKE_OFFER.md), currently for
+permissioned and permissionless NAV offers plus permissionless Prop AMM in both
+directions. Prop AMM applies its curve symmetrically to buys and sells. NAV offers
+can explicitly link the matching pair tracker for pressure relief without changing pricing.
+Buy offers can refill a selected Liquidity VaultConfig target before issuance. Permissionless
+execution uses the existing intermediary PDA and requires no approval.
+Offers independently select [source and destination vaults](docs/OFFER_VAULT_ROLES.md).
+Sources pay output inventory; destinations receive net input. NAV buys can mint
+without a source and route input to Proceeds without a destination. Sells require
+an asset source and burn managed input only when no destination is configured.
+Both roles accept modular Liquidity, legacy ConfigurableVault or redemption custody.
+Every managed mint uses its per-mint BUFFER if initialized, valued at its canonical
+USD Pricer. ONyc has exactly one active BUFFER: the legacy singleton (also accrued by
+modular execution) until a boss's one-way switch, then its per-mint BUFFER.
+Modular market stats are opt-in per mint. Standalone settlement/settings and
+market-stats selection are documented in
+[MODULAR_TAKE_OFFER.md](docs/MODULAR_TAKE_OFFER.md#per-mint-buffer).
+[VaultConfig deposit and withdrawal instructions](docs/VAULT_CONFIG_OPERATIONS.md)
+support generic and per-mint BUFFER vaults. Anyone may deposit; withdrawals use the
+fixed destination, with boss authorization required for Liquidity and BufferReserve.
+Each modeled offer explicitly references a Pricer for its managed mint. The boss
+chooses the external asset in that Pricer's denomination; no asset registration is required.
 
 ### Dynamic Pricing
 
@@ -62,10 +94,10 @@ The kill switch is an emergency stop for guarded value-moving paths. The boss ca
 
 When `state.is_killed == true`, the program rejects:
 
-- offer execution: `take_offer`, `take_offer_v2`, `take_offer_permissionless`, `take_offer_permissionless_v2`
+- offer execution: `take_offer`, `take_offer_v2`, `take_offer_permissionless_v2`
 - Prop AMM quotes and execution: `quote_swap_buy`, `quote_swap_sell`, `open_swap_buy`, `open_swap_sell`
 - redemption request movement: `create_redemption_request`, `fulfill_redemption_request`, `cancel_redemption_request`
-- vault funding and recovery: `offer_vault_deposit`, `offer_vault_withdraw`, `redemption_vault_deposit`, `redemption_vault_withdraw`
+- vault funding and recovery: `deposit_vault_config`, `withdraw_vault_config`, `offer_vault_deposit`, `offer_vault_withdraw`, `redemption_vault_deposit`, `redemption_vault_withdraw`
 - BUFFER/configurable vault movement: `settle_buffer`, `deposit_reserve_vault`, `withdraw_reserve_vault`, `withdraw_configurable_vault`
 - direct supply-changing and accrual-settling paths: `mint_to`, `burn_for_nav_increase`, `set_buffer_gross_apr`, `set_buffer_fee_config`
 
@@ -116,6 +148,15 @@ accept a writable boss signer because the boss pays for lazy `MarketStats` PDA
 creation. Integrations may instead initialize that PDA first with the
 permissionless `refresh_market_stats` instruction.
 
+Read NAV, APY, signed NAV adjustment, circulating supply, and TVL directly from
+`["market_stats"]` over RPC (`pnpm cli market fetch --json`). This is a cached
+snapshot of `state.main_offer`; check `last_updated_at` and `last_updated_slot`.
+Refresh the excluded-balance cache first if its underlying holdings changed.
+The seven market getter instructions have been removed on this branch; migrate
+their callers before deploying this build. The PDA layout and refresh instruction
+are unchanged. See [the integration guide](docs/INTEGRATION_GUIDE.md) for units,
+refresh ordering, and differences from legacy per-offer views.
+
 ### Constants
 
 | Constant              | Value      |
@@ -129,21 +170,28 @@ permissionless `refresh_market_stats` instruction.
 
 **Initialization**: `initialize`, `initialize_permissionless_authority`
 
+**Reusable configuration**: `register_managed_token`, `unregister_managed_token`, `create_pricer`, `add_pricer_vector`, `create_quoter`, `create_vault_config`, `create_fee_config`, `create_prop_amm_state`, `create_offer_config`, `initialize_managed_token_buffer`
+
 **BUFFER**: `initialize_buffer`, `settle_buffer`, `set_buffer_gross_apr`, `set_buffer_fee_config`, `burn_for_nav_increase`, `deposit_reserve_vault`, `withdraw_reserve_vault`
 
 **Prop AMM**: `configure_prop_amm`, `quote_swap_buy`, `quote_swap_sell`, `open_swap_buy`, `open_swap_sell`
 
-**Offers**: `make_offer`, `add_offer_vector`, `delete_offer_vector`, `delete_all_offer_vectors`, `update_offer_fee`, `update_offer_permissionless_fee`, `set_offer_disabled`, `take_offer`, `take_offer_v2`, `take_offer_permissionless`, `take_offer_permissionless_v2`
+V1 offer instructions remain removed. The name `take_offer` now identifies a new
+modular instruction with different data and accounts; it is not compatible with V1
+transactions. Existing clients keep using `take_offer_v2` or
+`take_offer_permissionless_v2` unchanged. The CLI `offer take` still uses V2.
+
+**Offers**: `make_offer`, `add_offer_vector`, `delete_offer_vector`, `delete_all_offer_vectors`, `update_offer_fee`, `update_offer_permissionless_fee`, `set_offer_disabled`, `take_offer`, `take_offer_v2`, `take_offer_permissionless_v2`
 
 **Redemption**: `make_redemption_offer`, `set_redemption_offer_disabled`, `create_redemption_request`, `fulfill_redemption_request`, `cancel_redemption_request`, `update_redemption_offer_fee`, `update_redemption_offer_prop_amm_sell_fee`, `update_redemption_offer_vault_target`
 
 **State Operations**: `propose_boss`, `accept_boss`, `add_admin`, `remove_admin`, `clear_admins`, `set_kill_switch`, `set_onyc_mint`, `set_worker`, `set_main_offer`, `add_approver`, `remove_approver`, `configure_max_supply`, `configure_max_mint_amount`, `close_state`
 
-**Vault Operations**: `offer_vault_deposit`, `offer_vault_withdraw`, `redemption_vault_deposit`, `redemption_vault_withdraw`, `set_configurable_vault_destination`, `withdraw_configurable_vault`
+**Vault Operations**: `deposit_vault_config`, `withdraw_vault_config`, `offer_vault_deposit`, `offer_vault_withdraw`, `redemption_vault_deposit`, `redemption_vault_withdraw`, `set_configurable_vault_destination`, `withdraw_configurable_vault`
 
 **Mint Authority**: `transfer_mint_authority_to_program`, `transfer_mint_authority_to_boss`, `mint_to`
 
-**Market Info**: `get_nav`, `get_apy`, `get_nav_adjustment`, `get_tvl`, `get_tvl_v2`, `get_circulating_supply`, `get_circulating_supply_v2`, `refresh_market_stats`, `set_circulating_supply_excluded_accounts`, `update_circulating_supply_excluded_balance`
+**Market Info**: `refresh_market_stats`, `set_circulating_supply_excluded_accounts`, `update_circulating_supply_excluded_balance`
 
 ## CLI Tool
 

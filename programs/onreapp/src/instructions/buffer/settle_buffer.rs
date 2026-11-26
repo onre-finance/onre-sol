@@ -19,7 +19,8 @@ pub struct SettleBuffer<'info> {
         has_one = worker @ crate::OnreError::InvalidWorker,
         has_one = onyc_mint,
         constraint = !state.is_killed @ crate::OnreError::KillSwitchActivated,
-        constraint = state.main_offer != Pubkey::default() @ crate::OnreError::InvalidMainOffer
+        constraint = state.main_offer != Pubkey::default() @ crate::OnreError::InvalidMainOffer,
+        constraint = state.onyc_legacy_buffer_active() @ crate::OnreError::LegacyBufferRetired,
     )]
     pub state: Box<Account<'info, State>>,
 

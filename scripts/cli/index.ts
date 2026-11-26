@@ -45,7 +45,7 @@ async function main() {
     const stateCmd = program.command("state").description("Manage program state (boss, admins, approvers, kill switch)");
     registerStateCommands(stateCmd);
 
-    const marketCmd = program.command("market").description("Query market information (NAV, APY, TVL, supply)");
+    const marketCmd = program.command("market").description("Read or refresh cached market stats");
     registerMarketCommands(marketCmd);
 
     const offerCmd = program.command("offer").description("Manage token offers (create, fetch, update, close)");
@@ -81,7 +81,7 @@ ${chalk.bold("Examples:")}
   $ pnpm cli state get
 
   ${chalk.gray("# Get NAV with JSON output")}
-  $ pnpm cli market nav --json
+  $ pnpm cli market fetch --json
 
   ${chalk.gray("# Create an offer on testnet")}
   $ pnpm cli -n mainnet-test offer make

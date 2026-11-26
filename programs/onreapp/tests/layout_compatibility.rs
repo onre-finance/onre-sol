@@ -1,6 +1,6 @@
 use anchor_lang::{AccountDeserialize, AnchorSerialize, Discriminator, Space};
 use onreapp::constants::MAX_ADMINS;
-use onreapp::instructions::{RedemptionOffer, RedemptionRequest};
+use onreapp::instructions::{BufferState, RedemptionOffer, RedemptionRequest};
 use onreapp::state::State;
 use solana_sdk::pubkey::Pubkey;
 
@@ -18,6 +18,20 @@ struct LegacyState {
     // Legacy field name; V5 renames this same serialized Pubkey slot to `worker`.
     redemption_admin: Pubkey,
     reserved: [u8; 96],
+}
+
+#[derive(AnchorSerialize)]
+struct LegacyBufferState {
+    onyc_mint: Pubkey,
+    gross_apr: u64,
+    previous_supply: u64,
+    management_fee_basis_points: u16,
+    performance_fee_basis_points: u16,
+    performance_fee_high_watermark: u64,
+    performance_fee_high_watermark_enabled: bool,
+    last_accrual_timestamp: i64,
+    bump: u8,
+    reserved: [u8; 135],
 }
 
 #[derive(AnchorSerialize)]
@@ -71,7 +85,7 @@ fn state_deserializes_legacy_master_layout() {
     let mut admins = [Pubkey::default(); MAX_ADMINS];
     admins[0] = Pubkey::new_unique();
 
-    let legacy = LegacyState {
+    let mut legacy = LegacyState {
         boss,
         proposed_boss,
         is_killed: true,
@@ -105,6 +119,42 @@ fn state_deserializes_legacy_master_layout() {
     assert_eq!(state.worker, redemption_admin);
     assert_eq!(state.max_mint_amount, 0);
     assert_eq!(state.main_offer, Pubkey::default());
+
+    // max_mint_amount (8 bytes), main_offer (32 bytes) and the one-way ONyc BUFFER
+    // switch flag (1 byte) occupy the start of the original master's 96-byte
+    // reserve. Deployed reserves are zero, so the flag reads as legacy active.
+    assert!(!state.onyc_per_mint_buffer_active);
+    legacy.reserved[41..].fill(0xa5);
+    let data = account_bytes(State::DISCRIMINATOR, &legacy);
+    let state = State::try_deserialize(&mut data.as_slice()).unwrap();
+    assert!(!state.onyc_per_mint_buffer_active);
+    assert_eq!(state.reserved, [0xa5; 55]);
+    assert_eq!(account_bytes(State::DISCRIMINATOR, &state), data);
+    legacy.reserved[40] = 1;
+    let data = account_bytes(State::DISCRIMINATOR, &legacy);
+    let state = State::try_deserialize(&mut data.as_slice()).unwrap();
+    assert!(state.onyc_per_mint_buffer_active);
+}
+
+#[test]
+fn buffer_state_preserves_legacy_bytes() {
+    let legacy = LegacyBufferState {
+        onyc_mint: Pubkey::new_unique(),
+        gross_apr: 150_000,
+        previous_supply: 99,
+        management_fee_basis_points: 10,
+        performance_fee_basis_points: 20,
+        performance_fee_high_watermark: 100,
+        performance_fee_high_watermark_enabled: true,
+        last_accrual_timestamp: 100,
+        bump: 254,
+        reserved: [0xa5; 135],
+    };
+    let data = account_bytes(BufferState::DISCRIMINATOR, &legacy);
+    assert_eq!(data.len(), 8 + BufferState::INIT_SPACE);
+    let buffer = BufferState::try_deserialize(&mut data.as_slice()).unwrap();
+    assert_eq!(buffer.reserved, [0xa5; 135]);
+    assert_eq!(account_bytes(BufferState::DISCRIMINATOR, &buffer), data);
 }
 
 #[test]
