@@ -332,4 +332,6 @@ pub enum OnreError {
     PerMintBufferAccountsRequired,
     #[msg("ONyc multisig minting requires the one-way BUFFER switch first")]
     MintMultisigBeforeBufferSwitch,
+    #[msg("Market stats account does not belong to this managed token")]
+    MarketStatsNotForToken,
 }

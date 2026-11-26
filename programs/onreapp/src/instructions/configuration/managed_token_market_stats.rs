@@ -61,8 +61,9 @@ pub fn initialize_managed_token_market_stats(
     )
 }
 
-/// Selects any existing program-owned MarketStats account. `Account` enforces the
-/// program owner and MarketStats discriminator; the address itself is unconstrained.
+/// Selects an existing MarketStats account of this token: its own
+/// `["market_stats", mint]`, or for ONyc also the legacy `["market_stats"]` singleton.
+/// `Account` enforces the program owner and MarketStats discriminator.
 #[derive(Accounts)]
 pub struct SetManagedTokenMarketStats<'info> {
     #[account(
@@ -73,7 +74,13 @@ pub struct SetManagedTokenMarketStats<'info> {
     pub managed_token: Box<Account<'info, ManagedTokenConfig>>,
 
     #[account(
-        constraint = market_stats.key() != managed_token.market_stats @ OnreError::NoChange
+        constraint = market_stats.key() != managed_token.market_stats @ OnreError::NoChange,
+        constraint = is_token_market_stats(
+            &market_stats.key(),
+            &managed_token.managed_mint,
+            &state,
+            &crate::ID,
+        ) @ OnreError::MarketStatsNotForToken,
     )]
     pub market_stats: Box<Account<'info, MarketStats>>,
 
@@ -123,6 +130,14 @@ pub fn unset_managed_token_market_stats(ctx: Context<UnsetManagedTokenMarketStat
         Pubkey::default(),
         ctx.accounts.boss.key(),
     )
+}
+
+/// A token may report only into its own `["market_stats", mint]` account, and ONyc
+/// also into the legacy singleton that integrators read.
+fn is_token_market_stats(key: &Pubkey, mint: &Pubkey, state: &State, program_id: &Pubkey) -> bool {
+    let own = Pubkey::find_program_address(&[MARKET_STATS, mint.as_ref()], program_id).0;
+    let legacy = Pubkey::find_program_address(&[MARKET_STATS], program_id).0;
+    *key == own || (*mint == state.onyc_mint && *key == legacy)
 }
 
 fn select(

@@ -299,8 +299,10 @@ The boss selects an account with either instruction:
 
 - `initialize_managed_token_market_stats` creates `["market_stats", mint]` and
   selects it.
-- `set_managed_token_market_stats` selects any existing program-owned
-  MarketStats account, such as the legacy `["market_stats"]` singleton for ONyc.
+- `set_managed_token_market_stats` selects an existing MarketStats account of
+  this token: its own `["market_stats", mint]`, or for ONyc also the legacy
+  `["market_stats"]` singleton. Any other account, such as another token's, fails
+  with `MarketStatsNotForToken`, so one token cannot overwrite another's NAV.
 - `unset_managed_token_market_stats` clears the selection, disabling modular
   reporting without modifying the MarketStats account.
 

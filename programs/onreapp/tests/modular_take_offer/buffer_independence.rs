@@ -486,11 +486,32 @@ fn per_mint_market_stats_are_opt_in_and_bound_to_the_selected_account() {
 }
 
 #[test]
+fn a_token_selects_only_its_own_market_stats() {
+    let mut f = setup(false, false);
+    let instruction = init_stats_ix(&f, f.boss.pubkey());
+    send(&mut f.svm, &[instruction], &[&f.boss]).unwrap();
+    let own = f.svm.get_account(&per_mint_stats(&f)).unwrap();
+
+    // Valid MarketStats accounts of another token, and the ONyc legacy singleton,
+    // are rejected for a non-ONyc token.
+    let other_token = pda(&[b"market_stats", Pubkey::new_unique().as_ref()]);
+    for foreign in [other_token, find_market_stats_pda().0] {
+        f.svm.set_account(foreign, own.clone()).unwrap();
+        let instruction = select_stats_ix(&f, f.boss.pubkey(), foreign);
+        check_error(
+            send(&mut f.svm, &[instruction], &[&f.boss]),
+            OnreError::MarketStatsNotForToken,
+        );
+    }
+    assert_eq!(selected_stats(&f), per_mint_stats(&f));
+}
+
+#[test]
 fn onyc_can_select_the_legacy_market_stats_shared_with_legacy_refresh() {
     let mut f = setup(true, false);
     f.initialize_legacy_main_offer(); // legacy NAV 1; canonical modular Pricer NAV 2
     let legacy_stats = find_market_stats_pda().0;
-    // Any address works, but it must already deserialize as MarketStats.
+    // ONyc may select the singleton, but it must already deserialize as MarketStats.
     let instruction = select_stats_ix(&f, f.boss.pubkey(), legacy_stats);
     check_code(send(&mut f.svm, &[instruction], &[&f.boss]), 3012);
     let instruction = select_stats_ix(&f, f.boss.pubkey(), price(f.mint, 0));
