@@ -2340,7 +2340,8 @@ export type Onreapp = {
         {
           "name": "escrowTokenIn",
           "docs": [
-            "The request's input-mint ATA, holding the escrowed input until filled."
+            "The request's input-mint ATA, holding the escrowed input until filled. Accepted",
+            "if someone created it first, so its predictable address cannot block the ID."
           ],
           "writable": true,
           "pda": {
@@ -2356,6 +2357,71 @@ export type Onreapp = {
               {
                 "kind": "account",
                 "path": "tokenInMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenOutMint"
+        },
+        {
+          "name": "userTokenOut",
+          "docs": [
+            "The user's output ATA, created here at the user's expense so fills never pay",
+            "its rent: the worker would otherwise fund a new account on every partial fill",
+            "after the user closes it."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutProgram"
+              },
+              {
+                "kind": "account",
+                "path": "tokenOutMint"
               }
             ],
             "program": {
@@ -2421,13 +2487,17 @@ export type Onreapp = {
         {
           "name": "user",
           "docs": [
-            "Pays the request and escrow rent, refunded when the request closes."
+            "Pays the request and escrow rent, refunded when the request closes, and the",
+            "output ATA if missing."
           ],
           "writable": true,
           "signer": true
         },
         {
           "name": "tokenInProgram"
+        },
+        {
+          "name": "tokenOutProgram"
         },
         {
           "name": "associatedTokenProgram",
@@ -4471,6 +4541,11 @@ export type Onreapp = {
         },
         {
           "name": "userTokenOut",
+          "docs": [
+            "The user's output ATA, created at request creation. Never created here, so the",
+            "worker cannot be made to fund it; if the user closed it, the fill fails and the",
+            "request can be cancelled."
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -12478,6 +12553,10 @@ export type Onreapp = {
         },
         {
           "name": "boss",
+          "docs": [
+            "Pays for any per-mint BUFFER vault ATA that does not exist yet."
+          ],
+          "writable": true,
           "signer": true,
           "relations": [
             "state"
@@ -12577,6 +12656,286 @@ export type Onreapp = {
         {
           "name": "bufferState",
           "writable": true
+        },
+        {
+          "name": "reserveVault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  114,
+                  101,
+                  115,
+                  101,
+                  114,
+                  118,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "managementFeeVault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "performanceFeeVault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114,
+                  95,
+                  112,
+                  101,
+                  114,
+                  102,
+                  111,
+                  114,
+                  109,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reserveToken",
+          "docs": [
+            "The per-mint BUFFER vaults' ONyc ATAs, created at the boss's expense when",
+            "missing: every ONyc supply change after the switch accrues into them."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "reserveVault"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "managementToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "managementFeeVault"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "performanceToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "performanceFeeVault"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "onycMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -14344,6 +14703,105 @@ export type Onreapp = {
           "name": "tokenProgram",
           "docs": [
             "SPL Token program for mint authority operations"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "unregisterManagedToken",
+      "docs": [
+        "Removes a disabled managed-token registration that has no per-mint BUFFER and",
+        "no market stats selected, refunding its rent; ONyc cannot be removed. Boss only."
+      ],
+      "discriminator": [
+        162,
+        245,
+        247,
+        223,
+        110,
+        217,
+        197,
+        29
+      ],
+      "accounts": [
+        {
+          "name": "managedToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  100,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedToken.managedMint",
+                "account": "managedTokenConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferState",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "managedToken.managedMint",
+                "account": "managedTokenConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "boss",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
           ]
         }
       ],
@@ -16786,6 +17244,19 @@ export type Onreapp = {
       ]
     },
     {
+      "name": "managedTokenUnregisteredEvent",
+      "discriminator": [
+        220,
+        197,
+        136,
+        143,
+        94,
+        73,
+        101,
+        39
+      ]
+    },
+    {
       "name": "marketStatsRefreshedEvent",
       "discriminator": [
         125,
@@ -18277,6 +18748,36 @@ export type Onreapp = {
       "code": 6162,
       "name": "perMintBufferAccountsRequired",
       "msg": "ONyc after the one-way BUFFER switch requires the per-mint BUFFER accounts"
+    },
+    {
+      "code": 6163,
+      "name": "mintMultisigBeforeBufferSwitch",
+      "msg": "ONyc multisig minting requires the one-way BUFFER switch first"
+    },
+    {
+      "code": 6164,
+      "name": "marketStatsNotForToken",
+      "msg": "Market stats account does not belong to this managed token"
+    },
+    {
+      "code": 6165,
+      "name": "pricerAprTooHigh",
+      "msg": "Pricer vector APR exceeds the maximum (100%)"
+    },
+    {
+      "code": 6166,
+      "name": "bufferReserveExcludedFromSupply",
+      "msg": "The BUFFER reserve is excluded from circulating supply; burning it would not raise NAV"
+    },
+    {
+      "code": 6167,
+      "name": "cannotUnregisterOnyc",
+      "msg": "ONyc cannot be unregistered"
+    },
+    {
+      "code": 6168,
+      "name": "managedTokenStillInUse",
+      "msg": "Managed token must be disabled, with no per-mint BUFFER and no market stats selected"
     }
   ],
   "types": [
@@ -18561,6 +19062,10 @@ export type Onreapp = {
         "fields": [
           {
             "name": "tokenInMint",
+            "docs": [
+              "Input mint of the legacy offer that valued the accrual; when a modular path",
+              "accrues the legacy singleton before the switch, the canonical Pricer instead."
+            ],
             "type": "pubkey"
           },
           {
@@ -19338,6 +19843,14 @@ export type Onreapp = {
             "type": "bool"
           },
           {
+            "name": "surplusAmount",
+            "docs": [
+              "Unsolicited input found in the escrow at the final fill and swept to the fee",
+              "vault; zero otherwise."
+            ],
+            "type": "u64"
+          },
+          {
             "name": "timestamp",
             "type": "i64"
           }
@@ -19988,6 +20501,30 @@ export type Onreapp = {
           {
             "name": "slot",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "managedTokenUnregisteredEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "boss",
+            "type": "pubkey"
+          },
+          {
+            "name": "managedToken",
+            "type": "pubkey"
+          },
+          {
+            "name": "managedMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }
