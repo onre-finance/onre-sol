@@ -106,6 +106,21 @@ fn price_fix_duration_is_limited_to_one_day() {
 }
 
 #[test]
+fn apr_is_limited_to_one_hundred_percent() {
+    let mut f = Fixture::new(false, false);
+    let start = get_clock_time(&f.svm) + 10;
+    let with_apr = |apr| PricingVector {
+        apr,
+        ..vector(start, 2_000_000_000, 86_400)
+    };
+    expect_error(
+        add(&mut f, with_apr(1_000_001)),
+        OnreError::PricerAprTooHigh,
+    );
+    add(&mut f, with_apr(1_000_000)).unwrap();
+}
+
+#[test]
 fn boss_deletes_future_vectors_or_all_vectors() {
     let mut f = Fixture::new(false, false);
     let now = get_clock_time(&f.svm);

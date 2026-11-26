@@ -443,8 +443,10 @@ two custody roles, replacing the former `liquidity_amount`. V2 instructions and 
 `add_pricer_vector(vector)` requires the existing boss signer and a canonical
 Pricer, and requires the new start time to exceed every stored start time. Start
 time cannot be in the past; base time must be positive and no later than start
-time. Price must be positive and the step duration (`price_fix_duration`) must be
-between 1 second and 1 day, as on EVM.
+time. Price must be positive, the step duration (`price_fix_duration`) must be
+between 1 second and 1 day, as on EVM, and the APR at most 100% (`1_000_000`,
+`PricerAprTooHigh`), since a larger typo could overflow price growth and halt
+every quote of the token.
 
 Before filling a slot it evicts history with the rule shared with legacy offers
 and EVM: it keeps the vector active at the current time (the new one if it starts

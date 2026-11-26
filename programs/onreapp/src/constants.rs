@@ -82,6 +82,10 @@ pub const MAX_VECTORS: usize = 10;
 /// Longest allowed modular Pricer step (`price_fix_duration`), matching EVM.
 pub const MAX_PRICE_FIX_DURATION: u64 = 86_400;
 
+/// Maximum Pricer vector APR (scale 6): 1_000_000 = 100%. A typo beyond this would
+/// overflow price growth and halt every quote of the token.
+pub const MAX_PRICER_APR: u64 = 1_000_000;
+
 /// Maximum number of admin accounts that can be stored in program state
 pub const MAX_ADMINS: usize = 20;
 

@@ -334,4 +334,6 @@ pub enum OnreError {
     MintMultisigBeforeBufferSwitch,
     #[msg("Market stats account does not belong to this managed token")]
     MarketStatsNotForToken,
+    #[msg("Pricer vector APR exceeds the maximum (100%)")]
+    PricerAprTooHigh,
 }
