@@ -389,6 +389,37 @@ fn the_user_funds_their_output_account_and_fills_never_create_it() {
     assert!(lamports(&f, worker.pubkey()) + 50_000 >= worker_lamports);
 }
 
+/// Idempotent ATA program `Create` of `owner`'s `mint` account, paid by `payer`.
+fn create_ata_ix(payer: Pubkey, owner: Pubkey, mint: Pubkey, program: Pubkey) -> Instruction {
+    Instruction {
+        program_id: ATA_PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new(payer, true),
+            AccountMeta::new(derive_ata(&owner, &mint, &program), false),
+            AccountMeta::new_readonly(owner, false),
+            AccountMeta::new_readonly(mint, false),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+            AccountMeta::new_readonly(program, false),
+        ],
+        data: vec![1],
+    }
+}
+
+#[test]
+fn a_precreated_escrow_account_cannot_block_a_request_id() {
+    let (mut f, worker) = worker_fixture(false, OfferMode::Worker);
+    // Someone creating a request's escrow account first does not block its ID.
+    let stranger = Keypair::new();
+    f.svm.airdrop(&stranger.pubkey(), INITIAL_LAMPORTS).unwrap();
+    let (mint, program) = input(&f);
+    let instruction = create_ata_ix(stranger.pubkey(), request_pda(&f, 1), mint, program);
+    send(&mut f.svm, &[instruction], &[&stranger]).unwrap();
+    let request = create(&mut f, 1, 100_000_000);
+    assert_eq!(get_token_balance(&f.svm, &escrow(&f, request)), 100_000_000);
+    fill(&mut f, &worker, request, 100_000_000).unwrap();
+    assert!(f.svm.get_account(&request).is_none());
+}
+
 /// Balances and accounting after one execution of `gross` against a fresh offer.
 #[derive(Debug, PartialEq)]
 struct Outcome {

@@ -477,9 +477,10 @@ escrows the input, the worker fills it, and either can cancel the rest.
   user. Requires the offer and every component it uses to be enabled, and the kill
   switch off. Permissioned offers need the same Ed25519 approval as `take_offer`;
   permissionless offers reject one. Escrows the gross input in the request PDA
-  `["fulfillment_request", offer_config, user, request_id_le]`'s input-mint ATA.
-  Creates the user's output ATA if missing. Locks no price or fee. The user pays all
-  three accounts' rent; an ID can be reused once its request closes.
+  `["fulfillment_request", offer_config, user, request_id_le]`'s input-mint ATA,
+  accepting that ATA if someone created it first, so its predictable address cannot
+  block an ID. Creates the user's output ATA if missing. Locks no price or fee. The
+  user pays all three accounts' rent; an ID can be reused once its request closes.
 - `fulfill_fulfillment_request(input_amount)`, by `State.worker`. Any amount up to
   the unfilled remainder (`FulfillmentAmountExceedsRemaining` otherwise). Each fill
   runs the shared `take_offer` pipeline on that gross input, with the escrow as

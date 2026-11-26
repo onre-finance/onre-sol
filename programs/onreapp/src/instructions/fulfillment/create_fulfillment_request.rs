@@ -64,9 +64,10 @@ pub struct CreateFulfillmentRequest<'info> {
     )]
     pub fulfillment_request: Box<Account<'info, FulfillmentRequest>>,
 
-    /// The request's input-mint ATA, holding the escrowed input until filled.
+    /// The request's input-mint ATA, holding the escrowed input until filled. Accepted
+    /// if someone created it first, so its predictable address cannot block the ID.
     #[account(
-        init,
+        init_if_needed,
         payer = user,
         associated_token::mint = token_in_mint,
         associated_token::authority = fulfillment_request,
